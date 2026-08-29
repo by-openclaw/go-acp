@@ -89,6 +89,74 @@ func (c *Client) GetJSON(ctx context.Context, url string, dst any) error {
 	return nil
 }
 
+// GetJSONPage is GetJSON plus the one response header a Query API
+// client cannot live without: the RFC 8288 Link header. IS-04 §6.2
+// paginates collections and points at the next page via
+// `Link: <url>; rel="next"` — a client that ignores it sees exactly
+// one page and silently reports a 2-sender registry when the paging
+// limit is 2 (the AMWA IS-04-04 suite sets precisely that trap).
+//
+// Returns the rel="next" target, or "" when the server sent none.
+func (c *Client) GetJSONPage(ctx context.Context, url string, dst any) (string, error) {
+	if dst == nil {
+		return "", fmt.Errorf("nmos/http: GetJSONPage: dst must not be nil")
+	}
+	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("nmos/http: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("nmos/http: GET %s: %w", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != stdhttp.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, c.MaxBody))
+		return "", fmt.Errorf("nmos/http: GET %s: HTTP %d: %s",
+			url, resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	max := c.MaxBody
+	if max <= 0 {
+		max = DefaultMaxBody
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, max+1))
+	if err != nil {
+		return "", fmt.Errorf("nmos/http: read body: %w", err)
+	}
+	if int64(len(body)) > max {
+		return "", fmt.Errorf("nmos/http: response body exceeds %d bytes", max)
+	}
+	if err := json.Unmarshal(body, dst); err != nil {
+		return "", fmt.Errorf("nmos/http: decode body: %w", err)
+	}
+	return linkRel(resp.Header.Values("Link"), "next"), nil
+}
+
+// linkRel extracts the target of the first Link entry carrying
+// rel="<rel>". Handles both repeated Link headers and the
+// comma-joined single-header form.
+func linkRel(headers []string, rel string) string {
+	want := `rel="` + rel + `"`
+	for _, h := range headers {
+		for _, part := range strings.Split(h, ",") {
+			seg := strings.Split(part, ";")
+			if len(seg) < 2 {
+				continue
+			}
+			target := strings.Trim(strings.TrimSpace(seg[0]), "<>")
+			for _, attr := range seg[1:] {
+				if strings.ReplaceAll(strings.TrimSpace(attr), "'", `"`) == want {
+					return target
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // isJSONContentType matches `application/json` and the `; charset=...`
 // suffix variant. Case-insensitive per RFC 7231 §3.1.1.5.
 func isJSONContentType(ct string) bool {

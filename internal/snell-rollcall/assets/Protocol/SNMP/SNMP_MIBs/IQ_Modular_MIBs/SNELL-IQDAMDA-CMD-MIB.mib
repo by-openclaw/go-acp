@@ -1,0 +1,2196 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDAMDA
+--        Module Id#:144
+--       Command Set:5
+--          Filename:SNELL-IQDAMDA-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:15:01
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDAMDA-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDAMDA,
+    moduleIQDAMDAMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDAMDACmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101501Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDAMDAMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdamdaCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdamdaCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDAMDA 1 }
+
+	iqdamdaCmdEntry OBJECT-TYPE
+		SYNTAX		IqdamdaCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdamdaSlotIndex }
+		::= { iqdamdaCmdTable 1 }
+
+	IqdamdaCmdEntry ::=
+		SEQUENCE {
+			iqdamdaSlotIndex
+				Unsigned32,
+			iqdamdaVideoLumaGain
+				INTEGER,
+			iqdamdaVideoBlackLevel
+				INTEGER,
+			iqdamdaVideoChromaGain
+				INTEGER,
+			iqdamdaVideoNTSCHue
+				INTEGER,
+			iqdamdaVideoYCTiming
+				INTEGER,
+			iqdamdaVideoPicturePosition
+				INTEGER,
+			iqdamdaStandardPAL
+				INTEGER,
+			iqdamdaStandardNTSC
+				INTEGER,
+			iqdamdaStandardPALN
+				INTEGER,
+			iqdamdaStandardNTSCJ
+				INTEGER,
+			iqdamdaStandardSECAM
+				INTEGER,
+			iqdamdaStandardPALM
+				INTEGER,
+			iqdamdaStandardN443
+				INTEGER,
+			iqdamdaDecoder
+				INTEGER,
+			iqdamdaDecoderMinimumDelay
+				INTEGER,
+			iqdamdaDecoderColourKiller
+				INTEGER,
+			iqdamdaDecoderSECAMDbDrID
+				INTEGER,
+			iqdamdaSECAMLumaBandwidthNotch
+				INTEGER,
+			iqdamdaSECAMLumaBandwidthBandwidthcontrol
+				INTEGER,
+			iqdamdaMemoriesMemory1Save1
+				INTEGER,
+			iqdamdaMemoriesMemory1Recall1
+				INTEGER,
+			iqdamdaMemoriesMemory1Clear1
+				INTEGER,
+			iqdamdaMemoriesMemory1Name1
+				RollCallString,
+			iqdamdaMemoriesMemory2Save2
+				INTEGER,
+			iqdamdaMemoriesMemory2Recall2
+				INTEGER,
+			iqdamdaMemoriesMemory2Clear2
+				INTEGER,
+			iqdamdaMemoriesMemory2Name2
+				RollCallString,
+			iqdamdaMemoriesMemory3Save3
+				INTEGER,
+			iqdamdaMemoriesMemory3Recall3
+				INTEGER,
+			iqdamdaMemoriesMemory3Clear3
+				INTEGER,
+			iqdamdaMemoriesMemory3Name3
+				RollCallString,
+			iqdamdaMemoriesMemory4Save4
+				INTEGER,
+			iqdamdaMemoriesMemory4Recall4
+				INTEGER,
+			iqdamdaMemoriesMemory4Clear4
+				INTEGER,
+			iqdamdaMemoriesMemory4Name4
+				RollCallString,
+			iqdamdaMemoriesMemory5Save5
+				INTEGER,
+			iqdamdaMemoriesMemory5Recall5
+				INTEGER,
+			iqdamdaMemoriesMemory5Clear5
+				INTEGER,
+			iqdamdaMemoriesMemory5Name5
+				RollCallString,
+			iqdamdaMemoriesMemory6Save6
+				INTEGER,
+			iqdamdaMemoriesMemory6Recall6
+				INTEGER,
+			iqdamdaMemoriesMemory6Clear6
+				INTEGER,
+			iqdamdaMemoriesMemory6Name6
+				RollCallString,
+			iqdamdaMemoriesMemory7Save7
+				INTEGER,
+			iqdamdaMemoriesMemory7Recall7
+				INTEGER,
+			iqdamdaMemoriesMemory7Clear7
+				INTEGER,
+			iqdamdaMemoriesMemory7Name7
+				RollCallString,
+			iqdamdaMemoriesMemory8Save8
+				INTEGER,
+			iqdamdaMemoriesMemory8Recall8
+				INTEGER,
+			iqdamdaMemoriesMemory8Clear8
+				INTEGER,
+			iqdamdaMemoriesMemory8Name8
+				RollCallString,
+			iqdamdaByPass
+				INTEGER,
+			iqdamdaFreeze
+				INTEGER,
+			iqdamdaSetupGenlock
+				INTEGER,
+			iqdamdaGenlockGenlockPhase625HPhase
+				INTEGER,
+			iqdamdaGenlockGenlockPhase625VPhase
+				INTEGER,
+			iqdamdaGenlockGenlockPhase525HPhase
+				INTEGER,
+			iqdamdaGenlockGenlockPhase525VPhase
+				INTEGER,
+			iqdamdaSetupGenlockFreerunFreq
+				INTEGER,
+			iqdamdaSetupPatternEnablePattern
+				INTEGER,
+			iqdamdaSetupPattern
+				INTEGER,
+			iqdamdaSetupCaptionEditCaption
+				RollCallString,
+			iqdamdaSetupCaption
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525BlankAll
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525PassAll
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line10
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line273
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line11
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line274
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line12
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line275
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line13
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line276
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line14
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line277
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line15
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line278
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line16
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line279
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line17
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line280
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line18
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line281
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line19
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line282
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line20
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line283
+				INTEGER,
+			iqdamdaVIBlankingVIBlank525Line21
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625BlankAll
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625PassAll
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line6
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line318
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line7
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line319
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line8
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line320
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line9
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line321
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line10
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line322
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line11
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line323
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line12
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line324
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line13
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line325
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line14
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line326
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line15
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line327
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line16
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line328
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line17
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line329
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line18
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line330
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line19
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line331
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line20
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line332
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line21
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line333
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line22
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line334
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line23
+				INTEGER,
+			iqdamdaVIBlankingVIBlank625Line335
+				INTEGER,
+			iqdamdaSetupDefaultOut
+				INTEGER,
+			iqdamdaSetupDefaultOutDefaultPattern
+				INTEGER,
+			iqdamdaSetupLoggingInput
+				INTEGER,
+			iqdamdaSetupLoggingStandard
+				INTEGER,
+			iqdamdaSetupLoggingReference
+				INTEGER,
+			iqdamdaGPIGPIInputDisableAll
+				INTEGER,
+			iqdamdaGPIGPIInputInputSelection
+				INTEGER,
+			iqdamdaGPIGPIInputGPIInStatus
+				RollCallString,
+			iqdamdaGPIGPIOutputOutputSelection
+				INTEGER,
+			iqdamdaGPIGPIOutputGPIOutStatus
+				RollCallString,
+			iqdamdaSetupRollTrackRollTrackIndex
+				INTEGER,
+			iqdamdaSetupRollTrackRollTrackSource
+				INTEGER,
+			iqdamdaSetupRollTrackRollTrackDisable
+				INTEGER,
+			iqdamdaSetupRollTrackRollTrackAddress
+				RollCallString,
+			iqdamdaSetupRollTrackRollTrackCommand
+				RollCallString,
+			iqdamdaSetupRollTrackRollTrackStatus
+				RollCallString,
+			iqdamdaSetupUnitSoftwareVersion
+				RollCallString,
+			iqdamdaSetupUnitSerialNo
+				RollCallString,
+			iqdamdaSetupUnitPresetUnit
+				INTEGER,
+			iqdamdaSetupUnitRestart
+				INTEGER,
+			iqdamdaSetupUnitBuildNo
+				RollCallString
+		}
+
+	iqdamdaSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdamdaCmdEntry 0 }
+
+
+	iqdamdaVideoLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma Gain  cmdID= 1025  min= -60  max= 60  step= 1  format= %1.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdamdaCmdEntry 1025 }
+
+
+	iqdamdaVideoBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Black Level  cmdID= 1027  min= -120  max= 120  step= 1  format= %3.0fmV  div_scale= 1 
+					Min = -120mV  Max = 120mV  Step =   1mV "
+		::= { iqdamdaCmdEntry 1027 }
+
+
+	iqdamdaVideoChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Chroma Gain  cmdID= 1026  min= -60  max= 60  step= 1  format= %1.1fdB  div_scale= 10 
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdamdaCmdEntry 1026 }
+
+
+	iqdamdaVideoNTSCHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					NTSC Hue  cmdID= 1028  min= -45  max= 45  step= 1  format= %.0fdeg  div_scale= 1 
+					Min = -45deg  Max = 45deg  Step = 1deg "
+		::= { iqdamdaCmdEntry 1028 }
+
+
+	iqdamdaVideoYCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Y/C Timing  cmdID= 1029  min= -592  max= 592  step= 148  format= %.0fns  div_scale= 1 
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iqdamdaCmdEntry 1029 }
+
+
+	iqdamdaVideoPicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Picture Position  cmdID= 1030  min= -592  max= 592  step= 37  format= %.0fns  div_scale= 1 
+					Min = -592ns  Max = 592ns  Step = 37ns "
+		::= { iqdamdaCmdEntry 1030 }
+
+
+	iqdamdaStandardPAL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PAL  cmdID= 1042 
+					  cmdID= 1042 "
+		::= { iqdamdaCmdEntry 1042 }
+
+
+	iqdamdaStandardNTSC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					NTSC  cmdID= 1045 "
+		::= { iqdamdaCmdEntry 1045 }
+
+
+	iqdamdaStandardPALN OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PALN  cmdID= 1043 "
+		::= { iqdamdaCmdEntry 1043 }
+
+
+	iqdamdaStandardNTSCJ OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					NTSCJ  cmdID= 1046 "
+		::= { iqdamdaCmdEntry 1046 }
+
+
+	iqdamdaStandardSECAM OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					SECAM  cmdID= 1044 "
+		::= { iqdamdaCmdEntry 1044 }
+
+
+	iqdamdaStandardPALM OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PALM  cmdID= 1047 "
+		::= { iqdamdaCmdEntry 1047 }
+
+
+	iqdamdaStandardN443 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					N443  cmdID= 1048 "
+		::= { iqdamdaCmdEntry 1048 }
+
+
+	iqdamdaDecoder OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Studio(0),
+							val_Simple(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Studio  cmdID= 1203  value= 0  
+					Simple  cmdID= 1203  value= 1  "
+		::= { iqdamdaCmdEntry 1203 }
+
+
+	iqdamdaDecoderMinimumDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Minimum Delay  cmdID= 1205 "
+		::= { iqdamdaCmdEntry 1205 }
+
+
+	iqdamdaDecoderColourKiller OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Chroma_Off(0),
+							val_Chroma_On(1),
+							val_Auto(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Colour Killer  cmdID= 2227 
+					Chroma Off  value= 0  
+					Chroma On  value= 1  
+					Auto  value= 2  "
+		::= { iqdamdaCmdEntry 2227 }
+
+
+	iqdamdaDecoderSECAMDbDrID OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line(1),
+							val_Auto(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					DbDr ID  cmdID= 2228 
+					Line  value= 1  
+					Auto  value= 2  "
+		::= { iqdamdaCmdEntry 2228 }
+
+
+	iqdamdaSECAMLumaBandwidthNotch OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Adaptive(0),
+							val_Controllable(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Notch  cmdID= 2230 
+					Adaptive  value= 0  
+					Controllable  value= 1  "
+		::= { iqdamdaCmdEntry 2230 }
+
+
+	iqdamdaSECAMLumaBandwidthBandwidthcontrol OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Wide(0),
+							val_Medium(1),
+							val_Narrow(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Bandwidth control  cmdID= 2229 
+					Wide  value= 0  
+					Medium  value= 1  
+					Narrow  value= 2  "
+		::= { iqdamdaCmdEntry 2229 }
+
+
+	iqdamdaMemoriesMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqdamdaCmdEntry 1600 }
+
+
+	iqdamdaMemoriesMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqdamdaCmdEntry 1601 }
+
+
+	iqdamdaMemoriesMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqdamdaCmdEntry 1602 }
+
+
+	iqdamdaMemoriesMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 1  cmdID= 1603  "
+		::= { iqdamdaCmdEntry 1603 }
+
+
+	iqdamdaMemoriesMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqdamdaCmdEntry 1604 }
+
+
+	iqdamdaMemoriesMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqdamdaCmdEntry 1605 }
+
+
+	iqdamdaMemoriesMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqdamdaCmdEntry 1606 }
+
+
+	iqdamdaMemoriesMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 2  cmdID= 1607  "
+		::= { iqdamdaCmdEntry 1607 }
+
+
+	iqdamdaMemoriesMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqdamdaCmdEntry 1608 }
+
+
+	iqdamdaMemoriesMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqdamdaCmdEntry 1609 }
+
+
+	iqdamdaMemoriesMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqdamdaCmdEntry 1610 }
+
+
+	iqdamdaMemoriesMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 3  cmdID= 1611  "
+		::= { iqdamdaCmdEntry 1611 }
+
+
+	iqdamdaMemoriesMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqdamdaCmdEntry 1612 }
+
+
+	iqdamdaMemoriesMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqdamdaCmdEntry 1613 }
+
+
+	iqdamdaMemoriesMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqdamdaCmdEntry 1614 }
+
+
+	iqdamdaMemoriesMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 4  cmdID= 1615  "
+		::= { iqdamdaCmdEntry 1615 }
+
+
+	iqdamdaMemoriesMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqdamdaCmdEntry 1616 }
+
+
+	iqdamdaMemoriesMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqdamdaCmdEntry 1617 }
+
+
+	iqdamdaMemoriesMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqdamdaCmdEntry 1618 }
+
+
+	iqdamdaMemoriesMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 5  cmdID= 1619  "
+		::= { iqdamdaCmdEntry 1619 }
+
+
+	iqdamdaMemoriesMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqdamdaCmdEntry 1620 }
+
+
+	iqdamdaMemoriesMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqdamdaCmdEntry 1621 }
+
+
+	iqdamdaMemoriesMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqdamdaCmdEntry 1622 }
+
+
+	iqdamdaMemoriesMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 6  cmdID= 1623  "
+		::= { iqdamdaCmdEntry 1623 }
+
+
+	iqdamdaMemoriesMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqdamdaCmdEntry 1624 }
+
+
+	iqdamdaMemoriesMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqdamdaCmdEntry 1625 }
+
+
+	iqdamdaMemoriesMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqdamdaCmdEntry 1626 }
+
+
+	iqdamdaMemoriesMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 7  cmdID= 1627  "
+		::= { iqdamdaCmdEntry 1627 }
+
+
+	iqdamdaMemoriesMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqdamdaCmdEntry 1628 }
+
+
+	iqdamdaMemoriesMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqdamdaCmdEntry 1629 }
+
+
+	iqdamdaMemoriesMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqdamdaCmdEntry 1630 }
+
+
+	iqdamdaMemoriesMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 8  cmdID= 1631  "
+		::= { iqdamdaCmdEntry 1631 }
+
+
+	iqdamdaByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ByPass  cmdID= 1410 "
+		::= { iqdamdaCmdEntry 1410 }
+
+
+	iqdamdaFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 1208 "
+		::= { iqdamdaCmdEntry 1208 }
+
+
+	iqdamdaSetupGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Lock_to_Ref(0),
+							val_Lock_to_Input(1),
+							val_Free_Run(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Lock to Ref  cmdID= 1049  value= 0  
+					Lock to Input  cmdID= 1049  value= 1  
+					Free Run  cmdID= 1049  value= 2  "
+		::= { iqdamdaCmdEntry 1049 }
+
+
+	iqdamdaGenlockGenlockPhase625HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					625 H Phase  cmdID= 1050  min= -31999968  max= 31962931  step= -28499  format= %.0fns  div_scale= 1000 
+					Min = -32000ns  Max = 31963ns  Step = -28ns "
+		::= { iqdamdaCmdEntry 1050 }
+
+
+	iqdamdaGenlockGenlockPhase625VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					625 V Phase  cmdID= 1051  min= -312  max= 312  step= 1  format= %.0flines  div_scale= 1 
+					Min = -312lines  Max = 312lines  Step = 1lines "
+		::= { iqdamdaCmdEntry 1051 }
+
+
+	iqdamdaGenlockGenlockPhase525HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					525 H Phase  cmdID= 1052  min= -31777746  max= 31740709  step= -28499  format= %.0fns  div_scale= 1000 
+					Min = -31778ns  Max = 31741ns  Step = -28ns "
+		::= { iqdamdaCmdEntry 1052 }
+
+
+	iqdamdaGenlockGenlockPhase525VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					525 V Phase  cmdID= 1053  min= -262  max= 262  step= 1  format= %.0flines  div_scale= 1 
+					Min = -262lines  Max = 262lines  Step = 1lines "
+		::= { iqdamdaCmdEntry 1053 }
+
+
+	iqdamdaSetupGenlockFreerunFreq OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Freerun Freq  cmdID= 2449  min= -60  max= 60  step= 1  format= %.0f  div_scale= 1 
+					Min = -60  Max = 60  Step = 1 "
+		::= { iqdamdaCmdEntry 2449 }
+
+
+	iqdamdaSetupPatternEnablePattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern
+					Enable Pattern  cmdID= 1035 "
+		::= { iqdamdaCmdEntry 1035 }
+
+
+	iqdamdaSetupPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern
+					Black  cmdID= 1036  value= 0  
+					EBU Colour Bars  cmdID= 1036  value= 1  
+					100% Colour Bars  cmdID= 1036  value= 2  
+					Ramp  cmdID= 1036  value= 3  
+					Multiburst  cmdID= 1036  value= 4  
+					Pulse & Bar  cmdID= 1036  value= 5  
+					Green  cmdID= 1036  value= 6  "
+		::= { iqdamdaCmdEntry 1036 }
+
+
+	iqdamdaSetupCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					Edit Caption  cmdID= 1041  "
+		::= { iqdamdaCmdEntry 1041 }
+
+
+	iqdamdaSetupCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_Caption_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Caption Off  cmdID= 1037  value= 0  
+					Caption On  cmdID= 1037  value= 1  "
+		::= { iqdamdaCmdEntry 1037 }
+
+
+	iqdamdaVIBlankingVIBlank525BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VI Blanking
+					Blank All  cmdID= 1298  value= 1  "
+		::= { iqdamdaCmdEntry 1298 }
+
+
+	iqdamdaVIBlankingVIBlank525PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VI Blanking
+					Pass All  cmdID= 1297  value= 1  "
+		::= { iqdamdaCmdEntry 1297 }
+
+
+	iqdamdaVIBlankingVIBlank525Line10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 10  cmdID= 1210 "
+		::= { iqdamdaCmdEntry 1210 }
+
+
+	iqdamdaVIBlankingVIBlank525Line273 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 273  cmdID= 1230 "
+		::= { iqdamdaCmdEntry 1230 }
+
+
+	iqdamdaVIBlankingVIBlank525Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 11  cmdID= 1211 "
+		::= { iqdamdaCmdEntry 1211 }
+
+
+	iqdamdaVIBlankingVIBlank525Line274 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 274  cmdID= 1231 "
+		::= { iqdamdaCmdEntry 1231 }
+
+
+	iqdamdaVIBlankingVIBlank525Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 12  cmdID= 1212 "
+		::= { iqdamdaCmdEntry 1212 }
+
+
+	iqdamdaVIBlankingVIBlank525Line275 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 275  cmdID= 1232 "
+		::= { iqdamdaCmdEntry 1232 }
+
+
+	iqdamdaVIBlankingVIBlank525Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 13  cmdID= 1213 "
+		::= { iqdamdaCmdEntry 1213 }
+
+
+	iqdamdaVIBlankingVIBlank525Line276 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 276  cmdID= 1233 "
+		::= { iqdamdaCmdEntry 1233 }
+
+
+	iqdamdaVIBlankingVIBlank525Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 14  cmdID= 1214 "
+		::= { iqdamdaCmdEntry 1214 }
+
+
+	iqdamdaVIBlankingVIBlank525Line277 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 277  cmdID= 1234 "
+		::= { iqdamdaCmdEntry 1234 }
+
+
+	iqdamdaVIBlankingVIBlank525Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 15  cmdID= 1215 "
+		::= { iqdamdaCmdEntry 1215 }
+
+
+	iqdamdaVIBlankingVIBlank525Line278 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 278  cmdID= 1235 "
+		::= { iqdamdaCmdEntry 1235 }
+
+
+	iqdamdaVIBlankingVIBlank525Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 16  cmdID= 1216 "
+		::= { iqdamdaCmdEntry 1216 }
+
+
+	iqdamdaVIBlankingVIBlank525Line279 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 279  cmdID= 1236 "
+		::= { iqdamdaCmdEntry 1236 }
+
+
+	iqdamdaVIBlankingVIBlank525Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 17  cmdID= 1217 "
+		::= { iqdamdaCmdEntry 1217 }
+
+
+	iqdamdaVIBlankingVIBlank525Line280 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 280  cmdID= 1237 "
+		::= { iqdamdaCmdEntry 1237 }
+
+
+	iqdamdaVIBlankingVIBlank525Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 18  cmdID= 1218 "
+		::= { iqdamdaCmdEntry 1218 }
+
+
+	iqdamdaVIBlankingVIBlank525Line281 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 281  cmdID= 1238 "
+		::= { iqdamdaCmdEntry 1238 }
+
+
+	iqdamdaVIBlankingVIBlank525Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 19  cmdID= 1219 "
+		::= { iqdamdaCmdEntry 1219 }
+
+
+	iqdamdaVIBlankingVIBlank525Line282 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 282  cmdID= 1239 "
+		::= { iqdamdaCmdEntry 1239 }
+
+
+	iqdamdaVIBlankingVIBlank525Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 20  cmdID= 1220 "
+		::= { iqdamdaCmdEntry 1220 }
+
+
+	iqdamdaVIBlankingVIBlank525Line283 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Blank_Half(3),
+							val_Blank_All(2),
+							val_Closed_Caption(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- VI Blanking
+					Line 283  cmdID= 1291 
+					Blank Half  value= 3  
+					Blank All  value= 2  
+					Closed Caption  value= 4  "
+		::= { iqdamdaCmdEntry 1291 }
+
+
+	iqdamdaVIBlankingVIBlank525Line21 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Picture(1),
+							val_Blank_All(2),
+							val_Closed_Caption(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- VI Blanking
+					Line 21  cmdID= 1290 
+					Picture  value= 1  
+					Blank All  value= 2  
+					Closed Caption  value= 4  "
+		::= { iqdamdaCmdEntry 1290 }
+
+
+	iqdamdaVIBlankingVIBlank625BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VI Blanking
+					Blank All  cmdID= 1296  value= 1  "
+		::= { iqdamdaCmdEntry 1296 }
+
+
+	iqdamdaVIBlankingVIBlank625PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VI Blanking
+					Pass All  cmdID= 1295  value= 1  "
+		::= { iqdamdaCmdEntry 1295 }
+
+
+	iqdamdaVIBlankingVIBlank625Line6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 6  cmdID= 1250 "
+		::= { iqdamdaCmdEntry 1250 }
+
+
+	iqdamdaVIBlankingVIBlank625Line318 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 318  cmdID= 1270 "
+		::= { iqdamdaCmdEntry 1270 }
+
+
+	iqdamdaVIBlankingVIBlank625Line7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 7  cmdID= 1251 "
+		::= { iqdamdaCmdEntry 1251 }
+
+
+	iqdamdaVIBlankingVIBlank625Line319 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 319  cmdID= 1271 "
+		::= { iqdamdaCmdEntry 1271 }
+
+
+	iqdamdaVIBlankingVIBlank625Line8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 8  cmdID= 1252 "
+		::= { iqdamdaCmdEntry 1252 }
+
+
+	iqdamdaVIBlankingVIBlank625Line320 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 320  cmdID= 1272 "
+		::= { iqdamdaCmdEntry 1272 }
+
+
+	iqdamdaVIBlankingVIBlank625Line9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 9  cmdID= 1253 "
+		::= { iqdamdaCmdEntry 1253 }
+
+
+	iqdamdaVIBlankingVIBlank625Line321 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 321  cmdID= 1273 "
+		::= { iqdamdaCmdEntry 1273 }
+
+
+	iqdamdaVIBlankingVIBlank625Line10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 10  cmdID= 1254 "
+		::= { iqdamdaCmdEntry 1254 }
+
+
+	iqdamdaVIBlankingVIBlank625Line322 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 322  cmdID= 1274 "
+		::= { iqdamdaCmdEntry 1274 }
+
+
+	iqdamdaVIBlankingVIBlank625Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 11  cmdID= 1255 "
+		::= { iqdamdaCmdEntry 1255 }
+
+
+	iqdamdaVIBlankingVIBlank625Line323 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 323  cmdID= 1275 "
+		::= { iqdamdaCmdEntry 1275 }
+
+
+	iqdamdaVIBlankingVIBlank625Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 12  cmdID= 1256 "
+		::= { iqdamdaCmdEntry 1256 }
+
+
+	iqdamdaVIBlankingVIBlank625Line324 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 324  cmdID= 1276 "
+		::= { iqdamdaCmdEntry 1276 }
+
+
+	iqdamdaVIBlankingVIBlank625Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 13  cmdID= 1257 "
+		::= { iqdamdaCmdEntry 1257 }
+
+
+	iqdamdaVIBlankingVIBlank625Line325 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 325  cmdID= 1277 "
+		::= { iqdamdaCmdEntry 1277 }
+
+
+	iqdamdaVIBlankingVIBlank625Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 14  cmdID= 1258 "
+		::= { iqdamdaCmdEntry 1258 }
+
+
+	iqdamdaVIBlankingVIBlank625Line326 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 326  cmdID= 1278 "
+		::= { iqdamdaCmdEntry 1278 }
+
+
+	iqdamdaVIBlankingVIBlank625Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 15  cmdID= 1259 "
+		::= { iqdamdaCmdEntry 1259 }
+
+
+	iqdamdaVIBlankingVIBlank625Line327 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 327  cmdID= 1279 "
+		::= { iqdamdaCmdEntry 1279 }
+
+
+	iqdamdaVIBlankingVIBlank625Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 16  cmdID= 1260 "
+		::= { iqdamdaCmdEntry 1260 }
+
+
+	iqdamdaVIBlankingVIBlank625Line328 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 328  cmdID= 1280 "
+		::= { iqdamdaCmdEntry 1280 }
+
+
+	iqdamdaVIBlankingVIBlank625Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 17  cmdID= 1261 "
+		::= { iqdamdaCmdEntry 1261 }
+
+
+	iqdamdaVIBlankingVIBlank625Line329 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 329  cmdID= 1281 "
+		::= { iqdamdaCmdEntry 1281 }
+
+
+	iqdamdaVIBlankingVIBlank625Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 18  cmdID= 1262 "
+		::= { iqdamdaCmdEntry 1262 }
+
+
+	iqdamdaVIBlankingVIBlank625Line330 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 330  cmdID= 1282 "
+		::= { iqdamdaCmdEntry 1282 }
+
+
+	iqdamdaVIBlankingVIBlank625Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 19  cmdID= 1263 "
+		::= { iqdamdaCmdEntry 1263 }
+
+
+	iqdamdaVIBlankingVIBlank625Line331 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 331  cmdID= 1283 "
+		::= { iqdamdaCmdEntry 1283 }
+
+
+	iqdamdaVIBlankingVIBlank625Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 20  cmdID= 1264 "
+		::= { iqdamdaCmdEntry 1264 }
+
+
+	iqdamdaVIBlankingVIBlank625Line332 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 332  cmdID= 1284 "
+		::= { iqdamdaCmdEntry 1284 }
+
+
+	iqdamdaVIBlankingVIBlank625Line21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 21  cmdID= 1265 "
+		::= { iqdamdaCmdEntry 1265 }
+
+
+	iqdamdaVIBlankingVIBlank625Line333 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 333  cmdID= 1285 "
+		::= { iqdamdaCmdEntry 1285 }
+
+
+	iqdamdaVIBlankingVIBlank625Line22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 22  cmdID= 1266 "
+		::= { iqdamdaCmdEntry 1266 }
+
+
+	iqdamdaVIBlankingVIBlank625Line334 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 334  cmdID= 1286 "
+		::= { iqdamdaCmdEntry 1286 }
+
+
+	iqdamdaVIBlankingVIBlank625Line23 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WSS_Mode(5),
+							val_Blank_Half(3),
+							val_Blank_All(2),
+							val_Decode_Luma(6),
+							val_Pass_Luma(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- VI Blanking
+					Line 23  cmdID= 1292 
+					WSS Mode  value= 5  
+					Blank Half  value= 3  
+					Blank All  value= 2  
+					Decode Luma  value= 6  
+					Pass Luma  value= 7  "
+		::= { iqdamdaCmdEntry 1292 }
+
+
+	iqdamdaVIBlankingVIBlank625Line335 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- VI Blanking
+					Line 335  cmdID= 1287 "
+		::= { iqdamdaCmdEntry 1287 }
+
+
+	iqdamdaSetupDefaultOut OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video(1),
+							val_Freeze(2),
+							val_Pattern(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Out
+					Video  cmdID= 1202  value= 1  
+					Freeze  cmdID= 1202  value= 2  
+					Pattern  cmdID= 1202  value= 3  "
+		::= { iqdamdaCmdEntry 1202 }
+
+
+	iqdamdaSetupDefaultOutDefaultPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- Default Out
+					Default Pattern  cmdID= 1038 
+					Black  value= 0  
+					EBU Colour Bars  value= 1  
+					100% Colour Bars  value= 2  
+					Ramp  value= 3  
+					Multiburst  value= 4  
+					Pulse & Bar  value= 5  
+					Green  value= 6  "
+		::= { iqdamdaCmdEntry 1038 }
+
+
+	iqdamdaSetupLoggingInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input  cmdID= 1060 "
+		::= { iqdamdaCmdEntry 1060 }
+
+
+	iqdamdaSetupLoggingStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Standard  cmdID= 1061 "
+		::= { iqdamdaCmdEntry 1061 }
+
+
+	iqdamdaSetupLoggingReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Reference  cmdID= 1062 "
+		::= { iqdamdaCmdEntry 1062 }
+
+
+	iqdamdaGPIGPIInputDisableAll OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Disable All  cmdID= 2605 "
+		::= { iqdamdaCmdEntry 2605 }
+
+
+	iqdamdaGPIGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Input Selection  cmdID= 2011  min= -1  max= 12  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 12  Step = 1 "
+		::= { iqdamdaCmdEntry 2011 }
+
+
+	iqdamdaGPIGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqdamdaCmdEntry 2048 }
+
+
+	iqdamdaGPIGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Present(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Output Selection  cmdID= 2013 
+					Input Present  value= 0  
+					Standard 625  value= 1  
+					Video Delay  value= 2  
+					Unused  value= 3  "
+		::= { iqdamdaCmdEntry 2013 }
+
+
+	iqdamdaGPIGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqdamdaCmdEntry 2049 }
+
+
+	iqdamdaSetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Index  cmdID= 1495  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqdamdaCmdEntry 1495 }
+
+
+	iqdamdaSetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Source  cmdID= 1496  min= -1  max= 6  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 6  Step = 1 "
+		::= { iqdamdaCmdEntry 1496 }
+
+
+	iqdamdaSetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqdamdaCmdEntry 1513 }
+
+
+	iqdamdaSetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Address  cmdID= 1497  "
+		::= { iqdamdaCmdEntry 1497 }
+
+
+	iqdamdaSetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Command  cmdID= 1498  "
+		::= { iqdamdaCmdEntry 1498 }
+
+
+	iqdamdaSetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqdamdaCmdEntry 1511 }
+
+
+	iqdamdaSetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Software Version  cmdID= 2  format=   "
+		::= { iqdamdaCmdEntry 2 }
+
+
+	iqdamdaSetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Serial No  cmdID= 1  format=   "
+		::= { iqdamdaCmdEntry 1 }
+
+
+	iqdamdaSetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdamdaCmdEntry 3 }
+
+
+	iqdamdaSetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdamdaCmdEntry 4 }
+
+
+	iqdamdaSetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Build No  cmdID= 5  format=   "
+		::= { iqdamdaCmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: ERR
+--				: PAL
+--				: PALN
+--				: SECAM
+--				: NTSC
+--				: NTSCJ
+--				: PALM
+--				: N443
+--				: 525
+--				: 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

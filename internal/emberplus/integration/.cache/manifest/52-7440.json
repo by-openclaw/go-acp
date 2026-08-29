@@ -1,0 +1,44 @@
+{
+  "device": {
+    "name": "52-7440",
+    "protocol": "emberplus",
+    "endpoints": [
+      {
+        "ip": "127.0.0.1",
+        "port": 9000,
+        "transport": "tcp"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "name": "router",
+      "slots": [
+        {
+          "addr": {
+            "oid": "1.1"
+          },
+          "dm": "@7.99.80.36.json"
+        },
+        {
+          "addr": {
+            "oid": "1.2"
+          },
+          "dm": "@7.99.80.36.json"
+        },
+        {
+          "addr": {
+            "oid": "1.3"
+          },
+          "dm": "@7.99.80.36.json"
+        },
+        {
+          "addr": {
+            "oid": "1.4"
+          },
+          "dm": "@7.99.80.36.json"
+        }
+      ]
+    }
+  ]
+}

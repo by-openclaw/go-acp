@@ -1,0 +1,3370 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDSK00
+--        Module Id#:490
+--       Command Set:5
+--          Filename:SNELL-IQDSK00-CMD-MIB.mib
+--            Author:R English
+--              Date:24/06/2010
+--              Time:13:20
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDSK00-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDSK00,
+    moduleIQDSK00MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDSK00CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1006241320Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:R English
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDSK00MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdsk00CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqdsk00CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDSK00 1 }
+
+	iqdsk00CmdEntry OBJECT-TYPE
+		SYNTAX		Iqdsk00CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdsk00SlotIndex }
+		::= { iqdsk00CmdTable 1 }
+
+	Iqdsk00CmdEntry ::=
+		SEQUENCE {
+			iqdsk00SlotIndex
+				Unsigned32,
+			iqdsk00ControlOpacity
+				INTEGER,
+			iqdsk00ControlKeyOn
+				INTEGER,
+			iqdsk00ControlMixLevel
+				INTEGER,
+			iqdsk00ControlFadeTime
+				INTEGER,
+			iqdsk00ControlFadeEnable
+				INTEGER,
+			iqdsk00ControlKeySetupKeyerMode
+				INTEGER,
+			iqdsk00ControlKeySetupKeySource
+				INTEGER,
+			iqdsk00ControlKeySetupFillSource
+				INTEGER,
+			iqdsk00ControlKeySetupControl
+				INTEGER,
+			iqdsk00OutputProgramOutputFadeTime
+				INTEGER,
+			iqdsk00OutputProgramOutputFadeEnable
+				INTEGER,
+			iqdsk00OutputPreviewOutput1
+				INTEGER,
+			iqdsk00OutputPreviewOutput2
+				INTEGER,
+			iqdsk00OutputDefaultOutput
+				INTEGER,
+			iqdsk00Matte
+				INTEGER,
+			iqdsk00MatteCaptureFrameCapture
+				INTEGER,
+			iqdsk00MatteCaptureFrameBackground
+				INTEGER,
+			iqdsk00MatteSingleColorSetupSaturation
+				INTEGER,
+			iqdsk00MatteSingleColorSetupLuminance
+				INTEGER,
+			iqdsk00MatteSingleColorSetupHue
+				INTEGER,
+			iqdsk00MatteFrameStoreStatus
+				RollCallString,
+			iqdsk00MemoriesMemory1Save1
+				INTEGER,
+			iqdsk00MemoriesMemory1Recall1
+				INTEGER,
+			iqdsk00MemoriesMemory1Clear1
+				INTEGER,
+			iqdsk00MemoriesMemory1Name1
+				RollCallString,
+			iqdsk00MemoriesMemory2Save2
+				INTEGER,
+			iqdsk00MemoriesMemory2Recall2
+				INTEGER,
+			iqdsk00MemoriesMemory2Clear2
+				INTEGER,
+			iqdsk00MemoriesMemory2Name2
+				RollCallString,
+			iqdsk00MemoriesMemory3Save3
+				INTEGER,
+			iqdsk00MemoriesMemory3Recall3
+				INTEGER,
+			iqdsk00MemoriesMemory3Clear3
+				INTEGER,
+			iqdsk00MemoriesMemory3Name3
+				RollCallString,
+			iqdsk00MemoriesMemory4Save4
+				INTEGER,
+			iqdsk00MemoriesMemory4Recall4
+				INTEGER,
+			iqdsk00MemoriesMemory4Clear4
+				INTEGER,
+			iqdsk00MemoriesMemory4Name4
+				RollCallString,
+			iqdsk00MemoriesMemory5Save5
+				INTEGER,
+			iqdsk00MemoriesMemory5Recall5
+				INTEGER,
+			iqdsk00MemoriesMemory5Clear5
+				INTEGER,
+			iqdsk00MemoriesMemory5Name5
+				RollCallString,
+			iqdsk00MemoriesMemory6Save6
+				INTEGER,
+			iqdsk00MemoriesMemory6Recall6
+				INTEGER,
+			iqdsk00MemoriesMemory6Clear6
+				INTEGER,
+			iqdsk00MemoriesMemory6Name6
+				RollCallString,
+			iqdsk00MemoriesMemory7Save7
+				INTEGER,
+			iqdsk00MemoriesMemory7Recall7
+				INTEGER,
+			iqdsk00MemoriesMemory7Clear7
+				INTEGER,
+			iqdsk00MemoriesMemory7Name7
+				RollCallString,
+			iqdsk00MemoriesMemory8Save8
+				INTEGER,
+			iqdsk00MemoriesMemory8Recall8
+				INTEGER,
+			iqdsk00MemoriesMemory8Clear8
+				INTEGER,
+			iqdsk00MemoriesMemory8Name8
+				RollCallString,
+			iqdsk00MemoriesMemory9Save9
+				INTEGER,
+			iqdsk00MemoriesMemory9Recall9
+				INTEGER,
+			iqdsk00MemoriesMemory9Clear9
+				INTEGER,
+			iqdsk00MemoriesMemory9Name9
+				RollCallString,
+			iqdsk00MemoriesMemory10Save10
+				INTEGER,
+			iqdsk00MemoriesMemory10Recall10
+				INTEGER,
+			iqdsk00MemoriesMemory10Clear10
+				INTEGER,
+			iqdsk00MemoriesMemory10Name10
+				RollCallString,
+			iqdsk00MemoriesMemory11Save11
+				INTEGER,
+			iqdsk00MemoriesMemory11Recall11
+				INTEGER,
+			iqdsk00MemoriesMemory11Clear11
+				INTEGER,
+			iqdsk00MemoriesMemory11Name11
+				RollCallString,
+			iqdsk00MemoriesMemory12Save12
+				INTEGER,
+			iqdsk00MemoriesMemory12Recall12
+				INTEGER,
+			iqdsk00MemoriesMemory12Clear12
+				INTEGER,
+			iqdsk00MemoriesMemory12Name12
+				RollCallString,
+			iqdsk00MemoriesMemory13Save13
+				INTEGER,
+			iqdsk00MemoriesMemory13Recall13
+				INTEGER,
+			iqdsk00MemoriesMemory13Clear13
+				INTEGER,
+			iqdsk00MemoriesMemory13Name13
+				RollCallString,
+			iqdsk00MemoriesMemory14Save14
+				INTEGER,
+			iqdsk00MemoriesMemory14Recall14
+				INTEGER,
+			iqdsk00MemoriesMemory14Clear14
+				INTEGER,
+			iqdsk00MemoriesMemory14Name14
+				RollCallString,
+			iqdsk00MemoriesMemory15Save15
+				INTEGER,
+			iqdsk00MemoriesMemory15Recall15
+				INTEGER,
+			iqdsk00MemoriesMemory15Clear15
+				INTEGER,
+			iqdsk00MemoriesMemory15Name15
+				RollCallString,
+			iqdsk00MemoriesMemory16Save16
+				INTEGER,
+			iqdsk00MemoriesMemory16Recall16
+				INTEGER,
+			iqdsk00MemoriesMemory16Clear16
+				INTEGER,
+			iqdsk00MemoriesMemory16Name16
+				RollCallString,
+			iqdsk00Genlock
+				INTEGER,
+			iqdsk00GenlockGenlockHDPhase
+				INTEGER,
+			iqdsk00GenlockGenlockSDPhase
+				INTEGER,
+			iqdsk00ProcAmpsBackgroundProcAmpProcAmpEnable
+				INTEGER,
+			iqdsk00ProcAmpsBackgroundProcAmpLumaGain
+				INTEGER,
+			iqdsk00ProcAmpsBackgroundProcAmpChromaGain
+				INTEGER,
+			iqdsk00ProcAmpsBackgroundProcAmpBlackLevel
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpProcAmpEnable
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpLumaGain
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpChromaGain
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpBlackLevel
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpHDPosition
+				INTEGER,
+			iqdsk00ProcAmpsFillProcAmpSDPosition
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpProcAmpEnable
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpKeyGainControl
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpKeyLiftControl
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpKeyHDPosition
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpKeySDPosition
+				INTEGER,
+			iqdsk00ProcAmpsKeyProcAmpKeyInvert
+				INTEGER,
+			iqdsk00SetupRollTrackIndex
+				INTEGER,
+			iqdsk00SetupRollTrackSource
+				INTEGER,
+			iqdsk00SetupRollTrackDisable
+				INTEGER,
+			iqdsk00SetupRollTrackAddress
+				RollCallString,
+			iqdsk00SetupRollTrackCommand
+				RollCallString,
+			iqdsk00SetupRollTrackSending
+				RollCallString,
+			iqdsk00SetupRollTrackStatus
+				RollCallString,
+			iqdsk00SetupRollTrackIndexSaveset
+				INTEGER,
+			iqdsk00SetupRollTrackSourceSaveset
+				INTEGER,
+			iqdsk00SetupRollTrackAddressSaveset
+				RollCallString,
+			iqdsk00SetupRollTrackCommandSaveset
+				RollCallString,
+			iqdsk00SetupLoggingInput1
+				INTEGER,
+			iqdsk00SetupLoggingInput1Standard
+				INTEGER,
+			iqdsk00SetupLoggingInput1EDHErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput1EDH
+				INTEGER,
+			iqdsk00SetupLoggingInput1CRCErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput1CRC
+				INTEGER,
+			iqdsk00SetupLoggingInput1ANCErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput1ANC
+				INTEGER,
+			iqdsk00SetupLoggingInput1Type
+				INTEGER,
+			iqdsk00SetupLoggingInput1Ident
+				INTEGER,
+			iqdsk00SetupLoggingInput2
+				INTEGER,
+			iqdsk00SetupLoggingInput2Standard
+				INTEGER,
+			iqdsk00SetupLoggingInput2EDHErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput2EDH
+				INTEGER,
+			iqdsk00SetupLoggingInput2CRCErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput2CRC
+				INTEGER,
+			iqdsk00SetupLoggingInput2ANCErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput2ANC
+				INTEGER,
+			iqdsk00SetupLoggingInput2Type
+				INTEGER,
+			iqdsk00SetupLoggingInput2Ident
+				INTEGER,
+			iqdsk00SetupLoggingInput3
+				INTEGER,
+			iqdsk00SetupLoggingInput3EDHErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput3EDH
+				INTEGER,
+			iqdsk00SetupLoggingInput3CRCErrsec
+				INTEGER,
+			iqdsk00SetupLoggingInput3CRC
+				INTEGER,
+			iqdsk00SetupLoggingInput3Type
+				INTEGER,
+			iqdsk00SetupLoggingInput3Ident
+				INTEGER,
+			iqdsk00SetupLoggingReferenceState
+				INTEGER,
+			iqdsk00SetupLoggingReferenceStandard
+				INTEGER,
+			iqdsk00SetupLoggingReferenceType
+				INTEGER,
+			iqdsk00SetupLoggingOutput1Standard
+				INTEGER,
+			iqdsk00SetupLoggingOSVERSION
+				INTEGER,
+			iqdsk00SetupLoggingHARDWAREVERSION
+				INTEGER,
+			iqdsk00SetupLoggingBUILDNUMBER
+				INTEGER,
+			iqdsk00SetupLoggingUPTIME
+				INTEGER,
+			iqdsk00SetupLoggingRolltrack
+				INTEGER,
+			iqdsk00SetupLogStatusROLSTATES
+				RollCallString,
+			iqdsk00SetupLogStatusOUTPUT1STANDARD
+				RollCallString,
+			iqdsk00SetupLogStatusREFERENCE1TYPE
+				RollCallString,
+			iqdsk00SetupLogStatusREFERENCE1STANDAR
+				RollCallString,
+			iqdsk00SetupLogStatusREFERENCE1STATE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3IDENT
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3TYPE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3CRC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3CRCERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3EDH
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3EDHERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT3STATE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2IDENT
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2TYPE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2ANC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2ANCERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2CRC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2CRCERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2EDH
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2EDHERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2STANDARD
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT2STATE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1IDENT
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1TYPE
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1ANC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1ANCERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1CRC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1CRCERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1EDH
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1EDHERRSEC
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1STANDARD
+				RollCallString,
+			iqdsk00SetupLogStatusINPUT1STATE
+				RollCallString,
+			iqdsk00GPIIOGPIInputDisableInputs
+				INTEGER,
+			iqdsk00GPIIOGPIInput
+				INTEGER,
+			iqdsk00GPIIOGPIInputInputSelection
+				INTEGER,
+			iqdsk00GPIIOGPIInputGPIInStatus
+				RollCallString,
+			iqdsk00GPIIOGPIOutputOutActiveHigh
+				INTEGER,
+			iqdsk00GPIIOGPIOutputOutputSelection
+				INTEGER,
+			iqdsk00GPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iqdsk00GPIIOGPIInputOutputGPIO1
+				INTEGER,
+			iqdsk00SetupGPIIOGPIIn
+				INTEGER,
+			iqdsk00SetupGPIIOInputSelection
+				INTEGER,
+			iqdsk00SetupGPIIOOutputSelection
+				INTEGER,
+			iqdsk00SetupAncDataAncSource
+				INTEGER,
+			iqdsk00SetupAncDataBlankVANC
+				INTEGER,
+			iqdsk00SetupAncDataBlankHANC
+				INTEGER,
+			iqdsk00StatusSoftwareVersion
+				RollCallString,
+			iqdsk00StatusSerialNo
+				RollCallString,
+			iqdsk00StatusPresetUnit
+				INTEGER,
+			iqdsk00StatusRestart
+				INTEGER,
+			iqdsk00StatusBuildNo
+				RollCallString,
+			iqdsk00StatusHardwareVersion
+				RollCallString,
+			iqdsk00StatusOSVersion
+				RollCallString,
+			iqdsk00StatusUpTime
+				RollCallString,
+			iqdsk00StatusResetErrors
+				INTEGER
+		}
+
+	iqdsk00SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdsk00CmdEntry 0 }
+
+
+	iqdsk00ControlOpacity OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Opacity  cmdID= 3676  min= 50  max= 100  step= 1  format= %3.0f   %%  div_scale= 1
+					Min =  50   %  Max = 100   %  Step =   1   % "
+		::= { iqdsk00CmdEntry 3676 }
+
+
+	iqdsk00ControlKeyOn OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Key_On(3),
+							val_Mix(2),
+							val(5),
+							val_Key_Off(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Control
+					Key On  cmdID= 3756  value= 3
+					Mix  cmdID= 3756  value= 2
+					  cmdID= 3756  value= 5
+					Key Off  cmdID= 3756  value= 4  "
+		::= { iqdsk00CmdEntry 3756 }
+
+
+	iqdsk00ControlMixLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Mix Level  cmdID= 3757  min= 0  max= 100  step= 1  format= %3.0f %%  div_scale= 1
+					Min =   0 %  Max = 100 %  Step =   1 % "
+		::= { iqdsk00CmdEntry 3757 }
+
+
+	iqdsk00ControlFadeTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Fade Time  cmdID= 3755  min= 0  max= 2047  step= 1  format= %4.0f Fields  div_scale= 1
+					Min =    0 Fields  Max = 2047 Fields  Step =    1 Fields "
+		::= { iqdsk00CmdEntry 3755 }
+
+
+	iqdsk00ControlFadeEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Fade Enable  cmdID= 3754 "
+		::= { iqdsk00CmdEntry 3754 }
+
+
+	iqdsk00ControlKeySetupKeyerMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Luma(0),
+							val_Linear(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Keyer Mode  cmdID= 3758
+					Luma  value= 0
+					Linear  value= 1  "
+		::= { iqdsk00CmdEntry 3758 }
+
+
+	iqdsk00ControlKeySetupKeySource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Key_Input(0),
+							val_Fill_Input(1),
+							val_Matte(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Key Source  cmdID= 1967
+					Key Input  value= 0
+					Fill Input  value= 1
+					Matte  value= 2  "
+		::= { iqdsk00CmdEntry 1967 }
+
+
+	iqdsk00ControlKeySetupFillSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fill_Input(0),
+							val_Matte(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Fill Source  cmdID= 1966
+					Fill Input  value= 0
+					Matte  value= 1  "
+		::= { iqdsk00CmdEntry 1966 }
+
+
+	iqdsk00ControlKeySetupControl OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_RollCall(0),
+							val_RS422(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Control  cmdID= 3677
+					RollCall  value= 0
+					RS422  value= 1  "
+		::= { iqdsk00CmdEntry 3677 }
+
+
+	iqdsk00OutputProgramOutputFadeTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Output
+					Fade Time  cmdID= 2677  min= 0  max= 2047  step= 1  format= %4.0f Fields  div_scale= 1
+					Min =    0 Fields  Max = 2047 Fields  Step =    1 Fields "
+		::= { iqdsk00CmdEntry 2677 }
+
+
+	iqdsk00OutputProgramOutputFadeEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Output
+					Fade Enable  cmdID= 2678 "
+		::= { iqdsk00CmdEntry 2678 }
+
+
+	iqdsk00OutputPreviewOutput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Program(0),
+							val_Prog_pre_fade(1),
+							val_Preview(2),
+							val_Background_Input(3),
+							val_Fill_Input(4),
+							val_Key_Input(5),
+							val_Processed_Key(6),
+							val_Matte(7),
+							val_Black(8),
+							val_Color_Bars(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Output
+					Preview Output 1  cmdID= 2577
+					Program  value= 0
+					Prog (pre-fade)  value= 1
+					Preview  value= 2
+					Background Input  value= 3
+					Fill Input  value= 4
+					Key Input  value= 5
+					Processed Key  value= 6
+					Matte  value= 7
+					Black  value= 8
+					Color Bars  value= 9  "
+		::= { iqdsk00CmdEntry 2577 }
+
+
+	iqdsk00OutputPreviewOutput2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Program(0),
+							val_Prog_pre_fade(1),
+							val_Preview(2),
+							val_Background_Input(3),
+							val_Fill_Input(4),
+							val_Key_Input(5),
+							val_Processed_Key(6),
+							val_Matte(7),
+							val_Black(8),
+							val_Color_Bars(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Output
+					Preview Output 2  cmdID= 3673
+					Program  value= 0
+					Prog (pre-fade)  value= 1
+					Preview  value= 2
+					Background Input  value= 3
+					Fill Input  value= 4
+					Key Input  value= 5
+					Processed Key  value= 6
+					Matte  value= 7
+					Black  value= 8
+					Color Bars  value= 9  "
+		::= { iqdsk00CmdEntry 3673 }
+
+
+	iqdsk00OutputDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fill(0),
+							val_Matte(1),
+							val_Color_Bars(2),
+							val_Black(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Output
+					Default Output  cmdID= 2575
+					Fill  value= 0
+					Matte  value= 1
+					Color Bars  value= 2
+					Black  value= 3  "
+		::= { iqdsk00CmdEntry 2575 }
+
+
+	iqdsk00Matte OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Frame_Store(1),
+							val_Single_Color(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Frame Store  cmdID= 2725  value= 1
+					Single Color  cmdID= 2725  value= 0  "
+		::= { iqdsk00CmdEntry 2725 }
+
+
+	iqdsk00MatteCaptureFrameCapture OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Capture(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Capture  cmdID= 2727  value= 1  "
+		::= { iqdsk00CmdEntry 2727 }
+
+
+	iqdsk00MatteCaptureFrameBackground OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Background(0),
+							val_Fill(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Background  cmdID= 2726  value= 0
+					Fill  cmdID= 2726  value= 1  "
+		::= { iqdsk00CmdEntry 2726 }
+
+
+	iqdsk00MatteSingleColorSetupSaturation OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Saturation  cmdID= 2722  min= 0  max= 100  step= 1  format= %3.0f%%  div_scale= 1
+					Min =   0%  Max = 100%  Step =   1% "
+		::= { iqdsk00CmdEntry 2722 }
+
+
+	iqdsk00MatteSingleColorSetupLuminance OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Luminance  cmdID= 2723  min= 0  max= 100  step= 1  format= %3.0f%%  div_scale= 1
+					Min =   0%  Max = 100%  Step =   1% "
+		::= { iqdsk00CmdEntry 2723 }
+
+
+	iqdsk00MatteSingleColorSetupHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Hue  cmdID= 2724  min= 0  max= 360  step= 1  format= %3.0f Deg  div_scale= 1
+					Min =   0 Deg  Max = 360 Deg  Step =   1 Deg "
+		::= { iqdsk00CmdEntry 2724 }
+
+
+	iqdsk00MatteFrameStoreStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Matte
+					Frame Store Status  cmdID= 2728  format=   "
+		::= { iqdsk00CmdEntry 2728 }
+
+
+	iqdsk00MemoriesMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqdsk00CmdEntry 1600 }
+
+
+	iqdsk00MemoriesMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqdsk00CmdEntry 1601 }
+
+
+	iqdsk00MemoriesMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqdsk00CmdEntry 1602 }
+
+
+	iqdsk00MemoriesMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 1  cmdID= 1603  "
+		::= { iqdsk00CmdEntry 1603 }
+
+
+	iqdsk00MemoriesMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqdsk00CmdEntry 1604 }
+
+
+	iqdsk00MemoriesMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqdsk00CmdEntry 1605 }
+
+
+	iqdsk00MemoriesMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqdsk00CmdEntry 1606 }
+
+
+	iqdsk00MemoriesMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 2  cmdID= 1607  "
+		::= { iqdsk00CmdEntry 1607 }
+
+
+	iqdsk00MemoriesMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqdsk00CmdEntry 1608 }
+
+
+	iqdsk00MemoriesMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqdsk00CmdEntry 1609 }
+
+
+	iqdsk00MemoriesMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqdsk00CmdEntry 1610 }
+
+
+	iqdsk00MemoriesMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 3  cmdID= 1611  "
+		::= { iqdsk00CmdEntry 1611 }
+
+
+	iqdsk00MemoriesMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqdsk00CmdEntry 1612 }
+
+
+	iqdsk00MemoriesMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqdsk00CmdEntry 1613 }
+
+
+	iqdsk00MemoriesMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqdsk00CmdEntry 1614 }
+
+
+	iqdsk00MemoriesMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 4  cmdID= 1615  "
+		::= { iqdsk00CmdEntry 1615 }
+
+
+	iqdsk00MemoriesMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqdsk00CmdEntry 1616 }
+
+
+	iqdsk00MemoriesMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqdsk00CmdEntry 1617 }
+
+
+	iqdsk00MemoriesMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqdsk00CmdEntry 1618 }
+
+
+	iqdsk00MemoriesMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 5  cmdID= 1619  "
+		::= { iqdsk00CmdEntry 1619 }
+
+
+	iqdsk00MemoriesMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqdsk00CmdEntry 1620 }
+
+
+	iqdsk00MemoriesMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqdsk00CmdEntry 1621 }
+
+
+	iqdsk00MemoriesMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqdsk00CmdEntry 1622 }
+
+
+	iqdsk00MemoriesMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 6  cmdID= 1623  "
+		::= { iqdsk00CmdEntry 1623 }
+
+
+	iqdsk00MemoriesMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqdsk00CmdEntry 1624 }
+
+
+	iqdsk00MemoriesMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqdsk00CmdEntry 1625 }
+
+
+	iqdsk00MemoriesMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqdsk00CmdEntry 1626 }
+
+
+	iqdsk00MemoriesMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 7  cmdID= 1627  "
+		::= { iqdsk00CmdEntry 1627 }
+
+
+	iqdsk00MemoriesMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqdsk00CmdEntry 1628 }
+
+
+	iqdsk00MemoriesMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqdsk00CmdEntry 1629 }
+
+
+	iqdsk00MemoriesMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqdsk00CmdEntry 1630 }
+
+
+	iqdsk00MemoriesMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 8  cmdID= 1631  "
+		::= { iqdsk00CmdEntry 1631 }
+
+
+	iqdsk00MemoriesMemory9Save9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 9  cmdID= 1632  value= 1  "
+		::= { iqdsk00CmdEntry 1632 }
+
+
+	iqdsk00MemoriesMemory9Recall9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 9  cmdID= 1633  value= 1  "
+		::= { iqdsk00CmdEntry 1633 }
+
+
+	iqdsk00MemoriesMemory9Clear9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 9  cmdID= 1634  value= 1  "
+		::= { iqdsk00CmdEntry 1634 }
+
+
+	iqdsk00MemoriesMemory9Name9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 9  cmdID= 1635  "
+		::= { iqdsk00CmdEntry 1635 }
+
+
+	iqdsk00MemoriesMemory10Save10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 10  cmdID= 1636  value= 1  "
+		::= { iqdsk00CmdEntry 1636 }
+
+
+	iqdsk00MemoriesMemory10Recall10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 10  cmdID= 1637  value= 1  "
+		::= { iqdsk00CmdEntry 1637 }
+
+
+	iqdsk00MemoriesMemory10Clear10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 10  cmdID= 1638  value= 1  "
+		::= { iqdsk00CmdEntry 1638 }
+
+
+	iqdsk00MemoriesMemory10Name10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 10  cmdID= 1639  "
+		::= { iqdsk00CmdEntry 1639 }
+
+
+	iqdsk00MemoriesMemory11Save11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 11  cmdID= 1640  value= 1  "
+		::= { iqdsk00CmdEntry 1640 }
+
+
+	iqdsk00MemoriesMemory11Recall11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 11  cmdID= 1641  value= 1  "
+		::= { iqdsk00CmdEntry 1641 }
+
+
+	iqdsk00MemoriesMemory11Clear11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 11  cmdID= 1642  value= 1  "
+		::= { iqdsk00CmdEntry 1642 }
+
+
+	iqdsk00MemoriesMemory11Name11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 11  cmdID= 1643  "
+		::= { iqdsk00CmdEntry 1643 }
+
+
+	iqdsk00MemoriesMemory12Save12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 12  cmdID= 1644  value= 1  "
+		::= { iqdsk00CmdEntry 1644 }
+
+
+	iqdsk00MemoriesMemory12Recall12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 12  cmdID= 1645  value= 1  "
+		::= { iqdsk00CmdEntry 1645 }
+
+
+	iqdsk00MemoriesMemory12Clear12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 12  cmdID= 1646  value= 1  "
+		::= { iqdsk00CmdEntry 1646 }
+
+
+	iqdsk00MemoriesMemory12Name12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 12  cmdID= 1647  "
+		::= { iqdsk00CmdEntry 1647 }
+
+
+	iqdsk00MemoriesMemory13Save13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 13  cmdID= 1648  value= 1  "
+		::= { iqdsk00CmdEntry 1648 }
+
+
+	iqdsk00MemoriesMemory13Recall13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 13  cmdID= 1649  value= 1  "
+		::= { iqdsk00CmdEntry 1649 }
+
+
+	iqdsk00MemoriesMemory13Clear13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 13  cmdID= 1650  value= 1  "
+		::= { iqdsk00CmdEntry 1650 }
+
+
+	iqdsk00MemoriesMemory13Name13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 13  cmdID= 1651  "
+		::= { iqdsk00CmdEntry 1651 }
+
+
+	iqdsk00MemoriesMemory14Save14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 14  cmdID= 1652  value= 1  "
+		::= { iqdsk00CmdEntry 1652 }
+
+
+	iqdsk00MemoriesMemory14Recall14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 14  cmdID= 1653  value= 1  "
+		::= { iqdsk00CmdEntry 1653 }
+
+
+	iqdsk00MemoriesMemory14Clear14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 14  cmdID= 1654  value= 1  "
+		::= { iqdsk00CmdEntry 1654 }
+
+
+	iqdsk00MemoriesMemory14Name14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 14  cmdID= 1655  "
+		::= { iqdsk00CmdEntry 1655 }
+
+
+	iqdsk00MemoriesMemory15Save15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 15  cmdID= 1656  value= 1  "
+		::= { iqdsk00CmdEntry 1656 }
+
+
+	iqdsk00MemoriesMemory15Recall15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 15  cmdID= 1657  value= 1  "
+		::= { iqdsk00CmdEntry 1657 }
+
+
+	iqdsk00MemoriesMemory15Clear15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 15  cmdID= 1658  value= 1  "
+		::= { iqdsk00CmdEntry 1658 }
+
+
+	iqdsk00MemoriesMemory15Name15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 15  cmdID= 1659  "
+		::= { iqdsk00CmdEntry 1659 }
+
+
+	iqdsk00MemoriesMemory16Save16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 16  cmdID= 1660  value= 1  "
+		::= { iqdsk00CmdEntry 1660 }
+
+
+	iqdsk00MemoriesMemory16Recall16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 16  cmdID= 1661  value= 1  "
+		::= { iqdsk00CmdEntry 1661 }
+
+
+	iqdsk00MemoriesMemory16Clear16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 16  cmdID= 1662  value= 1  "
+		::= { iqdsk00CmdEntry 1662 }
+
+
+	iqdsk00MemoriesMemory16Name16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 16  cmdID= 1663  "
+		::= { iqdsk00CmdEntry 1663 }
+
+
+	iqdsk00Genlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Lock_to_Reference(0),
+							val_Lock_to_Background(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Lock to Reference  cmdID= 3674  value= 0
+					Lock to Background  cmdID= 3674  value= 1  "
+		::= { iqdsk00CmdEntry 3674 }
+
+
+	iqdsk00GenlockGenlockHDPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock HD Phase  cmdID= 3675  min= -319950  max= 319950  step= 135  format= %.3f us  div_scale= 10000
+					Min = -31.995 us  Max = 31.995 us  Step = 0.014 us "
+		::= { iqdsk00CmdEntry 3675 }
+
+
+	iqdsk00GenlockGenlockSDPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock SD Phase  cmdID= 3678  min= -32005  max= 32005  step= 37  format= %.3f us  div_scale= 1000
+					Min = -32.005 us  Max = 32.005 us  Step = 0.037 us "
+		::= { iqdsk00CmdEntry 3678 }
+
+
+	iqdsk00ProcAmpsBackgroundProcAmpProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmps
+					ProcAmp Enable  cmdID= 2865 "
+		::= { iqdsk00CmdEntry 2865 }
+
+
+	iqdsk00ProcAmpsBackgroundProcAmpLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Luma Gain  cmdID= 2711  min= -60  max= 60  step= 1  format= %2.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdsk00CmdEntry 2711 }
+
+
+	iqdsk00ProcAmpsBackgroundProcAmpChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Chroma Gain  cmdID= 2710  min= -60  max= 60  step= 1  format= %2.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdsk00CmdEntry 2710 }
+
+
+	iqdsk00ProcAmpsBackgroundProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Black Level  cmdID= 2712  min= -1000  max= 1000  step= 8  format= %4.1fmV  div_scale= 10
+					Min = -100.0mV  Max = 100.0mV  Step =  0.8mV "
+		::= { iqdsk00CmdEntry 2712 }
+
+
+	iqdsk00ProcAmpsFillProcAmpProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmps
+					ProcAmp Enable  cmdID= 2864 "
+		::= { iqdsk00CmdEntry 2864 }
+
+
+	iqdsk00ProcAmpsFillProcAmpLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Luma Gain  cmdID= 2707  min= -60  max= 60  step= 1  format= %2.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdsk00CmdEntry 2707 }
+
+
+	iqdsk00ProcAmpsFillProcAmpChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Chroma Gain  cmdID= 2706  min= -60  max= 60  step= 1  format= %2.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqdsk00CmdEntry 2706 }
+
+
+	iqdsk00ProcAmpsFillProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Black Level  cmdID= 2708  min= -1000  max= 1000  step= 8  format= %4.1fmV  div_scale= 10
+					Min = -100.0mV  Max = 100.0mV  Step =  0.8mV "
+		::= { iqdsk00CmdEntry 2708 }
+
+
+	iqdsk00ProcAmpsFillProcAmpHDPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					HD Position  cmdID= 2713  min= -594  max= 594  step= 27  format= %3.0fns  div_scale= 1
+					Min = -594ns  Max = 594ns  Step =  27ns "
+		::= { iqdsk00CmdEntry 2713 }
+
+
+	iqdsk00ProcAmpsFillProcAmpSDPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					SD Position  cmdID= 2709  min= -592  max= 592  step= 148  format= %3.0fns  div_scale= 1
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iqdsk00CmdEntry 2709 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmps
+					ProcAmp Enable  cmdID= 2868 "
+		::= { iqdsk00CmdEntry 2868 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpKeyGainControl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Key Gain Control  cmdID= 2460  min= 0  max= 13686  step= 1  format= %2.3f  div_scale= 1000
+					Min = 0.000  Max = 13.686  Step = 0.001 "
+		::= { iqdsk00CmdEntry 2460 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpKeyLiftControl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Key Lift Control  cmdID= 2461  min= -100  max= 1100  step= 1  format= %3.1f%%  div_scale= 10
+					Min = -10.0%  Max = 110.0%  Step = 0.1% "
+		::= { iqdsk00CmdEntry 2461 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpKeyHDPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Key HD Position  cmdID= 3681  min= -5940  max= 5940  step= 135  format= %3.0fns  div_scale= 10
+					Min = -594ns  Max = 594ns  Step =  14ns "
+		::= { iqdsk00CmdEntry 3681 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpKeySDPosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmps
+					Key SD Position  cmdID= 2462  min= -592  max= 592  step= 74  format= %3.0fns  div_scale= 1
+					Min = -592ns  Max = 592ns  Step =  74ns "
+		::= { iqdsk00CmdEntry 2462 }
+
+
+	iqdsk00ProcAmpsKeyProcAmpKeyInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmps
+					Key Invert  cmdID= 2463 "
+		::= { iqdsk00CmdEntry 2463 }
+
+
+	iqdsk00SetupRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Index  cmdID= 1495  min= 0  max= 31  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdsk00CmdEntry 1495 }
+
+
+	iqdsk00SetupRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Source  cmdID= 1496  min= -1  max= 14  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 14  Step = 1 "
+		::= { iqdsk00CmdEntry 1496 }
+
+
+	iqdsk00SetupRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqdsk00CmdEntry 1513 }
+
+
+	iqdsk00SetupRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Address  cmdID= 1497  "
+		::= { iqdsk00CmdEntry 1497 }
+
+
+	iqdsk00SetupRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Command  cmdID= 1498  "
+		::= { iqdsk00CmdEntry 1498 }
+
+
+	iqdsk00SetupRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqdsk00CmdEntry 1514 }
+
+
+	iqdsk00SetupRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqdsk00CmdEntry 1511 }
+
+
+	iqdsk00SetupRollTrackIndexSaveset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Index  cmdID= 2870  min= 0  max= 31  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdsk00CmdEntry 2870 }
+
+
+	iqdsk00SetupRollTrackSourceSaveset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Source  cmdID= 2871  min= -1  max= 14  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 14  Step = 1 "
+		::= { iqdsk00CmdEntry 2871 }
+
+
+	iqdsk00SetupRollTrackAddressSaveset OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Address  cmdID= 2872  "
+		::= { iqdsk00CmdEntry 2872 }
+
+
+	iqdsk00SetupRollTrackCommandSaveset OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Command  cmdID= 2873  "
+		::= { iqdsk00CmdEntry 2873 }
+
+
+	iqdsk00SetupLoggingInput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1  cmdID= 1094 "
+		::= { iqdsk00CmdEntry 1094 }
+
+
+	iqdsk00SetupLoggingInput1Standard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Standard  cmdID= 1097 "
+		::= { iqdsk00CmdEntry 1097 }
+
+
+	iqdsk00SetupLoggingInput1EDHErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 EDH Errsec  cmdID= 3706 "
+		::= { iqdsk00CmdEntry 3706 }
+
+
+	iqdsk00SetupLoggingInput1EDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 EDH  cmdID= 1100 "
+		::= { iqdsk00CmdEntry 1100 }
+
+
+	iqdsk00SetupLoggingInput1CRCErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 CRC Errsec  cmdID= 3708 "
+		::= { iqdsk00CmdEntry 3708 }
+
+
+	iqdsk00SetupLoggingInput1CRC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 CRC  cmdID= 3702 "
+		::= { iqdsk00CmdEntry 3702 }
+
+
+	iqdsk00SetupLoggingInput1ANCErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 ANC Errsec  cmdID= 3710 "
+		::= { iqdsk00CmdEntry 3710 }
+
+
+	iqdsk00SetupLoggingInput1ANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 ANC  cmdID= 3704 "
+		::= { iqdsk00CmdEntry 3704 }
+
+
+	iqdsk00SetupLoggingInput1Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Type  cmdID= 3600 "
+		::= { iqdsk00CmdEntry 3600 }
+
+
+	iqdsk00SetupLoggingInput1Ident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Ident  cmdID= 3590 "
+		::= { iqdsk00CmdEntry 3590 }
+
+
+	iqdsk00SetupLoggingInput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2  cmdID= 1095 "
+		::= { iqdsk00CmdEntry 1095 }
+
+
+	iqdsk00SetupLoggingInput2Standard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Standard  cmdID= 1098 "
+		::= { iqdsk00CmdEntry 1098 }
+
+
+	iqdsk00SetupLoggingInput2EDHErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 EDH Errsec  cmdID= 3717 "
+		::= { iqdsk00CmdEntry 3717 }
+
+
+	iqdsk00SetupLoggingInput2EDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 EDH  cmdID= 1101 "
+		::= { iqdsk00CmdEntry 1101 }
+
+
+	iqdsk00SetupLoggingInput2CRCErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 CRC Errsec  cmdID= 3719 "
+		::= { iqdsk00CmdEntry 3719 }
+
+
+	iqdsk00SetupLoggingInput2CRC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 CRC  cmdID= 3713 "
+		::= { iqdsk00CmdEntry 3713 }
+
+
+	iqdsk00SetupLoggingInput2ANCErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 ANC Errsec  cmdID= 3721 "
+		::= { iqdsk00CmdEntry 3721 }
+
+
+	iqdsk00SetupLoggingInput2ANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 ANC  cmdID= 3715 "
+		::= { iqdsk00CmdEntry 3715 }
+
+
+	iqdsk00SetupLoggingInput2Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Type  cmdID= 3601 "
+		::= { iqdsk00CmdEntry 3601 }
+
+
+	iqdsk00SetupLoggingInput2Ident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Ident  cmdID= 3591 "
+		::= { iqdsk00CmdEntry 3591 }
+
+
+	iqdsk00SetupLoggingInput3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3  cmdID= 1096 "
+		::= { iqdsk00CmdEntry 1096 }
+
+
+	iqdsk00SetupLoggingInput3EDHErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 EDH Errsec  cmdID= 3728 "
+		::= { iqdsk00CmdEntry 3728 }
+
+
+	iqdsk00SetupLoggingInput3EDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 EDH  cmdID= 1102 "
+		::= { iqdsk00CmdEntry 1102 }
+
+
+	iqdsk00SetupLoggingInput3CRCErrsec OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 CRC Errsec  cmdID= 3730 "
+		::= { iqdsk00CmdEntry 3730 }
+
+
+	iqdsk00SetupLoggingInput3CRC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 CRC  cmdID= 3724 "
+		::= { iqdsk00CmdEntry 3724 }
+
+
+	iqdsk00SetupLoggingInput3Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 Type  cmdID= 3684 "
+		::= { iqdsk00CmdEntry 3684 }
+
+
+	iqdsk00SetupLoggingInput3Ident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 3 Ident  cmdID= 3682 "
+		::= { iqdsk00CmdEntry 3682 }
+
+
+	iqdsk00SetupLoggingReferenceState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Reference State  cmdID= 1062 "
+		::= { iqdsk00CmdEntry 1062 }
+
+
+	iqdsk00SetupLoggingReferenceStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Reference Standard  cmdID= 1063 "
+		::= { iqdsk00CmdEntry 1063 }
+
+
+	iqdsk00SetupLoggingReferenceType OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Reference Type  cmdID= 3760 "
+		::= { iqdsk00CmdEntry 3760 }
+
+
+	iqdsk00SetupLoggingOutput1Standard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1 Standard  cmdID= 1061 "
+		::= { iqdsk00CmdEntry 1061 }
+
+
+	iqdsk00SetupLoggingOSVERSION OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					OS VERSION  cmdID= 3750 "
+		::= { iqdsk00CmdEntry 3750 }
+
+
+	iqdsk00SetupLoggingHARDWAREVERSION OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					HARDWARE VERSION  cmdID= 3751 "
+		::= { iqdsk00CmdEntry 3751 }
+
+
+	iqdsk00SetupLoggingBUILDNUMBER OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					BUILD NUMBER  cmdID= 3753 "
+		::= { iqdsk00CmdEntry 3753 }
+
+
+	iqdsk00SetupLoggingUPTIME OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					UPTIME  cmdID= 3752 "
+		::= { iqdsk00CmdEntry 3752 }
+
+
+	iqdsk00SetupLoggingRolltrack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Rolltrack  cmdID= 1106 "
+		::= { iqdsk00CmdEntry 1106 }
+
+
+	iqdsk00SetupLogStatusROLSTATES OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					ROL_STATES=  cmdID= 2989  format=   "
+		::= { iqdsk00CmdEntry 2989 }
+
+
+	iqdsk00SetupLogStatusOUTPUT1STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					OUTPUT_1_STANDARD=  cmdID= 2981  format=   "
+		::= { iqdsk00CmdEntry 2981 }
+
+
+	iqdsk00SetupLogStatusREFERENCE1TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					REFERENCE_1_TYPE=  cmdID= 3761  format=   "
+		::= { iqdsk00CmdEntry 3761 }
+
+
+	iqdsk00SetupLogStatusREFERENCE1STANDAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					REFERENCE_1_STANDAR  cmdID= 3759  format=   "
+		::= { iqdsk00CmdEntry 3759 }
+
+
+	iqdsk00SetupLogStatusREFERENCE1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					REFERENCE_1_STATE=  cmdID= 2986  format=   "
+		::= { iqdsk00CmdEntry 2986 }
+
+
+	iqdsk00SetupLogStatusINPUT3IDENT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_IDENT=  cmdID= 3686  format=   "
+		::= { iqdsk00CmdEntry 3686 }
+
+
+	iqdsk00SetupLogStatusINPUT3TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_TYPE=  cmdID= 3688  format=   "
+		::= { iqdsk00CmdEntry 3688 }
+
+
+	iqdsk00SetupLogStatusINPUT3CRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_CRC=  cmdID= 3725  format=   "
+		::= { iqdsk00CmdEntry 3725 }
+
+
+	iqdsk00SetupLogStatusINPUT3CRCERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_CRC_ERRSEC=  cmdID= 3731  format=   "
+		::= { iqdsk00CmdEntry 3731 }
+
+
+	iqdsk00SetupLogStatusINPUT3EDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_EDH=  cmdID= 3723  format=   "
+		::= { iqdsk00CmdEntry 3723 }
+
+
+	iqdsk00SetupLogStatusINPUT3EDHERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_EDH_ERRSEC=  cmdID= 3729  format=   "
+		::= { iqdsk00CmdEntry 3729 }
+
+
+	iqdsk00SetupLogStatusINPUT3STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_3_STATE=  cmdID= 3694  format=   "
+		::= { iqdsk00CmdEntry 3694 }
+
+
+	iqdsk00SetupLogStatusINPUT2IDENT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_IDENT=  cmdID= 3611  format=   "
+		::= { iqdsk00CmdEntry 3611 }
+
+
+	iqdsk00SetupLogStatusINPUT2TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_TYPE=  cmdID= 3621  format=   "
+		::= { iqdsk00CmdEntry 3621 }
+
+
+	iqdsk00SetupLogStatusINPUT2ANC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_ANC=  cmdID= 3716  format=   "
+		::= { iqdsk00CmdEntry 3716 }
+
+
+	iqdsk00SetupLogStatusINPUT2ANCERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_ANC_ERRSEC=  cmdID= 3722  format=   "
+		::= { iqdsk00CmdEntry 3722 }
+
+
+	iqdsk00SetupLogStatusINPUT2CRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_CRC=  cmdID= 3714  format=   "
+		::= { iqdsk00CmdEntry 3714 }
+
+
+	iqdsk00SetupLogStatusINPUT2CRCERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_CRC_ERRSEC=  cmdID= 3720  format=   "
+		::= { iqdsk00CmdEntry 3720 }
+
+
+	iqdsk00SetupLogStatusINPUT2EDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_EDH=  cmdID= 3712  format=   "
+		::= { iqdsk00CmdEntry 3712 }
+
+
+	iqdsk00SetupLogStatusINPUT2EDHERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_EDH_ERRSEC=  cmdID= 3718  format=   "
+		::= { iqdsk00CmdEntry 3718 }
+
+
+	iqdsk00SetupLogStatusINPUT2STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_STANDARD=  cmdID= 2985  format=   "
+		::= { iqdsk00CmdEntry 2985 }
+
+
+	iqdsk00SetupLogStatusINPUT2STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_2_STATE=  cmdID= 2984  format=   "
+		::= { iqdsk00CmdEntry 2984 }
+
+
+	iqdsk00SetupLogStatusINPUT1IDENT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_IDENT=  cmdID= 3610  format=   "
+		::= { iqdsk00CmdEntry 3610 }
+
+
+	iqdsk00SetupLogStatusINPUT1TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_TYPE=  cmdID= 3620  format=   "
+		::= { iqdsk00CmdEntry 3620 }
+
+
+	iqdsk00SetupLogStatusINPUT1ANC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_ANC=  cmdID= 3705  format=   "
+		::= { iqdsk00CmdEntry 3705 }
+
+
+	iqdsk00SetupLogStatusINPUT1ANCERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_ANC_ERRSEC=  cmdID= 3711  format=   "
+		::= { iqdsk00CmdEntry 3711 }
+
+
+	iqdsk00SetupLogStatusINPUT1CRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_CRC=  cmdID= 3703  format=   "
+		::= { iqdsk00CmdEntry 3703 }
+
+
+	iqdsk00SetupLogStatusINPUT1CRCERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_CRC_ERRSEC=  cmdID= 3709  format=   "
+		::= { iqdsk00CmdEntry 3709 }
+
+
+	iqdsk00SetupLogStatusINPUT1EDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_EDH=  cmdID= 3701  format=   "
+		::= { iqdsk00CmdEntry 3701 }
+
+
+	iqdsk00SetupLogStatusINPUT1EDHERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_EDH_ERRSEC=  cmdID= 3707  format=   "
+		::= { iqdsk00CmdEntry 3707 }
+
+
+	iqdsk00SetupLogStatusINPUT1STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_STANDARD=  cmdID= 2983  format=   "
+		::= { iqdsk00CmdEntry 2983 }
+
+
+	iqdsk00SetupLogStatusINPUT1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					INPUT_1_STATE=  cmdID= 2982  format=   "
+		::= { iqdsk00CmdEntry 2982 }
+
+
+	iqdsk00GPIIOGPIInputDisableInputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Disable Inputs  cmdID= 2605 "
+		::= { iqdsk00CmdEntry 2605 }
+
+
+	iqdsk00GPIIOGPIInput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI In  cmdID= 2010  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdsk00CmdEntry 2010 }
+
+
+	iqdsk00GPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Input Selection  cmdID= 2011  min= -1  max= 23  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 23  Step = 1 "
+		::= { iqdsk00CmdEntry 2011 }
+
+
+	iqdsk00GPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqdsk00CmdEntry 2048 }
+
+
+	iqdsk00GPIIOGPIOutputOutActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Out Active High  cmdID= 3540 "
+		::= { iqdsk00CmdEntry 3540 }
+
+
+	iqdsk00GPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Output Selection  cmdID= 2013  min= -1  max= 6  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 6  Step = 1 "
+		::= { iqdsk00CmdEntry 2013 }
+
+
+	iqdsk00GPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqdsk00CmdEntry 2049 }
+
+
+	iqdsk00GPIIOGPIInputOutputGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					GPI/O 1  cmdID= 2014 "
+		::= { iqdsk00CmdEntry 2014 }
+
+
+	iqdsk00SetupGPIIOGPIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI In  cmdID= 2874  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdsk00CmdEntry 2874 }
+
+
+	iqdsk00SetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Input Selection  cmdID= 2875  min= -1  max= 23  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 23  Step = 1 "
+		::= { iqdsk00CmdEntry 2875 }
+
+
+	iqdsk00SetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Output Selection  cmdID= 2877  min= -1  max= 6  step= 1  format= %.0f  div_scale= 1
+					Min = -1  Max = 6  Step = 1 "
+		::= { iqdsk00CmdEntry 2877 }
+
+
+	iqdsk00SetupAncDataAncSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Background(0),
+							val_Fill(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Anc Source  cmdID= 3680
+					Background  value= 0
+					Fill  value= 1  "
+		::= { iqdsk00CmdEntry 3680 }
+
+
+	iqdsk00SetupAncDataBlankVANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Blank VANC  cmdID= 3679 "
+		::= { iqdsk00CmdEntry 3679 }
+
+
+	iqdsk00SetupAncDataBlankHANC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Blank HANC  cmdID= 2863 "
+		::= { iqdsk00CmdEntry 2863 }
+
+
+	iqdsk00StatusSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Software Version  cmdID= 2  format=   "
+		::= { iqdsk00CmdEntry 2 }
+
+
+	iqdsk00StatusSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Serial No  cmdID= 1  format=   "
+		::= { iqdsk00CmdEntry 1 }
+
+
+	iqdsk00StatusPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdsk00CmdEntry 3 }
+
+
+	iqdsk00StatusRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdsk00CmdEntry 4 }
+
+
+	iqdsk00StatusBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Build No  cmdID= 5  format=   "
+		::= { iqdsk00CmdEntry 5 }
+
+
+	iqdsk00StatusHardwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Hardware Version  cmdID= 6  format=   "
+		::= { iqdsk00CmdEntry 6 }
+
+
+	iqdsk00StatusOSVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					OS Version  cmdID= 7  format=   "
+		::= { iqdsk00CmdEntry 7 }
+
+
+	iqdsk00StatusUpTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Up Time  cmdID= 8  format=   "
+		::= { iqdsk00CmdEntry 8 }
+
+
+	iqdsk00StatusResetErrors OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Errors(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Reset Errors  cmdID= 2978  value= 1  "
+		::= { iqdsk00CmdEntry 2978 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S38091097
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+-- Vary			: YES
+--
+-- Value(s)		: 000:00:52:00
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: V115 Release
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_ANC
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.49.95.65.78.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.49.95.65.78.67
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_CRC
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.49.95.67.82.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.49.95.67.82.67
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.49.95.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.49.95.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_ANC
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.50.95.65.78.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.50.95.65.78.67
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_CRC
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.50.95.67.82.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.50.95.67.82.67
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.50.95.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.50.95.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_CRC
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.51.95.67.82.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.51.95.67.82.67
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.51.95.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.51.95.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+-- Vary			: YES
+--
+-- Value(s)		: 0000200002
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: HD/SD SDI
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: HD/SD SDI
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.51.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.51.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: HD/SD SDI
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2010-06-24T13:17:54Z
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: BACKGROUND
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL: Lost
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: FILL
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL: Lost
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.51.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.51.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: KEY
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.51.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.51.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL: Lost
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: RDSK1X
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: WARN: No Input
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: WARN: No Input
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.82.69.70.69.82.69.78.67.69.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.82.69.70.69.82.69.78.67.69.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: Tri/Bi-Level
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: 625(576)/25i
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL: Lost
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_ANC_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.49.95.65.78.67.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.49.95.65.78.67.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_CRC_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.49.95.67.82.67.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.49.95.67.82.67.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EDH_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.49.95.69.68.72.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.49.95.69.68.72.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_ANC_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.50.95.65.78.67.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.50.95.65.78.67.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_CRC_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.50.95.67.82.67.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.50.95.67.82.67.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EDH_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.50.95.69.68.72.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.50.95.69.68.72.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_CRC_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.51.95.67.82.67.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.51.95.67.82.67.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_EDH_ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.51.95.69.68.72.95.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.51.95.69.68.72.95.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: WARN: No Input
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

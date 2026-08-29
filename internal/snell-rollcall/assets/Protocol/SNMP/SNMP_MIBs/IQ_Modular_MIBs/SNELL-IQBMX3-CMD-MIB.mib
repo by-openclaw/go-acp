@@ -1,0 +1,696 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBMX3
+--        Module Id#:92
+--       Command Set:5
+--          Filename:SNELL-IQBMX3-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:09:04
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBMX3-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBMX3,
+    moduleIQBMX3MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBMX3CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506290904Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBMX3MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbmx3CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqbmx3CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBMX3 1 }
+
+	iqbmx3CmdEntry OBJECT-TYPE
+		SYNTAX		Iqbmx3CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbmx3SlotIndex }
+		::= { iqbmx3CmdTable 1 }
+
+	Iqbmx3CmdEntry ::=
+		SEQUENCE {
+			iqbmx3SlotIndex
+				Unsigned32,
+			iqbmx3RouterOutputAction
+				RollCallString,
+			iqbmx3RouterInput
+				INTEGER,
+			iqbmx3SetupGPISetupVFade
+				INTEGER,
+			iqbmx3RouterSilence
+				INTEGER,
+			iqbmx3RouterFadeDelay
+				INTEGER,
+			iqbmx3Display
+				INTEGER,
+			iqbmx3DisplayChannelStatusInf
+				INTEGER,
+			iqbmx3DisplayChannelStatusSetupUp
+				INTEGER,
+			iqbmx3DisplayChannelStatusSetupSubFrame
+				INTEGER,
+			iqbmx3DisplayChannelStatusSetupDown
+				INTEGER,
+			iqbmx3DisplayChannelStatusSetup
+				INTEGER,
+			iqbmx3ChannelStatInsertEditedCS
+				INTEGER,
+			iqbmx3ChannelStatEditChannelStatOrigin
+				RollCallString,
+			iqbmx3ChannelStatEditChannelStatDestination
+				RollCallString,
+			iqbmx3Lock
+				INTEGER,
+			iqbmx3MemorySave
+				INTEGER,
+			iqbmx3MemoryRead
+				INTEGER,
+			iqbmx3MemoryPreset
+				INTEGER,
+			iqbmx3MemoryNamesMemory1
+				RollCallString,
+			iqbmx3MemoryNamesMemory2
+				RollCallString,
+			iqbmx3MemoryNamesMemory3
+				RollCallString,
+			iqbmx3MemoryNamesMemory4
+				RollCallString,
+			iqbmx3SetupPPM0dBuRefInA
+				INTEGER,
+			iqbmx3SetupPPM0dBuRefInB
+				INTEGER,
+			iqbmx3SetupPPM0dBuRefInC
+				INTEGER,
+			iqbmx3SetupGPISetupEnable
+				INTEGER,
+			iqbmx3SetupGPISetup
+				INTEGER,
+			iqbmx3SetupGPISetupSlider
+				INTEGER,
+			iqbmx3GPISetupGPIPortLevelPulse
+				INTEGER,
+			iqbmx3GPISetupGPIPort
+				INTEGER,
+			iqbmx3SetupPresetUnit
+				INTEGER,
+			iqbmx3SetupLoggingAESInputAChange
+				INTEGER,
+			iqbmx3SetupLoggingAESInputBChange
+				INTEGER,
+			iqbmx3SetupLoggingAESInputCChange
+				INTEGER,
+			iqbmx3SetupSoftwareVersion
+				RollCallString,
+			iqbmx3SetupSerialNo
+				RollCallString
+		}
+
+	iqbmx3SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbmx3CmdEntry 0 }
+
+
+	iqbmx3RouterOutputAction OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Output  cmdID= 40  format=   
+					Action  cmdID= 40  format=   "
+		::= { iqbmx3CmdEntry 40 }
+
+
+	iqbmx3RouterInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1),
+							val_Input_C(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 30  value= 0  
+					Input_B  cmdID= 30  value= 1  
+					Input_C  cmdID= 30  value= 2  "
+		::= { iqbmx3CmdEntry 30 }
+
+
+	iqbmx3SetupGPISetupVFade OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					V-Fade  cmdID= 55 "
+		::= { iqbmx3CmdEntry 55 }
+
+
+	iqbmx3RouterSilence OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Silence  cmdID= 57 "
+		::= { iqbmx3CmdEntry 57 }
+
+
+	iqbmx3RouterFadeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Fade_Delay  cmdID= 59  min= 0  max= 30  step= 2  format= %1.1f sec  div_scale= 10 
+					Min = 0.0 sec  Max = 3.0 sec  Step = 0.2 sec "
+		::= { iqbmx3CmdEntry 59 }
+
+
+	iqbmx3Display OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(5),
+							val_Output(6),
+							val_PPM_Input_A(7),
+							val_PPM_Input_B(8),
+							val_PPM_Input_C(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input  cmdID= 21  value= 5  
+					Output  cmdID= 21  value= 6  
+					PPM_Input_A  cmdID= 21  value= 7  
+					PPM_Input_B  cmdID= 21  value= 8  
+					PPM_Input_C  cmdID= 21  value= 9  "
+		::= { iqbmx3CmdEntry 21 }
+
+
+	iqbmx3DisplayChannelStatusInf OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel_Status_Inf  cmdID= 22 "
+		::= { iqbmx3CmdEntry 22 }
+
+
+	iqbmx3DisplayChannelStatusSetupUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Up  cmdID= 17  value= 1  "
+		::= { iqbmx3CmdEntry 17 }
+
+
+	iqbmx3DisplayChannelStatusSetupSubFrame OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SubFrame_1(0),
+							val_SubFrame_2(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SubFrame_1  cmdID= 19  value= 0  
+					SubFrame_2  cmdID= 19  value= 1  "
+		::= { iqbmx3CmdEntry 19 }
+
+
+	iqbmx3DisplayChannelStatusSetupDown OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Down(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Down  cmdID= 18  value= 1  "
+		::= { iqbmx3CmdEntry 18 }
+
+
+	iqbmx3DisplayChannelStatusSetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Output_A(3),
+							val_Input_B(1),
+							val_Input_C(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 20  value= 0  
+					Output_A  cmdID= 20  value= 3  
+					Input_B  cmdID= 20  value= 1  
+					Input_C  cmdID= 20  value= 2  "
+		::= { iqbmx3CmdEntry 20 }
+
+
+	iqbmx3ChannelStatInsertEditedCS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Edited_CS  cmdID= 6 "
+		::= { iqbmx3CmdEntry 6 }
+
+
+	iqbmx3ChannelStatEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 15  "
+		::= { iqbmx3CmdEntry 15 }
+
+
+	iqbmx3ChannelStatEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 13  "
+		::= { iqbmx3CmdEntry 13 }
+
+
+	iqbmx3Lock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(3),
+							val_Input_B(4),
+							val_Input_C(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Lock  cmdID= 5 
+					Input_A  value= 3  
+					Input_B  value= 4  
+					Input_C  value= 5  "
+		::= { iqbmx3CmdEntry 5 }
+
+
+	iqbmx3MemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 49 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbmx3CmdEntry 49 }
+
+
+	iqbmx3MemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 48 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbmx3CmdEntry 48 }
+
+
+	iqbmx3MemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5),
+							val_Preset_All_Names(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 50 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  
+					Preset_All_Names  cmdID= 50  value= 6  "
+		::= { iqbmx3CmdEntry 50 }
+
+
+	iqbmx3MemoryNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 51  "
+		::= { iqbmx3CmdEntry 51 }
+
+
+	iqbmx3MemoryNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 52  "
+		::= { iqbmx3CmdEntry 52 }
+
+
+	iqbmx3MemoryNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 53  "
+		::= { iqbmx3CmdEntry 53 }
+
+
+	iqbmx3MemoryNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 54  "
+		::= { iqbmx3CmdEntry 54 }
+
+
+	iqbmx3SetupPPM0dBuRefInA OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_A  cmdID= 10  min= 10  max= 24  step= 1  format= %1.0fdB  div_scale= 1 
+					Min = 10dB  Max = 24dB  Step = 1dB "
+		::= { iqbmx3CmdEntry 10 }
+
+
+	iqbmx3SetupPPM0dBuRefInB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_B  cmdID= 11  min= 10  max= 24  step= 1  format= %1.0fdB  div_scale= 1 
+					Min = 10dB  Max = 24dB  Step = 1dB "
+		::= { iqbmx3CmdEntry 11 }
+
+
+	iqbmx3SetupPPM0dBuRefInC OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_C  cmdID= 12  min= 10  max= 24  step= 1  format= %1.0fdB  div_scale= 1 
+					Min = 10dB  Max = 24dB  Step = 1dB "
+		::= { iqbmx3CmdEntry 12 }
+
+
+	iqbmx3SetupGPISetupEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable  cmdID= 62 "
+		::= { iqbmx3CmdEntry 62 }
+
+
+	iqbmx3SetupGPISetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_A_B(0),
+							val_B_C(1),
+							val_C_A(2),
+							val_Silence(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					A<-->B  cmdID= 61  value= 0  
+					B<-->C  cmdID= 61  value= 1  
+					C<-->A  cmdID= 61  value= 2  
+					Silence  cmdID= 61  value= 3  "
+		::= { iqbmx3CmdEntry 61 }
+
+
+	iqbmx3SetupGPISetupSlider OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Slider  cmdID= 64 "
+		::= { iqbmx3CmdEntry 64 }
+
+
+	iqbmx3GPISetupGPIPortLevelPulse OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Level/Pulse  cmdID= 65 "
+		::= { iqbmx3CmdEntry 65 }
+
+
+	iqbmx3GPISetupGPIPort OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Positive(0),
+							val_Negative(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Positive  cmdID= 66  value= 0  
+					Negative  cmdID= 66  value= 1  "
+		::= { iqbmx3CmdEntry 66 }
+
+
+	iqbmx3SetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbmx3CmdEntry 3 }
+
+
+	iqbmx3SetupLoggingAESInputAChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_A_Change  cmdID= 8 "
+		::= { iqbmx3CmdEntry 8 }
+
+
+	iqbmx3SetupLoggingAESInputBChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_B_Change  cmdID= 9 "
+		::= { iqbmx3CmdEntry 9 }
+
+
+	iqbmx3SetupLoggingAESInputCChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_C_Change  cmdID= 38 "
+		::= { iqbmx3CmdEntry 38 }
+
+
+	iqbmx3SetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbmx3CmdEntry 2 }
+
+
+	iqbmx3SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbmx3CmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: INT
+--				: AES
+--				: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AESREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.65.69.83.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.65.69.83.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 0
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: OFF
+--				: ERROR
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VIDREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.86.73.68.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.86.73.68.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 0
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

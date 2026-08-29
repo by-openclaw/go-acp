@@ -1,0 +1,2418 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQARC01
+--        Module Id#:410
+--       Command Set:6
+--  Software Version:5.4.6
+--          Filename:SNELL-IQARC01-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:12:37
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQARC01-CMD-MIB.mib 223 2006-12-19 15:45:12Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQARC01-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQARC01,
+    moduleIQARC01MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQARC01CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171237Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQARC01MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqarc01CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqarc01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQARC01 1 }
+
+	iqarc01CmdEntry OBJECT-TYPE
+		SYNTAX		Iqarc01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqarc01SlotIndex }
+		::= { iqarc01CmdTable 1 }
+
+	Iqarc01CmdEntry ::=
+		SEQUENCE {
+			iqarc01SlotIndex
+				Unsigned32,
+			iqarc01ARCPanCtrl
+				INTEGER,
+			iqarc01ARCTiltCtrl
+				INTEGER,
+			iqarc01ARC
+				INTEGER,
+			iqarc01ARCPan
+				INTEGER,
+			iqarc01ARCTilt
+				INTEGER,
+			iqarc01ARCPreset
+				INTEGER,
+			iqarc01ARCAperture
+				INTEGER,
+			iqarc01ARCMinDelayPan
+				INTEGER,
+			iqarc01ARCMinDelayPreset
+				INTEGER,
+			iqarc01VideoLumaGain
+				INTEGER,
+			iqarc01VideoBlackLevel
+				INTEGER,
+			iqarc01VideoChromaGain
+				INTEGER,
+			iqarc01VideoLimitingMinYClipLevel
+				INTEGER,
+			iqarc01VideoLimitingMaxYClipLevel
+				INTEGER,
+			iqarc01VideoLimitingMinCClipLevel
+				INTEGER,
+			iqarc01VideoLimitingMaxCClipLevel
+				INTEGER,
+			iqarc01Mode
+				INTEGER,
+			iqarc01BlankingInputLeft
+				INTEGER,
+			iqarc01BlankingInputRight
+				INTEGER,
+			iqarc01BlankingInputTop
+				INTEGER,
+			iqarc01BlankingInputBottom
+				INTEGER,
+			iqarc01BlankingInputForcetoBlack
+				INTEGER,
+			iqarc01BlankingOutputLeft
+				INTEGER,
+			iqarc01BlankingOutputRight
+				INTEGER,
+			iqarc01BlankingOutputTop
+				INTEGER,
+			iqarc01BlankingOutputBottom
+				INTEGER,
+			iqarc01BlankingOutputForcetoBlack
+				INTEGER,
+			iqarc01BlankingStd525line21_283
+				INTEGER,
+			iqarc01BlankingVertEdgeFilter
+				INTEGER,
+			iqarc01BlankingDeleteWSS
+				INTEGER,
+			iqarc01BlankingDeleteVI
+				INTEGER,
+			iqarc01ByPass
+				INTEGER,
+			iqarc01Freeze
+				INTEGER,
+			iqarc01UserMemMemory1Save1
+				INTEGER,
+			iqarc01UserMemMemory1Recall1
+				INTEGER,
+			iqarc01UserMemMemory1Clear1
+				INTEGER,
+			iqarc01UserMemMemory1Name1
+				RollCallString,
+			iqarc01UserMemMemory2Save2
+				INTEGER,
+			iqarc01UserMemMemory2Recall2
+				INTEGER,
+			iqarc01UserMemMemory2Clear2
+				INTEGER,
+			iqarc01UserMemMemory2Name2
+				RollCallString,
+			iqarc01UserMemMemory3Save3
+				INTEGER,
+			iqarc01UserMemMemory3Recall3
+				INTEGER,
+			iqarc01UserMemMemory3Clear3
+				INTEGER,
+			iqarc01UserMemMemory3Name3
+				RollCallString,
+			iqarc01UserMemMemory4Save4
+				INTEGER,
+			iqarc01UserMemMemory4Recall4
+				INTEGER,
+			iqarc01UserMemMemory4Clear4
+				INTEGER,
+			iqarc01UserMemMemory4Name4
+				RollCallString,
+			iqarc01UserMemMemory5Save5
+				INTEGER,
+			iqarc01UserMemMemory5Recall5
+				INTEGER,
+			iqarc01UserMemMemory5Clear5
+				INTEGER,
+			iqarc01UserMemMemory5Name5
+				RollCallString,
+			iqarc01UserMemMemory6Save6
+				INTEGER,
+			iqarc01UserMemMemory6Recall6
+				INTEGER,
+			iqarc01UserMemMemory6Clear6
+				INTEGER,
+			iqarc01UserMemMemory6Name6
+				RollCallString,
+			iqarc01UserMemMemory7Save7
+				INTEGER,
+			iqarc01UserMemMemory7Recall7
+				INTEGER,
+			iqarc01UserMemMemory7Clear7
+				INTEGER,
+			iqarc01UserMemMemory7Name7
+				RollCallString,
+			iqarc01UserMemMemory8Save8
+				INTEGER,
+			iqarc01UserMemMemory8Recall8
+				INTEGER,
+			iqarc01UserMemMemory8Clear8
+				INTEGER,
+			iqarc01UserMemMemory8Name8
+				RollCallString,
+			iqarc01UserMemMemory9Save9
+				INTEGER,
+			iqarc01UserMemMemory9Recall9
+				INTEGER,
+			iqarc01UserMemMemory9Clear9
+				INTEGER,
+			iqarc01UserMemMemory9Name9
+				RollCallString,
+			iqarc01UserMemMemory10Save10
+				INTEGER,
+			iqarc01UserMemMemory10Recall10
+				INTEGER,
+			iqarc01UserMemMemory10Clear10
+				INTEGER,
+			iqarc01UserMemMemory10Name10
+				RollCallString,
+			iqarc01UserMemMemory11Save11
+				INTEGER,
+			iqarc01UserMemMemory11Recall11
+				INTEGER,
+			iqarc01UserMemMemory11Clear11
+				INTEGER,
+			iqarc01UserMemMemory11Name11
+				RollCallString,
+			iqarc01UserMemMemory12Save12
+				INTEGER,
+			iqarc01UserMemMemory12Recall12
+				INTEGER,
+			iqarc01UserMemMemory12Clear12
+				INTEGER,
+			iqarc01UserMemMemory12Name12
+				RollCallString,
+			iqarc01UserMemMemory13Save13
+				INTEGER,
+			iqarc01UserMemMemory13Recall13
+				INTEGER,
+			iqarc01UserMemMemory13Clear13
+				INTEGER,
+			iqarc01UserMemMemory13Name13
+				RollCallString,
+			iqarc01UserMemMemory14Save14
+				INTEGER,
+			iqarc01UserMemMemory14Recall14
+				INTEGER,
+			iqarc01UserMemMemory14Clear14
+				INTEGER,
+			iqarc01UserMemMemory14Name14
+				RollCallString,
+			iqarc01UserMemMemory15Save15
+				INTEGER,
+			iqarc01UserMemMemory15Recall15
+				INTEGER,
+			iqarc01UserMemMemory15Clear15
+				INTEGER,
+			iqarc01UserMemMemory15Name15
+				RollCallString,
+			iqarc01UserMemMemory16Save16
+				INTEGER,
+			iqarc01UserMemMemory16Recall16
+				INTEGER,
+			iqarc01UserMemMemory16Clear16
+				INTEGER,
+			iqarc01UserMemMemory16Name16
+				RollCallString,
+			iqarc01SetupBorderColour
+				INTEGER,
+			iqarc01BorderColourSetUsrAUserARed
+				INTEGER,
+			iqarc01BorderColourSetUsrAUserAGreen
+				INTEGER,
+			iqarc01BorderColourSetUsrAUserABlue
+				INTEGER,
+			iqarc01BorderColourSetUsrBUserBRed
+				INTEGER,
+			iqarc01BorderColourSetUsrBUserBGreen
+				INTEGER,
+			iqarc01BorderColourSetUsrBUserBBlue
+				INTEGER,
+			iqarc01PatternCaptionCaptionEditCaption
+				RollCallString,
+			iqarc01PatternCaptionCaption
+				INTEGER,
+			iqarc01PatternCaptionPatternsEnablePattern
+				INTEGER,
+			iqarc01PatternCaptionPatterns
+				INTEGER,
+			iqarc01PatternCaptionInsertionProcessedPath
+				INTEGER,
+			iqarc01PatternCaptionInsertionUnprocessedPath
+				INTEGER,
+			iqarc01SetupOutputRoutingMonitoringOutput
+				INTEGER,
+			iqarc01SetupStandard525
+				INTEGER,
+			iqarc01SetupStandard625
+				INTEGER,
+			iqarc01GPIIOGPIInputDisableInputs
+				INTEGER,
+			iqarc01GPIIOGPIInput
+				INTEGER,
+			iqarc01GPIIOGPIInputInputSelection
+				INTEGER,
+			iqarc01GPIIOGPIInputGPIInStatus
+				RollCallString,
+			iqarc01GPIIOGPIOutputOutActiveHigh
+				INTEGER,
+			iqarc01GPIIOGPIOutput
+				INTEGER,
+			iqarc01GPIIOGPIOutputOutputSelection
+				INTEGER,
+			iqarc01GPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iqarc01GPIIOGPIInputOutputGPIO1
+				INTEGER,
+			iqarc01GPIIOGPIInputOutputGPIO2
+				INTEGER,
+			iqarc01GPIIOGPIInputOutputGPIO3
+				INTEGER,
+			iqarc01GPIIOGPIInputOutputGPIO4
+				INTEGER,
+			iqarc01SetupGPIIOGPIIn
+				INTEGER,
+			iqarc01SetupGPIIOInputSelection
+				INTEGER,
+			iqarc01SetupGPIIOGPIOut
+				INTEGER,
+			iqarc01SetupGPIIOOutputSelection
+				INTEGER,
+			iqarc01SetupRollTrackRollTrackIndex
+				INTEGER,
+			iqarc01SetupRollTrackRollTrackSource
+				INTEGER,
+			iqarc01SetupRollTrackRollTrackDisable
+				INTEGER,
+			iqarc01SetupRollTrackRollTrackAddress
+				RollCallString,
+			iqarc01SetupRollTrackRollTrackCommand
+				RollCallString,
+			iqarc01SetupRollTrackRollTrackSending
+				RollCallString,
+			iqarc01SetupRollTrackRollTrackStatus
+				RollCallString,
+			iqarc01SetupRollTrackRollTrack_Index
+				INTEGER,
+			iqarc01SetupRollTrackRollTrack_Source
+				INTEGER,
+			iqarc01SetupRollTrackRollTrack_Address
+				RollCallString,
+			iqarc01SetupRollTrackRollTrack_Command
+				RollCallString,
+			iqarc01SetupInformationEDHReset
+				INTEGER,
+			iqarc01SetupInformation
+				INTEGER,
+			iqarc01SetupDefaultOut
+				INTEGER,
+			iqarc01SetupLoggingInput
+				INTEGER,
+			iqarc01SetupLoggingStandard
+				INTEGER,
+			iqarc01SetupLoggingEDH
+				INTEGER,
+			iqarc01SetupLoggingEDHErrors
+				INTEGER,
+			iqarc01SetupSmoothTransitionsManualMinDelay
+				INTEGER,
+			iqarc01SetupTerminology
+				INTEGER,
+			iqarc01StatusInputSDI
+				RollCallString,
+			iqarc01StatusInputStandard
+				RollCallString,
+			iqarc01StatusEDH
+				RollCallString,
+			iqarc01StatusEDHErrorCount
+				RollCallString,
+			iqarc01SetupUnitSoftwareVersion
+				RollCallString,
+			iqarc01SetupUnitSerialNo
+				RollCallString,
+			iqarc01SetupUnitPresetUnit
+				INTEGER,
+			iqarc01SetupUnitRestart
+				INTEGER,
+			iqarc01SetupUnitBuildNo
+				RollCallString
+		}
+
+	iqarc01SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqarc01CmdEntry 0 }
+
+
+	iqarc01ARCPanCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					PanCtrl  cmdID= 2205  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqarc01CmdEntry 2205 }
+
+
+	iqarc01ARCTiltCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					TiltCtrl  cmdID= 2206  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqarc01CmdEntry 2206 }
+
+
+	iqarc01ARC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PassCtrl(0),
+							val_12F12_12P16Ctrl(1),
+							val_12F12_14P16Ctrl(2),
+							val_12F12_16F16Ctrl(3),
+							val_16L12_12F12Ctrl(4),
+							val_16L12_14L12Ctrl(5),
+							val_16F16_12F12Ctrl(6),
+							val_16F16_14L12Ctrl(7),
+							val_16F16_16L12Ctrl(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - ARC
+					PassCtrl  cmdID= 2207  value= 0  
+					12F12->12P16Ctrl  cmdID= 2207  value= 1  
+					12F12->14P16Ctrl  cmdID= 2207  value= 2  
+					12F12->16F16Ctrl  cmdID= 2207  value= 3  
+					16L12->12F12Ctrl  cmdID= 2207  value= 4  
+					16L12->14L12Ctrl  cmdID= 2207  value= 5  
+					16F16->12F12Ctrl  cmdID= 2207  value= 6  
+					16F16->14L12Ctrl  cmdID= 2207  value= 7  
+					16F16->16L12Ctrl  cmdID= 2207  value= 8  "
+		::= { iqarc01CmdEntry 2207 }
+
+
+	iqarc01ARCPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Pan  cmdID= 1402  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqarc01CmdEntry 1402 }
+
+
+	iqarc01ARCTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Tilt  cmdID= 1403  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqarc01CmdEntry 1403 }
+
+
+	iqarc01ARCPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_12F12_14P16(2),
+							val_12F12_16F16(3),
+							val_16L12_12F12(4),
+							val_16L12_14L12(5),
+							val_16F16_12F12(6),
+							val_16F16_14L12(7),
+							val_16F16_16L12(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Preset  cmdID= 1900 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					12F12->14P16  value= 2  
+					12F12->16F16  value= 3  
+					16L12->12F12  value= 4  
+					16L12->14L12  value= 5  
+					16F16->12F12  value= 6  
+					16F16->14L12  value= 7  
+					16F16->16L12  value= 8  "
+		::= { iqarc01CmdEntry 1900 }
+
+
+	iqarc01ARCAperture OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_One_field(0),
+							val_Two_fields_1_2(1),
+							val_Two_fields_2_1(2),
+							val_Three_fields(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Aperture  cmdID= 1913 
+					One field  value= 0  
+					Two fields 1&2  value= 1  
+					Two fields 2&1  value= 2  
+					Three fields  value= 3  "
+		::= { iqarc01CmdEntry 1913 }
+
+
+	iqarc01ARCMinDelayPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Pan  cmdID= 2201  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqarc01CmdEntry 2201 }
+
+
+	iqarc01ARCMinDelayPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_16F16_12F12(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Preset  cmdID= 2202 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					16F16->12F12  value= 2  "
+		::= { iqarc01CmdEntry 2202 }
+
+
+	iqarc01VideoLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma Gain  cmdID= 1421  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqarc01CmdEntry 1421 }
+
+
+	iqarc01VideoBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Black Level  cmdID= 1423  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqarc01CmdEntry 1423 }
+
+
+	iqarc01VideoChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Chroma Gain  cmdID= 1422  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqarc01CmdEntry 1422 }
+
+
+	iqarc01VideoLimitingMinYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Min Y Clip Level  cmdID= 1427  min= -50000  max= 49200  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = -50.0 mV  Max = 49.2 mV  Step =  0.8 mV "
+		::= { iqarc01CmdEntry 1427 }
+
+
+	iqarc01VideoLimitingMaxYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Max Y Clip Level  cmdID= 1426  min= 635000  max= 764600  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = 635.0 mV  Max = 764.6 mV  Step =  0.8 mV "
+		::= { iqarc01CmdEntry 1426 }
+
+
+	iqarc01VideoLimitingMinCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Min C Clip Level  cmdID= 1425  min= -400000  max= -200000  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = -400.0 mV  Max = -200.0 mV  Step =  0.8 mV "
+		::= { iqarc01CmdEntry 1425 }
+
+
+	iqarc01VideoLimitingMaxCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Max C Clip Level  cmdID= 1424  min= 200000  max= 400000  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = 200.0 mV  Max = 400.0 mV  Step =  0.8 mV "
+		::= { iqarc01CmdEntry 1424 }
+
+
+	iqarc01Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Manual(0),
+							val_Min_Delay(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Mode  cmdID= 1910 
+					Manual  value= 0  
+					Min Delay  value= 2  "
+		::= { iqarc01CmdEntry 1910 }
+
+
+	iqarc01BlankingInputLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Left  cmdID= 1411  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqarc01CmdEntry 1411 }
+
+
+	iqarc01BlankingInputRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Right  cmdID= 1412  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqarc01CmdEntry 1412 }
+
+
+	iqarc01BlankingInputTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Top  cmdID= 1413  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqarc01CmdEntry 1413 }
+
+
+	iqarc01BlankingInputBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Bottom  cmdID= 1414  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqarc01CmdEntry 1414 }
+
+
+	iqarc01BlankingInputForcetoBlack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Force to Black  cmdID= 1415 "
+		::= { iqarc01CmdEntry 1415 }
+
+
+	iqarc01BlankingOutputLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Left  cmdID= 1416  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqarc01CmdEntry 1416 }
+
+
+	iqarc01BlankingOutputRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Right  cmdID= 1417  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqarc01CmdEntry 1417 }
+
+
+	iqarc01BlankingOutputTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Top  cmdID= 1418  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqarc01CmdEntry 1418 }
+
+
+	iqarc01BlankingOutputBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Bottom  cmdID= 1419  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqarc01CmdEntry 1419 }
+
+
+	iqarc01BlankingOutputForcetoBlack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Force to Black  cmdID= 1420 "
+		::= { iqarc01CmdEntry 1420 }
+
+
+	iqarc01BlankingStd525line21_283 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Picture(0),
+							val_Closed_Caption(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Blanking
+					Std525 line21/283  cmdID= 1953 
+					Picture  value= 0  
+					Closed Caption  value= 1  "
+		::= { iqarc01CmdEntry 1953 }
+
+
+	iqarc01BlankingVertEdgeFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Vert Edge Filter  cmdID= 1950 "
+		::= { iqarc01CmdEntry 1950 }
+
+
+	iqarc01BlankingDeleteWSS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Delete WSS  cmdID= 1954 "
+		::= { iqarc01CmdEntry 1954 }
+
+
+	iqarc01BlankingDeleteVI OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Delete VI  cmdID= 1955 "
+		::= { iqarc01CmdEntry 1955 }
+
+
+	iqarc01ByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ByPass  cmdID= 1410 "
+		::= { iqarc01CmdEntry 1410 }
+
+
+	iqarc01Freeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 1208 "
+		::= { iqarc01CmdEntry 1208 }
+
+
+	iqarc01UserMemMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqarc01CmdEntry 1600 }
+
+
+	iqarc01UserMemMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqarc01CmdEntry 1601 }
+
+
+	iqarc01UserMemMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqarc01CmdEntry 1602 }
+
+
+	iqarc01UserMemMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 1  cmdID= 1603  "
+		::= { iqarc01CmdEntry 1603 }
+
+
+	iqarc01UserMemMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqarc01CmdEntry 1604 }
+
+
+	iqarc01UserMemMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqarc01CmdEntry 1605 }
+
+
+	iqarc01UserMemMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqarc01CmdEntry 1606 }
+
+
+	iqarc01UserMemMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 2  cmdID= 1607  "
+		::= { iqarc01CmdEntry 1607 }
+
+
+	iqarc01UserMemMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqarc01CmdEntry 1608 }
+
+
+	iqarc01UserMemMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqarc01CmdEntry 1609 }
+
+
+	iqarc01UserMemMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqarc01CmdEntry 1610 }
+
+
+	iqarc01UserMemMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 3  cmdID= 1611  "
+		::= { iqarc01CmdEntry 1611 }
+
+
+	iqarc01UserMemMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqarc01CmdEntry 1612 }
+
+
+	iqarc01UserMemMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqarc01CmdEntry 1613 }
+
+
+	iqarc01UserMemMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqarc01CmdEntry 1614 }
+
+
+	iqarc01UserMemMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 4  cmdID= 1615  "
+		::= { iqarc01CmdEntry 1615 }
+
+
+	iqarc01UserMemMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqarc01CmdEntry 1616 }
+
+
+	iqarc01UserMemMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqarc01CmdEntry 1617 }
+
+
+	iqarc01UserMemMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqarc01CmdEntry 1618 }
+
+
+	iqarc01UserMemMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 5  cmdID= 1619  "
+		::= { iqarc01CmdEntry 1619 }
+
+
+	iqarc01UserMemMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqarc01CmdEntry 1620 }
+
+
+	iqarc01UserMemMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqarc01CmdEntry 1621 }
+
+
+	iqarc01UserMemMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqarc01CmdEntry 1622 }
+
+
+	iqarc01UserMemMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 6  cmdID= 1623  "
+		::= { iqarc01CmdEntry 1623 }
+
+
+	iqarc01UserMemMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqarc01CmdEntry 1624 }
+
+
+	iqarc01UserMemMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqarc01CmdEntry 1625 }
+
+
+	iqarc01UserMemMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqarc01CmdEntry 1626 }
+
+
+	iqarc01UserMemMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 7  cmdID= 1627  "
+		::= { iqarc01CmdEntry 1627 }
+
+
+	iqarc01UserMemMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqarc01CmdEntry 1628 }
+
+
+	iqarc01UserMemMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqarc01CmdEntry 1629 }
+
+
+	iqarc01UserMemMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqarc01CmdEntry 1630 }
+
+
+	iqarc01UserMemMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 8  cmdID= 1631  "
+		::= { iqarc01CmdEntry 1631 }
+
+
+	iqarc01UserMemMemory9Save9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 9  cmdID= 1632  value= 1  "
+		::= { iqarc01CmdEntry 1632 }
+
+
+	iqarc01UserMemMemory9Recall9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 9  cmdID= 1633  value= 1  "
+		::= { iqarc01CmdEntry 1633 }
+
+
+	iqarc01UserMemMemory9Clear9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 9  cmdID= 1634  value= 1  "
+		::= { iqarc01CmdEntry 1634 }
+
+
+	iqarc01UserMemMemory9Name9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 9  cmdID= 1635  "
+		::= { iqarc01CmdEntry 1635 }
+
+
+	iqarc01UserMemMemory10Save10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 10  cmdID= 1636  value= 1  "
+		::= { iqarc01CmdEntry 1636 }
+
+
+	iqarc01UserMemMemory10Recall10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 10  cmdID= 1637  value= 1  "
+		::= { iqarc01CmdEntry 1637 }
+
+
+	iqarc01UserMemMemory10Clear10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 10  cmdID= 1638  value= 1  "
+		::= { iqarc01CmdEntry 1638 }
+
+
+	iqarc01UserMemMemory10Name10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 10  cmdID= 1639  "
+		::= { iqarc01CmdEntry 1639 }
+
+
+	iqarc01UserMemMemory11Save11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 11  cmdID= 1640  value= 1  "
+		::= { iqarc01CmdEntry 1640 }
+
+
+	iqarc01UserMemMemory11Recall11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 11  cmdID= 1641  value= 1  "
+		::= { iqarc01CmdEntry 1641 }
+
+
+	iqarc01UserMemMemory11Clear11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 11  cmdID= 1642  value= 1  "
+		::= { iqarc01CmdEntry 1642 }
+
+
+	iqarc01UserMemMemory11Name11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 11  cmdID= 1643  "
+		::= { iqarc01CmdEntry 1643 }
+
+
+	iqarc01UserMemMemory12Save12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 12  cmdID= 1644  value= 1  "
+		::= { iqarc01CmdEntry 1644 }
+
+
+	iqarc01UserMemMemory12Recall12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 12  cmdID= 1645  value= 1  "
+		::= { iqarc01CmdEntry 1645 }
+
+
+	iqarc01UserMemMemory12Clear12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 12  cmdID= 1646  value= 1  "
+		::= { iqarc01CmdEntry 1646 }
+
+
+	iqarc01UserMemMemory12Name12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 12  cmdID= 1647  "
+		::= { iqarc01CmdEntry 1647 }
+
+
+	iqarc01UserMemMemory13Save13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 13  cmdID= 1648  value= 1  "
+		::= { iqarc01CmdEntry 1648 }
+
+
+	iqarc01UserMemMemory13Recall13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 13  cmdID= 1649  value= 1  "
+		::= { iqarc01CmdEntry 1649 }
+
+
+	iqarc01UserMemMemory13Clear13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 13  cmdID= 1650  value= 1  "
+		::= { iqarc01CmdEntry 1650 }
+
+
+	iqarc01UserMemMemory13Name13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 13  cmdID= 1651  "
+		::= { iqarc01CmdEntry 1651 }
+
+
+	iqarc01UserMemMemory14Save14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 14  cmdID= 1652  value= 1  "
+		::= { iqarc01CmdEntry 1652 }
+
+
+	iqarc01UserMemMemory14Recall14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 14  cmdID= 1653  value= 1  "
+		::= { iqarc01CmdEntry 1653 }
+
+
+	iqarc01UserMemMemory14Clear14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 14  cmdID= 1654  value= 1  "
+		::= { iqarc01CmdEntry 1654 }
+
+
+	iqarc01UserMemMemory14Name14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 14  cmdID= 1655  "
+		::= { iqarc01CmdEntry 1655 }
+
+
+	iqarc01UserMemMemory15Save15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 15  cmdID= 1656  value= 1  "
+		::= { iqarc01CmdEntry 1656 }
+
+
+	iqarc01UserMemMemory15Recall15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 15  cmdID= 1657  value= 1  "
+		::= { iqarc01CmdEntry 1657 }
+
+
+	iqarc01UserMemMemory15Clear15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 15  cmdID= 1658  value= 1  "
+		::= { iqarc01CmdEntry 1658 }
+
+
+	iqarc01UserMemMemory15Name15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 15  cmdID= 1659  "
+		::= { iqarc01CmdEntry 1659 }
+
+
+	iqarc01UserMemMemory16Save16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 16  cmdID= 1660  value= 1  "
+		::= { iqarc01CmdEntry 1660 }
+
+
+	iqarc01UserMemMemory16Recall16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 16  cmdID= 1661  value= 1  "
+		::= { iqarc01CmdEntry 1661 }
+
+
+	iqarc01UserMemMemory16Clear16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 16  cmdID= 1662  value= 1  "
+		::= { iqarc01CmdEntry 1662 }
+
+
+	iqarc01UserMemMemory16Name16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 16  cmdID= 1663  "
+		::= { iqarc01CmdEntry 1663 }
+
+
+	iqarc01SetupBorderColour OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Blue(1),
+							val_Red(2),
+							val_Green(3),
+							val_White(4),
+							val_Grey(5),
+							val_User_A(6),
+							val_User_B(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Border Colour
+					Black  cmdID= 1431  value= 0  
+					Blue  cmdID= 1431  value= 1  
+					Red  cmdID= 1431  value= 2  
+					Green  cmdID= 1431  value= 3  
+					White  cmdID= 1431  value= 4  
+					Grey  cmdID= 1431  value= 5  
+					User A  cmdID= 1431  value= 6  
+					User B  cmdID= 1431  value= 7  "
+		::= { iqarc01CmdEntry 1431 }
+
+
+	iqarc01BorderColourSetUsrAUserARed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Red  cmdID= 1432  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1432 }
+
+
+	iqarc01BorderColourSetUsrAUserAGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Green  cmdID= 1433  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1433 }
+
+
+	iqarc01BorderColourSetUsrAUserABlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Blue  cmdID= 1434  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1434 }
+
+
+	iqarc01BorderColourSetUsrBUserBRed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Red  cmdID= 1435  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1435 }
+
+
+	iqarc01BorderColourSetUsrBUserBGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Green  cmdID= 1436  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1436 }
+
+
+	iqarc01BorderColourSetUsrBUserBBlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Blue  cmdID= 1437  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqarc01CmdEntry 1437 }
+
+
+	iqarc01PatternCaptionCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- Pattern & Caption
+					Edit Caption  cmdID= 1041  "
+		::= { iqarc01CmdEntry 1041 }
+
+
+	iqarc01PatternCaptionCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_Caption_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern & Caption
+					Caption Off  cmdID= 1037  value= 0  
+					Caption On  cmdID= 1037  value= 1  "
+		::= { iqarc01CmdEntry 1037 }
+
+
+	iqarc01PatternCaptionPatternsEnablePattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Enable Pattern  cmdID= 1035 "
+		::= { iqarc01CmdEntry 1035 }
+
+
+	iqarc01PatternCaptionPatterns OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern & Caption
+					Black  cmdID= 1036  value= 0  
+					EBU Colour Bars  cmdID= 1036  value= 1  
+					100% Colour Bars  cmdID= 1036  value= 2  
+					Ramp  cmdID= 1036  value= 3  
+					Multiburst  cmdID= 1036  value= 4  
+					Pulse & Bar  cmdID= 1036  value= 5  
+					Green  cmdID= 1036  value= 6  "
+		::= { iqarc01CmdEntry 1036 }
+
+
+	iqarc01PatternCaptionInsertionProcessedPath OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Processed Path  cmdID= 1055 "
+		::= { iqarc01CmdEntry 1055 }
+
+
+	iqarc01PatternCaptionInsertionUnprocessedPath OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Unprocessed Path  cmdID= 1056 "
+		::= { iqarc01CmdEntry 1056 }
+
+
+	iqarc01SetupOutputRoutingMonitoringOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Processed(0),
+							val_Unprocessed(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Monitoring Output  cmdID= 1952 
+					Processed  value= 0  
+					Unprocessed  value= 1  "
+		::= { iqarc01CmdEntry 1952 }
+
+
+	iqarc01SetupStandard525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					525  cmdID= 1405 "
+		::= { iqarc01CmdEntry 1405 }
+
+
+	iqarc01SetupStandard625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					625  cmdID= 1406 "
+		::= { iqarc01CmdEntry 1406 }
+
+
+	iqarc01GPIIOGPIInputDisableInputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Disable Inputs  cmdID= 2605 "
+		::= { iqarc01CmdEntry 2605 }
+
+
+	iqarc01GPIIOGPIInput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI In  cmdID= 2010  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqarc01CmdEntry 2010 }
+
+
+	iqarc01GPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2011  min= -1  max= 25  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 25  Step = 1 "
+		::= { iqarc01CmdEntry 2011 }
+
+
+	iqarc01GPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqarc01CmdEntry 2048 }
+
+
+	iqarc01GPIIOGPIOutputOutActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Out Active High  cmdID= 3540 "
+		::= { iqarc01CmdEntry 3540 }
+
+
+	iqarc01GPIIOGPIOutput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI Out  cmdID= 2012  min= 0  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 3  Step = 1 "
+		::= { iqarc01CmdEntry 2012 }
+
+
+	iqarc01GPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Lost(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2013 
+					Input Lost  value= 0  
+					Standard 625  value= 1  
+					Video Delay  value= 2  
+					Unused  value= 3  "
+		::= { iqarc01CmdEntry 2013 }
+
+
+	iqarc01GPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqarc01CmdEntry 2049 }
+
+
+	iqarc01GPIIOGPIInputOutputGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 1  cmdID= 2014 "
+		::= { iqarc01CmdEntry 2014 }
+
+
+	iqarc01GPIIOGPIInputOutputGPIO2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 2  cmdID= 2015 "
+		::= { iqarc01CmdEntry 2015 }
+
+
+	iqarc01GPIIOGPIInputOutputGPIO3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 3  cmdID= 2016 "
+		::= { iqarc01CmdEntry 2016 }
+
+
+	iqarc01GPIIOGPIInputOutputGPIO4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 4  cmdID= 2017 "
+		::= { iqarc01CmdEntry 2017 }
+
+
+	iqarc01SetupGPIIOGPIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI In  cmdID= 2874  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqarc01CmdEntry 2874 }
+
+
+	iqarc01SetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2875  min= -1  max= 25  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 25  Step = 1 "
+		::= { iqarc01CmdEntry 2875 }
+
+
+	iqarc01SetupGPIIOGPIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI Out  cmdID= 2876  min= 0  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 3  Step = 1 "
+		::= { iqarc01CmdEntry 2876 }
+
+
+	iqarc01SetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Lost(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2877 
+					Input Lost  value= 0  
+					Standard 625  value= 1  
+					Video Delay  value= 2  
+					Unused  value= 3  "
+		::= { iqarc01CmdEntry 2877 }
+
+
+	iqarc01SetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 1495  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqarc01CmdEntry 1495 }
+
+
+	iqarc01SetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 1496  min= -1  max= 4  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 4  Step = 1 "
+		::= { iqarc01CmdEntry 1496 }
+
+
+	iqarc01SetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- RollTrack
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqarc01CmdEntry 1513 }
+
+
+	iqarc01SetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 1497  "
+		::= { iqarc01CmdEntry 1497 }
+
+
+	iqarc01SetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 1498  "
+		::= { iqarc01CmdEntry 1498 }
+
+
+	iqarc01SetupRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqarc01CmdEntry 1514 }
+
+
+	iqarc01SetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqarc01CmdEntry 1511 }
+
+
+	iqarc01SetupRollTrackRollTrack_Index OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 2870  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqarc01CmdEntry 2870 }
+
+
+	iqarc01SetupRollTrackRollTrack_Source OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 2871  min= -1  max= 4  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 4  Step = 1 "
+		::= { iqarc01CmdEntry 2871 }
+
+
+	iqarc01SetupRollTrackRollTrack_Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 2872  "
+		::= { iqarc01CmdEntry 2872 }
+
+
+	iqarc01SetupRollTrackRollTrack_Command OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 2873  "
+		::= { iqarc01CmdEntry 2873 }
+
+
+	iqarc01SetupInformationEDHReset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_EDH_Reset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					EDH Reset  cmdID= 1409  value= 1  "
+		::= { iqarc01CmdEntry 1409 }
+
+
+	iqarc01SetupInformation OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Status_Information(0),
+							val_EDH_Errors(1),
+							val_EDH_FF(2),
+							val_EDH_AP(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Status Information  cmdID= 1915  value= 0  
+					EDH Errors  cmdID= 1915  value= 1  
+					EDH FF  cmdID= 1915  value= 2  
+					EDH AP  cmdID= 1915  value= 3  "
+		::= { iqarc01CmdEntry 1915 }
+
+
+	iqarc01SetupDefaultOut OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Freeze(2),
+							val_Black(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Out
+					Freeze  cmdID= 1202  value= 2  
+					Black  cmdID= 1202  value= 4  "
+		::= { iqarc01CmdEntry 1202 }
+
+
+	iqarc01SetupLoggingInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input  cmdID= 1060 "
+		::= { iqarc01CmdEntry 1060 }
+
+
+	iqarc01SetupLoggingStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Standard  cmdID= 1061 "
+		::= { iqarc01CmdEntry 1061 }
+
+
+	iqarc01SetupLoggingEDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					EDH  cmdID= 1064 "
+		::= { iqarc01CmdEntry 1064 }
+
+
+	iqarc01SetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					EDH Errors  cmdID= 1070 "
+		::= { iqarc01CmdEntry 1070 }
+
+
+	iqarc01SetupSmoothTransitionsManualMinDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Manual/Min Delay  cmdID= 1911 "
+		::= { iqarc01CmdEntry 1911 }
+
+
+	iqarc01SetupTerminology OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WRT9(0),
+							val_PB_LB(1),
+							val_Ratio(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Terminology  cmdID= 1505 
+					WRT9  value= 0  
+					PB/LB  value= 1  
+					Ratio  value= 2  "
+		::= { iqarc01CmdEntry 1505 }
+
+
+	iqarc01StatusInputSDI OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					SDI  cmdID= 2666  format=   "
+		::= { iqarc01CmdEntry 2666 }
+
+
+	iqarc01StatusInputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Standard  cmdID= 2667  format=   "
+		::= { iqarc01CmdEntry 2667 }
+
+
+	iqarc01StatusEDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					EDH  cmdID= 2675  format=   "
+		::= { iqarc01CmdEntry 2675 }
+
+
+	iqarc01StatusEDHErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Error Count  cmdID= 2676  format=   "
+		::= { iqarc01CmdEntry 2676 }
+
+
+	iqarc01SetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Software Version  cmdID= 2  format=   "
+		::= { iqarc01CmdEntry 2 }
+
+
+	iqarc01SetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Serial No  cmdID= 1  format=   "
+		::= { iqarc01CmdEntry 1 }
+
+
+	iqarc01SetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqarc01CmdEntry 3 }
+
+
+	iqarc01SetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Restart  cmdID= 4  value= 1  "
+		::= { iqarc01CmdEntry 4 }
+
+
+	iqarc01SetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Build No  cmdID= 5  format=   "
+		::= { iqarc01CmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: FAIL
+--				: OK
+--				: RESET
+-- 				: 
+-- Comments		: This log field shows the EDH status of the SDI
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 525
+-- Comments		: This log field shows the detected video standard of the input. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: This log field shows the detected video state of the SDI input.
+--				: LOST indicates no input detected.  ERR indicates that an SDI 
+--				: input has been detected but it is an incorrect standard.
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the number of seconds during which EDH
+--				: errors were detected on the SDI input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+---------------------------------------------------------------------------------------------------

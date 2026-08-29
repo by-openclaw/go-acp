@@ -1,0 +1,162 @@
+---
+# Score our Node against the AMWA NMOS Testing Tool.
+#
+# Not idempotent in the run-twice-equals-zero-changes sense, and should
+# not be: it is a measurement, and re-running it produces a fresh
+# result set. What IS stable is the input — the image is rebuilt from
+# the repo every time, so a score always names the source that earned
+# it.
+
+- name: The oracle must already be running
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/"
+    status_code: [200]
+  register: dhs_amwa_node_tool
+  failed_when: dhs_amwa_node_tool.status != 200
+
+# Source staging goes over tar, not rsync.
+#
+# ansible.posix.synchronize needs rsync on BOTH the control node and
+# the target, and neither of these slim LXCs ships it. Installing it in
+# two places to move 7 MB once per run is a dependency bought for
+# nothing — tar is in every base image, and the archive is built from
+# `git ls-files` so the build context is exactly what is COMMITTED.
+# That last part matters more than the transport: a conformance score
+# has to name a commit, and staging the working tree would let a
+# forgotten local edit into the number.
+#
+# The results directory is excluded even though it is tracked: it is
+# this play's OUTPUT, not its input. Including it also made the archive
+# fail outright once the fetch step began clearing the directory first
+# -- git still listed files that were no longer on disk, and tar
+# stopped on the first one it could not stat.
+- name: Build a source archive from tracked files
+  ansible.builtin.command:
+    cmd: git ls-files -z
+    chdir: "{{ playbook_dir }}/../.."
+  register: dhs_amwa_node_tracked
+  delegate_to: localhost
+  changed_when: false
+
+- name: Record the commit being scored
+  ansible.builtin.command:
+    cmd: git rev-parse HEAD
+    chdir: "{{ playbook_dir }}/../.."
+  register: dhs_amwa_node_commit
+  delegate_to: localhost
+  changed_when: false
+
+- name: Archive the tracked source (assets and testdata dropped — none of it compiles)
+  ansible.builtin.shell:
+    cmd: >-
+      git ls-files -z
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
+      | tar --null -T - -czf /tmp/dhs-amwa-src.tgz
+    chdir: "{{ playbook_dir }}/../.."
+  delegate_to: localhost
+  changed_when: true
+
+# Wiped, not merely ensured.
+#
+# Unpacking a tar over an existing tree ADDS and OVERWRITES; it never
+# removes. A file deleted or renamed in the commit under test therefore
+# survives from the previous run, and Go sees both the old and the new
+# copy: "IS09FetchOptions redeclared in this block". The build fails on
+# code that compiles perfectly in the repo, which sends you looking for
+# a bug that is not there.
+- name: Stage directory (wiped first)
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_dir }}/src"
+    state: "{{ item }}"
+    mode: "0755"
+  loop: [absent, directory]
+
+- name: Ship and unpack the source
+  ansible.builtin.unarchive:
+    src: /tmp/dhs-amwa-src.tgz
+    dest: "{{ dhs_amwa_node_dir }}/src"
+  register: dhs_amwa_node_sync
+
+- name: Report the commit under test
+  ansible.builtin.debug:
+    msg: "scoring commit {{ dhs_amwa_node_commit.stdout | default('unknown') }}"
+
+# Delete the old image BEFORE building the new one.
+#
+# A failed build leaves the previous image in place under the same tag,
+# and every later task runs happily against it — so the run reports a
+# full set of scores for a commit it never compiled. That is the worst
+# possible failure mode for a conformance harness: not a missing
+# number, but a plausible wrong one. Without the image there is nothing
+# to score and the run stops where it should.
+- name: Drop the previous node image
+  ansible.builtin.command: docker rmi -f {{ dhs_amwa_node_image }}
+  changed_when: true
+  failed_when: false
+
+- name: Build the node image from that source
+  ansible.builtin.command:
+    cmd: >-
+      docker build
+      -f tests/integration/nmos/amwa/Dockerfile.node
+      -t {{ dhs_amwa_node_image }}
+      .
+    chdir: "{{ dhs_amwa_node_dir }}/src"
+  register: dhs_amwa_node_build
+  changed_when: "'Successfully' in dhs_amwa_node_build.stdout or dhs_amwa_node_build.rc == 0"
+
+# Recreated, not just ensured. Yesterday's scores are not this run's.
+#
+# The fetch step collects whatever *.json is sitting here, so a suite
+# dropped from the list keeps reporting its last result forever — and
+# in a summary it reads exactly like a suite that ran and passed. Three
+# phantom IS-07 / IS-08 / IS-09 files survived that way into a run
+# where the node served none of those APIs.
+- name: Results directory (emptied first)
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_results }}"
+    state: "{{ item }}"
+    mode: "0755"
+  loop: [absent, directory]
+
+- name: Score each API version
+  ansible.builtin.include_tasks: round.yml
+  loop: "{{ dhs_amwa_node_api_vers }}"
+  loop_control:
+    loop_var: api_ver
+
+- name: Stop the node under test
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_node_name }}
+  changed_when: true
+  failed_when: false
+
+# The DESTINATION needs emptying too, not just the source.
+#
+# Emptying only the tooling host's directory leaves last run's files
+# sitting in the repo, and fetch copies over them without removing
+# what it did not produce. A suite dropped from the list keeps its old
+# score there — which is how a stale IS-09-02 file was still being
+# summarised after the suite had stopped running.
+- name: Clear previously fetched results
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_node_fetch_to }}"
+    state: "{{ item }}"
+    mode: "0755"
+  loop: [absent, directory]
+  delegate_to: localhost
+  run_once: true
+
+- name: Fetch the results into the repo
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: "{{ dhs_amwa_node_fetch_to }}/"
+    flat: true
+  loop: "{{ dhs_amwa_node_found.files | map(attribute='path') | list }}"
+  when: dhs_amwa_node_found.files | default([]) | length > 0
+
+- name: Report where the numbers are
+  ansible.builtin.debug:
+    msg: >-
+      {{ dhs_amwa_node_found.files | default([]) | length }} result file(s)
+      fetched to tests/integration/nmos/amwa/results/ — score them with
+      scripts/amwa/amwa-summarize.sh

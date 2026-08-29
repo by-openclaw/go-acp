@@ -14,9 +14,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"sort"
 	"strings"
@@ -48,10 +50,16 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSystem(ctx, rest)
 	case "walk":
 		return runNMOSWalk(ctx, rest)
+	case "connect":
+		return runNMOSConnect(ctx, rest)
+	case "set":
+		return runNMOSSet(ctx, rest)
+	case "facade":
+		return runNMOSFacade(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, connect, set, facade, events)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -264,9 +272,16 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	advertise := fs.String("advertise-host", "", "host[:port] placed in DNS-SD A/SRV records (default: hostname + bind port)")
 	mdns := fs.Bool("mdns", true, "advertise via mDNS")
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
+	unicast := fs.Bool("unicast", false, "discover the Registry via unicast DNS-SD instead of mDNS (IS-04 §3.1 for multicast-blocked plants)")
+	resolver := fs.String("resolver", "", "DNS server `IP[:port]` holding the _nmos-register._tcp records (with --unicast)")
+	domain := fs.String("domain", "", "search domain the registration SRV records live under (with --unicast)")
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
 	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
+	noConnection := fs.Bool("no-connection-api", false, "do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device")
+	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
+	systemURL := fs.String("system", "", "IS-09 System API as `host:port`, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional")
+	noRegistry := fs.Bool("no-registry", false, "stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -285,13 +300,25 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	if !*mdns || *noMDNS {
 		mode = "static"
 	}
+	if *unicast {
+		if *resolver == "" {
+			return fmt.Errorf("producer nmos serve: --unicast requires --resolver IP[:port]")
+		}
+		mode = "unicast"
+	}
 	cfg := provider.IS04NodeConfig{
-		Bind:          *bind,
-		AdvertiseHost: *advertise,
-		DiscoveryMode: mode,
-		Priority:      *priority,
-		APIVer:        *apiVer,
-		RegistryURL:   *registry,
+		Bind:             *bind,
+		AdvertiseHost:    *advertise,
+		DiscoveryMode:    mode,
+		Priority:         *priority,
+		APIVer:           *apiVer,
+		RegistryURL:      *registry,
+		UnicastResolver:  *resolver,
+		UnicastDomain:    *domain,
+		NoConnectionAPI:  *noConnection,
+		ConnectionAPIVer: *connectionAPIVer,
+		SystemURL:        *systemURL,
+		NoRegistry:       *noRegistry,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -300,7 +327,10 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("Node API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
-	fmt.Printf("  GET http://<host>%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", *bind, *apiVer)
+	if !*noConnection {
+		fmt.Printf("Connection API (IS-05): %s\n", strings.Join(srv.ConnectionVersions(), ", "))
+	}
+	fmt.Printf("  GET http://%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
 	}
@@ -487,8 +517,8 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("System API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/        (index)\n", *bind, *apiVer)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/global  (global resource)\n", *bind, *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/        (index)\n", displayBind(*bind), *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/global  (global resource)\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-system._tcp via mDNS.")
 	} else {
@@ -509,6 +539,8 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "", "IS-04 wire version exposed at /x-nmos/{registration,query}/<v>. Empty (default) mounts every codec registered (v1.0/v1.1/v1.2/v1.3 in parallel) — pin to one minor for per-version integration testing.")
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
+	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
+	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -533,15 +565,17 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		APIVer:           *apiVer,
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
+		PageLimitDefault: *pageLimitDefault,
+		InstanceName:     *instanceName,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {
 		verLabel = "<all>"
 	}
 	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, verLabel)
-	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, verLabel)
-	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, verLabel)
-	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, verLabel)
+	fmt.Printf("  Registration: POST/GET/DELETE under http://%s/x-nmos/registration/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  Query:        GET + POST /subscriptions under http://%s/x-nmos/query/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  WS subs:      ws://%s/x-nmos/query/%s/subscriptions/<id>/ws\n", displayBind(*bind), verLabel)
 	fmt.Printf("  GC: tick=%s, heartbeat-timeout=%s\n", *gcInterval, *heartbeatTimeout)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
@@ -555,7 +589,50 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 func printNMOSConsumerHelp() {
 	fmt.Println(`Usage:
   dhs consumer nmos discover [flags]
+  dhs consumer nmos walk     [flags]
+  dhs consumer nmos connect  [flags]
+  dhs consumer nmos set      [flags]
   dhs consumer nmos system   [flags]
+  dhs consumer nmos events   [flags]
+
+Start here — read one device with no Registry, no mDNS, no config:
+
+  dhs consumer nmos walk --node http://10.6.255.102:3000 -l
+
+walk — read a catalogue. Point it at ONE device or at a Registry.
+  --node URL            one Node directly (IS-04 peer-to-peer). The only way
+                        to reach a device that has not registered anywhere.
+  --registry URL        a Registry's Query API
+  --mdns / --unicast    discover a Registry instead of naming one
+  --api-ver V           pin a wire minor (v1.0/v1.1/v1.2/v1.3); default highest
+  -l                    list every resource with its UUID, not just counts
+  --json                emit the whole catalogue as JSON
+
+connect — route a Sender to a Receiver over IS-05. Addresses resources by
+UUID, because NMOS labels are mutable and non-unique. Use "walk -l" to get
+the UUIDs. The IS-05 endpoint is discovered from IS-04, never guessed.
+  --receiver UUID       required
+  --sender UUID         omit (or pass --disconnect) to disconnect
+  --dry-run             print the endpoint, the PATCH body and the receiver's
+                        CURRENT route, and send nothing. Do this first:
+                        routing moves real signal and IS-05 has no undo.
+  --mode M              activate_immediate (default) | activate_scheduled_relative
+                        | activate_scheduled_absolute
+  --when S:NS           TAI time for the scheduled modes (TAI = UTC + 37s)
+  (any of walk's --node / --registry / discovery flags)
+
+set — configure a Sender's IS-05 transport. connect points a Receiver at a
+Sender; this points a Sender at a network. A device can be fully connected
+and still move nothing: a real EVS Neuron ships every Sender enabled with
+destination_ip 0.0.0.0 — addressed nowhere.
+  --sender UUID         required
+  --destination IP,IP   one per transport leg, in device order. ST 2022-7
+                        senders have two legs and must not share a group.
+  --port N,N            one per leg; empty leaves the device's own
+  --enable / --disable  also set master_enable
+  --dry-run             print the PATCH body and the sender's current legs
+  --mode / --when       as for connect
+  (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
   --mdns                Use mDNS multicast (Mode A; default)
@@ -633,36 +710,41 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
 
 func runNMOSWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
+	node := fs.String("node", "", "walk ONE Node directly (http://host:port) — IS-04 peer-to-peer, no Registry in the path")
 	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
-	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry is set")
+	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry or --node is set")
 	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
 	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
 	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
-	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.1 / v1.2 / v1.3); empty = highest mutual")
+	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.0 / v1.1 / v1.2 / v1.3); empty = highest mutual")
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	asJSON := fs.Bool("json", false, "emit the whole catalogue as JSON instead of a summary")
+	long := fs.Bool("l", false, "list every resource, not just the counts")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *registry == "" && !*mdns && !*unicast {
-		return fmt.Errorf("nmos walk: pick exactly one of --registry / --mdns / --unicast")
+	if *node == "" && *registry == "" && !*mdns && !*unicast {
+		return fmt.Errorf("nmos walk: pick one of --node / --registry / --mdns / --unicast")
 	}
 
 	mode := ""
-	switch {
-	case *unicast:
-		if *resolver == "" {
-			return fmt.Errorf("nmos walk --unicast: --resolver is required")
+	if *node == "" && *registry == "" {
+		switch {
+		case *unicast:
+			if *resolver == "" {
+				return fmt.Errorf("nmos walk --unicast: --resolver is required")
+			}
+			mode = "unicast"
+		case *mdns:
+			mode = "mdns"
 		}
-		mode = "unicast"
-	case *mdns:
-		mode = "mdns"
 	}
 
 	rep := &spec.SliceReporter{}
-	logger := slog.Default()
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           logger,
+		Logger:           slog.Default(),
 		Reporter:         rep,
+		NodeURL:          *node,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
 		DiscoveryTimeout: *timeout,
@@ -674,25 +756,125 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("nmos walk: %w", err)
 	}
 
-	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
-
 	snap, errs := c.Walk(ctx)
-	fmt.Printf("Catalogue:\n")
-	fmt.Printf("  nodes:     %d\n", len(snap.Nodes))
-	fmt.Printf("  devices:   %d\n", len(snap.Devices))
-	fmt.Printf("  sources:   %d\n", len(snap.Sources))
-	fmt.Printf("  flows:     %d\n", len(snap.Flows))
-	fmt.Printf("  senders:   %d\n", len(snap.Senders))
-	fmt.Printf("  receivers: %d\n", len(snap.Receivers))
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(snap); err != nil {
+			return err
+		}
+	} else {
+		printWalkSummary(c, snap, *long)
+	}
+
 	for _, e := range errs {
 		fmt.Fprintf(os.Stderr, "warn: %v\n", e)
 	}
-	if events := rep.Snapshot(); len(events) > 0 {
-		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
-		for _, ev := range events {
-			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n",
-				ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+	printComplianceSummary(rep.Snapshot())
+	return nil
+}
+
+// printWalkSummary renders a catalogue for a human: counts first,
+// because that is the question being asked most of the time. -l adds
+// the per-resource detail an engineer needs to pick an id to route.
+func printWalkSummary(c *consumer.Controller, snap *consumer.CatalogueSnapshot, long bool) {
+	kind := "Registry"
+	if c.IsNodeFace() {
+		kind = "Node"
+	}
+	fmt.Printf("%s %s  (IS-04 %s, spec %s)\n\n", kind, c.BaseURL(),
+		c.Codec().APIVer(), c.Codec().SpecPatch())
+
+	for _, row := range []struct {
+		name string
+		n    int
+	}{
+		{"nodes", len(snap.Nodes)},
+		{"devices", len(snap.Devices)},
+		{"sources", len(snap.Sources)},
+		{"flows", len(snap.Flows)},
+		{"senders", len(snap.Senders)},
+		{"receivers", len(snap.Receivers)},
+	} {
+		fmt.Printf("  %-10s %d\n", row.name, row.n)
+	}
+
+	if !long {
+		fmt.Printf("\n  -l lists every resource; --json emits the whole catalogue\n")
+		return
+	}
+
+	for _, n := range snap.Nodes {
+		fmt.Printf("\nNODE      %s  %s\n", n.ID, n.Label)
+		fmt.Printf("          href=%s\n", n.Href)
+	}
+	for _, d := range snap.Devices {
+		fmt.Printf("\nDEVICE    %s  %s\n", d.ID, d.Label)
+		for _, ctl := range d.Controls {
+			fmt.Printf("          control  %-46s %s\n", ctl.Type, ctl.Href)
 		}
 	}
-	return nil
+	if len(snap.Senders) > 0 {
+		fmt.Printf("\nSENDERS (%d)\n", len(snap.Senders))
+		for _, s := range snap.Senders {
+			fmt.Printf("  %s  %-28s %s\n", s.ID, trunc(s.Label, 28), s.Transport)
+		}
+	}
+	if len(snap.Receivers) > 0 {
+		fmt.Printf("\nRECEIVERS (%d)\n", len(snap.Receivers))
+		for _, r := range snap.Receivers {
+			sub := "-"
+			if r.Subscription.SenderID != nil {
+				sub = *r.Subscription.SenderID
+			}
+			fmt.Printf("  %s  %-28s %-34s <- %s\n", r.ID, trunc(r.Label, 28), r.Transport, sub)
+		}
+	}
+}
+
+func trunc(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
+// printComplianceSummary collapses identical events before printing.
+// A 208-resource Node with one systematic deviation would otherwise
+// emit 208 identical lines and bury everything else.
+func printComplianceSummary(events []spec.ComplianceEvent) {
+	if len(events) == 0 {
+		return
+	}
+	type key struct{ sev, code, detail string }
+	counts := map[key]int{}
+	var order []key
+	for _, e := range events {
+		k := key{e.Severity.String(), e.Code, e.Detail}
+		if counts[k] == 0 {
+			order = append(order, k)
+		}
+		counts[k]++
+	}
+	fmt.Fprintf(os.Stderr, "\n%d compliance event(s), %d distinct:\n", len(events), len(order))
+	for _, k := range order {
+		fmt.Fprintf(os.Stderr, "  x%-4d [%s] %s: %s\n", counts[k], k.sev, k.code, k.detail)
+	}
+}
+
+// displayBind turns a listen address into one a reader can paste.
+//
+// "0.0.0.0:8235" and ":8235" are correct to bind and useless to click:
+// they name every interface, not an address. Printing 127.0.0.1 is the
+// honest minimum — it always works from the machine reading the banner.
+func displayBind(bind string) string {
+	host, port, err := net.SplitHostPort(bind)
+	if err != nil {
+		return bind
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" || host == "[::]" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
 }

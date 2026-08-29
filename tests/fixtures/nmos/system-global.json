@@ -1,0 +1,14 @@
+{
+ "id": "5c7f52f2-64a2-4f2e-8b9a-2c47bf5e0901",
+ "version": "1777651501:0",
+ "label": "dhs-system-global",
+ "description": "IS-09 global for the lab: heartbeat 4s marks Nodes that applied it (default is 5s), PTP domain 127 likewise distinct from device defaults",
+ "tags": {},
+ "is04": {
+  "heartbeat_interval": 4
+ },
+ "ptp": {
+  "announce_receipt_timeout": 3,
+  "domain_number": 127
+ }
+}

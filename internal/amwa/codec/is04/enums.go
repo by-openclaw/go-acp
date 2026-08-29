@@ -1,6 +1,9 @@
 package is04
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // APIVersion is the IS-04 wire version this codec implements.
 const APIVersion = "v1.3"
@@ -85,25 +88,170 @@ func IsValidFormatURN(u string) bool {
 	return !strings.HasPrefix(u, "urn:x-nmos:")
 }
 
-// Transport URNs (per IS-04 §3.7 / sender / receiver_core).
+// Transport URNs.
+//
+// The authoritative list is the NMOS Parameter Registers' Transports
+// register, NOT the IS-04 or IS-05 spec text: from IS-05 v1.2 onwards
+// "additional transport types and associated schemas are defined in
+// the Transports register" (IS-05 v1.2.0 Upgrade Path). A transport
+// can therefore appear without any spec being revised, which is
+// exactly how ndi and usb were missing here — nothing in a spec
+// document changed to announce them.
+//
+// Verified against the register 2026-08-26.
 const (
-	TransportRTP          = "urn:x-nmos:transport:rtp"
-	TransportRTPMcast     = "urn:x-nmos:transport:rtp.mcast"
-	TransportRTPUcast     = "urn:x-nmos:transport:rtp.ucast"
-	TransportDASH         = "urn:x-nmos:transport:dash"
-	TransportWebSocket    = "urn:x-nmos:transport:websocket"
-	TransportMQTT         = "urn:x-nmos:transport:mqtt"
+	TransportRTP       = "urn:x-nmos:transport:rtp"
+	TransportRTPMcast  = "urn:x-nmos:transport:rtp.mcast"
+	TransportRTPUcast  = "urn:x-nmos:transport:rtp.ucast"
+	TransportDASH      = "urn:x-nmos:transport:dash"
+	TransportWebSocket = "urn:x-nmos:transport:websocket"
+	TransportMQTT      = "urn:x-nmos:transport:mqtt"
+	// Registered against IS-05 v1.2 / BCP-007-01 (NDI) and
+	// BCP-007-02 (USB).
+	TransportNDI = "urn:x-nmos:transport:ndi"
+	TransportUSB = "urn:x-nmos:transport:usb"
 )
 
-// IsNMOSTransport reports whether u is one of the six NMOS-defined
-// transport URNs.
-func IsNMOSTransport(u string) bool {
-	switch u {
-	case TransportRTP, TransportRTPMcast, TransportRTPUcast,
-		TransportDASH, TransportWebSocket, TransportMQTT:
+// transportMinIS05 is the earliest IS-05 minor each transport may
+// appear on.
+//
+// The gate is required, not cosmetic: IS-05's Upgrade Path says an
+// earlier API version "MUST NOT list any Senders or Receivers which
+// make use of this new transport type". A v1.1 tree offering an NDI
+// sender is non-conformant even though the URN is perfectly valid on
+// v1.2.
+var transportMinIS05 = map[string]string{
+	TransportRTP:       "v1.0",
+	TransportRTPMcast:  "v1.0",
+	TransportRTPUcast:  "v1.0",
+	TransportDASH:      "v1.0",
+	TransportWebSocket: "v1.1",
+	TransportMQTT:      "v1.1",
+	TransportNDI:       "v1.2",
+	TransportUSB:       "v1.2",
+}
+
+// transportMinIS04 is the earliest IS-04 minor each transport may
+// appear on. It is NOT the same table as transportMinIS05, and the
+// difference is not a rounding error.
+//
+// IS-05 accepted websocket and mqtt from v1.1; IS-04's sender.json did
+// not list them until v1.3. Verified against the AMWA schemas at each
+// tag (2026-08-26): v1.0's transport enum is exactly
+// {rtp, rtp.ucast, rtp.mcast, dash}, and v1.1 and v1.2 both reject
+// websocket with "not valid under any of the given schemas".
+//
+// So a Node serving IS-04 v1.2 CANNOT describe its own WebSocket event
+// sender, however valid that sender is on IS-05 v1.2. The two specs
+// version independently and a single table for both quietly asserts
+// they do not.
+var transportMinIS04 = map[string]string{
+	TransportRTP:       "v1.0",
+	TransportRTPMcast:  "v1.0",
+	TransportRTPUcast:  "v1.0",
+	TransportDASH:      "v1.0",
+	TransportWebSocket: "v1.3",
+	TransportMQTT:      "v1.3",
+	TransportNDI:       "v1.3",
+	TransportUSB:       "v1.3",
+}
+
+// IsTransportAtIS04 reports whether u may appear in an IS-04 tree
+// served at apiVer.
+//
+// A transport outside the NMOS namespace is a vendor transport, which
+// every minor permits — the version gate applies only to URNs AMWA
+// itself defines.
+func IsTransportAtIS04(u, apiVer string) bool {
+	if !IsValidTransportURN(u) {
+		return false
+	}
+	min, known := transportMinIS04[u]
+	if !known {
 		return true
 	}
-	return false
+	return compareAPIVer(apiVer, min) >= 0
+}
+
+// IsNMOSTransport reports whether u is a registered NMOS transport
+// URN, at any version.
+func IsNMOSTransport(u string) bool {
+	_, ok := transportMinIS05[u]
+	return ok
+}
+
+// IsNMOSTransportAt reports whether u is a registered NMOS transport
+// that may appear on the given IS-05 wire minor ("v1.0", "v1.1", …).
+//
+// An unknown minor is treated as the newest: a caller that cannot say
+// which version it is speaking should not have its transports silently
+// narrowed.
+func IsNMOSTransportAt(u, is05APIVer string) bool {
+	min, ok := transportMinIS05[u]
+	if !ok {
+		return false
+	}
+	return compareAPIVer(is05APIVer, min) >= 0
+}
+
+// NMOSTransportsAt lists the transports valid on one IS-05 minor, in
+// register order.
+func NMOSTransportsAt(is05APIVer string) []string {
+	ordered := []string{
+		TransportRTP, TransportRTPMcast, TransportRTPUcast, TransportDASH,
+		TransportWebSocket, TransportMQTT, TransportNDI, TransportUSB,
+	}
+	out := make([]string, 0, len(ordered))
+	for _, t := range ordered {
+		if IsNMOSTransportAt(t, is05APIVer) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// compareAPIVer orders "vMAJOR.MINOR" strings. An unparseable version
+// sorts ABOVE everything, so the unknown-minor case above degrades to
+// "allow", never to "silently drop".
+func compareAPIVer(a, b string) int {
+	amaj, amin, aok := splitAPIVer(a)
+	bmaj, bmin, bok := splitAPIVer(b)
+	switch {
+	case !aok:
+		return 1
+	case !bok:
+		return -1
+	case amaj != bmaj:
+		if amaj < bmaj {
+			return -1
+		}
+		return 1
+	case amin != bmin:
+		if amin < bmin {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
+func splitAPIVer(v string) (maj, min int, ok bool) {
+	if !strings.HasPrefix(v, "v") {
+		return 0, 0, false
+	}
+	dot := strings.IndexByte(v, '.')
+	if dot < 0 {
+		return 0, 0, false
+	}
+	maj, err := strconv.Atoi(v[1:dot])
+	if err != nil {
+		return 0, 0, false
+	}
+	min, err = strconv.Atoi(v[dot+1:])
+	if err != nil {
+		return 0, 0, false
+	}
+	return maj, min, true
 }
 
 // IsValidTransportURN matches the same shape rule as IsValidFormatURN.

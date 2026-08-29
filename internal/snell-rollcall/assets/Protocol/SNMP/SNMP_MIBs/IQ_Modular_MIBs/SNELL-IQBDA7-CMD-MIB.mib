@@ -1,0 +1,335 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBDA7
+--        Module Id#:176
+--       Command Set:5
+--          Filename:SNELL-IQBDA7-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:13/06/2005
+--              Time:09:32
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQBDA7-CMD-MIB.mib 228 2007-01-05 16:22:52Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBDA7-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBDA7,
+    moduleIQBDA7MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBDA7CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506130932Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBDA7MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbda7CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqbda7CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBDA7 1 }
+
+	iqbda7CmdEntry OBJECT-TYPE
+		SYNTAX		Iqbda7CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbda7SlotIndex }
+		::= { iqbda7CmdTable 1 }
+
+	Iqbda7CmdEntry ::=
+		SEQUENCE {
+			iqbda7SlotIndex
+				Unsigned32,
+			iqbda7Gain
+				INTEGER,
+			iqbda7MemoryWrite
+				INTEGER,
+			iqbda7MemoryRead
+				INTEGER,
+			iqbda7MemoryPreset
+				INTEGER,
+			iqbda7MemoryNameMemory1
+				RollCallString,
+			iqbda7MemoryNameMemory2
+				RollCallString,
+			iqbda7MemoryNameMemory3
+				RollCallString,
+			iqbda7MemoryNameMemory4
+				RollCallString,
+			iqbda7MemoryNamePresetAllNames
+				INTEGER,
+			iqbda7LoggingInputSilence
+				INTEGER,
+			iqbda7SetupPresetUnit
+				INTEGER,
+			iqbda7SetupSoftwareVersion
+				RollCallString,
+			iqbda7SetupSerialNo
+				RollCallString
+		}
+
+	iqbda7SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbda7CmdEntry 0 }
+
+
+	iqbda7Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Gain  cmdID= 4  min= -48  max= 60  step= 1  format= %1.2f dBu  div_scale= 2 
+					Min = -24.00 dBu  Max = 30.00 dBu  Step = 0.50 dBu "
+		::= { iqbda7CmdEntry 4 }
+
+
+	iqbda7MemoryWrite OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Write  cmdID= 6 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbda7CmdEntry 6 }
+
+
+	iqbda7MemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 7 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbda7CmdEntry 7 }
+
+
+	iqbda7MemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 8 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  "
+		::= { iqbda7CmdEntry 8 }
+
+
+	iqbda7MemoryNameMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 9  "
+		::= { iqbda7CmdEntry 9 }
+
+
+	iqbda7MemoryNameMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 10  "
+		::= { iqbda7CmdEntry 10 }
+
+
+	iqbda7MemoryNameMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 11  "
+		::= { iqbda7CmdEntry 11 }
+
+
+	iqbda7MemoryNameMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 12  "
+		::= { iqbda7CmdEntry 12 }
+
+
+	iqbda7MemoryNamePresetAllNames OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All_Names(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 13  value= 1  "
+		::= { iqbda7CmdEntry 13 }
+
+
+	iqbda7LoggingInputSilence OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Silence  cmdID= 14 "
+		::= { iqbda7CmdEntry 14 }
+
+
+	iqbda7SetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbda7CmdEntry 3 }
+
+
+	iqbda7SetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbda7CmdEntry 2 }
+
+
+	iqbda7SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbda7CmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.67.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.67.72
+-- Vary			: YES
+--
+-- Value(s)		: SILENCE
+--				: OK
+-- Comments		: This log field shows the detected audio state of the Channel input.
+--				: SILENCE indicates no or low level input detected at this Channel. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,15 @@
+[Version]
+version=13
+[630:13:15:0]
+Size=0,0,200,140
+Ctl0=Status=15,-1,0,-100,2,2,94,44
+Ctl1=Display Data,-1,0,-1,100,2,92,44
+Ctl2=INVISIBLE,0,0,-15,104,10,80,7
+Ctl3=INVISIBLE,1,0,-15,104,18,80,7
+Ctl4=INVISIBLE,2,0,-15,104,26,80,7
+Ctl5=INVISIBLE,3,0,-15,104,34,80,7
+Ctl6=Module Type,-1,0,-26,24,84,44,7
+Ctl7=Module Presence,-1,0,-26,24,94,50,7
+Ctl8=0,100,0,-18,82,84,59,8
+Ctl9=0,101,0,-18,82,94,59,8
+SaveSet=100,101

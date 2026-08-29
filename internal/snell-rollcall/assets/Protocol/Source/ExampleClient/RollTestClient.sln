@@ -1,0 +1,59 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RollTestClient", "RollTestClient.vcxproj", "{FBFAD721-CB81-401F-A745-3C6C91365190}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "K_os", "..\..\RollCall\Src\K_os\K_os.vcxproj", "{697DF838-6BEE-4534-BE97-DBD0D940043A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RollCallV2", "..\..\RollCall\Src\RollCallV2\RollCallV2.vcxproj", "{050089A9-4439-4F48-A377-C3C4C7CAE7D8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		DebugDll|Win32 = DebugDll|Win32
+		OnTimeDebug|Win32 = OnTimeDebug|Win32
+		OnTimeRelease|Win32 = OnTimeRelease|Win32
+		Release|Win32 = Release|Win32
+		ReleaseDll|Win32 = ReleaseDll|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.Debug|Win32.Build.0 = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.DebugDll|Win32.ActiveCfg = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.DebugDll|Win32.Build.0 = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.OnTimeDebug|Win32.ActiveCfg = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.OnTimeDebug|Win32.Build.0 = Debug|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.OnTimeRelease|Win32.ActiveCfg = Release|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.OnTimeRelease|Win32.Build.0 = Release|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.Release|Win32.ActiveCfg = Release|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.Release|Win32.Build.0 = Release|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.ReleaseDll|Win32.ActiveCfg = Release|Win32
+		{FBFAD721-CB81-401F-A745-3C6C91365190}.ReleaseDll|Win32.Build.0 = Release|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.Debug|Win32.Build.0 = Debug|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.DebugDll|Win32.ActiveCfg = DebugDll|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.DebugDll|Win32.Build.0 = DebugDll|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.OnTimeDebug|Win32.ActiveCfg = OnTimeDebug|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.OnTimeDebug|Win32.Build.0 = OnTimeDebug|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.OnTimeRelease|Win32.ActiveCfg = OnTimeRelease|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.OnTimeRelease|Win32.Build.0 = OnTimeRelease|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.Release|Win32.ActiveCfg = Release|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.Release|Win32.Build.0 = Release|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.ReleaseDll|Win32.ActiveCfg = ReleaseDll|Win32
+		{697DF838-6BEE-4534-BE97-DBD0D940043A}.ReleaseDll|Win32.Build.0 = ReleaseDll|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.Debug|Win32.Build.0 = Debug|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.DebugDll|Win32.ActiveCfg = DebugDll|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.DebugDll|Win32.Build.0 = DebugDll|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.OnTimeDebug|Win32.ActiveCfg = OnTimeDebug|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.OnTimeDebug|Win32.Build.0 = OnTimeDebug|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.OnTimeRelease|Win32.ActiveCfg = OnTimeRelease|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.OnTimeRelease|Win32.Build.0 = OnTimeRelease|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.Release|Win32.ActiveCfg = Release|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.Release|Win32.Build.0 = Release|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.ReleaseDll|Win32.ActiveCfg = ReleaseDll|Win32
+		{050089A9-4439-4F48-A377-C3C4C7CAE7D8}.ReleaseDll|Win32.Build.0 = ReleaseDll|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

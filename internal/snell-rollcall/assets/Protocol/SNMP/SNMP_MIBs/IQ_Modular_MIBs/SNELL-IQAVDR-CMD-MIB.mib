@@ -1,0 +1,287 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQAVDR
+--        Module Id#:108
+--       Command Set:5
+--  Software Version:
+--          Filename:SNELL-IQAVDR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:12:47
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQAVDR-CMD-MIB.mib 220 2006-12-08 11:47:52Z nikolaoskatsampekis $
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQAVDR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQAVDR,
+    moduleIQAVDRMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQAVDRCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101247Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQAVDRMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqavdrCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqavdrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQAVDR 1 }
+
+	iqavdrCmdEntry OBJECT-TYPE
+		SYNTAX		IqavdrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqavdrSlotIndex }
+		::= { iqavdrCmdTable 1 }
+
+	IqavdrCmdEntry ::=
+		SEQUENCE {
+			iqavdrSlotIndex
+				Unsigned32,
+			iqavdrGain
+				INTEGER,
+			iqavdrEqualization
+				INTEGER,
+			iqavdrAGC
+				INTEGER,
+			iqavdrACC
+				INTEGER,
+			iqavdrSetupPresetUnit
+				INTEGER,
+			iqavdrSetupLoggingInputStatus
+				INTEGER,
+			iqavdrSetupSoftwareVersion
+				RollCallString,
+			iqavdrSetupSerialNo
+				RollCallString
+		}
+
+	iqavdrSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqavdrCmdEntry 0 }
+
+
+	iqavdrGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Gain  cmdID= 5  min= -300  max= 300  step= 5  format= %.2f dB  div_scale= 100 
+					Min = -3.00 dB  Max = 3.00 dB  Step = 0.05 dB "
+		::= { iqavdrCmdEntry 5 }
+
+
+	iqavdrEqualization OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Equalization  cmdID= 6  min= 0  max= 200  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 200  Step = 1 "
+		::= { iqavdrCmdEntry 6 }
+
+
+	iqavdrAGC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AGC  cmdID= 7 "
+		::= { iqavdrCmdEntry 7 }
+
+
+	iqavdrACC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ACC  cmdID= 8 "
+		::= { iqavdrCmdEntry 8 }
+
+
+	iqavdrSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqavdrCmdEntry 3 }
+
+
+	iqavdrSetupLoggingInputStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Status  cmdID= 9 "
+		::= { iqavdrCmdEntry 9 }
+
+
+	iqavdrSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqavdrCmdEntry 2 }
+
+
+	iqavdrSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqavdrCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: NTSC
+--				: 525 MONO
+--				: PAL
+--				: 625 MONO
+--				: HD(720)
+--				: HD(1080)
+--				: HD(1250)
+--				: UNKNOWN
+-- Comments		: This log field shows the detected video standard of the input. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: WARNING:EQE:AGE:SLW:BLW
+--				: WARNING:EQE:AGE:SLW
+--				: WARNING:EQE:AGE:BLW
+--				: WARNING:EQE:AGE
+--				: WARNING:EQE:SLW:BLW
+--				: WARNING:EQE:SLW
+--				: WARNING:EQE:BLW
+--				: WARNING:EQE
+--				: WARNING:AGE:SLW:BLW
+--				: WARNING:AGE:SLW
+--				: WARNING:AGE:BLW
+--				: WARNING:AGE
+--				: WARNING:SLW:BLW
+--				: WARNING:SLW
+--				: WARNING:BLW
+-- Comments		: This log field shows the detected video state of the Analogue Video input.
+--				: LOST indicates no input detected. 
+--				: WARNING can indicate any combination of the following flags.
+--				: WARNING:EQE Automatic Equalisation is out of range
+--				: WARNING:AGE Automatic Gain Control is out of range
+--				: WARNING:SLW Sync level warning (level >10% or <10% typical from nominal)
+--				: WARNING:BLW Burst level warning (level >10% or <10% typical from nominal)	
+--
+---------------------------------------------------------------------------------------------------

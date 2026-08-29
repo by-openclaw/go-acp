@@ -129,14 +129,23 @@ const (
 	MaxPageLimit     = 1000
 )
 
+// SetDefaultPageLimit overrides the page size applied when a request
+// carries no paging.limit. n <= 0 restores the spec-parity default.
+// Clamped to MaxPageLimit like every other limit.
+func (s *Store) SetDefaultPageLimit(n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.defaultPageLimit = n
+}
+
 // ListPaged returns a page of resources of type t whose update_ts
 // falls in the half-open interval (Since, Until]. Page direction
 // depends on which cursor the caller pinned:
 //
 //   - opts.Since set                     → ascending: oldest items
-//                                          ABOVE the cursor first
+//     ABOVE the cursor first
 //   - opts.Until set OR neither set      → descending: newest items
-//                                          AT-OR-BELOW the cursor first
+//     AT-OR-BELOW the cursor first
 //
 // The body is always returned newest-first per IS-04 §6.1.6. The
 // X-Paging-{Since,Until} cursors anchor the side the caller asked for
@@ -146,6 +155,11 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 	limitProvided := opts.Limit > 0 // 0 / negative → default
 	if !limitProvided {
 		limit = DefaultPageLimit
+		s.mu.RLock()
+		if s.defaultPageLimit > 0 {
+			limit = s.defaultPageLimit
+		}
+		s.mu.RUnlock()
 	}
 	if limit > MaxPageLimit {
 		limit = MaxPageLimit
@@ -352,4 +366,3 @@ func collectTyped(t is04.ResourceType, items []any) any {
 	}
 	return items
 }
-

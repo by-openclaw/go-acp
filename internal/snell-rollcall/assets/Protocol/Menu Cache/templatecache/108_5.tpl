@@ -1,0 +1,99 @@
+[Version]
+Version=2
+
+[108:5:15:0]
+Size=0, 0, 144, 142
+Ctl0=Control=15:Setup=3:Setup=4:Setup=8:Help=15:Factory=8,-1,0,-100,4,8,32,40
+Ctl1=Information,-1,0,-1,40,0,100,53
+Ctl2=INVISIBLE,1,0,-15,44,12,92,8
+Ctl3=INVISIBLE,2,0,-15,44,24,92,8
+Ctl4=INVISIBLE,3,0,-15,44,36,92,8
+Ctl5=Gain,5,0,80,4,56,68,40
+Ctl6=0,5,0,-13,8,68,25,8
+Ctl7=0,5,0,-9,8,80,58,8
+Ctl8=0,5,0,-14,56,68,8,8
+Ctl9=AGC,-1,0,-1,76,56,64,40
+Ctl10=Enable AGC,7,1,64,84,72,52,8
+Ctl11=Equalisation,6,0,80,4,100,68,40
+Ctl12=0,6,0,-13,9,112,25,8
+Ctl13=0,6,0,-9,8,124,58,8
+Ctl14=0,6,0,-14,55,113,8,8
+Ctl15=ACC,-1,0,-1,76,100,64,40
+Ctl16=Enable ACC,8,1,64,84,116,52,8
+SaveSet=5,6,7,8,9
+[108:5:3:1]
+Size=0, 0, 144, 142
+Ctl0=Preset Unit,-1,0,-1,4,56,64,84
+Ctl1=Preset Unit,3,1,-17,15,90,45,12
+Ctl2=Software Version,-1,0,-1,72,56,68,40
+Ctl3=0,2,0,-18,96,72,40,9
+Ctl4=Serial Number,-1,0,-1,72,96,68,44
+Ctl5=0,1,0,-18,88,116,48,9
+Ctl6=Information,-1,0,-1,40,0,100,53
+Ctl7=INVISIBLE,1,0,-15,44,12,92,8
+Ctl8=INVISIBLE,2,0,-15,44,24,92,8
+Ctl9=INVISIBLE,3,0,-15,44,36,92,8
+[108:5:4:2]
+Size=0, 0, 144, 142
+Ctl0=Preset Unit,-1,0,-1,4,56,64,40
+Ctl1=Preset Unit,3,1,-17,15,71,45,12
+Ctl2=Logging,-1,0,-1,4,96,64,44
+Ctl3=Input  Status,9,1,64,12,116,52,8
+Ctl4=Software Version,-1,0,-1,72,56,68,40
+Ctl5=0,2,0,-18,96,72,40,9
+Ctl6=Serial Number,-1,0,-1,72,96,68,44
+Ctl7=0,1,0,-18,88,116,48,9
+Ctl8=Information,-1,0,-1,40,0,100,53
+Ctl9=INVISIBLE,1,0,-15,44,12,92,8
+Ctl10=INVISIBLE,2,0,-15,44,24,92,8
+Ctl11=INVISIBLE,3,0,-15,44,36,92,8
+[108:5:8:3]
+Size=0, 0, 144, 142
+Ctl0=Preset Unit,-1,0,-1,4,56,64,40
+Ctl1=Preset Unit,3,1,-17,15,70,45,12
+Ctl2=Logging,-1,0,-1,4,99,64,41
+Ctl3=Input  Status,9,1,64,12,116,52,8
+Ctl4=Software Version,-1,0,-1,72,56,68,84
+Ctl5=0,2,0,-18,96,92,40,9
+Ctl6=Information,-1,0,-1,40,0,100,53
+Ctl7=INVISIBLE,1,0,-15,44,12,92,8
+Ctl8=INVISIBLE,2,0,-15,44,24,92,8
+Ctl9=INVISIBLE,3,0,-15,44,36,92,8
+[108:5:15:4]
+Size=0, 0, 144, 142
+Ctl0=ISY,-1,0,-26,24,64,24,8
+Ctl1=Input Sync Level,-1,0,-26,56,64,68,8
+Ctl2=OSY,-1,0,-26,24,72,24,8
+Ctl3=Output Sync Level,-1,0,-26,56,72,68,8
+Ctl4=IBU,-1,0,-26,24,80,24,8
+Ctl5=Input Burst Level,-1,0,-26,56,80,68,8
+Ctl6=OBU,-1,0,-26,24,88,24,8
+Ctl7=Output Burst Level,-1,0,-26,56,88,68,8
+Ctl8=SLW,-1,0,-26,24,96,24,8
+Ctl9=Sync Level Warning,-1,0,-26,56,96,68,8
+Ctl10=BLW,-1,0,-26,24,104,24,8
+Ctl11=Burst Level Warning,-1,0,-26,56,104,68,8
+Ctl12=Information Window Definitions,-1,0,-1,4,56,136,84
+Ctl13=CAL,-1,0,-26,24,128,24,8
+Ctl14=Unit is NOT Calibrated,-1,0,-26,56,128,68,8
+Ctl15=AGE,-1,0,-26,24,112,24,8
+Ctl16=AGC Error,-1,0,-26,56,112,68,8
+Ctl17=EQE,-1,0,-26,24,120,24,8
+Ctl18=ACC Error,-1,0,-26,56,120,68,8
+Ctl19=Information,-1,0,-1,40,0,100,53
+Ctl20=INVISIBLE,1,0,-15,44,12,92,8
+Ctl21=INVISIBLE,2,0,-15,44,24,92,8
+Ctl22=INVISIBLE,3,0,-15,44,36,92,8
+[108:5:8:5]
+Size=0, 0, 144, 142
+Ctl0=Serial Number Edit,-1,0,-1,4,100,135,36
+Ctl1=0,1,0,-12,12,116,96,12
+Ctl2=0,1,0,-16,120,116,8,8
+Ctl3=Zero dB Calibration,12,0,80,4,56,135,40
+Ctl4=0,12,0,-13,12,68,25,8
+Ctl5=0,12,0,-9,12,80,104,8
+Ctl6=0,12,0,-14,124,76,8,8
+Ctl7=Information,-1,0,-1,40,0,100,53
+Ctl8=INVISIBLE,1,0,-15,44,12,92,8
+Ctl9=INVISIBLE,2,0,-15,44,24,92,8
+Ctl10=INVISIBLE,3,0,-15,44,36,92,8

@@ -1,0 +1,3093 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBRT6
+--        Module Id#:227
+--       Command Set:9
+--          Filename:SNELL-IQBRT6-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:04/07/2005
+--              Time:09:40
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBRT6-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBRT6,
+    moduleIQBRT6MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBRT6CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0507040940Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBRT6MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbrt6CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqbrt6CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBRT6 1 }
+
+	iqbrt6CmdEntry OBJECT-TYPE
+		SYNTAX		Iqbrt6CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbrt6SlotIndex }
+		::= { iqbrt6CmdTable 1 }
+
+	Iqbrt6CmdEntry ::=
+		SEQUENCE {
+			iqbrt6SlotIndex
+				Unsigned32,
+			iqbrt6CrosspointRouterDest1
+				INTEGER,
+			iqbrt6CrosspointRouterDest2
+				INTEGER,
+			iqbrt6CrosspointRouterDest3
+				INTEGER,
+			iqbrt6CrosspointRouterDest4
+				INTEGER,
+			iqbrt6CrosspointMonitor
+				INTEGER,
+			iqbrt6CrosspointTake
+				INTEGER,
+			iqbrt6CrosspointCancel
+				INTEGER,
+			iqbrt6CrosspointProtectDest1
+				INTEGER,
+			iqbrt6CrosspointProtectDest2
+				INTEGER,
+			iqbrt6CrosspointProtectDest3
+				INTEGER,
+			iqbrt6CrosspointProtectDest4
+				INTEGER,
+			iqbrt6CrosspointEnableTake
+				INTEGER,
+			iqbrt6DisplayPrev
+				INTEGER,
+			iqbrt6DisplayNext
+				INTEGER,
+			iqbrt6DisplayInputOutput
+				INTEGER,
+			iqbrt6DisplaySubframe
+				INTEGER,
+			iqbrt6DisplayUp
+				INTEGER,
+			iqbrt6DisplayDown
+				INTEGER,
+			iqbrt6DisplayInputStatusInput1
+				RollCallString,
+			iqbrt6DisplayInputStatusInput2
+				RollCallString,
+			iqbrt6DisplayInputStatusInput3
+				RollCallString,
+			iqbrt6DisplayInputStatusInput4
+				RollCallString,
+			iqbrt6DisplayInputStatusInput5
+				RollCallString,
+			iqbrt6DisplayInputStatusInput6
+				RollCallString,
+			iqbrt6MemoriesRecall
+				INTEGER,
+			iqbrt6MemoriesNamesMemory1
+				RollCallString,
+			iqbrt6MemoriesNamesMemory2
+				RollCallString,
+			iqbrt6MemoriesNamesMemory3
+				RollCallString,
+			iqbrt6MemoriesNamesMemory4
+				RollCallString,
+			iqbrt6MemoriesNamesMemory5
+				RollCallString,
+			iqbrt6MemoriesNamesMemory6
+				RollCallString,
+			iqbrt6MemoriesNamesMemory7
+				RollCallString,
+			iqbrt6MemoriesNamesMemory8
+				RollCallString,
+			iqbrt6MemoriesNamesPreset
+				INTEGER,
+			iqbrt6MemoriesSave
+				INTEGER,
+			iqbrt6GainInput1Input1Gain
+				INTEGER,
+			iqbrt6GainInput1MuteInput1SF1
+				INTEGER,
+			iqbrt6GainInput1MuteInput1SF2
+				INTEGER,
+			iqbrt6GainInput2Input2Gain
+				INTEGER,
+			iqbrt6GainInput2MuteInput2SF1
+				INTEGER,
+			iqbrt6GainInput2MuteInput2SF2
+				INTEGER,
+			iqbrt6GainInput3Input3Gain
+				INTEGER,
+			iqbrt6GainInput3MuteInput3SF1
+				INTEGER,
+			iqbrt6GainInput3MuteInput3SF2
+				INTEGER,
+			iqbrt6GainInput4Input4Gain
+				INTEGER,
+			iqbrt6GainInput4MuteInput4SF1
+				INTEGER,
+			iqbrt6GainInput4MuteInput4SF2
+				INTEGER,
+			iqbrt6GainInput5Input5Gain
+				INTEGER,
+			iqbrt6GainInput5MuteInput5SF1
+				INTEGER,
+			iqbrt6GainInput5MuteInput5SF2
+				INTEGER,
+			iqbrt6GainInput6Input6Gain
+				INTEGER,
+			iqbrt6GainInput6MuteInput6SF1
+				INTEGER,
+			iqbrt6GainInput6MuteInput6SF2
+				INTEGER,
+			iqbrt6PolarityInput1InvertIn1SF1
+				INTEGER,
+			iqbrt6PolarityInput1InvertIn1SF2
+				INTEGER,
+			iqbrt6PolarityInput2InvertIn2SF1
+				INTEGER,
+			iqbrt6PolarityInput2InvertIn2SF2
+				INTEGER,
+			iqbrt6PolarityInput3InvertIn3SF1
+				INTEGER,
+			iqbrt6PolarityInput3InvertIn3SF2
+				INTEGER,
+			iqbrt6PolarityInput4InvertIn4SF1
+				INTEGER,
+			iqbrt6PolarityInput4InvertIn4SF2
+				INTEGER,
+			iqbrt6PolarityInput5InvertIn5SF1
+				INTEGER,
+			iqbrt6PolarityInput5InvertIn5SF2
+				INTEGER,
+			iqbrt6PolarityInput6InvertIn6SF1
+				INTEGER,
+			iqbrt6PolarityInput6InvertIn6SF2
+				INTEGER,
+			iqbrt6NameAssocSourceSource1
+				RollCallString,
+			iqbrt6NameAssocSourceSource2
+				RollCallString,
+			iqbrt6NameAssocSourceSource3
+				RollCallString,
+			iqbrt6NameAssocSourceSource4
+				RollCallString,
+			iqbrt6NameAssocSourceSource5
+				RollCallString,
+			iqbrt6NameAssocSourceSource6
+				RollCallString,
+			iqbrt6NameAssocDestDest1
+				RollCallString,
+			iqbrt6NameAssocDestDest2
+				RollCallString,
+			iqbrt6NameAssocDestDest3
+				RollCallString,
+			iqbrt6NameAssocDestDest4
+				RollCallString,
+			iqbrt6SetupLock
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput1
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput2
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput3
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput4
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput5
+				INTEGER,
+			iqbrt6SetupInputAudioFormatInput6
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput1
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput2
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput3
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput4
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput5
+				INTEGER,
+			iqbrt6SetupInputValidityBitInput6
+				INTEGER,
+			iqbrt6InsertInput1InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput1InsertonSF2
+				INTEGER,
+			iqbrt6InsertInput2InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput2InsertonSF2
+				INTEGER,
+			iqbrt6InsertInput3InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput3InsertonSF2
+				INTEGER,
+			iqbrt6InsertInput4InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput4InsertonSF2
+				INTEGER,
+			iqbrt6InsertInput5InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput5InsertonSF2
+				INTEGER,
+			iqbrt6InsertInput6InsertonSF1
+				INTEGER,
+			iqbrt6InsertInput6InsertonSF2
+				INTEGER,
+			iqbrt6Input1Subframe1Origin
+				RollCallString,
+			iqbrt6Input1Subframe1Destination
+				RollCallString,
+			iqbrt6Input1Subframe2Origin
+				RollCallString,
+			iqbrt6Input1Subframe2Destination
+				RollCallString,
+			iqbrt6Input2Subframe1Origin
+				RollCallString,
+			iqbrt6Input2Subframe1Destination
+				RollCallString,
+			iqbrt6Input2Subframe2Origin
+				RollCallString,
+			iqbrt6Input2Subframe2Destination
+				RollCallString,
+			iqbrt6Input3Subframe1Origin
+				RollCallString,
+			iqbrt6Input3Subframe1Destination
+				RollCallString,
+			iqbrt6Input3Subframe2Origin
+				RollCallString,
+			iqbrt6Input3Subframe2Destination
+				RollCallString,
+			iqbrt6Input4Subframe1Origin
+				RollCallString,
+			iqbrt6Input4Subframe1Destination
+				RollCallString,
+			iqbrt6Input4Subframe2Origin
+				RollCallString,
+			iqbrt6Input4Subframe2Destination
+				RollCallString,
+			iqbrt6Input5Subframe1Origin
+				RollCallString,
+			iqbrt6Input5Subframe1Destination
+				RollCallString,
+			iqbrt6Input5Subframe2Origin
+				RollCallString,
+			iqbrt6Input5Subframe2Destination
+				RollCallString,
+			iqbrt6Input6Subframe1Origin
+				RollCallString,
+			iqbrt6Input6Subframe1Destination
+				RollCallString,
+			iqbrt6Input6Subframe2Origin
+				RollCallString,
+			iqbrt6Input6Subframe2Destination
+				RollCallString,
+			iqbrt6TestToneOutput1Output1SF1
+				INTEGER,
+			iqbrt6TestToneOutput1Output1SF2
+				INTEGER,
+			iqbrt6TestToneOutput2Output2SF1
+				INTEGER,
+			iqbrt6TestToneOutput2Output2SF2
+				INTEGER,
+			iqbrt6TestToneOutput3Output3SF1
+				INTEGER,
+			iqbrt6TestToneOutput3Output3SF2
+				INTEGER,
+			iqbrt6TestToneOutput4Output4SF1
+				INTEGER,
+			iqbrt6TestToneOutput4Output4SF2
+				INTEGER,
+			iqbrt6SetupTestToneFreq
+				INTEGER,
+			iqbrt6SetupTestToneLevel
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput1
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput2
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput3
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput4
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput5
+				INTEGER,
+			iqbrt6SetupPPM0dBuRefInput6
+				INTEGER,
+			iqbrt6SetupLoggingInput1
+				INTEGER,
+			iqbrt6SetupLoggingInput2
+				INTEGER,
+			iqbrt6SetupLoggingInput3
+				INTEGER,
+			iqbrt6SetupLoggingInput4
+				INTEGER,
+			iqbrt6SetupLoggingInput5
+				INTEGER,
+			iqbrt6SetupLoggingInput6
+				INTEGER,
+			iqbrt6SetupLoggingAESOutputs
+				INTEGER,
+			iqbrt6SetupLoggingAESRef
+				INTEGER,
+			iqbrt6SetupLoggingVideoRef
+				INTEGER,
+			iqbrt6SetupStatus1
+				RollCallString,
+			iqbrt6SetupStatus2
+				RollCallString,
+			iqbrt6SetupPresetUnit
+				INTEGER,
+			iqbrt6SetupSoftwareVersion
+				RollCallString,
+			iqbrt6SetupSerialNo
+				RollCallString,
+			iqbrt6SetupBuildNo
+				RollCallString,
+			iqbrt6SetupRestart
+				INTEGER
+		}
+
+	iqbrt6SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbrt6CmdEntry 0 }
+
+
+	iqbrt6CrosspointRouterDest1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Source_1(0),
+							val_Source_2(1),
+							val_Source_3(2),
+							val_Source_4(3),
+							val_Source_5(4),
+							val_Source_6(5),
+							val_Silence(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Router
+					Dest 1  cmdID= 8 
+					Source 1*  value= 0  
+					Source 2*  value= 1  
+					Source 3*  value= 2  
+					Source 4*  value= 3  
+					Source 5*  value= 4  
+					Source 6*  value= 5  
+					Silence  value= 8  "
+		::= { iqbrt6CmdEntry 8 }
+
+
+	iqbrt6CrosspointRouterDest2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Source_1(0),
+							val_Source_2(1),
+							val_Source_3(2),
+							val_Source_4(3),
+							val_Source_5(4),
+							val_Source_6(5),
+							val_Silence(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Router
+					Dest 2  cmdID= 9 
+					Source 1*  value= 0  
+					Source 2*  value= 1  
+					Source 3*  value= 2  
+					Source 4*  value= 3  
+					Source 5*  value= 4  
+					Source 6*  value= 5  
+					Silence  value= 8  "
+		::= { iqbrt6CmdEntry 9 }
+
+
+	iqbrt6CrosspointRouterDest3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Source_1(0),
+							val_Source_2(1),
+							val_Source_3(2),
+							val_Source_4(3),
+							val_Source_5(4),
+							val_Source_6(5),
+							val_Silence(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Router
+					Dest 3  cmdID= 10 
+					Source 1*  value= 0  
+					Source 2*  value= 1  
+					Source 3*  value= 2  
+					Source 4*  value= 3  
+					Source 5*  value= 4  
+					Source 6*  value= 5  
+					Silence  value= 8  "
+		::= { iqbrt6CmdEntry 10 }
+
+
+	iqbrt6CrosspointRouterDest4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Source_1(0),
+							val_Source_2(1),
+							val_Source_3(2),
+							val_Source_4(3),
+							val_Source_5(4),
+							val_Source_6(5),
+							val_Silence(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Router
+					Dest 4  cmdID= 11 
+					Source 1*  value= 0  
+					Source 2*  value= 1  
+					Source 3*  value= 2  
+					Source 4*  value= 3  
+					Source 5*  value= 4  
+					Source 6*  value= 5  
+					Silence  value= 8  "
+		::= { iqbrt6CmdEntry 11 }
+
+
+	iqbrt6CrosspointMonitor OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Source_1(0),
+							val_Source_2(1),
+							val_Source_3(2),
+							val_Source_4(3),
+							val_Source_5(4),
+							val_Source_6(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Monitor
+					Monitor  cmdID= 103 
+					Source 1  value= 0  
+					Source 2  value= 1  
+					Source 3  value= 2  
+					Source 4  value= 3  
+					Source 5  value= 4  
+					Source 6  value= 5  "
+		::= { iqbrt6CmdEntry 103 }
+
+
+	iqbrt6CrosspointTake OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Take(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Take!  cmdID= 101  value= 1  "
+		::= { iqbrt6CmdEntry 101 }
+
+
+	iqbrt6CrosspointCancel OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Cancel(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Cancel!  cmdID= 102  value= 1  "
+		::= { iqbrt6CmdEntry 102 }
+
+
+	iqbrt6CrosspointProtectDest1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Protect
+					Dest 1  cmdID= 176 "
+		::= { iqbrt6CmdEntry 176 }
+
+
+	iqbrt6CrosspointProtectDest2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Protect
+					Dest 2  cmdID= 177 "
+		::= { iqbrt6CmdEntry 177 }
+
+
+	iqbrt6CrosspointProtectDest3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Protect
+					Dest 3  cmdID= 178 "
+		::= { iqbrt6CmdEntry 178 }
+
+
+	iqbrt6CrosspointProtectDest4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Protect
+					Dest 4  cmdID= 179 "
+		::= { iqbrt6CmdEntry 179 }
+
+
+	iqbrt6CrosspointEnableTake OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable Take  cmdID= 104 "
+		::= { iqbrt6CmdEntry 104 }
+
+
+	iqbrt6DisplayPrev OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Prev(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Display
+					Prev  cmdID= 124  value= 1  "
+		::= { iqbrt6CmdEntry 124 }
+
+
+	iqbrt6DisplayNext OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Next(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Display
+					Next  cmdID= 125  value= 1  "
+		::= { iqbrt6CmdEntry 125 }
+
+
+	iqbrt6DisplayInputOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Output_Status(0),
+							val_Input_Gains(2),
+							val_Input_PPMs(3),
+							val_Input_CS_Data(4),
+							val_Output_CS_Data(5),
+							val_Input_Validity_Bits(6),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Display
+					Inputs  cmdID= 7 
+					Input/Output Status  value= 0  
+					Input Gains  value= 2  
+					Input PPMs  value= 3  
+					Input CS Data  value= 4  
+					Output CS Data value= 5  
+					Input Validity Bits  value= 6  
+					Outputs  cmdID= 7 "
+		::= { iqbrt6CmdEntry 7 }
+
+
+	iqbrt6DisplaySubframe OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Subframe1(0),
+							val_Subframe2(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Display
+					Subframe1  cmdID= 174  value= 0  
+					Subframe2  cmdID= 174  value= 1  "
+		::= { iqbrt6CmdEntry 174 }
+
+
+	iqbrt6DisplayUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Display
+					Up  cmdID= 5  value= 1  "
+		::= { iqbrt6CmdEntry 5 }
+
+
+	iqbrt6DisplayDown OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Down(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Display
+					Down  cmdID= 6  value= 1  "
+		::= { iqbrt6CmdEntry 6 }
+
+
+	iqbrt6DisplayInputStatusInput1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 1  cmdID= 188  format=   "
+		::= { iqbrt6CmdEntry 188 }
+
+
+	iqbrt6DisplayInputStatusInput2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 2  cmdID= 189  format=   "
+		::= { iqbrt6CmdEntry 189 }
+
+
+	iqbrt6DisplayInputStatusInput3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 3  cmdID= 190  format=   "
+		::= { iqbrt6CmdEntry 190 }
+
+
+	iqbrt6DisplayInputStatusInput4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 4  cmdID= 191  format=   "
+		::= { iqbrt6CmdEntry 191 }
+
+
+	iqbrt6DisplayInputStatusInput5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 5  cmdID= 192  format=   "
+		::= { iqbrt6CmdEntry 192 }
+
+
+	iqbrt6DisplayInputStatusInput6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Display- Input Status
+					Input 6  cmdID= 193  format=   "
+		::= { iqbrt6CmdEntry 193 }
+
+
+	iqbrt6MemoriesRecall OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Recall  cmdID= 67 
+					Memory 1  value= 0  
+					Memory 2  value= 1  
+					Memory 3  value= 2  
+					Memory 4  value= 3  
+					Memory 5  value= 4  
+					Memory 6  value= 5  
+					Memory 7  value= 6  
+					Memory 8  value= 7  "
+		::= { iqbrt6CmdEntry 67 }
+
+
+	iqbrt6MemoriesNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 1  cmdID= 69  "
+		::= { iqbrt6CmdEntry 69 }
+
+
+	iqbrt6MemoriesNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 2  cmdID= 70  "
+		::= { iqbrt6CmdEntry 70 }
+
+
+	iqbrt6MemoriesNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 3  cmdID= 71  "
+		::= { iqbrt6CmdEntry 71 }
+
+
+	iqbrt6MemoriesNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 4  cmdID= 72  "
+		::= { iqbrt6CmdEntry 72 }
+
+
+	iqbrt6MemoriesNamesMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 5  cmdID= 73  "
+		::= { iqbrt6CmdEntry 73 }
+
+
+	iqbrt6MemoriesNamesMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 6  cmdID= 74  "
+		::= { iqbrt6CmdEntry 74 }
+
+
+	iqbrt6MemoriesNamesMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 7  cmdID= 75  "
+		::= { iqbrt6CmdEntry 75 }
+
+
+	iqbrt6MemoriesNamesMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory 8  cmdID= 76  "
+		::= { iqbrt6CmdEntry 76 }
+
+
+	iqbrt6MemoriesNamesPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_All_Names(9),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Preset_All_Memories(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset All Names  cmdID= 68  value= 9  
+					Preset  cmdID= 68 
+					Memory 1  value= 0  
+					Memory 2  value= 1  
+					Memory 3  value= 2  
+					Memory 4  value= 3  
+					Memory 5  value= 4  
+					Memory 6  value= 5  
+					Memory 7  value= 6  
+					Memory 8  value= 7  
+					Preset All Memories  value= 8  "
+		::= { iqbrt6CmdEntry 68 }
+
+
+	iqbrt6MemoriesSave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 66 
+					Memory 1  value= 0  
+					Memory 2  value= 1  
+					Memory 3  value= 2  
+					Memory 4  value= 3  
+					Memory 5  value= 4  
+					Memory 6  value= 5  
+					Memory 7  value= 6  
+					Memory 8  value= 7  "
+		::= { iqbrt6CmdEntry 66 }
+
+
+	iqbrt6GainInput1Input1Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_1_Gain  cmdID= 77  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 77 }
+
+
+	iqbrt6GainInput1MuteInput1SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_1_SF1  cmdID= 85 "
+		::= { iqbrt6CmdEntry 85 }
+
+
+	iqbrt6GainInput1MuteInput1SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_1_SF2  cmdID= 86 "
+		::= { iqbrt6CmdEntry 86 }
+
+
+	iqbrt6GainInput2Input2Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_2_Gain  cmdID= 78  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 78 }
+
+
+	iqbrt6GainInput2MuteInput2SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_2_SF1  cmdID= 87 "
+		::= { iqbrt6CmdEntry 87 }
+
+
+	iqbrt6GainInput2MuteInput2SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_2_SF2  cmdID= 88 "
+		::= { iqbrt6CmdEntry 88 }
+
+
+	iqbrt6GainInput3Input3Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_3_Gain  cmdID= 79  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 79 }
+
+
+	iqbrt6GainInput3MuteInput3SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_3_SF1  cmdID= 89 "
+		::= { iqbrt6CmdEntry 89 }
+
+
+	iqbrt6GainInput3MuteInput3SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_3_SF2  cmdID= 90 "
+		::= { iqbrt6CmdEntry 90 }
+
+
+	iqbrt6GainInput4Input4Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_4_Gain  cmdID= 80  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 80 }
+
+
+	iqbrt6GainInput4MuteInput4SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_4_SF1  cmdID= 91 "
+		::= { iqbrt6CmdEntry 91 }
+
+
+	iqbrt6GainInput4MuteInput4SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_4_SF2  cmdID= 92 "
+		::= { iqbrt6CmdEntry 92 }
+
+
+	iqbrt6GainInput5Input5Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_5_Gain  cmdID= 81  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 81 }
+
+
+	iqbrt6GainInput5MuteInput5SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_5_SF1  cmdID= 93 "
+		::= { iqbrt6CmdEntry 93 }
+
+
+	iqbrt6GainInput5MuteInput5SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_5_SF2  cmdID= 94 "
+		::= { iqbrt6CmdEntry 94 }
+
+
+	iqbrt6GainInput6Input6Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ProcAmp
+					Input_6_Gain  cmdID= 82  min= -180  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -18.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqbrt6CmdEntry 82 }
+
+
+	iqbrt6GainInput6MuteInput6SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_6_SF1  cmdID= 95 "
+		::= { iqbrt6CmdEntry 95 }
+
+
+	iqbrt6GainInput6MuteInput6SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Mute_Input_6_SF2  cmdID= 96 "
+		::= { iqbrt6CmdEntry 96 }
+
+
+	iqbrt6PolarityInput1InvertIn1SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_1_SF_1  cmdID= 32 "
+		::= { iqbrt6CmdEntry 32 }
+
+
+	iqbrt6PolarityInput1InvertIn1SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_1_SF_2  cmdID= 33 "
+		::= { iqbrt6CmdEntry 33 }
+
+
+	iqbrt6PolarityInput2InvertIn2SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_2_SF_1  cmdID= 34 "
+		::= { iqbrt6CmdEntry 34 }
+
+
+	iqbrt6PolarityInput2InvertIn2SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_2_SF_2  cmdID= 35 "
+		::= { iqbrt6CmdEntry 35 }
+
+
+	iqbrt6PolarityInput3InvertIn3SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_3_SF_1  cmdID= 36 "
+		::= { iqbrt6CmdEntry 36 }
+
+
+	iqbrt6PolarityInput3InvertIn3SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_3_SF_2  cmdID= 37 "
+		::= { iqbrt6CmdEntry 37 }
+
+
+	iqbrt6PolarityInput4InvertIn4SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_4_SF_1  cmdID= 38 "
+		::= { iqbrt6CmdEntry 38 }
+
+
+	iqbrt6PolarityInput4InvertIn4SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_4_SF_2  cmdID= 39 "
+		::= { iqbrt6CmdEntry 39 }
+
+
+	iqbrt6PolarityInput5InvertIn5SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_5_SF_1  cmdID= 40 "
+		::= { iqbrt6CmdEntry 40 }
+
+
+	iqbrt6PolarityInput5InvertIn5SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_5_SF_2  cmdID= 41 "
+		::= { iqbrt6CmdEntry 41 }
+
+
+	iqbrt6PolarityInput6InvertIn6SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_6_SF_1  cmdID= 42 "
+		::= { iqbrt6CmdEntry 42 }
+
+
+	iqbrt6PolarityInput6InvertIn6SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ProcAmp
+					Invert_In_6_SF_2  cmdID= 43 "
+		::= { iqbrt6CmdEntry 43 }
+
+
+	iqbrt6NameAssocSourceSource1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 1  cmdID= 16  "
+		::= { iqbrt6CmdEntry 16 }
+
+
+	iqbrt6NameAssocSourceSource2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 2  cmdID= 17  "
+		::= { iqbrt6CmdEntry 17 }
+
+
+	iqbrt6NameAssocSourceSource3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 3  cmdID= 18  "
+		::= { iqbrt6CmdEntry 18 }
+
+
+	iqbrt6NameAssocSourceSource4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 4  cmdID= 19  "
+		::= { iqbrt6CmdEntry 19 }
+
+
+	iqbrt6NameAssocSourceSource5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 5  cmdID= 20  "
+		::= { iqbrt6CmdEntry 20 }
+
+
+	iqbrt6NameAssocSourceSource6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Source 6  cmdID= 21  "
+		::= { iqbrt6CmdEntry 21 }
+
+
+	iqbrt6NameAssocDestDest1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Dest 1  cmdID= 24  "
+		::= { iqbrt6CmdEntry 24 }
+
+
+	iqbrt6NameAssocDestDest2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Dest 2  cmdID= 25  "
+		::= { iqbrt6CmdEntry 25 }
+
+
+	iqbrt6NameAssocDestDest3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Dest 3  cmdID= 26  "
+		::= { iqbrt6CmdEntry 26 }
+
+
+	iqbrt6NameAssocDestDest4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name_Assoc
+					Dest 4  cmdID= 27  "
+		::= { iqbrt6CmdEntry 27 }
+
+
+	iqbrt6SetupLock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video(0),
+							val_AES_Reference(1),
+							val_Input_1(2),
+							val_Internal(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Lock  cmdID= 105 
+					Video  value= 0  
+					AES Reference  value= 1  
+					Input 1  value= 2  
+					Internal  value= 3  "
+		::= { iqbrt6CmdEntry 105 }
+
+
+	iqbrt6SetupInputAudioFormatInput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 1  cmdID= 196 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 196 }
+
+
+	iqbrt6SetupInputAudioFormatInput2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 2  cmdID= 197 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 197 }
+
+
+	iqbrt6SetupInputAudioFormatInput3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 3  cmdID= 198 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 198 }
+
+
+	iqbrt6SetupInputAudioFormatInput4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 4  cmdID= 199 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 199 }
+
+
+	iqbrt6SetupInputAudioFormatInput5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 5  cmdID= 200 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 200 }
+
+
+	iqbrt6SetupInputAudioFormatInput6 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_Linear_PCM(1),
+							val_Pass_Non_PCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Audio Format
+					Input 6  cmdID= 201 
+					Auto  value= 0  
+					Linear PCM  value= 1  
+					Pass (Non-PCM)  value= 2  "
+		::= { iqbrt6CmdEntry 201 }
+
+
+	iqbrt6SetupInputValidityBitInput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 1  cmdID= 206 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 206 }
+
+
+	iqbrt6SetupInputValidityBitInput2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 2  cmdID= 207 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 207 }
+
+
+	iqbrt6SetupInputValidityBitInput3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 3  cmdID= 208 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 208 }
+
+
+	iqbrt6SetupInputValidityBitInput4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 4  cmdID= 209 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 209 }
+
+
+	iqbrt6SetupInputValidityBitInput5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 5  cmdID= 210 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 210 }
+
+
+	iqbrt6SetupInputValidityBitInput6 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Through(2),
+							val_Set_0(0),
+							val_Set_1(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Input Validity Bit
+					Input 6  cmdID= 211 
+					Pass Through  value= 2  
+					Set 0  value= 0  
+					Set 1  value= 1  "
+		::= { iqbrt6CmdEntry 211 }
+
+
+	iqbrt6InsertInput1InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 126 "
+		::= { iqbrt6CmdEntry 126 }
+
+
+	iqbrt6InsertInput1InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 127 "
+		::= { iqbrt6CmdEntry 127 }
+
+
+	iqbrt6InsertInput2InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 128 "
+		::= { iqbrt6CmdEntry 128 }
+
+
+	iqbrt6InsertInput2InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 129 "
+		::= { iqbrt6CmdEntry 129 }
+
+
+	iqbrt6InsertInput3InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 130 "
+		::= { iqbrt6CmdEntry 130 }
+
+
+	iqbrt6InsertInput3InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 131 "
+		::= { iqbrt6CmdEntry 131 }
+
+
+	iqbrt6InsertInput4InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 132 "
+		::= { iqbrt6CmdEntry 132 }
+
+
+	iqbrt6InsertInput4InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 133 "
+		::= { iqbrt6CmdEntry 133 }
+
+
+	iqbrt6InsertInput5InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 134 "
+		::= { iqbrt6CmdEntry 134 }
+
+
+	iqbrt6InsertInput5InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 135 "
+		::= { iqbrt6CmdEntry 135 }
+
+
+	iqbrt6InsertInput6InsertonSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF1  cmdID= 136 "
+		::= { iqbrt6CmdEntry 136 }
+
+
+	iqbrt6InsertInput6InsertonSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - ChanStatus
+					Insert_on_SF2  cmdID= 137 "
+		::= { iqbrt6CmdEntry 137 }
+
+
+	iqbrt6Input1Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 142  "
+		::= { iqbrt6CmdEntry 142 }
+
+
+	iqbrt6Input1Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 158  "
+		::= { iqbrt6CmdEntry 158 }
+
+
+	iqbrt6Input1Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 143  "
+		::= { iqbrt6CmdEntry 143 }
+
+
+	iqbrt6Input1Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 159  "
+		::= { iqbrt6CmdEntry 159 }
+
+
+	iqbrt6Input2Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 144  "
+		::= { iqbrt6CmdEntry 144 }
+
+
+	iqbrt6Input2Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 160  "
+		::= { iqbrt6CmdEntry 160 }
+
+
+	iqbrt6Input2Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 145  "
+		::= { iqbrt6CmdEntry 145 }
+
+
+	iqbrt6Input2Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 161  "
+		::= { iqbrt6CmdEntry 161 }
+
+
+	iqbrt6Input3Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 146  "
+		::= { iqbrt6CmdEntry 146 }
+
+
+	iqbrt6Input3Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 162  "
+		::= { iqbrt6CmdEntry 162 }
+
+
+	iqbrt6Input3Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 147  "
+		::= { iqbrt6CmdEntry 147 }
+
+
+	iqbrt6Input3Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 163  "
+		::= { iqbrt6CmdEntry 163 }
+
+
+	iqbrt6Input4Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 148  "
+		::= { iqbrt6CmdEntry 148 }
+
+
+	iqbrt6Input4Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 164  "
+		::= { iqbrt6CmdEntry 164 }
+
+
+	iqbrt6Input4Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 149  "
+		::= { iqbrt6CmdEntry 149 }
+
+
+	iqbrt6Input4Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 165  "
+		::= { iqbrt6CmdEntry 165 }
+
+
+	iqbrt6Input5Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 150  "
+		::= { iqbrt6CmdEntry 150 }
+
+
+	iqbrt6Input5Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 166  "
+		::= { iqbrt6CmdEntry 166 }
+
+
+	iqbrt6Input5Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 151  "
+		::= { iqbrt6CmdEntry 151 }
+
+
+	iqbrt6Input5Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 167  "
+		::= { iqbrt6CmdEntry 167 }
+
+
+	iqbrt6Input6Subframe1Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 152  "
+		::= { iqbrt6CmdEntry 152 }
+
+
+	iqbrt6Input6Subframe1Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 168  "
+		::= { iqbrt6CmdEntry 168 }
+
+
+	iqbrt6Input6Subframe2Origin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Origin  cmdID= 153  "
+		::= { iqbrt6CmdEntry 153 }
+
+
+	iqbrt6Input6Subframe2Destination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - ChanStatus
+					Destination  cmdID= 169  "
+		::= { iqbrt6CmdEntry 169 }
+
+
+	iqbrt6TestToneOutput1Output1SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_1_SF1  cmdID= 48 "
+		::= { iqbrt6CmdEntry 48 }
+
+
+	iqbrt6TestToneOutput1Output1SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_1_SF2  cmdID= 49 "
+		::= { iqbrt6CmdEntry 49 }
+
+
+	iqbrt6TestToneOutput2Output2SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_2_SF1  cmdID= 50 "
+		::= { iqbrt6CmdEntry 50 }
+
+
+	iqbrt6TestToneOutput2Output2SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_2_SF2  cmdID= 51 "
+		::= { iqbrt6CmdEntry 51 }
+
+
+	iqbrt6TestToneOutput3Output3SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_3_SF1  cmdID= 52 "
+		::= { iqbrt6CmdEntry 52 }
+
+
+	iqbrt6TestToneOutput3Output3SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_3_SF2  cmdID= 53 "
+		::= { iqbrt6CmdEntry 53 }
+
+
+	iqbrt6TestToneOutput4Output4SF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_4_SF1  cmdID= 54 "
+		::= { iqbrt6CmdEntry 54 }
+
+
+	iqbrt6TestToneOutput4Output4SF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - TestTone
+					Output_4_SF2  cmdID= 55 "
+		::= { iqbrt6CmdEntry 55 }
+
+
+	iqbrt6SetupTestToneFreq OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - TestTone
+					Freq  cmdID= 64  min= 250  max= 15750  step= 250  format= %2.3fkHz  div_scale= 1000 
+					Min = 0.250kHz  Max = 15.750kHz  Step = 0.250kHz "
+		::= { iqbrt6CmdEntry 64 }
+
+
+	iqbrt6SetupTestToneLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - TestTone
+					Level  cmdID= 65  min= -18  max= 0  step= 6  format= %1.0fdBFS  div_scale= 1 
+					Min = -18dBFS  Max = 0dBFS  Step = 6dBFS "
+		::= { iqbrt6CmdEntry 65 }
+
+
+	iqbrt6SetupPPM0dBuRefInput1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 1  cmdID= 106  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 106 }
+
+
+	iqbrt6SetupPPM0dBuRefInput2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 2  cmdID= 107  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 107 }
+
+
+	iqbrt6SetupPPM0dBuRefInput3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 3  cmdID= 108  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 108 }
+
+
+	iqbrt6SetupPPM0dBuRefInput4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 4  cmdID= 109  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 109 }
+
+
+	iqbrt6SetupPPM0dBuRefInput5 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 5  cmdID= 110  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 110 }
+
+
+	iqbrt6SetupPPM0dBuRefInput6 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - PPM 0dBu Ref
+					Input 6  cmdID= 111  min= 12  max= 24  step= 1  format= -%1.0fdB  div_scale= 1 
+					Min = -12dB  Max = -24dB  Step = -1dB "
+		::= { iqbrt6CmdEntry 111 }
+
+
+	iqbrt6SetupLoggingInput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 1  cmdID= 114 "
+		::= { iqbrt6CmdEntry 114 }
+
+
+	iqbrt6SetupLoggingInput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 2  cmdID= 115 "
+		::= { iqbrt6CmdEntry 115 }
+
+
+	iqbrt6SetupLoggingInput3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 3  cmdID= 116 "
+		::= { iqbrt6CmdEntry 116 }
+
+
+	iqbrt6SetupLoggingInput4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 4  cmdID= 117 "
+		::= { iqbrt6CmdEntry 117 }
+
+
+	iqbrt6SetupLoggingInput5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 5  cmdID= 118 "
+		::= { iqbrt6CmdEntry 118 }
+
+
+	iqbrt6SetupLoggingInput6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 6  cmdID= 119 "
+		::= { iqbrt6CmdEntry 119 }
+
+
+	iqbrt6SetupLoggingAESOutputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					AES Outputs  cmdID= 184 "
+		::= { iqbrt6CmdEntry 184 }
+
+
+	iqbrt6SetupLoggingAESRef OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					AES Ref  cmdID= 122 "
+		::= { iqbrt6CmdEntry 122 }
+
+
+	iqbrt6SetupLoggingVideoRef OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Video Ref  cmdID= 123 "
+		::= { iqbrt6CmdEntry 123 }
+
+
+	iqbrt6SetupStatus1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Status 1  cmdID= 204  format=   "
+		::= { iqbrt6CmdEntry 204 }
+
+
+	iqbrt6SetupStatus2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Status 2  cmdID= 205  format=   "
+		::= { iqbrt6CmdEntry 205 }
+
+
+	iqbrt6SetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqbrt6CmdEntry 3 }
+
+
+	iqbrt6SetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqbrt6CmdEntry 2 }
+
+
+	iqbrt6SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqbrt6CmdEntry 1 }
+
+
+	iqbrt6SetupBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No  cmdID= 175  format=   "
+		::= { iqbrt6CmdEntry 175 }
+
+
+	iqbrt6SetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqbrt6CmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.49
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.50
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.51
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.52
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.53
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.54
+-- Vary			: YES
+--
+-- Value(s)		: LOST:NON_PCM
+--				: OK:NON_PCM
+--				: LOST:PCM
+--				: OK:PCM
+--				: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AESREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.65.69.83.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.65.69.83.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST: FREQ=UNKNOWN
+--				: OK: FREQ=16k
+--				: OK: FREQ=17k
+--				: OK: FREQ=18k
+--				: OK: FREQ=19k
+--				: OK: FREQ=20k
+--				: OK: FREQ=21k
+--				: OK: FREQ=22k
+--				: OK: FREQ=23k
+--				: OK: FREQ=24k
+--				: OK: FREQ=25k
+--				: OK: FREQ=26k
+--				: OK: FREQ=27k
+--				: OK: FREQ=28k
+--				: OK: FREQ=29k
+--				: OK: FREQ=30k
+--				: OK: FREQ=31k
+--				: OK: FREQ=32k
+--				: OK: FREQ=33k
+--				: OK: FREQ=34k
+--				: OK: FREQ=35k
+--				: OK: FREQ=36k
+--				: OK: FREQ=37k
+--				: OK: FREQ=38k
+--				: OK: FREQ=39k
+--				: OK: FREQ=40k
+--				: OK: FREQ=41k
+--				: OK: FREQ=42k
+--				: OK: FREQ=43k
+--				: OK: FREQ=44k
+--				: OK: FREQ=45k
+--				: OK: FREQ=46k
+--				: OK: FREQ=47k
+--				: OK: FREQ=48k
+--				: OK: FREQ=49k
+--				: OK: FREQ=50k
+--				: OK: FREQ=51k
+--				: OK: FREQ=52k
+--				: OK: FREQ=53k
+--				: OK: FREQ=54k
+--				: OK: FREQ=55k
+--				: OK: FREQ=56k
+--				: OK: FREQ=57k
+--				: OK: FREQ=59k
+--				: OK: FREQ=60k
+--				: OK: FREQ=61k
+--				: OK: FREQ=62k
+--				: OK: FREQ=64k
+--				: OK: FREQ=65k
+--				: OK: FREQ=66k
+--				: OK: FREQ=68k
+--				: OK: FREQ=69k
+--				: OK: FREQ=71k
+--				: OK: FREQ=73k
+--				: OK: FREQ=74k
+--				: OK: FREQ=76k
+--				: OK: FREQ=78k
+--				: OK: FREQ=80k
+--				: OK: FREQ=83k
+--				: OK: FREQ=85k
+--				: OK: FREQ=87k
+--				: OK: FREQ=90k
+--				: OK: FREQ=93k
+--				: OK: FREQ=96k
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.49
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.50
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.51
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.52
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.53
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.70.82.69.81.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.70.82.69.81.95.54
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 16k
+--				: 17k
+--				: 18k
+--				: 19k
+--				: 20k
+--				: 21k
+--				: 22k
+--				: 23k
+--				: 24k
+--				: 25k
+--				: 26k
+--				: 27k
+--				: 28k
+--				: 29k
+--				: 30k
+--				: 31k
+--				: 32k
+--				: 33k
+--				: 34k
+--				: 35k
+--				: 36k
+--				: 37k
+--				: 38k
+--				: 39k
+--				: 40k
+--				: 41k
+--				: 42k
+--				: 43k
+--				: 44k
+--				: 45k
+--				: 46k
+--				: 47k
+--				: 48k
+--				: 49k
+--				: 50k
+--				: 51k
+--				: 52k
+--				: 53k
+--				: 54k
+--				: 55k
+--				: 56k
+--				: 57k
+--				: 59k
+--				: 60k
+--				: 61k
+--				: 62k
+--				: 64k
+--				: 65k
+--				: 66k
+--				: 68k
+--				: 69k
+--				: 71k
+--				: 73k
+--				: 74k
+--				: 76k
+--				: 78k
+--				: 80k
+--				: 83k
+--				: 85k
+--				: 87k
+--				: 90k
+--				: 93k
+--				: 96k
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.49
+-- Vary			: YES
+--
+-- Value(s)		: Source 1
+--				: Source 2
+--				: Source 3
+--				: Source 4
+--				: Source 5
+--				: Source 6
+--				: SILENCE
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.50
+-- Vary			: YES
+--
+-- Value(s)		: Source 1
+--				: Source 2
+--				: Source 3
+--				: Source 4
+--				: Source 5
+--				: Source 6
+--				: SILENCE
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.51
+-- Vary			: YES
+--
+-- Value(s)		: Source 1
+--				: Source 2
+--				: Source 3
+--				: Source 4
+--				: Source 5
+--				: Source 6
+--				: SILENCE
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.52
+-- Vary			: YES
+--
+-- Value(s)		: Source 1
+--				: Source 2
+--				: Source 3
+--				: Source 4
+--				: Source 5
+--				: Source 6
+--				: SILENCE
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,2509 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQMPAR
+--        Module Id#:195
+--       Command Set:12
+--          Filename:SNELL-IQMPAR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:12:11
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQMPAR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQMPAR,
+    moduleIQMPARMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQMPARCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291211Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQMPARMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqmparCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqmparCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQMPAR 1 }
+
+	iqmparCmdEntry OBJECT-TYPE
+		SYNTAX		IqmparCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqmparSlotIndex }
+		::= { iqmparCmdTable 1 }
+
+	IqmparCmdEntry ::=
+		SEQUENCE {
+			iqmparSlotIndex
+				Unsigned32,
+			iqmparErrorsAllErrorsAllErrStatus
+				RollCallString,
+			iqmparErrorsAllErrorsShowStats
+				INTEGER,
+			iqmparErrorsAllErrorsResetStats
+				INTEGER,
+			iqmparErrorsAllErrorsLogAllErr
+				INTEGER,
+			iqmparErrorsPARErrorsAllPARStatus
+				RollCallString,
+			iqmparErrorsPARErrorsShowStats
+				INTEGER,
+			iqmparErrorsPARErrorsResetStats
+				INTEGER,
+			iqmparErrorsPARErrorsLogAllPAR
+				INTEGER,
+			iqmparErrorsTSSyncErrorsTSSyncStatus
+				RollCallString,
+			iqmparErrorsTSSyncErrorsShowStats
+				INTEGER,
+			iqmparErrorsTSSyncErrorsResetStats
+				INTEGER,
+			iqmparErrorsTSSyncErrorsLogTSSyncErrors
+				INTEGER,
+			iqmparErrorsASIRVSErrorsASIRVSStatus
+				RollCallString,
+			iqmparErrorsASIRVSErrorsShowStats
+				INTEGER,
+			iqmparErrorsASIRVSErrorsResetStats
+				INTEGER,
+			iqmparErrorsASIRVSErrorsLogASIRVSErrors
+				INTEGER,
+			iqmparErrorsIPLossErrorsIPLossStatus
+				RollCallString,
+			iqmparErrorsIPLossErrorsShowStats
+				INTEGER,
+			iqmparErrorsIPLossErrorsResetStats
+				INTEGER,
+			iqmparErrorsIPLossErrorsLogIPLossErrors
+				INTEGER,
+			iqmparProgsPMTsProgrammes
+				INTEGER,
+			iqmparProgsPMTsPMTS
+				INTEGER,
+			iqmparProgsPMTsTSID
+				RollCallString,
+			iqmparProgsPMTsPCRPID
+				RollCallString,
+			iqmparProgsPMTsLabelsServiceLabels
+				INTEGER,
+			iqmparProgsPMTsLabelsNumberBase
+				INTEGER,
+			iqmparPARProgSelectAvailable
+				INTEGER,
+			iqmparPARProgSelectSelected
+				INTEGER,
+			iqmparPARProgSelectAdd
+				INTEGER,
+			iqmparPARProgSelectRemove
+				INTEGER,
+			iqmparPARProgSelectSetSelection
+				INTEGER,
+			iqmparProg1SetUpPID
+				RollCallString,
+			iqmparProg1SetUpStartMonitoring
+				INTEGER,
+			iqmparProg1SetUpStopMonitoring
+				INTEGER,
+			iqmparProg1ResultsMinPAR
+				RollCallString,
+			iqmparProg1ResultsMaxPAR
+				RollCallString,
+			iqmparProg1ResultsAveragePAR
+				RollCallString,
+			iqmparProg1ResultsLogAvgResult
+				INTEGER,
+			iqmparProg1ResultsShowResults
+				INTEGER,
+			iqmparProg1ResultsForceUpdate
+				INTEGER,
+			iqmparProg1ResultsMeasurementStatus
+				RollCallString,
+			iqmparProg1ResultsServiceLabel
+				RollCallString,
+			iqmparProg1ThresholdsMinimumPARStatus
+				RollCallString,
+			iqmparProg1ThresholdsMinimumPARErrorCount
+				RollCallString,
+			iqmparProg1ThresholdsMinimumPARResetErrCount
+				INTEGER,
+			iqmparProg1MinimumPARSetupMinThreshold
+				RollCallString,
+			iqmparProg1MinimumPARLogMinTheshold
+				INTEGER,
+			iqmparProg1ThresholdsMaximumPARStatus
+				RollCallString,
+			iqmparProg1ThresholdsMaximumPARErrorCount
+				RollCallString,
+			iqmparProg1ThresholdsMaximumPARResetErrCount
+				INTEGER,
+			iqmparProg1MaximumPARSetupMaxThreshold
+				RollCallString,
+			iqmparProg1MaximumPARLogMaxTheshold
+				INTEGER,
+			iqmparPARProg1DecodedTotalGOPs
+				RollCallString,
+			iqmparProg1DropFramesSetupDropBFrames
+				INTEGER,
+			iqmparProg1DropFramesSetupDropPFrames
+				INTEGER,
+			iqmparProg2SetUpPID
+				RollCallString,
+			iqmparProg2SetUpStartMonitoring
+				INTEGER,
+			iqmparProg2SetUpStopMonitoring
+				INTEGER,
+			iqmparProg2ResultsMinPAR
+				RollCallString,
+			iqmparProg2ResultsMaxPAR
+				RollCallString,
+			iqmparProg2ResultsAveragePAR
+				RollCallString,
+			iqmparProg2ResultsLogAvgResult
+				INTEGER,
+			iqmparProg2ResultsShowResults
+				INTEGER,
+			iqmparProg2ResultsForceUpdate
+				INTEGER,
+			iqmparProg2ResultsMeasurementStatus
+				RollCallString,
+			iqmparProg2ResultsServiceLabel
+				RollCallString,
+			iqmparProg2ThresholdsMinimumPARStatus
+				RollCallString,
+			iqmparProg2ThresholdsMinimumPARErrorCount
+				RollCallString,
+			iqmparProg2ThresholdsMinimumPARResetErrCount
+				INTEGER,
+			iqmparProg2MinimumPARSetupMinThreshold
+				RollCallString,
+			iqmparProg2MinimumPARLogMinTheshold
+				INTEGER,
+			iqmparProg2ThresholdsMaximumPARStatus
+				RollCallString,
+			iqmparProg2ThresholdsMaximumPARErrorCount
+				RollCallString,
+			iqmparProg2ThresholdsMaximumPARResetErrCount
+				INTEGER,
+			iqmparProg2MaximumPARSetupMaxThreshold
+				RollCallString,
+			iqmparProg2MaximumPARLogMaxTheshold
+				INTEGER,
+			iqmparPARProg2DecodedTotalGOPs
+				RollCallString,
+			iqmparProg2DropFramesSetupDropBFrames
+				INTEGER,
+			iqmparProg2DropFramesSetupDropPFrames
+				INTEGER,
+			iqmparProg3SetUpPID
+				RollCallString,
+			iqmparProg3SetUpStartMonitoring
+				INTEGER,
+			iqmparProg3SetUpStopMonitoring
+				INTEGER,
+			iqmparProg3ResultsMinPAR
+				RollCallString,
+			iqmparProg3ResultsMaxPAR
+				RollCallString,
+			iqmparProg3ResultsAveragePAR
+				RollCallString,
+			iqmparProg3ResultsLogAvgResult
+				INTEGER,
+			iqmparProg3ResultsShowResults
+				INTEGER,
+			iqmparProg3ResultsForceUpdate
+				INTEGER,
+			iqmparProg3ResultsMeasurementStatus
+				RollCallString,
+			iqmparProg3ResultsServiceLabel
+				RollCallString,
+			iqmparProg3ThresholdsMinimumPARStatus
+				RollCallString,
+			iqmparProg3ThresholdsMinimumPARErrorCount
+				RollCallString,
+			iqmparProg3ThresholdsMinimumPARResetErrCount
+				INTEGER,
+			iqmparProg3MinimumPARSetupMinThreshold
+				RollCallString,
+			iqmparProg3MinimumPARLogMinTheshold
+				INTEGER,
+			iqmparProg3ThresholdsMaximumPARStatus
+				RollCallString,
+			iqmparProg3ThresholdsMaximumPARErrorCount
+				RollCallString,
+			iqmparProg3ThresholdsMaximumPARResetErrCount
+				INTEGER,
+			iqmparProg3MaximumPARSetupMaxThreshold
+				RollCallString,
+			iqmparProg3MaximumPARLogMaxTheshold
+				INTEGER,
+			iqmparPARProg3DecodedTotalGOPs
+				RollCallString,
+			iqmparProg3DropFramesSetupDropBFrames
+				INTEGER,
+			iqmparProg3DropFramesSetupDropPFrames
+				INTEGER,
+			iqmparMemoriesSaveToMem1
+				INTEGER,
+			iqmparMemoriesSaveToMem2
+				INTEGER,
+			iqmparMemoriesSaveToMem3
+				INTEGER,
+			iqmparMemoriesSaveToMem4
+				INTEGER,
+			iqmparMemoriesSaveToMem5
+				INTEGER,
+			iqmparMemoriesSaveToMem6
+				INTEGER,
+			iqmparMemoriesSaveToMem7
+				INTEGER,
+			iqmparMemoriesSaveToMem8
+				INTEGER,
+			iqmparMemoriesRetrieveFactoryDefaults
+				INTEGER,
+			iqmparMemoriesRetrieveMem1
+				INTEGER,
+			iqmparMemoriesRetrieveMem2
+				INTEGER,
+			iqmparMemoriesRetrieveMem3
+				INTEGER,
+			iqmparMemoriesRetrieveMem4
+				INTEGER,
+			iqmparMemoriesRetrieveMem5
+				INTEGER,
+			iqmparMemoriesRetrieveMem6
+				INTEGER,
+			iqmparMemoriesRetrieveMem7
+				INTEGER,
+			iqmparMemoriesRetrieveMem8
+				INTEGER,
+			iqmparMemoriesSetNamesMem1
+				RollCallString,
+			iqmparMemoriesSetNamesMem2
+				RollCallString,
+			iqmparMemoriesSetNamesMem3
+				RollCallString,
+			iqmparMemoriesSetNamesMem4
+				RollCallString,
+			iqmparMemoriesSetNamesMem5
+				RollCallString,
+			iqmparMemoriesSetNamesMem6
+				RollCallString,
+			iqmparMemoriesSetNamesMem7
+				RollCallString,
+			iqmparMemoriesSetNamesMem8
+				RollCallString,
+			iqmparInputInput1NewInputLabel
+				RollCallString,
+			iqmparInputInput1InputStatus
+				RollCallString,
+			iqmparInputInput2NewInputLabel
+				RollCallString,
+			iqmparInputInput2InputStatus
+				RollCallString,
+			iqmparInputInputSelect
+				INTEGER,
+			iqmparInputInputSelectInputSelected
+				RollCallString,
+			iqmparGPIGPI1Status
+				RollCallString,
+			iqmparGPI1SetupGPI1Mode
+				INTEGER,
+			iqmparGPI1SetupGPI1ModeInvertGPI1Output
+				INTEGER,
+			iqmparGPI1SetupGPI1ModeInvertGPI1Input
+				INTEGER,
+			iqmparGPIGPI1SetupGPI1OP
+				INTEGER,
+			iqmparGPIGPI2Status
+				RollCallString,
+			iqmparGPI2SetupGPI2Mode
+				INTEGER,
+			iqmparGPI2SetupGPI2ModeInvertGPI2Output
+				INTEGER,
+			iqmparGPI2SetupGPI2ModeInvertGPI2Input
+				INTEGER,
+			iqmparGPIGPI2SetupGPI2OP
+				INTEGER,
+			iqmparUnitInfoSoftwareVersion
+				RollCallString,
+			iqmparUnitInfoSerialNo
+				RollCallString,
+			iqmparUnitInfoRestart
+				INTEGER
+		}
+
+	iqmparSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqmparCmdEntry 0 }
+
+
+	iqmparErrorsAllErrorsAllErrStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					All Err. Status  cmdID= 156  format=   "
+		::= { iqmparCmdEntry 156 }
+
+
+	iqmparErrorsAllErrorsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 161 "
+		::= { iqmparCmdEntry 161 }
+
+
+	iqmparErrorsAllErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 166  value= 1  "
+		::= { iqmparCmdEntry 166 }
+
+
+	iqmparErrorsAllErrorsLogAllErr OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log All Err.  cmdID= 151 "
+		::= { iqmparCmdEntry 151 }
+
+
+	iqmparErrorsPARErrorsAllPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					All PAR Status  cmdID= 159  format=   "
+		::= { iqmparCmdEntry 159 }
+
+
+	iqmparErrorsPARErrorsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 164 "
+		::= { iqmparCmdEntry 164 }
+
+
+	iqmparErrorsPARErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 169  value= 1  "
+		::= { iqmparCmdEntry 169 }
+
+
+	iqmparErrorsPARErrorsLogAllPAR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log All PAR  cmdID= 154 "
+		::= { iqmparCmdEntry 154 }
+
+
+	iqmparErrorsTSSyncErrorsTSSyncStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					T/S Sync Status  cmdID= 155  format=   "
+		::= { iqmparCmdEntry 155 }
+
+
+	iqmparErrorsTSSyncErrorsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 160 "
+		::= { iqmparCmdEntry 160 }
+
+
+	iqmparErrorsTSSyncErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 165  value= 1  "
+		::= { iqmparCmdEntry 165 }
+
+
+	iqmparErrorsTSSyncErrorsLogTSSyncErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log T/S Sync Errors  cmdID= 150 "
+		::= { iqmparCmdEntry 150 }
+
+
+	iqmparErrorsASIRVSErrorsASIRVSStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					ASI RVS Status  cmdID= 157  format=   "
+		::= { iqmparCmdEntry 157 }
+
+
+	iqmparErrorsASIRVSErrorsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 162 "
+		::= { iqmparCmdEntry 162 }
+
+
+	iqmparErrorsASIRVSErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 167  value= 1  "
+		::= { iqmparCmdEntry 167 }
+
+
+	iqmparErrorsASIRVSErrorsLogASIRVSErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log ASI RVS Errors  cmdID= 152 "
+		::= { iqmparCmdEntry 152 }
+
+
+	iqmparErrorsIPLossErrorsIPLossStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					IP Loss Status  cmdID= 158  format=   "
+		::= { iqmparCmdEntry 158 }
+
+
+	iqmparErrorsIPLossErrorsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 163 "
+		::= { iqmparCmdEntry 163 }
+
+
+	iqmparErrorsIPLossErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 168  value= 1  "
+		::= { iqmparCmdEntry 168 }
+
+
+	iqmparErrorsIPLossErrorsLogIPLossErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log IP Loss Errors  cmdID= 153 "
+		::= { iqmparCmdEntry 153 }
+
+
+	iqmparProgsPMTsProgrammes OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_SI(0),
+							val_Ch01(1),
+							val_Ch02(2),
+							val_Ch03(3),
+							val_Ch04(4),
+							val_Ch05(5),
+							val_Ch06(6),
+							val_Ch07(7),
+							val_Ch08(8),
+							val_Ch09(9),
+							val_Ch10(10),
+							val_Ch11(11),
+							val_Ch12(12),
+							val_Ch13(13),
+							val_Ch14(14),
+							val_Ch15(15),
+							val_Ch16(16),
+							val_Ch17(17),
+							val_Ch18(18),
+							val_Ch19(19),
+							val_Ch20(20),
+							val_Ch21(21),
+							val_Ch22(22),
+							val_Ch23(23),
+							val_Ch24(24),
+							val_Ch25(25),
+							val_Ch26(26),
+							val_Ch27(27),
+							val_Ch28(28),
+							val_Ch29(29),
+							val_Ch30(30),
+							val_Ch31(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Progs/PMTs
+					Programmes  cmdID= 8 
+					No SI  value= 0  
+					  value= 1  
+					  value= 2  
+					  value= 3  
+					  value= 4  
+					  value= 5  
+					  value= 6  
+					  value= 7  
+					  value= 8  
+					  value= 9  
+					  value= 10  
+					  value= 11  
+					  value= 12  
+					  value= 13  
+					  value= 14  
+					  value= 15  
+					  value= 16  
+					  value= 17  
+					  value= 18  
+					  value= 19  
+					  value= 20  
+					  value= 21  
+					  value= 22  
+					  value= 23  
+					  value= 24  
+					  value= 25  
+					  value= 26  
+					  value= 27  
+					  value= 28  
+					  value= 29  
+					  value= 30  
+					  value= 31  "
+		::= { iqmparCmdEntry 8 }
+
+
+	iqmparProgsPMTsPMTS OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_Ch01(1),
+							val_Ch02(2),
+							val_Ch03(3),
+							val_Ch04(4),
+							val_Ch05(5),
+							val_Ch06(6),
+							val_Ch07(7),
+							val_Ch08(8),
+							val_Ch09(9),
+							val_Ch10(10),
+							val_Ch11(11),
+							val_Ch12(12),
+							val_Ch13(13),
+							val_Ch14(14),
+							val_Ch15(15),
+							val_Ch16(16),
+							val_Ch17(17),
+							val_Ch18(18),
+							val_Ch19(19),
+							val_Ch20(20),
+							val_Ch21(21),
+							val_Ch22(22),
+							val_Ch23(23),
+							val_Ch24(24),
+							val_Ch25(25),
+							val_Ch26(26),
+							val_Ch27(27),
+							val_Ch28(28),
+							val_Ch29(29),
+							val_Ch30(30),
+							val_Ch31(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Progs/PMTs
+					PMTS  cmdID= 9 
+					  value= 0  
+					  value= 1  
+					  value= 2  
+					  value= 3  
+					  value= 4  
+					  value= 5  
+					  value= 6  
+					  value= 7  
+					  value= 8  
+					  value= 9  
+					  value= 10  
+					  value= 11  
+					  value= 12  
+					  value= 13  
+					  value= 14  
+					  value= 15  
+					  value= 16  
+					  value= 17  
+					  value= 18  
+					  value= 19  
+					  value= 20  
+					  value= 21  
+					  value= 22  
+					  value= 23  
+					  value= 24  
+					  value= 25  
+					  value= 26  
+					  value= 27  
+					  value= 28  
+					  value= 29  
+					  value= 30  
+					  value= 31  "
+		::= { iqmparCmdEntry 9 }
+
+
+	iqmparProgsPMTsTSID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Progs/PMTs
+					TS ID  cmdID= 10  format=   "
+		::= { iqmparCmdEntry 10 }
+
+
+	iqmparProgsPMTsPCRPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Progs/PMTs
+					PCR PID  cmdID= 11  format=   "
+		::= { iqmparCmdEntry 11 }
+
+
+	iqmparProgsPMTsLabelsServiceLabels OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Service_Names(0),
+							val_Programme_Numbers(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Progs/PMTs
+					Service Labels  cmdID= 12 
+					Service Names  value= 0  
+					Programme Numbers  value= 1  "
+		::= { iqmparCmdEntry 12 }
+
+
+	iqmparProgsPMTsLabelsNumberBase OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Decimal(1),
+							val_Hex(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Progs/PMTs
+					Number Base  cmdID= 175 
+					Decimal  value= 1  
+					Hex  value= 0  "
+		::= { iqmparCmdEntry 175 }
+
+
+	iqmparPARProgSelectAvailable OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_Ch01(1),
+							val_Ch02(2),
+							val_Ch03(3),
+							val_Ch04(4),
+							val_Ch05(5),
+							val_Ch06(6),
+							val_Ch07(7),
+							val_Ch08(8),
+							val_Ch09(9),
+							val_Ch10(10),
+							val_Ch11(11),
+							val_Ch12(12),
+							val_Ch13(13),
+							val_Ch14(14),
+							val_Ch15(15),
+							val_Ch16(16),
+							val_Ch17(17),
+							val_Ch18(18),
+							val_Ch19(19),
+							val_Ch20(20),
+							val_Ch21(21),
+							val_Ch22(22),
+							val_Ch23(23),
+							val_Ch24(24),
+							val_Ch25(25),
+							val_Ch26(26),
+							val_Ch27(27),
+							val_Ch28(28),
+							val_Ch29(29),
+							val_Ch30(30),
+							val_Ch31(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - PAR- Prog. Select
+					Available  cmdID= 170 
+					  value= 0  
+					  value= 1  
+					  value= 2  
+					  value= 3  
+					  value= 4  
+					  value= 5  
+					  value= 6  
+					  value= 7  
+					  value= 8  
+					  value= 9  
+					  value= 10  
+					  value= 11  
+					  value= 12  
+					  value= 13  
+					  value= 14  
+					  value= 15  
+					  value= 16  
+					  value= 17  
+					  value= 18  
+					  value= 19  
+					  value= 20  
+					  value= 21  
+					  value= 22  
+					  value= 23  
+					  value= 24  
+					  value= 25  
+					  value= 26  
+					  value= 27  
+					  value= 28  
+					  value= 29  
+					  value= 30  
+					  value= 31  "
+		::= { iqmparCmdEntry 170 }
+
+
+	iqmparPARProgSelectSelected OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_val_1(0),
+							val_val_2(1),
+							val_val_3(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - PAR- Prog. Select
+					Selected  cmdID= 171 
+					  value= 0  
+					  value= 1  
+					  value= 2  "
+		::= { iqmparCmdEntry 171 }
+
+
+	iqmparPARProgSelectAdd OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Add(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR- Prog. Select
+					Add  cmdID= 172  value= 1  "
+		::= { iqmparCmdEntry 172 }
+
+
+	iqmparPARProgSelectRemove OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Remove(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR- Prog. Select
+					Remove  cmdID= 173  value= 1  "
+		::= { iqmparCmdEntry 173 }
+
+
+	iqmparPARProgSelectSetSelection OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Set_Selection(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR- Prog. Select
+					Set Selection  cmdID= 174  value= 1  "
+		::= { iqmparCmdEntry 174 }
+
+
+	iqmparProg1SetUpPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					PID  cmdID= 54  "
+		::= { iqmparCmdEntry 54 }
+
+
+	iqmparProg1SetUpStartMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Start_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Start Monitoring  cmdID= 98  value= 1  "
+		::= { iqmparCmdEntry 98 }
+
+
+	iqmparProg1SetUpStopMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Stop_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Stop Monitoring  cmdID= 58  value= 1  "
+		::= { iqmparCmdEntry 58 }
+
+
+	iqmparProg1ResultsMinPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Min. PAR  cmdID= 62  format=   "
+		::= { iqmparCmdEntry 62 }
+
+
+	iqmparProg1ResultsMaxPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Max. PAR  cmdID= 66  format=   "
+		::= { iqmparCmdEntry 66 }
+
+
+	iqmparProg1ResultsAveragePAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Average PAR  cmdID= 70  format=   "
+		::= { iqmparCmdEntry 70 }
+
+
+	iqmparProg1ResultsLogAvgResult OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Avg. Result  cmdID= 122 
+					Log PAR 1 Avg.  cmdID= 122 "
+		::= { iqmparCmdEntry 122 }
+
+
+	iqmparProg1ResultsShowResults OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Show Results  cmdID= 90 "
+		::= { iqmparCmdEntry 90 }
+
+
+	iqmparProg1ResultsForceUpdate OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Force_Update(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Force Update  cmdID= 94  value= 1  "
+		::= { iqmparCmdEntry 94 }
+
+
+	iqmparProg1ResultsMeasurementStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Measurement Status  cmdID= 50  format=   "
+		::= { iqmparCmdEntry 50 }
+
+
+	iqmparProg1ResultsServiceLabel OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Service Label  cmdID= 46  format=   "
+		::= { iqmparCmdEntry 46 }
+
+
+	iqmparProg1ThresholdsMinimumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 102  format=   "
+		::= { iqmparCmdEntry 102 }
+
+
+	iqmparProg1ThresholdsMinimumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 126  format=   "
+		::= { iqmparCmdEntry 126 }
+
+
+	iqmparProg1ThresholdsMinimumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 134  value= 1  "
+		::= { iqmparCmdEntry 134 }
+
+
+	iqmparProg1MinimumPARSetupMinThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Min. Threshold  cmdID= 74  "
+		::= { iqmparCmdEntry 74 }
+
+
+	iqmparProg1MinimumPARLogMinTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Min. Thesh.  cmdID= 82 
+					Log PAR 1 Min.  cmdID= 82 "
+		::= { iqmparCmdEntry 82 }
+
+
+	iqmparProg1ThresholdsMaximumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 106  format=   "
+		::= { iqmparCmdEntry 106 }
+
+
+	iqmparProg1ThresholdsMaximumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 130  format=   "
+		::= { iqmparCmdEntry 130 }
+
+
+	iqmparProg1ThresholdsMaximumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 138  value= 1  "
+		::= { iqmparCmdEntry 138 }
+
+
+	iqmparProg1MaximumPARSetupMaxThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Max. Threshold  cmdID= 78  "
+		::= { iqmparCmdEntry 78 }
+
+
+	iqmparProg1MaximumPARLogMaxTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Max. Thesh.  cmdID= 86 
+					Log PAR 1 Max.  cmdID= 86 "
+		::= { iqmparCmdEntry 86 }
+
+
+	iqmparPARProg1DecodedTotalGOPs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Decoded/Total (GOPs)  cmdID= 118  format=   "
+		::= { iqmparCmdEntry 118 }
+
+
+	iqmparProg1DropFramesSetupDropBFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop B Frames  cmdID= 110 "
+		::= { iqmparCmdEntry 110 }
+
+
+	iqmparProg1DropFramesSetupDropPFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop P Frames  cmdID= 114 "
+		::= { iqmparCmdEntry 114 }
+
+
+	iqmparProg2SetUpPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					PID  cmdID= 55  "
+		::= { iqmparCmdEntry 55 }
+
+
+	iqmparProg2SetUpStartMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Start_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Start Monitoring  cmdID= 99  value= 1  "
+		::= { iqmparCmdEntry 99 }
+
+
+	iqmparProg2SetUpStopMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Stop_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Stop Monitoring  cmdID= 59  value= 1  "
+		::= { iqmparCmdEntry 59 }
+
+
+	iqmparProg2ResultsMinPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Min. PAR  cmdID= 63  format=   "
+		::= { iqmparCmdEntry 63 }
+
+
+	iqmparProg2ResultsMaxPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Max. PAR  cmdID= 67  format=   "
+		::= { iqmparCmdEntry 67 }
+
+
+	iqmparProg2ResultsAveragePAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Average PAR  cmdID= 71  format=   "
+		::= { iqmparCmdEntry 71 }
+
+
+	iqmparProg2ResultsLogAvgResult OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Avg. Result  cmdID= 123 
+					Log PAR 2 Avg.  cmdID= 123 "
+		::= { iqmparCmdEntry 123 }
+
+
+	iqmparProg2ResultsShowResults OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Show Results  cmdID= 91 "
+		::= { iqmparCmdEntry 91 }
+
+
+	iqmparProg2ResultsForceUpdate OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Force_Update(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Force Update  cmdID= 95  value= 1  "
+		::= { iqmparCmdEntry 95 }
+
+
+	iqmparProg2ResultsMeasurementStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Measurement Status  cmdID= 51  format=   "
+		::= { iqmparCmdEntry 51 }
+
+
+	iqmparProg2ResultsServiceLabel OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Service Label  cmdID= 47  format=   "
+		::= { iqmparCmdEntry 47 }
+
+
+	iqmparProg2ThresholdsMinimumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 103  format=   "
+		::= { iqmparCmdEntry 103 }
+
+
+	iqmparProg2ThresholdsMinimumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 127  format=   "
+		::= { iqmparCmdEntry 127 }
+
+
+	iqmparProg2ThresholdsMinimumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 135  value= 1  "
+		::= { iqmparCmdEntry 135 }
+
+
+	iqmparProg2MinimumPARSetupMinThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Min. Threshold  cmdID= 75  "
+		::= { iqmparCmdEntry 75 }
+
+
+	iqmparProg2MinimumPARLogMinTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Min. Thesh.  cmdID= 83 
+					Log PAR 2 Min.  cmdID= 83 "
+		::= { iqmparCmdEntry 83 }
+
+
+	iqmparProg2ThresholdsMaximumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 107  format=   "
+		::= { iqmparCmdEntry 107 }
+
+
+	iqmparProg2ThresholdsMaximumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 131  format=   "
+		::= { iqmparCmdEntry 131 }
+
+
+	iqmparProg2ThresholdsMaximumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 139  value= 1  "
+		::= { iqmparCmdEntry 139 }
+
+
+	iqmparProg2MaximumPARSetupMaxThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Max. Threshold  cmdID= 79  "
+		::= { iqmparCmdEntry 79 }
+
+
+	iqmparProg2MaximumPARLogMaxTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Max. Thesh.  cmdID= 87 
+					Log PAR 2 Max.  cmdID= 87 "
+		::= { iqmparCmdEntry 87 }
+
+
+	iqmparPARProg2DecodedTotalGOPs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Decoded/Total (GOPs)  cmdID= 119  format=   "
+		::= { iqmparCmdEntry 119 }
+
+
+	iqmparProg2DropFramesSetupDropBFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop B Frames  cmdID= 111 "
+		::= { iqmparCmdEntry 111 }
+
+
+	iqmparProg2DropFramesSetupDropPFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop P Frames  cmdID= 115 "
+		::= { iqmparCmdEntry 115 }
+
+
+	iqmparProg3SetUpPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					PID  cmdID= 56  "
+		::= { iqmparCmdEntry 56 }
+
+
+	iqmparProg3SetUpStartMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Start_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Start Monitoring  cmdID= 100  value= 1  "
+		::= { iqmparCmdEntry 100 }
+
+
+	iqmparProg3SetUpStopMonitoring OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Stop_Monitoring(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Stop Monitoring  cmdID= 60  value= 1  "
+		::= { iqmparCmdEntry 60 }
+
+
+	iqmparProg3ResultsMinPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Min. PAR  cmdID= 64  format=   "
+		::= { iqmparCmdEntry 64 }
+
+
+	iqmparProg3ResultsMaxPAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Max. PAR  cmdID= 68  format=   "
+		::= { iqmparCmdEntry 68 }
+
+
+	iqmparProg3ResultsAveragePAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Average PAR  cmdID= 72  format=   "
+		::= { iqmparCmdEntry 72 }
+
+
+	iqmparProg3ResultsLogAvgResult OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Avg. Result  cmdID= 124 
+					Log PAR 3 Avg.  cmdID= 124 "
+		::= { iqmparCmdEntry 124 }
+
+
+	iqmparProg3ResultsShowResults OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Show Results  cmdID= 92 "
+		::= { iqmparCmdEntry 92 }
+
+
+	iqmparProg3ResultsForceUpdate OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Force_Update(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Force Update  cmdID= 96  value= 1  "
+		::= { iqmparCmdEntry 96 }
+
+
+	iqmparProg3ResultsMeasurementStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Measurement Status  cmdID= 52  format=   "
+		::= { iqmparCmdEntry 52 }
+
+
+	iqmparProg3ResultsServiceLabel OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Service Label  cmdID= 48  format=   "
+		::= { iqmparCmdEntry 48 }
+
+
+	iqmparProg3ThresholdsMinimumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 104  format=   "
+		::= { iqmparCmdEntry 104 }
+
+
+	iqmparProg3ThresholdsMinimumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 128  format=   "
+		::= { iqmparCmdEntry 128 }
+
+
+	iqmparProg3ThresholdsMinimumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 136  value= 1  "
+		::= { iqmparCmdEntry 136 }
+
+
+	iqmparProg3MinimumPARSetupMinThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Min. Threshold  cmdID= 76  "
+		::= { iqmparCmdEntry 76 }
+
+	iqmparProg3MinimumPARLogMinTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Min. Thesh.  cmdID= 84 
+					Log PAR 3 Min.  cmdID= 84 "
+		::= { iqmparCmdEntry 84 }
+
+
+	iqmparProg3ThresholdsMaximumPARStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Status  cmdID= 108  format=   "
+		::= { iqmparCmdEntry 108 }
+
+
+	iqmparProg3ThresholdsMaximumPARErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Error Count  cmdID= 132  format=   "
+		::= { iqmparCmdEntry 132 }
+
+
+	iqmparProg3ThresholdsMaximumPARResetErrCount OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Err_Count(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - PAR
+					Reset Err. Count  cmdID= 140  value= 1  "
+		::= { iqmparCmdEntry 140 }
+
+
+	iqmparProg3MaximumPARSetupMaxThreshold OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - PAR
+					Max. Threshold  cmdID= 80  "
+		::= { iqmparCmdEntry 80 }
+
+
+	iqmparProg3MaximumPARLogMaxTheshold OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Log Max. Thesh.  cmdID= 88 
+					Log PAR 3 Max.  cmdID= 88 "
+		::= { iqmparCmdEntry 88 }
+
+
+	iqmparPARProg3DecodedTotalGOPs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - PAR
+					Decoded/Total (GOPs)  cmdID= 120  format=   "
+		::= { iqmparCmdEntry 120 }
+
+
+	iqmparProg3DropFramesSetupDropBFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop B Frames  cmdID= 112 "
+		::= { iqmparCmdEntry 112 }
+
+
+	iqmparProg3DropFramesSetupDropPFrames OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - PAR
+					Drop P Frames  cmdID= 116 "
+		::= { iqmparCmdEntry 116 }
+
+
+	iqmparMemoriesSaveToMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #1  cmdID= 13  value= 1  "
+		::= { iqmparCmdEntry 13 }
+
+
+	iqmparMemoriesSaveToMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #2  cmdID= 14  value= 1  "
+		::= { iqmparCmdEntry 14 }
+
+
+	iqmparMemoriesSaveToMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #3  cmdID= 15  value= 1  "
+		::= { iqmparCmdEntry 15 }
+
+
+	iqmparMemoriesSaveToMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #4  cmdID= 16  value= 1  "
+		::= { iqmparCmdEntry 16 }
+
+
+	iqmparMemoriesSaveToMem5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #5  cmdID= 17  value= 1  "
+		::= { iqmparCmdEntry 17 }
+
+
+	iqmparMemoriesSaveToMem6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #6  cmdID= 18  value= 1  "
+		::= { iqmparCmdEntry 18 }
+
+
+	iqmparMemoriesSaveToMem7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #7  cmdID= 19  value= 1  "
+		::= { iqmparCmdEntry 19 }
+
+
+	iqmparMemoriesSaveToMem8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #8  cmdID= 20  value= 1  "
+		::= { iqmparCmdEntry 20 }
+
+
+	iqmparMemoriesRetrieveFactoryDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Factory_Defaults(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Factory Defaults  cmdID= 29  value= 1  "
+		::= { iqmparCmdEntry 29 }
+
+
+	iqmparMemoriesRetrieveMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #1  cmdID= 21  value= 1  "
+		::= { iqmparCmdEntry 21 }
+
+
+	iqmparMemoriesRetrieveMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #2  cmdID= 22  value= 1  "
+		::= { iqmparCmdEntry 22 }
+
+
+	iqmparMemoriesRetrieveMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #3  cmdID= 23  value= 1  "
+		::= { iqmparCmdEntry 23 }
+
+
+	iqmparMemoriesRetrieveMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #4  cmdID= 24  value= 1  "
+		::= { iqmparCmdEntry 24 }
+
+
+	iqmparMemoriesRetrieveMem5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #5  cmdID= 25  value= 1  "
+		::= { iqmparCmdEntry 25 }
+
+
+	iqmparMemoriesRetrieveMem6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #6  cmdID= 26  value= 1  "
+		::= { iqmparCmdEntry 26 }
+
+
+	iqmparMemoriesRetrieveMem7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #7  cmdID= 27  value= 1  "
+		::= { iqmparCmdEntry 27 }
+
+
+	iqmparMemoriesRetrieveMem8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Mem #8  cmdID= 28  value= 1  "
+		::= { iqmparCmdEntry 28 }
+
+
+	iqmparMemoriesSetNamesMem1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #1  cmdID= 177  "
+		::= { iqmparCmdEntry 177 }
+
+
+	iqmparMemoriesSetNamesMem2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #2  cmdID= 178  "
+		::= { iqmparCmdEntry 178 }
+
+
+	iqmparMemoriesSetNamesMem3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #3  cmdID= 179  "
+		::= { iqmparCmdEntry 179 }
+
+
+	iqmparMemoriesSetNamesMem4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #4  cmdID= 180  "
+		::= { iqmparCmdEntry 180 }
+
+
+	iqmparMemoriesSetNamesMem5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #5  cmdID= 181  "
+		::= { iqmparCmdEntry 181 }
+
+
+	iqmparMemoriesSetNamesMem6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #6  cmdID= 182  "
+		::= { iqmparCmdEntry 182 }
+
+
+	iqmparMemoriesSetNamesMem7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #7  cmdID= 183  "
+		::= { iqmparCmdEntry 183 }
+
+
+	iqmparMemoriesSetNamesMem8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Mem #8  cmdID= 184  "
+		::= { iqmparCmdEntry 184 }
+
+
+	iqmparInputInput1NewInputLabel OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					New Input Label  cmdID= 36  "
+		::= { iqmparCmdEntry 36 }
+
+
+	iqmparInputInput1InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 42  format=   "
+		::= { iqmparCmdEntry 42 }
+
+
+	iqmparInputInput2NewInputLabel OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					New Input Label  cmdID= 37  "
+		::= { iqmparCmdEntry 37 }
+
+
+	iqmparInputInput2InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 43  format=   "
+		::= { iqmparCmdEntry 43 }
+
+
+	iqmparInputInputSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_Auto_Select(2),
+							val_GPI_1(3),
+							val_GPI_2(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input 1  cmdID= 30  value= 0  
+					Input 2  cmdID= 30  value= 1  
+					Auto Select  cmdID= 30  value= 2  
+					GPI 1  cmdID= 30  value= 3  
+					GPI 2  cmdID= 30  value= 4  "
+		::= { iqmparCmdEntry 30 }
+
+
+	iqmparInputInputSelectInputSelected OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Selected  cmdID= 35  format=   "
+		::= { iqmparCmdEntry 35 }
+
+
+	iqmparGPIGPI1Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					GPI 1 Status  cmdID= 44  format=   "
+		::= { iqmparCmdEntry 44 }
+
+
+	iqmparGPI1SetupGPI1Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 31  value= 0  
+					Output  cmdID= 31  value= 1  
+					Input  cmdID= 31  value= 2  "
+		::= { iqmparCmdEntry 31 }
+
+
+	iqmparGPI1SetupGPI1ModeInvertGPI1Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert GPI 1 Output  cmdID= 38 "
+		::= { iqmparCmdEntry 38 }
+
+
+	iqmparGPI1SetupGPI1ModeInvertGPI1Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert GPI 1 Input  cmdID= 40 "
+		::= { iqmparCmdEntry 40 }
+
+
+	iqmparGPIGPI1SetupGPI1OP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A_Fail(0),
+							val_Input_B_Fail(1),
+							val_Either_Input_Fail(2),
+							val_PAR_Ch_1_Error(3),
+							val_PAR_Ch_2_Error(4),
+							val_PAR_Ch_3_Error(5),
+							val_Any_PAR_Error(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI 1 O/P  cmdID= 33 
+					Input A Fail  value= 0  
+					Input B Fail  value= 1  
+					Either Input Fail  value= 2  
+					PAR Ch. 1 Error  value= 3  
+					PAR Ch. 2 Error  value= 4  
+					PAR Ch. 3 Error  value= 5  
+					Any PAR Error  value= 6  "
+		::= { iqmparCmdEntry 33 }
+
+
+	iqmparGPIGPI2Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					GPI 2 Status  cmdID= 45  format=   "
+		::= { iqmparCmdEntry 45 }
+
+
+	iqmparGPI2SetupGPI2Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 32  value= 0  
+					Output  cmdID= 32  value= 1  
+					Input  cmdID= 32  value= 2  "
+		::= { iqmparCmdEntry 32 }
+
+
+	iqmparGPI2SetupGPI2ModeInvertGPI2Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert GPI 2 Output  cmdID= 39 "
+		::= { iqmparCmdEntry 39 }
+
+
+	iqmparGPI2SetupGPI2ModeInvertGPI2Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert GPI 2 Input  cmdID= 41 "
+		::= { iqmparCmdEntry 41 }
+
+
+	iqmparGPIGPI2SetupGPI2OP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A_Fail(0),
+							val_Input_B_Fail(1),
+							val_Either_Input_Fail(2),
+							val_PAR_Ch_1_Error(3),
+							val_PAR_Ch_2_Error(4),
+							val_PAR_Ch_3_Error(5),
+							val_Any_PAR_Error(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI 2 O/P  cmdID= 34 
+					Input A Fail  value= 0  
+					Input B Fail  value= 1  
+					Either Input Fail  value= 2  
+					PAR Ch. 1 Error  value= 3  
+					PAR Ch. 2 Error  value= 4  
+					PAR Ch. 3 Error  value= 5  
+					Any PAR Error  value= 6  "
+		::= { iqmparCmdEntry 34 }
+
+
+	iqmparUnitInfoSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqmparCmdEntry 2 }
+
+
+	iqmparUnitInfoSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqmparCmdEntry 1 }
+
+
+	iqmparUnitInfoRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 189  value= 1  "
+		::= { iqmparCmdEntry 189 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S300501D
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALL
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.65.76.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.65.76.76
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: I/P
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.73.47.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.73.47.80
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.80.65.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.80.65.82
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RVS
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.82.86.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.82.86.83
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SYNC
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.83.89.78.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.89.78.67
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Input
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.110.112.117.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.110.112.117.116
+-- Vary			: YES
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 1 Avg
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.80.65.82.32.49.32.65.118.103
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.80.65.82.32.49.32.65.118.103
+-- Vary			: YES
+--
+-- Value(s)		: --
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 2 Avg
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.80.65.82.32.50.32.65.118.103
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.80.65.82.32.50.32.65.118.103
+-- Vary			: YES
+--
+-- Value(s)		: --
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 3 Avg
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.80.65.82.32.51.32.65.118.103
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.80.65.82.32.51.32.65.118.103
+-- Vary			: YES
+--
+-- Value(s)		: --
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: All Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.65.108.108.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.65.108.108.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: I/P Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.47.80.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.47.80.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.80.65.82.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.80.65.82.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RVS Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.82.86.83.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.82.86.83.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Sync Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.83.121.110.99.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.83.121.110.99.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 1 Max Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.49.32.77.97.120.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.49.32.77.97.120.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 1 Min Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.49.32.77.105.110.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.49.32.77.105.110.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 2 Max Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.50.32.77.97.120.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.50.32.77.97.120.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 2 Min Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.50.32.77.105.110.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.50.32.77.105.110.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 3 Max Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.51.32.77.97.120.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.51.32.77.97.120.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PAR 3 Min Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.80.65.82.32.51.32.77.105.110.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.80.65.82.32.51.32.77.105.110.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

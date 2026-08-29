@@ -28,6 +28,7 @@ type Server struct {
 	mu       sync.RWMutex
 	routes   map[routeKey]HandlerFunc
 	prefixes []prefixRoute // longer prefixes first
+	raw      map[string]stdhttp.Handler
 	mux      *stdhttp.ServeMux
 	srv      *stdhttp.Server
 }
@@ -41,6 +42,15 @@ type prefixRoute struct {
 	method string
 	prefix string
 	fn     HandlerFunc
+}
+
+// altSlashForm returns the other spelling of a path: with a trailing
+// slash if it had none, without if it had one.
+func altSlashForm(p string) string {
+	if strings.HasSuffix(p, "/") {
+		return strings.TrimSuffix(p, "/")
+	}
+	return p + "/"
 }
 
 // ErrorBody mirrors the IS-04 §4.4 / IS-09 RAML error envelope so
@@ -97,6 +107,26 @@ func (s *Server) HandlePrefix(prefix, method string, fn HandlerFunc) {
 // concurrent use.
 func (s *Server) MuxHandler() stdhttp.Handler {
 	return stdhttp.HandlerFunc(s.dispatch)
+}
+
+// HandleRaw registers a plain http.Handler at an exact path, bypassing
+// the (status, body, error) route table.
+//
+// Needed for WebSocket upgrades and nothing else. The normal handler
+// signature returns a value the server then serialises, which means
+// the ResponseWriter is written and closed by the framework -- but an
+// upgrade has to HIJACK that connection and keep it, so a handler that
+// only returns a body can never perform one.
+func (s *Server) HandleRaw(path string, h stdhttp.Handler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.raw == nil {
+		s.raw = map[string]stdhttp.Handler{}
+	}
+	if _, dup := s.raw[path]; dup {
+		panic("nmos/http: duplicate raw route " + path)
+	}
+	s.raw[path] = h
 }
 
 // Serve binds to addr and serves until ctx is cancelled. Returns the
@@ -165,8 +195,37 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		return
 	}
 
+	// Raw handlers first, and before the CORS/JSON machinery has
+	// touched the ResponseWriter -- a hijack must happen on a
+	// connection nothing has written to.
+	s.mu.RLock()
+	rawH, isRaw := s.raw[r.URL.Path]
+	if !isRaw {
+		rawH, isRaw = s.raw[altSlashForm(r.URL.Path)]
+	}
+	s.mu.RUnlock()
+	if isRaw {
+		rawH.ServeHTTP(w, r)
+		return
+	}
+
 	s.mu.RLock()
 	fn, ok := s.routes[routeKey{method: r.Method, path: r.URL.Path}]
+	if !ok {
+		// A trailing slash is not a different resource.
+		//
+		// The NMOS specs write collection paths with a trailing slash
+		// and clients send both forms freely — the AMWA testing tool
+		// asks for `single/senders/{id}/staged` while the spec text
+		// writes `.../staged/`. Answering 404 for the other form is
+		// technically defensible and practically useless: it failed 20
+		// IS-05 tests that were exercising handlers which existed and
+		// worked.
+		//
+		// Tried only after the exact match, so a route registered for
+		// one specific form still wins.
+		fn, ok = s.routes[routeKey{method: r.Method, path: altSlashForm(r.URL.Path)}]
+	}
 	if !ok {
 		// Try a prefix route — longest match first.
 		for _, pr := range s.prefixes {
@@ -180,8 +239,15 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	if !ok {
 		// Choose 404 vs 405 based on whether ANY route matches the path.
 		methodNotAllowed := false
+		// Both spellings of the path, for the same reason the lookup
+		// above tries both: a trailing slash is not a different
+		// resource. `GET /bulk/senders` against a POST-only
+		// `/bulk/senders/` is a wrong METHOD, not a missing route, and
+		// answering 404 tells a controller the endpoint does not exist
+		// (IS-05-01 test_34/test_35).
+		alt := altSlashForm(r.URL.Path)
 		for k := range s.routes {
-			if k.path == r.URL.Path && k.method != r.Method {
+			if (k.path == r.URL.Path || k.path == alt) && k.method != r.Method {
 				methodNotAllowed = true
 				break
 			}
@@ -305,8 +371,18 @@ func (s *Server) methodsForPath(path string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	seen := map[string]struct{}{stdhttp.MethodOptions: {}}
+	// Both slash forms, for the same reason dispatch accepts both: a
+	// preflight for `.../bulk/senders` must advertise the POST that is
+	// registered at `.../bulk/senders/`, or the browser refuses the
+	// request that would have worked.
+	alt := path
+	if strings.HasSuffix(alt, "/") {
+		alt = strings.TrimSuffix(alt, "/")
+	} else {
+		alt += "/"
+	}
 	for k := range s.routes {
-		if k.path == path {
+		if k.path == path || k.path == alt {
 			seen[k.method] = struct{}{}
 		}
 	}

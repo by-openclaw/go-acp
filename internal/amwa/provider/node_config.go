@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is05"
 )
 
 // NodeConfig is the on-disk Node bundle. Fields parallel the Node API
@@ -24,6 +25,102 @@ type NodeConfig struct {
 	Flows     []is04.Flow     `json:"flows"`
 	Senders   []is04.Sender   `json:"senders"`
 	Receivers []is04.Receiver `json:"receivers"`
+
+	// EventTypes carries IS-07 `type` documents, keyed by Source id.
+	//
+	// Not derivable from IS-04, and that is the point: IS-04 says a
+	// Source emits `boolean` events, and IS-07's type document says
+	// whether those two boolean values are called "on"/"off" or
+	// "PGM"/"PVW" and what a controller should render. An enum source
+	// is exactly a source whose type document carries `values`, so
+	// without a place to declare them the Node can only ever publish
+	// unlabelled primitives.
+	//
+	// Optional. A Source with no entry here gets the plain type
+	// document its event_type implies.
+	EventTypes map[string]json.RawMessage `json:"event_types,omitempty"`
+
+	// Connection seeds the IS-05 boot state per endpoint id.
+	//
+	// Without it every endpoint boots master_enable=false with one leg
+	// of unset parameters — correct for a factory-fresh device, and
+	// useless for a device that is supposed to LOOK configured: a
+	// controller (or Cerebrum) reading ACTIVE sees no multicast group,
+	// no ports, nothing. IS-04 has no field for any of this — transport
+	// configuration is IS-05's — which is why it is a sibling block
+	// keyed by resource id rather than extra keys smuggled into the
+	// IS-04 resources (those are schema-checked on the wire).
+	Connection *ConnectionSeed `json:"connection,omitempty"`
+}
+
+// ConnectionSeed maps IS-04 resource ids to their boot connection
+// state.
+type ConnectionSeed struct {
+	Senders   map[string]*EndpointSeed `json:"senders,omitempty"`
+	Receivers map[string]*EndpointSeed `json:"receivers,omitempty"`
+}
+
+// EndpointSeed is one endpoint's boot state. TransportParams follows
+// IS-05 exactly: one map per leg, two legs meaning ST 2022-7. Values
+// override the transport's defaults; "auto" survives and resolves the
+// way a controller-written "auto" would. master_enable=true makes the
+// Node promote the endpoint at boot — active params go concrete and a
+// Sender gets its SDP — as if a controller had activated it.
+type EndpointSeed struct {
+	MasterEnable    bool                   `json:"master_enable"`
+	TransportParams []is05.TransportParams `json:"transport_params,omitempty"`
+}
+
+// validateConnectionSeed rejects seeds that name unknown endpoints or
+// carry parameters the endpoint's transport does not define.
+//
+// The key check matters more than it looks: an unknown key would not
+// fail loudly anywhere downstream — it would ride into staged, the
+// constraints envelope would not carry it, and the AMWA tool would
+// report the mismatch as "Invalid combination of parameters on
+// constraints endpoint" four suites away from the typo.
+func validateConnectionSeed(cfg *NodeConfig) error {
+	if cfg.Connection == nil {
+		return nil
+	}
+	check := func(kind string, seeds map[string]*EndpointSeed, transportOf map[string]string, isSender bool) error {
+		for id, seed := range seeds {
+			transport, ok := transportOf[id]
+			if !ok {
+				return fmt.Errorf("connection.%s[%q]: no such %s in the bundle", kind, id, kind[:len(kind)-1])
+			}
+			if seed == nil {
+				continue
+			}
+			legal := defaultLegParams(transport, isSender)
+			if len(seed.TransportParams) > 2 {
+				return fmt.Errorf("connection.%s[%q]: %d legs — IS-05 RTP carries at most 2 (ST 2022-7)", kind, id, len(seed.TransportParams))
+			}
+			if len(seed.TransportParams) == 2 && !isRTP(transport) {
+				return fmt.Errorf("connection.%s[%q]: two legs on %s — only RTP transports carry a 2022-7 pair", kind, id, transport)
+			}
+			for li, leg := range seed.TransportParams {
+				for k := range leg {
+					if _, ok := legal[k]; !ok {
+						return fmt.Errorf("connection.%s[%q].transport_params[%d]: %q is not a parameter of %s", kind, id, li, k, transport)
+					}
+				}
+			}
+		}
+		return nil
+	}
+	sndTransport := map[string]string{}
+	for i := range cfg.Senders {
+		sndTransport[cfg.Senders[i].ID] = cfg.Senders[i].Transport
+	}
+	rcvTransport := map[string]string{}
+	for i := range cfg.Receivers {
+		rcvTransport[cfg.Receivers[i].ID] = cfg.Receivers[i].Transport
+	}
+	if err := check("senders", cfg.Connection.Senders, sndTransport, true); err != nil {
+		return err
+	}
+	return check("receivers", cfg.Connection.Receivers, rcvTransport, false)
 }
 
 // LoadNodeConfigFromFile reads + validates a Node config bundle.
@@ -93,5 +190,5 @@ func validateBundle(cfg *NodeConfig) error {
 			return fmt.Errorf("receivers[%d].device_id %q: not declared under devices[]", i, r.DeviceID)
 		}
 	}
-	return nil
+	return validateConnectionSeed(cfg)
 }

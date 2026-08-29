@@ -44,11 +44,11 @@ const (
 	avahiEntryIf     = "org.freedesktop.Avahi.EntryGroup"
 
 	// Avahi protocol constants — from avahi-common/defs.h.
-	avahiIfaceUnspec    = int32(-1) // AVAHI_IF_UNSPEC — every iface
-	avahiProtoUnspec    = int32(-1) // AVAHI_PROTO_UNSPEC — every proto
-	avahiProtoIPv4      = int32(0)  // AVAHI_PROTO_INET
-	avahiLookupNoFlags  = uint32(0)
-	avahiPubNoFlags     = uint32(0)
+	avahiIfaceUnspec   = int32(-1) // AVAHI_IF_UNSPEC — every iface
+	avahiProtoUnspec   = int32(-1) // AVAHI_PROTO_UNSPEC — every proto
+	avahiProtoIPv4     = int32(0)  // AVAHI_PROTO_INET
+	avahiLookupNoFlags = uint32(0)
+	avahiPubNoFlags    = uint32(0)
 )
 
 // tryDaemonBrowser — Linux: probe avahi-daemon via DBus; pick it if
@@ -273,6 +273,11 @@ func (b *avahiBrowser) resolveItemNew(
 		Host:    rHost,
 		Port:    rPort,
 		TXT:     txt,
+		// Avahi's ItemNew means the instance is alive — the daemon
+		// does not surface record TTLs, and goodbyes arrive as
+		// ItemRemove, never as a zero TTL. Emitting the default keeps
+		// TTL==0 meaning "goodbye" for every backend uniformly.
+		TTL: dnssd.DefaultAnnounceTTL,
 	}
 	if ip := net.ParseIP(rAddr); ip != nil {
 		if ip4 := ip.To4(); ip4 != nil {
@@ -330,8 +335,11 @@ type avahiResponder struct {
 // avahiGroup records the EntryGroup path plus the saved Instance.
 // `name` / `service` / `domain` are the AddService argument triple
 // needed by UpdateServiceTxt — Avahi's API requires the same triple
-// on the update call. `instance` is kept around so Close can build
-// an explicit RFC 6762 §10.1 goodbye packet (TTL=0) and emit it via
+// on the update call. `ifaces` is the interface-index set the group
+// was AddService'd on, because UpdateServiceTxt must address the same
+// (interface, protocol, name, type, domain) tuple as the original
+// AddService. `instance` is kept around so Close can build an
+// explicit RFC 6762 §10.1 goodbye packet (TTL=0) and emit it via
 // raw multicast UDP — Avahi's EntryGroup.Free does NOT emit goodbye
 // on the wire in our DBus configuration (verified via tshark on the
 // docker bridge: zero TTL=0 records after Free).
@@ -340,7 +348,50 @@ type avahiGroup struct {
 	name     string
 	service  string
 	domain   string
+	ifaces   []int32
 	instance dnssd.Instance
+}
+
+// announceIfaceIndexes filters an interface list down to the indexes a
+// DNS-SD announce belongs on: up, multicast-capable, NOT loopback.
+//
+// Why this exists: AddService with AVAHI_IF_UNSPEC publishes on every
+// interface the daemon is allowed to use — and a stock avahi-daemon
+// config includes `lo`. The daemon then answers `<host>.local` A
+// queries with 127.0.0.1 alongside the real address, and any peer
+// that happens to cache the loopback answer resolves us to itself
+// and never connects (observed live: Cerebrum resolving our registry
+// to 127.0.0.1 — see docs/cerebrum-interop.md, root-cause section).
+// The stdlib responder already skips FlagLoopback in
+// openMulticastConns; this makes the Avahi path match it in code
+// rather than relying on each host's avahi-daemon.conf.
+//
+// An empty result means the caller should fall back to
+// avahiIfaceUnspec — a host with no qualifying interface (containers
+// mid-setup) still announces rather than going dark.
+func announceIfaceIndexes(ifs []net.Interface) []int32 {
+	var out []int32
+	for _, ifc := range ifs {
+		if ifc.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagMulticast == 0 {
+			continue
+		}
+		out = append(out, int32(ifc.Index))
+	}
+	return out
+}
+
+// announceIfaces resolves the live interface set for Announce. Split
+// from announceIfaceIndexes so the filter stays a pure function under
+// unit test while this thin wrapper owns the syscall.
+func announceIfaces() []int32 {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	return announceIfaceIndexes(ifs)
 }
 
 func newAvahiResponder(logger *slog.Logger, conn *dbus.Conn) *avahiResponder {
@@ -378,16 +429,30 @@ func (r *avahiResponder) Announce(ctx context.Context, ins dnssd.Instance) error
 		host = ""
 	}
 
-	if err := group.Call(
-		avahiEntryIf+".AddService", 0,
-		avahiIfaceUnspec, avahiProtoIPv4, avahiPubNoFlags,
-		ins.Name, ins.Service, domain,
-		host, ins.Port,
-		encodeAvahiTXT(ins.TXT),
-	).Store(); err != nil {
-		_ = group.Call(avahiEntryIf+".Free", 0).Store()
-		return fmt.Errorf("dnssd: Avahi AddService(%s.%s.%s): %w",
-			ins.Name, ins.Service, domain, err)
+	// Announce per-interface, never AVAHI_IF_UNSPEC: Unspec includes
+	// `lo` on a stock daemon config, which publishes a 127.0.0.1 A
+	// record that poisons peer resolution (see announceIfaceIndexes).
+	// Fall back to Unspec only when no qualifying interface exists.
+	ifaces := announceIfaces()
+	if len(ifaces) == 0 {
+		ifaces = []int32{avahiIfaceUnspec}
+		if r.logger != nil {
+			r.logger.Warn("dnssd: no up/multicast/non-loopback interface — announcing on all interfaces",
+				"instance", ins.FullName())
+		}
+	}
+	for _, idx := range ifaces {
+		if err := group.Call(
+			avahiEntryIf+".AddService", 0,
+			idx, avahiProtoIPv4, avahiPubNoFlags,
+			ins.Name, ins.Service, domain,
+			host, ins.Port,
+			encodeAvahiTXT(ins.TXT),
+		).Store(); err != nil {
+			_ = group.Call(avahiEntryIf+".Free", 0).Store()
+			return fmt.Errorf("dnssd: Avahi AddService(%s.%s.%s) iface=%d: %w",
+				ins.Name, ins.Service, domain, idx, err)
+		}
 	}
 
 	if err := group.Call(avahiEntryIf+".Commit", 0).Store(); err != nil {
@@ -415,6 +480,7 @@ func (r *avahiResponder) Announce(ctx context.Context, ins dnssd.Instance) error
 	}
 	r.groups[ins.FullName()] = avahiGroup{
 		path: groupPath, name: ins.Name, service: ins.Service, domain: domain,
+		ifaces:   ifaces,
 		instance: saved,
 	}
 	r.mu.Unlock()
@@ -440,14 +506,22 @@ func (r *avahiResponder) Update(ctx context.Context, ins dnssd.Instance) error {
 		return fmt.Errorf("dnssd: Update: instance %q not announced", ins.FullName())
 	}
 	group := r.conn.Object(avahiBusName, g.path)
-	if err := group.Call(
-		avahiEntryIf+".UpdateServiceTxt", 0,
-		avahiIfaceUnspec, avahiProtoIPv4, avahiPubNoFlags,
-		g.name, g.service, g.domain,
-		encodeAvahiTXT(ins.TXT),
-	).Store(); err != nil {
-		return fmt.Errorf("dnssd: Avahi UpdateServiceTxt(%s.%s.%s): %w",
-			g.name, g.service, g.domain, err)
+	// Address the exact (interface, protocol, name, type, domain)
+	// tuples the group was AddService'd on — Avahi requires the match.
+	ifaces := g.ifaces
+	if len(ifaces) == 0 {
+		ifaces = []int32{avahiIfaceUnspec}
+	}
+	for _, idx := range ifaces {
+		if err := group.Call(
+			avahiEntryIf+".UpdateServiceTxt", 0,
+			idx, avahiProtoIPv4, avahiPubNoFlags,
+			g.name, g.service, g.domain,
+			encodeAvahiTXT(ins.TXT),
+		).Store(); err != nil {
+			return fmt.Errorf("dnssd: Avahi UpdateServiceTxt(%s.%s.%s) iface=%d: %w",
+				g.name, g.service, g.domain, idx, err)
+		}
 	}
 	return nil
 }

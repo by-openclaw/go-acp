@@ -1,9 +1,9 @@
 package is04
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Sender is the IS-04 v1.3 Sender resource.
@@ -12,13 +12,20 @@ import (
 type Sender struct {
 	ResourceCore
 
-	FlowID            *string            `json:"flow_id"` // UUID OR null
-	Transport         string             `json:"transport"`
-	DeviceID          string             `json:"device_id"`
-	ManifestHref      *string            `json:"manifest_href"` // URI OR null
-	InterfaceBindings []string           `json:"interface_bindings"`
-	Caps              map[string]any     `json:"caps,omitempty"`
-	Subscription      SenderSubscription `json:"subscription"`
+	FlowID            *string  `json:"flow_id"` // UUID OR null
+	Transport         string   `json:"transport"`
+	DeviceID          string   `json:"device_id"`
+	ManifestHref      *string  `json:"manifest_href"` // URI OR null
+	InterfaceBindings []string `json:"interface_bindings"`
+	// Caps is a pointer so ABSENT and EMPTY survive a round-trip as
+	// what they were: a real EVS Neuron registers every sender with
+	// `"caps": {}`, and a plain map with omitempty re-served all 208
+	// of them without the field. The schema doesn't require caps, so
+	// nothing failed — the Registry just quietly returned a different
+	// document than the one registered, which is exactly the class of
+	// infidelity a controller diff will eventually trip over.
+	Caps         *map[string]any    `json:"caps,omitempty"`
+	Subscription SenderSubscription `json:"subscription"`
 }
 
 // SenderSubscription mirrors sender.json `subscription`. Per IS-04
@@ -68,16 +75,33 @@ func (s *Sender) Validate() error {
 
 // DecodeSender parses + validates a Sender payload.
 func DecodeSender(raw []byte) (*Sender, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var s Sender
-	if err := d.Decode(&s); err != nil {
-		return nil, fmt.Errorf("is04: decode sender: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode sender: trailing JSON content")
+	return DecodeSenderReporting(raw, APIVersion, nil)
+}
+
+// DecodeSenderReporting parses a Sender payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseSender] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeSenderReporting(raw []byte, apiVer string, rep spec.Reporter) (*Sender, error) {
+	s, err := ParseSender(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.Validate(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// ParseSender decodes a Sender served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseSender(raw []byte, apiVer string, rep spec.Reporter) (*Sender, error) {
+	var s Sender
+	if err := decodeAbsorbing(raw, &s, "sender", apiVer, rep); err != nil {
 		return nil, err
 	}
 	return &s, nil

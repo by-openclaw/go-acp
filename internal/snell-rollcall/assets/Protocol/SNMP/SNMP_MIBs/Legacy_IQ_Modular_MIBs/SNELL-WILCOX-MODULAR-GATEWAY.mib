@@ -1,0 +1,276 @@
+-- *****************************************************************
+-- SNELL-WILCOX-ROLL-LOG-PROXY.mib:  Snell & Wilcox RollCall logging proxy
+--
+-- March 2003, Sandy Kellagher
+--
+-- Copyright (c) 2003 Snell & Wilcox Ltd
+-- All rights reserved.
+-- 
+-- $Id: SNELL-WILCOX-MODULAR-GATEWAY.mib,v 1.3 2005/01/24 16:51:23 sandy-k Exp $
+--
+-- *****************************************************************
+--
+
+SNELL-WILCOX-MODULAR-GATEWAY 	DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, Unsigned32, Counter32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+	snellWilcoxGeneric
+		FROM SNELL-WILCOX-SMI
+	RollCallString, RollCallAddressString, RollCallUnitType, RollCallUnitTypeName, RollCallSysTime, RollCallCmdSetVersion
+		FROM SNELL-WILCOX-TC;
+
+
+snellWilcoxModularGateway MODULE-IDENTITY
+	LAST-UPDATED 	"0501241400Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					Generic Software Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+		
+		   Tel: 	+44 (0) 2392 489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+
+	DESCRIPTION		"This module defines the fields that are used to represent
+					RollCall logging messages within an SNMP monitoring system.
+					A typical use for these fields is RollMap, where incoming
+					RollCall logging messages are converted into SNMP traps.
+					Note that an SNMP manager will not in general be able to
+					poll the value of these fields, since they are updated
+					whenever a new RollCall logging message arrives"
+					
+	REVISION    	"0501241400Z"
+	DESCRIPTION		"Updated contact details"
+
+	REVISION    	"0309010930Z"
+	DESCRIPTION		"Changed slotAllowBlindControl to be RollCallString"
+
+	REVISION    	"0303151430Z"
+	DESCRIPTION		"Initial version of this MIB module."
+	::= { snellWilcoxGeneric 4 }
+
+
+
+  slotNumber OBJECT-TYPE
+      SYNTAX  		Unsigned32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The number of physical slots supported by this gateway."
+      ::= { snellWilcoxModularGateway 1 }
+
+
+
+  ---------------------------------------------------------------------------
+  -- The Slot table contains information on the modules present in each slot.
+  ---------------------------------------------------------------------------
+
+  slotTable OBJECT-TYPE
+      SYNTAX  		SEQUENCE OF SlotEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "A table of slot entries.  The number of slot
+              entries is given by the value of slotNumber."
+      ::= { snellWilcoxModularGateway 2 }
+
+  slotEntry OBJECT-TYPE
+      SYNTAX  		SlotEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "An entry in the slot table."
+      INDEX   { slotIndex }
+      ::= { slotTable 1 }
+
+  SlotEntry ::=
+      SEQUENCE {
+          slotIndex
+              Unsigned32,
+          slotFittedType
+              RollCallString,
+          slotFittedTypeName
+              RollCallString,
+          slotExpectedType
+              RollCallString,
+          slotUserName
+              RollCallString,
+          slotAllowBlindControl
+              RollCallString,
+          slotLastBlindController
+              RollCallAddressString,
+          slotTotalConnectedPackets
+              Counter32,
+          slotTotalBlindPackets
+              Counter32
+      }
+
+
+  slotIndex OBJECT-TYPE
+      SYNTAX  		Unsigned32
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "The unique index value for each slot.  Its value
+              ranges between 1 and the value of slotNumber"
+      ::= { slotEntry 1 }
+
+  slotFittedType OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The RollCall unique type ID for the module actually present 
+              in this slot, or 'No unit' if none is present."
+      ::= { slotEntry 2 }
+
+  slotFittedTypeName OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The RollCall unique type name for the module actually present 
+              in this slot, or 'No unit fitted' if none is present."
+      ::= { slotEntry 3 }
+
+  slotExpectedType OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-write
+      STATUS  		current
+      DESCRIPTION
+              "The RollCall unique type ID for the module that the user
+              expects to be present in this slot, or 'None' if none is expected."
+      ::= { slotEntry 4 }
+
+
+	slotUserName OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-write
+      STATUS  		current
+      DESCRIPTION
+              "The user-defined name for the module in this slot. This user name
+              appears in the network browse view etc if and only if the type ID
+              of the module actually present in the slot matches the expected type ID.
+              If this is not the case, the default type name is used."
+      ::= { slotEntry 5 }
+      
+      
+  slotAllowBlindControl OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-write
+      STATUS  		current
+      DESCRIPTION
+              "This controls whether blind control (ie control without a connected
+              session) is allowed for the given slot."
+      ::= { slotEntry 6 }
+
+  slotLastBlindController OBJECT-TYPE
+      SYNTAX  		RollCallAddressString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "This variable contains the RollCall address of the unit from which
+              the last blind control originated."
+      ::= { slotEntry 7 }
+
+  slotTotalConnectedPackets OBJECT-TYPE
+      SYNTAX  		Counter32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "This variable contains a count of the total number of connected
+              packets to/from this slot (ie packets on connected sessions)."
+      ::= { slotEntry 8 }
+
+  slotTotalBlindPackets OBJECT-TYPE
+      SYNTAX  		Counter32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "This variable contains a count of the total number of blind
+              packets to/from this slot (ie packets sent without a connected session)."
+      ::= { slotEntry 9 }
+
+
+
+  ---------------------------------------------------------------------------
+  -- The Connection table contains information about connected sessions
+  ---------------------------------------------------------------------------
+
+  connTable OBJECT-TYPE
+      SYNTAX  		SEQUENCE OF ConnEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "A table of slot connection entries. The gateway supports
+              multiple sessions per frame and per module slot, currently
+              limited to a maximum of 20 concurrent connections."
+      ::= { snellWilcoxModularGateway 3 }
+
+  connEntry OBJECT-TYPE
+      SYNTAX  		ConnEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "An entry in the connection table."
+      INDEX   { connSession  }
+      ::= { connTable 1 }
+
+  ConnEntry ::=
+      SEQUENCE {
+          connSession
+              Unsigned32,
+          connSlot
+              Unsigned32,
+          connRemoteController
+              RollCallAddressString,
+          connTotalSessionPackets
+              Counter32
+      }
+
+  connSession OBJECT-TYPE
+      SYNTAX  		Unsigned32 (1..20)
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "The session index, in the range 1..20."
+      ::= { connEntry 1 }
+
+  connSlot OBJECT-TYPE
+      SYNTAX  		Unsigned32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The slot involved in this session. Its value
+              ranges between 1 and the value of slotNumber"
+      ::= { connEntry 2 }
+
+  connRemoteController OBJECT-TYPE
+      SYNTAX  		RollCallAddressString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "This variable contains the RollCall address of the remote 
+              controller for this session."
+      ::= { connEntry 3 }
+
+  connTotalSessionPackets OBJECT-TYPE
+      SYNTAX  		Counter32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "This variable contains a count of the total number of connected
+              packets to/from the slot on this session."
+      ::= { connEntry 4 }
+      
+
+END      

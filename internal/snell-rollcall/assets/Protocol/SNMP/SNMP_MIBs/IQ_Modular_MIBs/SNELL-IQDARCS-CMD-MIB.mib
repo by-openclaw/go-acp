@@ -1,0 +1,4471 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDARCS
+--        Module Id#:200
+--       Command Set:8
+--          Filename:SNELL-IQDARCS-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:14:22
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDARCS-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDARCS,
+    moduleIQDARCSMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDARCSCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171422Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDARCSMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdarcsCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdarcsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDARCS 1 }
+
+	iqdarcsCmdEntry OBJECT-TYPE
+		SYNTAX		IqdarcsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdarcsSlotIndex }
+		::= { iqdarcsCmdTable 1 }
+
+	IqdarcsCmdEntry ::=
+		SEQUENCE {
+			iqdarcsSlotIndex
+				Unsigned32,
+			iqdarcsARCAspectCtrl
+				INTEGER,
+			iqdarcsARCSizeCtrl
+				INTEGER,
+			iqdarcsARCPanCtrl
+				INTEGER,
+			iqdarcsARCTiltCtrl
+				INTEGER,
+			iqdarcsARC
+				INTEGER,
+			iqdarcsARCAspect
+				INTEGER,
+			iqdarcsARCSize
+				INTEGER,
+			iqdarcsARCPan
+				INTEGER,
+			iqdarcsARCTilt
+				INTEGER,
+			iqdarcsARCPreset
+				INTEGER,
+			iqdarcsARCAperture
+				INTEGER,
+			iqdarcsARCMinDelayAspect
+				INTEGER,
+			iqdarcsARCMinDelayPan
+				INTEGER,
+			iqdarcsARCMinDelayPreset
+				INTEGER,
+			iqdarcsVideoLumaGain
+				INTEGER,
+			iqdarcsVideoBlackLevel
+				INTEGER,
+			iqdarcsVideoChromaGain
+				INTEGER,
+			iqdarcsVideoLimitingMinYClipLevel
+				INTEGER,
+			iqdarcsVideoLimitingMaxYClipLevel
+				INTEGER,
+			iqdarcsVideoLimitingMinCClipLevel
+				INTEGER,
+			iqdarcsVideoLimitingMaxCClipLevel
+				INTEGER,
+			iqdarcsMode
+				INTEGER,
+			iqdarcsBlankingInputLeft
+				INTEGER,
+			iqdarcsBlankingInputRight
+				INTEGER,
+			iqdarcsBlankingInputTop
+				INTEGER,
+			iqdarcsBlankingInputBottom
+				INTEGER,
+			iqdarcsBlankingInputForcetoBlack
+				INTEGER,
+			iqdarcsBlankingOutputLeft
+				INTEGER,
+			iqdarcsBlankingOutputRight
+				INTEGER,
+			iqdarcsBlankingOutputTop
+				INTEGER,
+			iqdarcsBlankingOutputBottom
+				INTEGER,
+			iqdarcsBlankingOutputForcetoBlack
+				INTEGER,
+			iqdarcsBlankingStd525line21_283
+				INTEGER,
+			iqdarcsBlankingVertEdgeFilter
+				INTEGER,
+			iqdarcsByPass
+				INTEGER,
+			iqdarcsFreeze
+				INTEGER,
+			iqdarcsUserMemMemory1Save1
+				INTEGER,
+			iqdarcsUserMemMemory1Recall1
+				INTEGER,
+			iqdarcsUserMemMemory1Clear1
+				INTEGER,
+			iqdarcsUserMemMemory1Name1
+				RollCallString,
+			iqdarcsUserMemMemory2Save2
+				INTEGER,
+			iqdarcsUserMemMemory2Recall2
+				INTEGER,
+			iqdarcsUserMemMemory2Clear2
+				INTEGER,
+			iqdarcsUserMemMemory2Name2
+				RollCallString,
+			iqdarcsUserMemMemory3Save3
+				INTEGER,
+			iqdarcsUserMemMemory3Recall3
+				INTEGER,
+			iqdarcsUserMemMemory3Clear3
+				INTEGER,
+			iqdarcsUserMemMemory3Name3
+				RollCallString,
+			iqdarcsUserMemMemory4Save4
+				INTEGER,
+			iqdarcsUserMemMemory4Recall4
+				INTEGER,
+			iqdarcsUserMemMemory4Clear4
+				INTEGER,
+			iqdarcsUserMemMemory4Name4
+				RollCallString,
+			iqdarcsUserMemMemory5Save5
+				INTEGER,
+			iqdarcsUserMemMemory5Recall5
+				INTEGER,
+			iqdarcsUserMemMemory5Clear5
+				INTEGER,
+			iqdarcsUserMemMemory5Name5
+				RollCallString,
+			iqdarcsUserMemMemory6Save6
+				INTEGER,
+			iqdarcsUserMemMemory6Recall6
+				INTEGER,
+			iqdarcsUserMemMemory6Clear6
+				INTEGER,
+			iqdarcsUserMemMemory6Name6
+				RollCallString,
+			iqdarcsUserMemMemory7Save7
+				INTEGER,
+			iqdarcsUserMemMemory7Recall7
+				INTEGER,
+			iqdarcsUserMemMemory7Clear7
+				INTEGER,
+			iqdarcsUserMemMemory7Name7
+				RollCallString,
+			iqdarcsUserMemMemory8Save8
+				INTEGER,
+			iqdarcsUserMemMemory8Recall8
+				INTEGER,
+			iqdarcsUserMemMemory8Clear8
+				INTEGER,
+			iqdarcsUserMemMemory8Name8
+				RollCallString,
+			iqdarcsUserMemMemory9Save9
+				INTEGER,
+			iqdarcsUserMemMemory9Recall9
+				INTEGER,
+			iqdarcsUserMemMemory9Clear9
+				INTEGER,
+			iqdarcsUserMemMemory9Name9
+				RollCallString,
+			iqdarcsUserMemMemory10Save10
+				INTEGER,
+			iqdarcsUserMemMemory10Recall10
+				INTEGER,
+			iqdarcsUserMemMemory10Clear10
+				INTEGER,
+			iqdarcsUserMemMemory10Name10
+				RollCallString,
+			iqdarcsUserMemMemory11Save11
+				INTEGER,
+			iqdarcsUserMemMemory11Recall11
+				INTEGER,
+			iqdarcsUserMemMemory11Clear11
+				INTEGER,
+			iqdarcsUserMemMemory11Name11
+				RollCallString,
+			iqdarcsUserMemMemory12Save12
+				INTEGER,
+			iqdarcsUserMemMemory12Recall12
+				INTEGER,
+			iqdarcsUserMemMemory12Clear12
+				INTEGER,
+			iqdarcsUserMemMemory12Name12
+				RollCallString,
+			iqdarcsUserMemMemory13Save13
+				INTEGER,
+			iqdarcsUserMemMemory13Recall13
+				INTEGER,
+			iqdarcsUserMemMemory13Clear13
+				INTEGER,
+			iqdarcsUserMemMemory13Name13
+				RollCallString,
+			iqdarcsUserMemMemory14Save14
+				INTEGER,
+			iqdarcsUserMemMemory14Recall14
+				INTEGER,
+			iqdarcsUserMemMemory14Clear14
+				INTEGER,
+			iqdarcsUserMemMemory14Name14
+				RollCallString,
+			iqdarcsUserMemMemory15Save15
+				INTEGER,
+			iqdarcsUserMemMemory15Recall15
+				INTEGER,
+			iqdarcsUserMemMemory15Clear15
+				INTEGER,
+			iqdarcsUserMemMemory15Name15
+				RollCallString,
+			iqdarcsUserMemMemory16Save16
+				INTEGER,
+			iqdarcsUserMemMemory16Recall16
+				INTEGER,
+			iqdarcsUserMemMemory16Clear16
+				INTEGER,
+			iqdarcsUserMemMemory16Name16
+				RollCallString,
+			iqdarcsUserMemMemConfigMemoryIndex
+				INTEGER,
+			iqdarcsUserMemMemConfigVideoSetup
+				INTEGER,
+			iqdarcsUserMemMemConfigARCModeSetup
+				INTEGER,
+			iqdarcsUserMemMemConfigManualSetup
+				INTEGER,
+			iqdarcsUserMemMemConfigAutomaticSetup
+				INTEGER,
+			iqdarcsUserMemMemConfigOthers
+				INTEGER,
+			iqdarcsInputInputListInputSource625
+				INTEGER,
+			iqdarcsInputInputListWSSInputType
+				INTEGER,
+			iqdarcsInputInputListVIInputType
+				INTEGER,
+			iqdarcsInputInputListAFDInput
+				INTEGER,
+			iqdarcsInputInputListWSSWaveform
+				INTEGER,
+			iqdarcsInputInputListDeleteWSSLine
+				INTEGER,
+			iqdarcsInputInputListReadWSSLine
+				INTEGER,
+			iqdarcsInputListVICRCsCheckAFDCRC
+				INTEGER,
+			iqdarcsInputListVICRCsReportAllCRC
+				INTEGER,
+			iqdarcsOutputListWSSWSSType
+				INTEGER,
+			iqdarcsOutputListWSSUserBitsOn
+				INTEGER,
+			iqdarcsOutputListWSSForcedOn
+				INTEGER,
+			iqdarcsOutputListVideoIndexVIType
+				INTEGER,
+			iqdarcsOutputListVideoIndexPassNonARData
+				INTEGER,
+			iqdarcsOutputListVideoIndexForcedOn
+				INTEGER,
+			iqdarcsOutputListForcedModeETSI
+				INTEGER,
+			iqdarcsOutputListForcedModeAFD
+				INTEGER,
+			iqdarcsOutputListForcedModeSMPTE
+				INTEGER,
+			iqdarcsOutputOutputListSetWSSUserBits
+				INTEGER,
+			iqdarcsOutputOutputListWriteWSSLine
+				INTEGER,
+			iqdarcsOutputOutputListDisableFOL
+				INTEGER,
+			iqdarcsETSIEtsiMapListETSIIn
+				INTEGER,
+			iqdarcsETSIEtsiMapListNoneEnabled
+				INTEGER,
+			iqdarcsETSIEtsiMapListETSIOut
+				INTEGER,
+			iqdarcsETSIEtsiMapListAFDOut
+				INTEGER,
+			iqdarcsETSIEtsiMapListSMPTEOut
+				INTEGER,
+			iqdarcsEtsiMapListAspect
+				INTEGER,
+			iqdarcsEtsiMapListAspectSize
+				INTEGER,
+			iqdarcsEtsiMapListAspectPan
+				INTEGER,
+			iqdarcsEtsiMapListAspectTilt
+				INTEGER,
+			iqdarcsETSIEtsiMapListByPass
+				INTEGER,
+			iqdarcsETSIEtsiMapListRecall
+				INTEGER,
+			iqdarcsETSIEtsiMapListSave
+				INTEGER,
+			iqdarcsETSIEtsiMapListFollowOnline
+				INTEGER,
+			iqdarcsETSIEtsiMapListPresetAll
+				INTEGER,
+			iqdarcsETSIEtsiMapListPreset
+				INTEGER,
+			iqdarcsETSIEtsiMapList_ETSIIn
+				INTEGER,
+			iqdarcsETSIEtsiMapList_ETSIOut
+				INTEGER,
+			iqdarcsETSIEtsiMapList_AFDOut
+				INTEGER,
+			iqdarcsETSIEtsiMapList_SMPTEOut
+				INTEGER,
+			iqdarcsETSIEtsiMapListAspect
+				INTEGER,
+			iqdarcsETSIEtsiMapListSize
+				INTEGER,
+			iqdarcsETSIEtsiMapListPan
+				INTEGER,
+			iqdarcsETSIEtsiMapListTilt
+				INTEGER,
+			iqdarcsETSIEtsiMapList_ByPass
+				INTEGER,
+			iqdarcsAFDAfdMapListAFDIn
+				INTEGER,
+			iqdarcsAFDAfdMapListNoneEnabled
+				INTEGER,
+			iqdarcsAFDAfdMapListETSIOut
+				INTEGER,
+			iqdarcsAFDAfdMapListAFDOut
+				INTEGER,
+			iqdarcsAFDAfdMapListSMPTEOut
+				INTEGER,
+			iqdarcsAfdMapListAspect
+				INTEGER,
+			iqdarcsAfdMapListAspectSize
+				INTEGER,
+			iqdarcsAfdMapListAspectPan
+				INTEGER,
+			iqdarcsAfdMapListAspectTilt
+				INTEGER,
+			iqdarcsAFDAfdMapListByPass
+				INTEGER,
+			iqdarcsAFDAfdMapListRecall
+				INTEGER,
+			iqdarcsAFDAfdMapListSave
+				INTEGER,
+			iqdarcsAFDAfdMapListFollowOnline
+				INTEGER,
+			iqdarcsAFDAfdMapListPresetAll
+				INTEGER,
+			iqdarcsAFDAfdMapListPreset
+				INTEGER,
+			iqdarcsAFDAfdMapList_AFDIn
+				INTEGER,
+			iqdarcsAFDAfdMapList_ETSIOut
+				INTEGER,
+			iqdarcsAFDAfdMapList_AFDOut
+				INTEGER,
+			iqdarcsAFDAfdMapList_SMPTEOut
+				INTEGER,
+			iqdarcsAFDAfdMapListAspect
+				INTEGER,
+			iqdarcsAFDAfdMapListSize
+				INTEGER,
+			iqdarcsAFDAfdMapListPan
+				INTEGER,
+			iqdarcsAFDAfdMapListTilt
+				INTEGER,
+			iqdarcsAFDAfdMapList_ByPass
+				INTEGER,
+			iqdarcsSMPTESmpteMapListSMPTEIn
+				INTEGER,
+			iqdarcsSMPTESmpteMapListNoneEnabled
+				INTEGER,
+			iqdarcsSMPTESmpteMapListETSIOut
+				INTEGER,
+			iqdarcsSMPTESmpteMapListAFDOut
+				INTEGER,
+			iqdarcsSMPTESmpteMapListSMPTEOut
+				INTEGER,
+			iqdarcsSmpteMapListAspect
+				INTEGER,
+			iqdarcsSmpteMapListAspectSize
+				INTEGER,
+			iqdarcsSmpteMapListAspectPan
+				INTEGER,
+			iqdarcsSmpteMapListAspectTilt
+				INTEGER,
+			iqdarcsSMPTESmpteMapListByPass
+				INTEGER,
+			iqdarcsSMPTESmpteMapListRecall
+				INTEGER,
+			iqdarcsSMPTESmpteMapListSave
+				INTEGER,
+			iqdarcsSMPTESmpteMapListFollowOnline
+				INTEGER,
+			iqdarcsSMPTESmpteMapListPresetAll
+				INTEGER,
+			iqdarcsSMPTESmpteMapListPreset
+				INTEGER,
+			iqdarcsSMPTESmpteMapList_SMPTEIn
+				INTEGER,
+			iqdarcsSMPTESmpteMapList_ETSIOut
+				INTEGER,
+			iqdarcsSMPTESmpteMapList_AFDOut
+				INTEGER,
+			iqdarcsSMPTESmpteMapList_SMPTEOut
+				INTEGER,
+			iqdarcsSMPTESmpteMapListAspect
+				INTEGER,
+			iqdarcsSMPTESmpteMapListSize
+				INTEGER,
+			iqdarcsSMPTESmpteMapListPan
+				INTEGER,
+			iqdarcsSMPTESmpteMapListTilt
+				INTEGER,
+			iqdarcsSMPTESmpteMapList_ByPass
+				INTEGER,
+			iqdarcsSetupBorderColour
+				INTEGER,
+			iqdarcsBorderColourSetUsrAUserARed
+				INTEGER,
+			iqdarcsBorderColourSetUsrAUserAGreen
+				INTEGER,
+			iqdarcsBorderColourSetUsrAUserABlue
+				INTEGER,
+			iqdarcsBorderColourSetUsrBUserBRed
+				INTEGER,
+			iqdarcsBorderColourSetUsrBUserBGreen
+				INTEGER,
+			iqdarcsBorderColourSetUsrBUserBBlue
+				INTEGER,
+			iqdarcsPatternCaptionCaptionEditCaption
+				RollCallString,
+			iqdarcsPatternCaptionCaption
+				INTEGER,
+			iqdarcsPatternCaptionPatternsEnablePattern
+				INTEGER,
+			iqdarcsPatternCaptionPatterns
+				INTEGER,
+			iqdarcsPatternCaptionInsertionProcessedPath
+				INTEGER,
+			iqdarcsPatternCaptionInsertionUnprocessedPath
+				INTEGER,
+			iqdarcsSetupOutputRoutingMonitoringOutput
+				INTEGER,
+			iqdarcsSetupMonitoringOutputStandard
+				INTEGER,
+			iqdarcsSetupMonitoringOutput525Pedestal
+				INTEGER,
+			iqdarcsSetupMonitoringOutputChromaBWidth
+				INTEGER,
+			iqdarcsSetupStandard525
+				INTEGER,
+			iqdarcsSetupStandard625
+				INTEGER,
+			iqdarcsGPIIOGPIInputDisableInputs
+				INTEGER,
+			iqdarcsGPIIOGPIInput
+				INTEGER,
+			iqdarcsGPIIOGPIInputInputSelection
+				INTEGER,
+			iqdarcsGPIIOGPIInputGPIInStatus
+				RollCallString,
+			iqdarcsGPIIOGPIOutputOutActiveHigh
+				INTEGER,
+			iqdarcsGPIIOGPIOutput
+				INTEGER,
+			iqdarcsGPIIOGPIOutputOutputSelection
+				INTEGER,
+			iqdarcsGPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iqdarcsGPIIOGPIInputOutputGPIO1
+				INTEGER,
+			iqdarcsGPIIOGPIInputOutputGPIO2
+				INTEGER,
+			iqdarcsGPIIOGPIInputOutputGPIO3
+				INTEGER,
+			iqdarcsGPIIOGPIInputOutputGPIO4
+				INTEGER,
+			iqdarcsSetupGPIIOGPIIn
+				INTEGER,
+			iqdarcsSetupGPIIOInputSelection
+				INTEGER,
+			iqdarcsSetupGPIIOGPIOut
+				INTEGER,
+			iqdarcsSetupGPIIOOutputSelection
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrackIndex
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrackSource
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrackDisable
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrackAddress
+				RollCallString,
+			iqdarcsSetupRollTrackRollTrackCommand
+				RollCallString,
+			iqdarcsSetupRollTrackRollTrackSending
+				RollCallString,
+			iqdarcsSetupRollTrackRollTrackStatus
+				RollCallString,
+			iqdarcsSetupRollTrackRollTrack_Index
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrack_Source
+				INTEGER,
+			iqdarcsSetupRollTrackRollTrack_Address
+				RollCallString,
+			iqdarcsSetupRollTrackRollTrack_Command
+				RollCallString,
+			iqdarcsSetupInformationEDHReset
+				INTEGER,
+			iqdarcsSetupInformation
+				INTEGER,
+			iqdarcsSetupDefaultOut
+				INTEGER,
+			iqdarcsSetupLoggingInput
+				INTEGER,
+			iqdarcsSetupLoggingStandard
+				INTEGER,
+			iqdarcsSetupLoggingAFDConflict
+				INTEGER,
+			iqdarcsSetupLoggingEDH
+				INTEGER,
+			iqdarcsSetupLoggingEDHErrors
+				INTEGER,
+			iqdarcsSetupLoggingInputRatio
+				INTEGER,
+			iqdarcsSetupLoggingOutputRatio
+				INTEGER,
+			iqdarcsSetupLoggingInputVI
+				INTEGER,
+			iqdarcsSetupLoggingInputWSS
+				INTEGER,
+			iqdarcsSetupLoggingOutputVI
+				INTEGER,
+			iqdarcsSetupLoggingOutputWSS
+				INTEGER,
+			iqdarcsSetupLoggingMode
+				INTEGER,
+			iqdarcsSetupSmoothTransitionsManualMinDelay
+				INTEGER,
+			iqdarcsSetupSmoothTransitionsAuto
+				INTEGER,
+			iqdarcsSetupTerminology
+				INTEGER,
+			iqdarcsStatusInputSDI
+				RollCallString,
+			iqdarcsStatusInputStandard
+				RollCallString,
+			iqdarcsStatusEDH
+				RollCallString,
+			iqdarcsStatusEDHErrorCount
+				RollCallString,
+			iqdarcsStatusARCStatus
+				RollCallString,
+			iqdarcsStatusARCStatusInputRatio
+				RollCallString,
+			iqdarcsStatusARCStatusOutputRatio
+				RollCallString,
+			iqdarcsStatusARCStatusMinimumDelay
+				RollCallString,
+			iqdarcsStatusARCStatusBypass
+				RollCallString,
+			iqdarcsStatusARCStatusPattern
+				RollCallString,
+			iqdarcsStatusARCStatusFreeze
+				RollCallString,
+			iqdarcsStatusSignallingInputVI
+				RollCallString,
+			iqdarcsStatusSignallingInputWSS
+				RollCallString,
+			iqdarcsStatusSignallingVICRC
+				RollCallString,
+			iqdarcsStatusSignallingOutputVI
+				RollCallString,
+			iqdarcsStatusSignallingOutputWSS
+				RollCallString,
+			iqdarcsStatusSignallingForceVI
+				RollCallString,
+			iqdarcsStatusSignallingForceWSS
+				RollCallString,
+			iqdarcsStatusSignallingFollowOnLine
+				RollCallString,
+			iqdarcsStatusSignallingAFDConflictlog
+				RollCallString,
+			iqdarcsStatusSignallingAFDConflict
+				RollCallString,
+			iqdarcsStatusSignallingAFDInput
+				RollCallString,
+			iqdarcsStatusSignallingETSIInput
+				RollCallString,
+			iqdarcsStatusSignallingSMPTEInput
+				RollCallString,
+			iqdarcsSetupUnitSoftwareVersion
+				RollCallString,
+			iqdarcsSetupUnitSerialNo
+				RollCallString,
+			iqdarcsSetupUnitPresetUnit
+				INTEGER,
+			iqdarcsSetupUnitRestart
+				INTEGER,
+			iqdarcsSetupUnitBuildNo
+				RollCallString
+		}
+
+	iqdarcsSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdarcsCmdEntry 0 }
+
+
+	iqdarcsARCAspectCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					AspectCtrl  cmdID= 2203  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2203 }
+
+
+	iqdarcsARCSizeCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					SizeCtrl  cmdID= 2204  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2204 }
+
+
+	iqdarcsARCPanCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					PanCtrl  cmdID= 2205  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 2205 }
+
+
+	iqdarcsARCTiltCtrl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					TiltCtrl  cmdID= 2206  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 2206 }
+
+
+	iqdarcsARC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PassCtrl(0),
+							val_12F12_12P16Ctrl(1),
+							val_12F12_14P16Ctrl(2),
+							val_12F12_16F16Ctrl(3),
+							val_16L12_12F12Ctrl(4),
+							val_16L12_14L12Ctrl(5),
+							val_16F16_12F12Ctrl(6),
+							val_16F16_14L12Ctrl(7),
+							val_16F16_16L12Ctrl(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - ARC
+					PassCtrl  cmdID= 2207  value= 0  
+					12F12->12P16Ctrl  cmdID= 2207  value= 1  
+					12F12->14P16Ctrl  cmdID= 2207  value= 2  
+					12F12->16F16Ctrl  cmdID= 2207  value= 3  
+					16L12->12F12Ctrl  cmdID= 2207  value= 4  
+					16L12->14L12Ctrl  cmdID= 2207  value= 5  
+					16F16->12F12Ctrl  cmdID= 2207  value= 6  
+					16F16->14L12Ctrl  cmdID= 2207  value= 7  
+					16F16->16L12Ctrl  cmdID= 2207  value= 8  "
+		::= { iqdarcsCmdEntry 2207 }
+
+
+	iqdarcsARCAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Aspect  cmdID= 1400  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1400 }
+
+
+	iqdarcsARCSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Size  cmdID= 1401  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1401 }
+
+
+	iqdarcsARCPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Pan  cmdID= 1402  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 1402 }
+
+
+	iqdarcsARCTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Tilt  cmdID= 1403  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 1403 }
+
+
+	iqdarcsARCPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_12F12_14P16(2),
+							val_12F12_16F16(3),
+							val_16L12_12F12(4),
+							val_16L12_14L12(5),
+							val_16F16_12F12(6),
+							val_16F16_14L12(7),
+							val_16F16_16L12(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Preset  cmdID= 1900 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					12F12->14P16  value= 2  
+					12F12->16F16  value= 3  
+					16L12->12F12  value= 4  
+					16L12->14L12  value= 5  
+					16F16->12F12  value= 6  
+					16F16->14L12  value= 7  
+					16F16->16L12  value= 8  "
+		::= { iqdarcsCmdEntry 1900 }
+
+
+	iqdarcsARCAperture OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_One_field(0),
+							val_Two_fields_1_2(1),
+							val_Two_fields_2_1(2),
+							val_Three_fields(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Aperture  cmdID= 1913 
+					One field  value= 0  
+					Two fields 1&2  value= 1  
+					Two fields 2&1  value= 2  
+					Three fields  value= 3  "
+		::= { iqdarcsCmdEntry 1913 }
+
+
+	iqdarcsARCMinDelayAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Aspect  cmdID= 2200  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2200 }
+
+
+	iqdarcsARCMinDelayPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - ARC
+					Pan  cmdID= 2201  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 2201 }
+
+
+	iqdarcsARCMinDelayPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_16F16_12F12(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - ARC
+					Preset  cmdID= 2202 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					16F16->12F12  value= 2  "
+		::= { iqdarcsCmdEntry 2202 }
+
+
+	iqdarcsVideoLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma Gain  cmdID= 1421  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdarcsCmdEntry 1421 }
+
+
+	iqdarcsVideoBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Black Level  cmdID= 1423  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdarcsCmdEntry 1423 }
+
+
+	iqdarcsVideoChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Chroma Gain  cmdID= 1422  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdarcsCmdEntry 1422 }
+
+
+	iqdarcsVideoLimitingMinYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Min Y Clip Level  cmdID= 1427  min= -50000  max= 49200  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = -50.0 mV  Max = 49.2 mV  Step =  0.8 mV "
+		::= { iqdarcsCmdEntry 1427 }
+
+
+	iqdarcsVideoLimitingMaxYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Max Y Clip Level  cmdID= 1426  min= 635000  max= 764600  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = 635.0 mV  Max = 764.6 mV  Step =  0.8 mV "
+		::= { iqdarcsCmdEntry 1426 }
+
+
+	iqdarcsVideoLimitingMinCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Min C Clip Level  cmdID= 1425  min= -400000  max= -200000  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = -400.0 mV  Max = -200.0 mV  Step =  0.8 mV "
+		::= { iqdarcsCmdEntry 1425 }
+
+
+	iqdarcsVideoLimitingMaxCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Max C Clip Level  cmdID= 1424  min= 200000  max= 400000  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = 200.0 mV  Max = 400.0 mV  Step =  0.8 mV "
+		::= { iqdarcsCmdEntry 1424 }
+
+
+	iqdarcsMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Manual(0),
+							val_Auto(1),
+							val_Min_Delay(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Mode  cmdID= 1910 
+					Manual  value= 0  
+					Auto  value= 1  
+					Min Delay  value= 2  "
+		::= { iqdarcsCmdEntry 1910 }
+
+
+	iqdarcsBlankingInputLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Left  cmdID= 1411  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqdarcsCmdEntry 1411 }
+
+
+	iqdarcsBlankingInputRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Right  cmdID= 1412  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqdarcsCmdEntry 1412 }
+
+
+	iqdarcsBlankingInputTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Top  cmdID= 1413  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqdarcsCmdEntry 1413 }
+
+
+	iqdarcsBlankingInputBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Bottom  cmdID= 1414  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqdarcsCmdEntry 1414 }
+
+
+	iqdarcsBlankingInputForcetoBlack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Force to Black  cmdID= 1415 "
+		::= { iqdarcsCmdEntry 1415 }
+
+
+	iqdarcsBlankingOutputLeft OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Left  cmdID= 1416  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqdarcsCmdEntry 1416 }
+
+
+	iqdarcsBlankingOutputRight OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Right  cmdID= 1417  min= 0  max= 13246  step= 148  format= %0.3f us  div_scale= 1000 
+					Min = 0.000 us  Max = 13.246 us  Step = 0.148 us "
+		::= { iqdarcsCmdEntry 1417 }
+
+
+	iqdarcsBlankingOutputTop OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Top  cmdID= 1418  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqdarcsCmdEntry 1418 }
+
+
+	iqdarcsBlankingOutputBottom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Blanking
+					Bottom  cmdID= 1419  min= 0  max= 200  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = 0 lines  Max = 200 lines  Step = 1 lines "
+		::= { iqdarcsCmdEntry 1419 }
+
+
+	iqdarcsBlankingOutputForcetoBlack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Force to Black  cmdID= 1420 "
+		::= { iqdarcsCmdEntry 1420 }
+
+
+	iqdarcsBlankingStd525line21_283 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Picture(0),
+							val_Closed_Caption(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Blanking
+					Std525 line21/283  cmdID= 1953 
+					Picture  value= 0  
+					Closed Caption  value= 1  "
+		::= { iqdarcsCmdEntry 1953 }
+
+
+	iqdarcsBlankingVertEdgeFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Blanking
+					Vert Edge Filter  cmdID= 1950 "
+		::= { iqdarcsCmdEntry 1950 }
+
+
+	iqdarcsByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ByPass  cmdID= 1410 "
+		::= { iqdarcsCmdEntry 1410 }
+
+
+	iqdarcsFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 1208 "
+		::= { iqdarcsCmdEntry 1208 }
+
+
+	iqdarcsUserMemMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqdarcsCmdEntry 1600 }
+
+
+	iqdarcsUserMemMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqdarcsCmdEntry 1601 }
+
+
+	iqdarcsUserMemMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqdarcsCmdEntry 1602 }
+
+
+	iqdarcsUserMemMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 1  cmdID= 1603  "
+		::= { iqdarcsCmdEntry 1603 }
+
+
+	iqdarcsUserMemMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqdarcsCmdEntry 1604 }
+
+
+	iqdarcsUserMemMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqdarcsCmdEntry 1605 }
+
+
+	iqdarcsUserMemMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqdarcsCmdEntry 1606 }
+
+
+	iqdarcsUserMemMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 2  cmdID= 1607  "
+		::= { iqdarcsCmdEntry 1607 }
+
+
+	iqdarcsUserMemMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqdarcsCmdEntry 1608 }
+
+
+	iqdarcsUserMemMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqdarcsCmdEntry 1609 }
+
+
+	iqdarcsUserMemMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqdarcsCmdEntry 1610 }
+
+
+	iqdarcsUserMemMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 3  cmdID= 1611  "
+		::= { iqdarcsCmdEntry 1611 }
+
+
+	iqdarcsUserMemMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqdarcsCmdEntry 1612 }
+
+
+	iqdarcsUserMemMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqdarcsCmdEntry 1613 }
+
+
+	iqdarcsUserMemMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqdarcsCmdEntry 1614 }
+
+
+	iqdarcsUserMemMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 4  cmdID= 1615  "
+		::= { iqdarcsCmdEntry 1615 }
+
+
+	iqdarcsUserMemMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqdarcsCmdEntry 1616 }
+
+
+	iqdarcsUserMemMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqdarcsCmdEntry 1617 }
+
+
+	iqdarcsUserMemMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqdarcsCmdEntry 1618 }
+
+
+	iqdarcsUserMemMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 5  cmdID= 1619  "
+		::= { iqdarcsCmdEntry 1619 }
+
+
+	iqdarcsUserMemMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqdarcsCmdEntry 1620 }
+
+
+	iqdarcsUserMemMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqdarcsCmdEntry 1621 }
+
+
+	iqdarcsUserMemMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqdarcsCmdEntry 1622 }
+
+
+	iqdarcsUserMemMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 6  cmdID= 1623  "
+		::= { iqdarcsCmdEntry 1623 }
+
+
+	iqdarcsUserMemMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqdarcsCmdEntry 1624 }
+
+
+	iqdarcsUserMemMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqdarcsCmdEntry 1625 }
+
+
+	iqdarcsUserMemMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqdarcsCmdEntry 1626 }
+
+
+	iqdarcsUserMemMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 7  cmdID= 1627  "
+		::= { iqdarcsCmdEntry 1627 }
+
+
+	iqdarcsUserMemMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqdarcsCmdEntry 1628 }
+
+
+	iqdarcsUserMemMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqdarcsCmdEntry 1629 }
+
+
+	iqdarcsUserMemMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqdarcsCmdEntry 1630 }
+
+
+	iqdarcsUserMemMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 8  cmdID= 1631  "
+		::= { iqdarcsCmdEntry 1631 }
+
+
+	iqdarcsUserMemMemory9Save9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 9  cmdID= 1632  value= 1  "
+		::= { iqdarcsCmdEntry 1632 }
+
+
+	iqdarcsUserMemMemory9Recall9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 9  cmdID= 1633  value= 1  "
+		::= { iqdarcsCmdEntry 1633 }
+
+
+	iqdarcsUserMemMemory9Clear9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 9  cmdID= 1634  value= 1  "
+		::= { iqdarcsCmdEntry 1634 }
+
+
+	iqdarcsUserMemMemory9Name9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 9  cmdID= 1635  "
+		::= { iqdarcsCmdEntry 1635 }
+
+
+	iqdarcsUserMemMemory10Save10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 10  cmdID= 1636  value= 1  "
+		::= { iqdarcsCmdEntry 1636 }
+
+
+	iqdarcsUserMemMemory10Recall10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 10  cmdID= 1637  value= 1  "
+		::= { iqdarcsCmdEntry 1637 }
+
+
+	iqdarcsUserMemMemory10Clear10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 10  cmdID= 1638  value= 1  "
+		::= { iqdarcsCmdEntry 1638 }
+
+
+	iqdarcsUserMemMemory10Name10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 10  cmdID= 1639  "
+		::= { iqdarcsCmdEntry 1639 }
+
+
+	iqdarcsUserMemMemory11Save11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 11  cmdID= 1640  value= 1  "
+		::= { iqdarcsCmdEntry 1640 }
+
+
+	iqdarcsUserMemMemory11Recall11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 11  cmdID= 1641  value= 1  "
+		::= { iqdarcsCmdEntry 1641 }
+
+
+	iqdarcsUserMemMemory11Clear11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 11  cmdID= 1642  value= 1  "
+		::= { iqdarcsCmdEntry 1642 }
+
+
+	iqdarcsUserMemMemory11Name11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 11  cmdID= 1643  "
+		::= { iqdarcsCmdEntry 1643 }
+
+
+	iqdarcsUserMemMemory12Save12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 12  cmdID= 1644  value= 1  "
+		::= { iqdarcsCmdEntry 1644 }
+
+
+	iqdarcsUserMemMemory12Recall12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 12  cmdID= 1645  value= 1  "
+		::= { iqdarcsCmdEntry 1645 }
+
+
+	iqdarcsUserMemMemory12Clear12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 12  cmdID= 1646  value= 1  "
+		::= { iqdarcsCmdEntry 1646 }
+
+
+	iqdarcsUserMemMemory12Name12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 12  cmdID= 1647  "
+		::= { iqdarcsCmdEntry 1647 }
+
+
+	iqdarcsUserMemMemory13Save13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 13  cmdID= 1648  value= 1  "
+		::= { iqdarcsCmdEntry 1648 }
+
+
+	iqdarcsUserMemMemory13Recall13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 13  cmdID= 1649  value= 1  "
+		::= { iqdarcsCmdEntry 1649 }
+
+
+	iqdarcsUserMemMemory13Clear13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 13  cmdID= 1650  value= 1  "
+		::= { iqdarcsCmdEntry 1650 }
+
+
+	iqdarcsUserMemMemory13Name13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 13  cmdID= 1651  "
+		::= { iqdarcsCmdEntry 1651 }
+
+
+	iqdarcsUserMemMemory14Save14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 14  cmdID= 1652  value= 1  "
+		::= { iqdarcsCmdEntry 1652 }
+
+
+	iqdarcsUserMemMemory14Recall14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 14  cmdID= 1653  value= 1  "
+		::= { iqdarcsCmdEntry 1653 }
+
+
+	iqdarcsUserMemMemory14Clear14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 14  cmdID= 1654  value= 1  "
+		::= { iqdarcsCmdEntry 1654 }
+
+
+	iqdarcsUserMemMemory14Name14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 14  cmdID= 1655  "
+		::= { iqdarcsCmdEntry 1655 }
+
+
+	iqdarcsUserMemMemory15Save15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 15  cmdID= 1656  value= 1  "
+		::= { iqdarcsCmdEntry 1656 }
+
+
+	iqdarcsUserMemMemory15Recall15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 15  cmdID= 1657  value= 1  "
+		::= { iqdarcsCmdEntry 1657 }
+
+
+	iqdarcsUserMemMemory15Clear15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 15  cmdID= 1658  value= 1  "
+		::= { iqdarcsCmdEntry 1658 }
+
+
+	iqdarcsUserMemMemory15Name15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 15  cmdID= 1659  "
+		::= { iqdarcsCmdEntry 1659 }
+
+
+	iqdarcsUserMemMemory16Save16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 16  cmdID= 1660  value= 1  "
+		::= { iqdarcsCmdEntry 1660 }
+
+
+	iqdarcsUserMemMemory16Recall16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 16  cmdID= 1661  value= 1  "
+		::= { iqdarcsCmdEntry 1661 }
+
+
+	iqdarcsUserMemMemory16Clear16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 16  cmdID= 1662  value= 1  "
+		::= { iqdarcsCmdEntry 1662 }
+
+
+	iqdarcsUserMemMemory16Name16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 16  cmdID= 1663  "
+		::= { iqdarcsCmdEntry 1663 }
+
+
+	iqdarcsUserMemMemConfigMemoryIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - User Mem
+					Memory Index  cmdID= 2447  min= 1  max= 16  step= 1  format= Memory %.0f  div_scale= 1 
+					Min = Memory 1  Max = Memory 16  Step = Memory 1 "
+		::= { iqdarcsCmdEntry 2447 }
+
+
+	iqdarcsUserMemMemConfigVideoSetup OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - User Mem
+					Video Setup  cmdID= 2760 "
+		::= { iqdarcsCmdEntry 2760 }
+
+
+	iqdarcsUserMemMemConfigARCModeSetup OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - User Mem
+					ARC Mode Setup  cmdID= 2455 "
+		::= { iqdarcsCmdEntry 2455 }
+
+
+	iqdarcsUserMemMemConfigManualSetup OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - User Mem
+					Manual Setup  cmdID= 2761 "
+		::= { iqdarcsCmdEntry 2761 }
+
+
+	iqdarcsUserMemMemConfigAutomaticSetup OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - User Mem
+					Automatic Setup  cmdID= 2762 "
+		::= { iqdarcsCmdEntry 2762 }
+
+
+	iqdarcsUserMemMemConfigOthers OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - User Mem
+					Others  cmdID= 2448 "
+		::= { iqdarcsCmdEntry 2448 }
+
+
+	iqdarcsInputInputListInputSource625 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WSS(0),
+							val_VI(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- WSS VI- Input
+					Input Source 625  cmdID= 1922 
+					WSS  value= 0  
+					VI  value= 1  "
+		::= { iqdarcsCmdEntry 1922 }
+
+
+	iqdarcsInputInputListWSSInputType OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WSS_ETSI(0),
+							val_WSS_AFD(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- WSS VI- Input
+					WSS Input Type  cmdID= 1920 
+					WSS ETSI  value= 0  
+					WSS AFD  value= 1  "
+		::= { iqdarcsCmdEntry 1920 }
+
+
+	iqdarcsInputInputListVIInputType OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_VI_SMPTE(0),
+							val_VI_AFD(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- WSS VI- Input
+					VI Input Type  cmdID= 1921 
+					VI SMPTE  value= 0  
+					VI AFD  value= 1  "
+		::= { iqdarcsCmdEntry 1921 }
+
+
+	iqdarcsInputInputListAFDInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_AFD_ScanSys(0),
+							val_AFD_Only(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- WSS VI- Input
+					AFD Input  cmdID= 1439 
+					AFD & ScanSys  value= 0  
+					AFD Only  value= 1  "
+		::= { iqdarcsCmdEntry 1439 }
+
+
+	iqdarcsInputInputListWSSWaveform OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(0),
+							val_Non_Standard(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- WSS VI- Input
+					WSS Waveform  cmdID= 1440 
+					Normal  value= 0  
+					Non Standard  value= 1  "
+		::= { iqdarcsCmdEntry 1440 }
+
+
+	iqdarcsInputInputListDeleteWSSLine OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Input
+					Delete WSS Line  cmdID= 1494 "
+		::= { iqdarcsCmdEntry 1494 }
+
+
+	iqdarcsInputInputListReadWSSLine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Input
+					Read WSS Line  cmdID= 1441  min= 7  max= 23  step= 1  format= %1.0f  div_scale= 1 
+					Min = 7  Max = 23  Step = 1 "
+		::= { iqdarcsCmdEntry 1441 }
+
+
+	iqdarcsInputListVICRCsCheckAFDCRC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Input
+					Check AFD CRC  cmdID= 1506 "
+		::= { iqdarcsCmdEntry 1506 }
+
+
+	iqdarcsInputListVICRCsReportAllCRC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Input
+					Report All CRC  cmdID= 1507 "
+		::= { iqdarcsCmdEntry 1507 }
+
+
+	iqdarcsOutputListWSSWSSType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					WSS Type  cmdID= 1442  min= 0  max= 5  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 5  Step = 1 "
+		::= { iqdarcsCmdEntry 1442 }
+
+
+	iqdarcsOutputListWSSUserBitsOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Output
+					User Bits On  cmdID= 1443 "
+		::= { iqdarcsCmdEntry 1443 }
+
+
+	iqdarcsOutputListWSSForcedOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Output
+					Forced On  cmdID= 1444 "
+		::= { iqdarcsCmdEntry 1444 }
+
+
+	iqdarcsOutputListVideoIndexVIType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					VI Type  cmdID= 1445  min= 0  max= 5  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 5  Step = 1 "
+		::= { iqdarcsCmdEntry 1445 }
+
+
+	iqdarcsOutputListVideoIndexPassNonARData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Output
+					Pass Non AR Data  cmdID= 1446 "
+		::= { iqdarcsCmdEntry 1446 }
+
+
+	iqdarcsOutputListVideoIndexForcedOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- Output
+					Forced On  cmdID= 1447 "
+		::= { iqdarcsCmdEntry 1447 }
+
+
+	iqdarcsOutputListForcedModeETSI OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					ETSI  cmdID= 1448  min= 0  max= 8  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 8  Step = 1 "
+		::= { iqdarcsCmdEntry 1448 }
+
+
+	iqdarcsOutputListForcedModeAFD OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					AFD  cmdID= 1449  min= 0  max= 16  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 16  Step = 1 "
+		::= { iqdarcsCmdEntry 1449 }
+
+
+	iqdarcsOutputListForcedModeSMPTE OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					SMPTE  cmdID= 1450  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdarcsCmdEntry 1450 }
+
+
+	iqdarcsOutputOutputListSetWSSUserBits OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					Set WSS User Bits  cmdID= 1451  min= 0  max= 15  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqdarcsCmdEntry 1451 }
+
+
+	iqdarcsOutputOutputListWriteWSSLine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- Output
+					Write WSS Line  cmdID= 1452  min= 7  max= 23  step= 1  format= %1.0f  div_scale= 1 
+					Min = 7  Max = 23  Step = 1 "
+		::= { iqdarcsCmdEntry 1452 }
+
+
+	iqdarcsOutputOutputListDisableFOL OBJECT-TYPE
+		SYNTAX		INTEGER { val_Disable_FOL(0) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- Output
+					Disable FOL  cmdID= 2905  value= 0  "
+		::= { iqdarcsCmdEntry 2905 }
+
+
+	iqdarcsETSIEtsiMapListETSIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					ETSI In  cmdID= 1453  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1453 }
+
+
+	iqdarcsETSIEtsiMapListNoneEnabled OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- ETSI
+					None Enabled  cmdID= 1508 "
+		::= { iqdarcsCmdEntry 1508 }
+
+
+	iqdarcsETSIEtsiMapListETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					ETSI Out  cmdID= 1454  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1454 }
+
+
+	iqdarcsETSIEtsiMapListAFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					AFD Out  cmdID= 1455  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1455 }
+
+
+	iqdarcsETSIEtsiMapListSMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					SMPTE Out  cmdID= 1456  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1456 }
+
+
+	iqdarcsEtsiMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Aspect  cmdID= 1457  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1457 }
+
+
+	iqdarcsEtsiMapListAspectSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Size  cmdID= 1458  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1458 }
+
+
+	iqdarcsEtsiMapListAspectPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Pan  cmdID= 1459  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 1459 }
+
+
+	iqdarcsEtsiMapListAspectTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Tilt  cmdID= 1460  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 1460 }
+
+
+	iqdarcsETSIEtsiMapListByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- ETSI
+					ByPass  cmdID= 1461 "
+		::= { iqdarcsCmdEntry 1461 }
+
+
+	iqdarcsETSIEtsiMapListRecall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- ETSI
+					Recall  cmdID= 1463  value= 1  "
+		::= { iqdarcsCmdEntry 1463 }
+
+
+	iqdarcsETSIEtsiMapListSave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- ETSI
+					Save  cmdID= 1464  value= 1  "
+		::= { iqdarcsCmdEntry 1464 }
+
+
+	iqdarcsETSIEtsiMapListFollowOnline OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- ETSI
+					Follow Online  cmdID= 1462 "
+		::= { iqdarcsCmdEntry 1462 }
+
+
+	iqdarcsETSIEtsiMapListPresetAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- ETSI
+					Preset All  cmdID= 1903  value= 1  "
+		::= { iqdarcsCmdEntry 1903 }
+
+
+	iqdarcsETSIEtsiMapListPreset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- ETSI
+					Preset  cmdID= 1904  value= 1  "
+		::= { iqdarcsCmdEntry 1904 }
+
+
+	iqdarcsETSIEtsiMapList_ETSIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					ETSI In  cmdID= 2878  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2878 }
+
+
+	iqdarcsETSIEtsiMapList_ETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					ETSI Out  cmdID= 2879  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2879 }
+
+
+	iqdarcsETSIEtsiMapList_AFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					AFD Out  cmdID= 2880  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2880 }
+
+
+	iqdarcsETSIEtsiMapList_SMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					SMPTE Out  cmdID= 2881  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2881 }
+
+
+	iqdarcsETSIEtsiMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Aspect  cmdID= 2882  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2882 }
+
+
+	iqdarcsETSIEtsiMapListSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Size  cmdID= 2883  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2883 }
+
+
+	iqdarcsETSIEtsiMapListPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Pan  cmdID= 2884  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 2884 }
+
+
+	iqdarcsETSIEtsiMapListTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- ETSI
+					Tilt  cmdID= 2885  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 2885 }
+
+
+	iqdarcsETSIEtsiMapList_ByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- ETSI
+					ByPass  cmdID= 2886 "
+		::= { iqdarcsCmdEntry 2886 }
+
+
+	iqdarcsAFDAfdMapListAFDIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					AFD In  cmdID= 1465  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1465 }
+
+
+	iqdarcsAFDAfdMapListNoneEnabled OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- AFD
+					None Enabled  cmdID= 1509 "
+		::= { iqdarcsCmdEntry 1509 }
+
+
+	iqdarcsAFDAfdMapListETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					ETSI Out  cmdID= 1466  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1466 }
+
+
+	iqdarcsAFDAfdMapListAFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					AFD Out  cmdID= 1467  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1467 }
+
+
+	iqdarcsAFDAfdMapListSMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					SMPTE Out  cmdID= 1468  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1468 }
+
+
+	iqdarcsAfdMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Aspect  cmdID= 1469  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1469 }
+
+
+	iqdarcsAfdMapListAspectSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Size  cmdID= 1470  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1470 }
+
+
+	iqdarcsAfdMapListAspectPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Pan  cmdID= 1471  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 1471 }
+
+
+	iqdarcsAfdMapListAspectTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Tilt  cmdID= 1472  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 1472 }
+
+
+	iqdarcsAFDAfdMapListByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- AFD
+					ByPass  cmdID= 1473 "
+		::= { iqdarcsCmdEntry 1473 }
+
+
+	iqdarcsAFDAfdMapListRecall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- AFD
+					Recall  cmdID= 1475  value= 1  "
+		::= { iqdarcsCmdEntry 1475 }
+
+
+	iqdarcsAFDAfdMapListSave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- AFD
+					Save  cmdID= 1476  value= 1  "
+		::= { iqdarcsCmdEntry 1476 }
+
+
+	iqdarcsAFDAfdMapListFollowOnline OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- AFD
+					Follow Online  cmdID= 1474 "
+		::= { iqdarcsCmdEntry 1474 }
+
+
+	iqdarcsAFDAfdMapListPresetAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- AFD
+					Preset All  cmdID= 1905  value= 1  "
+		::= { iqdarcsCmdEntry 1905 }
+
+
+	iqdarcsAFDAfdMapListPreset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- AFD
+					Preset  cmdID= 1906  value= 1  "
+		::= { iqdarcsCmdEntry 1906 }
+
+
+	iqdarcsAFDAfdMapList_AFDIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					AFD In  cmdID= 2887  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2887 }
+
+
+	iqdarcsAFDAfdMapList_ETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					ETSI Out  cmdID= 2888  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2888 }
+
+
+	iqdarcsAFDAfdMapList_AFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					AFD Out  cmdID= 2889  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2889 }
+
+
+	iqdarcsAFDAfdMapList_SMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					SMPTE Out  cmdID= 2890  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2890 }
+
+
+	iqdarcsAFDAfdMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Aspect  cmdID= 2891  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2891 }
+
+
+	iqdarcsAFDAfdMapListSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Size  cmdID= 2892  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2892 }
+
+
+	iqdarcsAFDAfdMapListPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Pan  cmdID= 2893  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 2893 }
+
+
+	iqdarcsAFDAfdMapListTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- AFD
+					Tilt  cmdID= 2894  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 2894 }
+
+
+	iqdarcsAFDAfdMapList_ByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- AFD
+					ByPass  cmdID= 2895 "
+		::= { iqdarcsCmdEntry 2895 }
+
+
+	iqdarcsSMPTESmpteMapListSMPTEIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					SMPTE In  cmdID= 1477  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1477 }
+
+
+	iqdarcsSMPTESmpteMapListNoneEnabled OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- SMPTE
+					None Enabled  cmdID= 1510 "
+		::= { iqdarcsCmdEntry 1510 }
+
+
+	iqdarcsSMPTESmpteMapListETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					ETSI Out  cmdID= 1478  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1478 }
+
+
+	iqdarcsSMPTESmpteMapListAFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					AFD Out  cmdID= 1479  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1479 }
+
+
+	iqdarcsSMPTESmpteMapListSMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					SMPTE Out  cmdID= 1480  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 1480 }
+
+
+	iqdarcsSmpteMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Aspect  cmdID= 1481  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1481 }
+
+
+	iqdarcsSmpteMapListAspectSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Size  cmdID= 1482  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 1482 }
+
+
+	iqdarcsSmpteMapListAspectPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Pan  cmdID= 1483  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 1483 }
+
+
+	iqdarcsSmpteMapListAspectTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Tilt  cmdID= 1484  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 1484 }
+
+
+	iqdarcsSMPTESmpteMapListByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- SMPTE
+					ByPass  cmdID= 1485 "
+		::= { iqdarcsCmdEntry 1485 }
+
+
+	iqdarcsSMPTESmpteMapListRecall OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- SMPTE
+					Recall  cmdID= 1487  value= 1  "
+		::= { iqdarcsCmdEntry 1487 }
+
+
+	iqdarcsSMPTESmpteMapListSave OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- SMPTE
+					Save  cmdID= 1488  value= 1  "
+		::= { iqdarcsCmdEntry 1488 }
+
+
+	iqdarcsSMPTESmpteMapListFollowOnline OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- SMPTE
+					Follow Online  cmdID= 1486 "
+		::= { iqdarcsCmdEntry 1486 }
+
+
+	iqdarcsSMPTESmpteMapListPresetAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- SMPTE
+					Preset All  cmdID= 1907  value= 1  "
+		::= { iqdarcsCmdEntry 1907 }
+
+
+	iqdarcsSMPTESmpteMapListPreset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- WSS VI- SMPTE
+					Preset  cmdID= 1908  value= 1  "
+		::= { iqdarcsCmdEntry 1908 }
+
+
+	iqdarcsSMPTESmpteMapList_SMPTEIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					SMPTE In  cmdID= 2896  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2896 }
+
+
+	iqdarcsSMPTESmpteMapList_ETSIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					ETSI Out  cmdID= 2897  min= 0  max= 8  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2897 }
+
+
+	iqdarcsSMPTESmpteMapList_AFDOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					AFD Out  cmdID= 2898  min= 0  max= 16  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2898 }
+
+
+	iqdarcsSMPTESmpteMapList_SMPTEOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					SMPTE Out  cmdID= 2899  min= 0  max= 2  step= 1  format=   div_scale= 1 
+					Min =   Max =   Step =  "
+		::= { iqdarcsCmdEntry 2899 }
+
+
+	iqdarcsSMPTESmpteMapListAspect OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Aspect  cmdID= 2900  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2900 }
+
+
+	iqdarcsSMPTESmpteMapListSize OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Size  cmdID= 2901  min= 501  max= 2000  step= 1  format= %1.3f  div_scale= 1000 
+					Min = 0.501  Max = 2.000  Step = 0.001 "
+		::= { iqdarcsCmdEntry 2901 }
+
+
+	iqdarcsSMPTESmpteMapListPan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Pan  cmdID= 2902  min= -3700  max= 3700  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3700  Max = 3700  Step = 1 "
+		::= { iqdarcsCmdEntry 2902 }
+
+
+	iqdarcsSMPTESmpteMapListTilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- WSS VI- SMPTE
+					Tilt  cmdID= 2903  min= -3000  max= 3000  step= 1  format= %1.0f  div_scale= 1 
+					Min = -3000  Max = 3000  Step = 1 "
+		::= { iqdarcsCmdEntry 2903 }
+
+
+	iqdarcsSMPTESmpteMapList_ByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- WSS VI- SMPTE
+					ByPass  cmdID= 2904 "
+		::= { iqdarcsCmdEntry 2904 }
+
+
+	iqdarcsSetupBorderColour OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Blue(1),
+							val_Red(2),
+							val_Green(3),
+							val_White(4),
+							val_Grey(5),
+							val_User_A(6),
+							val_User_B(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Border Colour
+					Black  cmdID= 1431  value= 0  
+					Blue  cmdID= 1431  value= 1  
+					Red  cmdID= 1431  value= 2  
+					Green  cmdID= 1431  value= 3  
+					White  cmdID= 1431  value= 4  
+					Grey  cmdID= 1431  value= 5  
+					User A  cmdID= 1431  value= 6  
+					User B  cmdID= 1431  value= 7  "
+		::= { iqdarcsCmdEntry 1431 }
+
+
+	iqdarcsBorderColourSetUsrAUserARed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Red  cmdID= 1432  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1432 }
+
+
+	iqdarcsBorderColourSetUsrAUserAGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Green  cmdID= 1433  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1433 }
+
+
+	iqdarcsBorderColourSetUsrAUserABlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User A Blue  cmdID= 1434  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1434 }
+
+
+	iqdarcsBorderColourSetUsrBUserBRed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Red  cmdID= 1435  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1435 }
+
+
+	iqdarcsBorderColourSetUsrBUserBGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Green  cmdID= 1436  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1436 }
+
+
+	iqdarcsBorderColourSetUsrBUserBBlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Border Colour
+					User B Blue  cmdID= 1437  min= 0  max= 255  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 255  Step = 1 "
+		::= { iqdarcsCmdEntry 1437 }
+
+
+	iqdarcsPatternCaptionCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- Pattern & Caption
+					Edit Caption  cmdID= 1041  "
+		::= { iqdarcsCmdEntry 1041 }
+
+
+	iqdarcsPatternCaptionCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_1_Line_Caption(1),
+							val_10_Line_Display(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern & Caption
+					Caption Off  cmdID= 1037  value= 0  
+					1 Line Caption  cmdID= 1037  value= 1  
+					10 Line Display  cmdID= 1037  value= 2  "
+		::= { iqdarcsCmdEntry 1037 }
+
+
+	iqdarcsPatternCaptionPatternsEnablePattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Enable Pattern  cmdID= 1035 "
+		::= { iqdarcsCmdEntry 1035 }
+
+
+	iqdarcsPatternCaptionPatterns OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern & Caption
+					Black  cmdID= 1036  value= 0  
+					EBU Colour Bars  cmdID= 1036  value= 1  
+					100% Colour Bars  cmdID= 1036  value= 2  
+					Ramp  cmdID= 1036  value= 3  
+					Multiburst  cmdID= 1036  value= 4  
+					Pulse & Bar  cmdID= 1036  value= 5  
+					Green  cmdID= 1036  value= 6  "
+		::= { iqdarcsCmdEntry 1036 }
+
+
+	iqdarcsPatternCaptionInsertionProcessedPath OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Processed Path  cmdID= 1055 "
+		::= { iqdarcsCmdEntry 1055 }
+
+
+	iqdarcsPatternCaptionInsertionUnprocessedPath OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern & Caption
+					Unprocessed Path  cmdID= 1056 "
+		::= { iqdarcsCmdEntry 1056 }
+
+
+	iqdarcsSetupOutputRoutingMonitoringOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Processed(0),
+							val_Unprocessed(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Monitoring Output  cmdID= 1952 
+					Processed  value= 0  
+					Unprocessed  value= 1  "
+		::= { iqdarcsCmdEntry 1952 }
+
+
+	iqdarcsSetupMonitoringOutputStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL_NTSC(0),
+							val_PAL_N_NTSC(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Standard  cmdID= 1501 
+					PAL/NTSC  value= 0  
+					PAL-N/NTSC  value= 1  "
+		::= { iqdarcsCmdEntry 1501 }
+
+
+	iqdarcsSetupMonitoringOutput525Pedestal OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					525 Pedestal  cmdID= 1499 "
+		::= { iqdarcsCmdEntry 1499 }
+
+
+	iqdarcsSetupMonitoringOutputChromaBWidth OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_0_65MHz(0),
+							val_1_3MHz(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Chroma B/Width  cmdID= 1504 
+					0.65MHz  value= 0  
+					1.3MHz  value= 1  "
+		::= { iqdarcsCmdEntry 1504 }
+
+
+	iqdarcsSetupStandard525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					525  cmdID= 1405 "
+		::= { iqdarcsCmdEntry 1405 }
+
+
+	iqdarcsSetupStandard625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					625  cmdID= 1406 "
+		::= { iqdarcsCmdEntry 1406 }
+
+
+	iqdarcsGPIIOGPIInputDisableInputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Disable Inputs  cmdID= 2605 "
+		::= { iqdarcsCmdEntry 2605 }
+
+
+	iqdarcsGPIIOGPIInput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI In  cmdID= 2010  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqdarcsCmdEntry 2010 }
+
+
+	iqdarcsGPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2011  min= -1  max= 25  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 25  Step = 1 "
+		::= { iqdarcsCmdEntry 2011 }
+
+
+	iqdarcsGPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqdarcsCmdEntry 2048 }
+
+
+	iqdarcsGPIIOGPIOutputOutActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Out Active High  cmdID= 3540 "
+		::= { iqdarcsCmdEntry 3540 }
+
+
+	iqdarcsGPIIOGPIOutput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI Out  cmdID= 2012  min= 0  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 3  Step = 1 "
+		::= { iqdarcsCmdEntry 2012 }
+
+
+	iqdarcsGPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2013  min= -1  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 3  Step = 1 "
+		::= { iqdarcsCmdEntry 2013 }
+
+
+	iqdarcsGPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqdarcsCmdEntry 2049 }
+
+
+	iqdarcsGPIIOGPIInputOutputGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 1  cmdID= 2014 "
+		::= { iqdarcsCmdEntry 2014 }
+
+
+	iqdarcsGPIIOGPIInputOutputGPIO2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 2  cmdID= 2015 "
+		::= { iqdarcsCmdEntry 2015 }
+
+
+	iqdarcsGPIIOGPIInputOutputGPIO3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 3  cmdID= 2016 "
+		::= { iqdarcsCmdEntry 2016 }
+
+
+	iqdarcsGPIIOGPIInputOutputGPIO4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 4  cmdID= 2017 "
+		::= { iqdarcsCmdEntry 2017 }
+
+
+	iqdarcsSetupGPIIOGPIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI In  cmdID= 2874  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqdarcsCmdEntry 2874 }
+
+
+	iqdarcsSetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2875  min= -1  max= 25  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 25  Step = 1 "
+		::= { iqdarcsCmdEntry 2875 }
+
+
+	iqdarcsSetupGPIIOGPIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					GPI Out  cmdID= 2876  min= 0  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 3  Step = 1 "
+		::= { iqdarcsCmdEntry 2876 }
+
+
+	iqdarcsSetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2877  min= -1  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 3  Step = 1 "
+		::= { iqdarcsCmdEntry 2877 }
+
+
+	iqdarcsSetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 1495  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqdarcsCmdEntry 1495 }
+
+
+	iqdarcsSetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 1496  min= -1  max= 77  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 77  Step = 1 "
+		::= { iqdarcsCmdEntry 1496 }
+
+
+	iqdarcsSetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- RollTrack
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqdarcsCmdEntry 1513 }
+
+
+	iqdarcsSetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 1497  "
+		::= { iqdarcsCmdEntry 1497 }
+
+
+	iqdarcsSetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 1498  "
+		::= { iqdarcsCmdEntry 1498 }
+
+
+	iqdarcsSetupRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqdarcsCmdEntry 1514 }
+
+
+	iqdarcsSetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqdarcsCmdEntry 1511 }
+
+
+	iqdarcsSetupRollTrackRollTrack_Index OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 2870  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqdarcsCmdEntry 2870 }
+
+
+	iqdarcsSetupRollTrackRollTrack_Source OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 2871  min= -1  max= 77  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 77  Step = 1 "
+		::= { iqdarcsCmdEntry 2871 }
+
+
+	iqdarcsSetupRollTrackRollTrack_Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 2872  "
+		::= { iqdarcsCmdEntry 2872 }
+
+
+	iqdarcsSetupRollTrackRollTrack_Command OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 2873  "
+		::= { iqdarcsCmdEntry 2873 }
+
+
+	iqdarcsSetupInformationEDHReset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_EDH_Reset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					EDH Reset  cmdID= 1409  value= 1  "
+		::= { iqdarcsCmdEntry 1409 }
+
+
+	iqdarcsSetupInformation OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Status_Information(0),
+							val_ARC_Status(1),
+							val_EDH_Errors(2),
+							val_EDH_FF(3),
+							val_EDH_AP(4),
+							val_Signalling_WSS_out(5),
+							val_Signalling_VI_out(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Status Information  cmdID= 1915  value= 0  
+					ARC Status  cmdID= 1915  value= 1  
+					EDH Errors  cmdID= 1915  value= 2  
+					EDH FF  cmdID= 1915  value= 3  
+					EDH AP  cmdID= 1915  value= 4  
+					Signalling WSS out  cmdID= 1915  value= 5  
+					Signalling VI out  cmdID= 1915  value= 6  "
+		::= { iqdarcsCmdEntry 1915 }
+
+
+	iqdarcsSetupDefaultOut OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Freeze(2),
+							val_Black(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Out
+					Freeze  cmdID= 1202  value= 2  
+					Black  cmdID= 1202  value= 4  "
+		::= { iqdarcsCmdEntry 1202 }
+
+
+	iqdarcsSetupLoggingInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input  cmdID= 1060 "
+		::= { iqdarcsCmdEntry 1060 }
+
+
+	iqdarcsSetupLoggingStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Standard  cmdID= 1061 "
+		::= { iqdarcsCmdEntry 1061 }
+
+
+	iqdarcsSetupLoggingAFDConflict OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					AFD Conflict  cmdID= 1074 "
+		::= { iqdarcsCmdEntry 1074 }
+
+
+	iqdarcsSetupLoggingEDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					EDH  cmdID= 1064 "
+		::= { iqdarcsCmdEntry 1064 }
+
+
+	iqdarcsSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					EDH Errors  cmdID= 1070 "
+		::= { iqdarcsCmdEntry 1070 }
+
+
+	iqdarcsSetupLoggingInputRatio OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input Ratio  cmdID= 1075 "
+		::= { iqdarcsCmdEntry 1075 }
+
+
+	iqdarcsSetupLoggingOutputRatio OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output Ratio  cmdID= 1076 "
+		::= { iqdarcsCmdEntry 1076 }
+
+
+	iqdarcsSetupLoggingInputVI OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input VI  cmdID= 1077 "
+		::= { iqdarcsCmdEntry 1077 }
+
+
+	iqdarcsSetupLoggingInputWSS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input WSS  cmdID= 1078 "
+		::= { iqdarcsCmdEntry 1078 }
+
+
+	iqdarcsSetupLoggingOutputVI OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output VI  cmdID= 1079 "
+		::= { iqdarcsCmdEntry 1079 }
+
+
+	iqdarcsSetupLoggingOutputWSS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output WSS  cmdID= 1080 "
+		::= { iqdarcsCmdEntry 1080 }
+
+
+	iqdarcsSetupLoggingMode OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Mode  cmdID= 1081 "
+		::= { iqdarcsCmdEntry 1081 }
+
+
+	iqdarcsSetupSmoothTransitionsManualMinDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Manual/Min Delay  cmdID= 1911 "
+		::= { iqdarcsCmdEntry 1911 }
+
+
+	iqdarcsSetupSmoothTransitionsAuto OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Auto  cmdID= 1912 "
+		::= { iqdarcsCmdEntry 1912 }
+
+
+	iqdarcsSetupTerminology OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WRT9(0),
+							val_PB_LB(1),
+							val_Ratio(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Terminology  cmdID= 1505 
+					WRT9  value= 0  
+					PB/LB  value= 1  
+					Ratio  value= 2  "
+		::= { iqdarcsCmdEntry 1505 }
+
+
+	iqdarcsStatusInputSDI OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					SDI  cmdID= 2666  format=   "
+		::= { iqdarcsCmdEntry 2666 }
+
+
+	iqdarcsStatusInputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Standard  cmdID= 2667  format=   "
+		::= { iqdarcsCmdEntry 2667 }
+
+
+	iqdarcsStatusEDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					EDH  cmdID= 2675  format=   "
+		::= { iqdarcsCmdEntry 2675 }
+
+
+	iqdarcsStatusEDHErrorCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Error Count  cmdID= 2676  format=   "
+		::= { iqdarcsCmdEntry 2676 }
+
+
+	iqdarcsStatusARCStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					ARC  cmdID= 2440  format=   "
+		::= { iqdarcsCmdEntry 2440 }
+
+
+	iqdarcsStatusARCStatusInputRatio OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Input Ratio  cmdID= 2441  format=   "
+		::= { iqdarcsCmdEntry 2441 }
+
+
+	iqdarcsStatusARCStatusOutputRatio OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Output Ratio  cmdID= 2442  format=   "
+		::= { iqdarcsCmdEntry 2442 }
+
+
+	iqdarcsStatusARCStatusMinimumDelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Minimum Delay  cmdID= 2670  format=   "
+		::= { iqdarcsCmdEntry 2670 }
+
+
+	iqdarcsStatusARCStatusBypass OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Bypass  cmdID= 2685  format=   "
+		::= { iqdarcsCmdEntry 2685 }
+
+
+	iqdarcsStatusARCStatusPattern OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Pattern  cmdID= 2668  format=   "
+		::= { iqdarcsCmdEntry 2668 }
+
+
+	iqdarcsStatusARCStatusFreeze OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Freeze  cmdID= 2669  format=   "
+		::= { iqdarcsCmdEntry 2669 }
+
+
+	iqdarcsStatusSignallingInputVI OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Input VI  cmdID= 2443  format=   "
+		::= { iqdarcsCmdEntry 2443 }
+
+
+	iqdarcsStatusSignallingInputWSS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Input WSS  cmdID= 2444  format=   "
+		::= { iqdarcsCmdEntry 2444 }
+
+
+	iqdarcsStatusSignallingVICRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					VI CRC  cmdID= 2746  format=   "
+		::= { iqdarcsCmdEntry 2746 }
+
+
+	iqdarcsStatusSignallingOutputVI OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Output VI  cmdID= 2445  format=   "
+		::= { iqdarcsCmdEntry 2445 }
+
+
+	iqdarcsStatusSignallingOutputWSS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Output WSS  cmdID= 2446  format=   "
+		::= { iqdarcsCmdEntry 2446 }
+
+
+	iqdarcsStatusSignallingForceVI OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Force VI  cmdID= 2673  format=   "
+		::= { iqdarcsCmdEntry 2673 }
+
+
+	iqdarcsStatusSignallingForceWSS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Force WSS  cmdID= 2674  format=   "
+		::= { iqdarcsCmdEntry 2674 }
+
+
+	iqdarcsStatusSignallingFollowOnLine OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					Follow On Line  cmdID= 2671  format=   "
+		::= { iqdarcsCmdEntry 2671 }
+
+
+	iqdarcsStatusSignallingAFDConflictlog OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					AFD Conflict log  cmdID= 3006  format=   "
+		::= { iqdarcsCmdEntry 3006 }
+
+
+	iqdarcsStatusSignallingAFDConflict OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					AFD Conflict  cmdID= 2672  format=   "
+		::= { iqdarcsCmdEntry 2672 }
+
+
+	iqdarcsStatusSignallingAFDInput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					AFD Input  cmdID= 3541  format=   "
+		::= { iqdarcsCmdEntry 3541 }
+
+
+	iqdarcsStatusSignallingETSIInput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					ETSI Input  cmdID= 3542  format=   "
+		::= { iqdarcsCmdEntry 3542 }
+
+
+	iqdarcsStatusSignallingSMPTEInput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Status
+					SMPTE Input  cmdID= 3543  format=   "
+		::= { iqdarcsCmdEntry 3543 }
+
+
+	iqdarcsSetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Software Version  cmdID= 2  format=   "
+		::= { iqdarcsCmdEntry 2 }
+
+
+	iqdarcsSetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Serial No  cmdID= 1  format=   "
+		::= { iqdarcsCmdEntry 1 }
+
+
+	iqdarcsSetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdarcsCmdEntry 3 }
+
+
+	iqdarcsSetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdarcsCmdEntry 4 }
+
+
+	iqdarcsSetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Build No  cmdID= 5  format=   "
+		::= { iqdarcsCmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MODE
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.77.79.68.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.77.79.68.69
+-- Vary			: YES
+--
+-- Value(s)		: Auto_WSS_ETSI
+--				: Auto_WSS_AFD
+--				: Auto_VI_AFD
+--				: Auto_VI_SMPTE
+--				: Manual
+--				: MinDelay
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_VI
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.73.78.80.85.84.95.86.73
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.73.78.80.85.84.95.86.73
+-- Vary			: YES
+--
+-- Value(s)		: **
+--				: FOL
+--				: ERR
+--				: SMPTE:4/3
+--				: SMPTE:16/9
+--				: AFD0:CodedFrame
+--				: AFD1:4/3
+--				: AFD2:16/9
+--				: AFD3:14/9
+--				: AFD4:AFD=4
+--				: AFD5:4/3SP14/9
+--				: AFD6:16/9SP14/9
+--				: AFD7:16/9SP4/3
+--				: AFD0:4/3_CodedFrm
+--				: AFD1:4/3_4/3
+--				: AFD2:4/3_16/9
+--				: AFD3:4/3_14/9
+--				: AFD4:4/3_AFD=4
+--				: AFD5:4/3_4/3S14/9
+--				: AFD6:4/3_16/9S14/9
+--				: AFD7:4/3_16/9S4/3
+--				: AFD0:16/9_CodedFrm
+--				: AFD1:16/9_4/3
+--				: AFD2:16/9_16/9
+--				: AFD3:16/9_14/9
+--				: AFD4:16/9_AFD=4
+--				: AFD5:16/9_4/3S14/9
+--				: AFD6:16/9_16/9S14/9
+--				: AFD7:16/9_16/9S4/3
+--				: AFD:None
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_WSS
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.73.78.80.85.84.95.87.83.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.73.78.80.85.84.95.87.83.83
+-- Vary			: YES
+--
+-- Value(s)		: **
+--				: FOL
+--				: ERR
+--				: ETSI:4/3FF
+--				: ETSI:14/9C
+--				: ETSI:14/9T
+--				: ETSI:16/9C
+--				: ETSI:16/9T
+--				: ETSI:>16/9C
+--				: ETSI:SP14/9
+--				: ETSI:16/9FF
+--				: AFD0:CodedFrame
+--				: AFD1:4/3
+--				: AFD2:16/9
+--				: AFD3:14/9
+--				: AFD4:AFD=4
+--				: AFD5:4/3SP14/9
+--				: AFD6:16/9SP14/9
+--				: AFD7:16/9SP4/3
+--				: AFD0:4/3_CodedFrm
+--				: AFD1:4/3_4/3
+--				: AFD2:4/3_16/9
+--				: AFD3:4/3_14/9
+--				: AFD4:4/3_AFD=4
+--				: AFD5:4/3_4/3S14/9
+--				: AFD6:4/3_16/9S14/9
+--				: AFD7:4/3_16/9S4/3
+--				: AFD0:16/9_CodedFrm
+--				: AFD1:16/9_4/3
+--				: AFD2:16/9_16/9
+--				: AFD3:16/9_14/9
+--				: AFD4:16/9_AFD=4
+--				: AFD5:16/9_4/3S14/9
+--				: AFD6:16/9_16/9S14/9
+--				: AFD7:16/9_16/9S4/3
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_VI
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.79.85.84.80.85.84.95.86.73
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.79.85.84.80.85.84.95.86.73
+-- Vary			: YES
+--
+-- Value(s)		: **
+--				: AFD0:4/3_CodedFrm
+--				: AFD1:4/3_4/3
+--				: AFD2:4/3_16/9
+--				: AFD3:4/3_14/9
+--				: AFD4:4/3_AFD=4
+--				: AFD5:4/3_4/3S14/9
+--				: AFD6:4/3_16/9S14/9
+--				: AFD7:4/3_16/9S4/3
+--				: AFD0:16/9_CodedFrm
+--				: AFD1:16/9_4/3
+--				: AFD2:16/9_16/9
+--				: AFD3:16/9_14/9
+--				: AFD4:16/9_AFD=4
+--				: AFD5:16/9_4/3S14/9
+--				: AFD6:16/9_16/9S14/9
+--				: AFD7:16/9_16/9S4/3
+--				: AFD:None
+--				: AFD0:CodedFrame
+--				: AFD1:4/3
+--				: AFD2:16/9
+--				: AFD3:14/9
+--				: AFD4:AFD=4
+--				: AFD5:4/3SP14/9
+--				: AFD6:16/9SP14/9
+--				: AFD7:16/9SP4/3
+--				: SMPTE:4/3
+--				: SMPTE:16/9
+--				: SMPTE:None
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_WSS
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.85.84.80.85.84.95.87.83.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.85.84.80.85.84.95.87.83.83
+-- Vary			: YES
+--
+-- Value(s)		: AFD:None
+--				: AFD0:CodedFrame
+--				: AFD1:4/3
+--				: AFD2:16/9
+--				: AFD3:14/9
+--				: AFD4:AFD=4
+--				: AFD5:4/3SP14/9
+--				: AFD6:16/9SP14/9
+--				: AFD7:16/9SP4/3
+--				: AFD0:4/3_CodedFrm
+--				: AFD1:4/3_4/3
+--				: AFD2:4/3_16/9
+--				: AFD3:4/3_14/9
+--				: AFD4:4/3_AFD=4
+--				: AFD5:4/3_4/3S14/9
+--				: AFD6:4/3_16/9S14/9
+--				: AFD7:4/3_16/9S4/3
+--				: AFD0:16/9_CodedFrm
+--				: AFD1:16/9_4/3
+--				: AFD2:16/9_16/9
+--				: AFD3:16/9_14/9
+--				: AFD4:16/9_AFD=4
+--				: AFD5:16/9_4/3S14/9
+--				: AFD6:16/9_16/9S14/9
+--				: AFD7:16/9_16/9S4/3
+--				: ETSI:4/3FF
+--				: ETSI:14/9C
+--				: ETSI:14/9T
+--				: ETSI:16/9C
+--				: ETSI:16/9T
+--				: ETSI:>16/9C
+--				: ETSI:SP14/9
+--				: ETSI:16/9FF
+--				: ETSI:none
+--              : Pass
+--              : Delete
+--              : **
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_RATIO
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.82.65.84.73.79
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.82.65.84.73.79
+-- Vary			: YES
+--
+-- Value(s)		: Pass
+--				: 12F12
+--				: 12F12
+--				: 12F12
+--				: 16L12
+--				: 16L12
+--				: 16F16
+--				: 16F16
+--				: 16F16
+--				: Custom
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AFD_CONFLICT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.65.70.68.95.67.79.78.70.76.73.67.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.65.70.68.95.67.79.78.70.76.73.67.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: FAIL:Conflict
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_RATIO
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.79.85.84.80.85.84.95.82.65.84.73.79
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.79.85.84.80.85.84.95.82.65.84.73.79
+-- Vary			: YES
+--
+-- Value(s)		: Pass
+--				: 12P16
+--				: 14P16
+--				: 16F16
+--				: 12F12
+--				: 14L12
+--				: 12F12
+--				: 14L12
+--				: 16L12
+--				: Custom
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

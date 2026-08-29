@@ -1,0 +1,844 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDMSDS
+--        Module Id#:58
+--       Command Set:8
+--          Filename:SNELL-IQDMSDS-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:30/06/2005
+--              Time:09:49
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDMSDS-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDMSDS,
+    moduleIQDMSDSMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDMSDSCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506300949Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDMSDSMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdmsdsCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdmsdsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDMSDS 1 }
+
+	iqdmsdsCmdEntry OBJECT-TYPE
+		SYNTAX		IqdmsdsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdmsdsSlotIndex }
+		::= { iqdmsdsCmdTable 1 }
+
+	IqdmsdsCmdEntry ::=
+		SEQUENCE {
+			iqdmsdsSlotIndex
+				Unsigned32,
+			iqdmsdsStandard
+				INTEGER,
+			iqdmsdsMode
+				INTEGER,
+			iqdmsdsGenlockMode
+				INTEGER,
+			iqdmsdsGenlockHPhase
+				INTEGER,
+			iqdmsdsGenlockVPhase
+				INTEGER,
+			iqdmsdsFreeze
+				INTEGER,
+			iqdmsdsProcAmpVideoGain
+				INTEGER,
+			iqdmsdsProcAmpBlackLevel
+				INTEGER,
+			iqdmsdsProcAmpChromaGain
+				INTEGER,
+			iqdmsdsProcAmpNTSCHue
+				INTEGER,
+			iqdmsdsProcAmpYCDelay
+				INTEGER,
+			iqdmsdsProcAmpPicturePosition
+				INTEGER,
+			iqdmsdsMemoryReadMemory
+				INTEGER,
+			iqdmsdsMemorySaveMemory
+				INTEGER,
+			iqdmsdsMemoryNameUserMemoryMemory1Name
+				RollCallString,
+			iqdmsdsMemoryNameUserMemoryMemory2Name
+				RollCallString,
+			iqdmsdsMemoryNameUserMemoryMemory3Name
+				RollCallString,
+			iqdmsdsMemoryNameUserMemoryMemory4Name
+				RollCallString,
+			iqdmsdsMemoryNameUserMemoryPresetAllNames
+				INTEGER,
+			iqdmsdsMemoryClearUserMemory
+				INTEGER,
+			iqdmsdsSetupVITSVITSPass
+				INTEGER,
+			iqdmsdsSetupVITSPassLine283
+				INTEGER,
+			iqdmsdsSetupVITSPassLine21
+				INTEGER,
+			iqdmsdsSetupVITSPassLine23
+				INTEGER,
+			iqdmsdsSetupPedestalStrip
+				INTEGER,
+			iqdmsdsSetupBlanking
+				INTEGER,
+			iqdmsdsSetupBlankingVariableBlanking
+				INTEGER,
+			iqdmsdsSetupVHSPeaking
+				INTEGER,
+			iqdmsdsSetupPatternPatternOn
+				INTEGER,
+			iqdmsdsSetupPatternSelectPattern
+				INTEGER,
+			iqdmsdsSetupDefaultOutputAutoFreeze
+				INTEGER,
+			iqdmsdsSetupDefaultOutputDefaultPattern
+				INTEGER,
+			iqdmsdsSetupCaptionEditCaption
+				RollCallString,
+			iqdmsdsSetupCaptionInsertCaption
+				INTEGER,
+			iqdmsdsSetupEDHEnable
+				INTEGER,
+			iqdmsdsSetupRollTrackUnit1
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit2
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit3
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit4
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit5
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit6
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit7
+				RollCallString,
+			iqdmsdsSetupRollTrackUnit8
+				RollCallString,
+			iqdmsdsSetupRollTrackMessages
+				INTEGER,
+			iqdmsdsSetupLoggingInpStdChange
+				INTEGER,
+			iqdmsdsSetupLoggingReferenceLoss
+				INTEGER,
+			iqdmsdsSetupPresetUnit
+				INTEGER,
+			iqdmsdsSetupSoftwareVersion
+				RollCallString,
+			iqdmsdsSetupSerialNo
+				RollCallString
+		}
+
+	iqdmsdsSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdmsdsCmdEntry 0 }
+
+
+	iqdmsdsStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL(2),
+							val_NTSC(1),
+							val_PAL_N(4),
+							val_PAL_M(3),
+							val_SECAM(6),
+							val_NTSC_4_43(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Standard  cmdID= 10 
+					PAL  value= 2  
+					NTSC  value= 1  
+					PAL-N  value= 4  
+					PAL-M  value= 3  
+					SECAM  value= 6  
+					NTSC-4.43  value= 5  "
+		::= { iqdmsdsCmdEntry 10 }
+
+
+	iqdmsdsMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_Comb_Crystal(1),
+							val_Simple_VHS(5),
+							val_Pass_Through(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Mode  cmdID= 11 
+					Line_Comb/Crystal  value= 1  
+					Simple/VHS  value= 5  
+					Pass_Through  value= 6  "
+		::= { iqdmsdsCmdEntry 11 }
+
+
+	iqdmsdsGenlockMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Genlock(0),
+							val_Minimum_Delay(1),
+							val_Free_Run(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Mode  cmdID= 43 
+					Genlock  value= 0  
+					Minimum_Delay  value= 1  
+					Free_Run  value= 2  "
+		::= { iqdmsdsCmdEntry 43 }
+
+
+	iqdmsdsGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					H_Phase  cmdID= 45  min= -31968  max= 31968  step= 37  format= %4.0fns  div_scale= 1 
+					Min = -31968ns  Max = 31968ns  Step =   37ns "
+		::= { iqdmsdsCmdEntry 45 }
+
+
+	iqdmsdsGenlockVPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					V_Phase  cmdID= 44  min= -7  max= 7  step= 1  format= %4.0f Lines  div_scale= 1 
+					Min =   -7 Lines  Max =    7 Lines  Step =    1 Lines "
+		::= { iqdmsdsCmdEntry 44 }
+
+
+	iqdmsdsFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 46 "
+		::= { iqdmsdsCmdEntry 46 }
+
+
+	iqdmsdsProcAmpVideoGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Video_Gain  cmdID= 5  min= -30  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -3.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdmsdsCmdEntry 5 }
+
+
+	iqdmsdsProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Black_Level  cmdID= 6  min= -75  max= 75  step= 1  format= %1.0f  div_scale= 1 
+					Min = -75  Max = 75  Step = 1 "
+		::= { iqdmsdsCmdEntry 6 }
+
+
+	iqdmsdsProcAmpChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Chroma_Gain  cmdID= 7  min= -30  max= 30  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -3.0 dB  Max = 3.0 dB  Step = 0.1 dB "
+		::= { iqdmsdsCmdEntry 7 }
+
+
+	iqdmsdsProcAmpNTSCHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					NTSC_Hue  cmdID= 8  min= -30  max= 30  step= 1  format= %1.0f Deg  div_scale= 1 
+					Min = -30 Deg  Max = 30 Deg  Step = 1 Deg "
+		::= { iqdmsdsCmdEntry 8 }
+
+
+	iqdmsdsProcAmpYCDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC_Delay  cmdID= 9  min= -222  max= 148  step= 74  format= %4.0fns  div_scale= 1 
+					Min = -222ns  Max =  148ns  Step =   74ns "
+		::= { iqdmsdsCmdEntry 9 }
+
+
+	iqdmsdsProcAmpPicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Picture_Position  cmdID= 42  min= -2220  max= 2220  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -2220 ns  Max = 2220 ns  Step = 148 ns "
+		::= { iqdmsdsCmdEntry 42 }
+
+
+	iqdmsdsMemoryReadMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read_Memory  cmdID= 18 
+					Memory__1  value= 0  
+					Memory__2  value= 1  
+					Memory__3  value= 2  
+					Memory__4  value= 3  "
+		::= { iqdmsdsCmdEntry 18 }
+
+
+	iqdmsdsMemorySaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save_Memory  cmdID= 19 
+					Memory__1  value= 0  
+					Memory__2  value= 1  
+					Memory__3  value= 2  
+					Memory__4  value= 3  "
+		::= { iqdmsdsCmdEntry 19 }
+
+
+	iqdmsdsMemoryNameUserMemoryMemory1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1_Name  cmdID= 20  "
+		::= { iqdmsdsCmdEntry 20 }
+
+
+	iqdmsdsMemoryNameUserMemoryMemory2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2_Name  cmdID= 21  "
+		::= { iqdmsdsCmdEntry 21 }
+
+
+	iqdmsdsMemoryNameUserMemoryMemory3Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3_Name  cmdID= 22  "
+		::= { iqdmsdsCmdEntry 22 }
+
+
+	iqdmsdsMemoryNameUserMemoryMemory4Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4_Name  cmdID= 23  "
+		::= { iqdmsdsCmdEntry 23 }
+
+
+	iqdmsdsMemoryNameUserMemoryPresetAllNames OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All_Names(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 25  value= 1  "
+		::= { iqdmsdsCmdEntry 25 }
+
+
+	iqdmsdsMemoryClearUserMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Clear_User_Memory  cmdID= 24 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  "
+		::= { iqdmsdsCmdEntry 24 }
+
+
+	iqdmsdsSetupVITSVITSPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VITS_Pass  cmdID= 38 "
+		::= { iqdmsdsCmdEntry 38 }
+
+
+	iqdmsdsSetupVITSPassLine283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_Line_283  cmdID= 39 "
+		::= { iqdmsdsCmdEntry 39 }
+
+
+	iqdmsdsSetupVITSPassLine21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_Line_21  cmdID= 40 "
+		::= { iqdmsdsCmdEntry 40 }
+
+
+	iqdmsdsSetupVITSPassLine23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_Line_23  cmdID= 41 "
+		::= { iqdmsdsCmdEntry 41 }
+
+
+	iqdmsdsSetupPedestalStrip OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pedestal_Strip  cmdID= 17 "
+		::= { iqdmsdsCmdEntry 17 }
+
+
+	iqdmsdsSetupBlanking OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Digital(0),
+							val_Analogue(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Digital  cmdID= 36  value= 0  
+					Analogue  cmdID= 36  value= 1  "
+		::= { iqdmsdsCmdEntry 36 }
+
+
+	iqdmsdsSetupBlankingVariableBlanking OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Variable_Blanking  cmdID= 37  min= -1184  max= 1184  step= 74  format= %4.0fns  div_scale= 1 
+					Min = -1184ns  Max = 1184ns  Step =   74ns "
+		::= { iqdmsdsCmdEntry 37 }
+
+
+	iqdmsdsSetupVHSPeaking OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VHS_Peaking  cmdID= 56 "
+		::= { iqdmsdsCmdEntry 56 }
+
+
+	iqdmsdsSetupPatternPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern_On  cmdID= 13 "
+		::= { iqdmsdsCmdEntry 13 }
+
+
+	iqdmsdsSetupPatternSelectPattern OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Select_Pattern  cmdID= 12  min= 0  max= 3  step= 1  format= %f  div_scale= 1 
+					Min = 0.000000  Max = 3.000000  Step = 1.000000 "
+		::= { iqdmsdsCmdEntry 12 }
+
+
+	iqdmsdsSetupDefaultOutputAutoFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Auto_Freeze  cmdID= 58 "
+		::= { iqdmsdsCmdEntry 58 }
+
+
+	iqdmsdsSetupDefaultOutputDefaultPattern OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Default_Pattern  cmdID= 14  min= 0  max= 3  step= 1  format= %f  div_scale= 1 
+					Min = 0.000000  Max = 3.000000  Step = 1.000000 "
+		::= { iqdmsdsCmdEntry 14 }
+
+
+	iqdmsdsSetupCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Edit_Caption  cmdID= 16  "
+		::= { iqdmsdsCmdEntry 16 }
+
+
+	iqdmsdsSetupCaptionInsertCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Caption  cmdID= 15 "
+		::= { iqdmsdsCmdEntry 15 }
+
+
+	iqdmsdsSetupEDHEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Enable  cmdID= 27 "
+		::= { iqdmsdsCmdEntry 27 }
+
+
+	iqdmsdsSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_1  cmdID= 48  "
+		::= { iqdmsdsCmdEntry 48 }
+
+
+	iqdmsdsSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_2  cmdID= 49  "
+		::= { iqdmsdsCmdEntry 49 }
+
+
+	iqdmsdsSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_3  cmdID= 50  "
+		::= { iqdmsdsCmdEntry 50 }
+
+
+	iqdmsdsSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_4  cmdID= 51  "
+		::= { iqdmsdsCmdEntry 51 }
+
+
+	iqdmsdsSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_5  cmdID= 52  "
+		::= { iqdmsdsCmdEntry 52 }
+
+
+	iqdmsdsSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_6  cmdID= 53  "
+		::= { iqdmsdsCmdEntry 53 }
+
+
+	iqdmsdsSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_7  cmdID= 54  "
+		::= { iqdmsdsCmdEntry 54 }
+
+
+	iqdmsdsSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_8  cmdID= 55  "
+		::= { iqdmsdsCmdEntry 55 }
+
+
+	iqdmsdsSetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 61 "
+		::= { iqdmsdsCmdEntry 61 }
+
+
+	iqdmsdsSetupLoggingInpStdChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Inp/Std_Change  cmdID= 26 "
+		::= { iqdmsdsCmdEntry 26 }
+
+
+	iqdmsdsSetupLoggingReferenceLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Reference_Loss  cmdID= 47 "
+		::= { iqdmsdsCmdEntry 47 }
+
+
+	iqdmsdsSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdmsdsCmdEntry 3 }
+
+
+	iqdmsdsSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdmsdsCmdEntry 2 }
+
+
+	iqdmsdsSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdmsdsCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: AUTO
+--				: NTSC
+--				: PAL
+--				: PAL-M
+--				: PAL-N
+--				: NTSC-443
+--				: SECAM
+--				: MONO
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERROR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: OK
+--				: LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

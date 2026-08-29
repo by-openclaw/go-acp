@@ -91,15 +91,21 @@ func TestNodeValidateRejectsBadUUID(t *testing.T) {
 	}
 }
 
-func TestDecodeRejectsUnknownField(t *testing.T) {
+// TestDecodeAbsorbsUnknownField: a future or vendor field does not
+// stop the decode. See is04.TestNodeUnknownFieldAbsorbedAndReported
+// for why this contract was inverted.
+//
+// The payload below is otherwise incomplete, so the decode still
+// fails validation — the point here is only that it does NOT fail on
+// `future_field_not_in_spec`.
+func TestDecodeAbsorbsUnknownField(t *testing.T) {
 	c := Codec{}
 	body := []byte(`{"id":"f47ac10b-58cc-4372-a567-0e02b2c3d479",
 	  "version":"1:0","label":"x","description":"x",
 	  "hostname":"h","href":"http://h/","api":{"versions":["v1.3"]},
 	  "future_field_not_in_spec":"oops"}`)
-	if _, err := c.DecodeNode(body); err == nil {
-		t.Fatalf("expected DisallowUnknownFields rejection")
-	} else if !strings.Contains(err.Error(), "future_field_not_in_spec") {
-		t.Fatalf("error should name the unknown field, got %v", err)
+	_, err := c.DecodeNode(body)
+	if err != nil && strings.Contains(err.Error(), "future_field_not_in_spec") {
+		t.Fatalf("the unknown field must be absorbed, not rejected: %v", err)
 	}
 }

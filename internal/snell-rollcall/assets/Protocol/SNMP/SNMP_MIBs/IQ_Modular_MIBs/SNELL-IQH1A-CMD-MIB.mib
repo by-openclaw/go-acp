@@ -1,0 +1,4959 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQH1A
+--        Module Id#:475
+--       Command Set:14
+--          Filename:SNELL-IQH1A-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:08/01/2008
+--              Time:16:01
+--
+-- Copyright (c) 2008 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQH1A-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQH1A,
+    moduleIQH1AMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQH1ACmdMi MODULE-IDENTITY
+    LAST-UPDATED "0801081601Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQH1AMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqh1aCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqh1aCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQH1A 1 }
+
+	iqh1aCmdEntry OBJECT-TYPE
+		SYNTAX		Iqh1aCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqh1aSlotIndex }
+		::= { iqh1aCmdTable 1 }
+
+	Iqh1aCmdEntry ::=
+		SEQUENCE {
+			iqh1aSlotIndex
+				Unsigned32,
+			iqh1aSlot1InstalledType
+				RollCallString,
+			iqh1aSlot1InstalledUnit
+				RollCallString,
+			iqh1aSlot1Name
+				RollCallString,
+			iqh1aSlot1BoundType
+				INTEGER,
+			iqh1aSlot1Information1
+				RollCallString,
+			iqh1aSlot1Information2
+				RollCallString,
+			iqh1aSlot1NonRollCallSlot
+				INTEGER,
+			iqh1aSlot1IdName
+				RollCallString,
+			iqh1aSlot2InstalledType
+				RollCallString,
+			iqh1aSlot2InstalledUnit
+				RollCallString,
+			iqh1aSlot2Name
+				RollCallString,
+			iqh1aSlot2BoundType
+				INTEGER,
+			iqh1aSlot2Information1
+				RollCallString,
+			iqh1aSlot2Information2
+				RollCallString,
+			iqh1aSlot2NonRollCallSlot
+				INTEGER,
+			iqh1aSlot2IdName
+				RollCallString,
+			iqh1aSlot3InstalledType
+				RollCallString,
+			iqh1aSlot3InstalledUnit
+				RollCallString,
+			iqh1aSlot3Name
+				RollCallString,
+			iqh1aSlot3BoundType
+				INTEGER,
+			iqh1aSlot3Information1
+				RollCallString,
+			iqh1aSlot3Information2
+				RollCallString,
+			iqh1aSlot3NonRollCallSlot
+				INTEGER,
+			iqh1aSlot3IdName
+				RollCallString,
+			iqh1aSlot4InstalledType
+				RollCallString,
+			iqh1aSlot4InstalledUnit
+				RollCallString,
+			iqh1aSlot4Name
+				RollCallString,
+			iqh1aSlot4BoundType
+				INTEGER,
+			iqh1aSlot4Information1
+				RollCallString,
+			iqh1aSlot4Information2
+				RollCallString,
+			iqh1aSlot4NonRollCallSlot
+				INTEGER,
+			iqh1aSlot4IdName
+				RollCallString,
+			iqh1aSystemSetupUnitName
+				RollCallString,
+			iqh1aSystemSetupSerialNumber
+				RollCallString,
+			iqh1aSystemSetupHardwareVersion
+				RollCallString,
+			iqh1aSystemSetupSoftwareVersion
+				RollCallString,
+			iqh1aSystemSetupBuildNumber
+				RollCallString,
+			iqh1aSystemSetupLoaderVersion
+				RollCallString,
+			iqh1aSystemSetupJavaAppletVersion
+				RollCallString,
+			iqh1aSystemSetupNetShow
+				INTEGER,
+			iqh1aSystemSetupAllowBlindControl
+				INTEGER,
+			iqh1aSystemSetupWhereAmI
+				INTEGER,
+			iqh1aSystemSetupSerialSpeed
+				INTEGER,
+			iqh1aSystemSetupSerialMode
+				RollCallString,
+			iqh1aSystemSetupPassIAMSerial
+				INTEGER,
+			iqh1aSystemSetupPassTIMESerial
+				INTEGER,
+			iqh1aSetupMonitorPSUsLeftPSU
+				INTEGER,
+			iqh1aSetupMonitorPSUsRightPSU
+				INTEGER,
+			iqh1aSystemSetupEnablecom200LongPacket
+				INTEGER,
+			iqh1aSystemSetupRestartUnit
+				INTEGER,
+			iqh1aSystemSetupFormatMenuCache
+				INTEGER,
+			iqh1aSystemSetupEnableMenuCache
+				INTEGER,
+			iqh1aSystemSetupStartTime
+				RollCallString,
+			iqh1aSystemSetupInformation1
+				RollCallString,
+			iqh1aSystemSetupInformation2
+				RollCallString,
+			iqh1aStatisticsResetNetStats
+				INTEGER,
+			iqh1aStatisticsEnableNetStats
+				INTEGER,
+			iqh1aStatisticsLengthErrs
+				RollCallString,
+			iqh1aStatisticsRecons
+				RollCallString,
+			iqh1aStatisticsModuleCommsErrors
+				RollCallString,
+			iqh1aStatisticsBadPacketErrs
+				RollCallString,
+			iqh1aStatisticsRoutingErrs
+				RollCallString,
+			iqh1aStatisticsPacketDrops
+				RollCallString,
+			iqh1aStatisticsDestinationErrs
+				RollCallString,
+			iqh1aStatisticsSourceErrs
+				RollCallString,
+			iqh1aStatisticsModCommsRxBytes
+				RollCallString,
+			iqh1aStatisticsModCommsTxBytes
+				RollCallString,
+			iqh1aStatisticsHyperionRxBytes
+				RollCallString,
+			iqh1aStatisticsProcessorUse
+				RollCallString,
+			iqh1aControlSlot1AllowBlindControl
+				INTEGER,
+			iqh1aControlSlot1SingleSessionOnly
+				INTEGER,
+			iqh1aControlSlot1Controller
+				RollCallString,
+			iqh1aControlSlot1ControllerName
+				RollCallString,
+			iqh1aControlSlot1LastBlindUser
+				RollCallString,
+			iqh1aControlSlot1ConPktCount
+				RollCallString,
+			iqh1aControlSlot1ConPktTotal
+				RollCallString,
+			iqh1aControlSlot1BlindPktCount
+				RollCallString,
+			iqh1aControlSlotDisconnectSession
+				INTEGER,
+			iqh1aControlSlot2AllowBlindControl
+				INTEGER,
+			iqh1aControlSlot2SingleSessionOnly
+				INTEGER,
+			iqh1aControlSlot2Controller
+				RollCallString,
+			iqh1aControlSlot2ControllerName
+				RollCallString,
+			iqh1aControlSlot2LastBlindUser
+				RollCallString,
+			iqh1aControlSlot2ConPktCount
+				RollCallString,
+			iqh1aControlSlot2ConPktTotal
+				RollCallString,
+			iqh1aControlSlot2BlindPktCount
+				RollCallString,
+			iqh1aControlSlot3AllowBlindControl
+				INTEGER,
+			iqh1aControlSlot3SingleSessionOnly
+				INTEGER,
+			iqh1aControlSlot3Controller
+				RollCallString,
+			iqh1aControlSlot3ControllerName
+				RollCallString,
+			iqh1aControlSlot3LastBlindUser
+				RollCallString,
+			iqh1aControlSlot3ConPktCount
+				RollCallString,
+			iqh1aControlSlot3ConPktTotal
+				RollCallString,
+			iqh1aControlSlot3BlindPktCount
+				RollCallString,
+			iqh1aControlSlot4AllowBlindControl
+				INTEGER,
+			iqh1aControlSlot4SingleSessionOnly
+				INTEGER,
+			iqh1aControlSlot4Controller
+				RollCallString,
+			iqh1aControlSlot4ControllerName
+				RollCallString,
+			iqh1aControlSlot4LastBlindUser
+				RollCallString,
+			iqh1aControlSlot4ConPktCount
+				RollCallString,
+			iqh1aControlSlot4ConPktTotal
+				RollCallString,
+			iqh1aControlSlot4BlindPktCount
+				RollCallString,
+			iqh1aControlShowSession
+				INTEGER,
+			iqh1aControlPktStatsUpdatePacketStats
+				INTEGER,
+			iqh1aControlPktStatsClearPacketCounts
+				INTEGER,
+			iqh1aControlGatewayControllerName
+				RollCallString,
+			iqh1aControlGatewayControllerAddr
+				RollCallString,
+			iqh1aControlGatewayConPktCount
+				RollCallString,
+			iqh1aControlGatewayConPktTotal
+				RollCallString,
+			iqh1aControlGatewayLastBlindAddr
+				RollCallString,
+			iqh1aControlGatewayBlindPktCount
+				RollCallString,
+			iqh1aControlGatewayDisconnectSession
+				INTEGER,
+			iqh1aControlGatewayShowSession
+				INTEGER,
+			iqh1aLoggingLogServerLogto
+				INTEGER,
+			iqh1aLoggingLogServerLogServerName
+				RollCallString,
+			iqh1aLoggingLogServerCurLogger
+				RollCallString,
+			iqh1aLoggingLogServerCurLoggerAddr
+				RollCallString,
+			iqh1aLoggingLogServerLastTimeaddr
+				RollCallString,
+			iqh1aLoggingLogServerTimefromLogger
+				INTEGER,
+			iqh1aLoggingLogServerAcceptviaIP
+				INTEGER,
+			iqh1aLoggingLogServerAcceptviaSerial
+				INTEGER,
+			iqh1aLoggingLogServerAcceptviaRollNet
+				INTEGER,
+			iqh1aLoggingLogServerAcceptviaBridge
+				INTEGER,
+			iqh1aLoggingSN
+				RollCallString,
+			iqh1aLoggingVERSION
+				RollCallString,
+			iqh1aLoggingLogOSVersion
+				INTEGER,
+			iqh1aLoggingOSVERSION
+				RollCallString,
+			iqh1aLoggingLogBuildNumber
+				INTEGER,
+			iqh1aLoggingBUILDNUMBER
+				RollCallString,
+			iqh1aLoggingLogHardwareVer
+				INTEGER,
+			iqh1aLoggingHARDWAREVERSION
+				RollCallString,
+			iqh1aLoggingLogLoaderVersion
+				INTEGER,
+			iqh1aLoggingLOADERVERSION
+				RollCallString,
+			iqh1aLoggingLogModuleStatus
+				INTEGER,
+			iqh1aLoggingMODULESTATUS
+				RollCallString,
+			iqh1aLoggingLogGwayCtrlSess
+				INTEGER,
+			iqh1aLoggingSESSIONS
+				RollCallString,
+			iqh1aLoggingLogLastModified
+				INTEGER,
+			iqh1aLoggingLASTMODIFIED
+				RollCallString,
+			iqh1aLoggingLogIPAddress
+				INTEGER,
+			iqh1aLoggingIPADDRESS
+				RollCallString,
+			iqh1aLoggingLogPSU1Name
+				INTEGER,
+			iqh1aLoggingPSU1NAME
+				RollCallString,
+			iqh1aLoggingLogPSU1State
+				INTEGER,
+			iqh1aLoggingPSU1STATE
+				RollCallString,
+			iqh1aLoggingLogPSU2Name
+				INTEGER,
+			iqh1aLoggingPSU2NAME
+				RollCallString,
+			iqh1aLoggingLogPSU2State
+				INTEGER,
+			iqh1aLoggingPSU2STATE
+				RollCallString,
+			iqh1aLoggingLogReconState
+				INTEGER,
+			iqh1aLoggingRECONSTATE
+				RollCallString,
+			iqh1aLoggingLogLanPort1Name
+				INTEGER,
+			iqh1aLoggingLANPORT1NAME
+				RollCallString,
+			iqh1aLoggingLogLanPort1State
+				INTEGER,
+			iqh1aLoggingLANPORT1STATE
+				RollCallString,
+			iqh1aLoggingLogLanPort1Speed
+				INTEGER,
+			iqh1aLoggingLANPORT1SPEED
+				RollCallString,
+			iqh1aLoggingLogLanPort1LastChange
+				INTEGER,
+			iqh1aLoggingLANPORT1LASTCHANGE
+				RollCallString,
+			iqh1aLoggingLogLanPort1Errors
+				INTEGER,
+			iqh1aLoggingLANPORT1ERRORS
+				RollCallString,
+			iqh1aLoggingLogLanPort1InTraffic
+				INTEGER,
+			iqh1aLoggingLANPORT1TRAFFICIN
+				RollCallString,
+			iqh1aLoggingLogLanPort1OutTraffic
+				INTEGER,
+			iqh1aLoggingLANPORT1TRAFFICOUT
+				RollCallString,
+			iqh1aLoggingLogIpEvent
+				INTEGER,
+			iqh1aLoggingIPEVENT
+				RollCallString,
+			iqh1aLoggingLogUptime
+				INTEGER,
+			iqh1aLoggingUPTIME
+				RollCallString,
+			iqh1aLoggingLogRestartedAt
+				INTEGER,
+			iqh1aLoggingRESTARTEDAT
+				RollCallString,
+			iqh1aLoggingLogThumbIpPort
+				INTEGER,
+			iqh1aLoggingTHUMBIPPORT
+				RollCallString,
+			iqh1aLoggingLogTemp1Name
+				INTEGER,
+			iqh1aLoggingTEMP1NAME
+				RollCallString,
+			iqh1aLoggingLogTemp1State
+				INTEGER,
+			iqh1aLoggingTEMP1STATE
+				RollCallString,
+			iqh1aLoggingLogTemp1Celsius
+				INTEGER,
+			iqh1aLoggingTEMP1CELSIUS
+				RollCallString,
+			iqh1aLoggingLogFan1Name
+				INTEGER,
+			iqh1aLoggingFAN1NAME
+				RollCallString,
+			iqh1aLoggingLogFan1State
+				INTEGER,
+			iqh1aLoggingFAN1STATE
+				RollCallString,
+			iqh1aLoggingLogFan2Name
+				INTEGER,
+			iqh1aLoggingFAN2NAME
+				RollCallString,
+			iqh1aLoggingLogFan2State
+				INTEGER,
+			iqh1aLoggingFAN2STATE
+				RollCallString,
+			iqh1aLoggingLogFan3Name
+				INTEGER,
+			iqh1aLoggingFAN3NAME
+				RollCallString,
+			iqh1aLoggingLogFan3State
+				INTEGER,
+			iqh1aLoggingFAN3STATE
+				RollCallString,
+			iqh1aLoggingLogFan4Name
+				INTEGER,
+			iqh1aLoggingFAN4NAME
+				RollCallString,
+			iqh1aLoggingLogFan4State
+				INTEGER,
+			iqh1aLoggingFAN4STATE
+				RollCallString,
+			iqh1aLoggingLogVoltage1Name
+				INTEGER,
+			iqh1aLoggingVOLTAGE1NAME
+				RollCallString,
+			iqh1aLoggingLogVoltage1State
+				INTEGER,
+			iqh1aLoggingVOLTAGE1STATE
+				RollCallString,
+			iqh1aLoggingLogVoltage1Value
+				INTEGER,
+			iqh1aLoggingVOLTAGE1VALUE
+				RollCallString,
+			iqh1aLoggingLogVoltage2Name
+				INTEGER,
+			iqh1aLoggingVOLTAGE2NAME
+				RollCallString,
+			iqh1aLoggingLogVoltage2State
+				INTEGER,
+			iqh1aLoggingVOLTAGE2STATE
+				RollCallString,
+			iqh1aLoggingLogVoltage2Value
+				INTEGER,
+			iqh1aLoggingVOLTAGE2VALUE
+				RollCallString,
+			iqh1aLoggingLogInformation1
+				INTEGER,
+			iqh1aLoggingINFORMATION1
+				RollCallString,
+			iqh1aLoggingLogInformation2
+				INTEGER,
+			iqh1aLoggingINFORMATION2
+				RollCallString,
+			iqh1aLoggingLogFaults
+				INTEGER,
+			iqh1aLoggingFAULT
+				RollCallString,
+			iqh1aLoggingLogModuleComms
+				INTEGER,
+			iqh1aLoggingMODULECOMMS
+				RollCallString,
+			iqh1aLoggingFanStatus
+				RollCallString,
+			iqh1aLoggingLogSnmpName
+				INTEGER,
+			iqh1aLoggingSNMPNAME
+				RollCallString,
+			iqh1aLoggingLogLocation
+				INTEGER,
+			iqh1aLoggingLOCATION
+				RollCallString,
+			iqh1aLoggingLogSysContact
+				INTEGER,
+			iqh1aLoggingSYSTEMCONTACT
+				RollCallString,
+			iqh1aLoggingLogSysDescription
+				INTEGER,
+			iqh1aLoggingSYSTEMDESCRIPTION
+				RollCallString,
+			iqh1aEthernetIPaddress
+				RollCallString,
+			iqh1aEthernetSubnetmask
+				RollCallString,
+			iqh1aEthernetDefaultIPgateway
+				RollCallString,
+			iqh1aEthernetIPSharePort
+				RollCallString,
+			iqh1aEthernetIPSharePortLocal
+				RollCallString,
+			iqh1aEthernetLinkspeed
+				INTEGER,
+			iqh1aEthernetLinkState
+				RollCallString,
+			iqh1aEthernetMACaddress
+				RollCallString,
+			iqh1aEthernetIPRouting
+				RollCallString,
+			iqh1aEthernetIgnorebcastpkts
+				INTEGER,
+			iqh1aEthernetCheckclientIP
+				INTEGER,
+			iqh1aEthernetIPThumbPort
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin1
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax1
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin2
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax2
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin3
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax3
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin4
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax4
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin5
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax5
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin6
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax6
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin7
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax7
+				RollCallString,
+			iqh1aEthernetClientIPRangesMin8
+				RollCallString,
+			iqh1aEthernetClientIPRangesMax8
+				RollCallString,
+			iqh1aEthernetPassIAMIP
+				INTEGER,
+			iqh1aEthernetPassTimeIP
+				INTEGER,
+			iqh1aEthernetRollCallIPStatsRejectCount
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsLastRejectClient
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsClosedCount
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsLastClosedClient
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsConnection
+				INTEGER,
+			iqh1aEthernetRollCallIPStatsRollCallPort
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsName
+				RollCallString,
+			iqh1aEthernetRollCallTCPStatsRemotePort
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsAddr
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsPacketsReceived
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsPacketsSent
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsEverSentTime
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsFullNetworkMap
+				RollCallString,
+			iqh1aEthernetRollCallIPStatsStartTime
+				RollCallString,
+			iqh1aEthernetSNMPEnableSNMP
+				INTEGER,
+			iqh1aEthernetSNMPEnableLegacySNMP
+				INTEGER,
+			iqh1aEthernetSNMPReadcommunity
+				RollCallString,
+			iqh1aEthernetSNMPWritecommunity
+				RollCallString,
+			iqh1aEthernetSNMPMIB2sysContact
+				RollCallString,
+			iqh1aEthernetSNMPMIB2sysName
+				RollCallString,
+			iqh1aEthernetSNMPMIB2sysLocation
+				RollCallString,
+			iqh1aEthernetSNMPReadWritePort
+				RollCallString,
+			iqh1aEthernetSNMPResendTraps
+				INTEGER,
+			iqh1aSnmpTrapDest1IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest1Port
+				RollCallString,
+			iqh1aSnmpTrapDest1Community
+				RollCallString,
+			iqh1aSnmpTrapDest2IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest2Port
+				RollCallString,
+			iqh1aSnmpTrapDest2Community
+				RollCallString,
+			iqh1aSnmpTrapDest2EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest3IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest3Port
+				RollCallString,
+			iqh1aSnmpTrapDest3Community
+				RollCallString,
+			iqh1aSnmpTrapDest3EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest4IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest4Port
+				RollCallString,
+			iqh1aSnmpTrapDest4Community
+				RollCallString,
+			iqh1aSnmpTrapDest4EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest5IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest5Port
+				RollCallString,
+			iqh1aSnmpTrapDest5Community
+				RollCallString,
+			iqh1aSnmpTrapDest5EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest6IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest6Port
+				RollCallString,
+			iqh1aSnmpTrapDest6Community
+				RollCallString,
+			iqh1aSnmpTrapDest6EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest7IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest7Port
+				RollCallString,
+			iqh1aSnmpTrapDest7Community
+				RollCallString,
+			iqh1aSnmpTrapDest7EnableTrap
+				INTEGER,
+			iqh1aSnmpTrapDest8IPaddr
+				RollCallString,
+			iqh1aSnmpTrapDest8Port
+				RollCallString,
+			iqh1aSnmpTrapDest8Community
+				RollCallString,
+			iqh1aSnmpTrapDest8EnableTrap
+				INTEGER,
+			iqh1aEthernetIPBridgeIPAddr
+				RollCallString,
+			iqh1aEthernetIPBridgeIPPort
+				RollCallString,
+			iqh1aEthernetIPBridgeOnlythisAddr
+				INTEGER,
+			iqh1aEthernetIPBridgePassIAMBridge
+				INTEGER,
+			iqh1aEthernetIPBridgePassTimeBridge
+				INTEGER,
+			iqh1aEthernetIPBridgeConnect
+				INTEGER,
+			iqh1aEthernetIPBridgeDisconnect
+				INTEGER,
+			iqh1aEthernetIPBridgeAutoConnect
+				INTEGER,
+			iqh1aEthernetIPBridgeAddr
+				RollCallString,
+			iqh1aEthernetIPBridgePacketsReceived
+				RollCallString,
+			iqh1aEthernetIPBridgePacketsSent
+				RollCallString,
+			iqh1aEthernetIPBridgeStartTime
+				RollCallString,
+			iqh1aEthernetIPBridgeStartedBy
+				RollCallString
+		}
+
+	iqh1aSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqh1aCmdEntry 0 }
+
+
+	iqh1aSlot1InstalledType OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Type  cmdID= 16510  format=   "
+		::= { iqh1aCmdEntry 16510 }
+
+
+	iqh1aSlot1InstalledUnit OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Unit  cmdID= 16530  format=   "
+		::= { iqh1aCmdEntry 16530 }
+
+
+	iqh1aSlot1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					Name  cmdID= 16389  "
+		::= { iqh1aCmdEntry 16389 }
+
+
+	iqh1aSlot1BoundType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Slots
+					Bound Type  cmdID= 16437  min= 0  max= 65536  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 65536  Step = 1 "
+		::= { iqh1aCmdEntry 16437 }
+
+
+	iqh1aSlot1Information1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field 1, to hold User defined Information
+					Information 1  cmdID= 17101  "
+		::= { iqh1aCmdEntry 17101 }
+
+
+	iqh1aSlot1Information2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field2, to hold User defined Information
+					Information 2  cmdID= 17121  "
+		::= { iqh1aCmdEntry 17121 }
+
+
+	iqh1aSlot1NonRollCallSlot OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Slots
+					NonRollCallSlot  cmdID= 17201 "
+		::= { iqh1aCmdEntry 17201 }
+
+
+	iqh1aSlot1IdName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					IdName  cmdID= 17221  "
+		::= { iqh1aCmdEntry 17221 }
+
+
+	iqh1aSlot2InstalledType OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Type  cmdID= 16511  format=   "
+		::= { iqh1aCmdEntry 16511 }
+
+
+	iqh1aSlot2InstalledUnit OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Unit  cmdID= 16531  format=   "
+		::= { iqh1aCmdEntry 16531 }
+
+
+	iqh1aSlot2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					Name  cmdID= 16390  "
+		::= { iqh1aCmdEntry 16390 }
+
+
+	iqh1aSlot2BoundType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Slots
+					Bound Type  cmdID= 16438  min= 0  max= 65536  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 65536  Step = 1 "
+		::= { iqh1aCmdEntry 16438 }
+
+
+	iqh1aSlot2Information1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field 1, to hold User defined Information
+					Information 1  cmdID= 17102  "
+		::= { iqh1aCmdEntry 17102 }
+
+
+	iqh1aSlot2Information2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field2, to hold User defined Information
+					Information 2  cmdID= 17122  "
+		::= { iqh1aCmdEntry 17122 }
+
+
+	iqh1aSlot2NonRollCallSlot OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Slots
+					NonRollCallSlot  cmdID= 17202 "
+		::= { iqh1aCmdEntry 17202 }
+
+
+	iqh1aSlot2IdName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					IdName  cmdID= 17222  "
+		::= { iqh1aCmdEntry 17222 }
+
+
+	iqh1aSlot3InstalledType OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Type  cmdID= 16512  format=   "
+		::= { iqh1aCmdEntry 16512 }
+
+
+	iqh1aSlot3InstalledUnit OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Unit  cmdID= 16532  format=   "
+		::= { iqh1aCmdEntry 16532 }
+
+
+	iqh1aSlot3Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					Name  cmdID= 16391  "
+		::= { iqh1aCmdEntry 16391 }
+
+
+	iqh1aSlot3BoundType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Slots
+					Bound Type  cmdID= 16439  min= 0  max= 65536  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 65536  Step = 1 "
+		::= { iqh1aCmdEntry 16439 }
+
+
+	iqh1aSlot3Information1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field 1, to hold User defined Information
+					Information 1  cmdID= 17103  "
+		::= { iqh1aCmdEntry 17103 }
+
+
+	iqh1aSlot3Information2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field2, to hold User defined Information
+					Information 2  cmdID= 17123  "
+		::= { iqh1aCmdEntry 17123 }
+
+
+	iqh1aSlot3NonRollCallSlot OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Slots
+					NonRollCallSlot  cmdID= 17203 "
+		::= { iqh1aCmdEntry 17203 }
+
+
+	iqh1aSlot3IdName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					IdName  cmdID= 17223  "
+		::= { iqh1aCmdEntry 17223 }
+
+
+	iqh1aSlot4InstalledType OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Type  cmdID= 16513  format=   "
+		::= { iqh1aCmdEntry 16513 }
+
+
+	iqh1aSlot4InstalledUnit OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Slots
+					Installed Unit  cmdID= 16533  format=   "
+		::= { iqh1aCmdEntry 16533 }
+
+
+	iqh1aSlot4Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					Name  cmdID= 16392  "
+		::= { iqh1aCmdEntry 16392 }
+
+
+	iqh1aSlot4BoundType OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Slots
+					Bound Type  cmdID= 16440  min= 0  max= 65536  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 65536  Step = 1 "
+		::= { iqh1aCmdEntry 16440 }
+
+
+	iqh1aSlot4Information1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field 1, to hold User defined Information
+					Information 1  cmdID= 17104  "
+		::= { iqh1aCmdEntry 17104 }
+
+
+	iqh1aSlot4Information2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+				 Generic Information field2, to hold User defined Information
+					Information 2  cmdID= 17124  "
+		::= { iqh1aCmdEntry 17124 }
+
+
+	iqh1aSlot4NonRollCallSlot OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Slots
+					NonRollCallSlot  cmdID= 17204 "
+		::= { iqh1aCmdEntry 17204 }
+
+
+	iqh1aSlot4IdName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Slots
+					IdName  cmdID= 17224  "
+		::= { iqh1aCmdEntry 17224 }
+
+
+	iqh1aSystemSetupUnitName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - System
+					Unit Name  cmdID= 16388  "
+		::= { iqh1aCmdEntry 16388 }
+
+
+	iqh1aSystemSetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Serial Number  cmdID= 16461  format=   "
+		::= { iqh1aCmdEntry 16461 }
+
+
+	iqh1aSystemSetupHardwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Hardware Version  cmdID= 16614  format=   "
+		::= { iqh1aCmdEntry 16614 }
+
+
+	iqh1aSystemSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Software Version  cmdID= 16410  format=   "
+		::= { iqh1aCmdEntry 16410 }
+
+
+	iqh1aSystemSetupBuildNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Build Number  cmdID= 16616  format=   "
+		::= { iqh1aCmdEntry 16616 }
+
+
+	iqh1aSystemSetupLoaderVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Loader Version  cmdID= 16619  format=   "
+		::= { iqh1aCmdEntry 16619 }
+
+
+	iqh1aSystemSetupJavaAppletVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Java Applet Version  cmdID= 16618  format=   "
+		::= { iqh1aCmdEntry 16618 }
+
+
+	iqh1aSystemSetupNetShow OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					NetShow  cmdID= 16432 "
+		::= { iqh1aCmdEntry 16432 }
+
+
+	iqh1aSystemSetupAllowBlindControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Allow Blind Control  cmdID= 16703 "
+		::= { iqh1aCmdEntry 16703 }
+
+
+	iqh1aSystemSetupWhereAmI OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Where Am I?  cmdID= 16469 "
+		::= { iqh1aCmdEntry 16469 }
+
+
+	iqh1aSystemSetupSerialSpeed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_115200_bps(6),
+							val_57600_bps(5),
+							val_38400_bps(4),
+							val_19200_bps(3),
+							val_9600_bps(2),
+							val_4800_bps(1),
+							val_2400_bps(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - System
+					Serial Speed  cmdID= 16386
+					115200 bps  value= 6
+					57600 bps  value= 5
+					38400 bps  value= 4
+					19200 bps  value= 3
+					9600 bps  value= 2
+					4800 bps  value= 1
+					2400 bps  value= 0  "
+		::= { iqh1aCmdEntry 16386 }
+
+
+	iqh1aSystemSetupSerialMode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Serial Mode  cmdID= 16704  format=   "
+		::= { iqh1aCmdEntry 16704 }
+
+
+	iqh1aSystemSetupPassIAMSerial OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Pass I_AM (Serial)  cmdID= 17053 "
+		::= { iqh1aCmdEntry 17053 }
+
+
+	iqh1aSystemSetupPassTIMESerial OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Pass TIME (Serial)  cmdID= 17054 "
+		::= { iqh1aCmdEntry 17054 }
+
+
+	iqh1aSetupMonitorPSUsLeftPSU OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Left PSU  cmdID= 16900 "
+		::= { iqh1aCmdEntry 16900 }
+
+
+	iqh1aSetupMonitorPSUsRightPSU OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Right PSU  cmdID= 16901 "
+		::= { iqh1aCmdEntry 16901 }
+
+
+	iqh1aSystemSetupEnablecom200LongPacket OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Enable com200 Long File Packet   cmdID= 17009 "
+		::= { iqh1aCmdEntry 17009 }
+
+
+	iqh1aSystemSetupRestartUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - System
+					Restart Unit  cmdID= 16706  value= 1  "
+		::= { iqh1aCmdEntry 16706 }
+
+
+	iqh1aSystemSetupFormatMenuCache OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Format_Now(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Format Menu Cache  cmdID= 16702 "
+		::= { iqh1aCmdEntry 16702 }
+
+
+	iqh1aSystemSetupEnableMenuCache OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - System
+					Enable Menu Cache  cmdID= 17064 "
+		::= { iqh1aCmdEntry 17064 }
+
+
+	iqh1aSystemSetupStartTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - System
+					Start Time  cmdID= 16617  format=   "
+		::= { iqh1aCmdEntry 16617 }
+
+
+	iqh1aSystemSetupInformation1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - System
+				    Generic Information field 1, to hold User defined Information
+					Information1  cmdID= 17140  "
+		::= { iqh1aCmdEntry 17140 }
+
+
+	iqh1aSystemSetupInformation2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - System
+				    Generic Information field 2, to hold User defined Information
+					Information2  cmdID= 17141  "
+		::= { iqh1aCmdEntry 17141 }
+
+
+	iqh1aStatisticsResetNetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Net_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Stats
+					Reset Net Stats  cmdID= 16470  value= 1  "
+		::= { iqh1aCmdEntry 16470 }
+
+
+	iqh1aStatisticsEnableNetStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Stats
+					Enable Net Stats  cmdID= 16471 "
+		::= { iqh1aCmdEntry 16471 }
+
+
+	iqh1aStatisticsLengthErrs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Length Errs  cmdID= 16472  format=   "
+		::= { iqh1aCmdEntry 16472 }
+
+
+	iqh1aStatisticsRecons OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Recons  cmdID= 16478  format=   "
+		::= { iqh1aCmdEntry 16478 }
+
+
+	iqh1aStatisticsModuleCommsErrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Module Comms Errors  cmdID= 16479  format=   "
+		::= { iqh1aCmdEntry 16479 }
+
+
+	iqh1aStatisticsBadPacketErrs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Bad Packet Errs  cmdID= 16476  format=   "
+		::= { iqh1aCmdEntry 16476 }
+
+
+	iqh1aStatisticsRoutingErrs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Routing Errs  cmdID= 16475  format=   "
+		::= { iqh1aCmdEntry 16475 }
+
+
+	iqh1aStatisticsPacketDrops OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Packet Drops  cmdID= 16477  format=   "
+		::= { iqh1aCmdEntry 16477 }
+
+
+	iqh1aStatisticsDestinationErrs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Destination Errs  cmdID= 16474  format=   "
+		::= { iqh1aCmdEntry 16474 }
+
+
+	iqh1aStatisticsSourceErrs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					Source Errs  cmdID= 16473  format=   "
+		::= { iqh1aCmdEntry 16473 }
+
+
+	iqh1aStatisticsModCommsRxBytes OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					ModCommsRxBytes  cmdID= 17237  format=   "
+		::= { iqh1aCmdEntry 17237 }
+
+
+	iqh1aStatisticsModCommsTxBytes OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					ModCommsTxBytes  cmdID= 17238  format=   "
+		::= { iqh1aCmdEntry 17238 }
+
+
+	iqh1aStatisticsHyperionRxBytes OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					HyperionRxBytes  cmdID= 17239  format=   "
+		::= { iqh1aCmdEntry 17239 }
+
+
+	iqh1aStatisticsProcessorUse OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Stats
+					ProcessorUse  cmdID= 17240  format=   "
+		::= { iqh1aCmdEntry 17240 }
+
+
+	iqh1aControlSlot1AllowBlindControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Allow Blind Control  cmdID= 565 "
+		::= { iqh1aCmdEntry 565 }
+
+
+	iqh1aControlSlot1SingleSessionOnly OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Single Session Only  cmdID= 581 "
+		::= { iqh1aCmdEntry 581 }
+
+
+	iqh1aControlSlot1Controller OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Controller  cmdID= 16490  format=   "
+		::= { iqh1aCmdEntry 16490 }
+
+
+	iqh1aControlSlot1ControllerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					ControllerName  cmdID= 17160  format=   "
+		::= { iqh1aCmdEntry 17160 }
+
+
+	iqh1aControlSlot1LastBlindUser OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Last Blind User  cmdID= 16590  format=   "
+		::= { iqh1aCmdEntry 16590 }
+
+
+	iqh1aControlSlot1ConPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Count  cmdID= 16550  format=   "
+		::= { iqh1aCmdEntry 16550 }
+
+
+	iqh1aControlSlot1ConPktTotal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Total  cmdID= 750  format=   "
+		::= { iqh1aCmdEntry 750 }
+
+
+	iqh1aControlSlot1BlindPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Blind Pkt Count  cmdID= 16570  format=   "
+		::= { iqh1aCmdEntry 16570 }
+
+
+	iqh1aControlSlotDisconnectSession OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Disconnect_Slot1(1),
+							val_Disconnect_Slot2(2),
+							val_Disconnect_Slot3(3),
+							val_Disconnect_Slot4(4),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Control
+					Disconnect Session  cmdID= 16407  value= 1
+					Disconnect Session  cmdID= 16407  value= 2
+					Disconnect Session  cmdID= 16407  value= 3
+					Disconnect Session  cmdID= 16407  value= 4
+  "
+		::= { iqh1aCmdEntry 16407 }
+
+
+	iqh1aControlSlot2AllowBlindControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Allow Blind Control  cmdID= 566 "
+		::= { iqh1aCmdEntry 566 }
+
+
+	iqh1aControlSlot2SingleSessionOnly OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Single Session Only  cmdID= 582 "
+		::= { iqh1aCmdEntry 582 }
+
+
+	iqh1aControlSlot2Controller OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Controller  cmdID= 16491  format=   "
+		::= { iqh1aCmdEntry 16491 }
+
+
+	iqh1aControlSlot2ControllerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					ControllerName  cmdID= 17161  format=   "
+		::= { iqh1aCmdEntry 17161 }
+
+
+	iqh1aControlSlot2LastBlindUser OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Last Blind User  cmdID= 16591  format=   "
+		::= { iqh1aCmdEntry 16591 }
+
+
+	iqh1aControlSlot2ConPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Count  cmdID= 16551  format=   "
+		::= { iqh1aCmdEntry 16551 }
+
+
+	iqh1aControlSlot2ConPktTotal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Total  cmdID= 751  format=   "
+		::= { iqh1aCmdEntry 751 }
+
+
+	iqh1aControlSlot2BlindPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Blind Pkt Count  cmdID= 16571  format=   "
+		::= { iqh1aCmdEntry 16571 }
+
+
+	iqh1aControlSlot3AllowBlindControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Allow Blind Control  cmdID= 567 "
+		::= { iqh1aCmdEntry 567 }
+
+
+	iqh1aControlSlot3SingleSessionOnly OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Single Session Only  cmdID= 583 "
+		::= { iqh1aCmdEntry 583 }
+
+
+	iqh1aControlSlot3Controller OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Controller  cmdID= 16492  format=   "
+		::= { iqh1aCmdEntry 16492 }
+
+
+	iqh1aControlSlot3ControllerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					ControllerName  cmdID= 17162  format=   "
+		::= { iqh1aCmdEntry 17162 }
+
+
+	iqh1aControlSlot3LastBlindUser OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Last Blind User  cmdID= 16592  format=   "
+		::= { iqh1aCmdEntry 16592 }
+
+
+	iqh1aControlSlot3ConPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Count  cmdID= 16552  format=   "
+		::= { iqh1aCmdEntry 16552 }
+
+
+	iqh1aControlSlot3ConPktTotal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Total  cmdID= 752  format=   "
+		::= { iqh1aCmdEntry 752 }
+
+
+	iqh1aControlSlot3BlindPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Blind Pkt Count  cmdID= 16572  format=   "
+		::= { iqh1aCmdEntry 16572 }
+
+
+	iqh1aControlSlot4AllowBlindControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Allow Blind Control  cmdID= 568 "
+		::= { iqh1aCmdEntry 568 }
+
+
+	iqh1aControlSlot4SingleSessionOnly OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Single Session Only  cmdID= 584 "
+		::= { iqh1aCmdEntry 584 }
+
+
+	iqh1aControlSlot4Controller OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Controller  cmdID= 16493  format=   "
+		::= { iqh1aCmdEntry 16493 }
+
+
+	iqh1aControlSlot4ControllerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					ControllerName  cmdID= 17163  format=   "
+		::= { iqh1aCmdEntry 17163 }
+
+
+	iqh1aControlSlot4LastBlindUser OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Last Blind User  cmdID= 16593  format=   "
+		::= { iqh1aCmdEntry 16593 }
+
+
+	iqh1aControlSlot4ConPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Count  cmdID= 16553  format=   "
+		::= { iqh1aCmdEntry 16553 }
+
+
+	iqh1aControlSlot4ConPktTotal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Con Pkt Total  cmdID= 753  format=   "
+		::= { iqh1aCmdEntry 753 }
+
+
+	iqh1aControlSlot4BlindPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Control
+					Blind Pkt Count  cmdID= 16573  format=   "
+		::= { iqh1aCmdEntry 16573 }
+
+
+	iqh1aControlShowSession OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Show Session  cmdID= 16705  min= 1  max= 58  step= 1  format= %.0f  div_scale= 1
+					Min = 1  Max = 58  Step = 1 "
+		::= { iqh1aCmdEntry 16705 }
+
+
+	iqh1aControlPktStatsUpdatePacketStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Update Packet Stats  cmdID= 16483 "
+		::= { iqh1aCmdEntry 16483 }
+
+
+	iqh1aControlPktStatsClearPacketCounts OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Clear Packet Counts  cmdID= 16484 "
+		::= { iqh1aCmdEntry 16484 }
+
+
+	iqh1aControlGatewayControllerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+					ControllerName  cmdID= 17152  format=   "
+		::= { iqh1aCmdEntry 17152 }
+
+
+	iqh1aControlGatewayControllerAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+					ControllerAddr  cmdID= 17153  format=   "
+		::= { iqh1aCmdEntry 17153 }
+
+
+	iqh1aControlGatewayConPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+				    Connected packet count per control session
+					Con Pkt Count  cmdID= 17154  format=   "
+		::= { iqh1aCmdEntry 17154 }
+
+
+	iqh1aControlGatewayConPktTotal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+				    Total Connected packet count for all sessions, active and inactive since last reset.
+					Con Pkt Total  cmdID= 17155  format=   "
+		::= { iqh1aCmdEntry 17155 }
+
+
+	iqh1aControlGatewayLastBlindAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+				    RollNet address of last blind controller
+					LastBlindAddr  cmdID= 17157  format=   "
+		::= { iqh1aCmdEntry 17157 }
+
+
+	iqh1aControlGatewayBlindPktCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GatewayControl
+				    Total received blind packet counts since last reset (may be from multiple sources).
+					Blind Pkt Count  cmdID= 17158  format=   "
+		::= { iqh1aCmdEntry 17158 }
+
+
+	iqh1aControlGatewayDisconnectSession OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Disconnect_Session(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GatewayControl
+					Disconnect Session  cmdID= 17151  value= 1  "
+		::= { iqh1aCmdEntry 17151 }
+
+
+	iqh1aControlGatewayShowSession OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GatewayControl
+					Show Session  cmdID= 17150  min= 1  max= 100  step= 1  format= %.0f  div_scale= 1
+					Min = 1  Max = 100  Step = 1 "
+		::= { iqh1aCmdEntry 17150 }
+
+
+	iqh1aLoggingLogServerLogto OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Logging_Disabled(1),
+							val_Named_LogServer(2),
+							val_Any_LogServer(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Logging
+					Log to  cmdID= 16481
+					Logging Disabled  value= 1
+					Named LogServer  value= 2
+					Any LogServer  value= 3  "
+		::= { iqh1aCmdEntry 16481 }
+
+
+	iqh1aLoggingLogServerLogServerName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Logging
+					LogServer Name  cmdID= 16412  "
+		::= { iqh1aCmdEntry 16412 }
+
+
+	iqh1aLoggingLogServerCurLogger OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					Cur. Logger  cmdID= 16480  format=   "
+		::= { iqh1aCmdEntry 16480 }
+
+
+	iqh1aLoggingLogServerCurLoggerAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					Cur. Logger Addr  cmdID= 16482  format=   "
+		::= { iqh1aCmdEntry 16482 }
+
+
+	iqh1aLoggingLogServerLastTimeaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					Last Time addr  cmdID= 16486  format=   "
+		::= { iqh1aCmdEntry 16486 }
+
+
+	iqh1aLoggingLogServerTimefromLogger OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Time from Logger  cmdID= 16487 "
+		::= { iqh1aCmdEntry 16487 }
+
+
+	iqh1aLoggingLogServerAcceptviaIP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Accept via IP  cmdID= 17060 "
+		::= { iqh1aCmdEntry 17060 }
+
+
+	iqh1aLoggingLogServerAcceptviaSerial OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Accept via Serial  cmdID= 17061 "
+		::= { iqh1aCmdEntry 17061 }
+
+
+	iqh1aLoggingLogServerAcceptviaRollNet OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Accept via RollNet  cmdID= 17062 "
+		::= { iqh1aCmdEntry 17062 }
+
+
+	iqh1aLoggingLogServerAcceptviaBridge OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Accept via Bridge  cmdID= 17063 "
+		::= { iqh1aCmdEntry 17063 }
+
+
+	iqh1aLoggingSN OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SN=  cmdID= 2011  format=   "
+		::= { iqh1aCmdEntry 2011 }
+
+
+	iqh1aLoggingVERSION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VERSION=  cmdID= 2012  format=   "
+		::= { iqh1aCmdEntry 2012 }
+
+
+	iqh1aLoggingLogOSVersion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log OS Version  cmdID= 1014 "
+		::= { iqh1aCmdEntry 1014 }
+
+
+	iqh1aLoggingOSVERSION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OS_VERSION=  cmdID= 2014  format=   "
+		::= { iqh1aCmdEntry 2014 }
+
+
+	iqh1aLoggingLogBuildNumber OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Build Number  cmdID= 1015 "
+		::= { iqh1aCmdEntry 1015 }
+
+
+	iqh1aLoggingBUILDNUMBER OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					BUILD_NUMBER=  cmdID= 2015  format=   "
+		::= { iqh1aCmdEntry 2015 }
+
+
+	iqh1aLoggingLogHardwareVer OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Hardware Ver.  cmdID= 1013 "
+		::= { iqh1aCmdEntry 1013 }
+
+
+	iqh1aLoggingHARDWAREVERSION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					HARDWARE_VERSION=  cmdID= 2013  format=   "
+		::= { iqh1aCmdEntry 2013 }
+
+
+	iqh1aLoggingLogLoaderVersion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Loader Vers Tex  cmdID= 1049 "
+		::= { iqh1aCmdEntry 1049 }
+
+
+	iqh1aLoggingLOADERVERSION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LOADER_VERSION=  cmdID= 2049  format=   "
+		::= { iqh1aCmdEntry 2049 }
+
+
+	iqh1aLoggingLogModuleStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Module Status  cmdID= 1017 "
+		::= { iqh1aCmdEntry 1017 }
+
+
+	iqh1aLoggingMODULESTATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					MODULE_STATUS=  cmdID= 2017  format=   "
+		::= { iqh1aCmdEntry 2017 }
+
+
+	iqh1aLoggingLogGwayCtrlSess OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Gway Ctrl Sess  cmdID= 1007 "
+		::= { iqh1aCmdEntry 1007 }
+
+
+	iqh1aLoggingSESSIONS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SESSIONS=  cmdID= 2007  format=   "
+		::= { iqh1aCmdEntry 2007 }
+
+
+	iqh1aLoggingLogLastModified OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Last Modified  cmdID= 1016 "
+		::= { iqh1aCmdEntry 1016 }
+
+
+	iqh1aLoggingLASTMODIFIED OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAST_MODIFIED=  cmdID= 2016  format=   "
+		::= { iqh1aCmdEntry 2016 }
+
+
+	iqh1aLoggingLogIPAddress OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log IP Address  cmdID= 1018 "
+		::= { iqh1aCmdEntry 1018 }
+
+
+	iqh1aLoggingIPADDRESS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					IPADDRESS=  cmdID= 2018  format=   "
+		::= { iqh1aCmdEntry 2018 }
+
+
+	iqh1aLoggingLogPSU1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log PSU 1 Name  cmdID= 1020 "
+		::= { iqh1aCmdEntry 1020 }
+
+
+	iqh1aLoggingPSU1NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					PSU_1_NAME=  cmdID= 2020  format=   "
+		::= { iqh1aCmdEntry 2020 }
+
+
+	iqh1aLoggingLogPSU1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log PSU 1 State  cmdID= 1001 "
+		::= { iqh1aCmdEntry 1001 }
+
+
+	iqh1aLoggingPSU1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					PSU_1_STATE=  cmdID= 2001  format=   "
+		::= { iqh1aCmdEntry 2001 }
+
+
+	iqh1aLoggingLogPSU2Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log PSU 2 Name  cmdID= 1021 "
+		::= { iqh1aCmdEntry 1021 }
+
+
+	iqh1aLoggingPSU2NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					PSU_2_NAME=  cmdID= 2021  format=   "
+		::= { iqh1aCmdEntry 2021 }
+
+
+	iqh1aLoggingLogPSU2State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log PSU 2 State  cmdID= 1002 "
+		::= { iqh1aCmdEntry 1002 }
+
+
+	iqh1aLoggingPSU2STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					PSU_2_STATE=  cmdID= 2002  format=   "
+		::= { iqh1aCmdEntry 2002 }
+
+
+	iqh1aLoggingLogReconState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Recon State  cmdID= 1029 "
+		::= { iqh1aCmdEntry 1029 }
+
+
+	iqh1aLoggingRECONSTATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					RECON_STATE=  cmdID= 2029  format=   "
+		::= { iqh1aCmdEntry 2029 }
+
+
+	iqh1aLoggingLogLanPort1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 Name  cmdID= 1030 "
+		::= { iqh1aCmdEntry 1030 }
+
+
+	iqh1aLoggingLANPORT1NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_NAME=  cmdID= 2030  format=   "
+		::= { iqh1aCmdEntry 2030 }
+
+
+	iqh1aLoggingLogLanPort1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 Stat  cmdID= 1031 "
+		::= { iqh1aCmdEntry 1031 }
+
+
+	iqh1aLoggingLANPORT1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_STATE=  cmdID= 2031  format=   "
+		::= { iqh1aCmdEntry 2031 }
+
+
+	iqh1aLoggingLogLanPort1Speed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 Spee  cmdID= 1032 "
+		::= { iqh1aCmdEntry 1032 }
+
+
+	iqh1aLoggingLANPORT1SPEED OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_SPEED=  cmdID= 2032  format=   "
+		::= { iqh1aCmdEntry 2032 }
+
+
+	iqh1aLoggingLogLanPort1LastChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 Last  cmdID= 1033 "
+		::= { iqh1aCmdEntry 1033 }
+
+
+	iqh1aLoggingLANPORT1LASTCHANGE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_LAST_CHA  cmdID= 2033  format=   "
+		::= { iqh1aCmdEntry 2033 }
+
+
+	iqh1aLoggingLogLanPort1Errors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 Erro  cmdID= 1034 "
+		::= { iqh1aCmdEntry 1034 }
+
+
+	iqh1aLoggingLANPORT1ERRORS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_ERRORS=  cmdID= 2034  format=   "
+		::= { iqh1aCmdEntry 2034 }
+
+
+	iqh1aLoggingLogLanPort1InTraffic OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 InTraffic  cmdID= 1035 "
+		::= { iqh1aCmdEntry 1035 }
+
+
+	iqh1aLoggingLANPORT1TRAFFICIN OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_TRAFFIC_IN  cmdID= 2035  format=   "
+		::= { iqh1aCmdEntry 2035 }
+
+
+	iqh1aLoggingLogLanPort1OutTraffic OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Lan Port 1 OutTraffic  cmdID= 1036 "
+		::= { iqh1aCmdEntry 1036 }
+
+
+	iqh1aLoggingLANPORT1TRAFFICOUT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LAN_PORT_1_TRAFFIC_OUT  cmdID= 2036  format=   "
+		::= { iqh1aCmdEntry 2036 }
+
+
+	iqh1aLoggingLogIpEvent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Ip Event  cmdID= 1037 "
+		::= { iqh1aCmdEntry 1037 }
+
+
+	iqh1aLoggingIPEVENT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					IP_EVENT=  cmdID= 2037  format=   "
+		::= { iqh1aCmdEntry 2037 }
+
+
+	iqh1aLoggingLogUptime OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Uptime  cmdID= 1038 "
+		::= { iqh1aCmdEntry 1038 }
+
+
+	iqh1aLoggingUPTIME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					UPTIME=  cmdID= 2038  format=   "
+		::= { iqh1aCmdEntry 2038 }
+
+
+	iqh1aLoggingLogRestartedAt OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Restarted At  cmdID= 1039 "
+		::= { iqh1aCmdEntry 1039 }
+
+
+	iqh1aLoggingRESTARTEDAT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					RESTARTED_AT=  cmdID= 2039  format=   "
+		::= { iqh1aCmdEntry 2039 }
+
+
+	iqh1aLoggingLogThumbIpPort OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Thumb Ip Port  cmdID= 1040 "
+		::= { iqh1aCmdEntry 1040 }
+
+
+	iqh1aLoggingTHUMBIPPORT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					THUMB_IP_PORT=  cmdID= 2040  format=   "
+		::= { iqh1aCmdEntry 2040 }
+
+
+	iqh1aLoggingLogTemp1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Temp 1 Name  cmdID= 1022 "
+		::= { iqh1aCmdEntry 1022 }
+
+
+	iqh1aLoggingTEMP1NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					TEMP_1_NAME=  cmdID= 2022  format=   "
+		::= { iqh1aCmdEntry 2022 }
+
+
+	iqh1aLoggingLogTemp1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Temp 1 State  cmdID= 1003 "
+		::= { iqh1aCmdEntry 1003 }
+
+
+	iqh1aLoggingTEMP1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					TEMP_1_STATE=  cmdID= 2003  format=   "
+		::= { iqh1aCmdEntry 2003 }
+
+
+	iqh1aLoggingLogTemp1Celsius OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Temp 1 Celsius  cmdID= 1008 "
+		::= { iqh1aCmdEntry 1008 }
+
+
+	iqh1aLoggingTEMP1CELSIUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					TEMP_1_CELSIUS=  cmdID= 2008  format=   "
+		::= { iqh1aCmdEntry 2008 }
+
+
+	iqh1aLoggingLogFan1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 1 Name  cmdID= 1019 "
+		::= { iqh1aCmdEntry 1019 }
+
+
+	iqh1aLoggingFAN1NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_1_NAME=  cmdID= 2019  format=   "
+		::= { iqh1aCmdEntry 2019 }
+
+
+	iqh1aLoggingLogFan1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 1 State  cmdID= 1000 "
+		::= { iqh1aCmdEntry 1000 }
+
+
+	iqh1aLoggingFAN1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_1_STATE=  cmdID= 2000  format=   "
+		::= { iqh1aCmdEntry 2000 }
+
+
+	iqh1aLoggingLogFan2Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 2 Name  cmdID= 1044 "
+		::= { iqh1aCmdEntry 1044 }
+
+
+	iqh1aLoggingFAN2NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_2_NAME=  cmdID= 2044  format=   "
+		::= { iqh1aCmdEntry 2044 }
+
+
+	iqh1aLoggingLogFan2State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 2 State  cmdID= 1043 "
+		::= { iqh1aCmdEntry 1043 }
+
+
+	iqh1aLoggingFAN2STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_2_STATE=  cmdID= 2043  format=   "
+		::= { iqh1aCmdEntry 2043 }
+
+
+	iqh1aLoggingLogFan3Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 3 Name  cmdID= 1046 "
+		::= { iqh1aCmdEntry 1046 }
+
+
+	iqh1aLoggingFAN3NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_3_NAME=  cmdID= 2046  format=   "
+		::= { iqh1aCmdEntry 2046 }
+
+
+	iqh1aLoggingLogFan3State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 3 State  cmdID= 1045 "
+		::= { iqh1aCmdEntry 1045 }
+
+
+	iqh1aLoggingFAN3STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_3_STATE=  cmdID= 2045  format=   "
+		::= { iqh1aCmdEntry 2045 }
+
+
+	iqh1aLoggingLogFan4Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 4 Name  cmdID= 1048 "
+		::= { iqh1aCmdEntry 1048 }
+
+
+	iqh1aLoggingFAN4NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_4_NAME=  cmdID= 2048  format=   "
+		::= { iqh1aCmdEntry 2048 }
+
+
+	iqh1aLoggingLogFan4State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Fan 4 State  cmdID= 1047 "
+		::= { iqh1aCmdEntry 1047 }
+
+
+	iqh1aLoggingFAN4STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAN_4_STATE=  cmdID= 2047  format=   "
+		::= { iqh1aCmdEntry 2047 }
+
+
+	iqh1aLoggingLogVoltage1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 1 Name  cmdID= 1024 "
+		::= { iqh1aCmdEntry 1024 }
+
+
+	iqh1aLoggingVOLTAGE1NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_1_NAME=  cmdID= 2024  format=   "
+		::= { iqh1aCmdEntry 2024 }
+
+
+	iqh1aLoggingLogVoltage1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 1 State  cmdID= 1005 "
+		::= { iqh1aCmdEntry 1005 }
+
+
+	iqh1aLoggingVOLTAGE1STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_1_STATE=  cmdID= 2005  format=   "
+		::= { iqh1aCmdEntry 2005 }
+
+
+	iqh1aLoggingLogVoltage1Value OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 1 Value  cmdID= 1025 "
+		::= { iqh1aCmdEntry 1025 }
+
+
+	iqh1aLoggingVOLTAGE1VALUE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_1_VALUE=  cmdID= 2025  format=   "
+		::= { iqh1aCmdEntry 2025 }
+
+
+	iqh1aLoggingLogVoltage2Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 2 Name  cmdID= 1026 "
+		::= { iqh1aCmdEntry 1026 }
+
+
+	iqh1aLoggingVOLTAGE2NAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_2_NAME=  cmdID= 2026  format=   "
+		::= { iqh1aCmdEntry 2026 }
+
+
+	iqh1aLoggingLogVoltage2State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 2 State  cmdID= 1006 "
+		::= { iqh1aCmdEntry 1006 }
+
+
+	iqh1aLoggingVOLTAGE2STATE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_2_STATE=  cmdID= 2006  format=   "
+		::= { iqh1aCmdEntry 2006 }
+
+
+	iqh1aLoggingLogVoltage2Value OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Voltage 2 Value  cmdID= 1027 "
+		::= { iqh1aCmdEntry 1027 }
+
+
+	iqh1aLoggingVOLTAGE2VALUE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					VOLTAGE_2_VALUE=  cmdID= 2027  format=   "
+		::= { iqh1aCmdEntry 2027 }
+
+
+	iqh1aLoggingLogInformation1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Information 1 Text  cmdID= 1041 "
+		::= { iqh1aCmdEntry 1041 }
+
+
+	iqh1aLoggingINFORMATION1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INFORMATION1=  cmdID= 2041  format=   "
+		::= { iqh1aCmdEntry 2041 }
+
+
+	iqh1aLoggingLogInformation2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Information 2 Text  cmdID= 1042 "
+		::= { iqh1aCmdEntry 1042 }
+
+
+	iqh1aLoggingINFORMATION2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INFORMATION2=  cmdID= 2042  format=   "
+		::= { iqh1aCmdEntry 2042 }
+
+
+	iqh1aLoggingLogFaults OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Faults  cmdID= 1028 "
+		::= { iqh1aCmdEntry 1028 }
+
+
+	iqh1aLoggingFAULT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					FAULT=  cmdID= 2028  format=   "
+		::= { iqh1aCmdEntry 2028 }
+
+
+	iqh1aLoggingLogModuleComms OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Module Comms  cmdID= 1010 "
+		::= { iqh1aCmdEntry 1010 }
+
+
+	iqh1aLoggingMODULECOMMS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					MODULE_COMMS=  cmdID= 2010  format=   "
+		::= { iqh1aCmdEntry 2010 }
+
+
+	iqh1aLoggingFanStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					Fan Status  cmdID= 17000  format=   "
+		::= { iqh1aCmdEntry 17000 }
+
+
+	iqh1aLoggingLogSnmpName OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Snmp Name Text  cmdID= 1050 "
+		::= { iqh1aCmdEntry 1050 }
+
+
+	iqh1aLoggingSNMPNAME OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SNMP_NAME=  cmdID= 2050  format=   "
+		::= { iqh1aCmdEntry 2050 }
+
+
+	iqh1aLoggingLogLocation OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Location Text  cmdID= 1051 "
+		::= { iqh1aCmdEntry 1051 }
+
+
+	iqh1aLoggingLOCATION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					LOCATION=  cmdID= 2051  format=   "
+		::= { iqh1aCmdEntry 2051 }
+
+
+	iqh1aLoggingLogSysContact OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Sys Contact Tex  cmdID= 1052 "
+		::= { iqh1aCmdEntry 1052 }
+
+
+	iqh1aLoggingSYSTEMCONTACT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SYSTEM_CONTACT=  cmdID= 2052  format=   "
+		::= { iqh1aCmdEntry 2052 }
+
+
+	iqh1aLoggingLogSysDescription OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Sys Description  cmdID= 1053 "
+		::= { iqh1aCmdEntry 1053 }
+
+
+	iqh1aLoggingSYSTEMDESCRIPTION OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SYSTEM_DESCRIPTION=  cmdID= 2053  format=   "
+		::= { iqh1aCmdEntry 2053 }
+
+
+	iqh1aEthernetIPaddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					IP address  cmdID= 16802  "
+		::= { iqh1aCmdEntry 16802 }
+
+
+	iqh1aEthernetSubnetmask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Subnet mask  cmdID= 16803  "
+		::= { iqh1aCmdEntry 16803 }
+
+
+	iqh1aEthernetDefaultIPgateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Default IP gateway  cmdID= 16804  "
+		::= { iqh1aCmdEntry 16804 }
+
+
+	iqh1aEthernetIPSharePort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					IP Share Port  cmdID= 16809  "
+		::= { iqh1aCmdEntry 16809 }
+
+
+	iqh1aEthernetIPSharePortLocal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					IP Share Port Local  cmdID= 17241  "
+		::= { iqh1aCmdEntry 17241 }
+
+
+	iqh1aEthernetLinkspeed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_10_Mbps_half(1),
+							val_10_Mbps_full(2),
+							val_100_Mbps_half(3),
+							val_100_Mbps_full(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Ethernet
+					Link speed  cmdID= 16800
+					Auto  value= 0
+					10 Mbps half  value= 1
+					10 Mbps full  value= 2
+					100 Mbps half  value= 3
+					100 Mbps full  value= 4  "
+		::= { iqh1aCmdEntry 16800 }
+
+
+	iqh1aEthernetLinkState OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Link State  cmdID= 16808  format=   "
+		::= { iqh1aCmdEntry 16808 }
+
+
+	iqh1aEthernetMACaddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					MAC address  cmdID= 16801  format=   "
+		::= { iqh1aCmdEntry 16801 }
+
+
+	iqh1aEthernetIPRouting OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					IP Routing  cmdID= 16807  format=   "
+		::= { iqh1aCmdEntry 16807 }
+
+
+	iqh1aEthernetIgnorebcastpkts OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Ignore b'cast pkts  cmdID= 16805 "
+		::= { iqh1aCmdEntry 16805 }
+
+
+	iqh1aEthernetCheckclientIP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Check client IP  cmdID= 16806 "
+		::= { iqh1aCmdEntry 16806 }
+
+
+	iqh1aEthernetIPThumbPort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					IP Thumb Port  cmdID= 16810  "
+		::= { iqh1aCmdEntry 16810 }
+
+
+	iqh1aEthernetClientIPRangesMin1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 1  cmdID= 16811  "
+		::= { iqh1aCmdEntry 16811 }
+
+
+	iqh1aEthernetClientIPRangesMax1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 1  cmdID= 16819  "
+		::= { iqh1aCmdEntry 16819 }
+
+
+	iqh1aEthernetClientIPRangesMin2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 2  cmdID= 16812  "
+		::= { iqh1aCmdEntry 16812 }
+
+
+	iqh1aEthernetClientIPRangesMax2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 2  cmdID= 16820  "
+		::= { iqh1aCmdEntry 16820 }
+
+
+	iqh1aEthernetClientIPRangesMin3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 3  cmdID= 16813  "
+		::= { iqh1aCmdEntry 16813 }
+
+
+	iqh1aEthernetClientIPRangesMax3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 3  cmdID= 16821  "
+		::= { iqh1aCmdEntry 16821 }
+
+
+	iqh1aEthernetClientIPRangesMin4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 4  cmdID= 16814  "
+		::= { iqh1aCmdEntry 16814 }
+
+
+	iqh1aEthernetClientIPRangesMax4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 4  cmdID= 16822  "
+		::= { iqh1aCmdEntry 16822 }
+
+
+	iqh1aEthernetClientIPRangesMin5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 5  cmdID= 16815  "
+		::= { iqh1aCmdEntry 16815 }
+
+
+	iqh1aEthernetClientIPRangesMax5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 5  cmdID= 16823  "
+		::= { iqh1aCmdEntry 16823 }
+
+
+	iqh1aEthernetClientIPRangesMin6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 6  cmdID= 16816  "
+		::= { iqh1aCmdEntry 16816 }
+
+
+	iqh1aEthernetClientIPRangesMax6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 6  cmdID= 16824  "
+		::= { iqh1aCmdEntry 16824 }
+
+
+	iqh1aEthernetClientIPRangesMin7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 7  cmdID= 16817  "
+		::= { iqh1aCmdEntry 16817 }
+
+
+	iqh1aEthernetClientIPRangesMax7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 7  cmdID= 16825  "
+		::= { iqh1aCmdEntry 16825 }
+
+
+	iqh1aEthernetClientIPRangesMin8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Min 8  cmdID= 16818  "
+		::= { iqh1aCmdEntry 16818 }
+
+
+	iqh1aEthernetClientIPRangesMax8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Max 8  cmdID= 16826  "
+		::= { iqh1aCmdEntry 16826 }
+
+
+	iqh1aEthernetPassIAMIP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Pass I_AM (IP)  cmdID= 17050 "
+		::= { iqh1aCmdEntry 17050 }
+
+
+	iqh1aEthernetPassTimeIP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Pass Time (IP)  cmdID= 17051 "
+		::= { iqh1aCmdEntry 17051 }
+
+
+	iqh1aEthernetRollCallIPStatsRejectCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Reject Count  cmdID= 17021  format=   "
+		::= { iqh1aCmdEntry 17021 }
+
+
+	iqh1aEthernetRollCallIPStatsLastRejectClient OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Last Reject Client  cmdID= 17022  format=   "
+		::= { iqh1aCmdEntry 17022 }
+
+
+	iqh1aEthernetRollCallIPStatsClosedCount OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Closed Count  cmdID= 17023  format=   "
+		::= { iqh1aCmdEntry 17023 }
+
+
+	iqh1aEthernetRollCallIPStatsLastClosedClient OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Last Closed Client  cmdID= 17024  format=   "
+		::= { iqh1aCmdEntry 17024 }
+
+
+	iqh1aEthernetRollCallIPStatsConnection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Ethernet
+					Connection  cmdID= 17010  min= 1  max= 32  step= 1  format= %.0f  div_scale= 1
+					Min = 1  Max = 32  Step = 1 "
+		::= { iqh1aCmdEntry 17010 }
+
+
+	iqh1aEthernetRollCallIPStatsRollCallPort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					RollCall Port  cmdID= 17011  format=   "
+		::= { iqh1aCmdEntry 17011 }
+
+
+	iqh1aEthernetRollCallIPStatsName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Name  cmdID= 17012  format=   "
+		::= { iqh1aCmdEntry 17012 }
+
+
+	iqh1aEthernetRollCallTCPStatsRemotePort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Remote TCP Port of incoming connection cmdID= 17156  format=   "
+		::= { iqh1aCmdEntry 17156 }
+
+
+	iqh1aEthernetRollCallIPStatsAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Addr  cmdID= 17013  format=   "
+		::= { iqh1aCmdEntry 17013 }
+
+
+	iqh1aEthernetRollCallIPStatsPacketsReceived OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Packets Received  cmdID= 17014  format=   "
+		::= { iqh1aCmdEntry 17014 }
+
+
+	iqh1aEthernetRollCallIPStatsPacketsSent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Packets Sent  cmdID= 17015  format=   "
+		::= { iqh1aCmdEntry 17015 }
+
+
+	iqh1aEthernetRollCallIPStatsEverSentTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Ever Sent Time?  cmdID= 17016  format=   "
+		::= { iqh1aCmdEntry 17016 }
+
+
+	iqh1aEthernetRollCallIPStatsFullNetworkMap OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Full Network Map?  cmdID= 17242  format=   "
+		::= { iqh1aCmdEntry 17242 }
+
+
+	iqh1aEthernetRollCallIPStatsStartTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Start Time  cmdID= 17017  format=   "
+		::= { iqh1aCmdEntry 17017 }
+
+
+	iqh1aEthernetSNMPEnableSNMP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable SNMP  cmdID= 17005 "
+		::= { iqh1aCmdEntry 17005 }
+
+
+	iqh1aEthernetSNMPEnableLegacySNMP OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Legacy SNMP  cmdID= 17025 "
+		::= { iqh1aCmdEntry 17025 }
+
+
+	iqh1aEthernetSNMPReadcommunity OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Read community  cmdID= 16853  "
+		::= { iqh1aCmdEntry 16853 }
+
+
+	iqh1aEthernetSNMPWritecommunity OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Write community  cmdID= 16854  "
+		::= { iqh1aCmdEntry 16854 }
+
+
+	iqh1aEthernetSNMPMIB2sysContact OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					MIB2 sysContact  cmdID= 16855  "
+		::= { iqh1aCmdEntry 16855 }
+
+
+	iqh1aEthernetSNMPMIB2sysName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					MIB2 sysName  cmdID= 16856  "
+		::= { iqh1aCmdEntry 16856 }
+
+
+	iqh1aEthernetSNMPMIB2sysLocation OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					MIB2 sysLocation  cmdID= 16857  "
+		::= { iqh1aCmdEntry 16857 }
+
+
+	iqh1aEthernetSNMPReadWritePort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Read Write Port  cmdID= 16860  "
+		::= { iqh1aCmdEntry 16860 }
+
+
+	iqh1aEthernetSNMPResendTraps OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Resend_Traps(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Ethernet
+					Resend Traps  cmdID= 16890  value= 1  "
+		::= { iqh1aCmdEntry 16890 }
+
+
+	iqh1aSnmpTrapDest1IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16850  "
+		::= { iqh1aCmdEntry 16850 }
+
+
+	iqh1aSnmpTrapDest1Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16851  "
+		::= { iqh1aCmdEntry 16851 }
+
+
+	iqh1aSnmpTrapDest1Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16852  "
+		::= { iqh1aCmdEntry 16852 }
+
+
+	iqh1aSnmpTrapDest2IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16861  "
+		::= { iqh1aCmdEntry 16861 }
+
+
+	iqh1aSnmpTrapDest2Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16862  "
+		::= { iqh1aCmdEntry 16862 }
+
+
+	iqh1aSnmpTrapDest2Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16863  "
+		::= { iqh1aCmdEntry 16863 }
+
+
+	iqh1aSnmpTrapDest2EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16864 "
+		::= { iqh1aCmdEntry 16864 }
+
+
+	iqh1aSnmpTrapDest3IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16865  "
+		::= { iqh1aCmdEntry 16865 }
+
+
+	iqh1aSnmpTrapDest3Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16866  "
+		::= { iqh1aCmdEntry 16866 }
+
+
+	iqh1aSnmpTrapDest3Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16867  "
+		::= { iqh1aCmdEntry 16867 }
+
+
+	iqh1aSnmpTrapDest3EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16868 "
+		::= { iqh1aCmdEntry 16868 }
+
+
+	iqh1aSnmpTrapDest4IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16869  "
+		::= { iqh1aCmdEntry 16869 }
+
+
+	iqh1aSnmpTrapDest4Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16870  "
+		::= { iqh1aCmdEntry 16870 }
+
+
+	iqh1aSnmpTrapDest4Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16871  "
+		::= { iqh1aCmdEntry 16871 }
+
+
+	iqh1aSnmpTrapDest4EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16872 "
+		::= { iqh1aCmdEntry 16872 }
+
+
+	iqh1aSnmpTrapDest5IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16873  "
+		::= { iqh1aCmdEntry 16873 }
+
+
+	iqh1aSnmpTrapDest5Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16874  "
+		::= { iqh1aCmdEntry 16874 }
+
+
+	iqh1aSnmpTrapDest5Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16875  "
+		::= { iqh1aCmdEntry 16875 }
+
+
+	iqh1aSnmpTrapDest5EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16876 "
+		::= { iqh1aCmdEntry 16876 }
+
+
+	iqh1aSnmpTrapDest6IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16877  "
+		::= { iqh1aCmdEntry 16877 }
+
+
+	iqh1aSnmpTrapDest6Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16878  "
+		::= { iqh1aCmdEntry 16878 }
+
+
+	iqh1aSnmpTrapDest6Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16879  "
+		::= { iqh1aCmdEntry 16879 }
+
+
+	iqh1aSnmpTrapDest6EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16880 "
+		::= { iqh1aCmdEntry 16880 }
+
+
+	iqh1aSnmpTrapDest7IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16881  "
+		::= { iqh1aCmdEntry 16881 }
+
+
+	iqh1aSnmpTrapDest7Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16882  "
+		::= { iqh1aCmdEntry 16882 }
+
+
+	iqh1aSnmpTrapDest7Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16883  "
+		::= { iqh1aCmdEntry 16883 }
+
+
+	iqh1aSnmpTrapDest7EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16884 "
+		::= { iqh1aCmdEntry 16884 }
+
+
+	iqh1aSnmpTrapDest8IPaddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest IP addr  cmdID= 16885  "
+		::= { iqh1aCmdEntry 16885 }
+
+
+	iqh1aSnmpTrapDest8Port OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap dest port  cmdID= 16886  "
+		::= { iqh1aCmdEntry 16886 }
+
+
+	iqh1aSnmpTrapDest8Community OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Trap community  cmdID= 16887  "
+		::= { iqh1aCmdEntry 16887 }
+
+
+	iqh1aSnmpTrapDest8EnableTrap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Enable Trap  cmdID= 16888 "
+		::= { iqh1aCmdEntry 16888 }
+
+
+	iqh1aEthernetIPBridgeIPAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Bridge IP Addr  cmdID= 17030  "
+		::= { iqh1aCmdEntry 17030 }
+
+
+	iqh1aEthernetIPBridgeIPPort OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Ethernet
+					Bridge IP Port  cmdID= 17031  "
+		::= { iqh1aCmdEntry 17031 }
+
+
+	iqh1aEthernetIPBridgeOnlythisAddr OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Only this Addr  cmdID= 17035 "
+		::= { iqh1aCmdEntry 17035 }
+
+
+	iqh1aEthernetIPBridgePassIAMBridge OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Pass I_AM (Bridge)  cmdID= 17056 "
+		::= { iqh1aCmdEntry 17056 }
+
+
+	iqh1aEthernetIPBridgePassTimeBridge OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Pass Time (Bridge)  cmdID= 17057 "
+		::= { iqh1aCmdEntry 17057 }
+
+
+	iqh1aEthernetIPBridgeConnect OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Connect(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Ethernet
+					Connect  cmdID= 17032  value= 1  "
+		::= { iqh1aCmdEntry 17032 }
+
+
+	iqh1aEthernetIPBridgeDisconnect OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Disconnect(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Ethernet
+					Disconnect  cmdID= 17033  value= 1  "
+		::= { iqh1aCmdEntry 17033 }
+
+
+	iqh1aEthernetIPBridgeAutoConnect OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Ethernet
+					Auto Connect  cmdID= 17034 "
+		::= { iqh1aCmdEntry 17034 }
+
+
+	iqh1aEthernetIPBridgeAddr OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Addr  cmdID= 17040  format=   "
+		::= { iqh1aCmdEntry 17040 }
+
+
+	iqh1aEthernetIPBridgePacketsReceived OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Packets Received  cmdID= 17041  format=   "
+		::= { iqh1aCmdEntry 17041 }
+
+
+	iqh1aEthernetIPBridgePacketsSent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Packets Sent  cmdID= 17042  format=   "
+		::= { iqh1aCmdEntry 17042 }
+
+
+	iqh1aEthernetIPBridgeStartTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Start Time  cmdID= 17043  format=   "
+		::= { iqh1aCmdEntry 17043 }
+
+
+	iqh1aEthernetIPBridgeStartedBy OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Ethernet
+					Started By  cmdID= 17044  format=   "
+		::= { iqh1aCmdEntry 17044 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swGatewayEventLogTable, swGatewayEventLogField represents the
+--  table entry.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swGatewayEventLogTable is 1.3.6.1.4.1.7995.2.6.2.1. 5.  70.65.85.76.84
+--                                                         |-------base---------------|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for gateway eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swGatewayEventLogField  .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S35063213
+--				:
+-- Comments		: Serial Number, Alpha-numberic string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swGatewayEventLogField  .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: None
+--              : FAIL:MODULE_COMMS
+-- Comments		:
+--              : FAIL:MODULE_COMMS, backplane comms severely errored, receiver now disabled.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swGatewayEventLogField  .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.6.85.80.84.73.77.69
+-- Vary			: YES
+--
+-- Value(s)		: 000:00:02:00
+--				:
+-- Comments		: System uptime, updated at regular intervals (60sec), format ddd:hh:mm:ss
+--              : ddd=days, hh=hours, mm=minutes, ss=seconds
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VERSION
+--
+-- MIB ref		: swGatewayEventLogField  .7.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.7.86.69.82.83.73.79.78
+-- Vary			: NO
+--
+-- Value(s)		: 5.11 .14
+--				:
+-- Comments		: Version ID, software version, alpha-numeric string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: IP_EVENT
+--
+-- MIB ref		: swGatewayEventLogField  .8.73.80.95.69.86.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.8.73.80.95.69.86.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: 172.19.78.45 CONNECT FROM
+--				: nnn.nnn.nnn.nnn CONNECT FROM
+--				: nnn.nnn.nnn.nnn DISCONNECT FROM
+--				: nnn.nnn.nnn.nnn BRIDGE CONNECT FROM
+--				: nnn.nnn.nnn.nnn BRIDGE CONNECT TO
+-- Comments		: Eg 172.19.23.1 CONNECT FROM
+--              : Status log message only, signifying connection to or from a remote IP address.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LOCATION
+--
+-- MIB ref		: swGatewayEventLogField  .8.76.79.67.65.84.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.8.76.79.67.65.84.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: Unknown
+--				:
+-- Comments		: String value denoting SNMP location.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swGatewayEventLogField  .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: n
+-- Comments		: n >= 0    Number of connected rollcall session
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: IPADDRESS
+--
+-- MIB ref		: swGatewayEventLogField  .9.73.80.65.68.68.82.69.83.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.9.73.80.65.68.68.82.69.83.83
+-- Vary			: YES
+--
+-- Value(s)		: 172.19.81.51
+--				:
+-- Comments		: IP address of unit nnn.nnn.nnn.nnn  0 <= nnn <=255
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SNMP_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .9.83.78.77.80.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.9.83.78.77.80.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: Unknown
+--				:
+-- Comments		: String value of SNMP name of unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_1_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.70.65.78.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.70.65.78.95.49.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: PSU1 Fan
+--				:
+-- Comments		: Assigned name of Fan 1
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_2_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.70.65.78.95.50.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.70.65.78.95.50.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: PSU2 Fan
+--				:
+-- Comments		: Assigned name of Fan 2
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_3_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.70.65.78.95.51.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.70.65.78.95.51.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: Fan 3
+--				:
+-- Comments		: Assigned name of Fan 3
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_4_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.70.65.78.95.52.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.70.65.78.95.52.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: Fan 4
+--				:
+-- Comments		: Assigned name of Fan 4
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swGatewayEventLogField  .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.79.83.95.86.69.82.83.73.79.78
+-- Vary			: NO
+--
+-- Value(s)		: V115 Release
+--				:
+-- Comments		: Operating System Version ID
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PSU_1_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.80.83.85.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.80.83.85.95.49.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: PSU 1
+--				:
+-- Comments		: Assigned name of 1st Power Supply Unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PSU_2_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .10.80.83.85.95.50.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.10.80.83.85.95.50.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: PSU 2
+--				:
+-- Comments		: Assigned name of 2nd Power Supply Unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_1_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.70.65.78.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.70.65.78.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--              : FAIL:Stopped
+--              : Not Used
+-- Comments		: State of PSU1 fan.  Not Used set if PSU1 has been removed
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_2_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.70.65.78.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.70.65.78.95.50.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--              : FAIL:Stopped
+--              : Not Used
+-- Comments		: State of PSU2 fan.  Not Used set if PSU2 has been removed
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_3_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.70.65.78.95.51.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.70.65.78.95.51.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK:Low
+--				: OK:Medium
+--              : OK:High
+--              : WARN:Max
+--              : FAIL:Stopped
+--              : FAIL:ShortCircuit
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAN_4_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.70.65.78.95.52.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.70.65.78.95.52.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK:Low
+--				: OK:Medium
+--              : OK:High
+--              : WARN:Max
+--              : FAIL:Stopped
+--              : FAIL:ShortCircuit
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PSU_1_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.80.83.85.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.80.83.85.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: FAIL
+--              : FAIL:Not Fitted
+--              : Not Used
+-- Comments		: State of 1st PSU
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: PSU_2_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.80.83.85.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.80.83.85.95.50.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: FAIL
+--              : FAIL:Not Fitted
+--              : Not Used
+-- Comments		: State of 2nd PSU
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RECON_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .11.82.69.67.79.78.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.82.69.67.79.78.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: WARN
+--              : FAIL
+-- Comments		: OK:   0  rollnet recons in last 10 seconds
+--              : WARN: 1  rollnet recon  in last 10 seconds
+--              : FAIL: >1 rollnet recons in last 10 seconds
+---------------------------------------------------------------------------------------------------
+-- Header		: TEMP_1_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .11.84.69.77.80.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.11.84.69.77.80.95.49.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: Temperature
+--				:
+-- Comments		: Assigned name of 1st Temperature monitor
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swGatewayEventLogField  .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.66.85.73.76.68.95.78.85.77.66.69.82
+-- Vary			: YES
+--
+-- Value(s)		: 0173103711
+--				:
+-- Comments		: Engineering assigned build number (from CVS) of application code
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION1
+--
+-- MIB ref		: swGatewayEventLogField  .12.73.78.70.79.82.77.65.84.73.79.78.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.73.78.70.79.82.77.65.84.73.79.78.49
+-- Vary			: YES
+--
+-- Value(s)		: INFO1 TEXT FIELD
+--				: Any 19 char string
+-- Comments		: User defined field 1.  If edit field is empty this is not logged
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION2
+--
+-- MIB ref		: swGatewayEventLogField  .12.73.78.70.79.82.77.65.84.73.79.78.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.73.78.70.79.82.77.65.84.73.79.78.50
+-- Vary			: YES
+--
+-- Value(s)		: INFO2 TEXT FIELD
+--				: Any 19 char string
+-- Comments		: User defined field 2.  If edit field is empty this is not logged
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MODULE_COMMS
+--
+-- MIB ref		: swGatewayEventLogField  .12.77.79.68.85.76.69.95.67.79.77.77.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.77.79.68.85.76.69.95.67.79.77.77.83
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: n
+-- Comments		: n >= 0, Number of I2C packet errors. Number reset when all statistics are reset
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swGatewayEventLogField  .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2008-01-08T15:58:41Z
+--				: -
+-- Comments		: UTC time and date of box restart  ISO standardised
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: TEMP_1_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .12.84.69.77.80.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.12.84.69.77.80.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: WARN:Low
+--              : WARN:High
+--              : FAIL:Low
+--              : FAIL:High
+--              : FAIL:Sensor Fault
+-- Comments		: State of 1st Temperature monitor (In)
+--              : OK Range    5C - 35C
+--              : WARN:Low    0C -  5C
+--              : WARN:High  35C - 40C
+--              : FAIL:Low   < 0C
+--              : FAIL:High  > 40C
+--              : Note absolute values may vary in future releases, values are approximate
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swGatewayEventLogField  .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				: 2006-06-08T15:59:01Z
+--
+-- Comments		: Date and time of last modification of Gateway controls,  Note this appears every
+--              : 5 seconds during continual control change, and/or 5 seconds after most recent update.
+--              : Format local time on Gateway dd/mm/yy hh:mm:ss
+--              : -  no control changes made since last start
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MODULE_STATUS
+--
+-- MIB ref		: swGatewayEventLogField  .13.77.79.68.85.76.69.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.13.77.79.68.85.76.69.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 1 EXTRA MODULE
+--              : n EXTRA MODULES
+--              : 1 MODULE MISSING
+--              : n MODULES MISSING
+--              : 1 WRONG TYPE
+--              : n WRONG TYPES
+-- Comments		: where 2 <= n <= 4
+--              : Status of module type/per slot configuration matching or Modules mismatched / missing
+-- Comments		: where 2 <= n <= 4
+--              : Status of module type/per slot configuration matching or Modules mismatched / missing
+
+---------------------------------------------------------------------------------------------------
+-- Header		: THUMB_IP_PORT
+--
+-- MIB ref		: swGatewayEventLogField  .13.84.72.85.77.66.95.73.80.95.80.79.82.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.13.84.72.85.77.66.95.73.80.95.80.79.82.84
+-- Vary			: YES
+--
+-- Value(s)		: 2601
+--				:
+-- Comments		: Number of TCP port for Hyperion service (Thumbnail)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LOADER_VERSION
+--
+-- MIB ref		: swGatewayEventLogField  .14.76.79.65.68.69.82.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.14.76.79.65.68.69.82.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: 2.17 .7
+--				:
+-- Comments		: Loader Version string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SYSTEM_CONTACT
+--
+-- MIB ref		: swGatewayEventLogField  .14.83.89.83.84.69.77.95.67.79.78.84.65.67.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.14.83.89.83.84.69.77.95.67.79.78.84.65.67.84
+-- Vary			: YES
+--
+-- Value(s)		: Unknown
+--				:
+-- Comments		: String denoting name of SNMP system contact
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: TEMP_1_CELSIUS
+--
+-- MIB ref		: swGatewayEventLogField  .14.84.69.77.80.95.49.95.67.69.76.83.73.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.14.84.69.77.80.95.49.95.67.69.76.83.73.85.83
+-- Vary			: YES
+--
+-- Value(s)		: 27
+--				:
+-- Comments		: Current temperature of 1st Temperature monitor (In) - Celcius  -50 <-> 120
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_1_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .14.86.79.76.84.65.71.69.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.14.86.79.76.84.65.71.69.95.49.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: +7.5V
+--				:
+-- Comments		: Assigned name of rail Voltage 1
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_2_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .14.86.79.76.84.65.71.69.95.50.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.14.86.79.76.84.65.71.69.95.50.95.78.65.77.69
+-- Vary			: NO
+--
+-- Value(s)		: -7.5V
+--				:
+-- Comments		: Assigned name of rail Voltage 2
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_NAME
+--
+-- MIB ref		: swGatewayEventLogField  .15.76.65.78.95.80.79.82.84.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.15.76.65.78.95.80.79.82.84.95.49.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: FastEthernet0/1
+--				:
+-- Comments		: Assigned name of lan port
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_1_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .15.86.79.76.84.65.71.69.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.15.86.79.76.84.65.71.69.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: WARN:Low
+--              : WARN:High
+-- Comments		: WARN:Low  when voltage < +6.8
+--              : WARN:High when voltage > +8.0
+--              : Note absolute values may vary in future releases, values are approximate
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_1_VALUE
+--
+-- MIB ref		: swGatewayEventLogField  .15.86.79.76.84.65.71.69.95.49.95.86.65.76.85.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.15.86.79.76.84.65.71.69.95.49.95.86.65.76.85.69
+-- Vary			: YES
+--
+-- Value(s)		: +7.6
+--				:
+-- Comments		: Current upper rail voltage value (volts)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_2_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .15.86.79.76.84.65.71.69.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.15.86.79.76.84.65.71.69.95.50.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: WARN:Low
+--              : WARN:High
+-- Comments		: WARN:Low  when voltage < -8.0
+--              : WARN:High when voltage > -6.8
+--              : Note absolute values may vary in future releases, values are approximate
+---------------------------------------------------------------------------------------------------
+-- Header		: VOLTAGE_2_VALUE
+--
+-- MIB ref		: swGatewayEventLogField  .15.86.79.76.84.65.71.69.95.50.95.86.65.76.85.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.15.86.79.76.84.65.71.69.95.50.95.86.65.76.85.69
+-- Vary			: YES
+--
+-- Value(s)		: -7.6
+--				:
+-- Comments		: Current lower rail voltage value (volts)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swGatewayEventLogField  .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- Vary			: NO
+--
+-- Value(s)		: RCIF3U2C.00/
+--				:
+-- Comments		: Hardware configuration type
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_SPEED
+--
+-- MIB ref		: swGatewayEventLogField  .16.76.65.78.95.80.79.82.84.95.49.95.83.80.69.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.16.76.65.78.95.80.79.82.84.95.49.95.83.80.69.69.68
+-- Vary			: YES
+--
+-- Value(s)		: 100 Mbit/s Half Duplex
+--				: 100 Mbit/s Full Duplex
+--              : 10 Mbit/s Half Duplex
+--              : 10 Mbit/s Full Duplex
+--              : No Link
+-- Comments		: Speed of ethernet link
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_STATE
+--
+-- MIB ref		: swGatewayEventLogField  .16.76.65.78.95.80.79.82.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.16.76.65.78.95.80.79.82.84.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: Active
+--				: WARN:Inactive
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_ERRORS
+--
+-- MIB ref		: swGatewayEventLogField  .17.76.65.78.95.80.79.82.84.95.49.95.69.82.82.79.82.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.17.76.65.78.95.80.79.82.84.95.49.95.69.82.82.79.82.83
+-- Vary			: YES
+--
+-- Value(s)		: 0 in total
+--				:
+-- Comments		:  Summation of MIB-II values ifInDiscards+ifInErrors+ifInUnknownProtos+ifOutDiscards+ifOutErrors.
+--                 Updated periodically (60 sec interval)
+---------------------------------------------------------------------------------------------------
+-- Header		: SYSTEM_DESCRIPTION
+--
+-- MIB ref		: swGatewayEventLogField  .18.83.89.83.84.69.77.95.68.69.83.67.82.73.80.84.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.18.83.89.83.84.69.77.95.68.69.83.67.82.73.80.84.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: IQH3UM4-S
+--				:
+-- Comments		: String, SNMP system description
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_TRAFFIC_IN
+--
+-- MIB ref		: swGatewayEventLogField  .21.76.65.78.95.80.79.82.84.95.49.95.84.82.65.70.70.73.67.95.73.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.21.76.65.78.95.80.79.82.84.95.49.95.84.82.65.70.70.73.67.95.73.78
+-- Vary			: YES
+--
+-- Value(s)		: 0.9 KBytes/sec
+--				: -
+-- Comments		: Traffic In per second, averaged over 60 second period
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_LAST_CHANGE
+--
+-- MIB ref		: swGatewayEventLogField  .22.76.65.78.95.80.79.82.84.95.49.95.76.65.83.84.95.67.72.65.78.71.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.22.76.65.78.95.80.79.82.84.95.49.95.76.65.83.84.95.67.72.65.78.71.69
+-- Vary			: YES
+--
+-- Value(s)		: 000:00:00:00
+--				:
+-- Comments		: Last configuration change of ethernet port, ddd:hh:mm:ss  ago.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAN_PORT_1_TRAFFIC_OUT
+--
+-- MIB ref		: swGatewayEventLogField  .22.76.65.78.95.80.79.82.84.95.49.95.84.82.65.70.70.73.67.95.79.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.2.1.22.76.65.78.95.80.79.82.84.95.49.95.84.82.65.70.70.73.67.95.79.85.84
+-- Vary			: YES
+--
+-- Value(s)		: 0.0 KBytes/sec
+--				: -
+-- Comments		: Traffic Out per second, averaged over 60 second period
+--
+---------------------------------------------------------------------------------------------------

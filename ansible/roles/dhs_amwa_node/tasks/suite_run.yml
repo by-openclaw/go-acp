@@ -1,0 +1,147 @@
+---
+# The runnable half of one suite. suite.yml decides whether this
+# applies at the round's minor before including it.
+
+- name: "{{ api_ver }} / {{ suite.id }} — remove any previous node"
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_node_name }}
+  changed_when: true
+  failed_when: false
+
+# `suite.node_args` exists because some suites test a DEPLOYMENT MODE
+# rather than an endpoint. IS-04-03 is peer-to-peer, and IS-04 §4.2.1
+# makes the modes exclusive on the wire: a Node that has registered
+# MUST stop advertising _nmos-node._tcp. Left free to find the
+# reference Registry on the shared bridge, our Node registers and
+# withdraws the very announcement that suite exists to check.
+- name: "{{ api_ver }} / {{ suite.id }} — start a fresh node"
+  ansible.builtin.command:
+    argv: "{{ dhs_amwa_node_argv + (suite.node_args | default([])) }}"
+  vars:
+    dhs_amwa_node_argv:
+      - docker
+      - run
+      - -d
+      - --name={{ dhs_amwa_node_name }}
+      - --hostname={{ dhs_amwa_node_name }}
+      - --network={{ dhs_amwa_project }}
+      - --restart=no
+      - "{{ dhs_amwa_node_image }}"
+      - producer
+      - nmos
+      - serve
+      - --config=/app/amwa-test-node.json
+      - --bind=:{{ dhs_amwa_node_port }}
+      - --advertise-host={{ dhs_amwa_node_name }}:{{ dhs_amwa_node_port }}
+      - --mdns
+      - --api-ver={{ api_ver }}
+  changed_when: true
+
+- name: "{{ api_ver }} / {{ suite.id }} — let the node register and settle"
+  ansible.builtin.wait_for:
+    timeout: "{{ dhs_amwa_node_settle }}"
+
+# A suite run against a node that died on startup scores as a wall of
+# failures and looks like a conformance problem. Checking first turns
+# that into one honest error.
+- name: "{{ api_ver }} / {{ suite.id }} — the node is running"
+  ansible.builtin.command: docker inspect -f {% raw %}'{{.State.Running}}'{% endraw %} {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_alive
+  changed_when: false
+  failed_when: "'true' not in dhs_amwa_node_alive.stdout"
+
+# The tool calls ipaddress.ip_address() on the host field, so a
+# container NAME throws where an address works.
+- name: "{{ api_ver }} / {{ suite.id }} — resolve the node's address on the bridge"
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{% endraw %}
+    {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_ip
+  changed_when: false
+
+# Build the positional endpoint arrays explicitly.
+#
+# The tool-supplied slot ("-") must carry JSON **null**, not a blank
+# and not a plausible address. The distinction is load-bearing:
+#
+#   ""     -> "All IP/Hostname and Port fields must be completed"
+#   a host -> the tool pre-validates it with a GET before the suite
+#             starts, and its own mock System API answers 500 until
+#             set_up_tests has populated it -- so any real address
+#             fails too, including the right one
+#   null   -> the tool sets that API's url to None and skips
+#             pre-validation, which is what a slot IT serves needs
+#
+# A Jinja map() cannot produce that mix without `| int` turning None
+# into 0, so the arrays are assembled here where the types survive.
+- name: "{{ api_ver }} / {{ suite.id }} — assemble the endpoint arrays"
+  ansible.builtin.set_fact:
+    dhs_amwa_suite_hosts: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_hosts) | list }}
+    dhs_amwa_suite_ports: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_ports) | list }}
+    dhs_amwa_suite_vers: >-
+      {{ suite.endpoints
+         | map('extract', dhs_amwa_node_endpoint_vers) | list }}
+
+- name: "{{ api_ver }} / {{ suite.id }} — run it"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/api"
+    method: POST
+    body_format: json
+    body:
+      suite: "{{ suite.id }}"
+      # One array slot per endpoint the suite declares, in ITS order.
+      #
+      # Every real slot is this same node -- a Node serves all its APIs
+      # on one listener -- but the VERSION differs per API, and that is
+      # the part that cannot be guessed: passing the IS-04 minor to an
+      # IS-05 suite makes the tool throw instead of score.
+      #
+      # The "-" slot carries null; see the assembly task above.
+      host: "{{ dhs_amwa_suite_hosts }}"
+      # Ports stay INTs -- the tool type-checks them, so quoting turns
+      # a scoring run into a 400.
+      port: "{{ dhs_amwa_suite_ports }}"
+      version: "{{ dhs_amwa_suite_vers }}"
+      # One selector slot per endpoint, empty unless the suite needs
+      # one. IS-08 declares `selector: True`, and the tool refuses to
+      # start with "No Selector(s) specified" rather than defaulting --
+      # which scores as a suite that could not run, not as a failure.
+      selector: "{{ suite.endpoints | map('regex_replace', '^.*$', '') | list }}"
+      output: json
+    timeout: "{{ dhs_amwa_node_suite_timeout }}"
+    status_code: [200, 400, 500]
+    return_content: true
+  register: dhs_amwa_node_one_run
+  # A suite that errors is a RESULT, not a play failure: "the tool
+  # refused to score this" is exactly the kind of gap this run exists
+  # to surface, and stopping here would hide every later suite.
+  failed_when: false
+
+# The node's own log, while the container still exists.
+#
+# round.yml used to dump it after the loop, by which point the next
+# suite had already removed the container -- so the one artefact that
+# explains a failure was empty exactly when it was needed.
+- name: "{{ api_ver }} / {{ suite.id }} — what the node said"
+  ansible.builtin.command: docker logs --tail 40 {{ dhs_amwa_node_name }}
+  register: dhs_amwa_node_suite_log
+  changed_when: false
+  failed_when: false
+
+- name: "{{ api_ver }} / {{ suite.id }} — keep it beside the result"
+  ansible.builtin.copy:
+    content: |
+      {{ dhs_amwa_node_suite_log.stdout | default('') }}
+      {{ dhs_amwa_node_suite_log.stderr | default('') }}
+    dest: "{{ dhs_amwa_node_results }}/{{ suite.id | lower }}-{{ api_ver }}.log"
+    mode: "0644"
+
+- name: "{{ api_ver }} / {{ suite.id }} — write the result"
+  ansible.builtin.copy:
+    content: "{{ dhs_amwa_node_one_run.content | default('{\"error\":\"no response\"}') }}"
+    dest: "{{ dhs_amwa_node_results }}/{{ suite.id | lower }}-{{ api_ver }}.json"
+    mode: "0644"

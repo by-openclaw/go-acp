@@ -34,7 +34,7 @@ type Change struct {
 	Kind         ChangeKind
 	ResourceType is04.ResourceType
 	ID           string
-	APIVer       string // wire version this resource was registered at
+	APIVer       string          // wire version this resource was registered at
 	Pre          json.RawMessage // nil on create
 	Post         json.RawMessage // nil on delete
 	Timestamp    time.Time
@@ -57,6 +57,16 @@ type Store struct {
 	flows     map[string]is04.Flow
 	senders   map[string]is04.Sender
 	receivers map[string]is04.Receiver
+
+	// defaultPageLimit overrides DefaultPageLimit for requests that
+	// carry no paging.limit. 0 keeps the spec-parity default (100).
+	// Exists because first-page-only clients are real: Cerebrum's
+	// Network Media reader takes page one per collection and stops, so
+	// on a plant where one device owns 208 senders, everything
+	// registered earlier silently vanishes from such a controller.
+	// Raising the DEFAULT is the operator's spec-legal lever — an
+	// explicit paging.limit from the client always wins.
+	defaultPageLimit int
 
 	// health tracks the last heartbeat per Node ID. The GC loop walks
 	// this map every tick.

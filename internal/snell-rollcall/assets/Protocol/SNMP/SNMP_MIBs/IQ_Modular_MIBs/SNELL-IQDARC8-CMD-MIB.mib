@@ -1,0 +1,1113 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDARC8
+--        Module Id#:271
+--       Command Set:6
+--          Filename:SNELL-IQDARC8-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:04/07/2005
+--              Time:13:12
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDARC8-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDARC8,
+    moduleIQDARC8MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDARC8CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0507041312Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDARC8MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdarc8CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqdarc8CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDARC8 1 }
+
+	iqdarc8CmdEntry OBJECT-TYPE
+		SYNTAX		Iqdarc8CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdarc8SlotIndex }
+		::= { iqdarc8CmdTable 1 }
+
+	Iqdarc8CmdEntry ::=
+		SEQUENCE {
+			iqdarc8SlotIndex
+				Unsigned32,
+			iqdarc8Pan
+				INTEGER,
+			iqdarc8Tilt
+				INTEGER,
+			iqdarc8AspectRatio
+				INTEGER,
+			iqdarc8Zoom
+				INTEGER,
+			iqdarc8UserMemoryReadMemory
+				INTEGER,
+			iqdarc8UserMemorySaveMemory
+				INTEGER,
+			iqdarc8UserMemoryNameMemoriesMemory1
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory2
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory3
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory4
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory5
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory6
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory7
+				RollCallString,
+			iqdarc8UserMemoryNameMemoriesMemory8
+				RollCallString,
+			iqdarc8UserMemory
+				INTEGER,
+			iqdarc8SetupEnhancer
+				INTEGER,
+			iqdarc8SetupBorderColour
+				INTEGER,
+			iqdarc8BorderColourSetUsrAUserARed
+				INTEGER,
+			iqdarc8BorderColourSetUsrAUserAGreen
+				INTEGER,
+			iqdarc8BorderColourSetUsrAUserABlue
+				INTEGER,
+			iqdarc8BorderColourSetUsrBUserBRed
+				INTEGER,
+			iqdarc8BorderColourSetUsrBUserBGreen
+				INTEGER,
+			iqdarc8BorderColourSetUsrBUserBBlue
+				INTEGER,
+			iqdarc8SetupVariableBlankingLeftEdge
+				INTEGER,
+			iqdarc8SetupVariableBlankingRightEdge
+				INTEGER,
+			iqdarc8SetupRollTrackUnit1
+				RollCallString,
+			iqdarc8SetupRollTrackUnit2
+				RollCallString,
+			iqdarc8SetupRollTrackUnit3
+				RollCallString,
+			iqdarc8SetupRollTrackUnit4
+				RollCallString,
+			iqdarc8SetupRollTrackUnit5
+				RollCallString,
+			iqdarc8SetupRollTrackUnit6
+				RollCallString,
+			iqdarc8SetupRollTrackUnit7
+				RollCallString,
+			iqdarc8SetupRollTrackUnit8
+				RollCallString,
+			iqdarc8SetupRollTrackMessages
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI1
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI1GPI1Function
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI2
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI2GPI2Function
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI3
+				INTEGER,
+			iqdarc8SetupGPIInputsGPI3GPI3Function
+				INTEGER,
+			iqdarc8SetupTransitionSpeed
+				INTEGER,
+			iqdarc8SetupVerticalDataPreserveL21_283
+				INTEGER,
+			iqdarc8SetupVerticalDataPreserveL23
+				INTEGER,
+			iqdarc8SetupVerticalDataPreserveVidIndex
+				INTEGER,
+			iqdarc8SetupMinimumDelay
+				INTEGER,
+			iqdarc8SetupOutputStandard
+				INTEGER,
+			iqdarc8SetupDefaultOutput
+				INTEGER,
+			iqdarc8SetupRatioTerminology
+				INTEGER,
+			iqdarc8SetupEDHShowStats
+				INTEGER,
+			iqdarc8SetupEDHResetStats
+				INTEGER,
+			iqdarc8SetupLoggingInputChange
+				INTEGER,
+			iqdarc8SetupLoggingEDHErrors
+				INTEGER,
+			iqdarc8SetupPresetUnit
+				INTEGER,
+			iqdarc8SetupSoftwareVersion
+				RollCallString,
+			iqdarc8SetupSerialNo
+				RollCallString,
+			iqdarc8SetupRestart
+				INTEGER,
+			iqdarc8Freeze
+				INTEGER,
+			iqdarc8Bypass
+				INTEGER
+		}
+
+	iqdarc8SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdarc8CmdEntry 0 }
+
+
+	iqdarc8Pan OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Pan  cmdID= 29  min= 0  max= 181  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 181  Step = 1 "
+		::= { iqdarc8CmdEntry 29 }
+
+
+	iqdarc8Tilt OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Tilt  cmdID= 32  min= 0  max= 0  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 0  Step = 1 "
+		::= { iqdarc8CmdEntry 32 }
+
+
+	iqdarc8AspectRatio OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass(0),
+							val_12F12_12P16(1),
+							val_12F12_14P16(2),
+							val_12F12_16F16(3),
+							val_16L12_12F12(4),
+							val_16L12_14L12(5),
+							val_16F16_12F12(6),
+							val_16F16_14L12(7),
+							val_16F16_16L12(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Aspect_Ratio  cmdID= 40 
+					Pass  value= 0  
+					12F12->12P16  value= 1  
+					12F12->14P16  value= 2  
+					12F12->16F16  value= 3  
+					16L12->12F12  value= 4  
+					16L12->14L12  value= 5  
+					16F16->12F12  value= 6  
+					16F16->14L12  value= 7  
+					16F16->16L12  value= 8  "
+		::= { iqdarc8CmdEntry 40 }
+
+
+	iqdarc8Zoom OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_95(0),
+							val_98(1),
+							val_Full(2),
+							val_102(3),
+							val_105(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Zoom  cmdID= 41 
+					95%  value= 0  
+					98%  value= 1  
+					Full  value= 2  
+					102%  value= 3  
+					105%  value= 4  "
+		::= { iqdarc8CmdEntry 41 }
+
+
+	iqdarc8UserMemoryReadMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read_Memory  cmdID= 9 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  "
+		::= { iqdarc8CmdEntry 9 }
+
+
+	iqdarc8UserMemorySaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save_Memory  cmdID= 10 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  "
+		::= { iqdarc8CmdEntry 10 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 13  "
+		::= { iqdarc8CmdEntry 13 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 14  "
+		::= { iqdarc8CmdEntry 14 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 15  "
+		::= { iqdarc8CmdEntry 15 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 16  "
+		::= { iqdarc8CmdEntry 16 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_5  cmdID= 17  "
+		::= { iqdarc8CmdEntry 17 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_6  cmdID= 18  "
+		::= { iqdarc8CmdEntry 18 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_7  cmdID= 19  "
+		::= { iqdarc8CmdEntry 19 }
+
+
+	iqdarc8UserMemoryNameMemoriesMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_8  cmdID= 20  "
+		::= { iqdarc8CmdEntry 20 }
+
+
+	iqdarc8UserMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_All_Names(8),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 11  value= 8  
+					Clear_Memories  cmdID= 11 "
+		::= { iqdarc8CmdEntry 11 }
+
+
+	iqdarc8SetupEnhancer OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_De_enhance(1),
+							val_Low(2),
+							val_Medium(3),
+							val_High(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Enhancer  cmdID= 43 
+					Off  value= 0  
+					De-enhance  value= 1  
+					Low  value= 2  
+					Medium  value= 3  
+					High  value= 4  "
+		::= { iqdarc8CmdEntry 43 }
+
+
+	iqdarc8SetupBorderColour OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Blue(1),
+							val_Red(2),
+							val_Green(3),
+							val_White(4),
+							val_Grey(5),
+							val_User_A(6),
+							val_User_B(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 39  value= 0  
+					Blue  cmdID= 39  value= 1  
+					Red  cmdID= 39  value= 2  
+					Green  cmdID= 39  value= 3  
+					White  cmdID= 39  value= 4  
+					Grey  cmdID= 39  value= 5  
+					User_A  cmdID= 39  value= 6  
+					User_B  cmdID= 39  value= 7  "
+		::= { iqdarc8CmdEntry 39 }
+
+
+	iqdarc8BorderColourSetUsrAUserARed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Red  cmdID= 33  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 33 }
+
+
+	iqdarc8BorderColourSetUsrAUserAGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Green  cmdID= 35  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 35 }
+
+
+	iqdarc8BorderColourSetUsrAUserABlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_A_Blue  cmdID= 37  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 37 }
+
+
+	iqdarc8BorderColourSetUsrBUserBRed OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Red  cmdID= 34  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 34 }
+
+
+	iqdarc8BorderColourSetUsrBUserBGreen OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Green  cmdID= 36  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 36 }
+
+
+	iqdarc8BorderColourSetUsrBUserBBlue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					User_B_Blue  cmdID= 38  min= 0  max= 1024  step= 4  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 1024  Step = 4 "
+		::= { iqdarc8CmdEntry 38 }
+
+
+	iqdarc8SetupVariableBlankingLeftEdge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Left_Edge  cmdID= 49  min= 0  max= 20  step= 1  format= %1.0f  div_scale= 1 
+					Min = 0  Max = 20  Step = 1 "
+		::= { iqdarc8CmdEntry 49 }
+
+
+	iqdarc8SetupVariableBlankingRightEdge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Right_Edge  cmdID= 50  min= -20  max= 0  step= 1  format= %1.0f  div_scale= 1 
+					Min = -20  Max = 0  Step = 1 "
+		::= { iqdarc8CmdEntry 50 }
+
+
+	iqdarc8SetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_1  cmdID= 53  "
+		::= { iqdarc8CmdEntry 53 }
+
+
+	iqdarc8SetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_2  cmdID= 54  "
+		::= { iqdarc8CmdEntry 54 }
+
+
+	iqdarc8SetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_3  cmdID= 55  "
+		::= { iqdarc8CmdEntry 55 }
+
+
+	iqdarc8SetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_4  cmdID= 56  "
+		::= { iqdarc8CmdEntry 56 }
+
+
+	iqdarc8SetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_5  cmdID= 57  "
+		::= { iqdarc8CmdEntry 57 }
+
+
+	iqdarc8SetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_6  cmdID= 58  "
+		::= { iqdarc8CmdEntry 58 }
+
+
+	iqdarc8SetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_7  cmdID= 59  "
+		::= { iqdarc8CmdEntry 59 }
+
+
+	iqdarc8SetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_8  cmdID= 60  "
+		::= { iqdarc8CmdEntry 60 }
+
+
+	iqdarc8SetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 61 "
+		::= { iqdarc8CmdEntry 61 }
+
+
+	iqdarc8SetupGPIInputsGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 23  value= 2  
+					Latch  cmdID= 23  value= 0  
+					Edge  cmdID= 23  value= 1  "
+		::= { iqdarc8CmdEntry 23 }
+
+
+	iqdarc8SetupGPIInputsGPI1GPI1Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_1_Function  cmdID= 26 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarc8CmdEntry 26 }
+
+
+	iqdarc8SetupGPIInputsGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 24  value= 2  
+					Latch  cmdID= 24  value= 0  
+					Edge  cmdID= 24  value= 1  "
+		::= { iqdarc8CmdEntry 24 }
+
+
+	iqdarc8SetupGPIInputsGPI2GPI2Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_2_Function  cmdID= 27 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarc8CmdEntry 27 }
+
+
+	iqdarc8SetupGPIInputsGPI3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 25  value= 2  
+					Latch  cmdID= 25  value= 0  
+					Edge  cmdID= 25  value= 1  "
+		::= { iqdarc8CmdEntry 25 }
+
+
+	iqdarc8SetupGPIInputsGPI3GPI3Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Freeze(1),
+							val_Memory_1(2),
+							val_Memory_2(3),
+							val_Memory_3(4),
+							val_Memory_4(5),
+							val_Memory_5(6),
+							val_Memory_6(7),
+							val_Memory_7(8),
+							val_Memory_8(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_3_Function  cmdID= 28 
+					ByPass  value= 0  
+					Freeze  value= 1  
+					Memory_1  value= 2  
+					Memory_2  value= 3  
+					Memory_3  value= 4  
+					Memory_4  value= 5  
+					Memory_5  value= 6  
+					Memory_6  value= 7  
+					Memory_7  value= 8  
+					Memory_8  value= 9  "
+		::= { iqdarc8CmdEntry 28 }
+
+
+	iqdarc8SetupTransitionSpeed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fast(0),
+							val_Slow(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Transition_Speed  cmdID= 44 
+					Fast  value= 0  
+					Slow  value= 1  "
+		::= { iqdarc8CmdEntry 44 }
+
+
+	iqdarc8SetupVerticalDataPreserveL21_283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_L21/283  cmdID= 46 "
+		::= { iqdarc8CmdEntry 46 }
+
+
+	iqdarc8SetupVerticalDataPreserveL23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_L23  cmdID= 47 "
+		::= { iqdarc8CmdEntry 47 }
+
+
+	iqdarc8SetupVerticalDataPreserveVidIndex OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_Vid_Index  cmdID= 52 "
+		::= { iqdarc8CmdEntry 52 }
+
+
+	iqdarc8SetupMinimumDelay OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Minimum_Delay  cmdID= 51 "
+		::= { iqdarc8CmdEntry 51 }
+
+
+	iqdarc8SetupOutputStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_625(1),
+							val_525(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_Standard  cmdID= 12 
+					Auto  value= 0  
+					625  value= 1  
+					525  value= 2  "
+		::= { iqdarc8CmdEntry 12 }
+
+
+	iqdarc8SetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Black_Border(1),
+							val_Border(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default_Output  cmdID= 6 
+					Black  value= 0  
+					Black_&_Border  value= 1  
+					Border  value= 2  "
+		::= { iqdarc8CmdEntry 6 }
+
+
+	iqdarc8SetupRatioTerminology OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_WRT9_Terminology(0),
+							val_PB_LB_Terminology(1),
+							val_Ratio_Terminology(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ratio_Terminology  cmdID= 42 
+					WRT9_Terminology  value= 0  
+					PB/LB_Terminology  value= 1  
+					Ratio_Terminology  value= 2  "
+		::= { iqdarc8CmdEntry 42 }
+
+
+	iqdarc8SetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 7 "
+		::= { iqdarc8CmdEntry 7 }
+
+
+	iqdarc8SetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 8  value= 1  "
+		::= { iqdarc8CmdEntry 8 }
+
+
+	iqdarc8SetupLoggingInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Change  cmdID= 21 "
+		::= { iqdarc8CmdEntry 21 }
+
+
+	iqdarc8SetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 22 "
+		::= { iqdarc8CmdEntry 22 }
+
+
+	iqdarc8SetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdarc8CmdEntry 3 }
+
+
+	iqdarc8SetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdarc8CmdEntry 2 }
+
+
+	iqdarc8SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdarc8CmdEntry 1 }
+
+
+	iqdarc8SetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdarc8CmdEntry 4 }
+
+
+	iqdarc8Freeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 5 "
+		::= { iqdarc8CmdEntry 5 }
+
+
+	iqdarc8Bypass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bypass  cmdID= 45 "
+		::= { iqdarc8CmdEntry 45 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: RESET
+--				: OK
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

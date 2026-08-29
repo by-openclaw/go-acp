@@ -1,0 +1,157 @@
+---
+# dhs_amwa_node — our Node under test, scored by the AMWA NMOS Testing
+# Tool that dhs_amwa keeps running.
+#
+# The node joins the SAME bridge as the tool. That is not incidental:
+# the IS-04 discovery rounds are mDNS, multicast flows between
+# containers on one bridge, and a node reached across a routed boundary
+# is only discoverable in the spec's unicast mode. Testing over the LAN
+# would silently skip the discovery half of IS-04-01 and report a
+# better score for a worse implementation.
+
+# Where the source is staged and the image built.
+dhs_amwa_node_dir: /opt/dhs-amwa-node
+dhs_amwa_node_image: dhs-node:conformance
+dhs_amwa_node_name: dhs-node
+# Port the node serves on inside the bridge. Not published: only the
+# testing tool needs to reach it, and it does so by container name.
+dhs_amwa_node_port: 18080
+
+# Which IS-04 minor the node serves for this round.
+#
+# Every minor AMWA has published is in scope (internal/amwa/CLAUDE.md,
+# strict-spec rule) so conformance is measured once per minor, not once
+# for the newest. The 2026-05-02 baseline is exactly why: v1.3 scored
+# 55/74 while v1.1 scored 33/73, and a v1.3-only run would have called
+# that healthy.
+dhs_amwa_node_api_vers: ["v1.0", "v1.1", "v1.2", "v1.3"]
+
+# The IS-05 minor served alongside each IS-04 round. Highest published,
+# because the Connection API version is chosen independently of IS-04's
+# — a v1.0 Node API and a v1.2 Connection API on one device is legal
+# and common.
+dhs_amwa_node_is05_ver: "v1.2"
+
+# Suites, and the ENDPOINT LIST each one needs.
+#
+# This is the part that cannot be guessed. Every suite declares its own
+# endpoint list in the tool's TEST_DEFINITIONS, and the request must
+# supply host/port/version arrays of exactly that length, in that
+# order. My first run passed the IS-04 minor to every suite and got
+# tracebacks from IS-05 and IS-07 — the version array has to carry
+# EACH spec's own minor, not the node's IS-04 one.
+#
+#   endpoints: which API each array slot addresses.
+#     node        -> IS-04 Node API, version = the round's api_ver
+#     connection  -> IS-05, version = dhs_amwa_node_is05_ver
+#     events      -> IS-07 v1.0
+#     chanmap     -> IS-08 v1.0
+#     system      -> IS-09 v1.0
+#
+# Suites needing the testing-facade (IS-04-04, IS-05-03, the Controller
+# rounds) are NOT here: they drive a controller, not a node, and need a
+# driver that answers the tool's prompts.
+dhs_amwa_node_suites:
+  - id: "IS-04-01"
+    name: "IS-04 Node API"
+    endpoints: ["node"]
+  # Peer-to-peer is a MODE, not an endpoint. A Node that registers must
+  # stop advertising _nmos-node._tcp (IS-04 §4.2.1), so this suite only
+  # has a subject if the Node is kept out of the Registry.
+  - id: "IS-04-03"
+    name: "IS-04 Node API (Peer to Peer)"
+    endpoints: ["node"]
+    node_args: ["--no-registry"]
+  - id: "IS-05-01"
+    name: "IS-05 Connection Management API"
+    endpoints: ["connection"]
+  # IS-05 is advertised through the Device `controls` array (IS-04
+  # v1.1) and the suite's own test_01 requires v1.2 or greater.
+  - id: "IS-05-02"
+    name: "IS-05 Interaction with IS-04"
+    endpoints: ["node", "connection"]
+    min_node_ver: "v1.2"
+  - id: "IS-07-01"
+    name: "IS-07 Event & Tally API"
+    endpoints: ["events"]
+  # IS-07's IS-04 floor is v1.3, and AMWA's own artifacts force it:
+  # sender.json at v1.0-v1.2 rejects `urn:x-nmos:transport:websocket`
+  # (oneOf: the four RTP/DASH URNs, or NOT ^urn:x-nmos:), and Source
+  # `event_type` exists only from v1.3 -- yet the suite's test_02
+  # cross-references both against the Node API. A v1.2 pairing can
+  # therefore only "pass" by serving a Node API that v1.2's own
+  # schemas reject, which IS-04-01 at v1.2 would then fail. The
+  # projection (node_project.go) is the spec-correct side of this:
+  # below v1.3 the WS event senders and their sources are not part
+  # of the device.
+  - id: "IS-07-02"
+    name: "IS-07 Interaction with IS-04 and IS-05"
+    endpoints: ["node", "connection", "events"]
+    min_node_ver: "v1.3"
+  - id: "IS-08-01"
+    name: "IS-08 Channel Mapping API"
+    endpoints: ["chanmap"]
+  # IS-08 is advertised through the Device `controls` array, added in
+  # IS-04 v1.1.
+  - id: "IS-08-02"
+    name: "IS-08 Interaction with IS-04"
+    endpoints: ["node", "chanmap"]
+    min_node_ver: "v1.1"
+  # Two slots even though the tool disables most of their fields: the
+  # arrays are positional, and a short one is refused outright with
+  # "expects 2 Hostname(s)/IP address(es), Port(s) and Version(s)".
+  # The System slot is the TOOL's own: IS-09-02 stands up a System API
+  # and checks the Node discovers it. Pointing that slot at our Node
+  # asks it for an API it does not serve and the suite dies on a 404
+  # before scoring anything.
+  - id: "IS-09-02"
+    name: "IS-09 System API Discovery"
+    endpoints: ["node", "-"]
+
+# Per-endpoint version map, resolved at request time.
+#
+# "-" is the TOOL-SUPPLIED slot: the suite disables that endpoint's
+# host and port because the tool stands the API up itself. The slot
+# still occupies a position in every array.
+
+dhs_amwa_node_endpoint_vers:
+  node: "{{ api_ver | default('v1.3') }}"
+  connection: "{{ dhs_amwa_node_is05_ver }}"
+  events: "v1.0"
+  chanmap: "v1.0"
+  system: "v1.0"
+  "-": "v1.0"
+
+# Per-endpoint host + port. Every real slot is this same node — a Node
+# serves all its APIs on one listener — and "-" is null, because the
+# TOOL serves that API and pre-validating it against anything we could
+# name fails. See the assembly task in tasks/suite_run.yml.
+dhs_amwa_node_endpoint_hosts:
+  node: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  connection: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  events: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  chanmap: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  system: "{{ dhs_amwa_node_ip.stdout | default('') | trim }}"
+  "-": null
+
+dhs_amwa_node_endpoint_ports:
+  node: "{{ dhs_amwa_node_port }}"
+  connection: "{{ dhs_amwa_node_port }}"
+  events: "{{ dhs_amwa_node_port }}"
+  chanmap: "{{ dhs_amwa_node_port }}"
+  system: "{{ dhs_amwa_node_port }}"
+  "-": null
+
+# Where results land on the tooling host before being fetched back into
+# the repo. A conformance number only means something next to the code
+# that produced it.
+dhs_amwa_node_results: "{{ dhs_amwa_node_dir }}/results"
+dhs_amwa_node_fetch_to: "{{ playbook_dir }}/../../tests/integration/nmos/amwa/results"
+
+# Seconds to let the node register and settle before scoring it. The
+# tool's own cascade rounds are timing-sensitive; starting a suite
+# against a node still coming up scores the startup, not the node.
+dhs_amwa_node_settle: 8
+# A full suite can run for minutes; the tool answers POST /api only when
+# it has finished.
+dhs_amwa_node_suite_timeout: 900

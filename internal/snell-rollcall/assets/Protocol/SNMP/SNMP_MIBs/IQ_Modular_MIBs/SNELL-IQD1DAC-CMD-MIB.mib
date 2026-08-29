@@ -1,0 +1,360 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQD1DAC
+--        Module Id#:59
+--       Command Set:7
+--          Filename:SNELL-IQD1DAC-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:16:14
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQD1DAC-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQD1DAC,
+    moduleIQD1DACMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQD1DACCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291614Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQD1DACMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqd1dacCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqd1dacCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQD1DAC 1 }
+
+	iqd1dacCmdEntry OBJECT-TYPE
+		SYNTAX		Iqd1dacCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqd1dacSlotIndex }
+		::= { iqd1dacCmdTable 1 }
+
+	Iqd1dacCmdEntry ::=
+		SEQUENCE {
+			iqd1dacSlotIndex
+				Unsigned32,
+			iqd1dacControlPicPos
+				INTEGER,
+			iqd1dacControlVITSPass
+				INTEGER,
+			iqd1dacControlDigitalByPass
+				INTEGER,
+			iqd1dacBlanking
+				INTEGER,
+			iqd1dacBlankingFrontPorch
+				INTEGER,
+			iqd1dacBlankingBackPorch
+				INTEGER,
+			iqd1dacSetupPresetUnit
+				INTEGER,
+			iqd1dacSetupLoggingInpStdChange
+				INTEGER,
+			iqd1dacSetupLoggingEDHErrors
+				INTEGER,
+			iqd1dacSetupEDHShowStats
+				INTEGER,
+			iqd1dacSetupEDHResetStats
+				INTEGER,
+			iqd1dacSetupSoftwareVersion
+				RollCallString,
+			iqd1dacSetupSerialNo
+				RollCallString
+		}
+
+	iqd1dacSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqd1dacCmdEntry 0 }
+
+
+	iqd1dacControlPicPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Pic_Pos  cmdID= 4  min= -1628  max= 3700  step= 74  format= %5.0fns  div_scale= 1 
+					Min = -1628ns  Max =  3700ns  Step =    74ns "
+		::= { iqd1dacCmdEntry 4 }
+
+
+	iqd1dacControlVITSPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VITS_Pass  cmdID= 14 "
+		::= { iqd1dacCmdEntry 14 }
+
+
+	iqd1dacControlDigitalByPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Digital_ByPass  cmdID= 15 "
+		::= { iqd1dacCmdEntry 15 }
+
+
+	iqd1dacBlanking OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Digital(1),
+							val_Digital_Filtered(2),
+							val_Analogue(3),
+							val_Analogue_Minimum(4),
+							val_Variable(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Digital  cmdID= 6  value= 1  
+					Digital-Filtered  cmdID= 6  value= 2  
+					Analogue  cmdID= 6  value= 3  
+					Analogue-Minimum  cmdID= 6  value= 4  
+					Variable  cmdID= 6  value= 0  "
+		::= { iqd1dacCmdEntry 6 }
+
+
+	iqd1dacBlankingFrontPorch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					FrontPorch  cmdID= 7  min= -518  max= 518  step= 74  format= %4.0fns  div_scale= 1 
+					Min = -518ns  Max =  518ns  Step =   74ns "
+		::= { iqd1dacCmdEntry 7 }
+
+
+	iqd1dacBlankingBackPorch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					BackPorch  cmdID= 8  min= -1110  max= 1110  step= 74  format= %4.0fns  div_scale= 1 
+					Min = -1110ns  Max = 1110ns  Step =   74ns "
+		::= { iqd1dacCmdEntry 8 }
+
+
+	iqd1dacSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqd1dacCmdEntry 3 }
+
+
+	iqd1dacSetupLoggingInpStdChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Inp/Std_Change  cmdID= 16 "
+		::= { iqd1dacCmdEntry 16 }
+
+
+	iqd1dacSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 17 "
+		::= { iqd1dacCmdEntry 17 }
+
+
+	iqd1dacSetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 11 "
+		::= { iqd1dacCmdEntry 11 }
+
+
+	iqd1dacSetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 12  value= 1  "
+		::= { iqd1dacCmdEntry 12 }
+
+
+	iqd1dacSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqd1dacCmdEntry 2 }
+
+
+	iqd1dacSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqd1dacCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		:            
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

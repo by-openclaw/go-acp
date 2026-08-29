@@ -51,6 +51,21 @@ type ServeOptions struct {
 	// 0–99 are production; 100+ are dev. Lower = higher priority.
 	Priority int
 
+	// PageLimitDefault overrides the Query API page size applied when
+	// a client sends no paging.limit. 0 keeps the implementation
+	// default (100, nmos-cpp parity). First-page-only controllers
+	// exist in the field; on plants larger than one page they silently
+	// lose every resource beyond it, and this is the operator's
+	// spec-legal lever.
+	PageLimitDefault int
+
+	// InstanceName overrides the DNS-SD instance label the registry
+	// announces under (default "dhs-nmos-registry"). Peers key stored
+	// server entries on this name, so republishing under a fresh name
+	// is the operator's lever when a peer has cached a stale or
+	// poisoned resolution for the old one.
+	InstanceName string
+
 	// DiscoveryMode picks the discovery transport: "mdns" (RFC 6762
 	// multicast), "unicast" (RFC 6763 §10 SRV/TXT lookup against a
 	// configured resolver), or "static" (no discovery — peers come

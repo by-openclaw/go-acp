@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: dhs_amwa_node
+  author: by-rune
+  description: >-
+    Score the dhs Node against the AMWA NMOS Testing Tool. Builds the
+    node from repository source in a multi-stage image (no Go toolchain
+    on any host, so a score always names the source that earned it),
+    runs it on the same bridge as the tool — the only shape where the
+    IS-04 mDNS discovery rounds can pass — and drives every suite once
+    per published IS-04 minor. Deliberately not idempotent: it is a
+    measurement.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+dependencies:
+  # The oracle supplies the tool this role scores against, and the
+  # bridge the node under test joins.
+  - role: dhs_amwa

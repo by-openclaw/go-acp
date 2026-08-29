@@ -1,0 +1,2038 @@
+-- ************************************************************************************
+--        Snell Card:IQASI25
+--        Module Id#:771
+--       Command Set:5
+--          Filename:SNELL-IQASI25-CMD-MIB.mib
+--            Author:J Macpherson
+--              Date:23/01/2015
+--              Time:15:17
+--
+-- Copyright (c) 2010 Snell Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQASI25-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQASI25,
+    moduleIQASI25MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQASI25CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1501231517Z"
+    ORGANIZATION "Snell Ltd"
+    CONTACT-INFO
+        "Primary Author:J Macpherson
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellgroup.com"
+    DESCRIPTION
+        "This file defines the Snell card, command set  translations."
+    ::= { moduleIQASI25MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqasi25CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqasi25CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQASI25 1 }
+
+	iqasi25CmdEntry OBJECT-TYPE
+		SYNTAX		Iqasi25CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqasi25SlotIndex }
+		::= { iqasi25CmdTable 1 }
+
+	Iqasi25CmdEntry ::=
+		SEQUENCE {
+			iqasi25SlotIndex
+				Unsigned32,
+			iqasi25InputIPSelect
+				INTEGER,
+			iqasi25InputInput1
+				RollCallString,
+			iqasi25InputInput2
+				RollCallString,
+			iqasi25InputMemoriesRecallMemory
+				INTEGER,
+			iqasi25InputMemoriesSelMemory
+				INTEGER,
+			iqasi25InputMemoriesSaveMemory
+				INTEGER,
+			iqasi25InputMemoriesClearMemory
+				INTEGER,
+			iqasi25MemoriesMemoryNameChangeName
+				RollCallString,
+			iqasi25InputMemoriesLastUserMemory
+				RollCallString,
+			iqasi25InputMemoriesMemoryName1
+				RollCallString,
+			iqasi25InputMemoriesMemoryName2
+				RollCallString,
+			iqasi25InputMemoriesMemoryName3
+				RollCallString,
+			iqasi25InputMemoriesMemoryName4
+				RollCallString,
+			iqasi25InputMemoriesMemoryName5
+				RollCallString,
+			iqasi25InputMemoriesMemoryName6
+				RollCallString,
+			iqasi25InputMemoriesMemoryName7
+				RollCallString,
+			iqasi25InputMemoriesMemoryName8
+				RollCallString,
+			iqasi25InputMemoriesMemoryName9
+				RollCallString,
+			iqasi25InputMemoriesMemoryName10
+				RollCallString,
+			iqasi25InputMemoriesMemoryName11
+				RollCallString,
+			iqasi25InputMemoriesMemoryName12
+				RollCallString,
+			iqasi25InputMemoriesMemoryName13
+				RollCallString,
+			iqasi25InputMemoriesMemoryName14
+				RollCallString,
+			iqasi25InputMemoriesMemoryName15
+				RollCallString,
+			iqasi25InputMemoriesMemoryName16
+				RollCallString,
+			iqasi25MiscLoggingMiscLogSerialNo
+				INTEGER,
+			iqasi25MiscLoggingMiscSerialNo
+				RollCallString,
+			iqasi25MiscLoggingMiscLogOSVersion
+				INTEGER,
+			iqasi25MiscLoggingMiscOSVersion
+				RollCallString,
+			iqasi25MiscLoggingMiscLogBuildNo
+				INTEGER,
+			iqasi25MiscLoggingMiscBuildNo
+				RollCallString,
+			iqasi25MiscLoggingMiscLogHardwareVer
+				INTEGER,
+			iqasi25MiscLoggingMiscHardwareVer
+				RollCallString,
+			iqasi25MiscLoggingMiscLogUpTime
+				INTEGER,
+			iqasi25MiscLoggingMiscUpTime
+				RollCallString,
+			iqasi25MiscLoggingMiscLogPowerUsage
+				INTEGER,
+			iqasi25MiscLoggingMiscPowerUsage
+				RollCallString,
+			iqasi25MiscLoggingMiscLogRollTracks
+				INTEGER,
+			iqasi25MiscLoggingMiscRollTracksDisp
+				RollCallString,
+			iqasi25MiscLoggingMiscLogRearID
+				INTEGER,
+			iqasi25MiscLoggingMiscRearIDDisp
+				RollCallString,
+			iqasi25MiscLoggingMiscLogRearStatus
+				INTEGER,
+			iqasi25MiscLoggingMiscRearSTATUSDisp
+				RollCallString,
+			iqasi25MiscLoggingMiscLogSlotWidth
+				INTEGER,
+			iqasi25MiscLoggingMiscSlotWidthDisp
+				RollCallString,
+			iqasi25MiscLoggingMiscLogSlotStart
+				INTEGER,
+			iqasi25MiscLoggingMiscSlotStartDisp
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms1ASIFail
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms1ASIFailDisp
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms1TSSyncError
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms1TSSyncErrorDisp
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms1PATUpperDistance35017
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms1PATUpperDistance36017
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms2ASIFail
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms2ASIFailDisp
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms2TSSyncError
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms2TSSyncErrorDisp
+				RollCallString,
+			iqasi25LoggingInputAlarmInputAlarms2PATUpperDistance35047
+				INTEGER,
+			iqasi25LoggingInputAlarmInputAlarms2PATUpperDistance36047
+				RollCallString,
+			iqasi25LoggingInputInput1Input1Ident
+				INTEGER,
+			iqasi25LoggingInputInput1Input1IdentDisp
+				RollCallString,
+			iqasi25LoggingInputInput1Input1Name
+				INTEGER,
+			iqasi25LoggingInputInput1Input1NameDisp
+				RollCallString,
+			iqasi25LoggingInputInput1Input1State
+				INTEGER,
+			iqasi25LoggingInputInput1Input1StateDisp
+				RollCallString,
+			iqasi25LoggingInputInput1Input1Type
+				INTEGER,
+			iqasi25LoggingInputInput1Input1TypeDisp
+				RollCallString,
+			iqasi25LoggingInputInput2Input2Ident
+				INTEGER,
+			iqasi25LoggingInputInput2Input2IdentDisp
+				RollCallString,
+			iqasi25LoggingInputInput2Input2Name
+				INTEGER,
+			iqasi25LoggingInputInput2Input2NameDisp
+				RollCallString,
+			iqasi25LoggingInputInput2Input2State
+				INTEGER,
+			iqasi25LoggingInputInput2Input2StateDisp
+				RollCallString,
+			iqasi25LoggingInputInput2Input2Type
+				INTEGER,
+			iqasi25LoggingInputInput2Input2TypeDisp
+				RollCallString,
+			iqasi25LoggingOutputStatOutputAStatusInputSelected
+				INTEGER,
+			iqasi25LoggingOutputStatOutputAStatusInputSelectedDisp
+				RollCallString,
+			iqasi25LoggingOutputStatOutputAStatusSwitchMode
+				INTEGER,
+			iqasi25LoggingOutputStatOutputAStatusSwitchModeDisp
+				RollCallString,
+			iqasi25StatusInput1Asi
+				RollCallString,
+			iqasi25StatusInput1Sync
+				RollCallString,
+			iqasi25StatusInput1Pat
+				RollCallString,
+			iqasi25StatusInput2Asi
+				RollCallString,
+			iqasi25StatusInput2Sync
+				RollCallString,
+			iqasi25StatusInput2Pat
+				RollCallString,
+			iqasi25StatusPatAlarmEnable
+				INTEGER,
+			iqasi25GpioConfigureGPIO1
+				INTEGER,
+			iqasi25GpioInput1Invert
+				INTEGER,
+			iqasi25GpioOutput1Invert
+				INTEGER,
+			iqasi25GpioGPI1Status
+				RollCallString,
+			iqasi25GpioConfigureGPIO2
+				INTEGER,
+			iqasi25GpioInput2Invert
+				INTEGER,
+			iqasi25GpioOutput2Invert
+				INTEGER,
+			iqasi25GpioGPI2Status
+				RollCallString,
+			iqasi25GpioConfigureGPO1
+				INTEGER,
+			iqasi25GpioConfigureGPO2
+				INTEGER,
+			iqasi25RollTrackDisableAll
+				INTEGER,
+			iqasi25RollTrackIndex
+				INTEGER,
+			iqasi25RollTrackSource
+				INTEGER,
+			iqasi25RollTrackAddress
+				RollCallString,
+			iqasi25RollTrackCommand
+				RollCallString,
+			iqasi25RollTrackStatus
+				RollCallString,
+			iqasi25RollTrackSending
+				RollCallString,
+			iqasi25SetupProduct
+				RollCallString,
+			iqasi25SetupRelease
+				RollCallString,
+			iqasi25SetupBuild
+				RollCallString,
+			iqasi25SetupKOS
+				RollCallString,
+			iqasi25SetupSerialNo
+				RollCallString,
+			iqasi25SetupPCB
+				RollCallString,
+			iqasi25SetupRearID
+				RollCallString,
+			iqasi25SetupInput1Name
+				RollCallString,
+			iqasi25SetupInput2Name
+				RollCallString,
+			iqasi25SetupFactoryDefault
+				INTEGER,
+			iqasi25SetupDefaultsSettings
+				INTEGER,
+			iqasi25SetupRestart
+				INTEGER,
+			iqasi25SetupSerialNumber
+				RollCallString,
+			iqasi25SetupBoardID
+				INTEGER,
+			iqasi25SetupSaveID
+				INTEGER,
+			iqasi25SetSN
+				INTEGER,
+			iqasi25SerialNumber
+				RollCallString,
+			iqasi25SerialToBeUsed
+				RollCallString
+		}
+
+	iqasi25SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqasi25CmdEntry 99999 }
+
+
+	iqasi25InputIPSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Auto-Select(1),
+							val-Input-1(2),
+							val-Input-2(3),
+							val-GPI-Input-1(4),
+							val-GPI-Input-2(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					I/P Select  cmdID= 34000 
+					Auto Select  value= 1  
+					Input 1  value= 2  
+					Input 2  value= 3  
+					GPI Input 1  value= 4  
+					GPI Input 2  value= 5  "
+		::= { iqasi25CmdEntry 34000 }
+
+
+	iqasi25InputInput1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 1  cmdID= 40020  format=   "
+		::= { iqasi25CmdEntry 40020 }
+
+
+	iqasi25InputInput2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 2  cmdID= 40021  format=   "
+		::= { iqasi25CmdEntry 40021 }
+
+
+	iqasi25InputMemoriesRecallMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-None-Selected(0),
+							val-User-Memory-1(1),
+							val-User-Memory-2(2),
+							val-User-Memory-3(3),
+							val-User-Memory-4(4),
+							val-User-Memory-5(5),
+							val-User-Memory-6(6),
+							val-User-Memory-7(7),
+							val-User-Memory-8(8),
+							val-User-Memory-9(9),
+							val-User-Memory-10(10),
+							val-User-Memory-11(11),
+							val-User-Memory-12(12),
+							val-User-Memory-13(13),
+							val-User-Memory-14(14),
+							val-User-Memory-15(15),
+							val-User-Memory-16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Recall Memory  cmdID= 37100 
+					None Selected  value= 0  
+					User Memory 1  value= 1  
+					User Memory 2  value= 2  
+					User Memory 3  value= 3  
+					User Memory 4  value= 4  
+					User Memory 5  value= 5  
+					User Memory 6  value= 6  
+					User Memory 7  value= 7  
+					User Memory 8  value= 8  
+					User Memory 9  value= 9  
+					User Memory 10  value= 10  
+					User Memory 11  value= 11  
+					User Memory 12  value= 12  
+					User Memory 13  value= 13  
+					User Memory 14  value= 14  
+					User Memory 15  value= 15  
+					User Memory 16  value= 16  "
+		::= { iqasi25CmdEntry 37100 }
+
+
+	iqasi25InputMemoriesSelMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-User-Memory-1(1),
+							val-User-Memory-2(2),
+							val-User-Memory-3(3),
+							val-User-Memory-4(4),
+							val-User-Memory-5(5),
+							val-User-Memory-6(6),
+							val-User-Memory-7(7),
+							val-User-Memory-8(8),
+							val-User-Memory-9(9),
+							val-User-Memory-10(10),
+							val-User-Memory-11(11),
+							val-User-Memory-12(12),
+							val-User-Memory-13(13),
+							val-User-Memory-14(14),
+							val-User-Memory-15(15),
+							val-User-Memory-16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Sel Memory  cmdID= 37101 
+					User Memory 1  value= 1  
+					User Memory 2  value= 2  
+					User Memory 3  value= 3  
+					User Memory 4  value= 4  
+					User Memory 5  value= 5  
+					User Memory 6  value= 6  
+					User Memory 7  value= 7  
+					User Memory 8  value= 8  
+					User Memory 9  value= 9  
+					User Memory 10  value= 10  
+					User Memory 11  value= 11  
+					User Memory 12  value= 12  
+					User Memory 13  value= 13  
+					User Memory 14  value= 14  
+					User Memory 15  value= 15  
+					User Memory 16  value= 16  "
+		::= { iqasi25CmdEntry 37101 }
+
+
+	iqasi25InputMemoriesSaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Save-Memory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Save Memory  cmdID= 37102  value= 1  "
+		::= { iqasi25CmdEntry 37102 }
+
+
+	iqasi25InputMemoriesClearMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Clear-Memory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Clear Memory  cmdID= 37105  value= 1  "
+		::= { iqasi25CmdEntry 37105 }
+
+
+	iqasi25MemoriesMemoryNameChangeName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Change Name  cmdID= 37103  "
+		::= { iqasi25CmdEntry 37103 }
+
+
+	iqasi25InputMemoriesLastUserMemory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Last User Memory  cmdID= 37104  format=   "
+		::= { iqasi25CmdEntry 37104 }
+
+
+	iqasi25InputMemoriesMemoryName1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name1  cmdID= 37106  format=   "
+		::= { iqasi25CmdEntry 37106 }
+
+
+	iqasi25InputMemoriesMemoryName2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name2  cmdID= 37107  format=   "
+		::= { iqasi25CmdEntry 37107 }
+
+
+	iqasi25InputMemoriesMemoryName3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name3  cmdID= 37108  format=   "
+		::= { iqasi25CmdEntry 37108 }
+
+
+	iqasi25InputMemoriesMemoryName4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name4  cmdID= 37109  format=   "
+		::= { iqasi25CmdEntry 37109 }
+
+
+	iqasi25InputMemoriesMemoryName5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name5  cmdID= 37110  format=   "
+		::= { iqasi25CmdEntry 37110 }
+
+
+	iqasi25InputMemoriesMemoryName6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name6  cmdID= 37111  format=   "
+		::= { iqasi25CmdEntry 37111 }
+
+
+	iqasi25InputMemoriesMemoryName7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name7  cmdID= 37112  format=   "
+		::= { iqasi25CmdEntry 37112 }
+
+
+	iqasi25InputMemoriesMemoryName8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name8  cmdID= 37113  format=   "
+		::= { iqasi25CmdEntry 37113 }
+
+
+	iqasi25InputMemoriesMemoryName9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name9  cmdID= 37114  format=   "
+		::= { iqasi25CmdEntry 37114 }
+
+
+	iqasi25InputMemoriesMemoryName10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name10  cmdID= 37115  format=   "
+		::= { iqasi25CmdEntry 37115 }
+
+
+	iqasi25InputMemoriesMemoryName11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name11  cmdID= 37116  format=   "
+		::= { iqasi25CmdEntry 37116 }
+
+
+	iqasi25InputMemoriesMemoryName12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name12  cmdID= 37117  format=   "
+		::= { iqasi25CmdEntry 37117 }
+
+
+	iqasi25InputMemoriesMemoryName13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name13  cmdID= 37118  format=   "
+		::= { iqasi25CmdEntry 37118 }
+
+
+	iqasi25InputMemoriesMemoryName14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name14  cmdID= 37119  format=   "
+		::= { iqasi25CmdEntry 37119 }
+
+
+	iqasi25InputMemoriesMemoryName15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name15  cmdID= 37120  format=   "
+		::= { iqasi25CmdEntry 37120 }
+
+
+	iqasi25InputMemoriesMemoryName16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Memory Name16  cmdID= 37121  format=   "
+		::= { iqasi25CmdEntry 37121 }
+
+
+	iqasi25MiscLoggingMiscLogSerialNo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Serial No.  cmdID= 35015 "
+		::= { iqasi25CmdEntry 35015 }
+
+
+	iqasi25MiscLoggingMiscSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No.=  cmdID= 36015  format=   "
+		::= { iqasi25CmdEntry 36015 }
+
+
+	iqasi25MiscLoggingMiscLogOSVersion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log OS Version  cmdID= 35993 "
+		::= { iqasi25CmdEntry 35993 }
+
+
+	iqasi25MiscLoggingMiscOSVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					OS Version=  cmdID= 36993  format=   "
+		::= { iqasi25CmdEntry 36993 }
+
+
+	iqasi25MiscLoggingMiscLogBuildNo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Build No.  cmdID= 35990 "
+		::= { iqasi25CmdEntry 35990 }
+
+
+	iqasi25MiscLoggingMiscBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No.=  cmdID= 36990  format=   "
+		::= { iqasi25CmdEntry 36990 }
+
+
+	iqasi25MiscLoggingMiscLogHardwareVer OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Hardware Ver.  cmdID= 35992 "
+		::= { iqasi25CmdEntry 35992 }
+
+
+	iqasi25MiscLoggingMiscHardwareVer OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Hardware Ver.=  cmdID= 36992  format=   "
+		::= { iqasi25CmdEntry 36992 }
+
+
+	iqasi25MiscLoggingMiscLogUpTime OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Up Time  cmdID= 35994 "
+		::= { iqasi25CmdEntry 35994 }
+
+
+	iqasi25MiscLoggingMiscUpTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Up Time=  cmdID= 36994  format=   "
+		::= { iqasi25CmdEntry 36994 }
+
+
+	iqasi25MiscLoggingMiscLogPowerUsage OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Power Usage  cmdID= 36000 "
+		::= { iqasi25CmdEntry 36000 }
+
+
+	iqasi25MiscLoggingMiscPowerUsage OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Power Usage=  cmdID= 36001  format=   "
+		::= { iqasi25CmdEntry 36001 }
+
+
+	iqasi25MiscLoggingMiscLogRollTracks OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log RollTracks  cmdID= 35000 "
+		::= { iqasi25CmdEntry 35000 }
+
+
+	iqasi25MiscLoggingMiscRollTracksDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RollTracks Disp  cmdID= 35001  format=   "
+		::= { iqasi25CmdEntry 35001 }
+
+
+	iqasi25MiscLoggingMiscLogRearID OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Rear ID  cmdID= 35997 "
+		::= { iqasi25CmdEntry 35997 }
+
+
+	iqasi25MiscLoggingMiscRearIDDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Rear ID  Disp  cmdID= 36997  format=   "
+		::= { iqasi25CmdEntry 36997 }
+
+
+	iqasi25MiscLoggingMiscLogRearStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log RearStatus  cmdID= 35996 "
+		::= { iqasi25CmdEntry 35996 }
+
+
+	iqasi25MiscLoggingMiscRearSTATUSDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RearSTATUS Disp  cmdID= 36996  format=   "
+		::= { iqasi25CmdEntry 36996 }
+
+
+	iqasi25MiscLoggingMiscLogSlotWidth OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Slot Width  cmdID= 35998 "
+		::= { iqasi25CmdEntry 35998 }
+
+
+	iqasi25MiscLoggingMiscSlotWidthDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SlotWidth Disp  cmdID= 36998  format=   "
+		::= { iqasi25CmdEntry 36998 }
+
+
+	iqasi25MiscLoggingMiscLogSlotStart OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Slot Start  cmdID= 35999 "
+		::= { iqasi25CmdEntry 35999 }
+
+
+	iqasi25MiscLoggingMiscSlotStartDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SlotStart Disp  cmdID= 36999  format=   "
+		::= { iqasi25CmdEntry 36999 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1ASIFail OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ASI Fail  cmdID= 35060 "
+		::= { iqasi25CmdEntry 35060 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1ASIFailDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					ASI Fail Disp=  cmdID= 36060  format=   "
+		::= { iqasi25CmdEntry 36060 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1TSSyncError OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					TS Sync Error  cmdID= 35080 "
+		::= { iqasi25CmdEntry 35080 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1TSSyncErrorDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					TS Sync Error Disp=  cmdID= 36080  format=   "
+		::= { iqasi25CmdEntry 36080 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1PATUpperDistance35017 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PAT Upper Distance   cmdID= 35017 "
+		::= { iqasi25CmdEntry 35017 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms1PATUpperDistance36017 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					PAT Upper Distance   cmdID= 36017  format=   "
+		::= { iqasi25CmdEntry 36017 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2ASIFail OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					ASI Fail  cmdID= 35061 "
+		::= { iqasi25CmdEntry 35061 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2ASIFailDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					ASI Fail Disp=  cmdID= 36061  format=   "
+		::= { iqasi25CmdEntry 36061 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2TSSyncError OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					TS Sync Error  cmdID= 35081 "
+		::= { iqasi25CmdEntry 35081 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2TSSyncErrorDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					TS Sync Error Disp=  cmdID= 36081  format=   "
+		::= { iqasi25CmdEntry 36081 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2PATUpperDistance35047 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PAT Upper Distance   cmdID= 35047 "
+		::= { iqasi25CmdEntry 35047 }
+
+
+	iqasi25LoggingInputAlarmInputAlarms2PATUpperDistance36047 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					PAT Upper Distance   cmdID= 36047  format=   "
+		::= { iqasi25CmdEntry 36047 }
+
+
+	iqasi25LoggingInputInput1Input1Ident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1 Ident  cmdID= 35100 "
+		::= { iqasi25CmdEntry 35100 }
+
+
+	iqasi25LoggingInputInput1Input1IdentDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 1 Ident Disp  cmdID= 35110  format=   "
+		::= { iqasi25CmdEntry 35110 }
+
+
+	iqasi25LoggingInputInput1Input1Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1 Name  cmdID= 35101 "
+		::= { iqasi25CmdEntry 35101 }
+
+
+	iqasi25LoggingInputInput1Input1NameDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 1 Name Disp  cmdID= 35111  format=   "
+		::= { iqasi25CmdEntry 35111 }
+
+
+	iqasi25LoggingInputInput1Input1State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1 State  cmdID= 35102 "
+		::= { iqasi25CmdEntry 35102 }
+
+
+	iqasi25LoggingInputInput1Input1StateDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 1 State Disp  cmdID= 35112  format=   "
+		::= { iqasi25CmdEntry 35112 }
+
+
+	iqasi25LoggingInputInput1Input1Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1 Type  cmdID= 35104 "
+		::= { iqasi25CmdEntry 35104 }
+
+
+	iqasi25LoggingInputInput1Input1TypeDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 1 Type Disp  cmdID= 35114  format=   "
+		::= { iqasi25CmdEntry 35114 }
+
+
+	iqasi25LoggingInputInput2Input2Ident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2 Ident  cmdID= 35200 "
+		::= { iqasi25CmdEntry 35200 }
+
+
+	iqasi25LoggingInputInput2Input2IdentDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 2 Ident Disp  cmdID= 35210  format=   "
+		::= { iqasi25CmdEntry 35210 }
+
+
+	iqasi25LoggingInputInput2Input2Name OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2 Name  cmdID= 35201 "
+		::= { iqasi25CmdEntry 35201 }
+
+
+	iqasi25LoggingInputInput2Input2NameDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 2 Name Disp  cmdID= 35211  format=   "
+		::= { iqasi25CmdEntry 35211 }
+
+
+	iqasi25LoggingInputInput2Input2State OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2 State  cmdID= 35202 "
+		::= { iqasi25CmdEntry 35202 }
+
+
+	iqasi25LoggingInputInput2Input2StateDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 2 State Disp  cmdID= 35212  format=   "
+		::= { iqasi25CmdEntry 35212 }
+
+
+	iqasi25LoggingInputInput2Input2Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2 Type  cmdID= 35204 "
+		::= { iqasi25CmdEntry 35204 }
+
+
+	iqasi25LoggingInputInput2Input2TypeDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input 2 Type Disp  cmdID= 35214  format=   "
+		::= { iqasi25CmdEntry 35214 }
+
+
+	iqasi25LoggingOutputStatOutputAStatusInputSelected OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input Selected  cmdID= 6041 "
+		::= { iqasi25CmdEntry 6041 }
+
+
+	iqasi25LoggingOutputStatOutputAStatusInputSelectedDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Selected Disp  cmdID= 6141  format=   "
+		::= { iqasi25CmdEntry 6141 }
+
+
+	iqasi25LoggingOutputStatOutputAStatusSwitchMode OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Switch Mode  cmdID= 6042 "
+		::= { iqasi25CmdEntry 6042 }
+
+
+	iqasi25LoggingOutputStatOutputAStatusSwitchModeDisp OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Switch Mode Disp  cmdID= 6142  format=   "
+		::= { iqasi25CmdEntry 6142 }
+
+
+	iqasi25StatusInput1Asi OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Asi  cmdID= 40001  format=   "
+		::= { iqasi25CmdEntry 40001 }
+
+
+	iqasi25StatusInput1Sync OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sync  cmdID= 40002  format=   "
+		::= { iqasi25CmdEntry 40002 }
+
+
+	iqasi25StatusInput1Pat OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Pat  cmdID= 40003  format=   "
+		::= { iqasi25CmdEntry 40003 }
+
+
+	iqasi25StatusInput2Asi OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Asi  cmdID= 40005  format=   "
+		::= { iqasi25CmdEntry 40005 }
+
+
+	iqasi25StatusInput2Sync OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sync  cmdID= 40006  format=   "
+		::= { iqasi25CmdEntry 40006 }
+
+
+	iqasi25StatusInput2Pat OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Pat  cmdID= 40007  format=   "
+		::= { iqasi25CmdEntry 40007 }
+
+
+	iqasi25StatusPatAlarmEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pat Alarm Enable  cmdID= 40008 "
+		::= { iqasi25CmdEntry 40008 }
+
+
+	iqasi25GpioConfigureGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Off(1),
+							val-Output(2),
+							val-Input(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Configure GPIO 1  cmdID= 34001 
+					Off  value= 1  
+					Output  value= 2  
+					Input  value= 3  "
+		::= { iqasi25CmdEntry 34001 }
+
+
+	iqasi25GpioInput1Invert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 1 Invert   cmdID= 34006 "
+		::= { iqasi25CmdEntry 34006 }
+
+
+	iqasi25GpioOutput1Invert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Output 1 Invert   cmdID= 34005 "
+		::= { iqasi25CmdEntry 34005 }
+
+
+	iqasi25GpioGPI1Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					GPI1 Status  cmdID= 34009  format=   "
+		::= { iqasi25CmdEntry 34009 }
+
+
+	iqasi25GpioConfigureGPIO2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Off(1),
+							val-Output(2),
+							val-Input(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Configure GPIO 2  cmdID= 34002 
+					Off  value= 1  
+					Output  value= 2  
+					Input  value= 3  "
+		::= { iqasi25CmdEntry 34002 }
+
+
+	iqasi25GpioInput2Invert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input 2 Invert  cmdID= 34008 "
+		::= { iqasi25CmdEntry 34008 }
+
+
+	iqasi25GpioOutput2Invert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Output 2 Invert  cmdID= 34007 "
+		::= { iqasi25CmdEntry 34007 }
+
+
+	iqasi25GpioGPI2Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					GPI2 Status  cmdID= 34010  format=   "
+		::= { iqasi25CmdEntry 34010 }
+
+
+	iqasi25GpioConfigureGPO1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Input-1-Fail(1),
+							val-Input-2-Fail(2),
+							val-Either-Input-Fail(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Configure GPO 1  cmdID= 34003 
+					Input 1 Fail  value= 1  
+					Input 2 Fail  value= 2  
+					Either Input Fail  value= 3  "
+		::= { iqasi25CmdEntry 34003 }
+
+
+	iqasi25GpioConfigureGPO2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Input-1-Fail(1),
+							val-Input-2-Fail(2),
+							val-Either-Input-Fail(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Configure GPO 2  cmdID= 34004 
+					Input 1 Fail  value= 1  
+					Input 2 Fail  value= 2  
+					Either Input Fail  value= 3  "
+		::= { iqasi25CmdEntry 34004 }
+
+
+	iqasi25RollTrackDisableAll OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Disable All  cmdID= 36104 "
+		::= { iqasi25CmdEntry 36104 }
+
+
+	iqasi25RollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Index  cmdID= 36100  min= 1  max= 16   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 16  Step = 1 "
+		::= { iqasi25CmdEntry 36100 }
+
+
+	iqasi25RollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-Unused(-1),
+							val-Input-1-OK(0),
+							val-Input-1-Fail(1),
+							val-Input-2-OK(2),
+							val-Input-2-Fail(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Source  cmdID= 36101 
+					Unused  value= -1  
+					Input 1 OK  value= 0  
+					Input 1 Fail  value= 1  
+					Input 2 OK  value= 2  
+					Input 2 Fail  value= 3  "
+		::= { iqasi25CmdEntry 36101 }
+
+
+	iqasi25RollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address  cmdID= 36102  "
+		::= { iqasi25CmdEntry 36102 }
+
+
+	iqasi25RollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Command  cmdID= 36103  "
+		::= { iqasi25CmdEntry 36103 }
+
+
+	iqasi25RollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Status  cmdID= 36105  format=   "
+		::= { iqasi25CmdEntry 36105 }
+
+
+	iqasi25RollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sending  cmdID= 36106  format=   "
+		::= { iqasi25CmdEntry 36106 }
+
+
+	iqasi25SetupProduct OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Product  cmdID= 32771  format=   "
+		::= { iqasi25CmdEntry 32771 }
+
+
+	iqasi25SetupRelease OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Release  cmdID= 2  format=   "
+		::= { iqasi25CmdEntry 2 }
+
+
+	iqasi25SetupBuild OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build  cmdID= 5  format=   "
+		::= { iqasi25CmdEntry 5 }
+
+
+	iqasi25SetupKOS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					KOS  cmdID= 32772  format=   "
+		::= { iqasi25CmdEntry 32772 }
+
+
+	iqasi25SetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No.  cmdID= 1  format=   "
+		::= { iqasi25CmdEntry 1 }
+
+
+	iqasi25SetupPCB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					PCB  cmdID= 32770  format=   "
+		::= { iqasi25CmdEntry 32770 }
+
+
+	iqasi25SetupRearID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Rear ID  cmdID= 40009  format=   "
+		::= { iqasi25CmdEntry 40009 }
+
+
+	iqasi25SetupInput1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 1 Name  cmdID= 9000  "
+		::= { iqasi25CmdEntry 9000 }
+
+
+	iqasi25SetupInput2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Input 2 Name  cmdID= 9001  "
+		::= { iqasi25CmdEntry 9001 }
+
+
+	iqasi25SetupFactoryDefault OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Factory-Default(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Factory Default  cmdID= 37002  value= 1  "
+		::= { iqasi25CmdEntry 37002 }
+
+
+	iqasi25SetupDefaultsSettings OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Defaults-Settings(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Defaults Settings  cmdID= 37001  value= 1  "
+		::= { iqasi25CmdEntry 37001 }
+
+
+	iqasi25SetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqasi25CmdEntry 4 }
+
+
+	iqasi25SetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Serial Number  cmdID= 32774  "
+		::= { iqasi25CmdEntry 32774 }
+
+
+	iqasi25SetupBoardID OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val-IQASI25(503)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					BoardID  cmdID= 32776 
+					IQASI25  value= 503  "
+		::= { iqasi25CmdEntry 32776 }
+
+
+	iqasi25SetupSaveID OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Save-ID(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Save ID  cmdID= 32775  value= 1  "
+		::= { iqasi25CmdEntry 32775 }
+
+
+	iqasi25SetSN OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val-Set-SN(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Set SN  cmdID= 5001  value= 1  "
+		::= { iqasi25CmdEntry 5001 }
+
+
+	iqasi25SerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Serial Number  cmdID= 5002  "
+		::= { iqasi25CmdEntry 5002 }
+
+
+	iqasi25SerialToBeUsed OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial To Be Used  cmdID= 5003  format=   "
+		::= { iqasi25CmdEntry 5003 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |       base           |Slt|Len| F  A  U  L  T |
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: unknown
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+-- Vary			: YES
+--
+-- Value(s)		: 000:00:03:00
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_ID
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.65.82.95.73.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.65.82.95.73.68
+-- Vary			: YES
+--
+-- Value(s)		: 8
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.49
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: V115 Release
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+-- Vary			: YES
+--
+-- Value(s)		: Disabled
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_START
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.83.84.65.82.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.83.84.65.82.84
+-- Vary			: YES
+--
+-- Value(s)		: 7
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_WIDTH
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.87.73.68.84.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.87.73.68.84.72
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: POWER_USAGE
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.80.79.87.69.82.95.85.83.65.71.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.80.79.87.69.82.95.85.83.65.71.69
+-- Vary			: YES
+--
+-- Value(s)		: 4.5W/4.5LU
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.82.69.65.82.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.82.69.65.82.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+-- Vary			: YES
+--
+-- Value(s)		: 0001100571
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: ASI_IN_1
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: ASI
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.78.65.77.69
+-- Vary			: YES
+--
+-- Value(s)		: ASI_IN_2
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: ASI
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2015-01-23T15:14:45Z
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: ASI_IN_1
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- Vary			: YES
+--
+-- Value(s)		: ASI_IN_2
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_MODE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.49.95.77.79.68.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.49.95.77.79.68.69
+-- Vary			: YES
+--
+-- Value(s)		: AUTO
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FIRMWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- Vary			: YES
+--
+-- Value(s)		: IQASI25-010
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_ASI_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.65.83.73.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.65.83.73.95.70.65.73.76
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_ASI_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.50.95.65.83.73.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.50.95.65.83.73.95.70.65.73.76
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_PAT_UD_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.49.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.49.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_PAT_UD_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.50.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.50.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TS_SYNC_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .21.73.78.80.85.84.95.49.95.84.83.95.83.89.78.67.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.21.73.78.80.85.84.95.49.95.84.83.95.83.89.78.67.95.69.82.82.79.82
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TS_SYNC_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .21.73.78.80.85.84.95.50.95.84.83.95.83.89.78.67.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.21.73.78.80.85.84.95.50.95.84.83.95.83.89.78.67.95.69.82.82.79.82
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

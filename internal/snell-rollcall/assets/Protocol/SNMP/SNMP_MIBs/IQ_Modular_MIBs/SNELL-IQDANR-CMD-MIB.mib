@@ -1,0 +1,2646 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDANR
+--        Module Id#:179
+--       Command Set:5
+--          Filename:SNELL-IQDANR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:14:22
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDANR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDANR,
+    moduleIQDANRMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDANRCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291422Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDANRMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdanrCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdanrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDANR 1 }
+
+	iqdanrCmdEntry OBJECT-TYPE
+		SYNTAX		IqdanrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdanrSlotIndex }
+		::= { iqdanrCmdTable 1 }
+
+	IqdanrCmdEntry ::=
+		SEQUENCE {
+			iqdanrSlotIndex
+				Unsigned32,
+			iqdanrQuick
+				INTEGER,
+			iqdanrQuickRecursive
+				INTEGER,
+			iqdanrQuickSemiTrans
+				INTEGER,
+			iqdanrQuickSpatial
+				INTEGER,
+			iqdanrQuickMedian
+				INTEGER,
+			iqdanrQuickFreeze
+				INTEGER,
+			iqdanrQuickPattern
+				INTEGER,
+			iqdanrQuickSpltScrnOff
+				INTEGER,
+			iqdanrFiltersBypassFltrs
+				INTEGER,
+			iqdanrFiltersMedian
+				INTEGER,
+			iqdanrFiltersRecursiveSemiTrans
+				INTEGER,
+			iqdanrFiltersRecursiveThreshold
+				INTEGER,
+			iqdanrFiltersRecursiveBiasAutoTh
+				INTEGER,
+			iqdanrRecursiveLevelC
+				INTEGER,
+			iqdanrRecursiveLevelY
+				INTEGER,
+			iqdanrSpatialLevelC
+				INTEGER,
+			iqdanrSpatialLevelY
+				INTEGER,
+			iqdanrBypass
+				INTEGER,
+			iqdanrProcAmpBypassProcAmp
+				INTEGER,
+			iqdanrProcAmpYGain
+				INTEGER,
+			iqdanrProcAmpPicturePos
+				INTEGER,
+			iqdanrProcAmpCGain
+				INTEGER,
+			iqdanrProcAmpYCDelay
+				INTEGER,
+			iqdanrProcAmpBlackLevel
+				INTEGER,
+			iqdanrMemory
+				INTEGER,
+			iqdanrMemoryPresetUnit
+				INTEGER,
+			iqdanrMemorySaveUser
+				INTEGER,
+			iqdanrMemoryClearUser
+				INTEGER,
+			iqdanrMemoryNameUserMemory1
+				RollCallString,
+			iqdanrMemoryNameUserMemory2
+				RollCallString,
+			iqdanrMemoryNameUserMemory3
+				RollCallString,
+			iqdanrMemoryNameUserMemory4
+				RollCallString,
+			iqdanrMemoryNameUserMemory5
+				RollCallString,
+			iqdanrMemoryNameUserMemory6
+				RollCallString,
+			iqdanrMemoryNameUserMemory7
+				RollCallString,
+			iqdanrMemoryNameUserMemory8
+				RollCallString,
+			iqdanrMemoryNameUserMemory9
+				RollCallString,
+			iqdanrMemoryNameUserMemory10
+				RollCallString,
+			iqdanrMemoryNameUserMemory11
+				RollCallString,
+			iqdanrMemoryNameUserMemory12
+				RollCallString,
+			iqdanrMemoryNameUserMemory13
+				RollCallString,
+			iqdanrMemoryNameUserMemory14
+				RollCallString,
+			iqdanrMemoryNameUserMemory15
+				RollCallString,
+			iqdanrMemoryNameUserMemory16
+				RollCallString,
+			iqdanrMemoryNameUserMemory17
+				RollCallString,
+			iqdanrMemoryNameUserMemory18
+				RollCallString,
+			iqdanrMemoryNameUserMemory19
+				RollCallString,
+			iqdanrMemoryNameUserMemory20
+				RollCallString,
+			iqdanrMemoryNameUserMemory21
+				RollCallString,
+			iqdanrMemoryNameUserMemory22
+				RollCallString,
+			iqdanrMemoryNameUserMemory23
+				RollCallString,
+			iqdanrMemoryNameUserMemory24
+				RollCallString,
+			iqdanrMemoryNameUserPresetAllUserNames
+				INTEGER,
+			iqdanrSplitScreenSplitSelect
+				INTEGER,
+			iqdanrSplitScreenSplitSelectInverse
+				INTEGER,
+			iqdanrSetupSplitScreenBorderSelect
+				INTEGER,
+			iqdanrSetupVideoSource
+				INTEGER,
+			iqdanrSetupVideoStandard
+				INTEGER,
+			iqdanrSetupVideoFailSelect
+				INTEGER,
+			iqdanrSetupVideoFreeze
+				INTEGER,
+			iqdanrSetupVideo525VStd
+				INTEGER,
+			iqdanrVideoVBIData77
+				INTEGER,
+			iqdanrVBIData625SelnLine6
+				INTEGER,
+			iqdanrVBIData625SelnLine318
+				INTEGER,
+			iqdanrVBIData625SelnLine7
+				INTEGER,
+			iqdanrVBIData625SelnLine319
+				INTEGER,
+			iqdanrVBIData625SelnLine8
+				INTEGER,
+			iqdanrVBIData625SelnLine320
+				INTEGER,
+			iqdanrVBIData625SelnLine9
+				INTEGER,
+			iqdanrVBIData625SelnLine321
+				INTEGER,
+			iqdanrVBIData625SelnLine10
+				INTEGER,
+			iqdanrVBIData625SelnLine322
+				INTEGER,
+			iqdanrVBIData625SelnLine11
+				INTEGER,
+			iqdanrVBIData625SelnLine323
+				INTEGER,
+			iqdanrVBIData625SelnLine12
+				INTEGER,
+			iqdanrVBIData625SelnLine324
+				INTEGER,
+			iqdanrVBIData625SelnLine13
+				INTEGER,
+			iqdanrVBIData625SelnLine325
+				INTEGER,
+			iqdanrVBIData625SelnLine14
+				INTEGER,
+			iqdanrVBIData625SelnLine326
+				INTEGER,
+			iqdanrVBIData625SelnLine15
+				INTEGER,
+			iqdanrVBIData625SelnLine327
+				INTEGER,
+			iqdanrVBIData625SelnLine16
+				INTEGER,
+			iqdanrVBIData625SelnLine328
+				INTEGER,
+			iqdanrVBIData625SelnLine17
+				INTEGER,
+			iqdanrVBIData625SelnLine329
+				INTEGER,
+			iqdanrVBIData625SelnLine18
+				INTEGER,
+			iqdanrVBIData625SelnLine330
+				INTEGER,
+			iqdanrVBIData625SelnLine19
+				INTEGER,
+			iqdanrVBIData625SelnLine331
+				INTEGER,
+			iqdanrVBIData625SelnLine20
+				INTEGER,
+			iqdanrVBIData625SelnLine332
+				INTEGER,
+			iqdanrVBIData625SelnLine21
+				INTEGER,
+			iqdanrVBIData625SelnLine333
+				INTEGER,
+			iqdanrVBIData625SelnLine22
+				INTEGER,
+			iqdanrVBIData625SelnLine334
+				INTEGER,
+			iqdanrVBIData625Seln
+				INTEGER,
+			iqdanrVBIData625SelnLine335
+				INTEGER,
+			iqdanrVBIData525SelnLine10
+				INTEGER,
+			iqdanrVBIData525SelnLine272
+				INTEGER,
+			iqdanrVBIData525SelnLine11
+				INTEGER,
+			iqdanrVBIData525SelnLine273
+				INTEGER,
+			iqdanrVBIData525SelnLine12
+				INTEGER,
+			iqdanrVBIData525SelnLine274
+				INTEGER,
+			iqdanrVBIData525SelnLine13
+				INTEGER,
+			iqdanrVBIData525SelnLine275
+				INTEGER,
+			iqdanrVBIData525SelnLine14
+				INTEGER,
+			iqdanrVBIData525SelnLine276
+				INTEGER,
+			iqdanrVBIData525SelnLine15
+				INTEGER,
+			iqdanrVBIData525SelnLine277
+				INTEGER,
+			iqdanrVBIData525SelnLine16
+				INTEGER,
+			iqdanrVBIData525SelnLine278
+				INTEGER,
+			iqdanrVBIData525SelnLine17
+				INTEGER,
+			iqdanrVBIData525SelnLine279
+				INTEGER,
+			iqdanrVBIData525SelnLine18
+				INTEGER,
+			iqdanrVBIData525SelnLine280
+				INTEGER,
+			iqdanrVBIData525SelnLine19
+				INTEGER,
+			iqdanrVBIData525SelnLine281
+				INTEGER,
+			iqdanrVBIData525SelnLine20
+				INTEGER,
+			iqdanrVBIData525SelnLine282
+				INTEGER,
+			iqdanrSetupVideo8bitRnd
+				INTEGER,
+			iqdanrSetupPatternSelect
+				INTEGER,
+			iqdanrSetupPanelDisplay
+				INTEGER,
+			iqdanrSetupRollTrackUnit1
+				RollCallString,
+			iqdanrSetupRollTrackUnit2
+				RollCallString,
+			iqdanrSetupRollTrackUnit3
+				RollCallString,
+			iqdanrSetupRollTrackUnit4
+				RollCallString,
+			iqdanrSetupRollTrackUnit5
+				RollCallString,
+			iqdanrSetupRollTrackUnit6
+				RollCallString,
+			iqdanrSetupRollTrackUnit7
+				RollCallString,
+			iqdanrSetupRollTrackUnit8
+				RollCallString,
+			iqdanrSetupRollTrackMessages
+				INTEGER,
+			iqdanrSetupEDH
+				INTEGER,
+			iqdanrSetupEDHEDHStatus
+				RollCallString,
+			iqdanrGPIInputsGPI1
+				INTEGER,
+			iqdanrGPIInputsGPI1GPI1Function
+				INTEGER,
+			iqdanrGPIInputsGPI2
+				INTEGER,
+			iqdanrGPIInputsGPI2GPI2Function
+				INTEGER,
+			iqdanrGPIInputsGPI3
+				INTEGER,
+			iqdanrGPIInputsGPI3GPI3Function
+				INTEGER,
+			iqdanrSetupLoggingLogInputState
+				INTEGER,
+			iqdanrSetupLoggingLogEDHState
+				INTEGER,
+			iqdanrSetupLoggingLogSplitScreen
+				INTEGER,
+			iqdanrSetupPresetUnit
+				INTEGER,
+			iqdanrSetupSoftwareVersion
+				RollCallString,
+			iqdanrSetupSerialNumber
+				RollCallString,
+			iqdanrSetupRestart
+				INTEGER
+		}
+
+	iqdanrSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdanrCmdEntry 0 }
+
+
+	iqdanrQuick OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input A   cmdID= 179  value= 0  
+					Input B   cmdID= 179  value= 1  "
+		::= { iqdanrCmdEntry 179 }
+
+
+	iqdanrQuickRecursive OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Recursive  cmdID= 5 "
+		::= { iqdanrCmdEntry 5 }
+
+
+	iqdanrQuickSemiTrans OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					+SemiTrans  cmdID= 6 "
+		::= { iqdanrCmdEntry 6 }
+
+
+	iqdanrQuickSpatial OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Spatial  cmdID= 8 "
+		::= { iqdanrCmdEntry 8 }
+
+
+	iqdanrQuickMedian OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Median  cmdID= 7 "
+		::= { iqdanrCmdEntry 7 }
+
+
+	iqdanrQuickFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 10 "
+		::= { iqdanrCmdEntry 10 }
+
+
+	iqdanrQuickPattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern  cmdID= 72 
+					Pattern Enable  cmdID= 72 "
+		::= { iqdanrCmdEntry 72 }
+
+
+	iqdanrQuickSpltScrnOff OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_SpltScrnOff(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SpltScrnOff  cmdID= 180  value= 1  "
+		::= { iqdanrCmdEntry 180 }
+
+
+	iqdanrFiltersBypassFltrs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Filters
+					BypassFltrs  cmdID= 176 "
+		::= { iqdanrCmdEntry 176 }
+
+
+	iqdanrFiltersMedian OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_unspecified(0),
+							val_Min_1(1),
+							val_Min_2(2),
+							val_Med_3(3),
+							val_Med_4(4),
+							val_Max_5(5),
+							val_Max_6(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					   cmdID= 147  value= 0  
+					Min 1  cmdID= 147  value= 1  
+					Min 2  cmdID= 147  value= 2  
+					Med 3  cmdID= 147  value= 3  
+					Med 4  cmdID= 147  value= 4  
+					Max 5  cmdID= 147  value= 5  
+					Max 6  cmdID= 147  value= 6  "
+		::= { iqdanrCmdEntry 147 }
+
+
+	iqdanrFiltersRecursiveSemiTrans OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Filters
+					+SemiTrans  cmdID= 141 "
+		::= { iqdanrCmdEntry 141 }
+
+
+	iqdanrFiltersRecursiveThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Filters
+					Threshold  cmdID= 144  min= -1  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 15  Step = 1 "
+		::= { iqdanrCmdEntry 144 }
+
+
+	iqdanrFiltersRecursiveBiasAutoTh OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Filters
+					BiasAutoTh  cmdID= 145  min= -3  max= 3  step= 1  format= %.0f  div_scale= 1 
+					Min = -3  Max = 3  Step = 1 "
+		::= { iqdanrCmdEntry 145 }
+
+
+	iqdanrRecursiveLevelC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_C_Off(0),
+							val_C_Min(2),
+							val_C_Med(3),
+							val_C_Max(4),
+							val_C_X_Colour(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					C_Off  cmdID= 143  value= 0  
+					C_Min  cmdID= 143  value= 2  
+					C_Med  cmdID= 143  value= 3  
+					C_Max  cmdID= 143  value= 4  
+					C_X-Colour  cmdID= 143  value= 5  "
+		::= { iqdanrCmdEntry 143 }
+
+
+	iqdanrRecursiveLevelY OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Y_Off(0),
+							val_Y_Min(2),
+							val_Y_Med(3),
+							val_Y_Max(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Y_Off  cmdID= 142  value= 0  
+					Y_Min  cmdID= 142  value= 2  
+					Y_Med  cmdID= 142  value= 3  
+					Y_Max  cmdID= 142  value= 4  "
+		::= { iqdanrCmdEntry 142 }
+
+
+	iqdanrSpatialLevelC OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_C_Off(0),
+							val_C_Min(2),
+							val_C_Med(3),
+							val_C_Max(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					C_Off  cmdID= 150  value= 0  
+					C_Min  cmdID= 150  value= 2  
+					C_Med  cmdID= 150  value= 3  
+					C_Max  cmdID= 150  value= 4  "
+		::= { iqdanrCmdEntry 150 }
+
+
+	iqdanrSpatialLevelY OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Y_Off(0),
+							val_Y_Min(2),
+							val_Y_Med(3),
+							val_Y_Max(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Filters
+					Y_Off  cmdID= 149  value= 0  
+					Y_Min  cmdID= 149  value= 2  
+					Y_Med  cmdID= 149  value= 3  
+					Y_Max  cmdID= 149  value= 4  "
+		::= { iqdanrCmdEntry 149 }
+
+
+	iqdanrBypass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bypass  cmdID= 11 "
+		::= { iqdanrCmdEntry 11 }
+
+
+	iqdanrProcAmpBypassProcAmp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					BypassProcAmp  cmdID= 177 "
+		::= { iqdanrCmdEntry 177 }
+
+
+	iqdanrProcAmpYGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Y_Gain  cmdID= 17  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdanrCmdEntry 17 }
+
+
+	iqdanrProcAmpPicturePos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PicturePos  cmdID= 20  min= -592  max= 592  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqdanrCmdEntry 20 }
+
+
+	iqdanrProcAmpCGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					C_Gain  cmdID= 18  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdanrCmdEntry 18 }
+
+
+	iqdanrProcAmpYCDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC_Delay  cmdID= 21  min= -444  max= 444  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -444 ns  Max = 444 ns  Step = 148 ns "
+		::= { iqdanrCmdEntry 21 }
+
+
+	iqdanrProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					BlackLevel  cmdID= 19  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdanrCmdEntry 19 }
+
+
+	iqdanrMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Sat_lite_Low_Noise(24),
+							val_Sat_lite_Med_Noise(25),
+							val_Sat_lite_Hi_Noise(26),
+							val_Studio_Low_Noise(27),
+							val_Studio_Med_Noise(28),
+							val_Studio_Hi_Noise(29),
+							val_Sport_Low_Noise(30),
+							val_Sport_Med_Noise(31),
+							val_Sport_Hi_Noise(32),
+							val_MPEG_PreProcessing(33),
+							val_Factory_Presets(34),
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					ReadFixed  cmdID= 40 
+					Sat'lite Low Noise  value= 24  
+					Sat'lite Med Noise  value= 25  
+					Sat'lite Hi  Noise  value= 26  
+					Studio Low Noise  value= 27  
+					Studio Med Noise  value= 28  
+					Studio Hi  Noise  value= 29  
+					Sport Low Noise  value= 30  
+					Sport Med Noise  value= 31  
+					Sport Hi  Noise  value= 32  
+					MPEG PreProcessing  value= 33  
+					Factory Presets  value= 34  
+					ReadUser  cmdID= 40 "
+		::= { iqdanrCmdEntry 40 }
+
+
+	iqdanrMemoryPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_PresetUnit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memory
+					PresetUnit  cmdID= 182  value= 1  "
+		::= { iqdanrCmdEntry 182 }
+
+
+	iqdanrMemorySaveUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					SaveUser  cmdID= 41 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdanrCmdEntry 41 }
+
+
+	iqdanrMemoryClearUser OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					ClearUser  cmdID= 42 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdanrCmdEntry 42 }
+
+
+	iqdanrMemoryNameUserMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_1  cmdID= 44  "
+		::= { iqdanrCmdEntry 44 }
+
+
+	iqdanrMemoryNameUserMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_2  cmdID= 45  "
+		::= { iqdanrCmdEntry 45 }
+
+
+	iqdanrMemoryNameUserMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_3  cmdID= 46  "
+		::= { iqdanrCmdEntry 46 }
+
+
+	iqdanrMemoryNameUserMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_4  cmdID= 47  "
+		::= { iqdanrCmdEntry 47 }
+
+
+	iqdanrMemoryNameUserMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_5  cmdID= 48  "
+		::= { iqdanrCmdEntry 48 }
+
+
+	iqdanrMemoryNameUserMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_6  cmdID= 49  "
+		::= { iqdanrCmdEntry 49 }
+
+
+	iqdanrMemoryNameUserMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_7  cmdID= 50  "
+		::= { iqdanrCmdEntry 50 }
+
+
+	iqdanrMemoryNameUserMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_8  cmdID= 51  "
+		::= { iqdanrCmdEntry 51 }
+
+
+	iqdanrMemoryNameUserMemory9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_9  cmdID= 52  "
+		::= { iqdanrCmdEntry 52 }
+
+
+	iqdanrMemoryNameUserMemory10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_10  cmdID= 53  "
+		::= { iqdanrCmdEntry 53 }
+
+
+	iqdanrMemoryNameUserMemory11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_11  cmdID= 54  "
+		::= { iqdanrCmdEntry 54 }
+
+
+	iqdanrMemoryNameUserMemory12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_12  cmdID= 55  "
+		::= { iqdanrCmdEntry 55 }
+
+
+	iqdanrMemoryNameUserMemory13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_13  cmdID= 56  "
+		::= { iqdanrCmdEntry 56 }
+
+
+	iqdanrMemoryNameUserMemory14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_14  cmdID= 57  "
+		::= { iqdanrCmdEntry 57 }
+
+
+	iqdanrMemoryNameUserMemory15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_15  cmdID= 58  "
+		::= { iqdanrCmdEntry 58 }
+
+
+	iqdanrMemoryNameUserMemory16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_16  cmdID= 59  "
+		::= { iqdanrCmdEntry 59 }
+
+
+	iqdanrMemoryNameUserMemory17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_17  cmdID= 60  "
+		::= { iqdanrCmdEntry 60 }
+
+
+	iqdanrMemoryNameUserMemory18 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_18  cmdID= 61  "
+		::= { iqdanrCmdEntry 61 }
+
+
+	iqdanrMemoryNameUserMemory19 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_19  cmdID= 62  "
+		::= { iqdanrCmdEntry 62 }
+
+
+	iqdanrMemoryNameUserMemory20 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_20  cmdID= 63  "
+		::= { iqdanrCmdEntry 63 }
+
+
+	iqdanrMemoryNameUserMemory21 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_21  cmdID= 64  "
+		::= { iqdanrCmdEntry 64 }
+
+
+	iqdanrMemoryNameUserMemory22 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_22  cmdID= 65  "
+		::= { iqdanrCmdEntry 65 }
+
+
+	iqdanrMemoryNameUserMemory23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_23  cmdID= 66  "
+		::= { iqdanrCmdEntry 66 }
+
+
+	iqdanrMemoryNameUserMemory24 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memory
+					Memory_24  cmdID= 67  "
+		::= { iqdanrCmdEntry 67 }
+
+
+	iqdanrMemoryNameUserPresetAllUserNames OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PresetUserNames(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memory
+					PresetAllUserNames  cmdID= 43 
+					PresetUserNames  value= 1  "
+		::= { iqdanrCmdEntry 43 }
+
+
+	iqdanrSplitScreenSplitSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Horiz_Repeat(3),
+							val_Left_Right(1),
+							val_Top_Bottom(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 15  value= 0  
+					Horiz Repeat  cmdID= 15  value= 3  
+					Left/Right  cmdID= 15  value= 1  
+					Top/Bottom  cmdID= 15  value= 2  "
+		::= { iqdanrCmdEntry 15 }
+
+
+	iqdanrSplitScreenSplitSelectInverse OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Inverse  cmdID= 9 "
+		::= { iqdanrCmdEntry 9 }
+
+
+	iqdanrSetupSplitScreenBorderSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Black(0),
+							val_White(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					BorderSelect  cmdID= 16 
+					Off  value= 2  
+					Black  value= 0  
+					White  value= 1  "
+		::= { iqdanrCmdEntry 16 }
+
+
+	iqdanrSetupVideoSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Source  cmdID= 70 
+					Input A   value= 0  
+					Input B   value= 1  "
+		::= { iqdanrCmdEntry 70 }
+
+
+	iqdanrSetupVideoStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_525(1),
+							val_625(2),
+							val_Auto(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Standard  cmdID= 71 
+					525  value= 1  
+					625  value= 2  
+					Auto  value= 0  "
+		::= { iqdanrCmdEntry 71 }
+
+
+	iqdanrSetupVideoFailSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DoNothing(8),
+							val_Freeze(9),
+							val_Black(0),
+							val_EBU_Bars(1),
+							val_Y_Ramp(2),
+							val_UV_Ramp(3),
+							val_Y_Sweep(4),
+							val_UV_Sweep(5),
+							val_Bowtie(6),
+							val_100_Bars(7),
+							val_GrabAltIp(10),
+							val_InputChng(11)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					FailSelect  cmdID= 74 
+					DoNothing  value= 8  
+					Freeze  value= 9  
+					Black  value= 0  
+					EBU Bars  value= 1  
+					Y Ramp  value= 2  
+					UV Ramp  value= 3  
+					Y Sweep  value= 4  
+					UV Sweep  value= 5  
+					Bowtie  value= 6  
+					100% Bars  value= 7  
+					GrabAltIp  value= 10  
+					InputChng  value= 11  "
+		::= { iqdanrCmdEntry 74 }
+
+
+	iqdanrSetupVideoFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Freeze  cmdID= 181 "
+		::= { iqdanrCmdEntry 181 }
+
+
+	iqdanrSetupVideo525VStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_OVD(0),
+							val_OBD(1),
+							val_ABD(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					525_V-Std  cmdID= 76 
+					OVD  value= 0  
+					OBD  value= 1  
+					ABD  value= 2  "
+		::= { iqdanrCmdEntry 76 }
+
+
+	iqdanrVideoVBIData77 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_All_thro(0),
+							val_All_blank(1),
+							val_User_sel(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					All thro'  cmdID= 77  value= 0  
+					All blank  cmdID= 77  value= 1  
+					User sel  cmdID= 77  value= 2  "
+		::= { iqdanrCmdEntry 77 }
+
+
+	iqdanrVBIData625SelnLine6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 6   cmdID= 80 "
+		::= { iqdanrCmdEntry 80 }
+
+
+	iqdanrVBIData625SelnLine318 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 318  cmdID= 108 "
+		::= { iqdanrCmdEntry 108 }
+
+
+	iqdanrVBIData625SelnLine7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 7   cmdID= 81 "
+		::= { iqdanrCmdEntry 81 }
+
+
+	iqdanrVBIData625SelnLine319 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 319  cmdID= 109 "
+		::= { iqdanrCmdEntry 109 }
+
+
+	iqdanrVBIData625SelnLine8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 8   cmdID= 82 "
+		::= { iqdanrCmdEntry 82 }
+
+
+	iqdanrVBIData625SelnLine320 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 320  cmdID= 110 "
+		::= { iqdanrCmdEntry 110 }
+
+
+	iqdanrVBIData625SelnLine9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 9   cmdID= 83 "
+		::= { iqdanrCmdEntry 83 }
+
+
+	iqdanrVBIData625SelnLine321 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 321  cmdID= 111 "
+		::= { iqdanrCmdEntry 111 }
+
+
+	iqdanrVBIData625SelnLine10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 10  cmdID= 84 "
+		::= { iqdanrCmdEntry 84 }
+
+
+	iqdanrVBIData625SelnLine322 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 322  cmdID= 112 "
+		::= { iqdanrCmdEntry 112 }
+
+
+	iqdanrVBIData625SelnLine11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 11  cmdID= 85 "
+		::= { iqdanrCmdEntry 85 }
+
+
+	iqdanrVBIData625SelnLine323 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 323  cmdID= 113 "
+		::= { iqdanrCmdEntry 113 }
+
+
+	iqdanrVBIData625SelnLine12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 12  cmdID= 86 "
+		::= { iqdanrCmdEntry 86 }
+
+
+	iqdanrVBIData625SelnLine324 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 324  cmdID= 114 "
+		::= { iqdanrCmdEntry 114 }
+
+
+	iqdanrVBIData625SelnLine13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 13  cmdID= 87 "
+		::= { iqdanrCmdEntry 87 }
+
+
+	iqdanrVBIData625SelnLine325 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 325  cmdID= 115 "
+		::= { iqdanrCmdEntry 115 }
+
+
+	iqdanrVBIData625SelnLine14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 14  cmdID= 88 "
+		::= { iqdanrCmdEntry 88 }
+
+
+	iqdanrVBIData625SelnLine326 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 326  cmdID= 116 "
+		::= { iqdanrCmdEntry 116 }
+
+
+	iqdanrVBIData625SelnLine15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 15  cmdID= 89 "
+		::= { iqdanrCmdEntry 89 }
+
+
+	iqdanrVBIData625SelnLine327 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 327  cmdID= 117 "
+		::= { iqdanrCmdEntry 117 }
+
+
+	iqdanrVBIData625SelnLine16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 16  cmdID= 90 "
+		::= { iqdanrCmdEntry 90 }
+
+
+	iqdanrVBIData625SelnLine328 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 328  cmdID= 118 "
+		::= { iqdanrCmdEntry 118 }
+
+
+	iqdanrVBIData625SelnLine17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 17  cmdID= 91 "
+		::= { iqdanrCmdEntry 91 }
+
+
+	iqdanrVBIData625SelnLine329 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 329  cmdID= 119 "
+		::= { iqdanrCmdEntry 119 }
+
+
+	iqdanrVBIData625SelnLine18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 18  cmdID= 92 "
+		::= { iqdanrCmdEntry 92 }
+
+
+	iqdanrVBIData625SelnLine330 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 330  cmdID= 120 "
+		::= { iqdanrCmdEntry 120 }
+
+
+	iqdanrVBIData625SelnLine19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 19  cmdID= 93 "
+		::= { iqdanrCmdEntry 93 }
+
+
+	iqdanrVBIData625SelnLine331 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 331  cmdID= 121 "
+		::= { iqdanrCmdEntry 121 }
+
+
+	iqdanrVBIData625SelnLine20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 20  cmdID= 94 "
+		::= { iqdanrCmdEntry 94 }
+
+
+	iqdanrVBIData625SelnLine332 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 332  cmdID= 122 "
+		::= { iqdanrCmdEntry 122 }
+
+
+	iqdanrVBIData625SelnLine21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 21  cmdID= 95 "
+		::= { iqdanrCmdEntry 95 }
+
+
+	iqdanrVBIData625SelnLine333 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 333  cmdID= 123 "
+		::= { iqdanrCmdEntry 123 }
+
+
+	iqdanrVBIData625SelnLine22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 22  cmdID= 96 "
+		::= { iqdanrCmdEntry 96 }
+
+
+	iqdanrVBIData625SelnLine334 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 334  cmdID= 124 "
+		::= { iqdanrCmdEntry 124 }
+
+
+	iqdanrVBIData625Seln OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					  cmdID= 79 "
+		::= { iqdanrCmdEntry 79 }
+
+
+	iqdanrVBIData625SelnLine335 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 335  cmdID= 125 "
+		::= { iqdanrCmdEntry 125 }
+
+
+	iqdanrVBIData525SelnLine10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 10  cmdID= 161 "
+		::= { iqdanrCmdEntry 161 }
+
+
+	iqdanrVBIData525SelnLine272 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 272  cmdID= 97 "
+		::= { iqdanrCmdEntry 97 }
+
+
+	iqdanrVBIData525SelnLine11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 11  cmdID= 162 "
+		::= { iqdanrCmdEntry 162 }
+
+
+	iqdanrVBIData525SelnLine273 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 273  cmdID= 98 "
+		::= { iqdanrCmdEntry 98 }
+
+
+	iqdanrVBIData525SelnLine12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 12  cmdID= 163 "
+		::= { iqdanrCmdEntry 163 }
+
+
+	iqdanrVBIData525SelnLine274 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 274  cmdID= 99 "
+		::= { iqdanrCmdEntry 99 }
+
+
+	iqdanrVBIData525SelnLine13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 13  cmdID= 164 "
+		::= { iqdanrCmdEntry 164 }
+
+
+	iqdanrVBIData525SelnLine275 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 275  cmdID= 100 "
+		::= { iqdanrCmdEntry 100 }
+
+
+	iqdanrVBIData525SelnLine14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 14  cmdID= 165 "
+		::= { iqdanrCmdEntry 165 }
+
+
+	iqdanrVBIData525SelnLine276 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 276  cmdID= 101 "
+		::= { iqdanrCmdEntry 101 }
+
+
+	iqdanrVBIData525SelnLine15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 15  cmdID= 166 "
+		::= { iqdanrCmdEntry 166 }
+
+
+	iqdanrVBIData525SelnLine277 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 277  cmdID= 102 "
+		::= { iqdanrCmdEntry 102 }
+
+
+	iqdanrVBIData525SelnLine16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 16  cmdID= 167 "
+		::= { iqdanrCmdEntry 167 }
+
+
+	iqdanrVBIData525SelnLine278 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 278  cmdID= 103 "
+		::= { iqdanrCmdEntry 103 }
+
+
+	iqdanrVBIData525SelnLine17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 17  cmdID= 168 "
+		::= { iqdanrCmdEntry 168 }
+
+
+	iqdanrVBIData525SelnLine279 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 279  cmdID= 104 "
+		::= { iqdanrCmdEntry 104 }
+
+
+	iqdanrVBIData525SelnLine18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 18  cmdID= 169 "
+		::= { iqdanrCmdEntry 169 }
+
+
+	iqdanrVBIData525SelnLine280 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 280  cmdID= 105 "
+		::= { iqdanrCmdEntry 105 }
+
+
+	iqdanrVBIData525SelnLine19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 19  cmdID= 170 "
+		::= { iqdanrCmdEntry 170 }
+
+
+	iqdanrVBIData525SelnLine281 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 281  cmdID= 106 "
+		::= { iqdanrCmdEntry 106 }
+
+
+	iqdanrVBIData525SelnLine20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 20  cmdID= 171 "
+		::= { iqdanrCmdEntry 171 }
+
+
+	iqdanrVBIData525SelnLine282 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 282  cmdID= 107 "
+		::= { iqdanrCmdEntry 107 }
+
+
+	iqdanrSetupVideo8bitRnd OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					8bit_Rnd  cmdID= 75 "
+		::= { iqdanrCmdEntry 75 }
+
+
+	iqdanrSetupPatternSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Bars(1),
+							val_Y_Ramp(2),
+							val_UV_Ramp(3),
+							val_Y_Sweep(4),
+							val_UV_Sweep(5),
+							val_Bowtie(6),
+							val_100_Bars(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Pattern Select  cmdID= 73 
+					Black  value= 0  
+					EBU Bars  value= 1  
+					Y Ramp  value= 2  
+					UV Ramp  value= 3  
+					Y Sweep  value= 4  
+					UV Sweep  value= 5  
+					Bowtie  value= 6  
+					100% Bars  value= 7  "
+		::= { iqdanrCmdEntry 73 }
+
+
+	iqdanrSetupPanelDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Normal(0),
+							val_Recursive(1),
+							val_Median(2),
+							val_Spatial(3),
+							val_ProcAmp(4),
+							val_EDH(5),
+							val_Auto_Loop(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Panel_Display  cmdID= 12 
+					Normal  value= 0  
+					Recursive  value= 1  
+					Median  value= 2  
+					Spatial  value= 3  
+					ProcAmp  value= 4  
+					EDH  value= 5  
+					Auto Loop  value= 6  "
+		::= { iqdanrCmdEntry 12 }
+
+
+	iqdanrSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_1  cmdID= 126  "
+		::= { iqdanrCmdEntry 126 }
+
+
+	iqdanrSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_2  cmdID= 127  "
+		::= { iqdanrCmdEntry 127 }
+
+
+	iqdanrSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_3  cmdID= 128  "
+		::= { iqdanrCmdEntry 128 }
+
+
+	iqdanrSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_4  cmdID= 129  "
+		::= { iqdanrCmdEntry 129 }
+
+
+	iqdanrSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_5  cmdID= 130  "
+		::= { iqdanrCmdEntry 130 }
+
+
+	iqdanrSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_6  cmdID= 131  "
+		::= { iqdanrCmdEntry 131 }
+
+
+	iqdanrSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_7  cmdID= 132  "
+		::= { iqdanrCmdEntry 132 }
+
+
+	iqdanrSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit_8  cmdID= 133  "
+		::= { iqdanrCmdEntry 133 }
+
+
+	iqdanrSetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 199 "
+		::= { iqdanrCmdEntry 199 }
+
+
+	iqdanrSetupEDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Dummy(0),
+							val_EDH_Reset(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					<Dummy>  cmdID= 14  value= 0  
+					EDH Reset  cmdID= 14  value= 1  "
+		::= { iqdanrCmdEntry 14 }
+
+
+	iqdanrSetupEDHEDHStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					EDH Status  cmdID= 13  format=   "
+		::= { iqdanrCmdEntry 13 }
+
+
+	iqdanrGPIInputsGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 152  value= 2  
+					Latch  cmdID= 152  value= 0  
+					Edge  cmdID= 152  value= 1  "
+		::= { iqdanrCmdEntry 152 }
+
+
+	iqdanrGPIInputsGPI1GPI1Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Sat_lite_Low_Noise(24),
+							val_Sat_lite_Med_Noise(25),
+							val_Sat_lite_Hi_Noise(26),
+							val_Studio_Low_Noise(27),
+							val_Studio_Med_Noise(28),
+							val_Studio_Hi_Noise(29),
+							val_Sport_Low_Noise(30),
+							val_Sport_Med_Noise(31),
+							val_Sport_Hi_Noise(32),
+							val_MPEG_PreProcessing(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_1_Function  cmdID= 155 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Sat'lite Low Noise  value= 24  
+					Sat'lite Med Noise  value= 25  
+					Sat'lite Hi  Noise  value= 26  
+					Studio Low Noise  value= 27  
+					Studio Med Noise  value= 28  
+					Studio Hi  Noise  value= 29  
+					Sport Low Noise  value= 30  
+					Sport Med Noise  value= 31  
+					Sport Hi  Noise  value= 32  
+					MPEG PreProcessing  value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdanrCmdEntry 155 }
+
+
+	iqdanrGPIInputsGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 153  value= 2  
+					Latch  cmdID= 153  value= 0  
+					Edge  cmdID= 153  value= 1  "
+		::= { iqdanrCmdEntry 153 }
+
+
+	iqdanrGPIInputsGPI2GPI2Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Sat_lite_Low_Noise(24),
+							val_Sat_lite_Med_Noise(25),
+							val_Sat_lite_Hi_Noise(26),
+							val_Studio_Low_Noise(27),
+							val_Studio_Med_Noise(28),
+							val_Studio_Hi_Noise(29),
+							val_Sport_Low_Noise(30),
+							val_Sport_Med_Noise(31),
+							val_Sport_Hi_Noise(32),
+							val_MPEG_PreProcessing(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_2_Function  cmdID= 156 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Sat'lite Low Noise  value= 24  
+					Sat'lite Med Noise  value= 25  
+					Sat'lite Hi  Noise  value= 26  
+					Studio Low Noise  value= 27  
+					Studio Med Noise  value= 28  
+					Studio Hi  Noise  value= 29  
+					Sport Low Noise  value= 30  
+					Sport Med Noise  value= 31  
+					Sport Hi  Noise  value= 32  
+					MPEG PreProcessing  value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdanrCmdEntry 156 }
+
+
+	iqdanrGPIInputsGPI3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Inputs
+					Off  cmdID= 154  value= 2  
+					Latch  cmdID= 154  value= 0  
+					Edge  cmdID= 154  value= 1  "
+		::= { iqdanrCmdEntry 154 }
+
+
+	iqdanrGPIInputsGPI3GPI3Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Change(41),
+							val_Freeze(34),
+							val_Bypass(36),
+							val_BypassFltrs(42),
+							val_BypassPAmp(44),
+							val_Pattern(38),
+							val_Sat_lite_Low_Noise(24),
+							val_Sat_lite_Med_Noise(25),
+							val_Sat_lite_Hi_Noise(26),
+							val_Studio_Low_Noise(27),
+							val_Studio_Med_Noise(28),
+							val_Studio_Hi_Noise(29),
+							val_Sport_Low_Noise(30),
+							val_Sport_Med_Noise(31),
+							val_Sport_Hi_Noise(32),
+							val_MPEG_PreProcessing(33),
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15),
+							val_Memory_17(16),
+							val_Memory_18(17),
+							val_Memory_19(18),
+							val_Memory_20(19),
+							val_Memory_21(20),
+							val_Memory_22(21),
+							val_Memory_23(22),
+							val_Memory_24(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI_Inputs
+					GPI_3_Function  cmdID= 157 
+					Input Change  value= 41  
+					Freeze  value= 34  
+					Bypass  value= 36  
+					BypassFltrs  value= 42  
+					BypassPAmp  value= 44  
+					Pattern  value= 38  
+					Sat'lite Low Noise  value= 24  
+					Sat'lite Med Noise  value= 25  
+					Sat'lite Hi  Noise  value= 26  
+					Studio Low Noise  value= 27  
+					Studio Med Noise  value= 28  
+					Studio Hi  Noise  value= 29  
+					Sport Low Noise  value= 30  
+					Sport Med Noise  value= 31  
+					Sport Hi  Noise  value= 32  
+					MPEG PreProcessing  value= 33  
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  
+					Memory_17  value= 16  
+					Memory_18  value= 17  
+					Memory_19  value= 18  
+					Memory_20  value= 19  
+					Memory_21  value= 20  
+					Memory_22  value= 21  
+					Memory_23  value= 22  
+					Memory_24  value= 23  "
+		::= { iqdanrCmdEntry 157 }
+
+
+	iqdanrSetupLoggingLogInputState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input State  cmdID= 22 "
+		::= { iqdanrCmdEntry 22 }
+
+
+	iqdanrSetupLoggingLogEDHState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log EDH State  cmdID= 24 "
+		::= { iqdanrCmdEntry 24 }
+
+
+	iqdanrSetupLoggingLogSplitScreen OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Split Screen  cmdID= 189 "
+		::= { iqdanrCmdEntry 189 }
+
+
+	iqdanrSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdanrCmdEntry 3 }
+
+
+	iqdanrSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdanrCmdEntry 2 }
+
+
+	iqdanrSetupSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SerialNumber  cmdID= 1  format=   "
+		::= { iqdanrCmdEntry 1 }
+
+
+	iqdanrSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdanrCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--			: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--			: OK
+--			: FAIL
+--			: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--			: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--			: 625
+--			: UNKNOWN
+--			: STDERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--			: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--			: ERR
+--			: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SPLIT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.83.80.76.73.84
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.83.80.76.73.84
+-- Vary			: YES
+--
+-- Value(s)		: OFF
+--			: LR
+--			: TB
+--			: HR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number		: YES
+-- Value(s)		: 
+--			: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: IP_SEL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.80.95.83.69.76
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.80.95.83.69.76
+-- Vary			: YES
+--
+-- Value(s)		: A
+--			: B
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

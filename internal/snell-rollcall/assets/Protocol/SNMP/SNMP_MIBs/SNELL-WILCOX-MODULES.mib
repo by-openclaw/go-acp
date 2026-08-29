@@ -1,0 +1,130 @@
+-- *****************************************************************
+-- SNELL-WILCOX-MODULES.mib:  Snell & Wilcox MIB Generic Module definitions
+--
+-- July 2004, Sandy Kellagher
+--
+-- Copyright (c) 2004 Snell & Wilcox Ltd
+-- All rights reserved.
+-- 
+-- $Id: SNELL-WILCOX-MODULES.mib 32 2005-02-03 10:22:53Z sandy-k $
+--
+-- *****************************************************************
+--
+
+SNELL-WILCOX-MODULES DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, NOTIFICATION-TYPE, Integer32, Unsigned32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+   	OBJECT-GROUP, NOTIFICATION-GROUP
+        FROM SNMPv2-CONF
+	snellWilcoxGeneric
+		FROM SNELL-WILCOX-SMI
+	RollCallString, RollCallUnitType, RollCallCmdSetVersion
+		FROM SNELL-WILCOX-TC;
+
+
+snellWilcoxModules MODULE-IDENTITY
+	LAST-UPDATED 	"9902240000Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					Generic Software Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+		
+		   Tel: 	+44 (0) 2392 489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+
+	DESCRIPTION		"This module defines the generic RollCall objects that 
+					 apply to the majority of Snell & Wilcox products"
+	REVISION    	"9902240000Z"
+	DESCRIPTION		"Initial version of this MIB module."
+	::= { snellWilcoxGeneric 5 }
+
+
+
+  -- The Modules table contains is a multi-dimensional table that represents
+  -- every RollCall command number for every module in a IQM frame.
+
+moduleTable OBJECT-TYPE
+      SYNTAX  		SEQUENCE OF ModuleEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "The Modules table contains is a multi-dimensional table that represents
+               every RollCall command number for every module in a IQM frame."
+      ::= { snellWilcoxModules 1 }
+
+  moduleEntry OBJECT-TYPE
+      SYNTAX  		ModuleEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "An entry in the module control table."
+      INDEX   { moduleTypeID, cmdSetVersion, cmdNumber, slotIndex }
+      ::= { moduleTable 1 }
+
+  ModuleEntry ::=
+      SEQUENCE {
+          moduleTypeID
+              RollCallUnitType,
+          cmdSetVersion
+              RollCallCmdSetVersion,
+          cmdNumber
+              RollCallUnitType,
+          slotIndex
+              Unsigned32,
+          cmdValue
+              RollCallString
+      }
+
+  moduleTypeID OBJECT-TYPE
+      SYNTAX  		RollCallUnitType
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The unique RollCall type ID for the module fitted in this slot."
+      ::= { moduleEntry 1 }
+
+
+  cmdSetVersion OBJECT-TYPE
+      SYNTAX  		RollCallCmdSetVersion
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The RollCall command set version for the module fitted in this slot."
+      ::= { moduleEntry 2 }
+
+  cmdNumber OBJECT-TYPE
+      SYNTAX  		RollCallUnitType
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The RollCall command number"
+      ::= { moduleEntry 3 }
+
+  slotIndex OBJECT-TYPE
+      SYNTAX  		Unsigned32
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              "The unique index value for each slot.  Its value
+              ranges between 1 and the value of slotNumber"
+      ::= { moduleEntry 4 }
+
+  cmdValue OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-write
+      STATUS  		current
+      DESCRIPTION
+              "The command value as a string"
+      ::= { moduleEntry 5 }
+
+END

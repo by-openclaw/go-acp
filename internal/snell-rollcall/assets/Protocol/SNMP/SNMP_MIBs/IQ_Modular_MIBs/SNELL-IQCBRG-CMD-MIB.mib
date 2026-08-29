@@ -1,0 +1,917 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQCBRG
+--        Module Id#:19
+--       Command Set:6
+--          Filename:SNELL-IQCBRG-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:09:29
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQCBRG-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQCBRG,
+    moduleIQCBRGMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQCBRGCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506290929Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQCBRGMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqcbrgCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqcbrgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQCBRG 1 }
+
+	iqcbrgCmdEntry OBJECT-TYPE
+		SYNTAX		IqcbrgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqcbrgSlotIndex }
+		::= { iqcbrgCmdTable 1 }
+
+	IqcbrgCmdEntry ::=
+		SEQUENCE {
+			iqcbrgSlotIndex
+				Unsigned32,
+			iqcbrgNetANameA
+				RollCallString,
+			iqcbrgNetAAddressA
+				RollCallString,
+			iqcbrgNetAShowNetworkA
+				INTEGER,
+			iqcbrgNetBNameB
+				RollCallString,
+			iqcbrgNetBAddressB
+				RollCallString,
+			iqcbrgNetBShowNetworkB
+				INTEGER,
+			iqcbrgMode
+				INTEGER,
+			iqcbrgModeHalfBridge
+				INTEGER,
+			iqcbrgModeDestBridgeAddress
+				INTEGER,
+			iqcbrgModePassIAMPackets
+				INTEGER,
+			iqcbrgModePassTIMEPackets
+				INTEGER,
+			iqcbrgModePassSETGRPFUNC
+				INTEGER,
+			iqcbrgDisplay
+				INTEGER,
+			iqcbrgStatisticsResetStats
+				INTEGER,
+			iqcbrgStatisticsEnableStats
+				INTEGER,
+			iqcbrgStatisticsPacketsPassed
+				RollCallString,
+			iqcbrgStatisticsPacketsLost
+				RollCallString,
+			iqcbrgStatisticsNETARecons
+				RollCallString,
+			iqcbrgStatisticsNETBRecons
+				RollCallString,
+			iqcbrgStatisticsLengthErrors
+				RollCallString,
+			iqcbrgStatisticsDIDErrors
+				RollCallString,
+			iqcbrgStatisticsSIDErrors
+				RollCallString,
+			iqcbrgStatisticsPktTypeErrors
+				RollCallString,
+			iqcbrgStatisticsHBCallsMade
+				RollCallString,
+			iqcbrgStatisticsHBConnectionTO
+				RollCallString,
+			iqcbrgStatisticsCurrentSessions
+				RollCallString,
+			iqcbrgStatisticsWANduplicatedata
+				RollCallString,
+			iqcbrgSetupRS232Speed
+				INTEGER,
+			iqcbrgSetupModemConnectNow
+				INTEGER,
+			iqcbrgSetupModemDisconnectNow
+				INTEGER,
+			iqcbrgSetupModemAutoDial
+				INTEGER,
+			iqcbrgModemPhoneNumbersAddress0
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress1
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress2
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress3
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress4
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress5
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress6
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress7
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress8
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddress9
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressA
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressB
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressC
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressD
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressE
+				RollCallString,
+			iqcbrgModemPhoneNumbersAddressF
+				RollCallString,
+			iqcbrgSetupModemInitialization
+				RollCallString,
+			iqcbrgSetupModemDialCommand
+				RollCallString,
+			iqcbrgSetupModemInterruptCommand
+				RollCallString,
+			iqcbrgSetupModemHangupCommand
+				RollCallString,
+			iqcbrgSetupModemConnectTimeout
+				INTEGER,
+			iqcbrgSetupLoggingRoutingErrors
+				INTEGER,
+			iqcbrgSetupLoggingNetworkRecons
+				INTEGER,
+			iqcbrgSetupLogPacketDelay
+				INTEGER,
+			iqcbrgSetupPresetUnit
+				INTEGER,
+			iqcbrgSetupSoftwareVersion
+				RollCallString,
+			iqcbrgSetupSerialNo
+				RollCallString,
+			iqcbrgSetupRestartUnit
+				INTEGER,
+			iqcbrgSetupSpecialInfo
+				RollCallString
+		}
+
+	iqcbrgSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqcbrgCmdEntry 0 }
+
+
+	iqcbrgNetANameA OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name_A  cmdID= 6  "
+		::= { iqcbrgCmdEntry 6 }
+
+
+	iqcbrgNetAAddressA OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Address_A  cmdID= 41  format=   "
+		::= { iqcbrgCmdEntry 41 }
+
+
+	iqcbrgNetAShowNetworkA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Network_A  cmdID= 46 "
+		::= { iqcbrgCmdEntry 46 }
+
+
+	iqcbrgNetBNameB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name_B  cmdID= 7  "
+		::= { iqcbrgCmdEntry 7 }
+
+
+	iqcbrgNetBAddressB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Address_B  cmdID= 42  format=   "
+		::= { iqcbrgCmdEntry 42 }
+
+
+	iqcbrgNetBShowNetworkB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Network_B  cmdID= 47 "
+		::= { iqcbrgCmdEntry 47 }
+
+
+	iqcbrgMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Net_A_B_Repeater(3),
+							val_Net_A_Net_B(0),
+							val_Net_A_RS232(1),
+							val_Net_A_Modem(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Net_A/B_Repeater  cmdID= 8  value= 3  
+					Net_A<->Net_B  cmdID= 8  value= 0  
+					Net_A<->RS232  cmdID= 8  value= 1  
+					Net_A<->Modem  cmdID= 8  value= 2  "
+		::= { iqcbrgCmdEntry 8 }
+
+
+	iqcbrgModeHalfBridge OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Half_Bridge  cmdID= 10 "
+		::= { iqcbrgCmdEntry 10 }
+
+
+	iqcbrgModeDestBridgeAddress OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Dest_Bridge_Address  cmdID= 43  min= 0  max= 15  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 15  Step = 1 "
+		::= { iqcbrgCmdEntry 43 }
+
+
+	iqcbrgModePassIAMPackets OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_IAM_Packets  cmdID= 35 "
+		::= { iqcbrgCmdEntry 35 }
+
+
+	iqcbrgModePassTIMEPackets OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_TIME_Packets  cmdID= 36 "
+		::= { iqcbrgCmdEntry 36 }
+
+
+	iqcbrgModePassSETGRPFUNC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_SETGRPFUNC  cmdID= 37 "
+		::= { iqcbrgCmdEntry 37 }
+
+
+	iqcbrgDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Show_Status(0),
+							val_Show_Pkt_Stats(1),
+							val_Show_Network_Recons(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Show_Status  cmdID= 39  value= 0  
+					Show_Pkt_Stats  cmdID= 39  value= 1  
+					Show_Network_Recons  cmdID= 39  value= 2  "
+		::= { iqcbrgCmdEntry 39 }
+
+
+	iqcbrgStatisticsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 40  value= 1  "
+		::= { iqcbrgCmdEntry 40 }
+
+
+	iqcbrgStatisticsEnableStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable_Stats  cmdID= 49 "
+		::= { iqcbrgCmdEntry 49 }
+
+
+	iqcbrgStatisticsPacketsPassed OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Packets_Passed  cmdID= 50  format=   "
+		::= { iqcbrgCmdEntry 50 }
+
+
+	iqcbrgStatisticsPacketsLost OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Packets_Lost  cmdID= 51  format=   "
+		::= { iqcbrgCmdEntry 51 }
+
+
+	iqcbrgStatisticsNETARecons OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					NET_A_Recons  cmdID= 52  format=   "
+		::= { iqcbrgCmdEntry 52 }
+
+
+	iqcbrgStatisticsNETBRecons OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					NET_B_Recons  cmdID= 53  format=   "
+		::= { iqcbrgCmdEntry 53 }
+
+
+	iqcbrgStatisticsLengthErrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Length_Errors  cmdID= 54  format=   "
+		::= { iqcbrgCmdEntry 54 }
+
+
+	iqcbrgStatisticsDIDErrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					DID_Errors  cmdID= 55  format=   "
+		::= { iqcbrgCmdEntry 55 }
+
+
+	iqcbrgStatisticsSIDErrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SID_Errors  cmdID= 56  format=   "
+		::= { iqcbrgCmdEntry 56 }
+
+
+	iqcbrgStatisticsPktTypeErrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					PktType_Errors  cmdID= 57  format=   "
+		::= { iqcbrgCmdEntry 57 }
+
+
+	iqcbrgStatisticsHBCallsMade OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					HB_Calls_Made  cmdID= 58  format=   "
+		::= { iqcbrgCmdEntry 58 }
+
+
+	iqcbrgStatisticsHBConnectionTO OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					HB_Connection_T/O  cmdID= 61  format=   "
+		::= { iqcbrgCmdEntry 61 }
+
+
+	iqcbrgStatisticsCurrentSessions OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Current_Sessions  cmdID= 59  format=   "
+		::= { iqcbrgCmdEntry 59 }
+
+
+	iqcbrgStatisticsWANduplicatedata OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					WAN_duplicate_data  cmdID= 60  format=   "
+		::= { iqcbrgCmdEntry 60 }
+
+
+	iqcbrgSetupRS232Speed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_38_4K(1),
+							val_19_2K(2),
+							val_9600(4),
+							val_4800(8),
+							val_2400(16),
+							val_1200(32)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					RS232_Speed  cmdID= 9 
+					38.4K  value= 1  
+					19.2K  value= 2  
+					9600  value= 4  
+					4800  value= 8  
+					2400  value= 16  
+					1200  value= 32  "
+		::= { iqcbrgCmdEntry 9 }
+
+
+	iqcbrgSetupModemConnectNow OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Connect_Now(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Connect_Now  cmdID= 33  value= 1  "
+		::= { iqcbrgCmdEntry 33 }
+
+
+	iqcbrgSetupModemDisconnectNow OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Disconnect_Now(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Disconnect_Now  cmdID= 34  value= 1  "
+		::= { iqcbrgCmdEntry 34 }
+
+
+	iqcbrgSetupModemAutoDial OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Auto_Dial  cmdID= 11 "
+		::= { iqcbrgCmdEntry 11 }
+
+
+	iqcbrgModemPhoneNumbersAddress0 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_0  cmdID= 14  "
+		::= { iqcbrgCmdEntry 14 }
+
+
+	iqcbrgModemPhoneNumbersAddress1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_1  cmdID= 15  "
+		::= { iqcbrgCmdEntry 15 }
+
+
+	iqcbrgModemPhoneNumbersAddress2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_2  cmdID= 16  "
+		::= { iqcbrgCmdEntry 16 }
+
+
+	iqcbrgModemPhoneNumbersAddress3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_3  cmdID= 17  "
+		::= { iqcbrgCmdEntry 17 }
+
+
+	iqcbrgModemPhoneNumbersAddress4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_4  cmdID= 18  "
+		::= { iqcbrgCmdEntry 18 }
+
+
+	iqcbrgModemPhoneNumbersAddress5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_5  cmdID= 19  "
+		::= { iqcbrgCmdEntry 19 }
+
+
+	iqcbrgModemPhoneNumbersAddress6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_6  cmdID= 20  "
+		::= { iqcbrgCmdEntry 20 }
+
+
+	iqcbrgModemPhoneNumbersAddress7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_7  cmdID= 21  "
+		::= { iqcbrgCmdEntry 21 }
+
+
+	iqcbrgModemPhoneNumbersAddress8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_8  cmdID= 22  "
+		::= { iqcbrgCmdEntry 22 }
+
+
+	iqcbrgModemPhoneNumbersAddress9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_9  cmdID= 23  "
+		::= { iqcbrgCmdEntry 23 }
+
+
+	iqcbrgModemPhoneNumbersAddressA OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_A  cmdID= 24  "
+		::= { iqcbrgCmdEntry 24 }
+
+
+	iqcbrgModemPhoneNumbersAddressB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_B  cmdID= 25  "
+		::= { iqcbrgCmdEntry 25 }
+
+
+	iqcbrgModemPhoneNumbersAddressC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_C  cmdID= 26  "
+		::= { iqcbrgCmdEntry 26 }
+
+
+	iqcbrgModemPhoneNumbersAddressD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_D  cmdID= 27  "
+		::= { iqcbrgCmdEntry 27 }
+
+
+	iqcbrgModemPhoneNumbersAddressE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_E  cmdID= 28  "
+		::= { iqcbrgCmdEntry 28 }
+
+
+	iqcbrgModemPhoneNumbersAddressF OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Address_F  cmdID= 29  "
+		::= { iqcbrgCmdEntry 29 }
+
+
+	iqcbrgSetupModemInitialization OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Initialization  cmdID= 12  "
+		::= { iqcbrgCmdEntry 12 }
+
+
+	iqcbrgSetupModemDialCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Dial_Command  cmdID= 13  "
+		::= { iqcbrgCmdEntry 13 }
+
+
+	iqcbrgSetupModemInterruptCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Interrupt_Command  cmdID= 30  "
+		::= { iqcbrgCmdEntry 30 }
+
+
+	iqcbrgSetupModemHangupCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Hangup_Command  cmdID= 31  "
+		::= { iqcbrgCmdEntry 31 }
+
+
+	iqcbrgSetupModemConnectTimeout OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Connect_Timeout  cmdID= 32  min= 0  max= 120  step= 1  format= %.0f secs  div_scale= 1 
+					Min = 0 secs  Max = 120 secs  Step = 1 secs "
+		::= { iqcbrgCmdEntry 32 }
+
+
+	iqcbrgSetupLoggingRoutingErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Routing_Errors  cmdID= 38 "
+		::= { iqcbrgCmdEntry 38 }
+
+
+	iqcbrgSetupLoggingNetworkRecons OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Network_Recons  cmdID= 45 "
+		::= { iqcbrgCmdEntry 45 }
+
+
+	iqcbrgSetupLogPacketDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Log_Packet_Delay  cmdID= 48  min= 0  max= 255  step= 1  format= %.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 255 ms  Step = 1 ms "
+		::= { iqcbrgCmdEntry 48 }
+
+
+	iqcbrgSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqcbrgCmdEntry 3 }
+
+
+	iqcbrgSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqcbrgCmdEntry 2 }
+
+
+	iqcbrgSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqcbrgCmdEntry 1 }
+
+
+	iqcbrgSetupRestartUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Re_start_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Re-start_Unit  cmdID= 4  value= 1  "
+		::= { iqcbrgCmdEntry 4 }
+
+
+	iqcbrgSetupSpecialInfo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Special_Info  cmdID= 5  "
+		::= { iqcbrgCmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:ROUTE ERROR 4 0000:20:0A->5900:79:10
+--				: 
+-- Comments		: Last part corresponds to 2 network addresses.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RECON_A
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.67.79.78.95.65
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.67.79.78.95.65
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: N/A
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RECON_B
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.67.79.78.95.66
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.67.79.78.95.66
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: N/A
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

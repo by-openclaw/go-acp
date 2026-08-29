@@ -4,7 +4,6 @@ import (
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/spec"
 	"encoding/json"
-	"strings"
 	"testing"
 )
 
@@ -80,8 +79,7 @@ func TestNodeEncodeStripsV12Fields(t *testing.T) {
 	}
 }
 
-func TestNodeDecodeRejectsV12Fields(t *testing.T) {
-	c := Codec{}
+func TestNodeDecodeAbsorbsV12Fields(t *testing.T) {
 	body := []byte(`{
 	  "id":"f47ac10b-58cc-4372-a567-0e02b2c3d479",
 	  "version":"1700000000:0","label":"x","description":"x",
@@ -91,10 +89,17 @@ func TestNodeDecodeRejectsV12Fields(t *testing.T) {
 	  "services":[],"clocks":[],
 	  "interfaces":[{"name":"eth0","chassis_id":"00-11-22-33-44-55","port_id":"00-11-22-33-44-66"}]
 	}`)
-	if _, err := c.DecodeNode(body); err == nil {
-		t.Fatalf("expected v1.1 decoder to reject Node with `interfaces`")
-	} else if !strings.Contains(err.Error(), "interfaces") {
-		t.Fatalf("error should name the rejected field, got %v", err)
+	rep := &spec.SliceReporter{}
+	if _, err := (Codec{Reporter: rep}).DecodeNode(body); err != nil {
+		t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+	}
+	// AMWA's v1.1 schema does NOT forbid this property — there is no
+	// additionalProperties:false on these resources. So the correct
+	// behaviour is to accept it in silence. Our old hand-written rule
+	// rejected it, and that rule was invented, not specified.
+	if n := len(rep.Snapshot()); n != 0 {
+		t.Fatalf("AMWA permits this on a v1.1 tree; %d deviations reported: %v",
+			n, rep.Snapshot())
 	}
 }
 
@@ -132,7 +137,8 @@ func TestSenderEncodeStripsV12Fields(t *testing.T) {
 	s := validSenderV11("11111111-1111-4111-8111-111111111111")
 	// Caller might fill v1.2+ fields; v1.1 encode must drop all of them.
 	rid := "22222222-2222-4222-8222-222222222222"
-	s.Caps = map[string]any{"k": "v"}
+	caps := map[string]any{"k": "v"}
+	s.Caps = &caps
 	s.InterfaceBindings = []string{"eth0"}
 	s.Subscription = is04.SenderSubscription{ReceiverID: &rid, Active: true}
 
@@ -151,8 +157,7 @@ func TestSenderEncodeStripsV12Fields(t *testing.T) {
 	}
 }
 
-func TestSenderDecodeRejectsV12Fields(t *testing.T) {
-	c := Codec{}
+func TestSenderDecodeAbsorbsV12Fields(t *testing.T) {
 	cases := []string{`"caps":{}`, `"interface_bindings":[]`, `"subscription":{"active":false}`}
 	for _, extra := range cases {
 		body := []byte(`{
@@ -163,8 +168,17 @@ func TestSenderDecodeRejectsV12Fields(t *testing.T) {
 		  "device_id":"abcdef01-1234-4abc-9def-1234567890ab",
 		  "manifest_href":"http://h/m",
 		  ` + extra + `}`)
-		if _, err := c.DecodeSender(body); err == nil {
-			t.Fatalf("expected rejection of %q", extra)
+		rep := &spec.SliceReporter{}
+		if _, err := (Codec{Reporter: rep}).DecodeSender(body); err != nil {
+			t.Fatalf("a later-minor field must be absorbed, not rejected: %v", err)
+		}
+		// AMWA's v1.1 schema does NOT forbid this property — there is no
+		// additionalProperties:false on these resources. So the correct
+		// behaviour is to accept it in silence. Our old hand-written rule
+		// rejected it, and that rule was invented, not specified.
+		if n := len(rep.Snapshot()); n != 0 {
+			t.Fatalf("AMWA permits this on a v1.1 tree; %d deviations reported: %v",
+				n, rep.Snapshot())
 		}
 	}
 }
@@ -177,8 +191,32 @@ func TestSenderValidateAcceptsMinimalV11(t *testing.T) {
 	}
 }
 
-func TestRejectFieldsHelperOnNonObjectJSON(t *testing.T) {
-	if err := rejectFields([]byte("[1,2,3]"), []string{"x"}, "node"); err == nil {
-		t.Fatalf("rejectFields should reject non-object JSON")
+// TestSchemaDeviationIsReportedNotFatal: a payload AMWA's own schema
+// rejects is still returned to the caller — refusing it costs the
+// operator the resource — but every failure is named as a compliance
+// event so nothing is swallowed.
+func TestSchemaDeviationIsReportedNotFatal(t *testing.T) {
+	// `id` is not a UUID and `version` is not <secs>:<nanos>: two rules
+	// AMWA states explicitly, so two deviations.
+	bad := []byte(`{"id":"not-a-uuid","version":"whenever","label":"x","description":"","tags":{},"node_id":"22222222-2222-4222-8222-222222222222","type":"urn:x-nmos:device:generic","senders":[],"receivers":[]}`)
+	rep := &spec.SliceReporter{}
+	d, err := (Codec{Reporter: rep}).DecodeDevice(bad)
+	if err != nil {
+		t.Fatalf("a schema deviation must not stop the decode: %v", err)
+	}
+	if d.ID != "not-a-uuid" {
+		t.Fatalf("the resource must still reach the caller, got %+v", d)
+	}
+	events := rep.Snapshot()
+	if len(events) == 0 {
+		t.Fatal("a schema deviation must be reported, not swallowed")
+	}
+	for _, e := range events {
+		if e.Code != "nmos_is04_schema_deviation" {
+			t.Errorf("code = %q", e.Code)
+		}
+		if e.APIVer != "v1.1" {
+			t.Errorf("apiVer = %q", e.APIVer)
+		}
 	}
 }

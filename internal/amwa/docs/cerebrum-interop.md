@@ -295,6 +295,140 @@ Latin-1 `â€"` — the wire bytes are spec-correct UTF-8; only the
 display layer is broken. Workaround: keep dhs labels/descriptions
 ASCII when testing.
 
+### Device updates MERGE controls — observed live 2026-08-28
+
+IS-04 registration updates replace the whole resource document.
+Cerebrum's hosted Registry instead **unions `device.controls` across
+updates**: after a dhs Node re-registered with corrected control
+hrefs, Cerebrum's Query API served BOTH the fresh controls and the
+stale ones from the previous registration — six `sr-ctrl` entries for
+a device whose own Node API document carried exactly three. Proof
+method: fetch the device from the Node API and from Cerebrum's Query
+API and diff `controls[]`; the Node-side document is what dhs actually
+POSTed.
+
+Operational consequences:
+
+- A Node that ever registered a bad control href cannot fix it by
+  re-registering — the stale entry persists until the operator clicks
+  **Forget** on the node in Cerebrum's NMOS Nodes table (the node
+  re-registers clean within a heartbeat cycle).
+- Controllers reading Cerebrum's catalogue must expect duplicate
+  control types and pick the one matching the node's current
+  `api.endpoints` — or better, the Node API document.
+- dhs side: `provider/connection_mount.go upsertControl` now REPLACES
+  same-type controls at attach time, so a dhs Node never publishes a
+  stale-vs-fresh pair itself, whatever a bundle file carried.
+
+Compliance event `nmos_registry_update_merged_peer` is the candidate
+name once the controller-side read-back comparison is wired; until
+then this note is the tracking artifact.
+
+### Cerebrum CONSUMING the dhs Registry — verified live 2026-08-28
+
+The inverse direction works, and answers §7.1's open question in
+practice: a Cerebrum **Network Media** device (its External-Registry
+client mode) discovered `dhs-nmos-registry` via Bonjour, selected it,
+and consumed the catalogue as a full controller — seven concurrent
+HTTP connections and **six IS-04 v1.3 WebSocket subscriptions**, one
+per resource type (`/nodes /devices /sources /flows /senders
+/receivers`). A real EVS Neuron registered in the dhs Registry
+(208 senders/receivers) reached Cerebrum's UI entirely through us:
+Neuron → dhs Registration API → dhs Query-WS → Cerebrum.
+
+Setup notes that cost time, for the next person:
+
+- Device Type **Network Media** = external-registry client;
+  **Network Media Server** = Cerebrum hosting its own registry. The
+  client never fires while a hosted-registry device at `pri=0`
+  outranks the external one — disable the hosted device, or announce
+  the external registry at `pri=0`.
+- The dialog's *Primary IP Address* is the Cerebrum host's OWN
+  interface (a subnet selector), never the registry's address; the
+  registry's host:port arrive via the Bonjour SRV record.
+- Cerebrum subscribes at v1.3 only, one subscription per resource
+  type, non-persistent.
+- **Query pagination (measured 2026-08-28, post vendor release)**: the
+  default page size is STILL 10, but the release fixes the pagination
+  *machinery* — no-param collection GETs now carry proper RFC 5988
+  `Link: rel="next"/"prev"` plus `X-Paging-Limit/Since/Until` headers,
+  so a conformant client walks the full set. A client that ignores
+  `Link` still silently sees only the first 10 of everything; the dhs
+  controller follows `Link` and is unaffected.
+- **First-page-only reads.** The Network Media client fetches page one
+  of each Query collection and never follows the `Link: rel="next"`
+  cursors (packet-traced 2026-08-28: zero paging-parameter requests).
+  Against a registry whose default page is 100 newest-first, a plant
+  larger than one page silently loses everything registered before
+  the newest device — on ours, one Neuron's 208 resources crowded the
+  dhs node entirely out of Cerebrum's view, flipping with
+  registration order. Remedy on the dhs registry:
+  `dhs registry nmos serve --page-limit-default 1000` (spec-legal —
+  the no-param page size is implementation-defined; explicit client
+  limits still win, conformance default untouched at 100).
+- **ROOT-CAUSE CORRECTION (2026-08-28, evening).** The two findings
+  below — "delete + re-add serves cache" and "no auto-reconnect" —
+  were measured while the dhs registry's OWN mDNS announce was
+  defective: Avahi also published the registry's A-record on loopback,
+  so a Bonjour client resolving the SRV target could receive
+  `127.0.0.1`, connect to itself, and look permanently dead with no
+  error. The instant loopback was removed from the announce
+  (`deny-interfaces=lo` on the registry host), Cerebrum connected and
+  rendered the full catalogue WITHOUT any operator action — validating
+  the operator's statement that "Cerebrum connects if a registry
+  exists". Cerebrum's cache-rendering and silent-failure UX made the
+  dhs defect invisible for hours, but the defect was ours. The entries
+  below remain as observed behaviour of the client under a poisoned
+  announce; treat their "never redials" claims as UNPROVEN against a
+  healthy announce. dhs TODO: exclude loopback at the announce layer
+  in code, not just host config.
+
+  Refresh model measured against the HEALTHY announce (45 min of
+  cumulative packet traces): Cerebrum read the catalogue in ONE burst
+  right after the announce became clean, rendered it, and issued zero
+  further requests — no periodic polling at all. Catalogue changes
+  after its burst (a node registered minutes later) do not appear
+  until its next event-driven read. In the earlier session the client
+  had opened six Query-WS subscriptions (live updates); this device
+  instance opened none — the difference is presumably the device's
+  "Resource Query" option (see the device-panel knob table below).
+  Without WS subscriptions, treat Cerebrum's view as a snapshot taken
+  at connect time.
+
+  FINAL MODEL (Servers tab, confirmed by screenshot + wire
+  2026-08-28): the Network Media device keeps a **Query Servers list**
+  (every discovered registry, each with address/port/versions and an
+  **Active checkbox**) and a separate **Node Servers list** (nodes
+  harvested directly from `_nmos-node` adverts — a Mode-D side channel
+  that can deliver a node's details independently of any registry,
+  which explains "full details" sightings while registry traffic was
+  zero). THE attach lever is the Active checkbox: only the checked
+  Query Server is consumed. Flipping Active to the dhs entry produced
+  7 connections and all six Query-WS subscriptions within ~3 minutes —
+  full live-update mode. Operational rule: after any registry change,
+  verify which entry is Active before debugging anything else.
+- **Delete + re-add serves cache, not network.** Measured 2026-08-28:
+  across a full delete → re-add → nudge sequence of the Network Media
+  device, an attach watcher saw zero TCP connections in 20 minutes and
+  a 12-minute packet capture recorded zero HTTP requests — yet the
+  "fresh" device rendered a node with 208 senders. The new device
+  instance re-binds to the server-wide per-UUID cache (the Generic
+  Device Data store) and displays it as live, including a "Fully
+  Connected" event that refers to its own comms layer. Once the client
+  has stopped dialling, no device-level action restores network reads;
+  the remaining levers are a Cerebrum server-service restart or vendor
+  support. Plan external-registry maintenance around this.
+- **Auto-reconnect: RETIRED finding (was: "no auto-reconnect").** The
+  original ~1 h-disconnected measurement was taken while our announce
+  was loopback-poisoned (see root-cause section) — Cerebrum was
+  retrying against 127.0.0.1. Re-measured 2026-08-28 with a clean
+  announce: after a full Cerebrum server restart the Network Media
+  client re-dialled the dhs registry **unaided** (conns 0 → 7 → 6
+  with all six Query-WS subscriptions, ~17 min after the restart
+  began) and did it again after the 2.8.17 upgrade reboot. Restart
+  maintenance needs no manual nudge; only the poisoned-announce
+  scenario ever did.
+
 ### Verification status
 
 dhs codec is byte-exact-correct against the AMWA IS-04 v1.3 schemas
@@ -308,6 +442,81 @@ and these become tracked compliance events.
 
 Until then, status of the affected codec paths in the integration
 plan stays **yellow** (codec landed, real-peer evidence ambiguous).
+
+### Cerebrum 2.8.17 upgrade — measured 2026-08-28
+
+The plant upgraded Cerebrum 2.8.11 → 2.8.17 (release notes claim NMOS
+fixes, including the pagination bug). Same day, same registry process,
+same store (dhs-test-node + Neuron `bm-n-nnbrg-c01`, 211 senders):
+
+| Behaviour | 2.8.11 | 2.8.17 |
+|---|---|---|
+| Auto re-attach after restart | yes (measured, clean announce) | yes (6 conns + 6 WS subs, unaided) |
+| Detail panes | dhs rendered; Neuron flipped per-attach (its triple-homed controls) | **blank for BOTH nodes** |
+| Manual/forced IS-05 | dialled node Connection API | **nothing — zero connections to any Node API** |
+
+dhs-side elimination, all measured while the panes were blank:
+
+- Store correct: both nodes present, dhs controls all at
+  `http://10.100.0.101:18080/...` (reachable; `GET /self` = 200).
+- Registry flags active: `--page-limit-default 1000` (whole store fits
+  page 1) `--priority 0` `--advertise-host 10.100.0.101:8235`.
+- WS bootstrap proven end-to-end: replaying Cerebrum's exact attach
+  from another host (POST non-persistent `/senders` subscription +
+  WS connect) delivered **211/211 sender sync grains** cross-wire.
+- `ss` on the registry host: Cerebrum holds exactly the 6 Query-WS
+  connections and dials **no** Node API on any host (not ours on
+  :18080, not the Neuron on :3000).
+
+Resolution, ~40 min after attach: the panes populated on their own —
+dhs node **full details + SDP**, with a live Cerebrum connection to
+our node's :18080 visible in `ss`. So 2.8.17's behaviour is *delayed*
+catalogue rendering after an attach (tens of minutes with zero Node
+API dials, then normal reads), not a permanent regression. Operator
+rule: after attach or upgrade, wait before debugging blank panes.
+
+The Neuron pane stayed blank through the same window — consistent
+with the pre-existing per-attach coin-flip on its triple-homed
+controls. Precision (2026-08-28, after operator correction): the two
+non-mgmt hrefs (`10.6.40.51` / `10.7.40.51`) are addresses of the
+Neuron's media interfaces whose networks DO NOT EXIST in this lab —
+nothing to route, no port to open; the device advertises its
+interface config, not reachable endpoints. 2.8.17 does not change
+that behaviour. Both items remain EVS ticket material: the
+multi-minute render delay, and control-href selection that ignores
+reachability (compounded by the Neuron advertising unconnected
+interfaces).
+
+### Registry-to-registry bridge — proven live 2026-08-29
+
+Use case: `dhs Node ↔ dhs Registry ↔ [Cerebrum hosted Registry ↔
+Cerebrum controller]` — each side reads its native catalogue, dhs is
+the authoritative middle. Operational (script) version ran live:
+snapshot our Query API, proxy-register every resource into Cerebrum's
+Registration API v1.3 in dependency order (node → device → source →
+flow → sender → receiver; 856/856 accepted with 201), then proxy one
+`POST /health` per node every 4 s. Verified durable past their 12 s
+GC; their query then serves our full catalogue including
+`manifest_href` intact, and their controller renders it.
+
+**Trap that cost the first attempt — HTTP 411 on heartbeats.**
+Cerebrum's hosted registry rejects bodyless `POST /health/...`
+without a `Content-Length` header (`411 Length Required` from its
+HTTP layer). curl's empty POST omits the header; every heartbeat
+bounced, their GC silently swept all 856 resources ~12 s after the
+fill, and later re-POSTs failed `400 "device is not known"` (their
+registration validates parentage). Fix: send an explicit empty body
+(`curl -d ""`, or any client that sets `Content-Length: 0`). EVS
+ticket item #5: heartbeat rejection is invisible to the operator —
+the fill "succeeds" and the catalogue quietly evaporates.
+
+Their registration face also validates parent references (sender
+without known device → 400), so fill order is mandatory, and a full
+node re-fill is required after any eviction.
+
+Productization of this bridge (the `dhs registry nmos mirror` verb:
+Query-WS-driven forwarding, deletion propagation, per-node heartbeat
+proxying) is designed and awaits approval post-merge.
 
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)

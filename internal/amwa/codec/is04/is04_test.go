@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 func validNode() Node {
@@ -89,12 +91,68 @@ func TestNodeRequiredMissing(t *testing.T) {
 	}
 }
 
-func TestNodeUnknownFieldRejected(t *testing.T) {
+// TestNodeUnknownFieldAbsorbedAndReported: a field IS-04 does not
+// define is a DEVIATION, not a failure.
+//
+// This test previously asserted the opposite — that decode rejects the
+// payload. That contract is wrong for a consumer and it broke against
+// real hardware: an EVS Neuron sends `caps` on Flows and `ip_addr` on
+// the Node, and strict decoding refused 144 of 176 Flows and the
+// device's own `self`. Refusing to read a device because it carries a
+// vendor extension is not strictness, it is blindness. The deviation
+// is now recorded so it stays auditable.
+func TestNodeUnknownFieldAbsorbedAndReported(t *testing.T) {
 	in := validNode()
 	wire, _ := in.Encode()
 	bad := strings.Replace(string(wire), `"href":`, `"rogue_field": "x", "href":`, 1)
-	if _, err := DecodeNode([]byte(bad)); err == nil || !strings.Contains(err.Error(), "rogue_field") {
-		t.Fatalf("expected unknown-field rejection, got %v", err)
+
+	var rep spec.SliceReporter
+	got, err := DecodeNodeReporting([]byte(bad), APIVersion, &rep)
+	if err != nil {
+		t.Fatalf("an unknown field must not fail the decode: %v", err)
+	}
+	if got.ID != in.ID {
+		t.Errorf("id = %q, want %q — the rest of the resource must survive", got.ID, in.ID)
+	}
+
+	events := rep.Snapshot()
+	if len(events) != 1 {
+		t.Fatalf("got %d compliance events, want exactly 1", len(events))
+	}
+	if events[0].Code != UnknownFieldCode {
+		t.Errorf("code = %q, want %q", events[0].Code, UnknownFieldCode)
+	}
+	if !strings.Contains(events[0].Detail, "rogue_field") {
+		t.Errorf("the event must name the field; got %q", events[0].Detail)
+	}
+}
+
+// TestUnknownFieldSilentWithoutReporter: the plain Decode* entry
+// points keep working for callers that have no reporter to give.
+func TestUnknownFieldSilentWithoutReporter(t *testing.T) {
+	in := validNode()
+	wire, _ := in.Encode()
+	bad := strings.Replace(string(wire), `"href":`, `"rogue_field": "x", "href":`, 1)
+	if _, err := DecodeNode([]byte(bad)); err != nil {
+		t.Fatalf("DecodeNode must absorb an unknown field: %v", err)
+	}
+}
+
+// TestMalformedInputStillFails: absorbing unknown FIELDS must not
+// weaken anything else. Broken JSON, a wrong type, and trailing
+// content are all still errors.
+func TestMalformedInputStillFails(t *testing.T) {
+	cases := map[string]string{
+		"broken json":      `{"id":`,
+		"wrong type":       `{"id": 42}`,
+		"trailing content": `{"id":"f47ac10b-58cc-4372-a567-0e02b2c3d479"} {"more":1}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := DecodeNode([]byte(body)); err == nil {
+				t.Error("expected an error")
+			}
+		})
 	}
 }
 
@@ -202,10 +260,10 @@ func validFlow() Flow {
 			Description: "lab flow",
 			Tags:        map[string][]string{},
 		},
-		SourceID:  "3b8be755-08ff-452b-b217-c9151eb21193",
-		DeviceID:  "3b8be755-08ff-452b-b217-c9151eb21193",
-		Parents:   []string{},
-		Format:    FormatVideo,
+		SourceID:    "3b8be755-08ff-452b-b217-c9151eb21193",
+		DeviceID:    "3b8be755-08ff-452b-b217-c9151eb21193",
+		Parents:     []string{},
+		Format:      FormatVideo,
 		FrameWidth:  1920,
 		FrameHeight: 1080,
 		Interlace:   "progressive",

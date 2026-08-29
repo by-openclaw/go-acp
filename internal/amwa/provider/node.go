@@ -15,18 +15,29 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is09"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
 // encodeOne wraps a per-resource codec Encode method into a
 // json.RawMessage suitable for handing back to the HTTP framework.
-// On encode error, returns a JSON null — the schema-validation tests
-// will catch this as a server bug rather than masking it as 200 OK.
+//
+// A resource the served minor cannot express returns NIL, and the
+// caller turns that into a 404.
+//
+// It used to return a JSON `null` at 200, on the theory that a
+// schema-validation test would catch it. It does -- as an
+// unattributable "Response schema validation error" three minors
+// deep, which is a slow way to learn something the server already
+// knew. And the behaviour is wrong on its own terms: the LIST endpoint
+// drops a resource the minor cannot express, so serving it
+// individually advertises a resource the Node does not list, and
+// answers "here it is" with nothing.
 func encodeOne[T any](enc func(T) ([]byte, error), v T) json.RawMessage {
 	body, err := enc(v)
 	if err != nil {
-		return json.RawMessage("null")
+		return nil
 	}
 	return json.RawMessage(body)
 }
@@ -71,14 +82,67 @@ func nodeInstanceName(label string) string {
 type IS04NodeConfig struct {
 	Bind          string
 	AdvertiseHost string
-	DiscoveryMode string // "mdns" | "static"
+	DiscoveryMode string // "mdns" | "static" | "unicast"
 	Priority      int
 	APIVer        string // default "v1.3"
+
+	// UnicastResolver + UnicastDomain drive Registry discovery over
+	// unicast DNS-SD (DiscoveryMode "unicast"): the resolver is the
+	// DNS server holding the `_nmos-register._tcp.<domain>` records,
+	// per IS-04 §3.1 for plants that block multicast.
+	UnicastResolver string
+	UnicastDomain   string
 
 	// RegistryURL — when non-empty the producer also registers itself
 	// against this Registration API base (e.g. http://10.6.239.113:8235/).
 	// When empty, mDNS-only / direct-Node mode (Mode D peers).
 	RegistryURL string
+
+	// NoConnectionAPI suppresses IS-05. Opt-OUT rather than opt-in: a
+	// Node with senders and receivers but no Connection API is a valid
+	// IS-04 Node that no controller can route, so the useful default
+	// is to serve it.
+	NoConnectionAPI bool
+
+	// ConnectionAPIVer pins IS-05 to one wire minor. Empty mounts
+	// every registered minor in parallel, which is what a real product
+	// does — a v1.0-pinned controller and a v1.2 one must each find a
+	// tree they can speak.
+	ConnectionAPIVer string
+
+	// NoChannelMappingAPI suppresses IS-08. Same opt-OUT reasoning as
+	// IS-05: a multi-channel audio Node with no Channel Mapping API
+	// can be connected but not patched, so the operator can only route
+	// whole streams and never a single channel.
+	NoChannelMappingAPI bool
+
+	// ChannelMappingAPIVer pins IS-08 to one wire minor. Empty mounts
+	// every registered minor.
+	ChannelMappingAPIVer string
+
+	// NoEventsAPI suppresses IS-07. Same opt-OUT reasoning again: a
+	// Node with data Sources and no Event & Tally API publishes tally
+	// state nothing can read.
+	NoEventsAPI bool
+
+	// EventsAPIVer pins IS-07 to one wire minor.
+	EventsAPIVer string
+
+	// SystemURL names an IS-09 System API as `host:port`, skipping
+	// discovery. Empty means browse for one.
+	SystemURL string
+
+	// NoRegistry keeps the Node out of any Registry: no explicit
+	// registration, and no browsing for one.
+	//
+	// This is Mode D (mDNS direct-Node) from internal/amwa/CLAUDE.md,
+	// and it is a real deployment, not a test affordance -- EVS
+	// Cerebrum runs registry-less peer-to-peer. It matters because
+	// IS-04 §4.2.1 makes the two modes mutually exclusive on the wire:
+	// a Node that has registered MUST stop advertising
+	// _nmos-node._tcp, so a Node allowed to find a Registry cannot
+	// also be a peer-to-peer Node.
+	NoRegistry bool
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -95,6 +159,27 @@ type IS04NodeServer struct {
 	// auto_node_11/12 fail "Response schema validation error" without it.
 	// See root CLAUDE.md "AMWA NMOS strict" and #192.
 	codec is04.Codec
+
+	// connection is the IS-05 Connection API served alongside the Node
+	// API. Nil disables it — a Node that only advertises resources is
+	// still a valid IS-04 Node, it just cannot be routed.
+	connection *IS05ConnectionServer
+
+	// channelMapping is the IS-08 Channel Mapping API. Nil disables
+	// it; a Node with no audio inputs or outputs gets an empty one,
+	// which is the honest answer rather than a missing API.
+	channelMapping *IS08ChannelMappingServer
+
+	// events is the IS-07 Event & Tally API. Nil disables it.
+	events *IS07EventsServer
+
+	// systemGlobal is what an IS-09 System API last told this Node, or
+	// nil if none has. Guarded by mu.
+	systemGlobal *is09.Global
+	// systemWatcher keeps looking for a System API after startup.
+	// IS-09 §4 has the Node re-resolve on change, so a one-shot fetch
+	// misses every System API advertised after boot. Guarded by mu.
+	systemWatcher *SystemWatcher
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -158,7 +243,52 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	if !ok {
 		return nil, fmt.Errorf("provider/node: no IS-04 codec registered for api_ver=%q (registered: %v)", cfg.APIVer, is04.SupportedVersions())
 	}
-	return &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}, nil
+	// Narrow the bundle to what this IS-04 minor can describe, BEFORE
+	// anything is built from it.
+	//
+	// Every API downstream -- IS-05 endpoints, IS-07 sources, IS-08
+	// inputs and outputs, the registration payload -- derives from this
+	// one value, so they cannot disagree about which resources the
+	// device has. Doing it later, per API, is how you end up serving a
+	// Connection endpoint for a Sender the Node API does not list.
+	// The FULL bundle survives for the one API whose resources are not
+	// gated by the IS-04 minor. IS-07 versions independently of IS-04:
+	// a Node serving its Node API at v1.0 still serves Events at IS-07
+	// v1.0, and its event sources still exist. Seeding events from the
+	// projected bundle silently emptied the Events API below v1.3 —
+	// the projection drops WebSocket senders (transport not in
+	// IS-04 < v1.3 per the Upgrade Path), the cascade then removes
+	// their flows and data sources, and AMWA IS-07-01 scored
+	// "No sources were returned from Events API" at v1.0/v1.1/v1.2
+	// while v1.3 passed. The tool was right: the sources were gone.
+	fullBundle := bundle
+	bundle = projectForMinor(bundle, cfg.APIVer)
+
+	s := &IS04NodeServer{logger: logger, cfg: cfg, bundle: bundle, codec: codec}
+
+	// IS-05 is served unless explicitly disabled. A Node carrying
+	// senders and receivers but no Connection API can be discovered
+	// and never routed — valid IS-04 and useless — so it is opt-OUT.
+	if !cfg.NoConnectionAPI {
+		s.connection = NewIS05ConnectionServer(logger, bundle, IS05ConnectionConfig{
+			APIVer: cfg.ConnectionAPIVer,
+		})
+	}
+	// IS-08 likewise. An audio Node that publishes no channel map
+	// leaves a controller unable to say which channel goes where, so
+	// the useful default is to serve it and let a Node with no audio
+	// publish an empty one.
+	if !cfg.NoChannelMappingAPI {
+		s.channelMapping = NewIS08ChannelMappingServer(logger, bundle, IS08ChannelMappingConfig{
+			APIVer: cfg.ChannelMappingAPIVer,
+		})
+	}
+	if !cfg.NoEventsAPI {
+		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
+			APIVer: cfg.EventsAPIVer,
+		})
+	}
+	return s, nil
 }
 
 // Serve binds the HTTP listener, optionally announces via DNS-SD,
@@ -178,13 +308,47 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// against whatever URL the test reaches us at.
 	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind)
 
+	// The Node's own href follows the same authority: it is the Node
+	// API base a controller will fetch, and a bundle-file leftover
+	// (host.docker.internal, a decommissioned IP) hands every reader
+	// a dead URL. With --advertise-host set, the operator has named
+	// the reachable address — use it.
+	if s.cfg.AdvertiseHost != "" {
+		s.bundle.Node.Href = "http://" + s.controlHost() + "/"
+	}
+
 	// Rewrite Sender manifest_href to point at our /transportfile route
 	// at the wire api_ver. v1.0/v1.1/v1.2 sender.json require a non-null
 	// URI string; the matching transportfile handler is installed below.
 	rewriteManifestHrefs(s.bundle.Senders, s.cfg.AdvertiseHost, s.cfg.APIVer)
 
+	// Re-seed what IS-05 "auto" resolves to, now that the endpoint list
+	// is real.
+	//
+	// The Connection API was constructed before expandNodeEndpoints
+	// ran, so it took its address from whatever the bundle file
+	// happened to declare -- often nothing. ACTIVE transport params
+	// name the address a peer connects to, and a stale one there
+	// points a controller at a host that is not us.
+	if s.connection != nil {
+		s.connection.Store().setNodeIP(firstNodeIP(s.bundle))
+		s.connection.Store().setNodeBase(s.controlHost())
+		s.connection.Store().reresolveActive()
+		// Bundle-seeded endpoints with master_enable=true activate
+		// now — after the address pass, so their concrete params and
+		// SDP name the address the Node actually answers on.
+		s.connection.Store().promoteBootEnabled()
+	}
+
 	srv := httpsession.NewServer(s.logger)
 	s.installRoutes(srv)
+	// IS-05 is attached BEFORE the first request can be served,
+	// because attaching it rewrites device.controls[] — a controller
+	// that fetched /devices first would cache a Device with no route
+	// to the Connection API and never look again.
+	s.attachConnectionAPI(srv)
+	s.attachChannelMappingAPI(srv)
+	s.attachEventsAPI(srv)
 	s.http = srv
 
 	// DNS-SD announce.
@@ -221,10 +385,28 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// Registration: explicit URL wins (Mode B). Otherwise, when in
 	// mDNS mode, browse `_nmos-register._tcp` and auto-register against
 	// the highest-pri Registry — that's IS-04 §3.1 Mode A.
-	if s.cfg.RegistryURL != "" {
+	if s.cfg.NoRegistry {
+		s.logger.Info("provider/node: registry disabled, staying peer-to-peer",
+			"plugin", "amwa", "api", "is-04", "mode", "direct-node")
+	} else if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
+		s.wireRepublish(rc)
+		go rc.Run(ctx)
+	} else if s.cfg.DiscoveryMode == "unicast" {
+		// Mode B with discovery: registries come from a conventional
+		// DNS zone instead of multicast — same client, same failover.
+		uw := NewUnicastRegistryWatcher(s.logger, s.cfg.UnicastResolver, s.cfg.UnicastDomain, s.cfg.APIVer)
+		if err := uw.Run(ctx); err != nil {
+			s.mu.Unlock()
+			return fmt.Errorf("provider/node: start unicast registry watcher: %w", err)
+		}
+		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
+		rc.SetWatcher(uw)
+		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		s.regClient = rc
+		s.wireRepublish(rc)
 		go rc.Run(ctx)
 	} else if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		w, err := NewRegistryWatcher(s.logger, s.cfg.APIVer)
@@ -242,8 +424,27 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
+		s.wireRepublish(rc)
 		go rc.Run(ctx)
 	}
+
+	// Scheduled activations need a clock running for the life of the
+	// server. Without it an endpoint accepts a scheduled PATCH,
+	// answers 202, and then never acts — the worst of the three
+	// possible behaviours, because it looks correct to the controller
+	// right up until the switch does not happen.
+	go s.runActivationScheduler(ctx, 0)
+
+	// Read the System API, if there is one.
+	//
+	// In its own goroutine: IS-09 discovery browses mDNS with a
+	// timeout, and blocking the listener on it would mean a Node on a
+	// network with no System API takes seconds to answer its first
+	// request. The result is advisory (see system_client.go), so
+	// nothing here needs to wait for it.
+	go func() {
+		s.fetchSystemGlobal(ctx)
+	}()
 
 	s.mu.Unlock()
 	return srv.Serve(ctx, s.cfg.Bind)
@@ -263,6 +464,17 @@ func (s *IS04NodeServer) Stop() error {
 	}
 	if s.regClient != nil {
 		_ = s.regClient.Close()
+	}
+	if s.systemWatcher != nil {
+		_ = s.systemWatcher.Close()
+		s.systemWatcher = nil
+	}
+	if s.events != nil {
+		// Drops every IS-07 WebSocket subscriber. Without it a
+		// shutdown leaves consumers holding a socket to a Node that is
+		// gone, and they wait out their own timeout instead of
+		// reconnecting somewhere useful.
+		_ = s.events.Close()
 	}
 	return nil
 }
@@ -436,11 +648,28 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	// NMOS API trees this host serves (we expose only "node/"). Each
 	// API tree's root then advertises the supported version subtrees.
 	// AMWA NMOS Testing's auto_node_1/auto_node_2 require both.
+	// The root lists every API TREE this host serves, not only the Node
+	// API. auto_connection_1 fails outright when the Connection API is
+	// served but unlisted — the same "served but not advertised is
+	// absent" trap as device.controls, one level up.
+	apiTrees := func() []string {
+		trees := []string{"node/"}
+		if s.connection != nil {
+			trees = append(trees, "connection/")
+		}
+		if s.channelMapping != nil {
+			trees = append(trees, "channelmapping/")
+		}
+		if s.events != nil {
+			trees = append(trees, "events/")
+		}
+		return trees
+	}
 	srv.Handle(stdhttp.MethodGet, "/x-nmos", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
-		return 0, []string{"node/"}, nil
+		return 0, apiTrees(), nil
 	})
 	srv.Handle(stdhttp.MethodGet, "/x-nmos/", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
-		return 0, []string{"node/"}, nil
+		return 0, apiTrees(), nil
 	})
 	srv.Handle(stdhttp.MethodGet, "/x-nmos/node", func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		return 0, []string{s.cfg.APIVer + "/"}, nil
@@ -543,11 +772,26 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	// manifest_href to be a non-null URI; AMWA test_20_01 (v1.3) checks
 	// the URL is actually reachable. We serve a minimal RFC 4566 SDP
 	// per Sender — Content-Type application/sdp, status 200.
+	//
+	// The SDP comes from the IS-05 generator, not from a second one
+	// living here. IS-05-02 test_13 fetches BOTH URLs and compares
+	// them byte for byte, and it is right to: they are two routes to
+	// one fact, and a Node that answers differently on each has told a
+	// controller two different things about the same stream. Two
+	// generators drift the moment either is touched.
 	for _, snd := range s.bundle.Senders {
 		sid := snd.ID
 		sndCopy := snd
 		path := base + "/senders/" + sid + "/transportfile"
 		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			if sdp := s.senderSDP(sid); sdp != "" {
+				return 0, &httpsession.RawBody{
+					ContentType: "application/sdp",
+					Body:        []byte(sdp),
+				}, nil
+			}
+			// No Connection API mounted: fall back to the standalone
+			// renderer so manifest_href still resolves.
 			return 0, &httpsession.RawBody{
 				ContentType: "application/sdp",
 				Body:        []byte(sdpFor(sndCopy)),
@@ -631,6 +875,25 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 	}
 }
 
+// wireRepublish connects IS-05 activations to the Registration API, so
+// a route changes the Registry's copy and not just the Node's own.
+//
+// IS-04 §4.2 requires the Node to re-POST a resource whose data
+// changed. Skipping it left the Query API insisting a live receiver was
+// idle — invisible on the Node API, which reported the truth, and the
+// exact disagreement a Controller cannot see past because it renders
+// routing state from the Registry.
+func (s *IS04NodeServer) wireRepublish(rc *RegistrationClient) {
+	if s.connection == nil {
+		return
+	}
+	s.connection.SetOnResourceChanged(func(t is04.ResourceType, data any) {
+		// Non-blocking by contract: this runs inside the connection
+		// store's lock during an activation.
+		rc.Republish(t, data)
+	})
+}
+
 // findReceiverByID locates a Receiver in the slice by UUID. Returns nil
 // when the id is unknown — callers must respond 404.
 func findReceiverByID(rs []is04.Receiver, id string) *is04.Receiver {
@@ -654,7 +917,12 @@ func (s *IS04NodeServer) installCollection(
 		path := base + "/" + plural + "/" + id
 		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 			body, ok := getFn(id)
-			if !ok {
+			// Not found, OR found and inexpressible at this minor --
+			// the same answer either way. A controller asking a v1.0
+			// Node for a resource that needs v1.2 vocabulary is asking
+			// for something this Node does not have AT THIS VERSION,
+			// which is what 404 means.
+			if !ok || isNilBody(body) {
 				return stdhttp.StatusNotFound, httpsession.ErrorBody{
 					Code: stdhttp.StatusNotFound, Error: "Not Found", Debug: id,
 				}, nil
@@ -662,6 +930,17 @@ func (s *IS04NodeServer) installCollection(
 			return 0, body, nil
 		})
 	}
+}
+
+// isNilBody reports whether a getFn result carries no encodable
+// resource. The typed nil hides inside an interface, so a plain
+// `body == nil` misses it.
+func isNilBody(body any) bool {
+	if body == nil {
+		return true
+	}
+	raw, isRaw := body.(json.RawMessage)
+	return isRaw && len(raw) == 0
 }
 
 func idsFromDevices(in []is04.Device) []string {
