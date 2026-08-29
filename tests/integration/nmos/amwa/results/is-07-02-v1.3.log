@@ -1,26 +1,41 @@
-Node API: bind=:18080, mode=mdns, api_ver=v1.3, priority=0
-Connection API (IS-05): v1.0, v1.1, v1.2
-  GET http://127.0.0.1:18080/x-nmos/node/v1.3/{,self,devices,sources,flows,senders,receivers}
-Announcing _nmos-node._tcp via mDNS.
-time=2026-08-28T00:16:11.239Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-28T00:16:11.242Z level=INFO msg="provider/node: mDNS announce active" service=_nmos-node._tcp host=dhs-node port=18080 api_ver=v1.3 pri=0
-time=2026-08-28T00:16:11.243Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-28T00:16:11.246Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-28T00:16:11.249Z level=INFO msg="dnssd: using Avahi via DBus (system daemon)"
-time=2026-08-28T00:16:11.495Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-28T00:16:11.496Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
-time=2026-08-28T00:16:11.497Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=120 pri=100
-time=2026-08-28T00:16:11.501Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-28T00:16:11.501Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-28T00:16:12.368Z level=INFO msg="provider/node: mDNS announce suspended (registered with Registry)" service=_nmos-node._tcp
-time=2026-08-28T00:16:13.253Z level=WARN msg="http://10.100.0.104:8110/x-nmos/system/v1.0/global does not match the IS-09 schema (is09 /global validation failed: label: required (resource_core); description: required (resource_core)); absorbed and used anyway, because discarding it would send this Node to a Registry the operator did not choose" plugin=amwa spec=is-09 api_ver=v1.0 code=nmos_is09_global_deviation resource=global peer=10.100.0.104:8110
-time=2026-08-28T00:16:13.253Z level=INFO msg="provider/node: System API global applied" plugin=amwa api=is-09 url=http://10.100.0.104:8110/x-nmos/system/v1.0/global id=2a3c52f2-ee01-5987-ae18-683ac68081cf version=1787689595:356512214
-time=2026-08-28T00:16:26.358Z level=INFO msg="nmos/is07: ws client connected" client=1 remote=172.18.0.4:34556
-time=2026-08-28T00:16:26.358Z level=INFO msg="nmos/is07: ws client connected" client=2 remote=172.18.0.4:34570
-time=2026-08-28T00:16:38.359Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=1 after=12s
-time=2026-08-28T00:16:38.359Z level=WARN msg="nmos/is07: ws read error" client=1 err="read tcp 172.18.0.5:18080->172.18.0.4:34556: use of closed network connection"
-time=2026-08-28T00:16:43.563Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=2 after=12s
-time=2026-08-28T00:16:43.563Z level=WARN msg="nmos/is07: ws read error" client=2 err="read tcp 172.18.0.5:18080->172.18.0.4:34570: use of closed network connection"
-time=2026-08-28T00:16:43.777Z level=INFO msg="nmos/is07: ws client connected" client=3 remote=172.18.0.4:55840
-time=2026-08-28T00:16:48.982Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
-time=2026-08-28T00:16:49.184Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
+
+time=2026-08-29T22:47:41.572Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
+time=2026-08-29T22:47:42.713Z level=INFO msg="nmos/auth: access token obtained" scope="" expires_in=60
+time=2026-08-29T22:47:46.572Z level=WARN msg="provider/node: System API advertised but /global could not be read" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T22:47:48.506Z level=WARN msg="provider/node: System API found but /global could not be read" plugin=amwa api=is-09 err="nmos/system: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: nmos/http: GET http://10.100.0.104:8110/x-nmos/system/v1.0/global: Get \"http://10.100.0.104:8110/x-nmos/system/v1.0/global\": context deadline exceeded"
+time=2026-08-29T22:47:52.713Z level=WARN msg="provider/node: re-register attempt failed" step=0 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:47:53.245Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/connection/v1.2
+time=2026-08-29T22:47:53.247Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/connection/v1.2 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:47:53.341Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=5a719f9c-eb16-4fe5-935d-161a4329d67e err="is10: token expired at 2026-08-29 21:47:53 +0000 UTC"
+time=2026-08-29T22:47:53.431Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:47:53.519Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/connection/v1.2 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=d5e8f0a1-aa48-4c0a-af1a-719d9bfaae5b err="is10: token grants no access to the connection API"
+time=2026-08-29T22:47:54.473Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/connection/v1.2
+time=2026-08-29T22:47:54.591Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:47:57.707Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/events/v1.0
+time=2026-08-29T22:47:57.709Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/events/v1.0 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:47:57.798Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/events/v1.0 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=9d679d78-21a2-4599-9bc0-56d8dc94de8e err="is10: token expired at 2026-08-29 21:47:57 +0000 UTC"
+time=2026-08-29T22:47:57.913Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/events/v1.0 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:47:58.038Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/events/v1.0 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=233f86ee-d68c-4255-aeb2-b51956b001d8 err="is10: token grants no access to the events API"
+time=2026-08-29T22:47:58.867Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/events/v1.0
+time=2026-08-29T22:47:59.027Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:48:02.714Z level=WARN msg="provider/node: re-register attempt failed" step=1 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:48:03.637Z level=INFO msg="auth: rejected" reason="no token" method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T22:48:03.642Z level=INFO msg="auth: rejected" reason=signature method=GET path=/x-nmos/node/v1.3 err="is10: token is not a compact JWS (want 3 segments, got 1)"
+time=2026-08-29T22:48:03.730Z level=INFO msg="auth: rejected" reason=claims method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=68380eeb-d921-452d-b51a-cd0cd818fcb2 err="is10: token expired at 2026-08-29 21:48:03 +0000 UTC"
+time=2026-08-29T22:48:03.822Z level=INFO msg="auth: forbidden" reason=audience method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 aud=[https://*.nmos.example.com]
+time=2026-08-29T22:48:03.995Z level=INFO msg="auth: forbidden" method=GET path=/x-nmos/node/v1.3 iss=http://172.18.0.4:5010 sub=test@testsuite.nmos.tv client=4f2c17a0-856f-46da-9d34-66841e5c698c err="is10: token grants no access to the node API"
+time=2026-08-29T22:48:04.985Z level=INFO msg="auth: unknown key, fetching issuer keys" iss=http://172.18.0.4:5011 method=GET path=/x-nmos/node/v1.3
+time=2026-08-29T22:48:05.067Z level=INFO msg="nmos/auth: issuer keys merged" issuer=http://172.18.0.4:5011 added=1
+time=2026-08-29T22:48:08.566Z level=INFO msg="nmos/is07: ws client connected" client=1 remote=172.18.0.4:35994
+time=2026-08-29T22:48:08.566Z level=INFO msg="nmos/is07: ws client connected" client=2 remote=172.18.0.4:35998
+time=2026-08-29T22:48:11.574Z level=INFO msg="provider/node: System API advertisement observed" plugin=amwa api=is-09 instance=nmos-cpp_system_10-100-0-104_8110 host=nmos-registry.local port=8110 ttl=4500 pri=100
+time=2026-08-29T22:48:11.574Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-register._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:48:11.574Z level=INFO msg="provider/node: registry discovered" name=nmos-cpp_registration_10-100-0-104_8110._nmos-registration._tcp.local url=http://10.100.0.104:8110 pri=100 api_ver=v1.3
+time=2026-08-29T22:48:20.567Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=1 after=12s
+time=2026-08-29T22:48:20.568Z level=WARN msg="nmos/is07: ws read error" client=1 err="read tcp 172.18.0.5:18080->172.18.0.4:35994: use of closed network connection"
+time=2026-08-29T22:48:22.506Z level=WARN msg="provider/node: re-register attempt failed" step=0 err="provider/node: POST http://10.100.0.104:8110/x-nmos/registration/v1.3/resource: Post \"http://10.100.0.104:8110/x-nmos/registration/v1.3/resource\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+time=2026-08-29T22:48:25.772Z level=INFO msg="nmos/is07: ws client timed out with no health command" client=2 after=12s
+time=2026-08-29T22:48:25.772Z level=WARN msg="nmos/is07: ws read error" client=2 err="read tcp 172.18.0.5:18080->172.18.0.4:35998: use of closed network connection"
+time=2026-08-29T22:48:25.985Z level=INFO msg="nmos/is07: ws client connected" client=3 remote=172.18.0.4:36614
+time=2026-08-29T22:48:31.190Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6
+time=2026-08-29T22:48:31.392Z level=INFO msg="nmos/is07: subscription updated" client=3 sources=6

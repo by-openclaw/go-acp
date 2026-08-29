@@ -166,7 +166,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |
 | BCP-002-01 / -02 Grouping, Asset | **v1.0.0** | — | ✅ |
 | BCP-003-01 Secure Communications | **v1.0.1** | — | ⚠️ table said v1.0.0 |
-| BCP-003-02 Authorization | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-003-02 Authorization | **v1.0.0** | — | ✅ (IS-10 v1.0 client + resource server) |
 | BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ❌ **MISSING** |
 | BCP-004-01 / -02 Receiver/Sender Caps | **v1.0.0** | — | ✅ |
 | BCP-005-01 EDID Mapping | **v1.0.0** | — | ❌ **MISSING** |
@@ -296,8 +296,11 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
    ClassManager and SubscriptionManager live as child OIDs of OID 1.
 8. **`x-nmos` namespace is reserved** (URLs, URNs, JSON keys). Never
    put non-NMOS content under it.
-9. **Auth is IS-10** (out of scope for v1). All endpoints currently
-   support `api_auth=false`.
+9. **Auth is IS-10 / BCP-003-02 — implemented.** `--auth-url` on node
+   + registry arms the Bearer gate on every served API (WS included),
+   flips `api_auth=true` + endpoint/control `authorization` flags, and
+   the registration client fetches client_credentials tokens. Without
+   the flag everything stays `api_auth=false`.
 10. **Common-pitfall: confusing Node API with Registration API.** Node
     serves the Node API to anyone who asks. Node CLIENT-CALLS the
     Registration API on the Registry. Two different code paths, easy

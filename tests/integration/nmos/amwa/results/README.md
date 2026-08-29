@@ -119,3 +119,22 @@ SRV as fallback) and `session/dnssd` (Avahi `ItemNew` emits
    params (also fixes the 36 Could Not Test and exercises BCP-004 caps).
 2. Unicast DNS-SD run mode for the node harness.
 3. BCP-003-02 Authorization (252 disabled tests).
+
+## Authorization-mode receipt set (2026-08-30)
+
+The `*-v1.3` receipts were scored with **BCP-003-02 authorization
+enabled** end to end: tool `ENABLE_AUTH=True`, node gated via
+`--auth-url` against the tool's mock Authorization Server, every
+request tokened. This activates the per-endpoint auth negatives
+(`auto_*` 401/403/`WWW-Authenticate` rounds) on every suite, so pass
+counts are HIGHER than the earlier non-auth receipts they replace.
+
+Two environmental residuals, not code defects:
+
+- `is-04-03 test_01` (P2P announce): the offline `FROM scratch` node
+  image carries no avahi, and the stdlib mDNS responder's announce is
+  not matched by the tool's zeroconf browser. The same test passed in
+  the online-image era; re-run with `Dockerfile.node` once an
+  internet-capable builder exists (issue #871).
+- `is-05-01 test_27/28` (activation timing): stdlib-responder jitter
+  on the same offline image; warning-level, historically benign.
