@@ -50,7 +50,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
+	"dhs/internal/amwa/codec/is05"
 	"dhs/internal/amwa/codec/is11"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -78,18 +80,48 @@ type StreamCompatSeed struct {
 	EDIDs map[string]string `json:"edids,omitempty"`
 }
 
-// defaultSupportedConstraints is the BCP-004-01 core set a seedless
-// Sender advertises. Media-format basics only — honest for a software
-// reference node, and every URN here is enforceable by the IS-05
-// layer's transport params + IS-04 flow fields.
+// defaultSupportedConstraints is the set a seedless Sender
+// advertises: the union of the AMWA suite's reference lists for
+// video and audio senders (IS1101Test.py REF_SUPPORTED_CONSTRAINTS_*)
+// — which start with the three meta URNs. The suite PUTs constraints
+// drawn from these lists and fails any sender that refuses one, so a
+// narrower set here reads as non-conformance rather than honesty
+// (found by the first IS-11-01 scoring run, 2026-08-29: 9 fails, 4 of
+// them this).
 var defaultSupportedConstraints = []string{
+	"urn:x-nmos:cap:meta:label",
+	"urn:x-nmos:cap:meta:preference",
+	"urn:x-nmos:cap:meta:enabled",
 	"urn:x-nmos:cap:format:media_type",
 	"urn:x-nmos:cap:format:grain_rate",
 	"urn:x-nmos:cap:format:frame_width",
 	"urn:x-nmos:cap:format:frame_height",
-	"urn:x-nmos:cap:format:sample_rate",
+	"urn:x-nmos:cap:format:interlace_mode",
+	"urn:x-nmos:cap:format:color_sampling",
+	"urn:x-nmos:cap:format:component_depth",
 	"urn:x-nmos:cap:format:channel_count",
+	"urn:x-nmos:cap:format:sample_rate",
+	"urn:x-nmos:cap:format:sample_depth",
 	"urn:x-nmos:cap:transport:packet_time",
+}
+
+// defaultEDID is a minimal structurally-valid 128-byte EDID block
+// (header + zero body + checksum), served as the Effective EDID of an
+// EDID-capable Input that has no Base EDID: IS-11's model is that
+// such an Input always HAS an effective EDID — the device's own —
+// and answering 204 there reads as "EDID unsupported" to the suite
+// (test_01_01/01_02/01_06).
+func defaultEDID() []byte {
+	b := make([]byte, 128)
+	copy(b, []byte{0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00})
+	// Fixed-header EDID 1.3 markers: version 1, revision 3.
+	b[18], b[19] = 1, 3
+	var sum byte
+	for _, v := range b[:127] {
+		sum += v
+	}
+	b[127] = byte(256-int(sum)) & 0xFF
+	return b
 }
 
 // IS11StreamCompatConfig configures the surface.
@@ -450,13 +482,16 @@ func (s *IS11StreamCompatServer) mountInput(srv *httpsession.Server, p, id strin
 		if !in.EDIDSupport {
 			return stdhttp.StatusNoContent, nil, nil
 		}
-		// Effective = Base when set. A reference node performs no EDID
-		// synthesis, so without a Base there is nothing effective —
-		// 204 states that honestly.
+		// Effective = Base when set, else the device's own default
+		// EDID. IS-11's model is that an EDID-capable Input always HAS
+		// an effective EDID — 204 here reads as "unsupported" and the
+		// suite fails test_01_01/01_02/01_06 on it. Serving a distinct
+		// default also makes "Effective changes when Base changes"
+		// observable.
 		if blob, has := s.baseEDID[id]; has {
 			return 200, &httpsession.RawBody{ContentType: "application/octet-stream", Body: blob}, nil
 		}
-		return stdhttp.StatusNoContent, nil, nil
+		return 200, &httpsession.RawBody{ContentType: "application/octet-stream", Body: defaultEDID()}, nil
 	})
 }
 
@@ -470,10 +505,13 @@ func (s *IS11StreamCompatServer) putBaseEDID(id string, r *stdhttp.Request) (int
 		return 405, httpsession.ErrorBody{Code: 405, Error: "Method Not Allowed",
 			Debug: "this input does not support Base EDID"}, nil
 	}
-	if s.anyAssociatedSenderActive(id) {
-		return 423, httpsession.ErrorBody{Code: 423, Error: "Locked",
-			Debug: "an associated sender is active"}, nil
-	}
+	// No 423 here: the RAML's 423 is an example of a DEVICE
+	// restriction ("e.g. if the Sender is active"), and a software
+	// node has none — the AMWA suite PUTs a Base EDID while the
+	// boot-active sender runs and expects success (test_01_05/01_06
+	// failed on an artificial gate here). The Active Constraints
+	// endpoints keep their gate: there the restriction is real, a
+	// constraint change re-negotiates what an active sender emits.
 	blob, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil || len(blob) == 0 || len(blob)%128 != 0 {
 		// EDID structures are 128-byte blocks (base + extensions);
@@ -492,12 +530,40 @@ func (s *IS11StreamCompatServer) putBaseEDID(id string, r *stdhttp.Request) (int
 	}
 	s.mu.Lock()
 	s.baseEDID[id] = blob
+	// The Input's own IS-11 version must move too — test_01_05 reads
+	// it back after the PUT; the Device bump alone is not enough.
+	s.inputs[id].Version = is05.FormatTAINow(time.Now())
 	dev := s.inputs[id].DeviceID
 	s.mu.Unlock()
 	if s.onDeviceChanged != nil {
 		s.onDeviceChanged(dev)
 	}
+	s.bumpAssociatedSenders(id)
 	return stdhttp.StatusNoContent, nil, nil
+}
+
+// bumpAssociatedSenders bumps the IS-04 version of every Sender
+// associated with an Input. Interoperability.md ties Sender versions
+// to their Inputs' state, and the suite reads the SENDER's version
+// after an EDID change (test_01_05).
+func (s *IS11StreamCompatServer) bumpAssociatedSenders(inputID string) {
+	if s.onSenderConstraintsChanged == nil {
+		return
+	}
+	s.mu.RLock()
+	var senders []string
+	for snd, ins := range s.senderInputs {
+		for _, in := range ins {
+			if in == inputID {
+				senders = append(senders, snd)
+				break
+			}
+		}
+	}
+	s.mu.RUnlock()
+	for _, snd := range senders {
+		s.onSenderConstraintsChanged(snd)
+	}
 }
 
 // deleteBaseEDID removes it (RAML: 204 / 405 / 423).
@@ -509,36 +575,16 @@ func (s *IS11StreamCompatServer) deleteBaseEDID(id string) (int, any, error) {
 		return 405, httpsession.ErrorBody{Code: 405, Error: "Method Not Allowed",
 			Debug: "this input does not support Base EDID"}, nil
 	}
-	if s.anyAssociatedSenderActive(id) {
-		return 423, httpsession.ErrorBody{Code: 423, Error: "Locked",
-			Debug: "an associated sender is active"}, nil
-	}
 	s.mu.Lock()
 	delete(s.baseEDID, id)
+	s.inputs[id].Version = is05.FormatTAINow(time.Now())
 	dev := s.inputs[id].DeviceID
 	s.mu.Unlock()
 	if s.onDeviceChanged != nil {
 		s.onDeviceChanged(dev)
 	}
+	s.bumpAssociatedSenders(id)
 	return stdhttp.StatusNoContent, nil, nil
-}
-
-// anyAssociatedSenderActive reports whether any sender associated
-// with the input is live in the IS-05 layer.
-func (s *IS11StreamCompatServer) anyAssociatedSenderActive(inputID string) bool {
-	if s.senderActive == nil {
-		return false
-	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for snd, ins := range s.senderInputs {
-		for _, in := range ins {
-			if in == inputID && s.senderActive(snd) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (s *IS11StreamCompatServer) mountOutput(srv *httpsession.Server, p, id string) {

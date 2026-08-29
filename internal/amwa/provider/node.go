@@ -681,6 +681,11 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		if s.channelMapping != nil {
 			trees = append(trees, "channelmapping/")
 		}
+		if s.streamCompat != nil {
+			// auto_streamcompatibility_1 applies the same rule to
+			// IS-11: served but unlisted is absent.
+			trees = append(trees, "streamcompatibility/")
+		}
 		if s.events != nil {
 			trees = append(trees, "events/")
 		}

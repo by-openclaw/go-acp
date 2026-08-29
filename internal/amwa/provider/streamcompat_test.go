@@ -225,13 +225,22 @@ func TestIS11EDIDLifecycle(t *testing.T) {
 	base := scBase + "/inputs/" + scInput + "/edid/base/"
 	eff := scBase + "/inputs/" + scInput + "/edid/effective/"
 
-	// No Base EDID yet: 204 on both.
-	for _, p := range []string{base, eff} {
-		resp := scDo(t, ts, stdhttp.MethodGet, p, nil, "")
-		if resp.StatusCode != 204 {
-			t.Errorf("GET %s: %d, want 204", p, resp.StatusCode)
-		}
-		_ = resp.Body.Close()
+	// No Base EDID yet: base is 204, but effective serves the device's
+	// own default EDID — an EDID-capable Input always HAS an effective
+	// EDID (AMWA IS-11-01 test_01_01/01_02 fail a 204 there).
+	resp0 := scDo(t, ts, stdhttp.MethodGet, base, nil, "")
+	if resp0.StatusCode != 204 {
+		t.Errorf("GET base pre-PUT: %d, want 204", resp0.StatusCode)
+	}
+	_ = resp0.Body.Close()
+	resp0 = scDo(t, ts, stdhttp.MethodGet, eff, nil, "")
+	if resp0.StatusCode != 200 {
+		t.Errorf("GET effective pre-PUT: %d, want 200 (default EDID)", resp0.StatusCode)
+	}
+	defBlob, _ := io.ReadAll(resp0.Body)
+	_ = resp0.Body.Close()
+	if len(defBlob) != 128 {
+		t.Errorf("default EDID = %d bytes, want 128", len(defBlob))
 	}
 
 	// Bad size → 400.
