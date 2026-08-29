@@ -84,12 +84,18 @@ func TestBulkPropertiesSetRequestValidation(t *testing.T) {
 		"missing recurse":     `{"arguments":{"dataSet":{"validationFingerprint":null,"values":[]},"restoreMode":0}}`,
 		"missing restoreMode": `{"arguments":{"dataSet":{"validationFingerprint":null,"values":[]},"recurse":true}}`,
 		"bad restoreMode":     `{"arguments":{"dataSet":{"validationFingerprint":null,"values":[]},"recurse":true,"restoreMode":5}}`,
-		"unknown member":      `{"arguments":{"dataSet":{"validationFingerprint":null,"values":[]},"recurse":true,"restoreMode":0,"x":1}}`,
 	}
 	for name, body := range cases {
 		if _, err := is14.DecodeBulkPropertiesSetRequest([]byte(body)); err == nil {
 			t.Errorf("%s: must be rejected", name)
 		}
+	}
+
+	// Unknown members are legal — the schema never sets
+	// additionalProperties=false, and the AMWA suite sends extras.
+	extra := `{"arguments":{"dataSet":{"validationFingerprint":null,"values":[]},"recurse":true,"restoreMode":0,"x":1},"json":{}}`
+	if _, err := is14.DecodeBulkPropertiesSetRequest([]byte(extra)); err != nil {
+		t.Errorf("unknown members must be tolerated: %v", err)
 	}
 }
 
@@ -111,8 +117,8 @@ func TestPropertyValuePutRequest(t *testing.T) {
 	if _, err := is14.DecodePropertyValuePutRequest([]byte(`{}`)); err == nil {
 		t.Error("missing value member must be rejected")
 	}
-	if _, err := is14.DecodePropertyValuePutRequest([]byte(`{"value":1,"other":2}`)); err == nil {
-		t.Error("unknown member must be rejected")
+	if _, err := is14.DecodePropertyValuePutRequest([]byte(`{"value":1,"other":2}`)); err != nil {
+		t.Errorf("unknown members must be tolerated (schema allows them): %v", err)
 	}
 }
 

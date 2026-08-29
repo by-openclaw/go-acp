@@ -1,0 +1,17 @@
+{
+  "description": "Object properties set validation method result",
+  "name": "NcMethodResultObjectPropertiesSetValidation",
+  "type": 2,
+  "fields": [
+    {
+      "description": "Object properties set path validations",
+      "name": "value",
+      "typeName": "NcObjectPropertiesSetValidation",
+      "isNullable": false,
+      "isSequence": true,
+      "constraints": null
+    }
+  ],
+  "parentType": "NcMethodResult",
+  "constraints": null
+}

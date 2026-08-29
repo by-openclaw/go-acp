@@ -171,10 +171,15 @@ func DecodeBulkPropertiesHolder(raw []byte) (BulkPropertiesHolder, error) {
 // PUT / PATCH body: `arguments` with dataSet, recurse and restoreMode
 // all present (API requests doc: clients MUST include all three), and
 // the mode inside the published enum.
+//
+// Unknown members are TOLERATED: the request schemas never set
+// additionalProperties=false, and the AMWA suite exercises that
+// freedom (its validate bodies carry an extra top-level member —
+// rejecting it failed 7 of the bulkProperties rounds).
 func DecodeBulkPropertiesSetRequest(raw []byte) (BulkPropertiesSetRequest, error) {
 	var r BulkPropertiesSetRequest
-	if err := decodeStrict(raw, &r, "bulkProperties set request"); err != nil {
-		return BulkPropertiesSetRequest{}, err
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return BulkPropertiesSetRequest{}, fmt.Errorf("is14: decode bulkProperties set request: %w", err)
 	}
 	a := r.Arguments
 	if a == nil {
@@ -201,31 +206,27 @@ func DecodeBulkPropertiesSetRequest(raw []byte) (BulkPropertiesSetRequest, error
 // DecodePropertyValuePutRequest parses a property PUT body. The
 // `value` member must EXIST; its content may be any JSON including
 // null, so existence is checked on the raw key set, not the decoded
-// pointer.
+// pointer. Unknown members pass — the schema does not forbid them.
 func DecodePropertyValuePutRequest(raw []byte) (PropertyValuePutRequest, error) {
 	var probe map[string]json.RawMessage
-	if err := decodeStrict(raw, &probe, "property value put request"); err != nil {
-		return PropertyValuePutRequest{}, err
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		return PropertyValuePutRequest{}, fmt.Errorf("is14: decode property value put request: %w", err)
 	}
 	v, ok := probe["value"]
 	if !ok {
 		return PropertyValuePutRequest{}, fmt.Errorf("is14: property value put request: value is required")
-	}
-	for k := range probe {
-		if k != "value" {
-			return PropertyValuePutRequest{}, fmt.Errorf("is14: property value put request: unknown member %q", k)
-		}
 	}
 	return PropertyValuePutRequest{Value: v}, nil
 }
 
 // DecodeMethodPatchRequest parses a method invocation body. The
 // `arguments` member must exist and be a JSON object (empty for
-// parameterless methods).
+// parameterless methods). Unknown members pass — the schema does not
+// forbid them.
 func DecodeMethodPatchRequest(raw []byte) (MethodPatchRequest, error) {
 	var r MethodPatchRequest
-	if err := decodeStrict(raw, &r, "method patch request"); err != nil {
-		return MethodPatchRequest{}, err
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return MethodPatchRequest{}, fmt.Errorf("is14: decode method patch request: %w", err)
 	}
 	if r.Arguments == nil {
 		return MethodPatchRequest{}, fmt.Errorf("is14: method patch request: arguments is required")

@@ -1,0 +1,25 @@
+{
+    "description": "Bulk properties holder descriptor",
+    "name": "NcBulkPropertiesHolder",
+    "type": 2,
+    "fields": [
+        {
+            "description": "Optional vendor specific fingerprinting mechanism used for validation purposes",
+            "name": "validationFingerprint",
+            "typeName": "NcString",
+            "isNullable": true,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Object properties holders",
+            "name": "values",
+            "typeName": "NcObjectPropertiesHolder",
+            "isNullable": false,
+            "isSequence": true,
+            "constraints": null
+        }
+    ],
+    "parentType": null,
+    "constraints": null
+}

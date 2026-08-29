@@ -18,7 +18,12 @@ import (
 	"sync"
 )
 
-//go:embed testdata/schemas/v1.0.0/classes/*.json testdata/schemas/v1.0.0/datatypes/*.json
+// The device-configuration FEATURE SET (nmos-control-feature-sets)
+// rides along: IS-14 makes its class (NcBulkPropertiesManager, 1.3.3)
+// and datatypes part of every conforming device's catalogue, and the
+// AMWA suite checks for them by name.
+//
+//go:embed testdata/schemas/v1.0.0/classes/*.json testdata/schemas/v1.0.0/datatypes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/classes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes/*.json
 var frameworkFS embed.FS
 
 var (
@@ -68,28 +73,39 @@ func loadFramework() {
 		return nil
 	}
 
-	if err := load("testdata/schemas/v1.0.0/classes", func(name string, raw []byte) error {
+	loadClasses := func(name string, raw []byte) error {
 		var d NcClassDescriptor
 		if err := json.Unmarshal(raw, &d); err != nil {
 			return fmt.Errorf("ms05: framework class %s: %w", name, err)
 		}
 		classesByKey[classKey(d.ClassID)] = d
 		return nil
-	}); err != nil {
-		frameworkErr = err
-		return
 	}
-
-	if err := load("testdata/schemas/v1.0.0/datatypes", func(name string, raw []byte) error {
+	loadDatatypes := func(name string, raw []byte) error {
 		var d NcDatatypeDescriptor
 		if err := json.Unmarshal(raw, &d); err != nil {
 			return fmt.Errorf("ms05: framework datatype %s: %w", name, err)
 		}
 		datatypesByNm[d.Name] = d
 		return nil
-	}); err != nil {
-		frameworkErr = err
-		return
+	}
+	for _, dir := range []string{
+		"testdata/schemas/v1.0.0/classes",
+		"testdata/schemas/v1.0.0/featuresets/device-configuration/classes",
+	} {
+		if err := load(dir, loadClasses); err != nil {
+			frameworkErr = err
+			return
+		}
+	}
+	for _, dir := range []string{
+		"testdata/schemas/v1.0.0/datatypes",
+		"testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes",
+	} {
+		if err := load(dir, loadDatatypes); err != nil {
+			frameworkErr = err
+			return
+		}
 	}
 
 	for _, n := range primitiveNames {
@@ -153,6 +169,61 @@ func StandardDatatype(name string) (NcDatatypeDescriptor, bool) {
 	}
 	d, ok := datatypesByNm[name]
 	return d, ok
+}
+
+// FlattenedDatatype returns a datatype descriptor with every
+// inherited struct field merged in, ancestors first, walking the
+// parentType chain to its root (NcDescriptor). One level is not
+// enough: NcDatatypeDescriptorEnum inherits from NcDatatypeDescriptor
+// which inherits from NcDescriptor, and the AMWA suite counts all
+// five fields.
+func FlattenedDatatype(name string) (NcDatatypeDescriptor, bool) {
+	if ensureFramework() != nil {
+		return NcDatatypeDescriptor{}, false
+	}
+	d, ok := datatypesByNm[name]
+	if !ok {
+		return NcDatatypeDescriptor{}, false
+	}
+	if d.Type != NcDatatypeTypeStruct || d.ParentType == nil {
+		return d, true
+	}
+	var lineage []NcDatatypeDescriptor
+	cur := d
+	for cur.Type == NcDatatypeTypeStruct && cur.ParentType != nil {
+		p, ok := datatypesByNm[*cur.ParentType]
+		if !ok {
+			break
+		}
+		lineage = append(lineage, p)
+		cur = p
+	}
+	fields := []NcFieldDescriptor{}
+	for i := len(lineage) - 1; i >= 0; i-- {
+		fields = append(fields, lineage[i].Fields...)
+	}
+	out := d
+	out.Fields = append(fields, d.Fields...)
+	return out, true
+}
+
+// FlattenedDatatypes lists every framework datatype with inherited
+// fields merged — the shape ClassManager.datatypes publishes.
+func FlattenedDatatypes() []NcDatatypeDescriptor {
+	if ensureFramework() != nil {
+		return nil
+	}
+	names := make([]string, 0, len(datatypesByNm))
+	for n := range datatypesByNm {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := make([]NcDatatypeDescriptor, 0, len(names))
+	for _, n := range names {
+		d, _ := FlattenedDatatype(n)
+		out = append(out, d)
+	}
+	return out
 }
 
 // StandardClasses lists every framework class descriptor, sorted by

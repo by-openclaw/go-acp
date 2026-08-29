@@ -93,9 +93,14 @@ func TestConfigurationTreeAndRolePaths(t *testing.T) {
 	if err := json.Unmarshal(raw, &paths); err != nil {
 		t.Fatalf("rolePaths decode: %v", err)
 	}
-	want := []string{"root/", "root.DeviceManager/", "root.ClassManager/"}
-	if len(paths) != 3 || paths[0] != want[0] || paths[1] != want[1] || paths[2] != want[2] {
-		t.Errorf("rolePaths = %v, want %v", paths, want)
+	want := []string{"root/", "root.DeviceManager/", "root.ClassManager/", "root.BulkPropertiesManager/"}
+	if len(paths) != len(want) {
+		t.Fatalf("rolePaths = %v, want %v", paths, want)
+	}
+	for i := range want {
+		if paths[i] != want[i] {
+			t.Errorf("rolePaths[%d] = %q, want %q", i, paths[i], want[i])
+		}
 	}
 
 	// Unknown role path: 404 with the ms05-error body.
@@ -206,16 +211,25 @@ func TestConfigurationMethods(t *testing.T) {
 		t.Errorf("1m2 did not stick: %d %s", st, raw)
 	}
 
-	// 2m1 GetMemberDescriptors: the two managers.
+	// 2m1 GetMemberDescriptors: the three managers.
 	st, raw = doJSON(t, "PATCH", v1+"root/methods/2m1/", `{"arguments":{"recurse":false}}`)
-	if st != 200 || !strings.Contains(string(raw), "DeviceManager") || !strings.Contains(string(raw), "ClassManager") {
+	if st != 200 || !strings.Contains(string(raw), "DeviceManager") || !strings.Contains(string(raw), "ClassManager") ||
+		!strings.Contains(string(raw), "BulkPropertiesManager") {
 		t.Fatalf("2m1 = %d %s", st, raw)
 	}
 
 	// 1m7 GetSequenceLength on members.
 	st, raw = doJSON(t, "PATCH", v1+"root/methods/1m7/", `{"arguments":{"id":{"level":2,"index":2}}}`)
-	if st != 200 || !bytes.Contains(raw, []byte(`"value":2`)) {
+	if st != 200 || !bytes.Contains(raw, []byte(`"value":3`)) {
 		t.Errorf("1m7 = %d %s", st, raw)
+	}
+
+	// Bulk properties manager 3m1 GetPropertiesByPath — the method
+	// face of the REST backup.
+	st, raw = doJSON(t, "PATCH", v1+"root.BulkPropertiesManager/methods/3m1/",
+		`{"arguments":{"path":["root","DeviceManager"],"recurse":false,"includeDescriptors":false}}`)
+	if st != 200 || !strings.Contains(string(raw), `"validationFingerprint"`) {
+		t.Fatalf("3m1 GetPropertiesByPath = %d %s", st, raw)
 	}
 
 	// ClassManager 3m1 GetControlClass.
@@ -268,8 +282,8 @@ func TestConfigurationBulkProperties(t *testing.T) {
 	if err := json.Unmarshal(raw, &backup); err != nil {
 		t.Fatalf("backup decode: %v", err)
 	}
-	if backup.Value.ValidationFingerprint == nil || len(backup.Value.Values) != 3 {
-		t.Fatalf("backup holders = %d fp=%v, want 3 + fingerprint", len(backup.Value.Values), backup.Value.ValidationFingerprint)
+	if backup.Value.ValidationFingerprint == nil || len(backup.Value.Values) != 4 {
+		t.Fatalf("backup holders = %d fp=%v, want 4 + fingerprint", len(backup.Value.Values), backup.Value.ValidationFingerprint)
 	}
 	if backup.Value.Values[0].Values[0].Descriptor == nil {
 		t.Error("includeDescriptors default must attach descriptors")
@@ -309,8 +323,8 @@ func TestConfigurationBulkProperties(t *testing.T) {
 		t.Fatalf("backup nodesc = %d", st)
 	}
 	paths := holderPaths(raw)
-	if len(paths) != 2 || paths[0] != "root" || paths[1] != "root.DeviceManager" {
-		t.Errorf("includeDescriptors=false holders = %v, want [root root.DeviceManager]", paths)
+	if len(paths) != 3 || paths[0] != "root" || paths[1] != "root.DeviceManager" || paths[2] != "root.BulkPropertiesManager" {
+		t.Errorf("includeDescriptors=false holders = %v, want [root root.DeviceManager root.BulkPropertiesManager]", paths)
 	}
 
 	// recurse=false: root only.

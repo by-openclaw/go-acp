@@ -205,24 +205,34 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 		"resetCause": ms05.NcResetCausePowerOn,
 	})
 	cm, err2 := newConfigObject(ms05.NcClassId{1, 3, 2}, 3, []string{"root", "ClassManager"}, map[string]any{
-		"userLabel":      "Class manager",
+		"userLabel": "Class manager",
+		// Both catalogues publish descriptors WITH inherited elements —
+		// the AMWA suite counts the flattened field/property sets.
 		"controlClasses": ms05.StandardClasses(),
-		"datatypes":      ms05.StandardDatatypes(),
+		"datatypes":      ms05.FlattenedDatatypes(),
+	})
+	// IS-14 phrases the bulkProperties endpoints as invocations on the
+	// Bulk properties manager object (device-configuration feature
+	// set, class 1.3.3) — so the object exists in the model, and its
+	// three methods run the SAME backup/restore code as the REST
+	// routes.
+	bpm, err4 := newConfigObject(ms05.NcClassId{1, 3, 3}, 4, []string{"root", "BulkPropertiesManager"}, map[string]any{
+		"userLabel": "Bulk properties manager",
 	})
 	root, err3 := newConfigObject(ms05.NcClassId{1, 1}, 1, []string{"root"}, map[string]any{
 		"userLabel": nodeLabel,
 		"enabled":   true,
 	})
-	if err != nil || err2 != nil || err3 != nil {
+	if err != nil || err2 != nil || err3 != nil || err4 != nil {
 		// The framework models are compiled in; failing to load them is
 		// a build defect, not a runtime condition.
-		panic(fmt.Sprintf("provider/is14: framework model load: %v %v %v", err, err2, err3))
+		panic(fmt.Sprintf("provider/is14: framework model load: %v %v %v %v", err, err2, err3, err4))
 	}
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
-		p.value = []ms05.NcBlockMemberDescriptor{dm.memberDescriptor(), cm.memberDescriptor()}
+		p.value = []ms05.NcBlockMemberDescriptor{dm.memberDescriptor(), cm.memberDescriptor(), bpm.memberDescriptor()}
 	}
 
-	for _, o := range []*configObject{root, dm, cm} {
+	for _, o := range []*configObject{root, dm, cm, bpm} {
 		key := strings.Join(o.path, ".")
 		s.objects[key] = o
 		s.order = append(s.order, key)
@@ -411,8 +421,9 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 }
 
 // flattenedDatatype resolves a typeName to its framework descriptor
-// with inherited struct fields merged in (parent fields first, the
-// order the published instances themselves use).
+// with ALL inherited struct fields merged in (ms05 walks the whole
+// parentType chain — one level was 1 field short on the descriptor
+// family, IS-14-01 test_ms05_14).
 func flattenedDatatype(name *string) (ms05.NcDatatypeDescriptor, bool) {
 	if name == nil {
 		generic := "any"
@@ -422,21 +433,7 @@ func flattenedDatatype(name *string) (ms05.NcDatatypeDescriptor, bool) {
 			Type:         ms05.NcDatatypeTypePrimitive,
 		}, true
 	}
-	d, ok := ms05.StandardDatatype(*name)
-	if !ok {
-		return ms05.NcDatatypeDescriptor{}, false
-	}
-	if d.Type != ms05.NcDatatypeTypeStruct || d.ParentType == nil {
-		return d, true
-	}
-	out := d
-	out.Fields = nil
-	seen := []ms05.NcFieldDescriptor{}
-	if parent, ok := ms05.StandardDatatype(*d.ParentType); ok {
-		seen = append(seen, parent.Fields...)
-	}
-	out.Fields = append(seen, d.Fields...)
-	return out, true
+	return ms05.FlattenedDatatype(*name)
 }
 
 // ---- methods ----
@@ -496,6 +493,10 @@ type methodArgs struct {
 	IncludeDerived *bool             `json:"includeDerived,omitempty"`
 	Name           *string           `json:"name,omitempty"`
 	IncludeInherit *bool             `json:"includeInherited,omitempty"`
+	// Bulk properties manager methods (feature set 1.3.3).
+	IncludeDescriptors *bool                      `json:"includeDescriptors,omitempty"`
+	DataSet            *is14.BulkPropertiesHolder `json:"dataSet,omitempty"`
+	RestoreMode        *is14.RestoreMode          `json:"restoreMode,omitempty"`
 }
 
 // invoke dispatches one method by NAME (the framework fixes names per
@@ -613,6 +614,36 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 			return ms05Err(400, ms05.NcMethodStatusParameterError, fmt.Sprintf("no class %v", args.ClassID))
 		}
 		return 200, ms05.NcMethodResultClassDescriptor{Status: ms05.NcMethodStatusOk, Value: cd}, nil
+
+	case "GetPropertiesByPath", "ValidateSetPropertiesByPath", "SetPropertiesByPath":
+		if len(args.Path) == 0 {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "path argument required")
+		}
+		s.mu.RLock()
+		target, ok := s.objects[strings.Join(args.Path, ".")]
+		s.mu.RUnlock()
+		if !ok {
+			return ms05Err(400, ms05.NcMethodStatusBadOid, "no object at path "+strings.Join(args.Path, "."))
+		}
+		recurse := args.Recurse == nil || *args.Recurse
+		if md.Name == "GetPropertiesByPath" {
+			includeDesc := args.IncludeDescriptors == nil || *args.IncludeDescriptors
+			return 200, is14.ResultBulkPropertiesHolder{
+				Status: ms05.NcMethodStatusOk,
+				Value:  s.backup(target, recurse, includeDesc),
+			}, nil
+		}
+		if args.DataSet == nil || args.RestoreMode == nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "dataSet and restoreMode arguments required")
+		}
+		if err := is14.ValidateRestoreMode(*args.RestoreMode); err != nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, err.Error())
+		}
+		setArgs := &is14.BulkPropertiesSetArgs{DataSet: args.DataSet, Recurse: &recurse, RestoreMode: args.RestoreMode}
+		return 200, is14.ResultObjectPropertiesSetValidation{
+			Status: ms05.NcMethodStatusOk,
+			Value:  s.restore(target, setArgs, md.Name == "SetPropertiesByPath"),
+		}, nil
 
 	case "GetDatatype":
 		if args.Name == nil {
