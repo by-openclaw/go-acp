@@ -51,8 +51,13 @@ metric-100 defaults from the DMZ era removed in-guest.
   now, and the reflector was observed re-announcing stale records and
   leaking NAS adverts.
 - Unbound `by-systems.arpa` NMOS DNS-SD records pointing at
-  `10.100.0.x` — stale; if unicast DNS-SD is wanted again, re-author
-  the zone with `10.6.250.101` (or host it on dnsmasq on `.101`).
+  `10.100.0.x` — stale, removed. Unicast DNS-SD was then re-authored
+  on dnsmasq on `.101` (`/etc/dnsmasq.d/nmos-lab.conf`, records →
+  `10.6.250.101`) and verified end-to-end same day: a node in
+  `--unicast --resolver 10.6.250.101 --domain by-systems.arpa` mode
+  logged `registry discovered (unicast DNS-SD)` and registered. With
+  that, all three discovery modes — Manual, mDNS, sd-DNS — are proven
+  against the registry on the VLAN600 topology.
 - Keep: MGMT interface, anti-lockout, DHCP pool (serves `lxc 202`;
   static fleet addresses live in `10.6.250.x`, clear of observed
   leases).
