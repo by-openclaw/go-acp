@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"os"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -413,7 +414,15 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		if h, _, err := net.SplitHostPort(gateHost); err == nil {
 			gateHost = h
 		}
-		srv.Auth = &httpsession.AuthGate{Keys: kc, Host: gateHost, Logger: s.logger}
+		// Every identity this server answers to: issuers scope tokens
+		// with DNS wildcards (the AMWA tool mints aud
+		// ["http://*.<domain>", "http://*.local"]) that the advertise
+		// IP alone can never match.
+		gateHosts := []string{gateHost}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		srv.Auth = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: s.logger}
 		s.authTokens = authsession.NewTokenClient(authsession.TokenClientOptions{
 			MetadataURL: metaURL,
 			ClientID:    s.cfg.AuthClientID, ClientSecret: s.cfg.AuthClientSecret,

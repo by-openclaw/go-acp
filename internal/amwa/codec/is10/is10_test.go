@@ -87,7 +87,7 @@ func TestVerifyRoundTrip(t *testing.T) {
 	if p, ok := c.APIs["query"]; !ok || len(p.Write) != 1 || p.Write[0] != "subscriptions/*" {
 		t.Errorf("x-nmos-query claim lost: %+v", c.APIs)
 	}
-	if err := is10.ValidateClaims(c, "node-1.example.com", time.Now(), 30*time.Second); err != nil {
+	if err := is10.ValidateClaims(c, []string{"node-1.example.com"}, time.Now(), 30*time.Second); err != nil {
 		t.Errorf("valid claims rejected: %v", err)
 	}
 }
@@ -121,7 +121,7 @@ func TestClaimValidation(t *testing.T) {
 		if err != nil {
 			t.Fatalf("verify: %v", err)
 		}
-		return is10.ValidateClaims(c, "node-1.example.com", now, leeway)
+		return is10.ValidateClaims(c, []string{"10.0.0.5", "node-1.example.com"}, now, leeway)
 	}
 	if err := verify(func(m map[string]any) {}); err != nil {
 		t.Fatalf("base claims rejected: %v", err)

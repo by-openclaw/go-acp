@@ -144,9 +144,14 @@ func VerifyWithKeys(raw string, keys []JWK) (Claims, error) {
 //   - exp in the past / iat or nbf in the future reject (leeway
 //     absorbs clock skew both ways);
 //   - client_id required unless azp present;
-//   - aud must match our fully resolved host name (wildcards allowed,
-//     scheme-prefixed URI or bare domain, ports never).
-func ValidateClaims(c Claims, host string, now time.Time, leeway time.Duration) error {
+//   - aud must match ONE of this server's identities (wildcards
+//     allowed, scheme-prefixed URI or bare domain, ports never).
+//
+// hosts carries every name this server answers to — advertise host,
+// OS hostname, hostname.local — because issuers commonly scope tokens
+// by DNS wildcards ("https://*.local") that an IP literal can never
+// match.
+func ValidateClaims(c Claims, hosts []string, now time.Time, leeway time.Duration) error {
 	if c.Iss == "" {
 		return fmt.Errorf("is10: token: iss claim is required")
 	}
@@ -172,10 +177,12 @@ func ValidateClaims(c Claims, host string, now time.Time, leeway time.Duration) 
 	if c.ClientID == "" && c.Azp == "" {
 		return fmt.Errorf("is10: token: client_id claim is required when azp is absent")
 	}
-	if !AudienceMatches(c.Aud, host) {
-		return fmt.Errorf("is10: token aud %v does not name this server (%s)", []string(c.Aud), host)
+	for _, h := range hosts {
+		if AudienceMatches(c.Aud, h) {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("is10: token aud %v does not name this server (%v)", []string(c.Aud), hosts)
 }
 
 // AudienceMatches reports whether any aud entry names host. Entries

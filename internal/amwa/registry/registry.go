@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -142,7 +143,11 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			r.logger.Warn("registry/nmos: initial JWKS fetch failed; requests will 401 until keys arrive", "err", err)
 		}
 		go kc.Run(ctx)
-		authGate = &httpsession.AuthGate{Keys: kc, Host: host, Logger: r.logger}
+		gateHosts := []string{host}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: r.logger}
 		srv.Auth = authGate
 		apiAuth = "true"
 	}

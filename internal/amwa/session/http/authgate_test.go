@@ -65,7 +65,7 @@ func gateClaims() map[string]any {
 func authedServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	s := NewServer(nil)
-	s.Auth = &AuthGate{Keys: StaticKeys{gateJWK()}, Host: "node.test"}
+	s.Auth = &AuthGate{Keys: StaticKeys{gateJWK()}, Hosts: []string{"127.0.0.1", "node.test"}}
 	ok := func(context.Context, *stdhttp.Request) (int, any, error) { return 200, []string{"ok"}, nil }
 	s.Handle(stdhttp.MethodGet, "/x-nmos/", ok)
 	s.Handle(stdhttp.MethodGet, "/x-nmos/node/v1.3/self", ok)

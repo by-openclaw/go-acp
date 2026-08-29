@@ -49,9 +49,11 @@ func (s StaticKeys) Keys() []is10.JWK { return s }
 type AuthGate struct {
 	// Keys supplies the verification keys. Required.
 	Keys KeyProvider
-	// Host is this server's fully resolved name (or address) for aud
-	// matching. Required.
-	Host string
+	// Hosts are this server's identities for aud matching — advertise
+	// host plus OS hostname (+ .local), because issuers scope tokens
+	// with DNS wildcards an IP literal can never satisfy. At least one
+	// entry required.
+	Hosts []string
 	// Leeway absorbs clock skew on exp/iat/nbf. Zero means 30s.
 	Leeway time.Duration
 	// Logger receives the audit trail. Nil uses slog.Default().
@@ -110,7 +112,7 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, authenticate string, b
 		return stdhttp.StatusUnauthorized, `Bearer error="invalid_token"`,
 			ErrorBody{Code: 401, Error: "Unauthorized", Debug: err.Error()}, false
 	}
-	if err := is10.ValidateClaims(claims, g.Host, time.Now(), leeway); err != nil {
+	if err := is10.ValidateClaims(claims, g.Hosts, time.Now(), leeway); err != nil {
 		log.Info("auth: rejected", "reason", "claims", "method", r.Method, "path", r.URL.Path,
 			"iss", claims.Iss, "sub", claims.Sub, "client", claims.ClientID, "err", err)
 		return stdhttp.StatusUnauthorized, `Bearer error="invalid_token"`,
