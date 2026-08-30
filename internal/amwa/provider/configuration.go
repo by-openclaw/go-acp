@@ -81,6 +81,33 @@ type IS14ConfigurationServer struct {
 	// onModelChanged reports a successful property write so the IS-04
 	// side can bump Device versions (IS-04 interactions doc).
 	onModelChanged func()
+
+	// onPropertyChanged reports a successful write with its identity —
+	// the IS-12 side turns it into PropertyChanged notifications for
+	// subscribed Controllers. Separate from onModelChanged because the
+	// IS-04 hook needs no detail and the IS-12 hook needs all of it.
+	onPropertyChanged func(ms05.NcOid, ms05.NcPropertyId, any)
+}
+
+// SetOnPropertyChanged installs the IS-12 notification hook.
+func (s *IS14ConfigurationServer) SetOnPropertyChanged(fn func(ms05.NcOid, ms05.NcPropertyId, any)) {
+	s.onPropertyChanged = fn
+}
+
+// objectByOid resolves a model object by its oid — the IS-12 address
+// form (IS-14 addresses the same objects by role path).
+func (s *IS14ConfigurationServer) objectByOid(oid int) *configObject {
+	if oid < 0 {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, o := range s.objects {
+		if o.oid == ms05.NcOid(uint32(oid)) {
+			return o
+		}
+	}
+	return nil
 }
 
 // propKey renders a property id in the {level}p{index} URL form.
@@ -424,6 +451,9 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 	s.mu.Unlock()
 	if s.onModelChanged != nil {
 		s.onModelChanged()
+	}
+	if s.onPropertyChanged != nil {
+		s.onPropertyChanged(obj.oid, p.desc.ID, v)
 	}
 	return ms05.NcMethodStatusOk, nil
 }

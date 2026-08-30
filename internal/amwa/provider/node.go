@@ -232,6 +232,11 @@ type IS04NodeServer struct {
 	// disables it.
 	configuration *IS14ConfigurationServer
 
+	// ncp is the IS-12 Control Protocol WebSocket, serving the SAME
+	// device model as configuration. Nil (configuration disabled)
+	// disables it.
+	ncp *IS12NCPServer
+
 	// events is the IS-07 Event & Tally API. Nil disables it.
 	events *IS07EventsServer
 
@@ -535,6 +540,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	s.attachChannelMappingAPI(srv)
 	s.attachStreamCompatAPI(srv)
 	s.attachConfigurationAPI(srv)
+	s.attachNCPAPI(srv)
 	s.attachEventsAPI(srv)
 	s.http = srv
 
