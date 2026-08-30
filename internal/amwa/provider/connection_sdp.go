@@ -76,6 +76,17 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 		fmt.Fprintf(&b, "a=hkep\r\n")
 	}
 
+	// BCP-005-03: a `privacy` attribute in the SDP transport file marks
+	// the stream as PEP-encrypted. The Sender's `privacy` IS-04 attribute
+	// MUST be true iff this line is present. Its presence is the semantic
+	// the spec's consistency + Controller checks rely on; the PEP key
+	// material + RTP extension-header detail is device-plane and out of
+	// scope for a reference node, so a bare session-level marker is
+	// emitted here.
+	if snd.Privacy != nil && *snd.Privacy {
+		fmt.Fprintf(&b, "a=privacy\r\n")
+	}
+
 	// The channel count is on the SOURCE, not the Flow — a Flow
 	// describes the encoding, a Source describes what was encoded.
 	flow := s.flowByID(snd.FlowID)

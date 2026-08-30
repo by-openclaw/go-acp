@@ -188,6 +188,14 @@ func (s *connectionStore) seedFromBundle(cfg *NodeConfig) {
 		e := newEndpointForTransport(snd.Transport, true)
 		e.id = snd.ID
 		fillEventExtParams(e, cfg, snd.FlowID)
+		// BCP-005-03: a Sender that implements PEP (privacy attribute
+		// present) publishes the ext_privacy_* IS-05 parameters so a
+		// Controller can wire encryption. Gated on the attribute so a
+		// non-PEP Sender is byte-for-byte unchanged. Injected before the
+		// seed so a Connection seed can override the NULL defaults.
+		if snd.Privacy != nil && isRTP(snd.Transport) {
+			injectPrivacyParams(e)
+		}
 		if cfg.Connection != nil {
 			applySeed(e, cfg.Connection.Senders[snd.ID], snd.Transport)
 		}
@@ -270,6 +278,31 @@ func fillEventExtParams(e *connectionEndpoint, cfg *NodeConfig, flowID *string) 
 		if _, carries := e.constraints[i]["ext_is_07_source_id"]; !carries {
 			e.constraints[i]["ext_is_07_source_id"] = map[string]any{}
 			e.constraints[i]["ext_is_07_rest_api_url"] = map[string]any{}
+		}
+	}
+}
+
+// injectPrivacyParams adds the BCP-005-03 ext_privacy_* parameters to
+// every leg of a PEP-capable Sender endpoint, defaulting to the "NULL"
+// sentinel (a PEP-capable device with encryption not currently engaged
+// — the honest state for a reference node, which runs no cipher). The
+// same keys are mirrored into the constraints object, or the endpoint's
+// own PATCH validation would reject them as unknown.
+//
+// The ECDH trio is omitted: a reference node advertises pre-shared-key
+// capability only. A device doing an ECDH exchange re-declares the leg
+// with is05.PrivacyLegParams(true).
+func injectPrivacyParams(e *connectionEndpoint) {
+	for i := range e.staged.TransportParams {
+		pp := is05.PrivacyLegParams(false)
+		for k, v := range pp {
+			e.staged.TransportParams[i][k] = v
+			e.active.TransportParams[i][k] = v
+		}
+		if i < len(e.constraints) {
+			for _, k := range is05.PrivacyParamKeys(pp) {
+				e.constraints[i][k] = map[string]any{}
+			}
 		}
 	}
 }
