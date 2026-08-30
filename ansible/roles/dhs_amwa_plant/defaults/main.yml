@@ -17,6 +17,14 @@ dhs_amwa_plant_go: /usr/local/go/bin/go
 dhs_amwa_plant_registry_bind: ":8235"
 dhs_amwa_plant_registry_port: 8235
 dhs_amwa_plant_registry_page_limit: 1000
+# Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
+# configurable; the CONFORMANCE plant runs 30s, matched by the AMWA
+# tool's GARBAGE_COLLECTION_TIMEOUT=30 in its UserConfig — the tool's
+# IS-04-02 test_31 verification phase takes >12s on this LXC and only
+# heartbeats between phases, so a 12s window evicts its test node
+# mid-test (verified by wire capture 2026-08-31). Both sides agree on
+# 30, and test_25 still verifies eviction semantics at that window.
+dhs_amwa_plant_registry_heartbeat_timeout: 30s
 
 # The registry + node advertise address is the plant host's own
 # VLAN600 IP (resolved at run time from the inventory ansible_host).
