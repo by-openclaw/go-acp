@@ -206,6 +206,26 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 // reject valid controllers.
 func validateParamValue(key string, v any, isSender bool) error {
 	switch key {
+	case "mxl_flow_id":
+		// BCP-007-03: a SENDER may resolve its flow id via "auto"; a
+		// RECEIVER's mxl_flow_id is null-or-UUID ONLY — "auto" has no
+		// meaning for the consuming side (there is nothing for the
+		// device to choose; the id names the writer's flow) and the
+		// suite's test_18 rejects an endpoint that accepts it.
+		if v == nil {
+			return nil
+		}
+		s, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("%q must be a string or null, got %T", key, v)
+		}
+		if s == autoKeyword {
+			if isSender {
+				return nil
+			}
+			return fmt.Errorf("%q must not be %q on a receiver (null or an mxl uuid)", key, autoKeyword)
+		}
+
 	case "rtp_enabled":
 		if _, ok := v.(bool); !ok {
 			return fmt.Errorf("%q must be a boolean, got %T", key, v)

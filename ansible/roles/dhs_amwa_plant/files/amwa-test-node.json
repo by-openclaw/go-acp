@@ -325,13 +325,13 @@
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0301",
       "version": "1777651501:0",
       "label": "dhs-test-flow-mxl",
-      "description": "raw 1080p50 video carried over MXL (BCP-007-03)",
+      "description": "v210 1080p50 video carried over MXL (BCP-007-03)",
       "tags": {},
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0300",
       "parents": [],
       "format": "urn:x-nmos:format:video",
-      "media_type": "video/raw",
+      "media_type": "video/v210",
       "grain_rate": { "numerator": 50, "denominator": 1 },
       "frame_width": 1920,
       "frame_height": 1080,
@@ -759,13 +759,13 @@
       "interface_bindings": [],
       "format": "urn:x-nmos:format:video",
       "caps": {
-        "media_types": ["video/raw"],
+        "media_types": ["video/v210"],
         "version": "1777651501:0",
         "constraint_sets": [
           {
-            "urn:x-nmos:cap:meta:label": "raw 1080p50 over MXL",
+            "urn:x-nmos:cap:meta:label": "v210 1080p50 over MXL",
             "urn:x-nmos:cap:meta:enabled": true,
-            "urn:x-nmos:cap:format:media_type": { "enum": ["video/raw"] },
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/v210"] },
             "urn:x-nmos:cap:format:frame_width": { "enum": [1920] },
             "urn:x-nmos:cap:format:frame_height": { "enum": [1080] }
           }
