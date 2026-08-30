@@ -4,22 +4,12 @@
 # every node as systemd units. Idempotent — run-twice = 0 changes.
 
 # ---- 1. Build the binary on the Go-capable host from COMMITTED source
-
-# testdata is dropped as a rule, but ms05/framework.go go:embeds the
-# MS-05-02 framework models under ms05/testdata/ — so that one tree
-# rides along or the build fails "no matching files found" (same
-# exception as the .dockerignore + the conformance role).
-- name: Archive the tracked source (assets/testdata/docs dropped — none compiles)
-  ansible.builtin.shell:
-    cmd: >-
-      { git ls-files -z
-      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/' ;
-      git ls-files -z internal/amwa/codec/ms05/testdata/ ; }
-      | tar --null -T - -czf /tmp/dhs-plant-src.tgz
-    chdir: "{{ playbook_dir }}/../.."
-  delegate_to: localhost
-  run_once: true
-  changed_when: true
+#
+# The whole build+deploy is gated on the deployed commit: a converge
+# that finds the plant already on the current HEAD does no build, no
+# copy, no restart — that is what makes run-twice = 0 changes
+# (ADR-0025 #6). A new merge changes HEAD, the gate opens, and the
+# binary is rebuilt and rolled out.
 
 - name: Record the commit being deployed
   ansible.builtin.command:
@@ -30,40 +20,73 @@
   run_once: true
   changed_when: false
 
-- name: Stage the build directory on the build host (wiped first)
-  ansible.builtin.file:
-    path: /opt/dhs-plant-build
-    state: "{{ item }}"
-    mode: "0755"
-  loop: [absent, directory]
-  delegate_to: "{{ dhs_amwa_plant_build_host }}"
-  run_once: true
+- name: Read the commit currently deployed on the plant host
+  ansible.builtin.slurp:
+    src: "{{ dhs_amwa_plant_dir }}/.commit"
+  register: dhs_amwa_plant_deployed
+  failed_when: false
+  changed_when: false
 
-- name: Ship + unpack the source on the build host
-  ansible.builtin.unarchive:
-    src: /tmp/dhs-plant-src.tgz
-    dest: /opt/dhs-plant-build
-  delegate_to: "{{ dhs_amwa_plant_build_host }}"
-  run_once: true
+- name: Decide whether a (re)build is needed
+  ansible.builtin.set_fact:
+    dhs_amwa_plant_needs_build: >-
+      {{ (dhs_amwa_plant_deployed.content is not defined)
+         or ((dhs_amwa_plant_deployed.content | b64decode | trim)
+             != dhs_amwa_plant_commit.stdout) }}
 
-- name: Build the linux binary on the build host
-  ansible.builtin.command:
-    cmd: "{{ dhs_amwa_plant_go }} build -trimpath -o /opt/dhs-plant-build/dhs ./cmd/dhs"
-    chdir: /opt/dhs-plant-build
-  environment:
-    CGO_ENABLED: "0"
-    GOOS: linux
-  delegate_to: "{{ dhs_amwa_plant_build_host }}"
-  run_once: true
-  changed_when: true
+- name: Build + fetch the binary (only when the commit changed)
+  when: dhs_amwa_plant_needs_build
+  block:
+    # testdata is dropped as a rule, but ms05/framework.go go:embeds
+    # the MS-05-02 framework models under ms05/testdata/ — that one
+    # tree rides along or the build fails "no matching files found"
+    # (same exception as the .dockerignore + the conformance role).
+    - name: Archive the tracked source (assets/testdata/docs dropped — none compiles)
+      ansible.builtin.shell:
+        cmd: >-
+          { git ls-files -z
+          | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/' ;
+          git ls-files -z internal/amwa/codec/ms05/testdata/ ; }
+          | tar --null -T - -czf /tmp/dhs-plant-src.tgz
+        chdir: "{{ playbook_dir }}/../.."
+      delegate_to: localhost
+      run_once: true
+      changed_when: true
 
-- name: Fetch the built binary to the controller
-  ansible.builtin.fetch:
-    src: /opt/dhs-plant-build/dhs
-    dest: /tmp/dhs-plant-bin
-    flat: true
-  delegate_to: "{{ dhs_amwa_plant_build_host }}"
-  run_once: true
+    - name: Stage the build directory on the build host (wiped first)
+      ansible.builtin.file:
+        path: /opt/dhs-plant-build
+        state: "{{ item }}"
+        mode: "0755"
+      loop: [absent, directory]
+      delegate_to: "{{ dhs_amwa_plant_build_host }}"
+      run_once: true
+
+    - name: Ship + unpack the source on the build host
+      ansible.builtin.unarchive:
+        src: /tmp/dhs-plant-src.tgz
+        dest: /opt/dhs-plant-build
+      delegate_to: "{{ dhs_amwa_plant_build_host }}"
+      run_once: true
+
+    - name: Build the linux binary on the build host
+      ansible.builtin.command:
+        cmd: "{{ dhs_amwa_plant_go }} build -trimpath -o /opt/dhs-plant-build/dhs ./cmd/dhs"
+        chdir: /opt/dhs-plant-build
+      environment:
+        CGO_ENABLED: "0"
+        GOOS: linux
+      delegate_to: "{{ dhs_amwa_plant_build_host }}"
+      run_once: true
+      changed_when: true
+
+    - name: Fetch the built binary to the controller
+      ansible.builtin.fetch:
+        src: /opt/dhs-plant-build/dhs
+        dest: /tmp/dhs-plant-bin
+        flat: true
+      delegate_to: "{{ dhs_amwa_plant_build_host }}"
+      run_once: true
 
 # ---- 2. Deploy binary + node bundles to the plant host
 
@@ -73,12 +96,13 @@
     state: directory
     mode: "0755"
 
-- name: Install the dhs binary
+- name: Install the dhs binary (only when rebuilt)
   ansible.builtin.copy:
     src: /tmp/dhs-plant-bin
     dest: "{{ dhs_amwa_plant_bin }}"
     mode: "0755"
   register: dhs_amwa_plant_bincopy
+  when: dhs_amwa_plant_needs_build
 
 - name: Install the resident node bundles
   ansible.builtin.copy:
@@ -184,6 +208,15 @@
          or dhs_amwa_plant_scalecfgs is changed }}
   loop: "{{ (dhs_amwa_plant_nodes | map(attribute='name') | list)
             + (range(0, dhs_amwa_plant_scale_count) | map('regex_replace', '^', 'scale') | list) }}"
+
+# Stamp the deployed commit AFTER the fleet is (re)started, so a run
+# that failed part-way does not claim success and skip the retry.
+- name: Record the deployed commit
+  ansible.builtin.copy:
+    content: "{{ dhs_amwa_plant_commit.stdout }}\n"
+    dest: "{{ dhs_amwa_plant_dir }}/.commit"
+    mode: "0644"
+  when: dhs_amwa_plant_needs_build
 
 # ---- 4. Verify the plant converged
 
