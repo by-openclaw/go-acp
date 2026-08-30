@@ -10,7 +10,8 @@ ExecStart={{ dhs_amwa_plant_bin }} registry nmos serve \
   --bind {{ dhs_amwa_plant_registry_bind }} \
   --advertise-host {{ dhs_amwa_plant_advertise_ip }}:{{ dhs_amwa_plant_registry_port }} \
   --priority 0 \
-  --page-limit-default {{ dhs_amwa_plant_registry_page_limit }}
+  --page-limit-default {{ dhs_amwa_plant_registry_page_limit }} \
+  --heartbeat-timeout {{ dhs_amwa_plant_registry_heartbeat_timeout }}
 Restart=on-failure
 RestartSec=2
 
