@@ -167,8 +167,8 @@ func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []st
 			depth = f.Components[0].BitDepth
 		}
 		fmtp := fmt.Sprintf(
-			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=YCbCr-4:2:2; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
-			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight)
+			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=%s; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
+			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight, samplingFromComponents(f))
 		return "video", "jxsv/90000", []string{fmtp}
 	case "video/MP2T":
 		// BCP-006-04 / ST 2110-22: MPEG transport stream over RTP.
@@ -205,6 +205,35 @@ func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []st
 		}
 		return "video", "raw/90000", attrs
 	}
+}
+
+// samplingFromComponents derives the ST 2110 / RFC 9134 `sampling=`
+// token from the Flow's components — the SDP and the IS-04 body must
+// describe the same sub-sampling (BCP-006-01 test_02/test_05 cross-check
+// them). Chroma width relative to luma decides the ratio; a flow
+// without components falls back to the 4:2:2 broadcast default.
+func samplingFromComponents(f *is04.Flow) string {
+	var y, cb *is04.FlowVideoComponent
+	for i := range f.Components {
+		switch f.Components[i].Name {
+		case "Y":
+			y = &f.Components[i]
+		case "Cb":
+			cb = &f.Components[i]
+		}
+	}
+	if y == nil || cb == nil || y.Width == 0 {
+		return "YCbCr-4:2:2"
+	}
+	switch {
+	case cb.Width == y.Width && cb.Height == y.Height:
+		return "YCbCr-4:4:4"
+	case cb.Width*2 == y.Width && cb.Height == y.Height:
+		return "YCbCr-4:2:2"
+	case cb.Width*2 == y.Width && cb.Height*2 == y.Height:
+		return "YCbCr-4:2:0"
+	}
+	return "YCbCr-4:2:2"
 }
 
 // senderLocalMAC resolves a Sender's bound interface to its MAC.

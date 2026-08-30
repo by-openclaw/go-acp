@@ -16,6 +16,11 @@ func TestMediaLinesForJXSV(t *testing.T) {
 		Format: "urn:x-nmos:format:video", MediaType: "video/jxsv",
 		FrameWidth: 1920, FrameHeight: 1080,
 		Profile: "High444.12", Level: "2k-1", Sublevel: "Sublev3bpp",
+		Components: []is04.FlowVideoComponent{
+			{Name: "Y", Width: 1920, Height: 1080, BitDepth: 10},
+			{Name: "Cb", Width: 960, Height: 1080, BitDepth: 10},
+			{Name: "Cr", Width: 960, Height: 1080, BitDepth: 10},
+		},
 	}
 	media, rtpmap, extra := mediaLinesFor(f, 0)
 	if media != "video" || rtpmap != "jxsv/90000" {
@@ -24,9 +29,33 @@ func TestMediaLinesForJXSV(t *testing.T) {
 	if len(extra) != 1 {
 		t.Fatalf("extra=%v", extra)
 	}
-	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019"} {
+	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019", "sampling=YCbCr-4:2:2"} {
 		if !strings.Contains(extra[0], want) {
 			t.Errorf("fmtp missing %s: %s", want, extra[0])
+		}
+	}
+}
+
+func TestSamplingFromComponents(t *testing.T) {
+	mk := func(cbw, cbh int) *is04.Flow {
+		return &is04.Flow{Components: []is04.FlowVideoComponent{
+			{Name: "Y", Width: 1920, Height: 1080},
+			{Name: "Cb", Width: cbw, Height: cbh},
+			{Name: "Cr", Width: cbw, Height: cbh},
+		}}
+	}
+	cases := []struct {
+		f    *is04.Flow
+		want string
+	}{
+		{mk(1920, 1080), "YCbCr-4:4:4"},
+		{mk(960, 1080), "YCbCr-4:2:2"},
+		{mk(960, 540), "YCbCr-4:2:0"},
+		{&is04.Flow{}, "YCbCr-4:2:2"}, // no components -> broadcast default
+	}
+	for _, tc := range cases {
+		if got := samplingFromComponents(tc.f); got != tc.want {
+			t.Errorf("sampling = %q, want %q", got, tc.want)
 		}
 	}
 }
