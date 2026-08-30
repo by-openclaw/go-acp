@@ -370,6 +370,17 @@ func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 		p["broker_protocol"] = "auto"
 		p["broker_authorization"] = "auto"
 		p["connection_status_broker_topic"] = nil
+	case transport == transportMXLURN:
+		// BCP-007-03: a single param set of mxl_domain_id + mxl_flow_id.
+		// A sender may resolve both via "auto"; a receiver may resolve
+		// the domain via "auto" but its flow_id is null-or-UUID only
+		// (never "auto"). null = not yet configured.
+		p["mxl_domain_id"] = "auto"
+		if isSender {
+			p["mxl_flow_id"] = "auto"
+		} else {
+			p["mxl_flow_id"] = nil
+		}
 	}
 	return p
 }
@@ -443,6 +454,16 @@ func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int
 			// finds the stream, so "auto" has to resolve to a real
 			// URL rather than being left for the operator.
 			p[k] = "ws://" + nodeIP + "/x-nmos/events/" + eventsWireVersion + "/"
+		case "mxl_domain_id", "mxl_flow_id":
+			// BCP-007-03: active MUST NOT hold "auto"; resolve to a
+			// valid lowercase mxl_uuid. A reference node mints a
+			// deterministic id per leg — a real MXL function would
+			// return the domain/flow it actually bound.
+			suffix := "d"
+			if k == "mxl_flow_id" {
+				suffix = "f"
+			}
+			p[k] = fmt.Sprintf("00000000-0000-4000-8000-%011x%s", index, suffix)
 		default:
 			// An "auto" on a parameter with no defined resolution is
 			// left alone rather than guessed at: inventing a value
@@ -459,6 +480,7 @@ const (
 const (
 	transportWebSocketURN = "urn:x-nmos:transport:websocket"
 	transportMQTTURN      = "urn:x-nmos:transport:mqtt"
+	transportMXLURN       = "urn:x-nmos:transport:mxl"
 )
 
 func isRTP(t string) bool {

@@ -110,6 +110,9 @@ const (
 	// BCP-007-02 (USB).
 	TransportNDI = "urn:x-nmos:transport:ndi"
 	TransportUSB = "urn:x-nmos:transport:usb"
+	// Registered against BCP-007-03 (NMOS With MXL). Requires IS-04
+	// v1.3+ and IS-05 v1.2+ per the spec.
+	TransportMXL = "urn:x-nmos:transport:mxl"
 )
 
 // transportMinIS05 is the earliest IS-05 minor each transport may
@@ -129,6 +132,7 @@ var transportMinIS05 = map[string]string{
 	TransportMQTT:      "v1.1",
 	TransportNDI:       "v1.2",
 	TransportUSB:       "v1.2",
+	TransportMXL:       "v1.2",
 }
 
 // transportMinIS04 is the earliest IS-04 minor each transport may
@@ -154,6 +158,7 @@ var transportMinIS04 = map[string]string{
 	TransportMQTT:      "v1.3",
 	TransportNDI:       "v1.3",
 	TransportUSB:       "v1.3",
+	TransportMXL:       "v1.3",
 }
 
 // IsTransportAtIS04 reports whether u may appear in an IS-04 tree
@@ -200,6 +205,7 @@ func NMOSTransportsAt(is05APIVer string) []string {
 	ordered := []string{
 		TransportRTP, TransportRTPMcast, TransportRTPUcast, TransportDASH,
 		TransportWebSocket, TransportMQTT, TransportNDI, TransportUSB,
+		TransportMXL,
 	}
 	out := make([]string, 0, len(ordered))
 	for _, t := range ordered {
