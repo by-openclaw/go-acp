@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"log/slog"
 	stdhttp "net/http"
+	"reflect"
+	"strings"
 	"sync"
 
 	"dhs/internal/amwa/codec/is04"
@@ -235,6 +237,43 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 // stable map/compare key.
 func classKey(id ms05.NcClassId) string { return fmt.Sprint([]int32(id)) }
 
+// classDerivedFrom reports whether id equals or descends from base —
+// MS-05 class ids inherit by prefix ([1,3,1] derives from [1] and
+// [1,3]).
+func classDerivedFrom(id, base ms05.NcClassId) bool {
+	if len(base) > len(id) {
+		return false
+	}
+	for i := range base {
+		if id[i] != base[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// asSequence views any slice-valued property as []any. The model seeds
+// sequences as TYPED slices ([]NcBlockMemberDescriptor,
+// []NcClassDescriptor, …) — the wire does not care, so the generic
+// sequence methods must not either.
+func asSequence(v any) ([]any, bool) {
+	if v == nil {
+		return nil, false
+	}
+	if s, ok := v.([]any); ok {
+		return s, true
+	}
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Slice {
+		return nil, false
+	}
+	out := make([]any, rv.Len())
+	for i := range out {
+		out[i] = rv.Index(i).Interface()
+	}
+	return out, true
+}
+
 // ncpErr renders an error MethodResult with the message the schemas
 // require alongside every non-2xx status.
 func ncpErr(st ms05.NcMethodStatus, msg string) is12.MethodResult {
@@ -325,8 +364,8 @@ func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, 
 	}
 	s.config.mu.Lock()
 	defer s.config.mu.Unlock()
-	seq, isSeq := p.value.([]any)
-	if !isSeq && p.value != nil {
+	seq, isSeq := asSequence(p.value)
+	if !isSeq {
 		return ncpErr(ms05.NcMethodStatusInvalidRequest,
 			fmt.Sprintf("property %s is not a sequence", p.desc.Name))
 	}
@@ -439,7 +478,24 @@ func (s *IS12NCPServer) methodFindByRole(obj *configObject, args json.RawMessage
 	if a.Role == "" {
 		return ncpErr(ms05.NcMethodStatusParameterError, "FindMembersByRole: empty role")
 	}
-	return s.methodMembers(obj, func(o *configObject) bool { return o.role == a.Role })
+	// MS-05-02 NcBlock.FindMembersByRole: caseSensitive defaults true,
+	// matchWholeString defaults false (substring match).
+	caseSensitive := a.CaseSensitive == nil || *a.CaseSensitive
+	whole := a.MatchWholeString != nil && *a.MatchWholeString
+	want := a.Role
+	if !caseSensitive {
+		want = strings.ToLower(want)
+	}
+	return s.methodMembers(obj, func(o *configObject) bool {
+		role := o.role
+		if !caseSensitive {
+			role = strings.ToLower(role)
+		}
+		if whole {
+			return role == want
+		}
+		return strings.Contains(role, want)
+	})
 }
 
 func (s *IS12NCPServer) methodFindByClass(obj *configObject, args json.RawMessage) is12.MethodResult {
@@ -450,8 +506,14 @@ func (s *IS12NCPServer) methodFindByClass(obj *configObject, args json.RawMessag
 	if err := json.Unmarshal(args, &a); err != nil {
 		return ncpErr(ms05.NcMethodStatusParameterError, "FindMembersByClassId: "+err.Error())
 	}
+	derived := a.IncludeDerived != nil && *a.IncludeDerived
 	want := classKey(a.ClassID)
-	return s.methodMembers(obj, func(o *configObject) bool { return classKey(o.classID) == want })
+	return s.methodMembers(obj, func(o *configObject) bool {
+		if derived {
+			return classDerivedFrom(o.classID, a.ClassID)
+		}
+		return classKey(o.classID) == want
+	})
 }
 
 func (s *IS12NCPServer) methodGetControlClass(obj *configObject, args json.RawMessage) is12.MethodResult {
@@ -462,7 +524,13 @@ func (s *IS12NCPServer) methodGetControlClass(obj *configObject, args json.RawMe
 	if err := json.Unmarshal(args, &a); err != nil {
 		return ncpErr(ms05.NcMethodStatusParameterError, "GetControlClass: "+err.Error())
 	}
-	class, ok := ms05.FlattenedClass(a.ClassID)
+	// includeInherited=false answers the class's OWN elements only —
+	// inheritance stays expressed via classId/parent (test_ms05_13).
+	lookup := ms05.FlattenedClass
+	if a.IncludeInherited != nil && !*a.IncludeInherited {
+		lookup = ms05.StandardClass
+	}
+	class, ok := lookup(a.ClassID)
 	if !ok {
 		return ncpErr(ms05.NcMethodStatusParameterError,
 			fmt.Sprintf("no class %s", classKey(a.ClassID)))
@@ -478,7 +546,11 @@ func (s *IS12NCPServer) methodGetDatatype(obj *configObject, args json.RawMessag
 	if err := json.Unmarshal(args, &a); err != nil {
 		return ncpErr(ms05.NcMethodStatusParameterError, "GetDatatype: "+err.Error())
 	}
-	dt, ok := ms05.FlattenedDatatype(a.Name)
+	lookup := ms05.FlattenedDatatype
+	if a.IncludeInherited != nil && !*a.IncludeInherited {
+		lookup = ms05.StandardDatatype
+	}
+	dt, ok := lookup(a.Name)
 	if !ok {
 		return ncpErr(ms05.NcMethodStatusParameterError, fmt.Sprintf("no datatype %q", a.Name))
 	}
