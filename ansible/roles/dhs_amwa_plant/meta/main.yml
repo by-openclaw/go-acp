@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: dhs_amwa_plant
+  author: by-rune
+  description: >-
+    The standing AMWA lab plant: one dhs NMOS registry plus a fleet of
+    dhs nodes (resident fixtures + generated scale instances), all run
+    as systemd units on the control host. Builds the binary from
+    committed source on a Go-capable host, deploys it, templates the
+    units, and verifies every node registered. Idempotent — replaces
+    the hand-launched /tmp/*.sh plant scripts (issue #871).
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+dependencies: []

@@ -1,0 +1,19 @@
+---
+# Stand up (or converge) the AMWA lab plant — registry + node fleet —
+# on the control host, entirely via Ansible. Replaces the ad-hoc
+# /tmp/*.sh launch scripts (issue #871).
+#
+#   cd ~/acp/ansible
+#   ansible-playbook playbooks/amwa-plant.yml            # converge
+#   ansible-playbook playbooks/amwa-plant.yml            # again -> 0 changes
+#   ansible-playbook playbooks/amwa-plant.yml -e dhs_amwa_plant_scale_count=0
+#
+# The binary is built from COMMITTED source on the Go-capable build
+# host (dhs-tools) and deployed to the plant host; a redeploy after a
+# merge is one idempotent run, and every score/render names a commit.
+
+- name: AMWA lab plant — registry + node fleet
+  hosts: dhs-debian
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_plant

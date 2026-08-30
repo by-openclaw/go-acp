@@ -1,0 +1,87 @@
+{# One lean-but-valid IS-04 bundle per scale node. UUIDs are derived
+   from the loop index (unique per resource type + index); the
+   provider overwrites href / manifest_href from --advertise-host at
+   serve time, so the placeholders below only need to be well-formed. #}
+{%- set i = '%02d' % item -%}
+{
+  "node": {
+    "id": "aa000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}",
+    "description": "scale test instance {{ item }}",
+    "tags": {},
+    "href": "http://{{ dhs_amwa_plant_advertise_ip }}:{{ dhs_amwa_plant_scale_base_port + item }}/",
+    "caps": {},
+    "api": {"versions": ["{{ dhs_amwa_plant_api_ver }}"], "endpoints": []},
+    "services": [],
+    "clocks": [{"name": "clk0", "ref_type": "internal"}],
+    "interfaces": [{"chassis_id": "ff-ff-ff-ff-ff-ff", "port_id": "ff-ff-ff-ff-ff-ff", "name": "eth0"}],
+    "hostname": "dhs-scale-{{ i }}"
+  },
+  "devices": [{
+    "id": "bb000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}-dev",
+    "description": "single device",
+    "tags": {},
+    "type": "urn:x-nmos:device:generic",
+    "node_id": "aa000000-0000-4000-8000-0000000000{{ i }}",
+    "senders": ["ee000000-0000-4000-8000-0000000000{{ i }}"],
+    "receivers": ["ff000000-0000-4000-8000-0000000000{{ i }}"],
+    "controls": []
+  }],
+  "sources": [{
+    "id": "cc000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}-src",
+    "description": "stereo audio source",
+    "tags": {},
+    "caps": {},
+    "device_id": "bb000000-0000-4000-8000-0000000000{{ i }}",
+    "parents": [],
+    "clock_name": "clk0",
+    "format": "urn:x-nmos:format:audio",
+    "channels": [{"label": "Left", "symbol": "L"}, {"label": "Right", "symbol": "R"}]
+  }],
+  "flows": [{
+    "id": "dd000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}-flow",
+    "description": "audio L24 48kHz stereo",
+    "tags": {},
+    "device_id": "bb000000-0000-4000-8000-0000000000{{ i }}",
+    "source_id": "cc000000-0000-4000-8000-0000000000{{ i }}",
+    "parents": [],
+    "format": "urn:x-nmos:format:audio",
+    "media_type": "audio/L24",
+    "sample_rate": {"numerator": 48000, "denominator": 1},
+    "bit_depth": 24
+  }],
+  "senders": [{
+    "id": "ee000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}-sender",
+    "description": "RTP unicast sender",
+    "tags": {},
+    "flow_id": "dd000000-0000-4000-8000-0000000000{{ i }}",
+    "transport": "urn:x-nmos:transport:rtp.ucast",
+    "device_id": "bb000000-0000-4000-8000-0000000000{{ i }}",
+    "manifest_href": "http://{{ dhs_amwa_plant_advertise_ip }}:{{ dhs_amwa_plant_scale_base_port + item }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/senders/ee000000-0000-4000-8000-0000000000{{ i }}/transportfile",
+    "interface_bindings": ["eth0"],
+    "caps": {},
+    "subscription": {"receiver_id": null, "active": false}
+  }],
+  "receivers": [{
+    "id": "ff000000-0000-4000-8000-0000000000{{ i }}",
+    "version": "1777651501:0",
+    "label": "dhs-scale-{{ i }}-receiver",
+    "description": "RTP audio receiver",
+    "tags": {},
+    "device_id": "bb000000-0000-4000-8000-0000000000{{ i }}",
+    "transport": "urn:x-nmos:transport:rtp",
+    "interface_bindings": ["eth0"],
+    "format": "urn:x-nmos:format:audio",
+    "caps": {"media_types": ["audio/L24", "audio/L16"]},
+    "subscription": {"sender_id": null, "active": false}
+  }]
+}
