@@ -82,6 +82,24 @@ func mxlGet(t *testing.T, url string) (int, []byte) {
 	return resp.StatusCode, body
 }
 
+// TestMXLFlowIDAutoRules: BCP-007-03 lets a SENDER resolve mxl_flow_id
+// via "auto" but a RECEIVER's mxl_flow_id is null-or-UUID only — the
+// suite's test_18 rejects an endpoint that accepts "auto" there.
+func TestMXLFlowIDAutoRules(t *testing.T) {
+	if err := validateParamValue("mxl_flow_id", "auto", true); err != nil {
+		t.Errorf("sender auto must be accepted: %v", err)
+	}
+	if err := validateParamValue("mxl_flow_id", "auto", false); err == nil {
+		t.Error("receiver auto must be rejected")
+	}
+	if err := validateParamValue("mxl_flow_id", nil, false); err != nil {
+		t.Errorf("receiver null must be accepted: %v", err)
+	}
+	if err := validateParamValue("mxl_flow_id", "00000000-0000-4000-8000-00000000000f", false); err != nil {
+		t.Errorf("receiver uuid must be accepted: %v", err)
+	}
+}
+
 func TestMXLSenderIS04Rules(t *testing.T) {
 	addr := serveMXLNode(t)
 	sid := "cccccccc-3333-4333-8333-333333333333"
