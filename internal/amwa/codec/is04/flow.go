@@ -35,6 +35,16 @@ type Flow struct {
 	TransferChar string               `json:"transfer_characteristic,omitempty"`
 	Components   []FlowVideoComponent `json:"components,omitempty"`
 
+	// Coded-video attributes from the NMOS Flow Attributes parameter
+	// register, required by BCP-006-01 (JPEG XS) and used by other
+	// coded formats. Register: https://specs.amwa.tv/nmos-parameter-registers/
+	// bit_rate is in kbit/s per the register.
+	Profile         string `json:"profile,omitempty"`
+	Level           string `json:"level,omitempty"`
+	Sublevel        string `json:"sublevel,omitempty"`
+	FlowBitRate     int    `json:"bit_rate,omitempty"`
+	ConstantBitRate *bool  `json:"constant_bit_rate,omitempty"`
+
 	// Audio-specific (flow_audio / flow_audio_raw / flow_audio_coded):
 	SampleRate *GrainRate `json:"sample_rate,omitempty"`
 	BitDepth   int        `json:"bit_depth,omitempty"`

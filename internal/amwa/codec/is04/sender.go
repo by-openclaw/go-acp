@@ -34,6 +34,15 @@ type Sender struct {
 	// explicit false.
 	Hkep *bool `json:"hkep,omitempty"`
 
+	// Sender attributes from the NMOS Sender Attributes parameter
+	// register, required by BCP-006-01 (JPEG XS) for ST 2110-22
+	// senders. bit_rate is kbit/s; packet_transmission_mode is
+	// "codestream" (default) or "slice"; st2110_21_sender_type is the
+	// ST 2110-21 traffic shaping class (e.g. "2110TPW").
+	BitRate                int    `json:"bit_rate,omitempty"`
+	PacketTransmissionMode string `json:"packet_transmission_mode,omitempty"`
+	ST211021SenderType     string `json:"st2110_21_sender_type,omitempty"`
+
 	// Privacy is the BCP-005-03 Sender attribute: MUST be true when the
 	// Sender's SDP transport file carries a `privacy` attribute (IPMX
 	// media-plane encryption via the Privacy Encryption Protocol), and
