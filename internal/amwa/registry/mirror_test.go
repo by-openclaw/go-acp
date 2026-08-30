@@ -64,6 +64,7 @@ type fakePlant struct {
 	healths  []string // node ids
 	healthCL []string // Content-Length header per health POST
 	evict    int      // answer this many health POSTs with 404 first
+	rejectN  map[string]int // "type:id" -> answer this many POSTs with 400 first (parent-missing sim)
 }
 
 func (p *fakePlant) targetHandler() stdhttp.Handler {
@@ -80,8 +81,17 @@ func (p *fakePlant) targetHandler() stdhttp.Handler {
 				ID string `json:"id"`
 			}
 			_ = json.Unmarshal(env.Data, &doc)
+			key := env.Type + ":" + doc.ID
 			p.mu.Lock()
-			p.posts = append(p.posts, env.Type+":"+doc.ID)
+			if p.rejectN != nil && p.rejectN[key] > 0 {
+				p.rejectN[key]--
+				p.mu.Unlock()
+				// Parent-missing simulation: target rejects a child until
+				// an ordered resync re-POSTs it (Cerebrum answers 400).
+				w.WriteHeader(stdhttp.StatusBadRequest)
+				return
+			}
+			p.posts = append(p.posts, key)
 			p.mu.Unlock()
 			w.WriteHeader(stdhttp.StatusCreated)
 		case r.Method == stdhttp.MethodDelete:
@@ -217,6 +227,51 @@ func TestMirrorForwardsAndDeletes(t *testing.T) {
 	if st.Forwarded < 3 || st.Deleted < 1 {
 		t.Errorf("stats = %+v", st)
 	}
+}
+
+// TestMirrorResyncsOn400ParentMissing: the target rejects a child whose
+// parent has not landed yet with 400 (Cerebrum's behaviour, not 404).
+// The mirror must recover by re-POSTing the whole catalogue in
+// dependency order — so the flow, rejected once, lands on the resync.
+func TestMirrorResyncsOn400ParentMissing(t *testing.T) {
+	// The flow is 400'd on its first POST, forcing the ordered resync.
+	plant := &fakePlant{rejectN: map[string]int{"flow:f1": 1}}
+	target := httptest.NewServer(plant.targetHandler())
+	defer target.Close()
+
+	frames := map[string][][]byte{
+		"nodes":   {grainFrame("nodes", "n1", "", `{"id":"n1","label":"n"}`)},
+		"devices": {grainFrame("devices", "d1", "", `{"id":"d1","node_id":"n1"}`)},
+		"sources": {grainFrame("sources", "src1", "", `{"id":"src1","device_id":"d1"}`)},
+		"flows":   {grainFrame("flows", "f1", "", `{"id":"f1","source_id":"src1","device_id":"d1"}`)},
+	}
+	src := httptest.NewServer(stdhttp.NotFoundHandler())
+	src.Config.Handler = plant.sourceHandler(t, func() string { return src.URL }, frames)
+	defer src.Close()
+
+	m, err := NewMirror(MirrorOptions{Source: src.URL, Target: target.URL, APIVer: "v1.3"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = m.Run(ctx) }()
+
+	// The flow is rejected once, a resync is scheduled + fires, and the
+	// flow lands on the ordered re-POST.
+	waitFor(t, 5*time.Second, func() bool {
+		if m.Stats().Resyncs < 1 {
+			return false
+		}
+		plant.mu.Lock()
+		defer plant.mu.Unlock()
+		for _, p := range plant.posts {
+			if p == "flow:f1" {
+				return true
+			}
+		}
+		return false
+	}, "flow:f1 to land after a 400-triggered ordered resync")
 }
 
 func TestMirrorHeartbeatsWithContentLengthAndResyncsOn404(t *testing.T) {

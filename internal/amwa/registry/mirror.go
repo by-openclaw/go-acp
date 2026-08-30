@@ -99,7 +99,20 @@ type Mirror struct {
 	// full re-registration after a target eviction.
 	cache map[string]map[string]json.RawMessage
 	stats MirrorStats
+	// runCtx is the context passed to Run, captured so a debounced
+	// resync fired from a timer goroutine can honour shutdown.
+	runCtx context.Context
+	// resyncTimer debounces an ordered re-registration triggered when
+	// the target rejects a child whose parent has not landed yet
+	// (Cerebrum answers 400, not 404, to a missing parent reference).
+	// Non-nil while a resync is pending. Guarded by mu.
+	resyncTimer *time.Timer
 }
+
+// mirrorResyncDebounce collapses a burst of parent-missing 400s during
+// the initial concurrent fan-out into ONE ordered resync once the burst
+// settles.
+const mirrorResyncDebounce = 750 * time.Millisecond
 
 // NewMirror validates options and builds an unstarted mirror.
 func NewMirror(opts MirrorOptions) (*Mirror, error) {
@@ -143,6 +156,9 @@ func (m *Mirror) Run(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("registry/mirror: unknown api-ver %q", m.opts.APIVer)
 	}
+	m.mu.Lock()
+	m.runCtx = ctx
+	m.mu.Unlock()
 	qc, err := query.NewClient(m.opts.Source, codec)
 	if err != nil {
 		return fmt.Errorf("registry/mirror: source: %w", err)
@@ -164,6 +180,12 @@ func (m *Mirror) Run(ctx context.Context) error {
 	}()
 
 	wg.Wait()
+	m.mu.Lock()
+	if m.resyncTimer != nil {
+		m.resyncTimer.Stop()
+		m.resyncTimer = nil
+	}
+	m.mu.Unlock()
 	return ctx.Err()
 }
 
@@ -202,7 +224,10 @@ func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDat
 		m.mu.Lock()
 		m.cache[topic][row.Path] = row.Post
 		m.mu.Unlock()
-		m.postResource(ctx, topic, row.Post)
+		// Live path: a 400 here means a parent has not been forwarded
+		// yet (the six topics stream concurrently), so allow it to
+		// trigger an ordered resync.
+		m.postResource(ctx, topic, row.Post, true)
 	case is04.ChangeRemoved:
 		m.mu.Lock()
 		delete(m.cache[topic], row.Path)
@@ -214,7 +239,13 @@ func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDat
 }
 
 // postResource POSTs one document to the target Registration API.
-func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMessage) {
+//
+// allowResync gates the parent-missing recovery: the live forward path
+// passes true so a 400 (target rejects a child whose parent has not
+// landed yet) schedules an ordered resync; resync itself passes false so
+// a 400 during an already-ordered pass cannot trigger another resync (no
+// runaway loop when a resource is genuinely un-postable).
+func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMessage, allowResync bool) {
 	body, err := json.Marshal(map[string]any{
 		"type": mirrorSingular[topic],
 		"data": json.RawMessage(doc),
@@ -238,11 +269,45 @@ func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMes
 	drainClose(resp)
 	if resp.StatusCode != stdhttp.StatusOK && resp.StatusCode != stdhttp.StatusCreated {
 		m.fail("POST", topic, fmt.Errorf("HTTP %d", resp.StatusCode))
+		// A target's registration face validates parent references and
+		// answers 400 for a child whose parent has not been forwarded
+		// yet. The six collections stream concurrently, so this is
+		// expected during the initial fill; a debounced ordered resync
+		// re-POSTs the whole cache node→device→source→flow→sender→
+		// receiver, after which every parent precedes its children.
+		if allowResync && resp.StatusCode == stdhttp.StatusBadRequest {
+			m.scheduleResync()
+		}
 		return
 	}
 	m.mu.Lock()
 	m.stats.Forwarded++
 	m.mu.Unlock()
+}
+
+// scheduleResync arms (or extends) a debounced ordered resync. Repeated
+// parent-missing 400s during the initial fan-out collapse into one pass
+// once the burst goes quiet for mirrorResyncDebounce.
+func (m *Mirror) scheduleResync() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	ctx := m.runCtx
+	if ctx == nil {
+		return
+	}
+	if m.resyncTimer != nil {
+		m.resyncTimer.Reset(mirrorResyncDebounce)
+		return
+	}
+	m.resyncTimer = time.AfterFunc(mirrorResyncDebounce, func() {
+		m.mu.Lock()
+		m.resyncTimer = nil
+		rctx := m.runCtx
+		m.mu.Unlock()
+		if rctx != nil && rctx.Err() == nil {
+			m.resync(rctx)
+		}
+	})
 }
 
 // deleteResource DELETEs one document from the target.
@@ -349,7 +414,9 @@ func (m *Mirror) resync(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			m.postResource(ctx, topic, doc)
+			// allowResync=false: this pass is already in dependency
+			// order, so a 400 here is a genuine reject, not a race.
+			m.postResource(ctx, topic, doc, false)
 		}
 	}
 }
