@@ -132,6 +132,17 @@ type subscription struct {
 	ws      *httpsession.WebSocket
 	source  string // sub UUID echoed in grain.source_id
 	closeCh chan struct{}
+
+	// bufMu guards the change-aggregation buffer below. IS-04 lets a
+	// grain carry many changes, and max_update_rate_ms is the window we
+	// coalesce them over: instead of one grain per change, changes that
+	// land inside a window flush together as one grain per topic. This
+	// is the steady-state footprint win — a heartbeat re-register storm
+	// becomes one frame, not one-per-node.
+	bufMu            sync.Mutex
+	pending          []Change    // projected changes awaiting flush
+	flushTimer       *time.Timer // non-nil while a flush is scheduled
+	nextFlushAllowed time.Time   // earliest a flush may fire (rate gate)
 }
 
 // SubscriptionManager owns all in-flight subscriptions, the WS
@@ -402,7 +413,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		sub.ws = ws
 		m.mu.Unlock()
 
-		// Send sync grains for every existing resource matching the
+		// Send the SYNC snapshot for every existing resource matching the
 		// resource_path AND the subscription params filter. SYNC has
 		// pre == post (current snapshot), so a single jsonMatchesFilter
 		// against Post is sufficient. We also apply the same no-
@@ -411,7 +422,19 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		// resources (AMWA test_22_2). When the subscriber requested
 		// `query.downgrade=v1.X` at POST time, lower-version
 		// resources become visible per AMWA's downgrade semantics.
+		//
+		// The snapshot goes out as ONE grain per topic, not one grain
+		// per resource: IS-04 §5.2 lets a grain's `data` array carry
+		// many objects, and the reference controllers (nmos-cpp/sony)
+		// and Cerebrum expect the current state as a single batched sync
+		// grain. Emitting one grain per resource is a legal but atypical
+		// form that Cerebrum 2.8.17 does not reconcile (it keeps only the
+		// first grain's resource) and multiplies the wire footprint by
+		// the resource count. A `/senders` subscription against a real
+		// Neuron is 208 grains this way, 1 grain batched.
 		now := time.Now()
+		var order []string
+		byTopic := map[string][]Change{}
 		for _, c := range m.store.SnapshotChanges(m.apiVer) {
 			if !subscriptionMatches(sub.ResourcePath, c) {
 				continue
@@ -422,7 +445,14 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			if !jsonMatchesFilter(c.Post, sub.params) && len(sub.params) > 0 {
 				continue
 			}
-			frame, err := buildGrain(sub.source, c, now)
+			topic := "/" + c.ResourceType.Plural() + "/"
+			if _, seen := byTopic[topic]; !seen {
+				order = append(order, topic)
+			}
+			byTopic[topic] = append(byTopic[topic], c)
+		}
+		for _, topic := range order {
+			frame, err := buildBatchGrain(sub.source, byTopic[topic], now)
 			if err != nil {
 				m.logger.Warn("registry/subs: build sync grain", "err", err)
 				continue
@@ -482,7 +512,6 @@ func (m *SubscriptionManager) onChange(c Change) {
 		subs = append(subs, s)
 	}
 	m.mu.Unlock()
-	now := time.Now()
 	for _, s := range subs {
 		// Filter against the CANONICAL body (with all v1.3-shape
 		// fields present) so a `description=...` filter still
@@ -495,11 +524,73 @@ func (m *SubscriptionManager) onChange(c Change) {
 			continue
 		}
 		projected = reencodeChange(projected, m.apiVer)
-		frame, err := buildGrain(s.source, projected, now)
+		m.enqueue(s, projected)
+	}
+}
+
+// enqueue buffers one projected change for a subscription and ensures a
+// flush is scheduled, honoring max_update_rate_ms.
+//
+// rate <= 0 means "no rate limit": flush immediately (the historical
+// behavior), but still off the store's write lock is not possible here
+// since onChange holds it — so for the unlimited case we send inline as
+// before. rate > 0 coalesces every change inside the window into one
+// grain per topic, flushed by a timer that fires OUTSIDE the store lock.
+func (m *SubscriptionManager) enqueue(s *subscription, c Change) {
+	if s.MaxUpdateRate <= 0 {
+		now := time.Now()
+		frame, err := buildBatchGrain(s.source, []Change{c}, now)
+		if err != nil {
+			return
+		}
+		if err := s.ws.SendText(frame); err != nil {
+			m.logger.Warn("registry/subs: send grain failed", "id", s.ID, "err", err)
+		}
+		return
+	}
+	s.bufMu.Lock()
+	s.pending = append(s.pending, c)
+	if s.flushTimer == nil {
+		delay := time.Until(s.nextFlushAllowed)
+		if delay < 0 {
+			delay = 0
+		}
+		s.flushTimer = time.AfterFunc(delay, func() { m.flush(s) })
+	}
+	s.bufMu.Unlock()
+}
+
+// flush drains a subscription's pending changes and sends them as one
+// grain per topic, then re-arms the rate gate. Runs in a timer
+// goroutine, off the store's write lock.
+func (m *SubscriptionManager) flush(s *subscription) {
+	s.bufMu.Lock()
+	pending := s.pending
+	s.pending = nil
+	s.flushTimer = nil
+	s.nextFlushAllowed = time.Now().Add(time.Duration(s.MaxUpdateRate) * time.Millisecond)
+	ws := s.ws
+	s.bufMu.Unlock()
+
+	if ws == nil || len(pending) == 0 {
+		return
+	}
+	now := time.Now()
+	var order []string
+	byTopic := map[string][]Change{}
+	for _, c := range pending {
+		topic := "/" + c.ResourceType.Plural() + "/"
+		if _, seen := byTopic[topic]; !seen {
+			order = append(order, topic)
+		}
+		byTopic[topic] = append(byTopic[topic], c)
+	}
+	for _, topic := range order {
+		frame, err := buildBatchGrain(s.source, byTopic[topic], now)
 		if err != nil {
 			continue
 		}
-		if err := s.ws.SendText(frame); err != nil {
+		if err := ws.SendText(frame); err != nil {
 			m.logger.Warn("registry/subs: send grain failed", "id", s.ID, "err", err)
 		}
 	}
@@ -666,6 +757,12 @@ func jsonMatchesFilter(data json.RawMessage, q map[string][]string) bool {
 func (m *SubscriptionManager) removeSub(id string) {
 	m.mu.Lock()
 	if s, ok := m.subs[id]; ok {
+		s.bufMu.Lock()
+		if s.flushTimer != nil {
+			s.flushTimer.Stop()
+			s.flushTimer = nil
+		}
+		s.bufMu.Unlock()
 		if s.ws != nil {
 			_ = s.ws.Close()
 		}
@@ -683,7 +780,7 @@ func subscriptionMatches(resourcePath string, c Change) bool {
 	return resourcePath == "" || resourcePath == "/" || resourcePath == want
 }
 
-// buildGrain turns a Change into the IS-04 §5.2 grain wire envelope.
+// grainRow turns one Change into an IS-04 §5.2 grain data row.
 //
 // Per IS-04 v1.3.3 §5.2, the (pre, post) pair encodes the change
 // kind:
@@ -691,8 +788,7 @@ func subscriptionMatches(resourcePath string, c Change) bool {
 //   - updated  → pre present, post present (different bodies)
 //   - deleted  → pre present, post absent
 //   - sync     → pre present, post present (SAME body)
-func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
-	ts := fmt.Sprintf("%d:%d", now.Unix(), now.Nanosecond())
+func grainRow(c Change) GrainDataRow {
 	row := GrainDataRow{Path: c.ID}
 	switch c.Kind {
 	case ChangeCreated:
@@ -724,6 +820,25 @@ func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 			row.Post = &p
 		}
 	}
+	return row
+}
+
+// buildBatchGrain wraps one or more Changes that share a topic into a
+// single IS-04 §5.2 grain envelope. IS-04 lets a grain's `data` array
+// carry many objects; batching all current/changed resources into one
+// grain is the form reference controllers expect and the one that keeps
+// the wire footprint flat regardless of resource count.
+//
+// All changes MUST share a resource type (topic) — callers group by
+// topic first. An empty slice yields a grain with an empty data array.
+func buildBatchGrain(source string, changes []Change, now time.Time) ([]byte, error) {
+	ts := fmt.Sprintf("%d:%d", now.Unix(), now.Nanosecond())
+	rows := make([]GrainDataRow, 0, len(changes))
+	topic := "//"
+	for _, c := range changes {
+		topic = "/" + c.ResourceType.Plural() + "/"
+		rows = append(rows, grainRow(c))
+	}
 	g := Grain{
 		GrainType:         "event",
 		SourceID:          source,
@@ -735,8 +850,8 @@ func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 		Duration:          GrainRT{Numerator: 0, Denominator: 1},
 		Grain: GrainBody{
 			Type:  "urn:x-nmos:format:data.event",
-			Topic: "/" + c.ResourceType.Plural() + "/",
-			Data:  []GrainDataRow{row},
+			Topic: topic,
+			Data:  rows,
 		},
 	}
 	return json.Marshal(g)
