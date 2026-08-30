@@ -1,36 +1,46 @@
 # docs/testbed.md — Test fleet inventory and access
 
-Tracked, repo-local source of truth for the test fleet on the DMZ VLAN
-(`10.100.0.0/24`, VLAN 100 on Proxmox bridge `vmbrAPPS`, gateway
-pfSense `10.100.0.1`). The facts below were re-verified against the
-Proxmox API (pve01, `10.6.224.5`) and the live guests on 2026-08-23;
-the Ansible inventory (`ansible/inventory/`) carries the SAME facts per
-host (`pve_vmid`, `nics`, `os_label`) — when one changes, both change
-in the same PR (epic #780).
+> **Dev/test/deploy flow:** see
+> [`docs/deployment/dev-test-flow.md`](deployment/dev-test-flow.md) —
+> the authoritative how-to (desk → git bundle → control node → Ansible).
+> This file is the fleet **inventory + access reference**.
+
+Tracked, repo-local source of truth for the test fleet on **VLAN 600 /
+MGMT_CTRL** (`10.6.240.0/20`, Proxmox bridge `vmbrMGMT`, fabric gateway
+`10.6.255.254`), live since the **2026-08-29 migration**. Management
+addresses are `10.6.250.101`–`.105`. The Ansible inventory
+(`ansible/inventory/`) carries the SAME facts per host (`ansible_host`,
+`pve_vmid`, `nics`, `os_label`) — when one changes, both change in the
+same PR — and the inventory wins on any disagreement.
+
+> **Retired:** the earlier `10.100.0.0/24` VLAN 100 (`vmbrAPPS`, gw
+> `10.100.0.1`) plan is **dead** — do not use those addresses. Older
+> `10.6.239.x` office addresses for emulators are unrelated to the fleet.
 
 ## Fleet
 
 | Inventory name | Proxmox | Guest OS | mgmt (`ansible_host`) | Role |
 | --- | --- | --- | --- | --- |
-| `dhs-debian` | LXC 651 | Debian 12 | `10.100.0.101` | **Ansible control node** (moving to `dhs-tools`, #820); dhs producer host; binary-test target; Docker |
-| `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.100.0.102` | dhs producer host; binary-test target |
-| `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.100.0.103` | dhs producer host; binary-test target |
-| `dhs-tools` | LXC 655 | Ubuntu | `10.100.0.104` | tooling: Docker, AMWA NMOS Testing tool (`scripts/amwa/`), tshark |
-| `win11` | VM 654 | Windows 11 Pro | `10.100.0.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` |
-| `cerebrum` | VM 601 `vm-cerebrum-stg-01` | Windows 11 | `10.100.0.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+| `dhs-debian` | LXC 651 | Debian 12 | `10.6.250.101` | **Ansible control node** + AMWA plant registry (`:8235`); dhs producer host; Docker |
+| `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
+| `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` (guest static unconfirmed post-migration) |
+| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | (VLAN600 IP — confirm) | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
 
-Addressing is **static, from the inventory** (`dhs_netaddr` role, #786):
-one management NIC per host — `eth0` = `ansible_host`, default gateway
-`10.100.0.1`; `.101`–`.105`, no overlaps, Cerebrum staging stays `.5`.
-LXCs get it in the Proxmox CT config (`netX: …,ip=<addr>/24[,gw=…]`,
-`nameserver`, `searchdomain`, written via the API, applied by a CT
-reboot); the Windows VM gets it guest-side. No DHCP dependency (pfSense
-only needs `.100–.120` excluded from its pool as hygiene). The inventory
-is the source of truth, not an overlay: a `netX` on the CT that `nics:`
-does not declare is REMOVED (`delete=netN`).
+Addressing is **static, from the inventory**: one management NIC per
+host — `eth0` = `ansible_host` on `10.6.250.101`–`.105`, fabric gateway
+`10.6.255.254`, no overlaps. LXCs get it in the Proxmox CT config
+(`netX: …,ip=<addr>/20[,gw=…]`, `nameserver`, `searchdomain`, written
+via the API, applied by a CT reboot); the Windows VM gets it guest-side.
+No DHCP dependency. The inventory is the source of truth, not an
+overlay. **The `dhs_netaddr` role (#786) still carries the retired
+`10.100.0.x` plan — do NOT run it until it is reworked for VLAN 600**
+(the live addresses above were set during the migration, not by that
+role).
 
 A second management NIC (`eth1` = eth0 + 10, `.111`–`.113`, no default
 route) existed until 2026-08-23 and is **parked, not deleted** — re-adding
@@ -49,6 +59,44 @@ converged by the `dhs_hostname` role (#783) in BOTH layers — the guest
 and the Proxmox CT config (Proxmox rewrites `/etc/hostname` from its
 config at every CT start, so a guest-only rename would revert). Unique
 names matter: three LXCs used to answer `dhs`, which collides in Avahi.
+
+## AMWA plant — node identity (stable UUIDs)
+
+The AMWA lab plant (`dhs_amwa_plant` role) uses **deterministic** UUIDs so
+a redeploy or heartbeat re-registration **updates** a resource, never
+creates a duplicate. Any duplicate label seen in a consumer (e.g.
+Cerebrum's registry) is therefore a **stale or foreign registration**
+that ages out on the heartbeat GC — not a UUID-churn bug. Keep this table
+as the test oracle for "duplicate vs mismatch vs real".
+
+Scale nodes `dhs-scale-NN` (NN = `00`–`19`), from
+`templates/scale-node.json.j2` with index `i` = NN — one device / source /
+flow / sender / receiver each:
+
+| Resource | UUID (`i` = 00–19) |
+| --- | --- |
+| Node | `aa000000-0000-4000-8000-0000000000`*i* |
+| Device | `bb000000-0000-4000-8000-0000000000`*i* |
+| Source | `cc000000-0000-4000-8000-0000000000`*i* |
+| Flow | `dd000000-0000-4000-8000-0000000000`*i* |
+| Sender | `ee000000-0000-4000-8000-0000000000`*i* |
+| Receiver | `ff000000-0000-4000-8000-0000000000`*i* |
+
+Fixed nodes:
+
+| Node | UUID |
+| --- | --- |
+| `dhs-test-node` (fixture `amwa-test-node.json`) | `2c47bf5e-1b2c-4abc-9def-deadbeef0001` |
+| Neuron `bm-n-nnbrg-c01` (real EVS device) | `b7011c4e-5f39-5a1a-a6eb-a8036b0a5fd9` |
+
+Fleet total: **22 nodes / 237 senders / 231 receivers** (208 senders are
+the Neuron's). Feeding these into Cerebrum's own registry is a separate
+bridge — see the mirror in [`dev-test-flow.md`](deployment/dev-test-flow.md).
+
+**Clean-test rule:** run the AMWA conformance suite **or** the registry
+mirror against the registry, not both at once — the conformance tool
+registers its own mock nodes (foreign UUIDs) which a running mirror would
+forward and show as transient extras. Only one mirror at a time.
 
 ## Producer port plan (every Linux LXC + win11)
 
@@ -76,14 +124,15 @@ Host firewalls are managed by the `dhs_firewall` role (#785): each host opens ex
 
 ## Control node
 
-`dhs-debian` (`.101`) runs every Ansible play — Linux hosts over SSH as
-`root`, the Windows VM over SSH as `by-rune` (key auth; WinRM/NTLM +
-password file is retired). It holds a clone of this (public) repo at
-`~/acp` and its own ed25519 key (`root@dhs`), which is one of the three
-fleet actor keys below. After a fresh clone run
-`ansible-playbook playbooks/control-node.yml` (git-lfs + LFS pull of the
-shipped assets, Ansible collections). Never drive the fleet from a
-Windows workstation (PowerShell) — see ADR-0025 step 5.
+`dhs-debian` (`10.6.250.101`) runs every Ansible play — Linux hosts over
+SSH as `root`, the Windows VM over SSH as `by-rune` (key auth). The fleet
+has **no internet**, so code arrives as a **git bundle** from the desk
+(see [`dev-test-flow.md`](deployment/dev-test-flow.md)), not `git pull`.
+The AMWA plant checkout lives at **`/root/acp-plant`** (its git `origin`
+is the shipped bundle `/tmp/plantfull.bundle`); the plant registry runs
+as the `dhs-nmos-registry` systemd unit
+(`/opt/dhs-amwa-plant/dhs registry nmos serve --bind :8235`). Never
+drive the fleet from a Windows workstation (PowerShell) — ADR-0025 §5.
 
 Monitoring a run (#790): every play logs to `/tmp/ansible-fleet.log`
 on the control node (`tail -f` it) and prints per-task timings
@@ -140,16 +189,16 @@ Every fleet host gets the same dhs baseline, per OS, from the
 | directories | `/etc/dhs` (trees/packs), `/var/lib/dhs` (data), `/var/log/dhs` | `C:\dhs`, `C:\ProgramData\dhs\{data,logs}` |
 | packages | tshark/wireshark-cli, curl, jq, ca-certificates, unzip, tar | — |
 
-Time (#804): `win11` syncs w32time to the DMZ gateway
-`10.100.0.1` + `pool.ntp.org` (set by `dhs_host`); the LXCs cannot set
+Time (#804): `win11` syncs w32time to the fabric gateway
+`10.6.255.254` (set by `dhs_host`); the LXCs cannot set
 their own clock — they inherit the Proxmox node's, which was measured
 ~9 min ahead on 2026-08-23 → `ansible/playbooks/pve-time.yml` (#810,
 group `pve` = pve01 over SSH as root; chrony + `makestep`; platform twin
 `ansible-platform#168`);
 `fleet-verify.yml` prints each host's offset vs the control node.
 
-IPv6: this fleet is **IPv4-only** (owner, 2026-08-23). VLAN 100 offers no
-RA/DHCPv6 — a 20 s capture for `icmpv6.type==134` saw nothing — so NICs
+IPv6: this fleet is **IPv4-only** (owner). VLAN 600 offers no
+RA/DHCPv6 — so NICs
 hold link-local IPv6 only and nothing autoconfigures. Dual stack belongs
 to the NEW Proxmox node, not here; do not reintroduce an IPv6 scheme for
 this fleet without the owner asking.
@@ -246,5 +295,6 @@ Second run = 0 updates / 0 changes.
 Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
 hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
 firewall (#785), host baseline (#800), OS updates + reboot (#799),
-time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815). pfSense hygiene
-(owner, any time): exclude `10.100.0.100–120` from the DHCP pool.
+time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815).
+Post-migration follow-ups: confirm Cerebrum's VLAN 600 address; rework
+`dhs_netaddr` for VLAN 600 before re-enabling it.
