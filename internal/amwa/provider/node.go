@@ -373,6 +373,11 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 			APIVer: cfg.ConfigurationAPIVer,
 		})
 	}
+	// BCP-008: an IS-05 activation flips the endpoint's status monitor
+	// between Inactive and Healthy. Wired only when both sides exist.
+	if s.connection != nil && s.configuration != nil {
+		s.connection.onMonitorState = s.configuration.SetMonitorActive
+	}
 	if !cfg.NoEventsAPI {
 		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,

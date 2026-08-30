@@ -23,7 +23,11 @@ import (
 // and datatypes part of every conforming device's catalogue, and the
 // AMWA suite checks for them by name.
 //
-//go:embed testdata/schemas/v1.0.0/classes/*.json testdata/schemas/v1.0.0/datatypes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/classes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes/*.json
+// The monitoring feature set rides along the same way: BCP-008-01/-02
+// put NcReceiverMonitor / NcSenderMonitor (1.2.2.x) and their status
+// datatypes in the catalogue of every device that monitors streams.
+//
+//go:embed testdata/schemas/v1.0.0/classes/*.json testdata/schemas/v1.0.0/datatypes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/classes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes/*.json testdata/schemas/v1.0.0/featuresets/monitoring/classes/*.json testdata/schemas/v1.0.0/featuresets/monitoring/datatypes/*.json
 var frameworkFS embed.FS
 
 var (
@@ -92,6 +96,7 @@ func loadFramework() {
 	for _, dir := range []string{
 		"testdata/schemas/v1.0.0/classes",
 		"testdata/schemas/v1.0.0/featuresets/device-configuration/classes",
+		"testdata/schemas/v1.0.0/featuresets/monitoring/classes",
 	} {
 		if err := load(dir, loadClasses); err != nil {
 			frameworkErr = err
@@ -101,6 +106,7 @@ func loadFramework() {
 	for _, dir := range []string{
 		"testdata/schemas/v1.0.0/datatypes",
 		"testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes",
+		"testdata/schemas/v1.0.0/featuresets/monitoring/datatypes",
 	} {
 		if err := load(dir, loadDatatypes); err != nil {
 			frameworkErr = err

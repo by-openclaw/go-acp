@@ -228,6 +228,12 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 		return s.methodGetControlClass(obj, cmd.Arguments)
 	case is12.MethodID{Level: 3, Index: 2}: // ClassManager.GetDatatype
 		return s.methodGetDatatype(obj, cmd.Arguments)
+	case is12.MethodID{Level: 4, Index: 1}, is12.MethodID{Level: 4, Index: 2}, is12.MethodID{Level: 4, Index: 3}:
+		// BCP-008 monitor methods (NcReceiverMonitor 4m1/4m2 counter
+		// getters + 4m3 reset; NcSenderMonitor 4m1 getter + 4m2 reset).
+		if classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2}) {
+			return s.methodMonitor(obj, cmd.MethodID)
+		}
 	}
 	return ncpErr(ms05.NcMethodStatusMethodNotImplemented,
 		fmt.Sprintf("method %dm%d is not implemented on oid %d", cmd.MethodID.Level, cmd.MethodID.Index, cmd.OID))
@@ -555,6 +561,33 @@ func (s *IS12NCPServer) methodGetDatatype(obj *configObject, args json.RawMessag
 		return ncpErr(ms05.NcMethodStatusParameterError, fmt.Sprintf("no datatype %q", a.Name))
 	}
 	return ncpOKValue(dt)
+}
+
+// methodMonitor implements the BCP-008 monitor methods. A reference
+// node carries no media plane, so the packet/error counter getters
+// truthfully answer an empty counter list; reset clears the transition
+// counters and messages the model does carry.
+func (s *IS12NCPServer) methodMonitor(obj *configObject, id is12.MethodID) is12.MethodResult {
+	isReceiver := classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2, 1})
+	resetIdx := 2 // NcSenderMonitor.ResetCountersAndMessages = 4m2
+	if isReceiver {
+		resetIdx = 3 // NcReceiverMonitor.ResetCountersAndMessages = 4m3
+	}
+	if id.Index == resetIdx {
+		s.config.mu.Lock()
+		for _, p := range obj.props {
+			if strings.HasSuffix(p.desc.Name, "TransitionCounter") {
+				p.value = uint64(0)
+			}
+			if strings.HasSuffix(p.desc.Name, "Message") && p.desc.IsNullable {
+				p.value = nil
+			}
+		}
+		s.config.mu.Unlock()
+		return ncpOK()
+	}
+	// Remaining indices are counter getters.
+	return ncpOKValue([]any{})
 }
 
 // attachNCPAPI mounts IS-12 and advertises it on every Device. The

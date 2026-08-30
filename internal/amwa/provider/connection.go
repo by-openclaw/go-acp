@@ -56,6 +56,10 @@ type IS05ConnectionServer struct {
 	// `subscription.active` both read from here.
 	bundle *NodeConfig
 
+	// onMonitorState reports an activation to the BCP-008 status
+	// monitor tied to the endpoint (nil = no monitors served).
+	onMonitorState func(resourceID string, active bool)
+
 	// onResourceChanged fires after an activation has rewritten an
 	// IS-04 resource, so the Node can re-POST it to its Registry.
 	//
@@ -104,6 +108,13 @@ func NewIS05ConnectionServer(logger *slog.Logger, bundle *NodeConfig, cfg IS05Co
 // Runs under the store lock, so it must not call back into the store.
 func (s *IS05ConnectionServer) afterActivation(kind, id string, active is05.StagedSender) string {
 	s.updateIS04Subscription(kind, id, active)
+	if s.onMonitorState != nil {
+		// BCP-008: the status monitor tied to this endpoint follows the
+		// activation. In a goroutine because it fans out to IS-12
+		// WebSocket subscribers — socket writes must not run under the
+		// connection store's lock.
+		go s.onMonitorState(id, active.MasterEnable)
+	}
 	if kind == "senders" {
 		return s.sdpForSender(id, active)
 	}

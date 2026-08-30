@@ -87,6 +87,10 @@ type IS14ConfigurationServer struct {
 	// subscribed Controllers. Separate from onModelChanged because the
 	// IS-04 hook needs no detail and the IS-12 hook needs all of it.
 	onPropertyChanged func(ms05.NcOid, ms05.NcPropertyId, any)
+
+	// monitorByResource maps an IS-04 sender/receiver id to its status
+	// monitor's role-path key (BCP-008 touchpoint, inverted).
+	monitorByResource map[string]string
 }
 
 // SetOnPropertyChanged installs the IS-12 notification hook.
@@ -259,16 +263,114 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 		// a build defect, not a runtime condition.
 		panic(fmt.Sprintf("provider/is14: framework model load: %v %v %v %v", err, err2, err3, err4))
 	}
-	if p := root.findProp("2p2"); p != nil { // NcBlock.members
-		p.value = []ms05.NcBlockMemberDescriptor{dm.memberDescriptor(), cm.memberDescriptor(), bpm.memberDescriptor()}
+	// BCP-008-01/-02: one status monitor per stream endpoint, tied to
+	// its IS-04 resource through a touchpoint. Statuses boot Inactive —
+	// nothing transmits until IS-05 activates — and flip on activation
+	// via SetMonitorActive.
+	objs := []*configObject{root, dm, cm, bpm}
+	s.monitorByResource = map[string]string{}
+	nextOid := ms05.NcOid(5)
+	addMonitor := func(classID ms05.NcClassId, role, resourceType, resourceID, label string, statusProps []string) {
+		seed := map[string]any{
+			"userLabel": label,
+			"touchpoints": []any{map[string]any{
+				"contextNamespace": "x-nmos",
+				"resource": map[string]any{
+					"resourceType": resourceType,
+					"id":           resourceID,
+				},
+			}},
+			"statusReportingDelay":         uint32(3),
+			"autoResetCountersAndMessages": true,
+			"overallStatus":                0, // Inactive
+			"linkStatus":                   1, // AllUp
+			"linkStatusTransitionCounter":  uint64(0),
+			"externalSynchronizationStatusTransitionCounter": uint64(0),
+		}
+		for _, p := range statusProps {
+			seed[p] = 0
+			seed[p+"TransitionCounter"] = uint64(0)
+		}
+		mon, err := newConfigObject(classID, nextOid, []string{"root", role}, seed)
+		if err != nil {
+			panic(fmt.Sprintf("provider/is14: monitor model load: %v", err))
+		}
+		nextOid++
+		objs = append(objs, mon)
+		s.monitorByResource[resourceID] = strings.Join(mon.path, ".")
+	}
+	if bundle != nil {
+		for i := range bundle.Receivers {
+			r := &bundle.Receivers[i]
+			addMonitor(ms05.NcClassId{1, 2, 2, 1}, fmt.Sprintf("ReceiverMonitor-%02d", i),
+				"receiver", r.ID, "Receiver monitor "+r.Label,
+				[]string{"connectionStatus", "streamStatus"})
+		}
+		for i := range bundle.Senders {
+			snd := &bundle.Senders[i]
+			addMonitor(ms05.NcClassId{1, 2, 2, 2}, fmt.Sprintf("SenderMonitor-%02d", i),
+				"sender", snd.ID, "Sender monitor "+snd.Label,
+				[]string{"transmissionStatus", "essenceStatus"})
+		}
 	}
 
-	for _, o := range []*configObject{root, dm, cm, bpm} {
+	if p := root.findProp("2p2"); p != nil { // NcBlock.members
+		members := make([]ms05.NcBlockMemberDescriptor, 0, len(objs)-1)
+		for _, o := range objs[1:] {
+			members = append(members, o.memberDescriptor())
+		}
+		p.value = members
+	}
+
+	for _, o := range objs {
 		key := strings.Join(o.path, ".")
 		s.objects[key] = o
 		s.order = append(s.order, key)
 	}
 	return s
+}
+
+// SetMonitorActive flips the status monitor tied to an IS-04 sender or
+// receiver between Inactive and Healthy on IS-05 activation — BCP-008
+// "monitor transitions to Healthy state on activation" and its
+// deactivation mirror. Every changed property fires the IS-12
+// notification hook.
+func (s *IS14ConfigurationServer) SetMonitorActive(resourceID string, active bool) {
+	key, ok := s.monitorByResource[resourceID]
+	if !ok {
+		return
+	}
+	s.mu.Lock()
+	obj := s.objects[key]
+	if obj == nil {
+		s.mu.Unlock()
+		return
+	}
+	status := 0 // Inactive
+	if active {
+		status = 1 // Healthy
+	}
+	type change struct {
+		id ms05.NcPropertyId
+		v  any
+	}
+	var fired []change
+	for _, name := range []string{"overallStatus", "connectionStatus", "streamStatus", "transmissionStatus", "essenceStatus"} {
+		for _, p := range obj.props {
+			if p.desc.Name == name {
+				if p.value != status {
+					p.value = status
+					fired = append(fired, change{p.desc.ID, status})
+				}
+			}
+		}
+	}
+	s.mu.Unlock()
+	if s.onPropertyChanged != nil {
+		for _, c := range fired {
+			s.onPropertyChanged(obj.oid, c.id, c.v)
+		}
+	}
 }
 
 // Versions lists the mounted IS-14 minors.
