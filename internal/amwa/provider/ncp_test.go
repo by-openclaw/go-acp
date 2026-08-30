@@ -8,6 +8,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	stdhttp "net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -18,9 +19,13 @@ import (
 )
 
 func serveNCPNode(t *testing.T) string {
+	return serveNCPBundleNode(t, validBundle())
+}
+
+func serveNCPBundleNode(t *testing.T, bundle *NodeConfig) string {
 	t.Helper()
 	addr := freeAddr(t)
-	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
+	s, err := NewIS04NodeServer(nil, bundle, IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static", ConnectionAPIVer: "v1.2", APIVer: "v1.3",
 	})
 	if err != nil {
@@ -149,6 +154,66 @@ func TestNCPGetAndErrors(t *testing.T) {
 	cr = resp.(is12.CommandResponseMessage)
 	if cr.Responses[0].Result.Status != 200 || !strings.Contains(string(cr.Responses[0].Result.Value), "NcObject") {
 		t.Errorf("GetControlClass = %+v", cr.Responses[0].Result)
+	}
+}
+
+// TestBCP008MonitorFollowsActivation: every sender/receiver carries a
+// status monitor whose statuses boot Inactive and flip to Healthy when
+// IS-05 activates the endpoint (BCP-008 test_02 behaviour), and the
+// monitor methods answer over NCP.
+func TestBCP008MonitorFollowsActivation(t *testing.T) {
+	addr := serveNCPBundleNode(t, audioBundle())
+
+	// The monitor exists and boots Inactive.
+	st, body := mxlGet(t, "http://"+addr+"/x-nmos/configuration/v1.0/rolePaths/root.ReceiverMonitor-00/properties/3p1/value")
+	if st != 200 || !strings.Contains(string(body), `"value": 0`) && !strings.Contains(string(body), `"value":0`) {
+		t.Fatalf("monitor overallStatus before activation = %d %s", st, body)
+	}
+
+	// Activate the receiver over IS-05.
+	rid := ""
+	for _, r := range audioBundle().Receivers {
+		rid = r.ID
+		break
+	}
+	patch := `{"master_enable":true,"activation":{"mode":"activate_immediate","requested_time":null,"activation_time":null}}`
+	req, _ := stdhttp.NewRequest(stdhttp.MethodPatch,
+		"http://"+addr+"/x-nmos/connection/v1.2/single/receivers/"+rid+"/staged",
+		strings.NewReader(patch))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := stdhttp.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("activate receiver: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		t.Fatalf("activate receiver: status=%d", resp.StatusCode)
+	}
+
+	// The flip happens via a goroutine — poll briefly.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		_, body = mxlGet(t, "http://"+addr+"/x-nmos/configuration/v1.0/rolePaths/root.ReceiverMonitor-00/properties/3p1/value")
+		if strings.Contains(string(body), `"value": 1`) || strings.Contains(string(body), `"value":1`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("monitor never went Healthy: %s", body)
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+
+	// Monitor methods over NCP: counters getter + reset answer OK.
+	ws := ncpDial(t, addr)
+	resp2 := ncpRoundTrip(t, ws, is12.CommandMessage{Commands: []is12.Command{
+		{Handle: 20, OID: 5, MethodID: is12.MethodID{Level: 4, Index: 1}, Arguments: json.RawMessage(`{}`)},
+		{Handle: 21, OID: 5, MethodID: is12.MethodID{Level: 4, Index: 3}, Arguments: json.RawMessage(`{}`)},
+	}})
+	cr := resp2.(is12.CommandResponseMessage)
+	for _, r := range cr.Responses {
+		if r.Result.Status != 200 {
+			t.Errorf("monitor method handle %d = %+v", r.Handle, r.Result)
+		}
 	}
 }
 
