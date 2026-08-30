@@ -70,6 +70,11 @@ func TestNodeServesTLS(t *testing.T) {
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static",
 		TLSCertFile: certFile, TLSKeyFile: keyFile,
+		// Keep provisioned material in a temp dir — never let the
+		// default .cache/nmos-tls litter the package directory during
+		// `go test` (a stray root-owned dir broke the EL runners'
+		// post-run cache hashFiles step).
+		TLSDataDir: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatalf("NewIS04NodeServer: %v", err)
