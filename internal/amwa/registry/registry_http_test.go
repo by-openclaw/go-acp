@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	stdhttp "net/http"
@@ -298,6 +299,289 @@ func TestWebSocketSubscriptionDelivers(t *testing.T) {
 	if !strings.Contains(string(payload), `"topic":"/nodes/"`) {
 		t.Fatalf("sync grain missing /nodes/ topic: %s", payload)
 	}
+}
+
+// TestWebSocketSyncBatchedIntoOneGrain asserts the initial SYNC arrives
+// as a SINGLE grain whose data array carries every matching resource —
+// not one grain per resource. This is the Cerebrum-interop + footprint
+// fix: reference controllers expect the current state batched, and one
+// grain per resource multiplies the wire footprint by the resource
+// count.
+func TestWebSocketSyncBatchedIntoOneGrain(t *testing.T) {
+	store := NewStore()
+	mgr := NewSubscriptionManager(nil, store, "127.0.0.1:0", "v1.3")
+	addr, stop := startRegistryHTTP(t, store, mgr)
+	defer stop()
+
+	ids := []string{
+		"11111111-58cc-4372-a567-0e02b2c3d479",
+		"22222222-58cc-4372-a567-0e02b2c3d479",
+		"33333333-58cc-4372-a567-0e02b2c3d479",
+	}
+	for _, id := range ids {
+		_ = store.PutNode(validNode(id))
+	}
+
+	body, _ := json.Marshal(SubscriptionRequest{ResourcePath: "/nodes"})
+	resp, err := stdhttp.Post("http://"+addr+"/x-nmos/query/v1.3/subscriptions", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST sub: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	bb, _ := io.ReadAll(resp.Body)
+	var sub SubscriptionResource
+	_ = json.Unmarshal(bb, &sub)
+	if sub.ID == "" {
+		t.Fatalf("sub create body = %s", bb)
+	}
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	wsPath := "/x-nmos/query/v1.3/subscriptions/" + sub.ID + "/ws"
+	upgrade := "GET " + wsPath + " HTTP/1.1\r\n" +
+		"Host: " + addr + "\r\n" +
+		"Upgrade: websocket\r\nConnection: Upgrade\r\n" +
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+		"Sec-WebSocket-Version: 13\r\n\r\n"
+	if _, err := conn.Write([]byte(upgrade)); err != nil {
+		t.Fatalf("write upgrade: %v", err)
+	}
+
+	buf := make([]byte, 65536)
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatalf("read upgrade: %v", err)
+	}
+	respHead := string(buf[:n])
+	if !strings.Contains(respHead, "101 Switching Protocols") {
+		t.Fatalf("upgrade response = %s", respHead)
+	}
+	hdrEnd := strings.Index(respHead, "\r\n\r\n")
+	remaining := append([]byte(nil), buf[hdrEnd+4:n]...)
+
+	// Accumulate until one full frame is available.
+	deadline := time.Now().Add(1500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if _, _, err := readUnmaskedFrame(remaining); err == nil {
+			break
+		}
+		extra := make([]byte, 8192)
+		_ = conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+		k, rerr := conn.Read(extra)
+		if k > 0 {
+			remaining = append(remaining, extra[:k]...)
+		}
+		if rerr != nil {
+			break
+		}
+	}
+
+	opcode, payload, err := readUnmaskedFrame(remaining)
+	if err != nil {
+		t.Fatalf("frame decode: %v (have %d bytes)", err, len(remaining))
+	}
+	if opcode != 0x1 {
+		t.Fatalf("first frame opcode = 0x%x, want text", opcode)
+	}
+
+	var g wsGrainDecode
+	if err := json.Unmarshal(payload, &g); err != nil {
+		t.Fatalf("grain decode: %v (%s)", err, payload)
+	}
+	if g.Grain.Topic != "/nodes/" {
+		t.Errorf("topic = %q, want /nodes/", g.Grain.Topic)
+	}
+	// The whole point: ALL three nodes in ONE grain's data array.
+	if len(g.Grain.Data) != 3 {
+		t.Fatalf("sync grain carried %d rows, want 3 (all nodes in one grain): %s", len(g.Grain.Data), payload)
+	}
+	seen := map[string]bool{}
+	for _, row := range g.Grain.Data {
+		seen[row.Path] = true
+		// SYNC rows carry both pre and post set to the current value.
+		if row.Pre == nil || row.Post == nil {
+			t.Errorf("sync row %s missing pre/post", row.Path)
+		}
+	}
+	for _, id := range ids {
+		if !seen[id] {
+			t.Errorf("sync grain missing node %s", id)
+		}
+	}
+}
+
+// TestBuildBatchGrain checks the pure batching: many changes of one
+// topic collapse into a single grain whose data array holds every row,
+// with SYNC rows carrying pre == post.
+func TestBuildBatchGrain(t *testing.T) {
+	post := json.RawMessage(`{"id":"a","label":"n"}`)
+	changes := []Change{
+		{Kind: ChangeSync, ResourceType: is04.ResourceNode, ID: "a", Post: post},
+		{Kind: ChangeSync, ResourceType: is04.ResourceNode, ID: "b", Post: post},
+	}
+	frame, err := buildBatchGrain("src", changes, time.Unix(1, 2))
+	if err != nil {
+		t.Fatalf("buildBatchGrain: %v", err)
+	}
+	var g wsGrainDecode
+	if err := json.Unmarshal(frame, &g); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if g.Grain.Topic != "/nodes/" {
+		t.Errorf("topic = %q", g.Grain.Topic)
+	}
+	if len(g.Grain.Data) != 2 {
+		t.Fatalf("rows = %d, want 2", len(g.Grain.Data))
+	}
+	for _, r := range g.Grain.Data {
+		if r.Pre == nil || r.Post == nil {
+			t.Errorf("sync row %s missing pre/post", r.Path)
+		}
+	}
+	// Empty batch yields a grain with an empty data array (no panic).
+	if _, err := buildBatchGrain("src", nil, time.Unix(1, 2)); err != nil {
+		t.Fatalf("empty batch: %v", err)
+	}
+}
+
+// TestWebSocketChangeAggregation fires a burst of changes inside one
+// max_update_rate_ms window and asserts they are (a) all delivered and
+// (b) coalesced into fewer grains than changes — the steady-state
+// footprint win.
+func TestWebSocketChangeAggregation(t *testing.T) {
+	store := NewStore()
+	mgr := NewSubscriptionManager(nil, store, "127.0.0.1:0", "v1.3")
+	addr, stop := startRegistryHTTP(t, store, mgr)
+	defer stop()
+
+	body, _ := json.Marshal(SubscriptionRequest{ResourcePath: "/nodes", MaxUpdateRate: 300})
+	resp, err := stdhttp.Post("http://"+addr+"/x-nmos/query/v1.3/subscriptions", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST sub: %v", err)
+	}
+	bb, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	var sub SubscriptionResource
+	_ = json.Unmarshal(bb, &sub)
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	upgrade := "GET /x-nmos/query/v1.3/subscriptions/" + sub.ID + "/ws HTTP/1.1\r\n" +
+		"Host: " + addr + "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n" +
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
+	if _, err := conn.Write([]byte(upgrade)); err != nil {
+		t.Fatalf("write upgrade: %v", err)
+	}
+	buf := make([]byte, 65536)
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatalf("read upgrade: %v", err)
+	}
+	head := string(buf[:n])
+	if !strings.Contains(head, "101 Switching Protocols") {
+		t.Fatalf("upgrade = %s", head)
+	}
+	// Discard anything already buffered (there are no nodes yet, so the
+	// sync is empty and nothing should be here).
+
+	// Fire a burst of distinct-node creations inside the 300ms window.
+	const burst = 8
+	for i := 0; i < burst; i++ {
+		id := fmt.Sprintf("%08d-58cc-4372-a567-0e02b2c3d479", i)
+		_ = store.PutNode(validNode(id))
+	}
+
+	// Collect grain frames for ~900ms. Count DISTINCT node ids (a node
+	// that races the initial sync snapshot can legitimately appear in
+	// both the sync grain and a change grain — a controller dedups by
+	// path, so we assert on distinct ids, not raw row count).
+	frames := 0
+	seen := map[string]bool{}
+	acc := []byte{}
+	deadline := time.Now().Add(900 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		_ = conn.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+		extra := make([]byte, 16384)
+		k, rerr := conn.Read(extra)
+		if k > 0 {
+			acc = append(acc, extra[:k]...)
+			for {
+				op, payload, consumed, ok := nextFrame(acc)
+				if !ok {
+					break
+				}
+				acc = acc[consumed:]
+				if op != 0x1 {
+					continue
+				}
+				var g wsGrainDecode
+				if json.Unmarshal(payload, &g) == nil && g.Grain.Topic == "/nodes/" {
+					frames++
+					for _, row := range g.Grain.Data {
+						seen[row.Path] = true
+					}
+				}
+			}
+		}
+		if rerr != nil && len(seen) >= burst {
+			break
+		}
+	}
+	if len(seen) != burst {
+		t.Fatalf("delivered %d distinct node ids, want %d (no loss)", len(seen), burst)
+	}
+	if frames >= burst {
+		t.Errorf("changes were not coalesced: %d frames for %d changes", frames, burst)
+	}
+}
+
+// nextFrame parses one server text frame and reports bytes consumed.
+func nextFrame(b []byte) (opcode byte, payload []byte, consumed int, ok bool) {
+	if len(b) < 2 {
+		return 0, nil, 0, false
+	}
+	opcode = b[0] & 0x0F
+	plen := int(b[1] & 0x7F)
+	off := 2
+	switch plen {
+	case 126:
+		if len(b) < 4 {
+			return 0, nil, 0, false
+		}
+		plen = int(binary.BigEndian.Uint16(b[2:4]))
+		off = 4
+	case 127:
+		if len(b) < 10 {
+			return 0, nil, 0, false
+		}
+		plen = int(binary.BigEndian.Uint64(b[2:10]))
+		off = 10
+	}
+	if len(b) < off+plen {
+		return 0, nil, 0, false
+	}
+	return opcode, b[off : off+plen], off + plen, true
+}
+
+// wsGrainDecode is a test-local slice of the grain envelope.
+type wsGrainDecode struct {
+	Grain struct {
+		Topic string `json:"topic"`
+		Data  []struct {
+			Path string           `json:"path"`
+			Pre  *json.RawMessage `json:"pre"`
+			Post *json.RawMessage `json:"post"`
+		} `json:"data"`
+	} `json:"grain"`
 }
 
 // readUnmaskedFrame parses one server-side text frame from raw bytes.
