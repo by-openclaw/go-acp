@@ -106,6 +106,12 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 		} else {
 			fmt.Fprintf(&b, "c=IN IP4 %s\r\n", dstIP)
 		}
+		// ST 2110-22 §7.3: a compressed stream declares its bandwidth
+		// with b=AS (kbit/s), sourced from the Flow's register
+		// bit_rate so SDP and IS-04 agree.
+		if flow != nil && flow.FlowBitRate > 0 {
+			fmt.Fprintf(&b, "b=AS:%d\r\n", flow.FlowBitRate)
+		}
 		fmt.Fprintf(&b, "a=rtpmap:96 %s\r\n", rtpmap)
 		for _, line := range extra {
 			fmt.Fprintf(&b, "a=%s\r\n", line)
@@ -149,6 +155,24 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []string) {
 	if f == nil {
 		return "video", "raw/90000", nil
+	}
+	switch f.MediaType {
+	case "video/jxsv":
+		// BCP-006-01 / ST 2110-22: JPEG XS over RTP (RFC 9134). The
+		// fmtp mirrors the Flow's coded-video register attributes so
+		// the manifest and the IS-04 body describe the same stream —
+		// BCP-006-01 test_05 cross-checks them.
+		depth := 10
+		if len(f.Components) > 0 && f.Components[0].BitDepth > 0 {
+			depth = f.Components[0].BitDepth
+		}
+		fmtp := fmt.Sprintf(
+			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=YCbCr-4:2:2; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
+			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight)
+		return "video", "jxsv/90000", []string{fmtp}
+	case "video/MP2T":
+		// BCP-006-04 / ST 2110-22: MPEG transport stream over RTP.
+		return "video", "MP2T/90000", nil
 	}
 	switch {
 	case strings.HasSuffix(f.Format, ":audio"):

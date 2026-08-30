@@ -80,17 +80,61 @@
         "2c47bf5e-1b2c-4abc-9def-deadcfff000d",
         "2c47bf5e-1b2c-4abc-9def-deadcfff000e",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0023",
-        "2c47bf5e-1b2c-4abc-9def-deadbeef0025"
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0025",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0102",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0202",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0302"
       ],
       "receivers": [
         "2c47bf5e-1b2c-4abc-9def-deadbeef0006",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0024",
-        "2c47bf5e-1b2c-4abc-9def-deadbeef0028"
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0028",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0103",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0203",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0303"
       ],
       "controls": []
     }
   ],
   "sources": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0100",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-jxsv",
+      "description": "1080p50 video source feeding the JPEG XS flow",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:video",
+      "grain_rate": { "numerator": 50, "denominator": 1 }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0200",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-mp2t",
+      "description": "mux source feeding the MPEG-TS flow",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:mux"
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0300",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-mxl",
+      "description": "1080p50 video source feeding the MXL flow",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:video",
+      "grain_rate": { "numerator": 50, "denominator": 1 }
+    },
     {
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0003",
       "version": "1777651501:0",
@@ -238,6 +282,64 @@
   ],
   "flows": [
     {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0101",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-jxsv",
+      "description": "JPEG XS 1080p50 coded video (BCP-006-01)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0100",
+      "parents": [],
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/jxsv",
+      "grain_rate": { "numerator": 50, "denominator": 1 },
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "progressive",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "profile": "High444.12",
+      "level": "2k-1",
+      "sublevel": "Sublev3bpp",
+      "bit_rate": 497664
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0201",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-mp2t",
+      "description": "MPEG transport stream mux (BCP-006-04)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0200",
+      "parents": [],
+      "format": "urn:x-nmos:format:mux",
+      "media_type": "video/MP2T",
+      "bit_rate": 20000
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0301",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-mxl",
+      "description": "raw 1080p50 video carried over MXL (BCP-007-03)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0300",
+      "parents": [],
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/raw",
+      "grain_rate": { "numerator": 50, "denominator": 1 },
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "progressive",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "components": [
+        { "name": "Y",  "width": 1920, "height": 1080, "bit_depth": 10 },
+        { "name": "Cb", "width": 960,  "height": 1080, "bit_depth": 10 },
+        { "name": "Cr", "width": 960,  "height": 1080, "bit_depth": 10 }
+      ]
+    },
+    {
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
       "version": "1777651501:0",
       "label": "dhs-test-flow-audio-l24",
@@ -368,6 +470,52 @@
     }
   ],
   "senders": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0102",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-jxsv",
+      "description": "ST 2110-22 JPEG XS multicast sender (BCP-006-01)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0101",
+      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0102/transportfile",
+      "interface_bindings": ["eth0"],
+      "caps": {},
+      "bit_rate": 497664,
+      "packet_transmission_mode": "codestream",
+      "st2110_21_sender_type": "2110TPW",
+      "subscription": { "receiver_id": null, "active": false }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0202",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-mp2t",
+      "description": "ST 2110-22 MPEG-TS multicast sender (BCP-006-04)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0201",
+      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0202/transportfile",
+      "interface_bindings": ["eth0"],
+      "caps": {},
+      "bit_rate": 20000,
+      "subscription": { "receiver_id": null, "active": false }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0302",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-mxl",
+      "description": "MXL sender (BCP-007-03; no transport file)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0301",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "caps": {},
+      "subscription": { "receiver_id": null, "active": false }
+    },
     {
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0005",
       "version": "1777651501:0",
@@ -543,6 +691,83 @@
     }
   ],
   "receivers": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0103",
+      "version": "1777651501:0",
+      "label": "dhs-test-receiver-jxsv",
+      "description": "JPEG XS receiver (BCP-006-01)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": ["eth0"],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": ["video/jxsv"],
+        "version": "1777651501:0",
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:meta:label": "JPEG XS up to 2k-1 Sublev3bpp",
+            "urn:x-nmos:cap:meta:preference": 100,
+            "urn:x-nmos:cap:meta:enabled": true,
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/jxsv"] },
+            "urn:x-nmos:cap:format:profile": { "enum": ["High444.12", "Main422.10"] },
+            "urn:x-nmos:cap:format:level": { "enum": ["1k-1", "2k-1"] },
+            "urn:x-nmos:cap:format:sublevel": { "enum": ["Sublev3bpp", "Sublev4bpp"] },
+            "urn:x-nmos:cap:format:bit_rate": { "maximum": 800000 },
+            "urn:x-nmos:cap:transport:packet_transmission_mode": { "enum": ["codestream"] }
+          }
+        ]
+      },
+      "subscription": { "sender_id": null, "active": false }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0203",
+      "version": "1777651501:0",
+      "label": "dhs-test-receiver-mp2t",
+      "description": "MPEG-TS receiver (BCP-006-04)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": ["eth0"],
+      "format": "urn:x-nmos:format:mux",
+      "caps": {
+        "media_types": ["video/MP2T"],
+        "version": "1777651501:0",
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:meta:label": "MPEG transport stream",
+            "urn:x-nmos:cap:meta:enabled": true,
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/MP2T"] }
+          }
+        ]
+      },
+      "subscription": { "sender_id": null, "active": false }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0303",
+      "version": "1777651501:0",
+      "label": "dhs-test-receiver-mxl",
+      "description": "MXL receiver (BCP-007-03)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": ["video/raw"],
+        "version": "1777651501:0",
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:meta:label": "raw 1080p50 over MXL",
+            "urn:x-nmos:cap:meta:enabled": true,
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/raw"] },
+            "urn:x-nmos:cap:format:frame_width": { "enum": [1920] },
+            "urn:x-nmos:cap:format:frame_height": { "enum": [1080] }
+          }
+        ]
+      },
+      "subscription": { "sender_id": null, "active": false }
+    },
     {
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0006",
       "version": "1777651501:0",
