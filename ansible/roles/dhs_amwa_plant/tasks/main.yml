@@ -5,11 +5,16 @@
 
 # ---- 1. Build the binary on the Go-capable host from COMMITTED source
 
+# testdata is dropped as a rule, but ms05/framework.go go:embeds the
+# MS-05-02 framework models under ms05/testdata/ — so that one tree
+# rides along or the build fails "no matching files found" (same
+# exception as the .dockerignore + the conformance role).
 - name: Archive the tracked source (assets/testdata/docs dropped — none compiles)
   ansible.builtin.shell:
     cmd: >-
-      git ls-files -z
-      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
+      { git ls-files -z
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/' ;
+      git ls-files -z internal/amwa/codec/ms05/testdata/ ; }
       | tar --null -T - -czf /tmp/dhs-plant-src.tgz
     chdir: "{{ playbook_dir }}/../.."
   delegate_to: localhost
