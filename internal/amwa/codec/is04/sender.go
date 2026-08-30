@@ -26,7 +26,18 @@ type Sender struct {
 	// infidelity a controller diff will eventually trip over.
 	Caps         *map[string]any    `json:"caps,omitempty"`
 	Subscription SenderSubscription `json:"subscription"`
+
+	// Hkep is the BCP-005-02 Sender attribute: true when the Sender's
+	// SDP carries an `hkep` attribute (HDCP encryption via the IPMX
+	// HKEP protocol), false when it does not. A pointer so ABSENT (the
+	// Sender does not implement BCP-005-02) stays distinct from an
+	// explicit false.
+	Hkep *bool `json:"hkep,omitempty"`
 }
+
+// HKEPCapabilityURN is the BCP-004-01 capability a Sender/Receiver
+// uses to declare HDCP/HKEP support (BCP-005-02).
+const HKEPCapabilityURN = "urn:x-nmos:cap:transport:hkep"
 
 // SenderSubscription mirrors sender.json `subscription`. Per IS-04
 // v1.3 sender.json the field is REQUIRED with type ["string","null"]
