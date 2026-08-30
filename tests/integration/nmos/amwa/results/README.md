@@ -138,3 +138,16 @@ says so), not an image artefact. Net set: 683 Pass, 0 Fail, 2 benign
 warnings. Offline-image scoring (`dhs_amwa_node_offline=true`) remains
 available for no-internet windows; its mDNS rounds are the documented
 trade (issue #871).
+
+## BCP-003-01 TLS receipt (2026-08-30)
+
+`bcp-003-01-v1.0.json`: the tool's Secure Communication suite
+(testssl-driven) against a node serving HTTPS with BOTH an RSA and an
+ECDSA certificate minted by the tool's own CA — **7 Pass / 0 Fail /
+0 Warnings**. The two Not Implemented entries are deliberate platform
+stances: Go's crypto/tls omits the TLS 1.2 CBC-SHA256/384 cipher
+suites by design (the GCM/ChaCha suites incl. the mandatory
+TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 all pass), and OCSP stapling
+needs an OCSP responder the lab CA does not run. The certificate
+lifecycle itself (BCP-003-03 / EST) is covered by unit tests against
+an in-repo mock EST server — the AMWA tool ships no BCP-003-03 suite.
