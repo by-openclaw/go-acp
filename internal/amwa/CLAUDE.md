@@ -165,9 +165,9 @@ a MISSING implementation by the rule below, never a scope decision.
 | IS-14 Device Configuration | **v1.0.0** | v1.0 | ✅ v1.0 |
 | MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |
 | BCP-002-01 / -02 Grouping, Asset | **v1.0.0** | — | ✅ |
-| BCP-003-01 Secure Communications | **v1.0.1** | — | ⚠️ table said v1.0.0 |
+| BCP-003-01 Secure Communications | **v1.0.1** | — | ✅ TLS serving (tool 7/0) |
 | BCP-003-02 Authorization | **v1.0.0** | — | ✅ (IS-10 v1.0 client + resource server) |
-| BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ✅ EST client (codec/est + certmgr) |
 | BCP-004-01 / -02 Receiver/Sender Caps | **v1.0.0** | — | ✅ |
 | BCP-005-01 EDID Mapping | **v1.0.0** | — | ❌ **MISSING** |
 | BCP-005-02 / -03 IPMX HKEP, PEP | **v1.0.0** | — | ❌ **MISSING** |

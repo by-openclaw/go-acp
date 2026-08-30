@@ -97,6 +97,17 @@ type ServeOptions struct {
 	// tokens on every protected request (IS-10 resource-server rules)
 	// and advertises api_auth=true.
 	AuthURL string
+
+	// ESTHost (host:port) + ESTLabel arm BCP-003-03 certificate
+	// provisioning; TLSCertFile/TLSKeyFile install a manual pair.
+	// Either way the plugin then serves HTTPS/WSS only and advertises
+	// api_proto=https (BCP-003-01). TLSDataDir is where provisioned
+	// material persists (empty = plugin default).
+	ESTHost     string
+	ESTLabel    string
+	TLSCertFile string
+	TLSKeyFile  string
+	TLSDataDir  string
 }
 
 // Stats is the standard counter set every Registry plugin exposes.

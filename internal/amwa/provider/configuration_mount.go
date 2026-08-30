@@ -66,7 +66,7 @@ func (s *IS04NodeServer) attachConfigurationAPI(srv *httpsession.Server) {
 		for _, ver := range s.configuration.Versions() {
 			ctrl := is04.DeviceControl{
 				Type:          is14.ControlType + ver,
-				Href:          "http://" + host + "/x-nmos/configuration/" + ver + "/",
+				Href:          s.scheme() + "://" + host + "/x-nmos/configuration/" + ver + "/",
 				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)

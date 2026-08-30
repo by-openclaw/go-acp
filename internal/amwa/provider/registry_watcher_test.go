@@ -291,7 +291,7 @@ func TestRewriteManifestHrefs(t *testing.T) {
 		{ResourceCore: is04.ResourceCore{ID: "aaaa1111-2222-3333-4444-555566667777"}, ManifestHref: &stale},
 		{ResourceCore: is04.ResourceCore{ID: "bbbb1111-2222-3333-4444-555566667777"}, ManifestHref: nil},
 	}
-	rewriteManifestHrefs(senders, "dhs-node:18080", "v1.2")
+	rewriteManifestHrefs(senders, "dhs-node:18080", "v1.2", "http")
 	for i, s := range senders {
 		if s.ManifestHref == nil {
 			t.Fatalf("senders[%d].ManifestHref nil after rewrite", i)
@@ -306,7 +306,7 @@ func TestRewriteManifestHrefs(t *testing.T) {
 func TestRewriteManifestHrefsNoOpWhenAdvertiseEmpty(t *testing.T) {
 	stale := "http://orig/transportfile"
 	senders := []is04.Sender{{ManifestHref: &stale}}
-	rewriteManifestHrefs(senders, "", "v1.3")
+	rewriteManifestHrefs(senders, "", "v1.3", "http")
 	if senders[0].ManifestHref == nil || *senders[0].ManifestHref != stale {
 		t.Errorf("rewriteManifestHrefs with empty advertise should be a no-op; got %v", senders[0].ManifestHref)
 	}

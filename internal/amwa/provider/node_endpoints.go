@@ -102,12 +102,15 @@ func sdpFor(s is04.Sender) string {
 // non-null URI string; v1.3 permits null. Either way the URL must
 // be reachable (AMWA test_20_01 tests this on v1.3). Pairing this
 // with the matching transportfile handler is the strict-spec answer.
-func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer string) {
+func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer, scheme string) {
 	if advertiseHost == "" || apiVer == "" {
 		return
 	}
+	if scheme == "" {
+		scheme = "http"
+	}
 	for i := range senders {
-		url := "http://" + advertiseHost + "/x-nmos/node/" + apiVer +
+		url := scheme + "://" + advertiseHost + "/x-nmos/node/" + apiVer +
 			"/senders/" + senders[i].ID + "/transportfile"
 		senders[i].ManifestHref = &url
 	}

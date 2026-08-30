@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,6 +31,12 @@ type Server struct {
 	// before Serve; the CORS preflight and the two always-readable
 	// base paths bypass it per the IS-10 resource-server rules.
 	Auth *AuthGate
+
+	// TLS, when non-nil, makes Serve listen with HTTPS/WSS instead of
+	// plain HTTP (BCP-003-01: a secured server SHALL NOT accept plain
+	// HTTP, so it is one or the other, never both on a listener).
+	// Responses then carry Strict-Transport-Security.
+	TLS *tls.Config
 
 	mu       sync.RWMutex
 	routes   map[routeKey]HandlerFunc
@@ -150,13 +157,23 @@ func (s *Server) Serve(ctx context.Context, addr string) error {
 		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
+		TLSConfig:         s.TLS,
 	}
 	srv := s.srv
+	secure := s.TLS != nil
 	s.mu.Unlock()
 
 	errCh := make(chan error, 1)
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, stdhttp.ErrServerClosed) {
+		var err error
+		if secure {
+			// Certificates come from TLSConfig (GetCertificate hook —
+			// hot-reloadable on EST renewal), hence the empty paths.
+			err = srv.ListenAndServeTLS("", "")
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, stdhttp.ErrServerClosed) {
 			errCh <- err
 			return
 		}
@@ -187,6 +204,12 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 			writeErrorJSON(w, stdhttp.StatusInternalServerError, "Internal Server Error", "panic recovered")
 		}
 	}()
+
+	// BCP-003-01: a secured server declares it only speaks TLS
+	// (SHOULD, with the recommended 12-month max-age).
+	if r.TLS != nil {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+	}
 
 	// CORS preflight: any OPTIONS request gets a 200 with the CORS
 	// allow-headers set. The AMWA NMOS Testing tool's auto_node_10

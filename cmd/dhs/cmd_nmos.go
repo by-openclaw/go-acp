@@ -293,6 +293,12 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	authURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, every served API validates Bearer tokens, api_auth=true is advertised, and registration requests carry a client_credentials token")
 	authClientID := fs.String("auth-client-id", "", "OAuth client id for the client_credentials grant (with --auth-url)")
 	authClientSecret := fs.String("auth-client-secret", "", "OAuth client secret for the client_credentials grant (with --auth-url)")
+	estHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the Node bootstraps the network Root CA + enrolls for its TLS certificate there, then serves HTTPS/WSS only")
+	estLabel := fs.String("est-label", "", "EST api_selector arbitrary label (appended to /.well-known/est)")
+	tlsCert := fs.String("tls-cert", "", "manually installed TLS certificate (PEM, leaf+chain) - alternative to EST")
+	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")
+	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
+	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -333,6 +339,12 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		AuthURL:          *authURL,
 		AuthClientID:     *authClientID,
 		AuthClientSecret: *authClientSecret,
+		ESTHost:          *estHost,
+		ESTLabel:         *estLabel,
+		TLSCertFile:      *tlsCert,
+		TLSKeyFile:       *tlsKey,
+		TLSCAFile:        *tlsCA,
+		TLSDataDir:       *tlsDir,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -556,6 +568,11 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
 	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
 	regAuthURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, both faces validate Bearer tokens and api_auth=true is advertised")
+	regESTHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the registry enrolls for its TLS certificate there, then serves HTTPS/WSS only")
+	regESTLabel := fs.String("est-label", "", "EST api_selector arbitrary label")
+	regTLSCert := fs.String("tls-cert", "", "manually installed TLS certificate (PEM) - alternative to EST")
+	regTLSKey := fs.String("tls-key", "", "private key for --tls-cert")
+	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -583,6 +600,11 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		PageLimitDefault: *pageLimitDefault,
 		InstanceName:     *instanceName,
 		AuthURL:          *regAuthURL,
+		ESTHost:          *regESTHost,
+		ESTLabel:         *regESTLabel,
+		TLSCertFile:      *regTLSCert,
+		TLSKeyFile:       *regTLSKey,
+		TLSDataDir:       *regTLSDir,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {

@@ -19,8 +19,11 @@ import (
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is09"
 	authsession "dhs/internal/amwa/session/auth"
+	"dhs/internal/amwa/session/certmgr"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+
+	"dhs/internal/amwa/codec/est"
 )
 
 // encodeOne wraps a per-resource codec Encode method into a
@@ -176,6 +179,24 @@ type IS04NodeConfig struct {
 	// AuthURL is set and the Node registers with a Registry.
 	AuthClientID     string
 	AuthClientSecret string
+
+	// ESTHost (host:port) + ESTLabel arm BCP-003-03: the Node
+	// bootstraps the network Root CA and enrolls for its TLS server
+	// certificate at the EST server, then serves HTTPS/WSS only
+	// (BCP-003-01 forbids mixed plain HTTP).
+	ESTHost  string
+	ESTLabel string
+
+	// TLSCertFile/TLSKeyFile arm TLS with a manually installed pair
+	// (the spec-mandated manual path). TLSCAFile installs the trust
+	// root for OUTBOUND verification (registry over https).
+	TLSCertFile string
+	TLSKeyFile  string
+	TLSCAFile   string
+
+	// TLSDataDir is where EST-provisioned material persists. Empty
+	// defaults to .cache/nmos-tls.
+	TLSDataDir string
 }
 
 // IS04NodeServer hosts the Node API endpoints + DNS-SD announce +
@@ -231,6 +252,11 @@ type IS04NodeServer struct {
 	// authTokens supplies client_credentials access tokens for the
 	// registration client when BCP-003-02 is on. Nil otherwise.
 	authTokens *authsession.TokenClient
+
+	// certs owns the TLS certificate lifecycle (EST or manual). Nil
+	// when serving plain HTTP; secure mirrors it for scheme minting.
+	certs  *certmgr.Manager
+	secure bool
 
 	// announceInstance + announceCtx are kept around so the mDNS
 	// _nmos-node._tcp announce can be torn down on registration
@@ -365,6 +391,11 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// §4.2.2 mandates that this list reflects every protocol/IP/port the
 	// Node is reachable on — and AMWA NMOS Testing test_20 enforces it
 	// against whatever URL the test reaches us at.
+	// TLS mode is decided UP FRONT: every href, manifest URL and TXT
+	// minted below carries the scheme, and the listener itself is
+	// armed further down once the certificate manager exists.
+	s.secure = s.cfg.ESTHost != "" || s.cfg.TLSCertFile != ""
+
 	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind, s.authOn())
 
 	// The Node's own href follows the same authority: it is the Node
@@ -372,14 +403,17 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// (host.docker.internal, a decommissioned IP) hands every reader
 	// a dead URL. With --advertise-host set, the operator has named
 	// the reachable address — use it.
-	if s.cfg.AdvertiseHost != "" {
-		s.bundle.Node.Href = "http://" + s.controlHost() + "/"
+	// Also rewritten whenever TLS is armed: a TLS-only listener that
+	// keeps advertising a bundle's plain-http href hands every reader
+	// a dead URL (BCP-003-01 forbids answering it).
+	if s.cfg.AdvertiseHost != "" || s.secure {
+		s.bundle.Node.Href = s.scheme() + "://" + s.controlHost() + "/"
 	}
 
 	// Rewrite Sender manifest_href to point at our /transportfile route
 	// at the wire api_ver. v1.0/v1.1/v1.2 sender.json require a non-null
 	// URI string; the matching transportfile handler is installed below.
-	rewriteManifestHrefs(s.bundle.Senders, s.cfg.AdvertiseHost, s.cfg.APIVer)
+	rewriteManifestHrefs(s.bundle.Senders, s.cfg.AdvertiseHost, s.cfg.APIVer, s.scheme())
 
 	// Re-seed what IS-05 "auto" resolves to, now that the endpoint list
 	// is real.
@@ -400,6 +434,69 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	}
 
 	srv := httpsession.NewServer(s.logger)
+	// BCP-003-01/-03: TLS serving. A manual pair or EST enrollment
+	// arms the HTTPS/WSS listener; without either the Node speaks
+	// plain HTTP (and never both — the spec forbids mixing).
+	if s.cfg.ESTHost != "" || s.cfg.TLSCertFile != "" {
+		dataDir := s.cfg.TLSDataDir
+		if dataDir == "" {
+			dataDir = ".cache/nmos-tls"
+		}
+		idents := tlsIdentities(s.cfg.AdvertiseHost)
+		estBase := ""
+		if s.cfg.ESTHost != "" {
+			estBase = est.BaseURL(s.cfg.ESTHost, s.cfg.ESTLabel)
+		}
+		mgr, err := certmgr.New(certmgr.Options{
+			ESTBase: estBase, Hostnames: idents,
+			Serial: s.bundle.Node.ID, DataDir: dataDir, Logger: s.logger,
+		})
+		if err != nil {
+			s.mu.Unlock()
+			return err
+		}
+		if s.cfg.TLSCAFile != "" {
+			if err := mgr.LoadManualRoots(s.cfg.TLSCAFile); err != nil {
+				s.mu.Unlock()
+				return err
+			}
+		}
+		if s.cfg.TLSCertFile != "" {
+			// Comma-separated pairs support the BCP-003-01 SHOULD of
+			// serving both RSA and ECDSA certificates.
+			certs := strings.Split(s.cfg.TLSCertFile, ",")
+			keys := strings.Split(s.cfg.TLSKeyFile, ",")
+			if len(certs) != len(keys) {
+				s.mu.Unlock()
+				return fmt.Errorf("provider/node: --tls-cert and --tls-key must list the same number of files")
+			}
+			for i := range certs {
+				if err := mgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+					s.mu.Unlock()
+					return err
+				}
+			}
+		}
+		if estBase != "" {
+			if err := mgr.Bootstrap(ctx); err != nil {
+				s.mu.Unlock()
+				return fmt.Errorf("provider/node: EST bootstrap: %w", err)
+			}
+			if err := mgr.Enroll(ctx); err != nil {
+				s.mu.Unlock()
+				return fmt.Errorf("provider/node: EST enrollment: %w", err)
+			}
+			go mgr.Run(ctx)
+			// BCP-003-03: advertise certprov support via the Node tag.
+			if s.bundle.Node.Tags == nil {
+				s.bundle.Node.Tags = map[string][]string{}
+			}
+			s.bundle.Node.Tags["urn:x-nmos:tag:certprov"] = []string{"v1.0"}
+		}
+		srv.TLS = mgr.TLSServerConfig()
+		s.certs = mgr
+		s.secure = true
+	}
 	// BCP-003-02: gate every served API + arm the token client for
 	// outbound registration BEFORE any face goes live.
 	if s.cfg.AuthURL != "" {
@@ -481,6 +578,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	} else if s.cfg.RegistryURL != "" {
 		rc := NewRegistrationClient(s.logger, s.cfg.RegistryURL, s.cfg.APIVer, s.bundle)
 		s.attachAuthToken(rc)
+		s.attachTLSTrust(rc)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
 		s.wireRepublish(rc)
@@ -495,6 +593,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		}
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
 		s.attachAuthToken(rc)
+		s.attachTLSTrust(rc)
 		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
@@ -514,6 +613,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.watcher = w
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
 		s.attachAuthToken(rc)
+		s.attachTLSTrust(rc)
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		s.regClient = rc
@@ -578,7 +678,7 @@ func (s *IS04NodeServer) Stop() error {
 // the only lock-free element is the atomic counter Load.
 func (s *IS04NodeServer) buildNodeTXTLocked(apiVerTXT string) map[string]string {
 	return map[string]string{
-		dnssdcodec.TXTKeyAPIProto: "http",
+		dnssdcodec.TXTKeyAPIProto: s.scheme(),
 		dnssdcodec.TXTKeyAPIVer:   apiVerTXT,
 		dnssdcodec.TXTKeyAPIAuth:  strconv.FormatBool(s.cfg.AuthURL != ""),
 		dnssdcodec.TXTKeyPriority: strconv.Itoa(s.cfg.Priority),
@@ -983,6 +1083,38 @@ func (s *IS04NodeServer) attachAuthToken(rc *RegistrationClient) {
 		return
 	}
 	rc.SetTokenSource(s.authTokens.Token)
+}
+
+// attachTLSTrust hands the registration client the provisioned trust
+// roots so it can verify an https registry (BCP-003-01 client rule).
+func (s *IS04NodeServer) attachTLSTrust(rc *RegistrationClient) {
+	if s.certs == nil {
+		return
+	}
+	rc.SetTLSRoots(s.certs.Roots())
+}
+
+// tlsIdentities lists the DNS names the Node's certificate must
+// cover: the advertise-host name (when it is a name, not an IP) plus
+// the OS hostname and its .local form.
+func tlsIdentities(advertiseHost string) []string {
+	var out []string
+	if advertiseHost != "" {
+		h := advertiseHost
+		if hh, _, err := net.SplitHostPort(advertiseHost); err == nil {
+			h = hh
+		}
+		if h != "" && net.ParseIP(h) == nil {
+			out = append(out, h)
+		}
+	}
+	if hn, err := os.Hostname(); err == nil && hn != "" {
+		out = append(out, hn, hn+".local")
+	}
+	if len(out) == 0 {
+		out = []string{"dhs-node"}
+	}
+	return out
 }
 
 // wireRepublish connects IS-05 activations to the Registration API, so

@@ -21,8 +21,10 @@ import (
 	"time"
 
 	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/est"
 	"dhs/internal/amwa/codec/is04"
 	authsession "dhs/internal/amwa/session/auth"
+	"dhs/internal/amwa/session/certmgr"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	registryslot "dhs/internal/registry"
@@ -132,6 +134,58 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	// HTTP routes — Registration + Query API installed in parallel
 	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
+	// BCP-003-01/-03: TLS serving for both faces (manual pair or EST
+	// enrollment). ws_href minting + the api_proto TXT follow.
+	apiProto := "http"
+	if opts.ESTHost != "" || opts.TLSCertFile != "" {
+		dataDir := opts.TLSDataDir
+		if dataDir == "" {
+			dataDir = ".cache/nmos-registry-tls"
+		}
+		var idents []string
+		if host != "" && net.ParseIP(host) == nil {
+			idents = append(idents, host)
+		}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			idents = append(idents, hn, hn+".local")
+		}
+		if len(idents) == 0 {
+			idents = []string{"dhs-nmos-registry"}
+		}
+		estBase := ""
+		if opts.ESTHost != "" {
+			estBase = est.BaseURL(opts.ESTHost, opts.ESTLabel)
+		}
+		mgr, err := certmgr.New(certmgr.Options{
+			ESTBase: estBase, Hostnames: idents, DataDir: dataDir, Logger: r.logger,
+		})
+		if err != nil {
+			return err
+		}
+		if opts.TLSCertFile != "" {
+			certs := strings.Split(opts.TLSCertFile, ",")
+			keys := strings.Split(opts.TLSKeyFile, ",")
+			if len(certs) != len(keys) {
+				return fmt.Errorf("registry/nmos: TLS cert and key lists differ in length")
+			}
+			for i := range certs {
+				if err := mgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+					return err
+				}
+			}
+		}
+		if estBase != "" {
+			if err := mgr.Bootstrap(ctx); err != nil {
+				return fmt.Errorf("registry/nmos: EST bootstrap: %w", err)
+			}
+			if err := mgr.Enroll(ctx); err != nil {
+				return fmt.Errorf("registry/nmos: EST enrollment: %w", err)
+			}
+			go mgr.Run(ctx)
+		}
+		srv.TLS = mgr.TLSServerConfig()
+		apiProto = "https"
+	}
 	// BCP-003-02 resource-server gate: one policy for both faces AND
 	// the WebSocket upgrades (gated again in the dispatcher below,
 	// which bypasses the route table).
@@ -157,6 +211,9 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		regBase := "/x-nmos/registration/" + apiVer
 		queryBase := "/x-nmos/query/" + apiVer
 		mgr := NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
+		if apiProto == "https" {
+			mgr.SetWSScheme("wss")
+		}
 		r.subsByVer[apiVer] = mgr
 		installRegistrationRoutes(srv, r.store, regBase, apiVer)
 		installQueryRoutes(srv, r.store, mgr, queryBase, apiVer)
@@ -271,7 +328,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				Port:    port,
 				IPv4:    ips,
 				TXT: map[string]string{
-					codec.TXTKeyAPIProto: "http",
+					codec.TXTKeyAPIProto: apiProto,
 					codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
 					codec.TXTKeyAPIAuth:  apiAuth,
 					codec.TXTKeyPriority: strconv.Itoa(priority),
