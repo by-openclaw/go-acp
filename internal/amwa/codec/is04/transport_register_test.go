@@ -21,6 +21,7 @@ func TestTransportRegisterIsComplete(t *testing.T) {
 		"urn:x-nmos:transport:mqtt",
 		"urn:x-nmos:transport:ndi",
 		"urn:x-nmos:transport:usb",
+		"urn:x-nmos:transport:mxl",
 	}
 	for _, u := range want {
 		if !IsNMOSTransport(u) {
@@ -69,6 +70,9 @@ func TestTransportVersionGate(t *testing.T) {
 		{TransportNDI, "v1.2", true},
 		{TransportUSB, "v1.1", false},
 		{TransportUSB, "v1.2", true},
+		// mxl (BCP-007-03) arrived with IS-05 v1.2.
+		{TransportMXL, "v1.1", false},
+		{TransportMXL, "v1.2", true},
 	} {
 		if got := IsNMOSTransportAt(tc.transport, tc.apiVer); got != tc.want {
 			t.Errorf("IsNMOSTransportAt(%q, %q) = %v, want %v", tc.transport, tc.apiVer, got, tc.want)
@@ -99,7 +103,7 @@ func TestNMOSTransportsAtGrowsWithTheMinor(t *testing.T) {
 	}{
 		{"v1.0", 4}, // rtp, rtp.mcast, rtp.ucast, dash
 		{"v1.1", 6}, // + websocket, mqtt
-		{"v1.2", 8}, // + ndi, usb
+		{"v1.2", 9}, // + ndi, usb, mxl
 	} {
 		if got := len(NMOSTransportsAt(tc.apiVer)); got != tc.want {
 			t.Errorf("NMOSTransportsAt(%q) has %d transports, want %d: %v",

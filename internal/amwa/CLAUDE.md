@@ -172,7 +172,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | BCP-005-01 EDID Mapping | **v1.0.0** | — | ✅ codec/edid (unit-verified; tool ships no suite) |
 | BCP-005-02 / -03 IPMX HKEP, PEP | **v1.0.0** | — | ❌ **MISSING** |
 | BCP-006-01 JPEG XS / -04 MPEG TS | **v1.0.0** | — | ✅ |
-| BCP-007-03 MXL | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-007-03 MXL | **v1.0.0** | v1.3/v1.2 | ✅ urn:x-nmos:transport:mxl (IS-04 + IS-05 binding) |
 | BCP-008-01 / -02 Status Monitoring | **v1.0.0** | — | ✅ |
 
 **Strict-spec rule (binding, no exceptions for AMWA-published versions):**
@@ -205,7 +205,7 @@ and none appeared here, so nothing flagged them as missing. Re-verify
 against specs.amwa.tv whenever the AMWA testing tool gains a suite we
 have no row for: the tool ships suites for exactly the published set,
 so a suite we cannot name IS the signal. Suites present on the tool
-today with no implementation behind them: BCP-005-01,
+today with no implementation behind them:
 BCP-007-03.
 
 ---

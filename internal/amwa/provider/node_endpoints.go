@@ -110,6 +110,12 @@ func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer, scheme s
 		scheme = "http"
 	}
 	for i := range senders {
+		// BCP-007-03: an MXL sender has no transport file — its
+		// manifest_href MUST stay null and /transportfile MUST 404.
+		if senders[i].Transport == is04.TransportMXL {
+			senders[i].ManifestHref = nil
+			continue
+		}
 		url := scheme + "://" + advertiseHost + "/x-nmos/node/" + apiVer +
 			"/senders/" + senders[i].ID + "/transportfile"
 		senders[i].ManifestHref = &url

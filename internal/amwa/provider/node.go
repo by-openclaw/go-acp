@@ -985,6 +985,13 @@ func (s *IS04NodeServer) installRoutes(srv *httpsession.Server) {
 		sndCopy := snd
 		path := base + "/senders/" + sid + "/transportfile"
 		srv.Handle(stdhttp.MethodGet, path, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			// BCP-007-03: an MXL sender has no transport file.
+			if sndCopy.Transport == is04.TransportMXL {
+				return stdhttp.StatusNotFound, httpsession.ErrorBody{
+					Code: stdhttp.StatusNotFound, Error: "Not Found",
+					Debug: "MXL senders carry no transport file (BCP-007-03)",
+				}, nil
+			}
 			if sdp := s.senderSDP(sid); sdp != "" {
 				return 0, &httpsession.RawBody{
 					ContentType: "application/sdp",
