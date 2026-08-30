@@ -10,25 +10,7 @@ import "fmt"
 // capability from a caps map (as it appears in caps.constraint_sets[]
 // or a sender's caps). Returns nil when the capability is absent.
 func HKEPCapValues(caps map[string]any) []bool {
-	cap, ok := caps[HKEPCapabilityURN]
-	if !ok {
-		return nil
-	}
-	m, ok := cap.(map[string]any)
-	if !ok {
-		return nil
-	}
-	rawEnum, ok := m["enum"].([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]bool, 0, len(rawEnum))
-	for _, v := range rawEnum {
-		if b, ok := v.(bool); ok {
-			out = append(out, b)
-		}
-	}
-	return out
+	return boolCapValues(caps, HKEPCapabilityURN)
 }
 
 // capAllows reports whether a boolean enum permits value v.

@@ -33,11 +33,24 @@ type Sender struct {
 	// Sender does not implement BCP-005-02) stays distinct from an
 	// explicit false.
 	Hkep *bool `json:"hkep,omitempty"`
+
+	// Privacy is the BCP-005-03 Sender attribute: MUST be true when the
+	// Sender's SDP transport file carries a `privacy` attribute (IPMX
+	// media-plane encryption via the Privacy Encryption Protocol), and
+	// false when no `privacy` attribute is present. A pointer so ABSENT
+	// (the Sender does not implement BCP-005-03) stays distinct from an
+	// explicit false.
+	Privacy *bool `json:"privacy,omitempty"`
 }
 
 // HKEPCapabilityURN is the BCP-004-01 capability a Sender/Receiver
 // uses to declare HDCP/HKEP support (BCP-005-02).
 const HKEPCapabilityURN = "urn:x-nmos:cap:transport:hkep"
+
+// PrivacyCapabilityURN is the BCP-004-01 capability a Sender/Receiver
+// uses to declare IPMX/PEP support (BCP-005-03). Singular boolean:
+// the constraint enum holds true OR false, never both.
+const PrivacyCapabilityURN = "urn:x-nmos:cap:transport:privacy"
 
 // SenderSubscription mirrors sender.json `subscription`. Per IS-04
 // v1.3 sender.json the field is REQUIRED with type ["string","null"]
