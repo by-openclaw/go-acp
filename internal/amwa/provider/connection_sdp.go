@@ -67,6 +67,15 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 		fmt.Fprintf(&b, "a=group:DUP %s\r\n", strings.Join(mids[:len(active.TransportParams)], " "))
 	}
 
+	// BCP-005-02: the presence of an `hkep` attribute (TR-10-5) marks
+	// the stream as HDCP-protected. Its presence is the semantic the
+	// spec's consistency + Controller checks rely on; the full TR-10-5
+	// key parameters are device-plane and out of scope for a reference
+	// node, so a bare session-level marker is emitted here.
+	if snd.Hkep != nil && *snd.Hkep {
+		fmt.Fprintf(&b, "a=hkep\r\n")
+	}
+
 	// The channel count is on the SOURCE, not the Flow — a Flow
 	// describes the encoding, a Source describes what was encoded.
 	flow := s.flowByID(snd.FlowID)
