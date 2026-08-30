@@ -15,7 +15,8 @@ func TestMediaLinesForJXSV(t *testing.T) {
 	f := &is04.Flow{
 		Format: "urn:x-nmos:format:video", MediaType: "video/jxsv",
 		FrameWidth: 1920, FrameHeight: 1080,
-		Profile: "High444.12", Level: "2k-1", Sublevel: "Sublev3bpp",
+		GrainRate: &is04.GrainRate{Numerator: 50, Denominator: 1},
+		Profile:   "High444.12", Level: "2k-1", Sublevel: "Sublev3bpp",
 		Components: []is04.FlowVideoComponent{
 			{Name: "Y", Width: 1920, Height: 1080, BitDepth: 10},
 			{Name: "Cb", Width: 960, Height: 1080, BitDepth: 10},
@@ -29,7 +30,7 @@ func TestMediaLinesForJXSV(t *testing.T) {
 	if len(extra) != 1 {
 		t.Fatalf("extra=%v", extra)
 	}
-	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019", "sampling=YCbCr-4:2:2"} {
+	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019", "sampling=YCbCr-4:2:2", "exactframerate=50"} {
 		if !strings.Contains(extra[0], want) {
 			t.Errorf("fmtp missing %s: %s", want, extra[0])
 		}

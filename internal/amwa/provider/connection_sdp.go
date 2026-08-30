@@ -166,9 +166,19 @@ func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []st
 		if len(f.Components) > 0 && f.Components[0].BitDepth > 0 {
 			depth = f.Components[0].BitDepth
 		}
+		// exactframerate mirrors the Flow's grain_rate (ST 2110-22 /
+		// RFC 9134): integer rates render bare, fractional as num/den.
+		rate := ""
+		if f.GrainRate != nil && f.GrainRate.Numerator > 0 {
+			if f.GrainRate.Denominator <= 1 {
+				rate = fmt.Sprintf("; exactframerate=%d", f.GrainRate.Numerator)
+			} else {
+				rate = fmt.Sprintf("; exactframerate=%d/%d", f.GrainRate.Numerator, f.GrainRate.Denominator)
+			}
+		}
 		fmtp := fmt.Sprintf(
-			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=%s; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
-			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight, samplingFromComponents(f))
+			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=%s%s; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
+			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight, samplingFromComponents(f), rate)
 		return "video", "jxsv/90000", []string{fmtp}
 	case "video/MP2T":
 		// BCP-006-04 / ST 2110-22: MPEG transport stream over RTP.
