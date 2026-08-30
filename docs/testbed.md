@@ -60,6 +60,44 @@ and the Proxmox CT config (Proxmox rewrites `/etc/hostname` from its
 config at every CT start, so a guest-only rename would revert). Unique
 names matter: three LXCs used to answer `dhs`, which collides in Avahi.
 
+## AMWA plant — node identity (stable UUIDs)
+
+The AMWA lab plant (`dhs_amwa_plant` role) uses **deterministic** UUIDs so
+a redeploy or heartbeat re-registration **updates** a resource, never
+creates a duplicate. Any duplicate label seen in a consumer (e.g.
+Cerebrum's registry) is therefore a **stale or foreign registration**
+that ages out on the heartbeat GC — not a UUID-churn bug. Keep this table
+as the test oracle for "duplicate vs mismatch vs real".
+
+Scale nodes `dhs-scale-NN` (NN = `00`–`19`), from
+`templates/scale-node.json.j2` with index `i` = NN — one device / source /
+flow / sender / receiver each:
+
+| Resource | UUID (`i` = 00–19) |
+| --- | --- |
+| Node | `aa000000-0000-4000-8000-0000000000`*i* |
+| Device | `bb000000-0000-4000-8000-0000000000`*i* |
+| Source | `cc000000-0000-4000-8000-0000000000`*i* |
+| Flow | `dd000000-0000-4000-8000-0000000000`*i* |
+| Sender | `ee000000-0000-4000-8000-0000000000`*i* |
+| Receiver | `ff000000-0000-4000-8000-0000000000`*i* |
+
+Fixed nodes:
+
+| Node | UUID |
+| --- | --- |
+| `dhs-test-node` (fixture `amwa-test-node.json`) | `2c47bf5e-1b2c-4abc-9def-deadbeef0001` |
+| Neuron `bm-n-nnbrg-c01` (real EVS device) | `b7011c4e-5f39-5a1a-a6eb-a8036b0a5fd9` |
+
+Fleet total: **22 nodes / 237 senders / 231 receivers** (208 senders are
+the Neuron's). Feeding these into Cerebrum's own registry is a separate
+bridge — see the mirror in [`dev-test-flow.md`](deployment/dev-test-flow.md).
+
+**Clean-test rule:** run the AMWA conformance suite **or** the registry
+mirror against the registry, not both at once — the conformance tool
+registers its own mock nodes (foreign UUIDs) which a running mirror would
+forward and show as transient extras. Only one mirror at a time.
+
 ## Producer port plan (every Linux LXC + win11)
 
 | Connector | Wire | Port |
