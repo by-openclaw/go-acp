@@ -90,7 +90,7 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 	// The channel count is on the SOURCE, not the Flow — a Flow
 	// describes the encoding, a Source describes what was encoded.
 	flow := s.flowByID(snd.FlowID)
-	media, rtpmap, extra := mediaLinesFor(flow, s.audioChannels(flow))
+	media, rtpmap, extra := mediaLinesFor(flow, s.audioChannels(flow), snd.ST211021SenderType)
 
 	for li, leg := range active.TransportParams {
 		srcIP := paramString(leg, "source_ip", firstSrc)
@@ -152,7 +152,10 @@ func (s *IS05ConnectionServer) sdpForSender(id string, active is05.StagedSender)
 // the tool's checks are about the Sender publishing a parseable
 // description, and answering 404 because our own Flow table is thin
 // would report a connection-management fault for a metadata gap.
-func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []string) {
+// tp is the Sender's st2110_21_sender_type — the ST 2110-21 traffic
+// profile the SDP must echo as TP= for compressed streams (BCP-006-01
+// test_05 cross-checks it against the sender attribute).
+func mediaLinesFor(f *is04.Flow, channels int, tp string) (media, rtpmap string, extra []string) {
 	if f == nil {
 		return "video", "raw/90000", nil
 	}
@@ -176,9 +179,13 @@ func mediaLinesFor(f *is04.Flow, channels int) (media, rtpmap string, extra []st
 				rate = fmt.Sprintf("; exactframerate=%d/%d", f.GrainRate.Numerator, f.GrainRate.Denominator)
 			}
 		}
+		tpTok := ""
+		if tp != "" {
+			tpTok = fmt.Sprintf("; TP=%s", tp)
+		}
 		fmtp := fmt.Sprintf(
-			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=%s%s; colorimetry=BT709; TCS=SDR; RANGE=NARROW; SSN=ST2110-22:2019",
-			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight, samplingFromComponents(f), rate)
+			"fmtp:96 packetmode=0; profile=%s; level=%s; sublevel=%s; depth=%d; width=%d; height=%d; sampling=%s%s; colorimetry=BT709; TCS=SDR; RANGE=NARROW%s; SSN=ST2110-22:2019",
+			f.Profile, f.Level, f.Sublevel, depth, f.FrameWidth, f.FrameHeight, samplingFromComponents(f), rate, tpTok)
 		return "video", "jxsv/90000", []string{fmtp}
 	case "video/MP2T":
 		// BCP-006-04 / ST 2110-22: MPEG transport stream over RTP.

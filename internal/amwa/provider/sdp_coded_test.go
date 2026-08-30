@@ -23,14 +23,14 @@ func TestMediaLinesForJXSV(t *testing.T) {
 			{Name: "Cr", Width: 960, Height: 1080, BitDepth: 10},
 		},
 	}
-	media, rtpmap, extra := mediaLinesFor(f, 0)
+	media, rtpmap, extra := mediaLinesFor(f, 0, "2110TPW")
 	if media != "video" || rtpmap != "jxsv/90000" {
 		t.Fatalf("media=%q rtpmap=%q", media, rtpmap)
 	}
 	if len(extra) != 1 {
 		t.Fatalf("extra=%v", extra)
 	}
-	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019", "sampling=YCbCr-4:2:2", "exactframerate=50"} {
+	for _, want := range []string{"profile=High444.12", "level=2k-1", "sublevel=Sublev3bpp", "width=1920", "height=1080", "packetmode=0", "SSN=ST2110-22:2019", "sampling=YCbCr-4:2:2", "exactframerate=50", "TP=2110TPW"} {
 		if !strings.Contains(extra[0], want) {
 			t.Errorf("fmtp missing %s: %s", want, extra[0])
 		}
@@ -63,7 +63,7 @@ func TestSamplingFromComponents(t *testing.T) {
 
 func TestMediaLinesForMP2T(t *testing.T) {
 	f := &is04.Flow{Format: "urn:x-nmos:format:mux", MediaType: "video/MP2T"}
-	media, rtpmap, _ := mediaLinesFor(f, 0)
+	media, rtpmap, _ := mediaLinesFor(f, 0, "2110TPW")
 	if media != "video" || rtpmap != "MP2T/90000" {
 		t.Fatalf("media=%q rtpmap=%q", media, rtpmap)
 	}
@@ -95,3 +95,4 @@ func TestSDPCarriesBandwidthForCodedFlow(t *testing.T) {
 		t.Errorf("SDP missing jxsv rtpmap:\n%s", sdp)
 	}
 }
+
