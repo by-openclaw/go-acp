@@ -1,0 +1,46 @@
+---
+# dhs_amwa_plant — the standing AMWA lab plant on the control host:
+# one NMOS registry plus a fleet of dhs nodes, all managed as systemd
+# units. Replaces the hand-launched /tmp/*.sh scripts (issue #871):
+# provisioning + run is Ansible only, per the project rule.
+
+# Where the binary and node bundles live on the plant host.
+dhs_amwa_plant_dir: /opt/dhs-amwa-plant
+dhs_amwa_plant_bin: "{{ dhs_amwa_plant_dir }}/dhs"
+
+# The plant host has no Go toolchain, so the binary is built on a
+# Go-capable host and copied over. Both are inventory hostnames.
+dhs_amwa_plant_build_host: dhs-tools
+dhs_amwa_plant_go: /usr/local/go/bin/go
+
+# The registry the whole plant registers into.
+dhs_amwa_plant_registry_bind: ":8235"
+dhs_amwa_plant_registry_port: 8235
+dhs_amwa_plant_registry_page_limit: 1000
+
+# The registry + node advertise address is the plant host's own
+# VLAN600 IP (resolved at run time from the inventory ansible_host).
+dhs_amwa_plant_advertise_ip: "{{ ansible_host }}"
+
+# Resident nodes served from committed fixtures. Each entry:
+#   name   -> systemd instance + advertise label
+#   port   -> HTTP bind/advertise port
+#   config -> bundle filename under files/ (rendered into the plant dir)
+dhs_amwa_plant_nodes:
+  - name: test-node
+    port: 18080
+    config: amwa-test-node.json
+  - name: is11-node
+    port: 18400
+    config: amwa-test-node.json
+
+# Generated scale nodes: count + base port. node<i> serves on
+# base_port + i, advertise host:port, registers into the registry.
+dhs_amwa_plant_scale_count: 20
+dhs_amwa_plant_scale_base_port: 18200
+
+# IS-04 wire version every node + the registry serve on the fleet.
+dhs_amwa_plant_api_ver: v1.3
+
+# Seconds to let the plant settle before the registration check.
+dhs_amwa_plant_settle: 15

@@ -1,0 +1,207 @@
+---
+# Converge the AMWA lab plant: build the binary on a Go host, deploy
+# it + the node bundles to the plant host, and run the registry and
+# every node as systemd units. Idempotent — run-twice = 0 changes.
+
+# ---- 1. Build the binary on the Go-capable host from COMMITTED source
+
+- name: Archive the tracked source (assets/testdata/docs dropped — none compiles)
+  ansible.builtin.shell:
+    cmd: >-
+      git ls-files -z
+      | grep -zZv -e '^internal/[^/]*/assets/' -e 'testdata/' -e '^docs/' -e '^captures/' -e '^tests/integration/nmos/amwa/results/'
+      | tar --null -T - -czf /tmp/dhs-plant-src.tgz
+    chdir: "{{ playbook_dir }}/../.."
+  delegate_to: localhost
+  run_once: true
+  changed_when: true
+
+- name: Record the commit being deployed
+  ansible.builtin.command:
+    cmd: git rev-parse HEAD
+    chdir: "{{ playbook_dir }}/../.."
+  register: dhs_amwa_plant_commit
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+
+- name: Stage the build directory on the build host (wiped first)
+  ansible.builtin.file:
+    path: /opt/dhs-plant-build
+    state: "{{ item }}"
+    mode: "0755"
+  loop: [absent, directory]
+  delegate_to: "{{ dhs_amwa_plant_build_host }}"
+  run_once: true
+
+- name: Ship + unpack the source on the build host
+  ansible.builtin.unarchive:
+    src: /tmp/dhs-plant-src.tgz
+    dest: /opt/dhs-plant-build
+  delegate_to: "{{ dhs_amwa_plant_build_host }}"
+  run_once: true
+
+- name: Build the linux binary on the build host
+  ansible.builtin.command:
+    cmd: "{{ dhs_amwa_plant_go }} build -trimpath -o /opt/dhs-plant-build/dhs ./cmd/dhs"
+    chdir: /opt/dhs-plant-build
+  environment:
+    CGO_ENABLED: "0"
+    GOOS: linux
+  delegate_to: "{{ dhs_amwa_plant_build_host }}"
+  run_once: true
+  changed_when: true
+
+- name: Fetch the built binary to the controller
+  ansible.builtin.fetch:
+    src: /opt/dhs-plant-build/dhs
+    dest: /tmp/dhs-plant-bin
+    flat: true
+  delegate_to: "{{ dhs_amwa_plant_build_host }}"
+  run_once: true
+
+# ---- 2. Deploy binary + node bundles to the plant host
+
+- name: Create the plant directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_plant_dir }}/scale"
+    state: directory
+    mode: "0755"
+
+- name: Install the dhs binary
+  ansible.builtin.copy:
+    src: /tmp/dhs-plant-bin
+    dest: "{{ dhs_amwa_plant_bin }}"
+    mode: "0755"
+  register: dhs_amwa_plant_bincopy
+
+- name: Install the resident node bundles
+  ansible.builtin.copy:
+    src: "{{ item.config }}"
+    dest: "{{ dhs_amwa_plant_dir }}/{{ item.config }}"
+    mode: "0644"
+  loop: "{{ dhs_amwa_plant_nodes }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: dhs_amwa_plant_bundles
+
+- name: Generate the scale node bundles
+  ansible.builtin.template:
+    src: scale-node.json.j2
+    dest: "{{ dhs_amwa_plant_dir }}/scale/node{{ item }}.json"
+    mode: "0644"
+  loop: "{{ range(0, dhs_amwa_plant_scale_count) | list }}"
+  loop_control:
+    label: "node{{ item }}"
+  register: dhs_amwa_plant_scalecfgs
+
+# ---- 3. systemd units — registry, resident nodes, scale nodes
+
+- name: Install the registry unit
+  ansible.builtin.template:
+    src: dhs-nmos-registry.service.j2
+    dest: /etc/systemd/system/dhs-nmos-registry.service
+    mode: "0644"
+  register: dhs_amwa_plant_regunit
+
+- name: Install the resident node units
+  ansible.builtin.template:
+    src: dhs-nmos-node.service.j2
+    dest: "/etc/systemd/system/dhs-nmos-{{ item.name }}.service"
+    mode: "0644"
+  vars:
+    node_name: "{{ item.name }}"
+    node_port: "{{ item.port }}"
+    node_config: "{{ dhs_amwa_plant_dir }}/{{ item.config }}"
+  loop: "{{ dhs_amwa_plant_nodes }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: dhs_amwa_plant_nodeunits
+
+- name: Install the scale node units
+  ansible.builtin.template:
+    src: dhs-nmos-node.service.j2
+    dest: "/etc/systemd/system/dhs-nmos-scale{{ item }}.service"
+    mode: "0644"
+  vars:
+    node_name: "scale{{ item }}"
+    node_port: "{{ dhs_amwa_plant_scale_base_port + item }}"
+    node_config: "{{ dhs_amwa_plant_dir }}/scale/node{{ item }}.json"
+  loop: "{{ range(0, dhs_amwa_plant_scale_count) | list }}"
+  loop_control:
+    label: "scale{{ item }}"
+  register: dhs_amwa_plant_scaleunits
+
+- name: Reload systemd when any unit changed
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: >-
+    dhs_amwa_plant_regunit is changed
+    or dhs_amwa_plant_nodeunits is changed
+    or dhs_amwa_plant_scaleunits is changed
+
+# One-time migration: the plant used to run as hand-launched
+# /tmp/dhs-main processes (the pre-Ansible era, issue #871). They bind
+# the same ports as the units about to start, so stop any that survive.
+# Not a driver script — a convergence guard: rc 0 = something was
+# killed (changed), rc 1 = nothing to kill (ok).
+- name: Stop any legacy hand-launched plant processes
+  ansible.builtin.command: pkill -f '^/tmp/dhs-main'
+  register: dhs_amwa_plant_legacy
+  changed_when: dhs_amwa_plant_legacy.rc == 0
+  failed_when: dhs_amwa_plant_legacy.rc not in [0, 1]
+
+# The registry starts first and is RESTARTED (not just started) when
+# the binary or its unit changed, so a new build actually takes over.
+- name: Enable + start the registry
+  ansible.builtin.systemd:
+    name: dhs-nmos-registry.service
+    enabled: true
+    state: "{{ 'restarted' if (dhs_amwa_plant_bincopy is changed or dhs_amwa_plant_regunit is changed) else 'started' }}"
+
+- name: Give the registry a moment before the nodes register
+  ansible.builtin.wait_for:
+    port: "{{ dhs_amwa_plant_registry_port }}"
+    host: 127.0.0.1
+    timeout: 30
+
+- name: Enable + start every node (restart on binary/unit/config change)
+  ansible.builtin.systemd:
+    name: "dhs-nmos-{{ item }}.service"
+    enabled: true
+    state: "{{ 'restarted' if dhs_amwa_plant_restart else 'started' }}"
+  vars:
+    dhs_amwa_plant_restart: >-
+      {{ dhs_amwa_plant_bincopy is changed
+         or dhs_amwa_plant_nodeunits is changed
+         or dhs_amwa_plant_scaleunits is changed
+         or dhs_amwa_plant_bundles is changed
+         or dhs_amwa_plant_scalecfgs is changed }}
+  loop: "{{ (dhs_amwa_plant_nodes | map(attribute='name') | list)
+            + (range(0, dhs_amwa_plant_scale_count) | map('regex_replace', '^', 'scale') | list) }}"
+
+# ---- 4. Verify the plant converged
+
+- name: Let the fleet register
+  ansible.builtin.wait_for:
+    timeout: "{{ dhs_amwa_plant_settle }}"
+
+- name: Count registered nodes
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port }}/x-nmos/query/{{ dhs_amwa_plant_api_ver }}/nodes?paging.limit=300"
+    return_content: true
+  register: dhs_amwa_plant_nodes_seen
+  until: >-
+    (dhs_amwa_plant_nodes_seen.json | default([]) | length)
+    >= (dhs_amwa_plant_nodes | length + dhs_amwa_plant_scale_count)
+  retries: 6
+  delay: 5
+
+- name: Report the plant state
+  ansible.builtin.debug:
+    msg: >-
+      AMWA plant on {{ ansible_host }} @ {{ dhs_amwa_plant_commit.stdout[:8] }}:
+      registry :{{ dhs_amwa_plant_registry_port }},
+      {{ dhs_amwa_plant_nodes_seen.json | length }} nodes registered
+      ({{ dhs_amwa_plant_nodes | length }} resident +
+      {{ dhs_amwa_plant_scale_count }} scale).

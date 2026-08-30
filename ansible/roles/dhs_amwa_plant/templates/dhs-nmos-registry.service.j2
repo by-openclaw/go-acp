@@ -1,0 +1,18 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=dhs AMWA NMOS registry (lab plant)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart={{ dhs_amwa_plant_bin }} registry nmos serve \
+  --bind {{ dhs_amwa_plant_registry_bind }} \
+  --advertise-host {{ dhs_amwa_plant_advertise_ip }}:{{ dhs_amwa_plant_registry_port }} \
+  --priority 0 \
+  --page-limit-default {{ dhs_amwa_plant_registry_page_limit }}
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
