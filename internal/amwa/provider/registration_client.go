@@ -3,6 +3,8 @@ package provider
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -545,6 +547,18 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 // SetTokenSource installs the access-token supplier (BCP-003-02).
 func (c *RegistrationClient) SetTokenSource(fn func(context.Context) (string, error)) {
 	c.tokenSource = fn
+}
+
+// SetTLSRoots installs the trust anchors used to verify an https
+// Registration API (BCP-003-01: clients SHALL validate server
+// certificates against an installed root).
+func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
+	if roots == nil {
+		return
+	}
+	c.http.Transport = &stdhttp.Transport{
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots},
+	}
 }
 
 // applyToken attaches the Bearer token when a source is installed.

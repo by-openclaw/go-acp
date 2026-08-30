@@ -63,7 +63,7 @@ func (s *IS04NodeServer) attachChannelMappingAPI(srv *httpsession.Server) {
 		for _, ver := range s.channelMapping.Versions() {
 			ctrl := is04.DeviceControl{
 				Type:          controlTypeChannelMapping + ver,
-				Href:          "http://" + host + "/x-nmos/channelmapping/" + ver + "/",
+				Href:          s.scheme() + "://" + host + "/x-nmos/channelmapping/" + ver + "/",
 				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
@@ -101,7 +101,7 @@ func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
 		for _, ver := range s.streamCompat.Versions() {
 			ctrl := is04.DeviceControl{
 				Type:          controlTypeStreamCompat + ver,
-				Href:          "http://" + host + "/x-nmos/streamcompatibility/" + ver + "/",
+				Href:          s.scheme() + "://" + host + "/x-nmos/streamcompatibility/" + ver + "/",
 				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)
@@ -133,6 +133,17 @@ func (s *IS04NodeServer) bumpSenderVersion(id string) {
 // value every endpoint + control `authorization` member must carry
 // (test_20 cross-checks them against the running mode).
 func (s *IS04NodeServer) authOn() bool { return s.cfg.AuthURL != "" }
+
+// scheme is the URL scheme every minted href + api_proto TXT must
+// carry — "https" the moment TLS serving is armed, because a control
+// href pointing controllers at plain HTTP on a TLS-only listener is
+// a dead link with no error anywhere.
+func (s *IS04NodeServer) scheme() string {
+	if s.secure {
+		return "https"
+	}
+	return "http"
+}
 
 // upsertControl adds ctrl, or REPLACES an existing control of the same
 // Type with the fresh href. The old skip-if-present rule is how a
@@ -206,7 +217,7 @@ func (s *IS04NodeServer) advertiseConnectionControls() {
 		for _, ver := range s.connection.Versions() {
 			ctrl := is04.DeviceControl{
 				Type:          controlTypeSRCtrl + ver,
-				Href:          "http://" + host + "/x-nmos/connection/" + ver + "/",
+				Href:          s.scheme() + "://" + host + "/x-nmos/connection/" + ver + "/",
 				Authorization: s.authOn(),
 			}
 			upsertControl(&d.Controls, ctrl)

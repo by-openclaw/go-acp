@@ -140,9 +140,12 @@ type SubscriptionManager struct {
 	logger *slog.Logger
 	store  *Store
 
-	// advertiseHost provides the ws:// URL we hand out.
+	// advertiseHost provides the ws:// URL we hand out; wsScheme
+	// flips to "wss" when the registry serves TLS (BCP-003-01: no
+	// unencrypted WebSocket on a secured server).
 	advertiseHost string
 	apiVer        string
+	wsScheme      string
 
 	mu   sync.Mutex
 	subs map[string]*subscription
@@ -162,11 +165,15 @@ func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, ap
 		store:         store,
 		advertiseHost: advertiseHost,
 		apiVer:        apiVer,
+		wsScheme:      "ws",
 		subs:          make(map[string]*subscription),
 	}
 	store.AddListener(m.onChange)
 	return m
 }
+
+// SetWSScheme switches ws_href minting to wss (TLS serving).
+func (m *SubscriptionManager) SetWSScheme(scheme string) { m.wsScheme = scheme }
 
 // HandlePost is the POST /subscriptions handler — creates a new
 // subscription and returns the SubscriptionResource.
@@ -184,7 +191,7 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 		if err != nil {
 			return stdhttp.StatusInternalServerError, httpsession.ErrorBody{Code: 500, Error: "Internal Server Error", Debug: err.Error()}, nil
 		}
-		ws := "ws://" + m.advertiseHost + base + "/subscriptions/" + id + "/ws"
+		ws := m.wsScheme + "://" + m.advertiseHost + base + "/subscriptions/" + id + "/ws"
 		res := SubscriptionResource{
 			ID: id, WSHref: ws,
 			MaxUpdateRate: req.MaxUpdateRate,
