@@ -169,7 +169,7 @@ a MISSING implementation by the rule below, never a scope decision.
 | BCP-003-02 Authorization | **v1.0.0** | — | ✅ (IS-10 v1.0 client + resource server) |
 | BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ✅ EST client (codec/est + certmgr) |
 | BCP-004-01 / -02 Receiver/Sender Caps | **v1.0.0** | — | ✅ |
-| BCP-005-01 EDID Mapping | **v1.0.0** | — | ❌ **MISSING** |
+| BCP-005-01 EDID Mapping | **v1.0.0** | — | ✅ codec/edid (unit-verified; tool ships no suite) |
 | BCP-005-02 / -03 IPMX HKEP, PEP | **v1.0.0** | — | ❌ **MISSING** |
 | BCP-006-01 JPEG XS / -04 MPEG TS | **v1.0.0** | — | ✅ |
 | BCP-007-03 MXL | **v1.0.0** | — | ❌ **MISSING** |
