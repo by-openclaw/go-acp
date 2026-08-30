@@ -163,8 +163,15 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			return err
 		}
 		if opts.TLSCertFile != "" {
-			if err := mgr.LoadManual(opts.TLSCertFile, opts.TLSKeyFile); err != nil {
-				return err
+			certs := strings.Split(opts.TLSCertFile, ",")
+			keys := strings.Split(opts.TLSKeyFile, ",")
+			if len(certs) != len(keys) {
+				return fmt.Errorf("registry/nmos: TLS cert and key lists differ in length")
+			}
+			for i := range certs {
+				if err := mgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+					return err
+				}
 			}
 		}
 		if estBase != "" {

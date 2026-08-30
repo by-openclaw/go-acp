@@ -67,6 +67,10 @@ type Manager struct {
 	rootPool *x509.CertPool
 	current  *tls.Certificate
 	leaf     *x509.Certificate
+	// manualPairs collects manually installed pairs — BCP-003-01 says
+	// servers SHOULD support multiple certificates (RSA and ECDSA);
+	// Go's TLS stack selects per ClientHello when several are offered.
+	manualPairs []tls.Certificate
 }
 
 // New builds an unstarted manager.
@@ -98,10 +102,14 @@ func (m *Manager) LoadManual(certFile, keyFile string) error {
 		return fmt.Errorf("certmgr: parse manual leaf: %w", err)
 	}
 	m.mu.Lock()
-	m.current, m.leaf = &pair, leaf
+	m.manualPairs = append(m.manualPairs, pair)
+	if m.current == nil {
+		m.current, m.leaf = &pair, leaf
+	}
 	m.mu.Unlock()
 	m.log.Info("certmgr: manual certificate installed",
-		"cn", leaf.Subject.CommonName, "not_after", leaf.NotAfter)
+		"cn", leaf.Subject.CommonName, "not_after", leaf.NotAfter,
+		"pairs", len(m.manualPairs))
 	return nil
 }
 
@@ -356,6 +364,23 @@ func (m *Manager) Roots() *x509.CertPool {
 // suites), the mandatory TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 plus
 // the SHOULD-list suites Go implements, server-preference ordering.
 func (m *Manager) TLSServerConfig() *tls.Config {
+	m.mu.RLock()
+	pairs := append([]tls.Certificate(nil), m.manualPairs...)
+	m.mu.RUnlock()
+	if len(pairs) > 1 {
+		// Multiple manual pairs (RSA + ECDSA): hand the whole set to
+		// the TLS stack, which selects per ClientHello.
+		return &tls.Config{
+			MinVersion:   tls.VersionTLS12,
+			Certificates: pairs,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
+		}
+	}
 	return &tls.Config{
 		MinVersion:     tls.VersionTLS12,
 		GetCertificate: m.GetCertificate,

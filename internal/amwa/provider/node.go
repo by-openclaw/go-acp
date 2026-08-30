@@ -462,9 +462,19 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			}
 		}
 		if s.cfg.TLSCertFile != "" {
-			if err := mgr.LoadManual(s.cfg.TLSCertFile, s.cfg.TLSKeyFile); err != nil {
+			// Comma-separated pairs support the BCP-003-01 SHOULD of
+			// serving both RSA and ECDSA certificates.
+			certs := strings.Split(s.cfg.TLSCertFile, ",")
+			keys := strings.Split(s.cfg.TLSKeyFile, ",")
+			if len(certs) != len(keys) {
 				s.mu.Unlock()
-				return err
+				return fmt.Errorf("provider/node: --tls-cert and --tls-key must list the same number of files")
+			}
+			for i := range certs {
+				if err := mgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+					s.mu.Unlock()
+					return err
+				}
 			}
 		}
 		if estBase != "" {
