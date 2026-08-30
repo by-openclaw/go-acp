@@ -285,6 +285,10 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 			"overallStatus":                0, // Inactive
 			"linkStatus":                   1, // AllUp
 			"linkStatusTransitionCounter":  uint64(0),
+			// A reference node has no external sync source: NotUsed —
+			// and a concrete value ALWAYS. The AMWA BCP-008 checker
+			// feeds every status into max(); a null crashes it.
+			"externalSynchronizationStatus":                  0, // NotUsed
 			"externalSynchronizationStatusTransitionCounter": uint64(0),
 		}
 		for _, p := range statusProps {
