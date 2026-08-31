@@ -1,0 +1,61 @@
+---
+# dhs_amwa_validate — run on [tooling]; CuT-window tasks delegate to
+# the plant host. Invoked with dhs_amwa_validate_scope set by the
+# amwa-validate-<scope>.yml playbook.
+
+- name: Select the suites for scope {{ dhs_amwa_validate_scope }}
+  ansible.builtin.set_fact:
+    _validate_suites: >-
+      {{ dhs_amwa_validate_suites
+         | selectattr('scope', 'equalto', dhs_amwa_validate_scope)
+         | selectattr('enabled', 'undefined')
+         | list
+         + dhs_amwa_validate_suites
+         | selectattr('scope', 'equalto', dhs_amwa_validate_scope)
+         | selectattr('enabled', 'defined')
+         | selectattr('enabled')
+         | list }}
+    _skipped_suites: >-
+      {{ dhs_amwa_validate_suites
+         | selectattr('scope', 'equalto', dhs_amwa_validate_scope)
+         | selectattr('enabled', 'defined')
+         | rejectattr('enabled')
+         | list }}
+    _validate_verdicts: []
+
+- name: Apply the subset filter
+  ansible.builtin.set_fact:
+    _validate_suites: "{{ _validate_suites | selectattr('id', 'in', dhs_amwa_validate_only) | list }}"
+  when: dhs_amwa_validate_only | length > 0
+
+- name: Converge the tooling host
+  ansible.builtin.include_tasks: tooling.yml
+  when: _validate_suites | length > 0
+
+- name: Preflight the testing tool
+  ansible.builtin.include_tasks: preflight.yml
+  when: _validate_suites | length > 0
+
+- name: Create the run results directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}"
+    state: directory
+    mode: "0755"
+  when: _validate_suites | length > 0
+
+- name: Stage the suite parser
+  ansible.builtin.copy:
+    src: parse_suite.py
+    dest: "{{ dhs_amwa_validate_results_dir }}/parse_suite.py"
+    mode: "0755"
+  when: _validate_suites | length > 0
+
+- name: Run each suite
+  ansible.builtin.include_tasks: suite.yml
+  loop: "{{ _validate_suites }}"
+  loop_control:
+    loop_var: suite
+    label: "{{ suite.id }}"
+
+- name: Report
+  ansible.builtin.include_tasks: report.yml

@@ -1,0 +1,114 @@
+---
+# Isolated CuT window (IS-04-01 / IS-09-02): a SECOND testing-tool
+# instance and a fresh node container on a private docker bridge, all
+# on the tooling host.
+#
+# Why: these suites score mDNS discovery against the tool's own mock
+# registries / System APIs, and mocks accept whoever answers first —
+# on the lab VLAN the real Neuron mDNS-registers and heartbeats into
+# them (tool-visible as "Heartbeats matched a different Node ID").
+# The bridge is the pre-plant setup that scored these suites clean:
+# nothing lives on it but the tool and the node under test.
+
+- name: Isolated bridge exists
+  ansible.builtin.command: docker network create {{ dhs_amwa_validate_isolated_net }}
+  register: _iso_net
+  changed_when: _iso_net.rc == 0
+  failed_when: _iso_net.rc != 0 and 'already exists' not in _iso_net.stderr
+
+- name: Current node binary + fixture staged on the tooling host
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /opt/dhs-validate/
+    mode: "0755"
+  loop:
+    - "{{ dhs_amwa_validate_plant_bin }}"
+    - "{{ dhs_amwa_validate_plant_config }}"
+
+- name: Isolated tool instance is running
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ dhs_amwa_validate_isolated_tool }}
+  register: _iso_tool
+  changed_when: false
+  failed_when: false
+
+# Remove-then-run rather than start: a half-created corpse (e.g. from
+# a docker-daemon fault mid-create) holds the name but cannot run.
+- name: Clear any dead isolated tool instance
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_isolated_tool }}
+  when: "'true' not in _iso_tool.stdout"
+  changed_when: true
+  failed_when: false
+
+- name: Start the isolated tool instance
+  ansible.builtin.command: >-
+    docker run -d --name {{ dhs_amwa_validate_isolated_tool }}
+    --network {{ dhs_amwa_validate_isolated_net }}
+    -p 127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}:5000
+    {{ dhs_amwa_validate_tool_image }}
+  when: "'true' not in _iso_tool.stdout"
+  changed_when: true
+
+- name: Pin the isolated tool's UserConfig
+  ansible.builtin.shell: >-
+    printf 'PULL_REPOS = False\nfrom . import Config as CONFIG\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\n'
+    > /tmp/validate-userconfig.py
+    && docker cp /tmp/validate-userconfig.py {{ dhs_amwa_validate_isolated_tool }}:/config/UserConfig.py
+    && docker restart {{ dhs_amwa_validate_isolated_tool }}
+  when: "'true' not in _iso_tool.stdout"
+  changed_when: true
+
+- name: The isolated tool API answers
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}/api"
+    method: GET
+    status_code: [200, 405]
+  register: _iso_api
+  retries: 20
+  delay: 3
+  until: _iso_api.status in [200, 405]
+
+# A FRESH node per attempt, like the proven pre-plant role: a node
+# that registered in a previous attempt would skip the discovery
+# behaviour the suite exists to score.
+- name: Remove any previous CuT node container
+  ansible.builtin.command: docker rm -f dhs-validate-node
+  changed_when: true
+  failed_when: false
+
+- name: Start the CuT node on the bridge
+  ansible.builtin.command: >-
+    docker run -d --name dhs-validate-node --hostname dhs-validate-node
+    --network {{ dhs_amwa_validate_isolated_net }}
+    -v /opt/dhs-validate:/dv:ro
+    --entrypoint /dv/{{ dhs_amwa_validate_plant_bin | basename }}
+    {{ dhs_amwa_validate_tool_image }}
+    producer nmos serve
+    --bind 0.0.0.0:{{ dhs_amwa_validate_node_port }}
+    --advertise-host dhs-validate-node:{{ dhs_amwa_validate_node_port }}
+    --api-ver v1.3
+    --config /dv/{{ dhs_amwa_validate_plant_config | basename }}
+  changed_when: true
+
+- name: Resolve the CuT node's bridge address
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+    dhs-validate-node
+  register: _iso_node_ip
+  changed_when: false
+
+- name: Let the node boot and settle
+  ansible.builtin.wait_for:
+    timeout: 5
+
+- name: The CuT node is alive
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} dhs-validate-node
+  register: _iso_node_alive
+  changed_when: false
+  failed_when: "'true' not in _iso_node_alive.stdout"
+
+- name: Point this suite at the bridge
+  ansible.builtin.set_fact:
+    _suite_host_override: "{{ _iso_node_ip.stdout | trim }}"
+    _suite_port_override: "{{ dhs_amwa_validate_node_port }}"
+    _tool_url_override: "http://127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}/api"

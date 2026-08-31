@@ -1,0 +1,52 @@
+---
+# The EVS-style end report: one line per suite, then every non-pass
+# row with the tool's own test name, its state, the reason, and the
+# AMWA spec link. The play FAILS at the end (not mid-run) so a
+# regression in one suite never hides the results of the rest.
+
+- name: Suite summary
+  ansible.builtin.debug:
+    msg: >-
+      {{ '%-16s' | format(item.suite) }}
+      {{ 'OK  ' if item.ok else 'FAIL' }}
+      pass={{ item['pass'] }}/{{ item.baseline_pass }}
+      fail={{ item.fail }} cnt={{ item.cnt }}/{{ item.baseline_cnt }}
+      warn={{ item.warnings }}
+      {{ '(RETRIED — third-party interference)' if item.retried | default(false) else '' }}
+      {{ '(+%d above baseline — raise it in git)' | format(item.above_baseline) if item.above_baseline > 0 else '' }}
+  loop: "{{ _validate_verdicts }}"
+  loop_control:
+    label: "{{ item.suite }}"
+
+# Per-test detail: every non-pass row, named by the tool's own test
+# names, with the reason and the AMWA spec link.
+- name: Per-test detail rows
+  ansible.builtin.debug:
+    msg: "[{{ item.1.state }}] {{ item.1.test }}: {{ item.1.reason }}{% if item.1.amwa_link %}  ({{ item.1.amwa_link }}){% endif %}"
+  loop: "{{ _validate_verdicts | subelements('problems') }}"
+  loop_control:
+    label: "{{ item.0.suite }} {{ item.1.test }}"
+
+- name: Suites this play cannot drive yet
+  ansible.builtin.debug:
+    msg: "{{ item.id }}: {{ item.note | default('disabled') }}"
+  loop: "{{ _skipped_suites }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: _skipped_suites | length > 0
+
+- name: Results location
+  ansible.builtin.debug:
+    msg: "raw results: {{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts | default('n/a') }}/"
+  when: _validate_verdicts | length > 0
+
+- name: Gate
+  ansible.builtin.assert:
+    that: _validate_verdicts | rejectattr('ok') | list | length == 0
+    fail_msg: >-
+      {{ _validate_verdicts | rejectattr('ok') | map(attribute='suite') | join(', ') }}
+      regressed against the committed baselines
+    success_msg: >-
+      {{ _validate_verdicts | length }} suites at or above baseline,
+      0 failures
+  when: _validate_verdicts | length > 0

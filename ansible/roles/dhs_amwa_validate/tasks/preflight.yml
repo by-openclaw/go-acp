@@ -1,0 +1,47 @@
+---
+# The tool is the arbiter, so its configuration is pinned BEFORE any
+# suite runs: a drifted tool scores a different exam.
+
+- name: Read the tool container image
+  ansible.builtin.command: docker inspect --format {% raw %}"{{.Config.Image}}"{% endraw %} {{ dhs_amwa_validate_tool_container }}
+  register: _tool_image
+  changed_when: false
+
+- name: The tool image must be the pinned one
+  ansible.builtin.assert:
+    that: _tool_image.stdout.strip() == dhs_amwa_validate_tool_image
+    fail_msg: >-
+      tool container runs {{ _tool_image.stdout }} — the gate is only
+      meaningful against {{ dhs_amwa_validate_tool_image }}
+
+- name: Read the tool UserConfig
+  ansible.builtin.command: docker exec {{ dhs_amwa_validate_tool_container }} cat /config/UserConfig.py
+  register: _tool_cfg
+  changed_when: false
+
+- name: The tool knobs must match the conformance profile
+  ansible.builtin.assert:
+    that:
+      - "'PULL_REPOS = False' in _tool_cfg.stdout"
+      - "'CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30' in _tool_cfg.stdout"
+      - "'ENABLE_AUTH' not in _tool_cfg.stdout"
+    fail_msg: >-
+      /config/UserConfig.py drifted — expected PULL_REPOS=False,
+      CONFIG.GARBAGE_COLLECTION_TIMEOUT=30 and auth DISARMED.
+      Got: {{ _tool_cfg.stdout }}
+
+- name: The tool API must answer
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_tool_url }}"
+    method: GET
+    status_code: [200, 405]
+  register: _tool_api
+  retries: 5
+  delay: 3
+  until: _tool_api.status in [200, 405]
+
+# Stamped from a live clock read, NOT ansible_date_time — cached facts
+# hand every run the same stamp and the runs then overwrite each other.
+- name: Stamp the run
+  ansible.builtin.set_fact:
+    _validate_run_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"

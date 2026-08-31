@@ -1,0 +1,165 @@
+---
+# dhs_amwa_validate — the AMWA conformance regression gate.
+#
+# The catalog below is baselines-as-code: every suite the AMWA NMOS
+# Testing tool ships for the roles we implement, with the EXACT
+# invocation shape each one needs (per-suite endpoint rows — the part
+# that cannot be guessed and was learned run by run), the target it is
+# scored against, and the score the plant reached on 2026-08-31.
+#
+# Naming follows AMWA verbatim: suite ids are the tool's own
+# (IS-12-01, BCP-008-01-01, …) and the end report names failing tests
+# by the tool's test names (test_13, auto_query_5, test_ms05_22 …).
+#
+# Gate rules, enforced by files/parse_suite.py:
+#   - any Fail/Error row fails the play;
+#   - Pass below baseline_pass fails the play (regression);
+#   - Could-Not-Test above baseline_cnt fails the play (a lost fixture
+#     shows up as CNT before it shows up as Fail);
+#   - Pass ABOVE baseline is a warning to raise the number in git.
+
+# Tool + fleet endpoints.
+dhs_amwa_validate_tool_url: "http://localhost:5000/api"
+dhs_amwa_validate_tool_container: nmos-testing
+dhs_amwa_validate_tool_image: "nmos-testing:cachefix"
+dhs_amwa_validate_results_dir: /root/amwa-validate
+
+# The plant (all addresses live on the plant host, group [plant]).
+dhs_amwa_validate_plant_host: "10.6.250.101"
+dhs_amwa_validate_node_port: 18080
+dhs_amwa_validate_registry_port: 8235
+dhs_amwa_validate_cut_port: 18500
+dhs_amwa_validate_plant_bin: /opt/dhs-amwa-plant/dhs
+dhs_amwa_validate_plant_config: /opt/dhs-amwa-plant/amwa-test-node.json
+dhs_amwa_validate_registry_unit: dhs-nmos-registry
+dhs_amwa_validate_node_unit: dhs-nmos-test-node
+
+# Per-suite POST timeout (seconds). IS-11's stable-state loops are the
+# slowest legitimate runner.
+dhs_amwa_validate_suite_timeout: 1800
+
+# Subset filter: AMWA suite ids ("-e dhs_amwa_validate_only='[\"IS-08-01\"]'").
+# Empty = every enabled suite of the play's scope.
+dhs_amwa_validate_only: []
+
+# Safety window for CuT units: transient services self-destruct and a
+# paused registry self-restores after this many seconds even if the
+# play dies mid-suite.
+dhs_amwa_validate_window_safety_sec: 900
+
+# The isolated window (mDNS suites): a second tool instance + a fresh
+# node container on a private docker bridge on the tooling host —
+# nothing else lives there, so no LAN device can race the tool's
+# mocks.
+dhs_amwa_validate_isolated_net: dhs-validate-mdns
+dhs_amwa_validate_isolated_tool: nmos-testing-validate
+dhs_amwa_validate_isolated_tool_port: 5001
+
+# The catalog. Fields:
+#   id            AMWA suite id, verbatim
+#   scope         node | registry | controller | mirror
+#   target        node | registry | cut  (which host:port the rows use)
+#   window        absent | mdns | p2p   (CuT window around the run)
+#   rows          endpoint rows in the suite's declared order; each row
+#                 may carry ver / urlpath / selector; host+port come
+#                 from the target unless the row overrides them (null
+#                 host rows are IS-09-02's mock-System-API shape)
+#   baseline_pass / baseline_cnt   the gate
+#   enabled: false + note          suites we cannot yet drive here
+dhs_amwa_validate_suites:
+  # ---- node scope, plant node :18080 ----
+  - { id: IS-05-01, scope: node, target: node,
+      rows: [{ver: v1.2}], baseline_pass: 60, baseline_cnt: 0 }
+  # baseline 55: the tool's MP2T-SDP round (test_18) flips Pass<->Manual
+  # nondeterministically depending on which receiver it draws — 55 is
+  # the honest floor, 56 the good day.
+  - { id: IS-05-02, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
+  - { id: IS-07-01, scope: node, target: node,
+      rows: [{ver: v1.0}], baseline_pass: 19, baseline_cnt: 0 }
+  # fresh: earlier suites in a sequential run leave staged IS-05 state
+  # (a receiver patched at a previous suite's mock URL); IS-07-02 then
+  # reads a device mid-someone-else's-test. A restart resets it.
+  - { id: IS-07-02, scope: node, target: node, fresh: true,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0}],
+      # baseline_cnt 1 = test_06 (MQTT senders) until the MQTT unit lands.
+      baseline_pass: 52, baseline_cnt: 1 }
+  - { id: IS-08-01, scope: node, target: node,
+      rows: [{ver: v1.0}], baseline_pass: 36, baseline_cnt: 0 }
+  - { id: IS-08-02, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0}], baseline_pass: 43, baseline_cnt: 0 }
+  - { id: IS-11-01, scope: node, target: node,
+      rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
+      baseline_pass: 103, baseline_cnt: 0 }
+  - { id: IS-12-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}, {ver: v1.0}],
+      # baseline_cnt 2 = tool-side auto_ms05 "Not Implemented" +
+      # test_ms05_07 (we declare no deprecated properties — by design).
+      baseline_pass: 135, baseline_cnt: 2 }
+  - { id: IS-14-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
+      baseline_pass: 150, baseline_cnt: 1 }
+  - { id: BCP-005-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 16, baseline_cnt: 0 }
+  - { id: BCP-006-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 23, baseline_cnt: 0 }
+  - { id: BCP-006-04, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 20, baseline_cnt: 0 }
+  - { id: BCP-007-03-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
+  - { id: BCP-008-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
+      baseline_pass: 94, baseline_cnt: 0 }
+  - { id: BCP-008-02-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
+      baseline_pass: 94, baseline_cnt: 0 }
+  # BCP-003-01 needs the TLS-serving window (EST/cert pair) which is
+  # not encoded here yet — historic score 7/0. Follows with the
+  # auth-mode windows.
+  - { id: BCP-003-01, scope: node, target: node, enabled: false,
+      note: "TLS window not yet encoded (historic 7/0)",
+      rows: [{ver: v1.3}], baseline_pass: 7, baseline_cnt: 0 }
+
+  # ---- node scope, CuT windows :18500 ----
+  # IS-04-01 scores a REGISTERED node against the tool's own mock
+  # registries, which it announces over mDNS: the transient node runs
+  # mDNS-discovery mode and the plant registry pauses so it cannot win
+  # the election (safety timer restores it regardless).
+  # isolated: on the LAN the real Neuron mDNS-registers with the
+  # tool's mock registries (tool-visible as "Heartbeats matched a
+  # different Node ID"), so the mDNS suites score on the private
+  # bridge. flaky_retry stays as belt-and-braces; retries are
+  # reported.
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
+      rows: [{ver: v1.3}], baseline_pass: 57, baseline_cnt: 0 }
+  # IS-09-02 drives our node's System API CLIENT against the tool's
+  # mock System API (mDNS-announced) — same window; note the suite's
+  # own two-row shape with a null first endpoint.
+  # Two rows: the NODE row (must carry the CuT address — the tool
+  # matches observed /global requests against this IP) and the System
+  # API slot the tool itself serves (null host+port, per its docs:
+  # a null slot skips pre-validation of an API the TOOL provides).
+  - { id: IS-09-02, scope: node, target: cut, window: isolated, flaky_retry: true,
+      rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  # IS-04-03 scores peer-to-peer mode: a registered node MUST NOT
+  # advertise _nmos-node._tcp (IS-04 §4.2.1), so P2P needs its own
+  # --no-registry transient.
+  - { id: IS-04-03, scope: node, target: cut, window: p2p,
+      rows: [{ver: v1.3}], baseline_pass: 17, baseline_cnt: 0 }
+
+  # ---- registry scope, plant registry :8235 ----
+  # baseline_cnt 2 = auto_registration_5/6: the tool substitutes ids
+  # from RAML listing GETs and the registration RAML defines none
+  # under /resource — structurally untestable for ANY implementation
+  # (nmos-cpp included).
+  - { id: IS-04-02, scope: registry, target: registry,
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
+
+  # ---- controller scope: needs the controller facade (issue backlog,
+  # user-owned item #7) — listed so the report says "not automatable
+  # yet" instead of silently omitting them. ----
+  - { id: IS-04-04, scope: controller, target: node, enabled: false,
+      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-05-03, scope: controller, target: node, enabled: false,
+      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }

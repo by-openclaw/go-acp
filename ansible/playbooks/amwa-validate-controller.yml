@@ -1,0 +1,13 @@
+---
+# Validate the CONTROLLER role. The AMWA controller suites (IS-04-04,
+# IS-05-03) need the interactive controller facade — until that unit
+# lands this play only reports them as not-automatable, so the gap
+# stays visible instead of silently absent.
+
+- name: AMWA validate — controller
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: controller
