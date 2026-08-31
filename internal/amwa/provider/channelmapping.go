@@ -128,6 +128,33 @@ func NewIS08ChannelMappingServer(logger *slog.Logger, bundle *NodeConfig, cfg IS
 		Activation: is08.ActivationResponse{},
 		Map:        unroutedMap(s.io),
 	}
+
+	// The boot map routes the device before any controller arrives,
+	// through the SAME apply + record path an immediate activation
+	// takes — so map/active AND map/activations/{id} reflect a real
+	// event, not fabricated history. Already validated at config load;
+	// re-checked here because tests build bundles in code.
+	if bundle != nil && bundle.ChannelMapping != nil && len(bundle.ChannelMapping.BootMap) > 0 {
+		action := is08.MapEntries(bundle.ChannelMapping.BootMap)
+		if err := validateAction(s.io, action); err != nil {
+			log := logger
+			if log == nil {
+				log = slog.Default()
+			}
+			log.Error("provider/channelmapping: boot_map rejected", "err", err)
+		} else {
+			s.applyLocked(action)
+			mode := is08.ActivationModeImmediate
+			stamp := is05.FormatTAINow(s.now())
+			s.nextID++
+			resp := is08.MapActivationResponse{
+				Activation: is08.ActivationResponse{Mode: &mode, ActivationTime: &stamp},
+				Action:     action,
+			}
+			s.activations[strconv.Itoa(s.nextID)] = resp
+			s.active.Activation = resp.Activation
+		}
+	}
 	return s
 }
 
@@ -660,8 +687,15 @@ func (s *IS08ChannelMappingServer) lockedByLocked(action is08.MapEntries) (bool,
 
 // validateActionLocked checks one action against the IO view.
 func (s *IS08ChannelMappingServer) validateActionLocked(action is08.MapEntries) error {
+	return validateAction(s.io, action)
+}
+
+// validateAction checks one action against an IO view — shared by the
+// live activation path and the boot_map seed validation, so a boot
+// map the running device would 400 fails at config load instead.
+func validateAction(view is08.IO, action is08.MapEntries) error {
 	for outID, chans := range action {
-		out, found := s.io.Outputs[outID]
+		out, found := view.Outputs[outID]
 		if !found {
 			return fmt.Errorf("unknown output %q", outID)
 		}
@@ -677,7 +711,7 @@ func (s *IS08ChannelMappingServer) validateActionLocked(action is08.MapEntries) 
 			if entry.Input == nil || entry.ChannelIndex == nil {
 				return fmt.Errorf("output %q channel %s: input and channel_index must both be set or both null", outID, idx)
 			}
-			in, found := s.io.Inputs[*entry.Input]
+			in, found := view.Inputs[*entry.Input]
 			if !found {
 				return fmt.Errorf("unknown input %q", *entry.Input)
 			}
@@ -685,7 +719,7 @@ func (s *IS08ChannelMappingServer) validateActionLocked(action is08.MapEntries) 
 				return fmt.Errorf("input %q has no channel %d", *entry.Input, *entry.ChannelIndex)
 			}
 		}
-		if err := validateOutputCapsLocked(out, chans, s.io.Inputs); err != nil {
+		if err := validateOutputCapsLocked(out, chans, view.Inputs); err != nil {
 			return fmt.Errorf("output %q: %w", outID, err)
 		}
 	}

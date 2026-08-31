@@ -14,6 +14,7 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
+	"dhs/internal/amwa/codec/is08"
 )
 
 // NodeConfig is the on-disk Node bundle. Fields parallel the Node API
@@ -72,6 +73,15 @@ type NodeConfig struct {
 type ChannelMappingSeed struct {
 	Inputs  map[string]*ChannelMappingInputSeed  `json:"inputs,omitempty"`
 	Outputs map[string]*ChannelMappingOutputSeed `json:"outputs,omitempty"`
+
+	// BootMap is a channel map applied at startup through the normal
+	// immediate-activation path, so the device boots with its channels
+	// routed AND an activation record a controller can read — the
+	// map/active twin of the IS-05 connection seed. Shape is exactly
+	// an IS-08 action: output id → channel index → {input,
+	// channel_index}. It is validated against the declared caps at
+	// load; a boot map the device itself would 400 is a config error.
+	BootMap map[string]map[string]is08.MapEntry `json:"boot_map,omitempty"`
 }
 
 // ChannelMappingInputSeed declares one input's routing constraints.
@@ -118,6 +128,11 @@ func validateChannelMappingSeed(cfg *NodeConfig) error {
 			if _, ok := io.Inputs[*in]; !ok {
 				return fmt.Errorf("channel_mapping.outputs[%q].routable_inputs[%d] %q: not an input of this bundle", id, i, *in)
 			}
+		}
+	}
+	if len(cfg.ChannelMapping.BootMap) > 0 {
+		if err := validateAction(io, is08.MapEntries(cfg.ChannelMapping.BootMap)); err != nil {
+			return fmt.Errorf("channel_mapping.boot_map: %w", err)
 		}
 	}
 	return nil
