@@ -257,7 +257,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 						// the route table where srv.Auth lives, so the
 						// gate is applied here explicitly.
 						if authGate != nil {
-							if status, hdrs, body, ok := authGate.Check(req); !ok {
+							if status, hdrs, body, _, ok := authGate.Check(req); !ok {
 								for hk, hv := range hdrs {
 									w.Header().Set(hk, hv)
 								}

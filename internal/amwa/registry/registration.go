@@ -36,11 +36,27 @@ func installRegistrationRoutes(srv *httpsession.Server, store *Store, base, apiV
 		}
 		id := idFromEnvelope(env)
 		hadPrev := preExists(store, env.Type, id)
+		// BCP-003-02 resource ownership: an authenticated client may
+		// only update resources IT registered (IS-04-02 test_33 /
+		// test_33_1 — azp is normalised into client_id by the codec).
+		// A resource registered before auth was armed has no owner and
+		// is claimed by the first authenticated writer.
+		client := httpsession.ClientIDFrom(ctx)
+		if client != "" && hadPrev {
+			if owner := store.Owner(id); owner != "" && owner != client {
+				return stdhttp.StatusForbidden, httpsession.ErrorBody{
+					Code: 403, Error: "Forbidden",
+					Debug: fmt.Sprintf("resource %s is owned by another client", id)}, nil
+			}
+		}
 		if err := store.IngestRegistrationVersioned(env, apiVer); err != nil {
 			if errors.Is(err, ErrAPIVerConflict) {
 				return stdhttp.StatusConflict, httpsession.ErrorBody{Code: 409, Error: "Conflict", Debug: err.Error()}, nil
 			}
 			return stdhttp.StatusBadRequest, httpsession.ErrorBody{Code: 400, Error: "Bad Request", Debug: err.Error()}, nil
+		}
+		if client != "" {
+			store.SetOwner(id, client)
 		}
 		// Echo the data; spec says response body is the registered resource.
 		var raw any

@@ -229,12 +229,19 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	// upgrades are protected by the same policy as plain routes (the
 	// spec says a server SHALL NOT upgrade on an invalid token).
 	if s.Auth != nil {
-		if status, hdrs, body, ok := s.Auth.Check(r); !ok {
+		status, hdrs, body, clientID, ok := s.Auth.Check(r)
+		if !ok {
 			for k, v := range hdrs {
 				w.Header().Set(k, v)
 			}
 			writeJSON(w, status, body)
 			return
+		}
+		if clientID != "" {
+			// BCP-003-02: hand the authenticated client identity to the
+			// handlers so write paths can enforce per-client resource
+			// ownership (IS-04-02 test_33/test_33_1).
+			r = r.WithContext(WithClientID(r.Context(), clientID))
 		}
 	}
 
