@@ -171,6 +171,12 @@ type IS11StreamCompatServer struct {
 	// onDeviceChanged does the same for the Device owning a changed
 	// Input/Output.
 	onDeviceChanged func(deviceID string)
+	// onFlowConstraintsApplied lets the IS-04 side re-configure the
+	// Sender's Flow to satisfy the Active Constraints — IS-11's
+	// essence adaptation (test_02_03_05_* reads the flow's
+	// grain_rate/sample_rate back and expects the constrained value).
+	// Called with the empty shape on DELETE so originals restore.
+	onFlowConstraintsApplied func(senderID string, a is11.ActiveConstraints)
 }
 
 // NewIS11StreamCompatServer builds the surface from the bundle seed.
@@ -416,6 +422,9 @@ func (s *IS11StreamCompatServer) putActive(id string, r *stdhttp.Request) (int, 
 	if s.onSenderConstraintsChanged != nil {
 		s.onSenderConstraintsChanged(id)
 	}
+	if s.onFlowConstraintsApplied != nil {
+		s.onFlowConstraintsApplied(id, a)
+	}
 	s.bumpConstrainedInputs(id)
 	return 200, a, nil
 }
@@ -434,6 +443,9 @@ func (s *IS11StreamCompatServer) deleteActive(id string) (int, any, error) {
 	s.mu.Unlock()
 	if s.onSenderConstraintsChanged != nil {
 		s.onSenderConstraintsChanged(id)
+	}
+	if s.onFlowConstraintsApplied != nil {
+		s.onFlowConstraintsApplied(id, is11.ActiveConstraints{})
 	}
 	s.bumpConstrainedInputs(id)
 	return 200, is11.ActiveConstraints{ConstraintSets: []is11.ConstraintSet{}}, nil
@@ -497,12 +509,14 @@ func (s *IS11StreamCompatServer) mountInput(srv *httpsession.Server, p, id strin
 		// suite fails test_01_01/01_02/01_06 on it. Serving a distinct
 		// default also makes "Effective changes when Base changes"
 		// observable.
-		blob, has := s.baseEDID[id]
-		if !has {
-			blob = defaultEDID()
+		if blob, has := s.baseEDID[id]; has {
+			// An explicitly-set Base EDID is served back VERBATIM —
+			// test_01_02 compares the bytes. The re-negotiation
+			// variant applies only to the device's own default.
+			return 200, &httpsession.RawBody{ContentType: "application/octet-stream", Body: blob}, nil
 		}
 		return 200, &httpsession.RawBody{ContentType: "application/octet-stream",
-			Body: edidVariant(blob, s.edidEpoch[id])}, nil
+			Body: edidVariant(defaultEDID(), s.edidEpoch[id])}, nil
 	})
 }
 
