@@ -1111,6 +1111,19 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				})
 				continue
 			}
+			if ph.Value == nil && !p.desc.IsNullable {
+				// Null into a non-nullable property is the restore twin
+				// of setProperty's nullability rule — typeMismatch
+				// passes nil through by design, so without this notice
+				// the validation response reads as acceptance (IS-14
+				// test_26 on the monitor objects).
+				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeError,
+					NoticeMessage: "property is not nullable",
+				})
+				hasError = true
+				continue
+			}
 			if msg := typeMismatch(&p.desc, ph.Value); msg != "" {
 				// A value the property's datatype cannot hold is an
 				// ERROR notice, and one error notice fails the object
