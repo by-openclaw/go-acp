@@ -195,6 +195,16 @@ func ValidateClaimsExceptAud(c Claims, now time.Time, leeway time.Duration) erro
 	return nil
 }
 
+// EffectiveClientID is the client identity BCP-003-02 keys ownership
+// on: client_id, or azp when client_id is absent — the spec treats the
+// two the same way (IS-04-02 test_33_1 pins the equivalence).
+func (c *Claims) EffectiveClientID() string {
+	if c.ClientID != "" {
+		return c.ClientID
+	}
+	return c.Azp
+}
+
 // AudienceMatchesAny reports whether any aud entry names any of this
 // server's identities.
 func AudienceMatchesAny(aud Audience, hosts []string) bool {

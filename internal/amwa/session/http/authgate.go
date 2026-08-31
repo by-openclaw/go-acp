@@ -186,8 +186,8 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 		return deny(stdhttp.StatusForbidden, `Bearer error=insufficient_scope`, err.Error())
 	}
 	log.Debug("auth: authorized", "method", r.Method, "path", r.URL.Path,
-		"iss", claims.Iss, "sub", claims.Sub, "client", claims.ClientID)
-	return 0, nil, ErrorBody{}, claims.ClientID, true
+		"iss", claims.Iss, "sub", claims.Sub, "client", claims.EffectiveClientID())
+	return 0, nil, ErrorBody{}, claims.EffectiveClientID(), true
 }
 
 // clientIDKey is the context key WithClientID/ClientIDFrom share.
