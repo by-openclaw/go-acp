@@ -35,4 +35,7 @@ func TestPlantFixtureValidates(t *testing.T) {
 	if !ok || out.Caps == nil || len(out.Caps.RoutableInputs) != 2 || len(out.Channels) < 4 {
 		t.Errorf("wide output = caps %+v (channels %d), want restricted routable_inputs and >=4 channels", out.Caps, len(out.Channels))
 	}
+	if len(cfg.ChannelMapping.BootMap) == 0 {
+		t.Error("plant fixture lost its boot_map (the boot activation record the AMWA auto rows read)")
+	}
 }

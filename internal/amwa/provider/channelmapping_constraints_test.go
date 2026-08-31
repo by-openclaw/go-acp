@@ -170,3 +170,59 @@ func TestChannelMappingConstraintEnforcement(t *testing.T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// TestChannelMappingBootMap: a seeded boot map routes the device at
+// startup through the real activation path — map/active shows the
+// routes and map/activations carries a genuine record.
+func TestChannelMappingBootMap(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	b := constrainedBundle()
+	in := blockInID
+	ch := func(n int) is08.MapEntry { return is08.MapEntry{Input: &in, ChannelIndex: &n} }
+	b.ChannelMapping.BootMap = map[string]map[string]is08.MapEntry{
+		wideOutID: {"0": ch(0), "1": ch(1), "2": ch(0), "3": ch(1)},
+	}
+	if err := validateBundle(b); err != nil {
+		t.Fatalf("bundle with boot_map does not validate: %v", err)
+	}
+	cm := NewIS08ChannelMappingServer(logger, b, IS08ChannelMappingConfig{APIVer: "v1.0"})
+	srv := httpsession.NewServer(logger)
+	cm.Mount(srv)
+	ts := httptest.NewServer(srv.MuxHandler())
+	t.Cleanup(ts.Close)
+
+	var active is08.MapActive
+	if st := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/active/", &active); st != 200 {
+		t.Fatalf("map/active = %d", st)
+	}
+	e := active.Map[wideOutID]["2"]
+	if e.Input == nil || *e.Input != blockInID || e.ChannelIndex == nil || *e.ChannelIndex != 0 {
+		t.Errorf("boot map not applied: channel 2 = %+v", e)
+	}
+	if active.Activation.ActivationTime == nil || active.Activation.Mode == nil {
+		t.Errorf("boot activation must stamp map/active: %+v", active.Activation)
+	}
+
+	var acts map[string]is08.MapActivationResponse
+	if st := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/", &acts); st != 200 {
+		t.Fatalf("activations = %d", st)
+	}
+	if len(acts) != 1 {
+		t.Fatalf("boot activation record missing: %d entries", len(acts))
+	}
+	for id := range acts {
+		var one is08.MapActivationResponse
+		if st := cmGet(t, ts, "/x-nmos/channelmapping/v1.0/map/activations/"+id+"/", &one); st != 200 {
+			t.Errorf("activations/%s = %d, want 200", id, st)
+		}
+	}
+
+	// A boot map violating the declared caps is rejected at load.
+	bad := constrainedBundle()
+	bad.ChannelMapping.BootMap = map[string]map[string]is08.MapEntry{
+		wideOutID: {"0": ch(0), "1": ch(0)},
+	}
+	if err := validateBundle(bad); err == nil {
+		t.Error("boot_map violating block constraints validated")
+	}
+}
