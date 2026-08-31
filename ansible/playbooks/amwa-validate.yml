@@ -1,0 +1,11 @@
+---
+# The whole AMWA conformance gate — every role, in dependency order
+# (registry before node: node suites assume a serving plant registry;
+# mirror last: it asserts on what the earlier plays left running).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate.yml
+
+- import_playbook: amwa-validate-registry.yml
+- import_playbook: amwa-validate-node.yml
+- import_playbook: amwa-validate-controller.yml
+- import_playbook: amwa-validate-mirror.yml

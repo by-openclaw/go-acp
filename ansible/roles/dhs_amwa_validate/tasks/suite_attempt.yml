@@ -1,0 +1,76 @@
+---
+# One attempt of one suite: window open -> row build -> invoke ->
+# store -> gate. The window closes in `always` so a retry reopens a
+# FRESH one — a half-registered CuT from a raced first attempt would
+# poison the second.
+
+- name: "{{ suite.id }} — attempt bookkeeping"
+  ansible.builtin.set_fact:
+    _attempt_suffix: "{{ '-retry' if _suite_verdict else '' }}"
+    _suite_host_override: !!null
+    _suite_port_override: !!null
+    _tool_url_override: !!null
+    _norm_rows: []
+
+- name: "{{ suite.id }} — attempt{{ _attempt_suffix }}"
+  block:
+    - name: "{{ suite.id }} — open the {{ suite.window | default('no') }} window"
+      ansible.builtin.include_tasks: "window_{{ suite.window }}.yml"
+      when: suite.window is defined
+
+    # Fill each row's absent members from the (possibly window-
+    # overridden) target. An EXPLICIT null in the catalog stays null —
+    # that is IS-09-02's mock-API row shape.
+    - name: "{{ suite.id }} — normalise the endpoint rows"
+      ansible.builtin.set_fact:
+        _norm_rows: >-
+          {{ _norm_rows + [ {
+               'host': row.host | default(_suite_host_override | default(_suite_host, true)),
+               'port': row.port | default((_suite_port_override | default(_suite_port, true)) | int),
+               'ver': row.ver | default(None),
+               'urlpath': row.urlpath | default(None),
+               'selector': row.selector | default(None) } ] }}
+      loop: "{{ suite.rows }}"
+      loop_control:
+        loop_var: row
+        label: "{{ row.ver | default('null') }}"
+
+    - name: "{{ suite.id }} — invoke the tool"
+      ansible.builtin.uri:
+        url: "{{ _tool_url_override | default(dhs_amwa_validate_tool_url, true) }}"
+        method: POST
+        body_format: json
+        timeout: "{{ dhs_amwa_validate_suite_timeout }}"
+        return_content: true
+        body:
+          suite: "{{ suite.id }}"
+          host: "{{ _norm_rows | map(attribute='host') | list }}"
+          port: "{{ _norm_rows | map(attribute='port') | list }}"
+          version: "{{ _norm_rows | map(attribute='ver') | list }}"
+          urlpath: "{{ _norm_rows | map(attribute='urlpath') | list }}"
+          selector: "{{ _norm_rows | map(attribute='selector') | list }}"
+          output: json
+      register: _suite_resp
+
+    - name: "{{ suite.id }} — store the raw result"
+      ansible.builtin.copy:
+        content: "{{ _suite_resp.content }}"
+        dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}{{ _attempt_suffix }}.json"
+        mode: "0644"
+
+    - name: "{{ suite.id }} — gate against the baseline"
+      ansible.builtin.command: >-
+        python3 {{ dhs_amwa_validate_results_dir }}/parse_suite.py
+        {{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}{{ _attempt_suffix }}.json
+        {{ suite.id }} {{ suite.baseline_pass }} {{ suite.baseline_cnt }}
+      register: _suite_gate
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ suite.id }} — record the verdict"
+      ansible.builtin.set_fact:
+        _suite_verdict: "{{ _suite_gate.stdout | from_json | combine({'retried': _attempt_suffix != ''}) }}"
+  always:
+    - name: "{{ suite.id }} — close the window"
+      ansible.builtin.include_tasks: window_teardown.yml
+      when: suite.window is defined

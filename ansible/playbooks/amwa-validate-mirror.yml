@@ -1,0 +1,31 @@
+---
+# Validate the MIRROR registry. AMWA ships no mirror suite — the
+# checks here are ours: the mirror must hold a live Query WS
+# subscription on the upstream registry (its whole job), which is also
+# what keeps the registry's subscription surface testable
+# (IS-04-02 auto_query_18/19 need a real subscription to exist).
+#
+# Grows with the mirror unit (program slot 5): resource parity
+# upstream-vs-mirror, audit-trail assertions, and the
+# controller-in-the-middle checks.
+
+- name: AMWA validate — mirror
+  hosts: tooling
+  gather_facts: false
+  vars:
+    dhs_amwa_validate_plant_host: "10.6.250.101"
+    dhs_amwa_validate_registry_port: 8235
+  tasks:
+    - name: The upstream registry must hold at least one live subscription
+      ansible.builtin.uri:
+        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/subscriptions"
+        return_content: true
+      register: _subs
+
+    - name: Gate
+      ansible.builtin.assert:
+        that: _subs.json | length > 0
+        fail_msg: >-
+          no subscriptions on the upstream Query API — the mirror is
+          not connected (or was restarted and did not re-subscribe)
+        success_msg: "mirror holds {{ _subs.json | length }} subscription(s) upstream"

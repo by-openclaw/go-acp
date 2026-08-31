@@ -1,0 +1,45 @@
+---
+# Close whichever CuT window is open. Every unit is stopped
+# best-effort and the plant registry is (re)started unconditionally —
+# starting an already-running unit is a no-op, and a play that dies
+# between suites must still leave the plant serving.
+
+- name: Stop the transient CuT units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - dhs-nmos-validate-cut
+    - dhs-nmos-validate-cutstop.timer
+    - dhs-nmos-validate-cutkick.timer
+    - dhs-nmos-validate-restore.timer
+  delegate_to: "{{ groups['plant'][0] }}"
+  failed_when: false
+
+# The node's own log, while the container still exists — the one
+# artefact that explains a CuT failure.
+- name: What the CuT node said
+  ansible.builtin.command: docker logs --tail 80 dhs-validate-node
+  register: _cut_log
+  changed_when: false
+  failed_when: false
+
+- name: Keep the CuT log beside the results
+  ansible.builtin.copy:
+    content: |
+      {{ _cut_log.stdout | default('') }}
+      {{ _cut_log.stderr | default('') }}
+    dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}-node.log"
+    mode: "0644"
+  when: _cut_log.rc | default(1) == 0
+
+- name: Remove the isolated CuT node container
+  ansible.builtin.command: docker rm -f dhs-validate-node
+  changed_when: false
+  failed_when: false
+
+- name: Ensure the plant registry is running
+  ansible.builtin.systemd:
+    name: "{{ dhs_amwa_validate_registry_unit }}"
+    state: started
+  delegate_to: "{{ groups['plant'][0] }}"
