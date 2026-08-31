@@ -23,21 +23,23 @@ type NcEnumItemDescriptor struct {
 // NcFieldDescriptor describes one field of a struct datatype.
 type NcFieldDescriptor struct {
 	NcDescriptor
-	Name        string                 `json:"name"`
-	TypeName    *string                `json:"typeName"`
-	IsNullable  bool                   `json:"isNullable"`
-	IsSequence  bool                   `json:"isSequence"`
-	Constraints *NcParameterConstraints `json:"constraints"`
+	Name        string  `json:"name"`
+	TypeName    *string `json:"typeName"`
+	IsNullable  bool    `json:"isNullable"`
+	IsSequence  bool    `json:"isSequence"`
+	// Constraints is the schema's polymorphic union — nil, or one of
+	// the NcParameterConstraints variants (Number / String / base).
+	Constraints any `json:"constraints"`
 }
 
 // NcParameterDescriptor describes one parameter of a method.
 type NcParameterDescriptor struct {
 	NcDescriptor
-	Name        string                  `json:"name"`
-	TypeName    *string                 `json:"typeName"`
-	IsNullable  bool                    `json:"isNullable"`
-	IsSequence  bool                    `json:"isSequence"`
-	Constraints *NcParameterConstraints `json:"constraints"`
+	Name        string  `json:"name"`
+	TypeName    *string `json:"typeName"`
+	IsNullable  bool    `json:"isNullable"`
+	IsSequence  bool    `json:"isSequence"`
+	Constraints any     `json:"constraints"`
 }
 
 // NcPropertyDescriptor describes one class property.
@@ -45,14 +47,14 @@ type NcParameterDescriptor struct {
 // classes/*.json `properties[]`).
 type NcPropertyDescriptor struct {
 	NcDescriptor
-	ID           NcPropertyId            `json:"id"`
-	Name         string                  `json:"name"`
-	TypeName     *string                 `json:"typeName"`
-	IsReadOnly   bool                    `json:"isReadOnly"`
-	IsNullable   bool                    `json:"isNullable"`
-	IsSequence   bool                    `json:"isSequence"`
-	IsDeprecated bool                    `json:"isDeprecated"`
-	Constraints  *NcParameterConstraints `json:"constraints"`
+	ID           NcPropertyId `json:"id"`
+	Name         string       `json:"name"`
+	TypeName     *string      `json:"typeName"`
+	IsReadOnly   bool         `json:"isReadOnly"`
+	IsNullable   bool         `json:"isNullable"`
+	IsSequence   bool         `json:"isSequence"`
+	IsDeprecated bool         `json:"isDeprecated"`
+	Constraints  any          `json:"constraints"`
 }
 
 // NcMethodDescriptor describes one class method.
@@ -114,7 +116,7 @@ type NcDatatypeDescriptor struct {
 	// the parent type.
 	IsSequence bool `json:"isSequence,omitempty"`
 
-	Constraints *NcParameterConstraints `json:"constraints,omitempty"`
+	Constraints any `json:"constraints,omitempty"`
 }
 
 // MarshalJSON emits exactly the wire shape the variant's schema

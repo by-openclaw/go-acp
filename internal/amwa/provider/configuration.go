@@ -195,6 +195,10 @@ func (o *configObject) memberDescriptor() ms05.NcBlockMemberDescriptor {
 // bundle: root block + DeviceManager + ClassManager, labelled from
 // the Node's own identity.
 func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS14ConfigurationConfig) *IS14ConfigurationServer {
+	// The vendor gain class + datatype must be in the ms05 catalogue
+	// before the ClassManager snapshots it or an instance is built.
+	registerVendorModels()
+
 	vers := is14.SupportedVersions()
 	if cfg.APIVer != "" {
 		vers = []string{cfg.APIVer}
@@ -321,6 +325,20 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 				[]string{"transmissionStatus", "essenceStatus"})
 		}
 	}
+
+	// The DhsGainControl worker carries the model's constraint surface
+	// (all three MS-05 levels, declared AND enforced — vendor_gain.go).
+	gain, err5 := newConfigObject(vendorClassID, nextOid, []string{"root", vendorRole}, map[string]any{
+		"userLabel":                  "Gain control",
+		"enabled":                    true,
+		"channelLabel":               "Gain",
+		"gainDb":                     0.0,
+		"runtimePropertyConstraints": vendorRuntimeConstraints(),
+	})
+	if err5 != nil {
+		panic(fmt.Sprintf("provider/is14: gain worker model load: %v", err5))
+	}
+	objs = append(objs, gain)
 
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
 		members := make([]ms05.NcBlockMemberDescriptor, 0, len(objs)-1)
@@ -541,6 +559,12 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		return ms05.NcMethodStatusParameterError,
 			fmt.Errorf("property %s (%s): %s", propKey(p.desc.ID), p.desc.Name, msg)
 	}
+	if c := effectiveConstraint(obj, p); c != nil {
+		if err := ms05.CheckConstraintValue(v, c); err != nil {
+			return ms05.NcMethodStatusParameterError,
+				fmt.Errorf("property %s (%s): %v", propKey(p.desc.ID), p.desc.Name, err)
+		}
+	}
 	s.mu.Lock()
 	p.value = v
 	// A userLabel write must show up in the parent block's members
@@ -566,6 +590,37 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		s.onPropertyChanged(obj.oid, p.desc.ID, v)
 	}
 	return ms05.NcMethodStatusOk, nil
+}
+
+// effectiveConstraint resolves the constraint governing one property
+// write per the MS-05-02 hierarchy: a runtime constraint (the
+// object's runtimePropertyConstraints entry for this property id)
+// overrides the property descriptor's constraint, which overrides the
+// datatype's. Nil when no level declares one.
+func effectiveConstraint(obj *configObject, p *configProperty) any {
+	for _, rp := range obj.props {
+		if rp.desc.Name != "runtimePropertyConstraints" {
+			continue
+		}
+		list, ok := rp.value.([]any)
+		if !ok {
+			break
+		}
+		for _, c := range list {
+			if id, ok := ms05.ConstraintPropertyID(c); ok && id == p.desc.ID {
+				return c
+			}
+		}
+	}
+	if p.desc.Constraints != nil {
+		return p.desc.Constraints
+	}
+	if p.desc.TypeName != nil {
+		if dt, ok := ms05.StandardDatatype(*p.desc.TypeName); ok && dt.Constraints != nil {
+			return dt.Constraints
+		}
+	}
+	return nil
 }
 
 // typeMismatch reports (as a non-empty message) a value the
@@ -765,6 +820,24 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 
 	case "GetSequenceItem", "GetSequenceLength", "SetSequenceItem", "AddSequenceItem", "RemoveSequenceItem":
 		return s.invokeSequence(obj, md.Name, args)
+
+	case "SetGainDb":
+		// DhsGainControl 4m1 — a named write of gainDb (4p2), through
+		// the same setProperty gate (constraints included).
+		var gainArgs struct {
+			GainDb json.RawMessage `json:"gainDb"`
+		}
+		if err := json.Unmarshal(rawArgs, &gainArgs); err != nil || gainArgs.GainDb == nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "gainDb argument required")
+		}
+		p := obj.findProp("4p2")
+		if p == nil {
+			return ms05Err(400, ms05.NcMethodStatusPropertyNotImplemented, "no gainDb property on this object")
+		}
+		if st, err := s.setProperty(obj, p, gainArgs.GainDb); err != nil {
+			return ms05Err(400, st, err.Error())
+		}
+		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
 
 	case "GetMemberDescriptors":
 		return 200, ms05.NcMethodResultBlockMemberDescriptors{
@@ -1134,6 +1207,19 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				})
 				hasError = true
 				continue
+			}
+			if c := effectiveConstraint(target, p); c != nil {
+				// The restore twin of setProperty's constraint check
+				// (IS-14 test_27 offers out-of-range values here and
+				// expects them noticed, not accepted).
+				if err := ms05.CheckConstraintValue(ph.Value, c); err != nil {
+					entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+						ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeError,
+						NoticeMessage: err.Error(),
+					})
+					hasError = true
+					continue
+				}
 			}
 			if apply {
 				raw, err := json.Marshal(ph.Value)

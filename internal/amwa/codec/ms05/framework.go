@@ -32,10 +32,37 @@ var frameworkFS embed.FS
 
 var (
 	frameworkOnce sync.Once
+	frameworkMu   sync.RWMutex
 	classesByKey  map[string]NcClassDescriptor
 	datatypesByNm map[string]NcDatatypeDescriptor
 	frameworkErr  error
 )
+
+// RegisterClass adds a NON-STANDARD class (MS-05-02 authority-key
+// rules apply: the id must carry a 0 or negative authority key) to
+// the catalogue the ClassManager and descriptor endpoints publish.
+// Re-registering the same key replaces the entry — provider
+// construction may run more than once in one process (tests).
+func RegisterClass(d NcClassDescriptor) error {
+	if err := ensureFramework(); err != nil {
+		return err
+	}
+	frameworkMu.Lock()
+	defer frameworkMu.Unlock()
+	classesByKey[classKey(d.ClassID)] = d
+	return nil
+}
+
+// RegisterDatatype adds a non-standard datatype to the catalogue.
+func RegisterDatatype(d NcDatatypeDescriptor) error {
+	if err := ensureFramework(); err != nil {
+		return err
+	}
+	frameworkMu.Lock()
+	defer frameworkMu.Unlock()
+	datatypesByNm[d.Name] = d
+	return nil
+}
 
 // classKey renders a class id as its dotted string form ("1.3.1").
 func classKey(id NcClassId) string {
@@ -135,6 +162,8 @@ func StandardClass(id NcClassId) (NcClassDescriptor, bool) {
 	if ensureFramework() != nil {
 		return NcClassDescriptor{}, false
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	d, ok := classesByKey[classKey(id)]
 	return d, ok
 }
@@ -147,6 +176,8 @@ func FlattenedClass(id NcClassId) (NcClassDescriptor, bool) {
 	if ensureFramework() != nil {
 		return NcClassDescriptor{}, false
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	own, ok := classesByKey[classKey(id)]
 	if !ok {
 		return NcClassDescriptor{}, false
@@ -173,6 +204,8 @@ func StandardDatatype(name string) (NcDatatypeDescriptor, bool) {
 	if ensureFramework() != nil {
 		return NcDatatypeDescriptor{}, false
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	d, ok := datatypesByNm[name]
 	return d, ok
 }
@@ -187,6 +220,14 @@ func FlattenedDatatype(name string) (NcDatatypeDescriptor, bool) {
 	if ensureFramework() != nil {
 		return NcDatatypeDescriptor{}, false
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
+	return flattenedDatatypeLocked(name)
+}
+
+// flattenedDatatypeLocked is FlattenedDatatype's core — caller holds
+// frameworkMu (read side is enough).
+func flattenedDatatypeLocked(name string) (NcDatatypeDescriptor, bool) {
 	d, ok := datatypesByNm[name]
 	if !ok {
 		return NcDatatypeDescriptor{}, false
@@ -217,6 +258,8 @@ func FlattenedDatatypes() []NcDatatypeDescriptor {
 	if ensureFramework() != nil {
 		return nil
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	names := make([]string, 0, len(datatypesByNm))
 	for n := range datatypesByNm {
 		names = append(names, n)
@@ -224,7 +267,7 @@ func FlattenedDatatypes() []NcDatatypeDescriptor {
 	sort.Strings(names)
 	out := make([]NcDatatypeDescriptor, 0, len(names))
 	for _, n := range names {
-		d, _ := FlattenedDatatype(n)
+		d, _ := flattenedDatatypeLocked(n)
 		out = append(out, d)
 	}
 	return out
@@ -236,6 +279,8 @@ func StandardClasses() []NcClassDescriptor {
 	if ensureFramework() != nil {
 		return nil
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	keys := make([]string, 0, len(classesByKey))
 	for k := range classesByKey {
 		keys = append(keys, k)
@@ -254,6 +299,8 @@ func StandardDatatypes() []NcDatatypeDescriptor {
 	if ensureFramework() != nil {
 		return nil
 	}
+	frameworkMu.RLock()
+	defer frameworkMu.RUnlock()
 	names := make([]string, 0, len(datatypesByNm))
 	for n := range datatypesByNm {
 		names = append(names, n)
