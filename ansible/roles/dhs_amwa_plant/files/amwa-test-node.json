@@ -948,7 +948,7 @@
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0024",
       "version": "1777651501:0",
       "label": "dhs-receiver-min",
-      "description": "MIN archetype: only required fields, caps limited to media_types, IS-05 factory-fresh",
+      "description": "MIN archetype: required fields + one BCP-004-01 constraint_set (IS-11 test_04_02_02 reads constraint_sets on EVERY receiver, so a fully caps-less receiver would mark the whole check untestable), IS-05 factory-fresh",
       "tags": {},
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "transport": "urn:x-nmos:transport:rtp",
@@ -960,6 +960,30 @@
         "media_types": [
           "audio/L24",
           "audio/L16"
+        ],
+        "version": "1777651501:0",
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:meta:label": "48 kHz stereo audio",
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "audio/L24",
+                "audio/L16"
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "numerator": 48000,
+                  "denominator": 1
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:channel_count": {
+              "minimum": 2,
+              "maximum": 2
+            }
+          }
         ]
       },
       "subscription": {
@@ -1198,6 +1222,20 @@
           "state": "signal_present"
         },
         "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
+      },
+      {
+        "id": "aaaa1111-0000-4000-8000-000000000002",
+        "version": "1:0",
+        "label": "dhs-input-aes-1",
+        "description": "AES3 audio input without EDID support (IS-11 non-EDID surface)",
+        "tags": {},
+        "base_edid_support": false,
+        "connected": true,
+        "edid_support": false,
+        "status": {
+          "state": "signal_present"
+        },
+        "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
       }
     ],
     "outputs": [
@@ -1213,12 +1251,40 @@
           "state": "no_signal"
         },
         "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
+      },
+      {
+        "id": "bbbb2222-0000-4000-8000-000000000002",
+        "version": "1:0",
+        "label": "dhs-output-hdmi-2",
+        "description": "connected HDMI output with a downstream EDID (IS-11 EDID surface)",
+        "tags": {},
+        "connected": true,
+        "edid_support": true,
+        "status": {
+          "state": "signal_present"
+        },
+        "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
       }
     ],
     "sender_inputs": {
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0005": [
+        "aaaa1111-0000-4000-8000-000000000001"
+      ],
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0023": [
+        "aaaa1111-0000-4000-8000-000000000001"
+      ],
       "2c47bf5e-1b2c-4abc-9def-deadbeef0025": [
         "aaaa1111-0000-4000-8000-000000000001"
+      ],
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0102": [
+        "aaaa1111-0000-4000-8000-000000000001"
+      ],
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0302": [
+        "aaaa1111-0000-4000-8000-000000000001"
       ]
+    },
+    "edids": {
+      "bbbb2222-0000-4000-8000-000000000002": "AP///////wAQrAAAQlkAAAAAAQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKs="
     },
     "receiver_outputs": {
       "2c47bf5e-1b2c-4abc-9def-deadbeef0024": [
