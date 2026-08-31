@@ -273,6 +273,10 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	addMonitor := func(classID ms05.NcClassId, role, resourceType, resourceID, label string, statusProps []string) {
 		seed := map[string]any{
 			"userLabel": label,
+			// NcObject.enabled is non-nullable — IS-14's bulkProperties
+			// round walks every model object and fails a null here
+			// (test_10/test_11 caught the omission on monitors).
+			"enabled": true,
 			"touchpoints": []any{map[string]any{
 				"contextNamespace": "x-nmos",
 				"resource": map[string]any{
