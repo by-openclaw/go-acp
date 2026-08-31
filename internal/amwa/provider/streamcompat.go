@@ -155,6 +155,12 @@ type IS11StreamCompatServer struct {
 	// bundle copies for inputs (initial base) and outputs (fixed).
 	baseEDID map[string][]byte
 	outEDID  map[string][]byte
+	// edidEpoch counts constraint re-negotiations per input. IS-11's
+	// model is that applying Active Constraints to a Sender changes
+	// what its Inputs advertise upstream — the Effective EDID moves
+	// (test_02_03_05_*). The epoch drives a deterministic variant of
+	// the base/default blob.
+	edidEpoch map[string]uint32
 
 	// senderActive reports whether the IS-05 layer has the sender
 	// enabled — the RAML's 423 "if the Sender is active" gate.
@@ -184,6 +190,7 @@ func NewIS11StreamCompatServer(logger *slog.Logger, bundle *NodeConfig, cfg IS11
 		supported:       map[string][]string{},
 		baseEDID:        map[string][]byte{},
 		outEDID:         map[string][]byte{},
+		edidEpoch:       map[string]uint32{},
 	}
 	if bundle != nil {
 		for i := range bundle.Senders {
@@ -409,6 +416,7 @@ func (s *IS11StreamCompatServer) putActive(id string, r *stdhttp.Request) (int, 
 	if s.onSenderConstraintsChanged != nil {
 		s.onSenderConstraintsChanged(id)
 	}
+	s.bumpConstrainedInputs(id)
 	return 200, a, nil
 }
 
@@ -427,6 +435,7 @@ func (s *IS11StreamCompatServer) deleteActive(id string) (int, any, error) {
 	if s.onSenderConstraintsChanged != nil {
 		s.onSenderConstraintsChanged(id)
 	}
+	s.bumpConstrainedInputs(id)
 	return 200, is11.ActiveConstraints{ConstraintSets: []is11.ConstraintSet{}}, nil
 }
 
@@ -488,11 +497,56 @@ func (s *IS11StreamCompatServer) mountInput(srv *httpsession.Server, p, id strin
 		// suite fails test_01_01/01_02/01_06 on it. Serving a distinct
 		// default also makes "Effective changes when Base changes"
 		// observable.
-		if blob, has := s.baseEDID[id]; has {
-			return 200, &httpsession.RawBody{ContentType: "application/octet-stream", Body: blob}, nil
+		blob, has := s.baseEDID[id]
+		if !has {
+			blob = defaultEDID()
 		}
-		return 200, &httpsession.RawBody{ContentType: "application/octet-stream", Body: defaultEDID()}, nil
+		return 200, &httpsession.RawBody{ContentType: "application/octet-stream",
+			Body: edidVariant(blob, s.edidEpoch[id])}, nil
 	})
+}
+
+// edidVariant derives the constraint-epoch view of an EDID: the block-0
+// serial-number bytes carry the epoch and the block checksum is
+// recomputed, so each re-negotiation serves a DIFFERENT but still
+// structurally valid EDID. Epoch 0 is the blob untouched.
+func edidVariant(blob []byte, epoch uint32) []byte {
+	if epoch == 0 || len(blob) < 128 {
+		return blob
+	}
+	out := append([]byte(nil), blob...)
+	out[12], out[13], out[14], out[15] = byte(epoch), byte(epoch>>8), byte(epoch>>16), byte(epoch>>24)
+	var sum byte
+	for _, v := range out[:127] {
+		sum += v
+	}
+	out[127] = byte(256-int(sum)) & 0xFF
+	return out
+}
+
+// bumpConstrainedInputs advances the EDID epoch + version of every
+// Input feeding one Sender — the upstream face of a constraints
+// change (Behaviour.md: the device re-negotiates what it can accept).
+func (s *IS11StreamCompatServer) bumpConstrainedInputs(senderID string) {
+	s.mu.Lock()
+	devs := map[string]bool{}
+	for _, inID := range s.senderInputs[senderID] {
+		in, ok := s.inputs[inID]
+		if !ok {
+			continue
+		}
+		s.edidEpoch[inID]++
+		in.Version = is05.FormatTAINow(time.Now())
+		if in.DeviceID != "" {
+			devs[in.DeviceID] = true
+		}
+	}
+	s.mu.Unlock()
+	if s.onDeviceChanged != nil {
+		for dev := range devs {
+			s.onDeviceChanged(dev)
+		}
+	}
 }
 
 // putBaseEDID applies a Base EDID (RAML: 204 / 400 invalid / 405
