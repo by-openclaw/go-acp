@@ -43,6 +43,7 @@ import (
 	stdhttp "net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -226,6 +227,33 @@ func deriveIO(bundle *NodeConfig) is08.IO {
 	for id, o := range out.Outputs {
 		if o.Caps != nil {
 			o.Caps.RoutableInputs = routableInputs(out.Inputs)
+			out.Outputs[id] = o
+		}
+	}
+
+	// Declared caps override the permissive defaults — the bundle's
+	// channel_mapping seed is how a device says "this input routes in
+	// hardware blocks" or "this output only takes these inputs".
+	if bundle.ChannelMapping != nil {
+		for id, seed := range bundle.ChannelMapping.Inputs {
+			in, ok := out.Inputs[id]
+			if !ok || seed == nil || in.Caps == nil {
+				continue
+			}
+			if seed.Reordering != nil {
+				in.Caps.Reordering = *seed.Reordering
+			}
+			if seed.BlockSize != nil {
+				in.Caps.BlockSize = *seed.BlockSize
+			}
+			out.Inputs[id] = in
+		}
+		for id, seed := range bundle.ChannelMapping.Outputs {
+			o, ok := out.Outputs[id]
+			if !ok || seed == nil || o.Caps == nil || seed.RoutableInputs == nil {
+				continue
+			}
+			o.Caps.RoutableInputs = seed.RoutableInputs
 			out.Outputs[id] = o
 		}
 	}
@@ -656,6 +684,112 @@ func (s *IS08ChannelMappingServer) validateActionLocked(action is08.MapEntries) 
 			if *entry.ChannelIndex < 0 || *entry.ChannelIndex >= len(in.Channels) {
 				return fmt.Errorf("input %q has no channel %d", *entry.Input, *entry.ChannelIndex)
 			}
+		}
+		if err := validateOutputCapsLocked(out, chans, s.io.Inputs); err != nil {
+			return fmt.Errorf("output %q: %w", outID, err)
+		}
+	}
+	return nil
+}
+
+// validateOutputCapsLocked enforces the declared IS-08 caps on one
+// output's slice of an action. The rules mirror what the AMWA suite's
+// own route builder produces as LEGAL (is08/active.py
+// getRouteBlockActionsForInputOutput) and what its constraint tests
+// attack (IS-08-01 test_13/14/15):
+//
+//   - routable_inputs is authoritative: an input absent from the list
+//     cannot be routed, and a null entry is what permits unrouting;
+//   - block_size B > 1 routes whole blocks: every touched output
+//     block must be fully specified from ONE aligned input block
+//     (base % B == 0), one input channel per output channel;
+//   - reordering=false means the device is a block selector: the
+//     whole action routes ONE aligned input block, order preserved
+//     (input offset == output offset within the block). With
+//     reordering=true the block may be permuted and different output
+//     blocks may take different input blocks.
+func validateOutputCapsLocked(out is08.Output, chans map[string]is08.MapEntry, inputs map[string]is08.Input) error {
+	if out.Caps == nil {
+		return nil
+	}
+	routable := map[string]bool{}
+	nullOK := false
+	for _, r := range out.Caps.RoutableInputs {
+		if r == nil {
+			nullOK = true
+			continue
+		}
+		routable[*r] = true
+	}
+
+	// Group the routed entries by output block per the routed input's
+	// block size, tracking the one input block a no-reordering input
+	// is allowed.
+	type blockEntry struct {
+		outOffset int
+		inCh      int
+	}
+	blocks := map[string][]blockEntry{} // key = inputID/blockStart
+	noReorderBase := map[string]int{}   // inputID -> required aligned base
+
+	for idx, entry := range chans {
+		n, _ := strconv.Atoi(idx)
+		if entry.Input == nil && entry.ChannelIndex == nil {
+			if !nullOK && len(out.Caps.RoutableInputs) > 0 {
+				return fmt.Errorf("channel %s: unrouting is not permitted (no null entry in routable_inputs)", idx)
+			}
+			continue
+		}
+		if len(out.Caps.RoutableInputs) > 0 && !routable[*entry.Input] {
+			return fmt.Errorf("channel %s: input %q is not in routable_inputs", idx, *entry.Input)
+		}
+		in, ok := inputs[*entry.Input]
+		if !ok || in.Caps == nil {
+			continue
+		}
+		b := in.Caps.BlockSize
+		if b < 1 {
+			b = 1
+		}
+		c := *entry.ChannelIndex
+		if b > 1 {
+			blockStart := (n / b) * b
+			key := *entry.Input + "/" + strconv.Itoa(blockStart)
+			blocks[key] = append(blocks[key], blockEntry{outOffset: n - blockStart, inCh: c})
+		}
+		if !in.Caps.Reordering {
+			base := c - (n % b)
+			if base%b != 0 {
+				return fmt.Errorf("channel %s: input %q routes without re-ordering — input channel %d does not align to a block of %d", idx, *entry.Input, c, b)
+			}
+			if prev, seen := noReorderBase[*entry.Input]; seen && prev != base {
+				return fmt.Errorf("input %q does not support re-ordering: all channels must route from one input block (%d vs %d)", *entry.Input, prev, base)
+			}
+			noReorderBase[*entry.Input] = base
+		}
+	}
+
+	// Block completeness + one aligned input block per output block.
+	for key, entries := range blocks {
+		inID := key[:strings.LastIndexByte(key, '/')]
+		b := inputs[inID].Caps.BlockSize
+		if len(entries) != b {
+			return fmt.Errorf("input %q routes in blocks of %d: touched output block is only %d/%d specified", inID, b, len(entries), b)
+		}
+		seen := map[int]bool{}
+		base := -1
+		for _, e := range entries {
+			bs := (e.inCh / b) * b
+			if base == -1 {
+				base = bs
+			} else if base != bs {
+				return fmt.Errorf("input %q routes in blocks of %d: output block mixes input blocks %d and %d", inID, b, base, bs)
+			}
+			off := e.inCh - bs
+			if seen[off] {
+				return fmt.Errorf("input %q routes in blocks of %d: input channel %d routed twice into one block", inID, b, e.inCh)
+			}
+			seen[off] = true
 		}
 	}
 	return nil

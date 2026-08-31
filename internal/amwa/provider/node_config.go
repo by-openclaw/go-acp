@@ -47,6 +47,13 @@ type NodeConfig struct {
 	// without it serves an empty (but valid) IS-11 tree.
 	StreamCompatibility *StreamCompatSeed `json:"stream_compatibility,omitempty"`
 
+	// ChannelMapping seeds the IS-08 caps per input/output id. Not
+	// derivable from IS-04: whether a device can re-order channels or
+	// routes them in hardware blocks is channel-mapping vocabulary
+	// only. Optional — inputs default to {reordering:true, block_size:1}
+	// and outputs to the unrestricted routable list.
+	ChannelMapping *ChannelMappingSeed `json:"channel_mapping,omitempty"`
+
 	// Connection seeds the IS-05 boot state per endpoint id.
 	//
 	// Without it every endpoint boots master_enable=false with one leg
@@ -58,6 +65,62 @@ type NodeConfig struct {
 	// keyed by resource id rather than extra keys smuggled into the
 	// IS-04 resources (those are schema-checked on the wire).
 	Connection *ConnectionSeed `json:"connection,omitempty"`
+}
+
+// ChannelMappingSeed maps IS-08 io ids (the IS-04 resource ids the io
+// view derives from) to declared caps.
+type ChannelMappingSeed struct {
+	Inputs  map[string]*ChannelMappingInputSeed  `json:"inputs,omitempty"`
+	Outputs map[string]*ChannelMappingOutputSeed `json:"outputs,omitempty"`
+}
+
+// ChannelMappingInputSeed declares one input's routing constraints.
+type ChannelMappingInputSeed struct {
+	Reordering *bool `json:"reordering,omitempty"`
+	BlockSize  *int  `json:"block_size,omitempty"`
+}
+
+// ChannelMappingOutputSeed restricts which inputs an output accepts.
+// A null entry in the list keeps unrouting legal (IS-08 spells
+// "may be left unrouted" exactly that way).
+type ChannelMappingOutputSeed struct {
+	RoutableInputs []*string `json:"routable_inputs,omitempty"`
+}
+
+// validateChannelMappingSeed rejects seeds naming unknown io ids or
+// declaring impossible caps. The io ids are checked against the SAME
+// derivation deriveIO uses, so a typo fails at load rather than
+// surfacing as an AMWA CouldNotTest four suites later.
+func validateChannelMappingSeed(cfg *NodeConfig) error {
+	if cfg.ChannelMapping == nil {
+		return nil
+	}
+	io := deriveIO(cfg)
+	for id, seed := range cfg.ChannelMapping.Inputs {
+		if _, ok := io.Inputs[id]; !ok {
+			return fmt.Errorf("channel_mapping.inputs[%q]: no such channel-mapping input derives from the bundle", id)
+		}
+		if seed != nil && seed.BlockSize != nil && *seed.BlockSize < 1 {
+			return fmt.Errorf("channel_mapping.inputs[%q].block_size %d: must be >= 1", id, *seed.BlockSize)
+		}
+	}
+	for id, seed := range cfg.ChannelMapping.Outputs {
+		if _, ok := io.Outputs[id]; !ok {
+			return fmt.Errorf("channel_mapping.outputs[%q]: no such channel-mapping output derives from the bundle", id)
+		}
+		if seed == nil {
+			continue
+		}
+		for i, in := range seed.RoutableInputs {
+			if in == nil {
+				continue
+			}
+			if _, ok := io.Inputs[*in]; !ok {
+				return fmt.Errorf("channel_mapping.outputs[%q].routable_inputs[%d] %q: not an input of this bundle", id, i, *in)
+			}
+		}
+	}
+	return nil
 }
 
 // ConnectionSeed maps IS-04 resource ids to their boot connection
@@ -197,5 +260,8 @@ func validateBundle(cfg *NodeConfig) error {
 			return fmt.Errorf("receivers[%d].device_id %q: not declared under devices[]", i, r.DeviceID)
 		}
 	}
-	return validateConnectionSeed(cfg)
+	if err := validateConnectionSeed(cfg); err != nil {
+		return err
+	}
+	return validateChannelMappingSeed(cfg)
 }

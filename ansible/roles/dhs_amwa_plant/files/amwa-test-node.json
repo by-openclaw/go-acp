@@ -81,6 +81,7 @@
         "2c47bf5e-1b2c-4abc-9def-deadcfff000e",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0023",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0025",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0034",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0102",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0202",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0302"
@@ -278,6 +279,66 @@
           "symbol": "R"
         }
       ]
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0031",
+      "version": "1777651501:0",
+      "label": "dhs-source-block-in",
+      "description": "4-channel internally-generated input routed in hardware blocks of 2 without re-ordering (IS-08 constraint surface)",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Block A Left",
+          "symbol": "L"
+        },
+        {
+          "label": "Block A Right",
+          "symbol": "R"
+        },
+        {
+          "label": "Block B Left",
+          "symbol": "Lt"
+        },
+        {
+          "label": "Block B Right",
+          "symbol": "Rt"
+        }
+      ]
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0032",
+      "version": "1777651501:0",
+      "label": "dhs-source-wide-out",
+      "description": "4-channel audio source backing the constrained wide sender (IS-08 constraint surface)",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Out 1",
+          "symbol": "L"
+        },
+        {
+          "label": "Out 2",
+          "symbol": "R"
+        },
+        {
+          "label": "Out 3",
+          "symbol": "Lt"
+        },
+        {
+          "label": "Out 4",
+          "symbol": "Rt"
+        }
+      ]
     }
   ],
   "flows": [
@@ -464,6 +525,23 @@
       "tags": {},
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0027",
+      "parents": [],
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/L24",
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
+      "bit_depth": 24
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0033",
+      "version": "1777651501:0",
+      "label": "dhs-flow-wide",
+      "description": "4-channel audio flow backing the constrained wide sender",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0032",
       "parents": [],
       "format": "urn:x-nmos:format:audio",
       "media_type": "audio/L24",
@@ -692,6 +770,24 @@
       "subscription": {
         "receiver_id": null,
         "active": true
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0034",
+      "version": "1777651501:0",
+      "label": "dhs-sender-wide",
+      "description": "4-channel sender fed by the constrained wide output (IS-08 constraint surface)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0033",
+      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0034/transportfile",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": false
       }
     }
   ],
@@ -947,6 +1043,22 @@
       }
     }
   ],
+  "channel_mapping": {
+    "inputs": {
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0031": {
+        "reordering": false,
+        "block_size": 2
+      }
+    },
+    "outputs": {
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0032": {
+        "routable_inputs": [
+          "2c47bf5e-1b2c-4abc-9def-deadbeef0031",
+          null
+        ]
+      }
+    }
+  },
   "event_types": {
     "2c47bf5e-1b2c-4abc-9def-deadbeef0007": {
       "type": "boolean"
