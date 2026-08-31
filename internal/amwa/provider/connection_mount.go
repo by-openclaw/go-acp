@@ -202,7 +202,12 @@ func rationalEnumFirst(v any) *is04.GrainRate {
 	if !ok {
 		return nil
 	}
-	den := 1
+	// Mirror the constraint's own shape: a denominator the controller
+	// left out stays out (omitempty; the spec default is 1). The AMWA
+	// suite compares the flow's rational to its constraint value as a
+	// whole JSON object, so an added "denominator": 1 reads as a
+	// mismatch.
+	den := 0
 	if d, ok := e["denominator"].(float64); ok && d > 0 {
 		den = int(d)
 	}
