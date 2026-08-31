@@ -234,6 +234,11 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 		if classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2}) {
 			return s.methodMonitor(obj, cmd.MethodID)
 		}
+		// DhsGainControl.SetGainDb shares the 4m1 slot on a different
+		// class branch.
+		if cmd.MethodID == (is12.MethodID{Level: 4, Index: 1}) && classKey(obj.classID) == classKey(vendorClassID) {
+			return s.methodSetGainDb(obj, cmd.Arguments)
+		}
 	}
 	return ncpErr(ms05.NcMethodStatusMethodNotImplemented,
 		fmt.Sprintf("method %dm%d is not implemented on oid %d", cmd.MethodID.Level, cmd.MethodID.Index, cmd.OID))
@@ -347,6 +352,30 @@ func (s *IS12NCPServer) methodSet(obj *configObject, args json.RawMessage) is12.
 	// setProperty locks the store itself and fires the model-changed +
 	// property-changed hooks on success.
 	if st, err := s.config.setProperty(obj, p, a.Value); err != nil {
+		return ncpErr(st, err.Error())
+	}
+	return ncpOK()
+}
+
+// methodSetGainDb implements DhsGainControl.SetGainDb (4m1) — a named
+// write of gainDb (4p2) through the shared setProperty gate, so the
+// parameter constraints it declares are enforced for real.
+func (s *IS12NCPServer) methodSetGainDb(obj *configObject, args json.RawMessage) is12.MethodResult {
+	var a struct {
+		GainDb json.RawMessage `json:"gainDb"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return ncpErr(ms05.NcMethodStatusParameterError, "SetGainDb: "+err.Error())
+	}
+	if a.GainDb == nil {
+		return ncpErr(ms05.NcMethodStatusParameterError, "SetGainDb: gainDb argument required")
+	}
+	p := obj.findProp("4p2")
+	if p == nil {
+		return ncpErr(ms05.NcMethodStatusPropertyNotImplemented,
+			fmt.Sprintf("no gainDb property on oid %d", obj.oid))
+	}
+	if st, err := s.config.setProperty(obj, p, a.GainDb); err != nil {
 		return ncpErr(st, err.Error())
 	}
 	return ncpOK()
