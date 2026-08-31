@@ -93,7 +93,11 @@ func bearerToken(r *stdhttp.Request) string {
 
 // Check evaluates one request. ok=true means proceed; otherwise the
 // caller writes body with the given status after applying headers.
-func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]string, body ErrorBody, ok bool) {
+// clientID carries the authenticated client's identity (IS-10
+// client_id, with azp already normalised into it by the codec) so
+// handlers can enforce BCP-003-02 per-client resource ownership;
+// empty on the token-less always-readable paths.
+func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]string, body ErrorBody, clientID string, ok bool) {
 	log := g.Logger
 	if log == nil {
 		log = slog.Default()
@@ -102,7 +106,7 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 	if leeway == 0 {
 		leeway = 30 * time.Second
 	}
-	deny := func(st int, authenticate, debug string) (int, map[string]string, ErrorBody, bool) {
+	deny := func(st int, authenticate, debug string) (int, map[string]string, ErrorBody, string, bool) {
 		reason := "Unauthorized"
 		if st == stdhttp.StatusForbidden {
 			reason = "Forbidden"
@@ -114,18 +118,18 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 		if st == stdhttp.StatusServiceUnavailable {
 			h["Retry-After"] = retryAfterSeconds
 		}
-		return st, h, ErrorBody{Code: st, Error: reason, Debug: debug}, false
+		return st, h, ErrorBody{Code: st, Error: reason, Debug: debug}, "", false
 	}
 
 	// CORS preflight: credential-less by browser design.
 	if r.Method == stdhttp.MethodOptions {
-		return 0, nil, ErrorBody{}, true
+		return 0, nil, ErrorBody{}, "", true
 	}
 
 	// The two always-readable base paths need no token at all.
 	p := strings.TrimSuffix(r.URL.Path, "/")
 	if (p == "" || p == "/x-nmos") && (r.Method == stdhttp.MethodGet || r.Method == stdhttp.MethodHead) {
-		return 0, nil, ErrorBody{}, true
+		return 0, nil, ErrorBody{}, "", true
 	}
 
 	tok := bearerToken(r)
@@ -183,7 +187,25 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 	}
 	log.Debug("auth: authorized", "method", r.Method, "path", r.URL.Path,
 		"iss", claims.Iss, "sub", claims.Sub, "client", claims.ClientID)
-	return 0, nil, ErrorBody{}, true
+	return 0, nil, ErrorBody{}, claims.ClientID, true
+}
+
+// clientIDKey is the context key WithClientID/ClientIDFrom share.
+type clientIDKey struct{}
+
+// WithClientID stamps the authenticated IS-10 client identity on a
+// request context.
+func WithClientID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, clientIDKey{}, id)
+}
+
+// ClientIDFrom reads the authenticated client identity, "" when the
+// request was not token-authenticated (auth off, or exempt path).
+func ClientIDFrom(ctx context.Context) string {
+	if v, ok := ctx.Value(clientIDKey{}).(string); ok {
+		return v
+	}
+	return ""
 }
 
 // startIssuerFetch dedupes CONCURRENT fetches per issuer only — the

@@ -72,6 +72,14 @@ type Store struct {
 	// this map every tick.
 	health map[string]time.Time
 
+	// owners maps a resource id to the IS-10 client_id that registered
+	// it (BCP-003-02: the Registration API rejects updates from a
+	// DIFFERENT client with 403 — IS-04-02 test_33/test_33_1). Entries
+	// are overwritten on every authenticated create, so a stale entry
+	// left by an evicted resource can never block a re-registration.
+	// Empty when auth is off.
+	owners map[string]string
+
 	// updateTSByType tracks the per-resource last-update TAI timestamp
 	// per IS-04 §6.1.6 — Query API pagination indexes resources by
 	// this. Keyed type → id → "<secs>:<nanos>". Maintained on every
@@ -108,6 +116,7 @@ func NewStore() *Store {
 		senders:        make(map[string]is04.Sender),
 		receivers:      make(map[string]is04.Receiver),
 		health:         make(map[string]time.Time),
+		owners:         make(map[string]string),
 		updateTSByType: make(map[is04.ResourceType]map[string]string, 6),
 		apiVerByType:   make(map[is04.ResourceType]map[string]string, 6),
 	}
@@ -543,6 +552,21 @@ func (s *Store) HealthFor(nodeID string) (time.Time, error) {
 		return time.Time{}, ErrNotFound
 	}
 	return t, nil
+}
+
+// Owner returns the client_id that registered a resource, "" when
+// unknown (auth off, or registered before auth was armed).
+func (s *Store) Owner(id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.owners[id]
+}
+
+// SetOwner records the registering client for a resource.
+func (s *Store) SetOwner(id, client string) {
+	s.mu.Lock()
+	s.owners[id] = client
+	s.mu.Unlock()
 }
 
 // EvictStale walks the health map and DeleteNodes any whose last
