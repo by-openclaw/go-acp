@@ -228,6 +228,11 @@ type IS04NodeServer struct {
 	// Nil disables it.
 	streamCompat *IS11StreamCompatServer
 
+	// flowOriginals remembers each Flow's bundle-authored media
+	// parameters so removing Active Constraints restores them
+	// (adaptFlowToConstraints).
+	flowOriginals map[string]flowEssence
+
 	// configuration is the IS-14 Device Configuration API. Nil
 	// disables it.
 	configuration *IS14ConfigurationServer

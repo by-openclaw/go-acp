@@ -20,6 +20,7 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
+	"dhs/internal/amwa/codec/is11"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -94,6 +95,7 @@ func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
 	}
 	s.streamCompat.onSenderConstraintsChanged = s.bumpSenderVersion
 	s.streamCompat.onDeviceChanged = func(string) { s.bumpDeviceVersions() }
+	s.streamCompat.onFlowConstraintsApplied = s.adaptFlowToConstraints
 	s.streamCompat.Mount(srv)
 	host := s.controlHost()
 	for i := range s.bundle.Devices {
@@ -107,6 +109,104 @@ func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
 			upsertControl(&d.Controls, ctrl)
 		}
 	}
+}
+
+// flowEssence remembers a Flow's bundle-authored media parameters so
+// removing Active Constraints restores them.
+type flowEssence struct {
+	grainRate  *is04.GrainRate
+	sampleRate *is04.GrainRate
+}
+
+// adaptFlowToConstraints re-configures the Sender's Flow so its
+// essence satisfies the Active Constraints — IS-11's model of a
+// device re-negotiating what it emits (Behaviour.md; the AMWA suite
+// reads the flow's grain_rate/sample_rate back and expects the
+// constrained value, test_02_03_05_*). The empty shape restores the
+// bundle's original parameters.
+func (s *IS04NodeServer) adaptFlowToConstraints(senderID string, a is11.ActiveConstraints) {
+	if s.bundle == nil {
+		return
+	}
+	var fl *is04.Flow
+	for i := range s.bundle.Senders {
+		if s.bundle.Senders[i].ID != senderID || s.bundle.Senders[i].FlowID == nil {
+			continue
+		}
+		for j := range s.bundle.Flows {
+			if s.bundle.Flows[j].ID == *s.bundle.Senders[i].FlowID {
+				fl = &s.bundle.Flows[j]
+			}
+		}
+	}
+	if fl == nil {
+		return
+	}
+	if s.flowOriginals == nil {
+		s.flowOriginals = map[string]flowEssence{}
+	}
+	if _, ok := s.flowOriginals[fl.ID]; !ok {
+		s.flowOriginals[fl.ID] = flowEssence{grainRate: fl.GrainRate, sampleRate: fl.SampleRate}
+	}
+
+	var gr, sr *is04.GrainRate
+	for _, cs := range a.ConstraintSets {
+		if en, ok := cs["urn:x-nmos:cap:meta:enabled"].(bool); ok && !en {
+			continue
+		}
+		if gr == nil {
+			gr = rationalEnumFirst(cs["urn:x-nmos:cap:format:grain_rate"])
+		}
+		if sr == nil {
+			sr = rationalEnumFirst(cs["urn:x-nmos:cap:format:sample_rate"])
+		}
+	}
+	orig := s.flowOriginals[fl.ID]
+	if fl.GrainRate != nil || gr != nil {
+		if gr != nil {
+			fl.GrainRate = gr
+		} else {
+			fl.GrainRate = orig.grainRate
+		}
+	}
+	if fl.SampleRate != nil || sr != nil {
+		if sr != nil {
+			fl.SampleRate = sr
+		} else {
+			fl.SampleRate = orig.sampleRate
+		}
+	}
+	fl.Version = is05.FormatTAINow(time.Now())
+	if s.connection != nil {
+		snap := *fl
+		s.connection.notifyChanged(is04.ResourceFlow, &snap)
+	}
+}
+
+// rationalEnumFirst pulls the first rational out of a parameter
+// constraint's enum member ({"enum":[{"numerator":..,"denominator":..}]}).
+func rationalEnumFirst(v any) *is04.GrainRate {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	enum, ok := m["enum"].([]any)
+	if !ok || len(enum) == 0 {
+		return nil
+	}
+	e, ok := enum[0].(map[string]any)
+	if !ok {
+		return nil
+	}
+	num, ok := e["numerator"].(float64)
+	if !ok {
+		return nil
+	}
+	den := 1
+	if d, ok := e["denominator"].(float64); ok && d > 0 {
+		den = int(d)
+	}
+	return &is04.GrainRate{Numerator: int(num), Denominator: den}
 }
 
 // bumpSenderVersion stamps a fresh IS-04 version on one Sender and
