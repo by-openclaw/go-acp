@@ -1149,7 +1149,7 @@
     }
   },
   "events": {
-    "mqtt_broker": "10.6.250.104:1883"
+    "mqtt_broker": "10.6.250.104:1884"
   },
   "event_types": {
     "2c47bf5e-1b2c-4abc-9def-deadbeef0051": {
@@ -1232,7 +1232,7 @@
         "transport_params": [
           {
             "destination_host": "10.6.250.104",
-            "destination_port": 1883
+            "destination_port": 1884
           }
         ]
       },
