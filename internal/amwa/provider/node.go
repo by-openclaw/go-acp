@@ -233,6 +233,10 @@ type IS04NodeServer struct {
 	// (adaptFlowToConstraints).
 	flowOriginals map[string]flowEssence
 
+	// mqttEvents publishes IS-07 state over MQTT (nil when the bundle
+	// declares no MQTT event sender).
+	mqttEvents *mqttEventBridge
+
 	// configuration is the IS-14 Device Configuration API. Nil
 	// disables it.
 	configuration *IS14ConfigurationServer
@@ -387,6 +391,16 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,
 		})
+		// The MQTT transport side: only built when the bundle declares
+		// an MQTT event sender; publishes retained state + connection
+		// status per activation and per state change.
+		s.mqttEvents = newMQTTEventBridge(logger, fullBundle, s.events.StateMessage)
+		if s.mqttEvents != nil {
+			s.events.onStateChanged = s.mqttEvents.OnStateChanged
+			if s.connection != nil {
+				s.connection.onSenderActivated = s.mqttEvents.OnSenderActivation
+			}
+		}
 	}
 	return s, nil
 }
@@ -673,6 +687,10 @@ func (s *IS04NodeServer) Stop() error {
 	}
 	if s.regClient != nil {
 		_ = s.regClient.Close()
+	}
+	if s.mqttEvents != nil {
+		s.mqttEvents.Close()
+		s.mqttEvents = nil
 	}
 	if s.systemWatcher != nil {
 		_ = s.systemWatcher.Close()

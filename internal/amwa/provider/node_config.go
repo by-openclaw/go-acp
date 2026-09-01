@@ -48,6 +48,12 @@ type NodeConfig struct {
 	// without it serves an empty (but valid) IS-11 tree.
 	StreamCompatibility *StreamCompatSeed `json:"stream_compatibility,omitempty"`
 
+	// Events seeds the IS-07 transport side that IS-04 cannot express:
+	// where the MQTT broker lives. A bundle that declares an event
+	// sender with transport urn:x-nmos:transport:mqtt names its broker
+	// here; "auto" transport params then resolve against it.
+	Events *EventsSeed `json:"events,omitempty"`
+
 	// ChannelMapping seeds the IS-08 caps per input/output id. Not
 	// derivable from IS-04: whether a device can re-order channels or
 	// routes them in hardware blocks is channel-mapping vocabulary
@@ -66,6 +72,14 @@ type NodeConfig struct {
 	// keyed by resource id rather than extra keys smuggled into the
 	// IS-04 resources (those are schema-checked on the wire).
 	Connection *ConnectionSeed `json:"connection,omitempty"`
+}
+
+// EventsSeed carries the IS-07 MQTT transport configuration.
+type EventsSeed struct {
+	// MQTTBroker is the broker's host:port. Used to resolve "auto"
+	// destination_host/port on MQTT senders and as the dial target of
+	// the node's own publisher.
+	MQTTBroker string `json:"mqtt_broker,omitempty"`
 }
 
 // ChannelMappingSeed maps IS-08 io ids (the IS-04 resource ids the io

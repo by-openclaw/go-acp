@@ -82,6 +82,7 @@
         "2c47bf5e-1b2c-4abc-9def-deadbeef0023",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0025",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0034",
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0053",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0102",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0202",
         "2c47bf5e-1b2c-4abc-9def-deadbeef0302"
@@ -339,6 +340,19 @@
           "symbol": "Rt"
         }
       ]
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0051",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-tally-mqtt",
+      "description": "boolean tally source carried over the MQTT event transport",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
     }
   ],
   "flows": [
@@ -550,6 +564,19 @@
         "denominator": 1
       },
       "bit_depth": 24
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0052",
+      "version": "1777651501:0",
+      "label": "dhs-flow-tally-mqtt",
+      "description": "boolean tally events over MQTT",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0051",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
     }
   ],
   "senders": [
@@ -788,6 +815,24 @@
       "subscription": {
         "receiver_id": null,
         "active": false
+      }
+    },
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0053",
+      "version": "1777651501:0",
+      "label": "dhs-sender-tally-mqtt",
+      "description": "MQTT event sender for the tally-mqtt source (IS-07 MQTT transport)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0052",
+      "transport": "urn:x-nmos:transport:mqtt",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
       }
     }
   ],
@@ -1103,7 +1148,13 @@
       }
     }
   },
+  "events": {
+    "mqtt_broker": "10.6.250.104:1883"
+  },
   "event_types": {
+    "2c47bf5e-1b2c-4abc-9def-deadbeef0051": {
+      "type": "boolean"
+    },
     "2c47bf5e-1b2c-4abc-9def-deadbeef0007": {
       "type": "boolean"
     },
@@ -1176,6 +1227,15 @@
   },
   "connection": {
     "senders": {
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0053": {
+        "master_enable": true,
+        "transport_params": [
+          {
+            "destination_host": "10.6.250.104",
+            "destination_port": 1883
+          }
+        ]
+      },
       "2c47bf5e-1b2c-4abc-9def-deadbeef0025": {
         "master_enable": true,
         "transport_params": [

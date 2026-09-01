@@ -17,6 +17,8 @@ package provider
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -45,6 +47,10 @@ type connectionEndpoint struct {
 	// resolving "auto" — the two differ (a sender picks a destination,
 	// a receiver picks an interface).
 	isSender bool
+	// eventSourceID is the IS-07 source this endpoint carries, empty
+	// for non-event endpoints. Set by fillEventExtParams; the MQTT
+	// topic convention names the source, so promotion needs it.
+	eventSourceID string
 	// scheduled holds a pending timed activation, if any.
 	scheduled *time.Time
 }
@@ -71,6 +77,10 @@ type connectionStore struct {
 	// nodeIP alone is enough for a transport parameter typed as an
 	// address, and not enough for one typed as a URL.
 	nodeBase string
+	// mqttBroker is the broker "auto" resolves to on MQTT legs
+	// (host:port from the bundle's events seed; empty = no broker
+	// configured, autos fall back like any other host).
+	mqttBroker string
 	// onPromote fires after every activation, inside the store lock,
 	// and returns the transport file the endpoint should serve from
 	// then on.
@@ -167,7 +177,7 @@ func (s *connectionStore) reresolveActive() {
 			}
 			e.active = cloneStaged(e.staged)
 			for i := range e.active.TransportParams {
-				resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i)
+				resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i, s.mqttBroker)
 			}
 		}
 	}
@@ -263,7 +273,18 @@ func fillEventExtParams(e *connectionEndpoint, cfg *NodeConfig, flowID *string) 
 	if sourceID == "" {
 		return
 	}
+	// The endpoint remembers which event source it carries: the MQTT
+	// topic convention and the publisher both need it at activation.
+	e.eventSourceID = sourceID
 	for i := range e.staged.TransportParams {
+		if _, isMQTT := e.staged.TransportParams[i]["broker_topic"]; isMQTT {
+			// MQTT legs carry only the REST re-sync URL (see
+			// defaultLegParams) — filled to "" here so the serve-time
+			// pass resolves it to the live base URL like the WS legs.
+			e.staged.TransportParams[i]["ext_is_07_rest_api_url"] = ""
+			e.active.TransportParams[i]["ext_is_07_rest_api_url"] = ""
+			continue
+		}
 		if _, carries := e.staged.TransportParams[i]["ext_is_07_source_id"]; !carries {
 			continue
 		}
@@ -334,7 +355,7 @@ func newEndpointForTransport(transport string, isSender bool) *connectionEndpoin
 	// address it would use. test_11_01/test_12_01 check exactly this.
 	e.active = cloneStaged(e.staged)
 	for i := range e.active.TransportParams {
-		resolveAuto(e.active.TransportParams[i], "", isSender, i)
+		resolveAuto(e.active.TransportParams[i], "", isSender, i, "")
 	}
 	return e
 }
@@ -403,6 +424,12 @@ func defaultLegParams(transport string, isSender bool) is05.TransportParams {
 		p["broker_protocol"] = "auto"
 		p["broker_authorization"] = "auto"
 		p["connection_status_broker_topic"] = nil
+		// IS-07 §5 extension parameter. An MQTT event sender carries
+		// ONLY the REST re-sync URL — the source is named by the
+		// broker_topic convention, so ext_is_07_source_id (the
+		// WebSocket way of naming it) stays off this leg; the AMWA
+		// suite compares the ext_* set per transport exactly.
+		p["ext_is_07_rest_api_url"] = nil
 	case transport == transportMXLURN:
 		// BCP-007-03: a single param set of mxl_domain_id + mxl_flow_id.
 		// A sender may resolve both via "auto"; a receiver may resolve
@@ -450,10 +477,15 @@ func constraintsForTransport(transport string, isSender bool) map[string]any {
 // AMWA rounds test_11_01 / test_12_01 exist for exactly this, and it
 // is a real fault rather than a formality — a controller reads active
 // to learn the multicast address it must join.
-func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int) {
+func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int, mqttBroker string) {
 	if nodeIP == "" {
 		nodeIP = "127.0.0.1"
 	}
+	// An MQTT leg's destination IS the broker — resolving it to the
+	// node's own address would hand a consumer a "broker" that speaks
+	// no MQTT. The leg is recognisable by its broker_protocol member.
+	_, isMQTTLeg := p["broker_protocol"]
+	brokerHost, brokerPort := splitBroker(mqttBroker)
 	for k, v := range p {
 		s, ok := v.(string)
 		if !ok || s != autoKeyword {
@@ -473,10 +505,20 @@ func resolveAuto(p is05.TransportParams, nodeIP string, isSender bool, index int
 			// sender's destination_ip, and for the same reason: two
 			// legs of a 2022-7 pair on one subnet is not redundancy.
 			p[k] = fmt.Sprintf("239.%d.1.1", 4+index*2)
-		case "source_port", "destination_port":
+		case "source_port":
 			p[k] = defaultRTPPort + index*2
+		case "destination_port":
+			if isMQTTLeg && brokerPort != 0 {
+				p[k] = brokerPort
+			} else {
+				p[k] = defaultRTPPort + index*2
+			}
 		case "destination_host":
-			p[k] = nodeIP
+			if isMQTTLeg && brokerHost != "" {
+				p[k] = brokerHost
+			} else {
+				p[k] = nodeIP
+			}
 		case "broker_protocol":
 			p[k] = "mqtt"
 		case "broker_authorization", "connection_authorization":
@@ -510,6 +552,23 @@ const (
 	autoKeyword    = "auto"
 	defaultRTPPort = 5004
 )
+
+// splitBroker splits a host:port broker address; a bare host gets the
+// MQTT default port.
+func splitBroker(addr string) (string, int) {
+	if addr == "" {
+		return "", 0
+	}
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr, 1883
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port <= 0 {
+		port = 1883
+	}
+	return host, port
+}
 const (
 	transportWebSocketURN = "urn:x-nmos:transport:websocket"
 	transportMQTTURN      = "urn:x-nmos:transport:mqtt"
