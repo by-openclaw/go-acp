@@ -293,9 +293,19 @@ func fillEventExtParams(e *connectionEndpoint, cfg *NodeConfig, flowID *string) 
 		e.active.TransportParams[i]["ext_is_07_source_id"] = sourceID
 		e.active.TransportParams[i]["ext_is_07_rest_api_url"] = ""
 	}
-	// The constraint set has to grow the same two keys or the
-	// endpoint's own PATCH validation would reject them as unknown.
+	// The constraint set has to carry EXACTLY the staged keys — the
+	// suite compares the two sets (IS-05-01 test_09), so growing a
+	// constraint key the leg does not stage is as wrong as missing
+	// one. WS event legs stage both ext keys; MQTT legs stage only
+	// the REST URL (their constraints already carry it via
+	// constraintsForTransport).
 	for i := range e.constraints {
+		if i >= len(e.staged.TransportParams) {
+			break
+		}
+		if _, ws := e.staged.TransportParams[i]["ext_is_07_source_id"]; !ws {
+			continue
+		}
 		if _, carries := e.constraints[i]["ext_is_07_source_id"]; !carries {
 			e.constraints[i]["ext_is_07_source_id"] = map[string]any{}
 			e.constraints[i]["ext_is_07_rest_api_url"] = map[string]any{}

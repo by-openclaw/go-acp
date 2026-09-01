@@ -241,6 +241,32 @@ func TestMQTTStateChangeReachesBroker(t *testing.T) {
 	})
 }
 
+// TestMQTTSenderConstraintsMatchStaged: IS-05-01 test_09 compares the
+// constraint key set to the staged key set per leg — they must be
+// identical (the WS-era constraint back-fill once grew
+// ext_is_07_source_id onto MQTT constraints that never stage it).
+func TestMQTTSenderConstraintsMatchStaged(t *testing.T) {
+	b := mqttTallyBundle("127.0.0.1", 1884)
+	st := newConnectionStore()
+	st.seedFromBundle(b)
+	e, err := st.get("senders", mqttTallySenderID)
+	if err != nil {
+		t.Fatalf("mqtt endpoint: %v", err)
+	}
+	for i := range e.staged.TransportParams {
+		for k := range e.staged.TransportParams[i] {
+			if _, ok := e.constraints[i][k]; !ok {
+				t.Errorf("leg %d: staged key %q missing from constraints", i, k)
+			}
+		}
+		for k := range e.constraints[i] {
+			if _, ok := e.staged.TransportParams[i][k]; !ok {
+				t.Errorf("leg %d: constraint key %q not staged", i, k)
+			}
+		}
+	}
+}
+
 func waitCond(t *testing.T, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
