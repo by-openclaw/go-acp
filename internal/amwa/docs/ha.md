@@ -175,10 +175,15 @@ dhs registry nmos serve --bind 10.0.0.1:8000  --advertise-host 10.0.0.1:8000
 # BLU Registry on blue network
 dhs registry nmos serve --bind 10.0.1.1:8000  --advertise-host 10.0.1.1:8000
 
-# Node side - same dhs producer, but bound on both NICs
-dhs producer nmos serve --bind 10.0.0.50:2080,10.0.1.50:2080 \
-                        --advertise-host 10.0.0.50:2080,10.0.1.50:2080
+# Node side — `--bind` takes ONE address, so run one dhs producer per
+# network (one process per NIC)
+dhs producer nmos serve --bind 10.0.0.50:2080 --advertise-host 10.0.0.50:2080   # RED
+dhs producer nmos serve --bind 10.0.1.50:2080 --advertise-host 10.0.1.50:2080   # BLU
 ```
+
+The single-process HA mechanism dhs ships out of the box is the
+active/passive `pri` pair (Topology 2); ST 2022-7 dual-network today
+means one process per network as above.
 
 ### Topology 4 — active/active shared-store (OUT OF SPEC + OUT OF SCOPE FOR v1)
 
@@ -258,20 +263,22 @@ re-register branch.
 
 ---
 
-## Compliance events (HA-specific)
+## Failover observability
 
-Each fires once per (session, Registry) tuple:
+The Node-side failover machinery is implemented in
+`internal/amwa/provider/registration_client.go`. It fires no dedicated
+compliance events; the observable surface is the structured log:
 
 ```
-nmos_registry_failover           Primary 5xx; switching to secondary from list.
-nmos_registry_re_registered     Lost during failover; re-POSTed full resource graph.
-nmos_registry_all_failed         Every discoverable Registry returned 5xx; entering exponential backoff.
-nmos_registry_pri_collision      Two Registries advertised with same pri AND same api_ver — picking randomly.
-nmos_registry_dev_pri            Saw pri >= 100 in production deployment (dev Registry leaked into live).
+provider/node: better registry available — switching   a higher-pri Registry appeared; client re-targets it
+provider/node: heartbeat 404 — re-registering          new Registry does not know us; full re-register
+provider/node: heartbeat failed                        current Registry disqualified; next cycle tries next-best
+provider/node: re-register attempt failed              registration retry against the picked Registry failed
 ```
 
-Surfaced via the standard dhs metrics counter
-(`dhs_connector_compliance_events_total{proto="nmos",event="..."}`).
+On failover the client follows IS-04 v1.3.3 §6.1: heartbeat-first
+against the new Registry, full `POST /resource` only on a 404 (AMWA
+test_16 fails a Node that re-POSTs on every failover).
 
 ---
 

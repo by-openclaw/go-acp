@@ -183,12 +183,14 @@ attaches to in-process state; Consumer is pure subscriber.
                                                    └────────────────────┘
 ```
 
-Event types (data formats): `boolean`, `number`, `string`, `enum`.
+Event types (data formats): `boolean`, `number`, `string`, `enum`, `object`.
 Source `format = urn:x-nmos:format:data`.
 Sender `transport ∈ urn:x-nmos:transport:websocket | urn:x-nmos:transport:mqtt`.
 
-The dhs slice ships **WebSocket only first**; MQTT layered on top once
-WS is wire-validated.
+dhs ships **both transports** — WebSocket (`session/events`) and MQTT
+(`session/mqtt` + `provider/events_mqtt.go`) — with per-sender
+transport selection; the broker is configured via the bundle's
+`events.mqtt_broker` key.
 
 ---
 
@@ -251,6 +253,72 @@ NcManager family (DeviceManager, ClassManager, SubscriptionManager),
 NcTouchpoint linking model OIDs back to IS-04 UUIDs.
 
 Surfaced via IS-04 Device `controls` URN `urn:x-nmos:control:ncp/v1.0`.
+
+---
+
+## IS-14 — Device Configuration
+
+REST view of the same MS-05-02 device model IS-12 serves over WS —
+rolePaths addressing instead of OIDs.
+
+```
+   ┌─────────────────────┐                     ┌─────────────────────────┐
+   │   [C] Controller    │  GET /rolePaths/    │   [N] Device            │
+   │                     │ ──────────────────> │  /x-nmos/configuration/ │
+   │                     │  GET .../root/...   │   {ver}/                │
+   │                     │      properties     │                         │
+   │                     │ <────────────────── │  same MS-05-02 model as │
+   │                     │                     │  the IS-12 WS (ncp)     │
+   └─────────────────────┘                     └─────────────────────────┘
+```
+
+Served by `provider/configuration.go` + `configuration_mount.go`.
+
+---
+
+## IS-11 — Stream Compatibility Management
+
+REST sibling of IS-05: active constraints on Senders, media-profile
+status on Senders/Receivers, Inputs/Outputs with EDID properties
+(BCP-005-01 via `codec/edid`).
+
+```
+   ┌─────────────────────┐                     ┌──────────────────────────┐
+   │   [C] Controller    │  GET /senders/{id}/ │   [N] Node               │
+   │                     │      status         │  /x-nmos/                │
+   │                     │ ──────────────────> │   streamcompatibility/   │
+   │  PUT /senders/{id}/ │                     │   {ver}/                 │
+   │   constraints/active│ ──────────────────> │  senders / receivers /   │
+   │                     │ <────────────────── │  inputs / outputs        │
+   └─────────────────────┘                     └──────────────────────────┘
+```
+
+Served by `provider/streamcompat.go`.
+
+---
+
+## IS-10 / BCP-003-02 — Authorization
+
+OAuth 2.0 client_credentials + JWT Bearer validation layered onto
+every served API (WS included). Armed by `--auth-url` on node and
+registry; flips `api_auth=true` in DNS-SD TXT.
+
+```
+   ┌──────────────────┐  POST /token          ┌───────────────────────┐
+   │  dhs client      │ ────────────────────> │  Authorization Server  │
+   │  ([N] reg client │ <──────────────────── │  (external, IS-10)     │
+   │   or [C])        │  access_token (JWT)   └───────────────────────┘
+   │                  │
+   │                  │  Authorization: Bearer <JWT>
+   │                  │ ────────────────────> ┌───────────────────────┐
+   │                  │ <──────────────────── │  [N]/[R] dhs resource  │
+   │                  │  200 / 401            │  server — validates    │
+   └──────────────────┘                       │  token per IS-10       │
+                                              └───────────────────────┘
+```
+
+Client + resource-server codec in `codec/is10`; session glue in
+`session/auth` + the auth gate in `session/http`.
 
 ---
 
@@ -372,7 +440,7 @@ Hardened deployments. mDNS firewalled but a Registry still exists.
                 └─────────────────────┘
 ```
 
-### Mode C — direct-Node, no Registry  (`--no-mdns --no-registry --peer-list FILE`)
+### Mode C — direct-Node, no Registry  (producer: `--no-mdns --no-registry`; consumer: `--node URL` per Node)
 
 Lawo VSM use-case (no Registration API support — see
 [`matrix-compliance.md`](matrix-compliance.md)). End-user networks
@@ -382,15 +450,15 @@ where mDNS AND Registry are blocked.
    ┌────────┐                              ┌──────────────────────┐
    │ [N]    │                              │ [C]      Controller   │
    │ Node   │  ◄── direct REST per Node ── │                       │
-   │        │      (host list comes from   │  --peer-list peers.csv│
-   │        │       --peer-list FILE)      │                       │
-   └────────┘                              │  reads:                │
-   ┌────────┐                              │   nodeA.lan,2080      │
-   │ [N]    │  ◄────────────────────────── │   nodeB.lan,2080      │
-   │ Node   │                              │   192.0.2.5,8000      │
-   └────────┘                              └──────────────────────┘
-   ┌────────┐
-   │ [N]    │  ◄──────────────────────────
+   │        │      (each Node named via    │  walk --node          │
+   │        │       its own --node URL)    │    http://nodeA:2080  │
+   └────────┘                              │  walk --node          │
+   ┌────────┐                              │    http://nodeB:2080  │
+   │ [N]    │  ◄────────────────────────── │                       │
+   │ Node   │                              │  (discover / system   │
+   └────────┘                              │   also take a CSV via │
+   ┌────────┐                              │   --peer-list)        │
+   │ [N]    │  ◄────────────────────────── └──────────────────────┘
    │ Node   │
    └────────┘
 ```

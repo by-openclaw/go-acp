@@ -36,15 +36,15 @@ introduces a back-arrow.
 │  internal/amwa/consumer/  (Controller)                                     │
 │  internal/amwa/provider/  (Node)                                           │
 │  internal/amwa/registry/  (Registry — dual-face middleware)                │
+│  internal/amwa/facade/    (AMWA-tool facade — drives the consumer)         │
 │                                                                            │
 │  Allowed:  dhs/internal/amwa/session/*                                      │
 │            dhs/internal/amwa/codec/*                                        │
 │            dhs/internal/consumer           (interface only)                 │
 │            dhs/internal/provider           (interface only)                 │
-│            dhs/internal/registry           (interface only — NEW slot)      │
+│            dhs/internal/registry           (interface only)                 │
 │            dhs/internal/consumer/compliance                                │
 │            dhs/internal/datastore            (portable data dir)              │
-│            dhs/internal/metrics            (connector + Prom)               │
 │  Forbidden: any other internal/<proto>/*                                    │
 │             cmd/*                                                          │
 │             cross-imports between consumer / provider / registry            │
@@ -52,20 +52,19 @@ introduces a back-arrow.
                                    │
 ┌──────────────────────────────────▼─────────────────────────────────────────┐
 │  LAYER 2 — SESSION                                                         │
-│  internal/amwa/session/dnssd/                                              │
-│  internal/amwa/session/registration/   (Node-side registration client)     │
-│  internal/amwa/session/registry_core/  (Registry catalogue + GC + WS subs) │
-│  internal/amwa/session/query/          (Controller-side Query API client)  │
-│  internal/amwa/session/connection/     (IS-05 stage/activate orchestration)│
-│  internal/amwa/session/events/         (IS-07 WS publisher + subscriber)   │
-│  internal/amwa/session/control/        (IS-12 + MS-05-02 model server +    │
-│                                          client)                           │
-│  internal/amwa/session/bootstrap/      (IS-09 fetch on Node boot)          │
+│  internal/amwa/session/dnssd/       (mDNS + unicast browse + peer list)    │
+│  internal/amwa/session/auth/        (IS-10 token client + validation)      │
+│  internal/amwa/session/certmgr/     (BCP-003-03 EST certificate manager)   │
+│  internal/amwa/session/connection/  (IS-05 stage/activate orchestration)   │
+│  internal/amwa/session/events/      (IS-07 WS publisher + subscriber)      │
+│  internal/amwa/session/http/        (shared HTTP server + auth gate)       │
+│  internal/amwa/session/mqtt/        (IS-07 MQTT client)                    │
+│  internal/amwa/session/query/       (Controller-side Query API client)     │
+│  internal/amwa/session/system/      (IS-09 fetch on Node boot)             │
 │                                                                            │
 │  Allowed:  dhs/internal/amwa/codec/*                                        │
 │            dhs/internal/transport       (HTTP/WS capture)                   │
 │            dhs/internal/consumer/compliance                                │
-│            dhs/internal/metrics                                            │
 │  Forbidden: dhs/internal/amwa/{consumer,provider,registry}                  │
 │             cmd/*                                                          │
 │             any other internal/<proto>/*                                    │
@@ -73,17 +72,22 @@ introduces a back-arrow.
                                    │
 ┌──────────────────────────────────▼─────────────────────────────────────────┐
 │  LAYER 1 — CODEC                                                            │
+│  internal/amwa/codec/spec/         (NMOS-wide base: Versioned, Registry[T]) │
 │  internal/amwa/codec/dnssd/        (mDNS + unicast SRV/TXT)                 │
-│  internal/amwa/codec/jsonschema/   (Schema compiler — BCP-002/004/006/007)  │
-│  internal/amwa/codec/rql/          (Query API filter syntax)                │
-│  internal/amwa/codec/sdp/          (RFC 4566 SDP encode + decode)           │
+│  internal/amwa/codec/jsonschema/   (draft-04 schema compiler)               │
 │  internal/amwa/codec/is04/         (Node/Device/Source/Flow/Sender/Receiver)│
 │  internal/amwa/codec/is05/         (staged/active/transportfile envelopes)  │
 │  internal/amwa/codec/is07/         (state/health/reboot/shutdown envelopes) │
 │  internal/amwa/codec/is08/         (channel mapping schemas)                │
 │  internal/amwa/codec/is09/         (Global config schema)                   │
-│  internal/amwa/codec/ms05/         (NcObject root + class + datatype reg)   │
+│  internal/amwa/codec/is10/         (authorization: JWT + access rules)      │
+│  internal/amwa/codec/is11/         (stream compatibility types)             │
 │  internal/amwa/codec/is12/         (JSON envelope: messageType + handle)    │
+│  internal/amwa/codec/is14/         (device configuration types)             │
+│  internal/amwa/codec/ms05/         (NcObject root + class + datatype reg)   │
+│  internal/amwa/codec/edid/         (BCP-005-01 EDID parsing)                │
+│  internal/amwa/codec/est/          (BCP-003-03 EST + PKCS#7 bytes)          │
+│  internal/amwa/codec/bcp/          (BCP JSON-shape validator packages)      │
 │                                                                            │
 │  Allowed:  Go stdlib                                                       │
 │            sibling internal/amwa/codec/* (per the inter-codec graph below) │
@@ -148,13 +152,7 @@ The graph has THREE tiers within Layer 1:
           ▼                 ▼                ▼
    ┌──────────┐       ┌──────────┐     ┌──────────┐
    │   is05   │       │   is07   │     │   is08   │
-   └─────┬────┘       └──────────┘     └──────────┘
-         │
-         │ (transportfile body)
-         ▼
-   ┌──────────┐
-   │   sdp    │
-   └──────────┘
+   └──────────┘       └──────────┘     └──────────┘
 
    ┌──────────────┐
    │     ms05     │  ◄── BCP-008-01 + BCP-008-02 register feature-set classes here
@@ -172,10 +170,15 @@ The graph has THREE tiers within Layer 1:
    │     is09     │  ◄── independent (only used at Node bootstrap)
    └──────────────┘
 
-   ┌──────────────┐
-   │     rql      │  ◄── used by is04 Query API only; no reverse import
-   └──────────────┘
+   ┌──────────────────────────────────┐
+   │  is10 · is11 · is14 · edid · est │  ◄── independent — import spec/ only
+   └──────────────────────────────────┘
 ```
+
+RQL filter parsing lives in `internal/amwa/registry/query.go`
+(Layer 3) and SDP encode/decode in
+`internal/amwa/provider/connection_sdp*.go` (Layer 3) — neither is a
+codec package.
 
 ### Forbidden edges
 
@@ -185,10 +188,7 @@ The graph has THREE tiers within Layer 1:
 - `ms05` MUST NOT import `is12` (wire is the marshaller; model is the
   domain).
 - `dnssd` and `jsonschema` MUST NOT import any sibling codec package.
-- `sdp` MUST NOT import `is04` / `is05` (it's pure RFC 4566).
 - `is09` MUST NOT import `is04` (System config is bootstrap-only).
-- `rql` MUST NOT import `is04` (it's pure filter-syntax; resource
-  type-checking happens in the IS-04 layer).
 - `spec/` (the NMOS-wide codec base) MUST NOT import any sibling
   codec package. It is the leaf — every spec depends on it; it
   depends on no spec.
@@ -214,14 +214,13 @@ NMOS Registry doesn't fit `internal/consumer/` (consumer plugins) nor
 left face consumes registrations, right face provides catalogue. Same
 process, two faces.
 
-A **new Tier-1 plugin slot** lands in this branch:
+The **Tier-1 plugin slot**:
 
 ```
 internal/registry/
 ├── registry.go           neutral interface every Registry plugin implements
-├── factory.go            Factory + Register() + Lookup() — same shape as
-│                         internal/consumer/ + internal/provider/
-└── compliance/           OPTIONAL — registry-side compliance events
+└── factory.go            Factory + Register() + Lookup() — same shape as
+                          internal/consumer/ + internal/provider/
 ```
 
 ```go
@@ -234,12 +233,18 @@ type Registry interface {
     Stats() Stats
 }
 
-type Factory interface {
-    Name() string
-    DefaultPort() int
-    NewRegistry() Registry
+type Meta struct {
+    Name        string // e.g. "nmos"
+    Description string
+    DefaultPort int
 }
 
+type Factory interface {
+    Meta() Meta
+    New(logger *slog.Logger) Registry
+}
+
+// internal/registry/factory.go — keyed on f.Meta().Name
 func Register(f Factory) { ... }
 func Lookup(name string) (Factory, bool) { ... }
 ```
@@ -251,11 +256,11 @@ blank-imports it just like consumer + provider plugins today.
 CLI dispatch (Layer 4):
 
 ```go
-// cmd/dhs/cmd_registry.go
-case "registry":
-    f, ok := registry.Lookup(args[1])  // "nmos"
-    if !ok { ... }
-    f.NewRegistry().Serve(ctx, opts)
+// cmd/dhs/cmd_nmos.go — runNMOSRegistry / runNMOSRegistryServe
+f, ok := registryslot.Lookup("nmos")
+if !ok { ... }
+r := f.New(logger)
+r.Serve(ctx, opts)
 ```
 
 The slot is introduced for NMOS. Whether other protocols will use it
@@ -265,52 +270,60 @@ is undecided and out of scope for this PR.
 
 ## Enforcement
 
-Three independent gates land in the Phase 1 PR (step #1) — all CI-fail
-on violation:
+Three independent gates — all CI-fail on violation:
 
 ### 1. `depguard` golangci-lint rule
 
-`.golangci.yml` adds:
+`.golangci.yml` (version `"2"` layout — rules live under
+`linters.settings.depguard.rules`) carries three rules:
 
 ```yaml
 linters:
   enable:
     - depguard
+  settings:
+    depguard:
+      rules:
+        # Layer 1 — codec stays stdlib-only.
+        nmos-codec-stdlib-only:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/codec/**"
+          deny:
+            - pkg: github.com          # third-party
+            - pkg: dhs/cmd
+            - pkg: dhs/internal/amwa/session
+            - pkg: dhs/internal/amwa/consumer
+            - pkg: dhs/internal/amwa/provider
+            - pkg: dhs/internal/amwa/registry
 
-linters-settings:
-  depguard:
-    rules:
-      nmos-codec-stdlib-only:
-        list-mode: lax
-        files:
-          - "**/internal/amwa/codec/**"
-        deny:
-          - pkg: "dhs/"
-            desc: "codec layer must be stdlib-only (lift-to-own-repo ready)"
-          - pkg: "github.com/"
-            desc: "codec layer must be stdlib-only"
+        # Layer 2 — session never reaches back into plugins or cmd/.
+        nmos-session-no-plugin-imports:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/session/**"
+          deny:
+            - pkg: dhs/internal/amwa/consumer
+            - pkg: dhs/internal/amwa/provider
+            - pkg: dhs/internal/amwa/registry
+            - pkg: dhs/cmd
 
-      nmos-session-no-plugin-imports:
-        list-mode: lax
-        files:
-          - "**/internal/amwa/session/**"
-        deny:
-          - pkg: "dhs/internal/amwa/consumer"
-            desc: "session must not import plugin layer (back-arrow)"
-          - pkg: "dhs/internal/amwa/provider"
-          - pkg: "dhs/internal/amwa/registry"
-          - pkg: "dhs/cmd/"
-
-      nmos-plugin-no-cross-plugin:
-        list-mode: lax
-        files:
-          - "**/internal/amwa/consumer/**"
-        deny:
-          - pkg: "dhs/internal/amwa/provider"
-            desc: "consumer must not import provider (cross-plugin leak)"
-          - pkg: "dhs/internal/amwa/registry"
-      # ... mirror rules for provider/ and registry/
+        # Layer 3 — one files-glob covers all three plugins, so this
+        # rule can only deny cmd/ (denying a sibling plugin here would
+        # also deny the plugin's own package).
+        nmos-plugin-no-cross-plugin:
+          list-mode: lax
+          files:
+            - "**/internal/amwa/consumer/**"
+            - "**/internal/amwa/provider/**"
+            - "**/internal/amwa/registry/**"
+          deny:
+            - pkg: dhs/cmd
 ```
+
+Cross-plugin isolation (consumer ↛ provider ↛ registry) is therefore
+enforced by the Go test (`TestNoCrossPluginImports` in
+`internal/amwa/dependencies_test.go`), not by depguard.
 
 ### 2. `go list -deps` import audit test
 
@@ -332,7 +345,7 @@ func TestCodecHasNoAcpImports(t *testing.T) {
     // (excluding sibling dhs/internal/amwa/codec/*)
 }
 
-func TestSessionHasNoPluginImports(t *testing.T) {
+func TestSessionDoesNotImportPlugins(t *testing.T) {
     // walk every session package, fail if it imports
     // dhs/internal/amwa/{consumer,provider,registry}
 }
@@ -367,7 +380,6 @@ without breaking the layering:
 | Package | Purpose | Layers allowed |
 |---|---|---|
 | `dhs/internal/datastore` | Portable data dir + atomic file writes | 2, 3 |
-| `dhs/internal/metrics` | Connector counters + Prom registry | 2, 3 |
 | `dhs/internal/transport` | HTTP/WS capture (`--capture` flag) | 2 only |
 | `dhs/internal/consumer/compliance` | Compliance.Profile + event types | 2, 3 |
 | `dhs/internal/consumer` | Consumer interface + registry | 3, 4 |

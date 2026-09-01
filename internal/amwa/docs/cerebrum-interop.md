@@ -68,15 +68,16 @@ Mode 3 — Cerebrum hosts the Registry
 ## 3. Mapping to dhs deployment modes
 
 [`matrix-compliance.md`](matrix-compliance.md) "Deployment modes"
-defines three today: **A** (full mDNS + Registry), **B** (unicast
-Registry), **C** (direct-Node, no mDNS, no Registry). Cerebrum's mode 2
-("peer-to-peer with mDNS but no Registry") doesn't fit any of them —
-mDNS is mandatory but Registry is absent. We need a new **Mode D**.
+defines five rows: **A** (full mDNS + Registry), **B** (unicast
+Registry), **C** (direct-Node, no mDNS, no Registry), **D** (mDNS
+direct-Node, no Registry) and CSV bootstrap. Cerebrum's mode 2
+("peer-to-peer with mDNS but no Registry") is exactly **Mode D**,
+which was added for it.
 
 | Cerebrum mode | dhs equivalent | Notes |
 |---|---|---|
 | 1. External Registry | **A** (`--mdns`) or **B** (`--no-mdns --registry`) — we're a Node and/or Controller; Cerebrum is too | Both peers register against a third-party Registry |
-| 2. Peer-to-peer | **D** (NEW) — `mDNS direct-Node`, no Registry | Required for Cerebrum P2P; not yet wired in CLI |
+| 2. Peer-to-peer | **D** — `mDNS direct-Node`, no Registry | Required for Cerebrum P2P; wired: `producer nmos serve --mdns --no-registry`, consumer discovers `_nmos-node._tcp` + walks `--node` |
 | 3. Hosted Registry | **A** or **B** — we're a Node and/or Controller; Cerebrum is the Registry | dhs `producer nmos serve` + `consumer nmos walk` against Cerebrum:8080 |
 
 **Mode D — new deployment mode:**
@@ -87,7 +88,7 @@ mDNS is mandatory but Registry is absent. We need a new **Mode D**.
 | Registry | none — direct-Node walking only |
 | Heartbeats | N/A (no Registry to heartbeat against) |
 | Producer flags | `dhs producer nmos serve --mdns --no-registry` |
-| Consumer flags | `dhs consumer nmos walk-nodes --mdns --no-registry` |
+| Consumer flags | `dhs consumer nmos discover --mdns --service _nmos-node._tcp`, then `dhs consumer nmos walk --node http://<host>:<port>` per Node |
 | Fallback | once mDNS resolves a peer set, the rest of the flow degrades into direct-Node walking |
 
 **Principle:** dhs supports **every** deployment topology a peer might
@@ -136,16 +137,18 @@ Each of these matches the "absorb-and-fire" pattern from
 
 | Deviation | Cerebrum behaviour | dhs response | Compliance event |
 |---|---|---|---|
-| Query API absent | Vendor PDF: *"external third party control systems cannot interrogate the registry directly"*. Only Registration API endpoints served. | If we're the Controller, fall back to direct-Node walking against Cerebrum's known Nodes. | `nmos_query_api_missing` (existing) |
-| IS-05 activation always-immediate | Single PATCH; activation always coerced to `now`. | Detect rejection of `activate_scheduled_*`; retry as `activate_immediate`. | `nmos_scheduled_activation_unsupported` (existing — applies to Cerebrum too) |
-| IS-05 single-PATCH expectation | Cerebrum waits for HTTP 200 OK before next PATCH on same device. | Don't pipeline IS-05 PATCHes when peer is Cerebrum; serialise per-device. | `nmos_is05_serial_patch_required` (NEW) |
-| SDP legs truncated | Cerebrum reads only the first 2 leg/stream definitions in `m=` blocks (vendor PDF: *"Cerebrum currently only use the first two definitions of legs/streams"*). | dhs encoder/decoder supports unlimited legs. When our Sender has >2 legs and peer is Cerebrum, fire event so operator knows extra legs were silently dropped peer-side. | `nmos_sdp_legs_truncated_peer` (NEW) |
-| Sender identity tuple uniqueness | Cerebrum requires (m/c addr, origin addr, port) globally unique across senders; duplicates are highlighted red in their UI but not rejected. | Detect duplicates ourselves before announcing — Cerebrum will mis-route otherwise. | `nmos_sender_identity_collision` (NEW) |
+| Query API absent | Vendor PDF: *"external third party control systems cannot interrogate the registry directly"*. Only Registration API endpoints served. | If we're the Controller, fall back to direct-Node walking against Cerebrum's known Nodes. | none today — the fallback is behavioural (per-collection walk failures fire `nmos_query_collection_failed`) |
+| IS-05 activation always-immediate | Single PATCH; activation always coerced to `now`. | Detect rejection of `activate_scheduled_*`; retry as `activate_immediate`. | none today — detection code not yet landed |
+| IS-05 single-PATCH expectation | Cerebrum waits for HTTP 200 OK before next PATCH on same device. | Don't pipeline IS-05 PATCHes when peer is Cerebrum; serialise per-device. | none today — handled operationally (serialise per-device) |
+| SDP legs truncated | Cerebrum reads only the first 2 leg/stream definitions in `m=` blocks (vendor PDF: *"Cerebrum currently only use the first two definitions of legs/streams"*). | dhs encoder/decoder supports unlimited legs. When our Sender has >2 legs and peer is Cerebrum, extra legs are silently dropped peer-side — operator guidance only. | none today — detection code not yet landed |
+| Sender identity tuple uniqueness | Cerebrum requires (m/c addr, origin addr, port) globally unique across senders; duplicates are highlighted red in their UI but not rejected. | Detect duplicates ourselves before announcing — Cerebrum will mis-route otherwise. | none today — check during integration testing |
 | `a=group:DUP primary secondary` expected for redundant flows | Cerebrum expects this exact spelling; if absent, the second leg is treated as a separate flow. | dhs encoder emits the canonical form already; integration tests must verify the line is preserved end-to-end. | n/a (we already comply — no event) |
 
-Naming convention: `nmos_` prefix; new events land in the NMOS
-compliance catalogue when the codec-side compliance package is wired
-(see `internal/amwa/CLAUDE.md` "Strict-dependency architecture").
+Naming convention: `nmos_` prefix. The codec-side compliance package
+is wired (`codec/spec/compliance.go`, reported via `spec.Reporter` /
+`spec.SliceReporter`); each event above lands in the catalogue in
+[`matrix-compliance.md`](matrix-compliance.md) when its detection
+code lands.
 
 ---
 
@@ -514,9 +517,10 @@ Their registration face also validates parent references (sender
 without known device → 400), so fill order is mandatory, and a full
 node re-fill is required after any eviction.
 
-Productization of this bridge (the `dhs registry nmos mirror` verb:
-Query-WS-driven forwarding, deletion propagation, per-node heartbeat
-proxying) is designed and awaits approval post-merge.
+The bridge is productized as `dhs registry nmos mirror --source URL
+--target URL [--api-ver v1.3] [--audit-log FILE] [--status-addr :PORT]`
+(Query-WS-driven forwarding, deletion propagation, per-node heartbeat
+proxying) — see [`use-cases.md`](use-cases.md).
 
 ### Cerebrum device-panel knobs that affect interop (per
 "Modify Device" UI screenshot 2026-05-01)

@@ -65,3 +65,21 @@ spec repo when epic #146 planning resumes).
    certification target set — "full certified" per the owner's
    2026-08-23 statement implies yes for anything with a published
    suite.
+
+## Addendum 2026-09-01
+
+The historical findings above are kept as written; the deltas have
+since been closed in code:
+
+- **IS-10 / BCP-003-02** authorization: implemented (`codec/is10`,
+  `session/auth`; `--auth-url` on node + registry). CLAUDE.md's
+  "out of scope for v1" wording is gone — its version table now
+  tracks it as shipped.
+- **IS-11, IS-14, BCP-003-01, BCP-003-03, BCP-005-01, BCP-007-03
+  MXL**: implemented (`codec/is11` + `provider/streamcompat.go`,
+  `codec/is14` + `provider/configuration.go`, TLS serving,
+  `codec/est` + `session/certmgr`, `codec/edid`,
+  `urn:x-nmos:transport:mxl` in the IS-04 + IS-05 codecs).
+- **BCP-008-01 / BCP-008-02**: ship (ms05 monitor classes over
+  IS-12).
+- **IS-06** remains the only genuinely absent spec.
