@@ -471,7 +471,7 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 
 	// req.PID overrides pid=8 (value); req.Idx overrides idx=0 (active).
 	// Zero defaults preserve historical behaviour.
-	targetPID := uint8(codec.PIDValue)
+	targetPID := codec.PIDValue
 	if req.PID > 0 {
 		targetPID = uint8(req.PID)
 	}

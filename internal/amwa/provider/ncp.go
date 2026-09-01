@@ -246,7 +246,7 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 
 // classKey renders an NcClassId ([]int32 alias — not comparable) as a
 // stable map/compare key.
-func classKey(id ms05.NcClassId) string { return fmt.Sprint([]int32(id)) }
+func classKey(id ms05.NcClassId) string { return fmt.Sprint(id) }
 
 // classDerivedFrom reports whether id equals or descends from base —
 // MS-05 class ids inherit by prefix ([1,3,1] derives from [1] and

@@ -264,7 +264,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 
 		case codec.PIDAccess:
 			if len(p.Data) >= 4 {
-				obj.Access = uint8(p.Data[3])
+				obj.Access = p.Data[3]
 			} else {
 				obj.Access = p.VType
 			}
@@ -318,7 +318,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 
 		case codec.PIDEventPrio:
 			if len(p.Data) >= 4 {
-				obj.AlarmPriority = uint8(p.Data[3])
+				obj.AlarmPriority = p.Data[3]
 			}
 
 		case codec.PIDEventMessages:

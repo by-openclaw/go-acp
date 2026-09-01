@@ -145,7 +145,7 @@ func validateChannelMappingSeed(cfg *NodeConfig) error {
 		}
 	}
 	if len(cfg.ChannelMapping.BootMap) > 0 {
-		if err := validateAction(io, is08.MapEntries(cfg.ChannelMapping.BootMap)); err != nil {
+		if err := validateAction(io, cfg.ChannelMapping.BootMap); err != nil {
 			return fmt.Errorf("channel_mapping.boot_map: %w", err)
 		}
 	}

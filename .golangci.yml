@@ -9,6 +9,11 @@ linters:
   default: standard
   enable:
     - depguard
+    # docs/go-style.md "Linting": enabled only because the whole tree
+    # already passes them — the config describes the code.
+    - misspell
+    - unconvert
+    - wastedassign
   settings:
     depguard:
       rules:

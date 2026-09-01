@@ -79,7 +79,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 	absorb := make([]string, 0, len(m.Labels))
 
 	for _, lbl := range m.Labels {
-		key := ""
+		var key string
 		if lbl.Description != nil && *lbl.Description != "" {
 			key = *lbl.Description
 		} else {

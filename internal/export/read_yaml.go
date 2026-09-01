@@ -171,7 +171,6 @@ func ReadYAML(r io.Reader) (*Snapshot, error) {
 			} else {
 				// New node or leaf name — flush previous object.
 				flushObj(&curSlot.Objects, curObj)
-				curObj = nil
 
 				// Trim path stack to current depth.
 				if depth <= len(pathStack) {

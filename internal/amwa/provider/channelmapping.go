@@ -135,7 +135,7 @@ func NewIS08ChannelMappingServer(logger *slog.Logger, bundle *NodeConfig, cfg IS
 	// event, not fabricated history. Already validated at config load;
 	// re-checked here because tests build bundles in code.
 	if bundle != nil && bundle.ChannelMapping != nil && len(bundle.ChannelMapping.BootMap) > 0 {
-		action := is08.MapEntries(bundle.ChannelMapping.BootMap)
+		action := bundle.ChannelMapping.BootMap
 		if err := validateAction(s.io, action); err != nil {
 			log := logger
 			if log == nil {
