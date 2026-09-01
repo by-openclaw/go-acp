@@ -54,32 +54,6 @@
         IdentityFile {{ dhs_amwa_runner_key }}
         StrictHostKeyChecking accept-new
 
-# ---- 4. repo mirror from the primary control node -------------------
-# Cloned over SSH from the plant checkout; refresh = fetch + hard reset
-# so the runner always runs the exact tree the primary has.
-- name: Runner repo cloned from the primary control node
-  ansible.builtin.command:
-    cmd: >-
-      git clone
-      root@{{ dhs_amwa_runner_origin_host }}:{{ dhs_amwa_runner_origin_path }}
-      {{ dhs_amwa_runner_repo }}
-    creates: "{{ dhs_amwa_runner_repo }}/.git"
-  environment:
-    GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
-
-- name: Runner repo refreshed to the primary's HEAD
-  ansible.builtin.shell:
-    cmd: >-
-      git fetch origin &&
-      git reset --hard origin/HEAD >/dev/null &&
-      git rev-parse HEAD
-  args:
-    chdir: "{{ dhs_amwa_runner_repo }}"
-  environment:
-    GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
-  register: runner_head
-  changed_when: false
-
-- name: Runner ready
-  ansible.builtin.debug:
-    msg: "runner at {{ inventory_hostname }}: repo {{ dhs_amwa_runner_repo }} @ {{ runner_head.stdout_lines[-1] }}"
+# The repo mirror lives in tasks/repo.yml and runs as a SEPARATE play
+# after dhs_access has authorized the runner key on the fleet — the
+# clone rides that key, so it cannot come earlier in the same play.

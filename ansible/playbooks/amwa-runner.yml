@@ -26,3 +26,13 @@
   gather_facts: true
   roles:
     - dhs_access
+
+# The repo mirror needs the key authorized above, so it is a third play.
+- name: AMWA secondary runner — mirror the repo from the primary
+  hosts: tooling
+  gather_facts: false
+  tasks:
+    - name: Runner repo mirror
+      ansible.builtin.include_role:
+        name: dhs_amwa_runner
+        tasks_from: repo
