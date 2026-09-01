@@ -612,3 +612,40 @@ func TestSessionWriteFailureClosesSession(t *testing.T) {
 		t.Fatal("session.run did not exit after write failure")
 	}
 }
+
+// TestStopClosesRegisteredSessions covers Stop's session-drain loops
+// deterministically (server.go Stop: copy-under-lock + close-outside-
+// lock). Whether the accept-loop tests leave a session registered at
+// Stop time is a teardown race, so without this test the two loops'
+// coverage flapped run to run.
+func TestStopClosesRegisteredSessions(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := newServer(logger, nil)
+
+	a, b := net.Pipe()
+	defer func() { _ = b.Close() }()
+	sess := newSession(srv, a)
+	srv.mu.Lock()
+	srv.sessions[sess] = struct{}{}
+	srv.mu.Unlock()
+
+	if err := srv.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	// sess.close() must have closed the socket: the far end of the pipe
+	// unblocks with an error instead of hanging.
+	done := make(chan error, 1)
+	go func() {
+		buf := make([]byte, 1)
+		_, err := b.Read(buf)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("read succeeded; session socket still open after Stop")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("session socket not closed by Stop")
+	}
+}

@@ -95,7 +95,11 @@ func syslogVal(v slog.Value) string {
 	return s
 }
 
-func (h *syslogHandler) Handle(_ context.Context, r slog.Record) error {
+// formatRecord renders one record as an RFC 5424 line WITHOUT a
+// trailing newline — the stderr path appends '\n' per line, while the
+// UDP forwarder sends the bare line as one datagram (RFC 5426 §3.1:
+// one message per datagram, no line terminator).
+func (h *syslogHandler) formatRecord(r slog.Record) string {
 	var b strings.Builder
 	pri := syslogFacility*8 + syslogSeverity(r.Level)
 	ts := "-"
@@ -114,9 +118,13 @@ func (h *syslogHandler) Handle(_ context.Context, r slog.Record) error {
 		fmt.Fprintf(&b, " %s%s=%s", prefix, a.Key, syslogVal(a.Value))
 		return true
 	})
-	b.WriteByte('\n')
+	return b.String()
+}
+
+func (h *syslogHandler) Handle(_ context.Context, r slog.Record) error {
+	line := h.formatRecord(r) + "\n"
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	_, err := io.WriteString(h.w, b.String())
+	_, err := io.WriteString(h.w, line)
 	return err
 }
