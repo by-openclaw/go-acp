@@ -22,7 +22,12 @@ tests/integration/nmos/amwa/dhs
 *.test
 *.out
 *.prof
+*.cov
 coverage.html
+
+# Local session scratch (audit notes, commit-message drafts, handoffs).
+# Working files only — anything durable graduates into docs/ or a memory.
+/.audit/
 
 # IDE
 .idea/
