@@ -71,8 +71,11 @@ type MirrorOptions struct {
 	// Target is the origin of the Registry that receives the copy,
 	// e.g. "http://10.6.250.5:8080". Registration API side.
 	Target string
-	// APIVer is the IS-04 wire version used on BOTH faces (default
-	// v1.3). The mirror does not translate between minors.
+	// APIVer is the IS-04 wire version used toward the TARGET
+	// Registration API (default v1.3). Toward the SOURCE the mirror
+	// subscribes at every registered minor in parallel — see the
+	// version-fidelity comment on Run — and forwards each document
+	// unchanged (no minor translation of the payloads themselves).
 	APIVer string
 	// Logger receives operational events. nil = slog.Default().
 	Logger *slog.Logger
@@ -88,6 +91,20 @@ type MirrorOptions struct {
 	// mirror (mirror_serve.go). Empty disables the served face —
 	// pre-#940 behaviour unchanged.
 	ServeAddr string
+	// ServeAdvertiseHost is the identity minted into the served face's
+	// ws_href and mDNS announce, as "host" or "host:port". Precedence:
+	// when set it wins outright (a bare host takes the bound serve
+	// port); when empty the bound address decides — a concrete bind IP
+	// advertises itself, an unspecified bind falls back to the OS
+	// hostname, which peers off-link may not resolve (AMWA IS-04-02
+	// test_22_2 et al fail exactly there). Set it to the address
+	// controllers actually reach.
+	ServeAdvertiseHost string
+	// ServePri is the DNS-SD `pri` TXT for the served face's
+	// _nmos-query._tcp announce. The CLI defaults it to 100 — the dev
+	// range — because the plant mirror must never win a production
+	// Registry election against its own source registry (pri 0).
+	ServePri int
 	// ServeAuthURL, when set, arms the served Query face with the
 	// BCP-003-02 Bearer gate: tokens are validated against the
 	// Authorization Server at this base URL, exactly the way the
@@ -125,7 +142,13 @@ type Mirror struct {
 	// mirror's authoritative copy of the source catalogue, used for
 	// full re-registration after a target eviction.
 	cache map[string]map[string]json.RawMessage
-	stats MirrorStats
+	// cacheVer holds each cached resource's REGISTERED wire minor —
+	// the minor of the source subscription its row arrived on. The
+	// embedded served store re-stamps resources with it so the IS-04
+	// §6.1.5 downgrade semantics survive the mirrored hop (AMWA
+	// IS-04-02 test_22/test_32). Same topic/id keys as cache.
+	cacheVer map[string]map[string]string
+	stats    MirrorStats
 	// runCtx is the context passed to Run, captured so a debounced
 	// resync fired from a timer goroutine can honour shutdown.
 	runCtx context.Context
@@ -174,14 +197,17 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 		opts.Logger = slog.Default()
 	}
 	cache := make(map[string]map[string]json.RawMessage, len(mirrorTopics))
+	cacheVer := make(map[string]map[string]string, len(mirrorTopics))
 	for _, tp := range mirrorTopics {
 		cache[tp] = map[string]json.RawMessage{}
+		cacheVer[tp] = map[string]string{}
 	}
 	return &Mirror{
-		opts:   opts,
-		logger: opts.Logger,
-		http:   &stdhttp.Client{Timeout: 10 * time.Second},
-		cache:  cache,
+		opts:     opts,
+		logger:   opts.Logger,
+		http:     &stdhttp.Client{Timeout: 10 * time.Second},
+		cache:    cache,
+		cacheVer: cacheVer,
 	}, nil
 }
 
@@ -197,8 +223,7 @@ func (m *Mirror) Stats() MirrorStats {
 // registry restarting must not kill the bridge) plus the heartbeat
 // proxy loop. Returns ctx.Err() on normal shutdown.
 func (m *Mirror) Run(ctx context.Context) error {
-	codec, ok := is04.Get(m.opts.APIVer)
-	if !ok {
+	if _, ok := is04.Get(m.opts.APIVer); !ok {
 		return fmt.Errorf("registry/mirror: unknown api-ver %q", m.opts.APIVer)
 	}
 	audit, err := newAuditor(m.opts.AuditPath)
@@ -214,9 +239,26 @@ func (m *Mirror) Run(ctx context.Context) error {
 	audit.event("mirror_start", map[string]any{
 		"source": m.opts.Source, "target": m.opts.Target, "api_ver": m.opts.APIVer,
 	})
-	qc, err := query.NewClient(m.opts.Source, codec)
-	if err != nil {
-		return fmt.Errorf("registry/mirror: source: %w", err)
+	// Version fidelity (AMWA IS-04-02 test_22/test_32): the source's
+	// Query API hides a resource registered at v1.0 from a v1.3
+	// subscription (IS-04 §6.1.5 no-downgrade-by-default), and a grain
+	// row carries no version stamp — so the ONLY wire-true way to
+	// mirror the whole catalogue AND learn each resource's registered
+	// minor is one subscription per registered minor per topic. The
+	// exact-match version gate on the source then partitions the
+	// catalogue: the minor of the socket a row arrived on IS that
+	// resource's registered minor.
+	clients := make(map[string]*query.Client)
+	for _, ver := range mirrorSourceVersions(m.opts.APIVer) {
+		vcodec, ok := is04.Get(ver)
+		if !ok {
+			continue // minor without a registered codec cannot be dialled
+		}
+		qc, err := query.NewClient(m.opts.Source, vcodec)
+		if err != nil {
+			return fmt.Errorf("registry/mirror: source: %w", err)
+		}
+		clients[ver] = qc
 	}
 	if m.opts.StatusAddr != "" {
 		go m.serveStatus(ctx, m.opts.StatusAddr)
@@ -231,11 +273,13 @@ func (m *Mirror) Run(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	for _, topic := range mirrorTopics {
-		wg.Add(1)
-		go func(topic string) {
-			defer wg.Done()
-			m.watchTopic(ctx, qc, topic)
-		}(topic)
+		for ver, qc := range clients {
+			wg.Add(1)
+			go func(topic, ver string, qc *query.Client) {
+				defer wg.Done()
+				m.watchTopic(ctx, qc, topic, ver)
+			}(topic, ver, qc)
+		}
 	}
 
 	wg.Add(1)
@@ -258,67 +302,90 @@ func (m *Mirror) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
-// watchTopic subscribes to one collection and forwards its grains,
-// resubscribing with a flat 2 s backoff whenever the subscription or
-// socket fails.
-func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic string) {
+// mirrorSourceVersions resolves the IS-04 minors the mirror subscribes
+// at on the source — every registered codec minor (the served face's
+// own fan-out, pickAPIVersions) with the target-leg primary guaranteed
+// present. See the version-fidelity comment in Run for why one
+// subscription per minor is mandatory, not an optimisation.
+func mirrorSourceVersions(primary string) []string {
+	vers := pickAPIVersions("")
+	for _, v := range vers {
+		if v == primary {
+			return vers
+		}
+	}
+	return append(vers, primary)
+}
+
+// watchTopic subscribes to one collection at one wire minor and
+// forwards its grains, resubscribing with a flat 2 s backoff whenever
+// the subscription or socket fails.
+func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic, ver string) {
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 		sub, err := qc.Subscribe(ctx, query.SubscribeRequest{ResourcePath: "/" + topic})
 		if err != nil {
-			m.logger.Warn("registry/mirror: subscribe failed", "topic", topic, "err", err)
-			m.audit.event("ws_subscribe_failed", map[string]any{"topic": topic, "err": err.Error()})
+			m.logger.Warn("registry/mirror: subscribe failed", "topic", topic, "ver", ver, "err", err)
+			m.audit.event("ws_subscribe_failed", map[string]any{"topic": topic, "ver": ver, "err": err.Error()})
 			m.sleep(ctx, 2*time.Second)
 			continue
 		}
 		err = query.Watch(ctx, sub.WSHref, func(g *is04.Grain) error {
 			for _, row := range g.Grain.Data {
-				m.forwardRow(ctx, topic, row)
+				m.forwardRow(ctx, topic, ver, row)
 			}
 			return nil
 		}, query.WatchOptions{})
 		if ctx.Err() != nil {
 			return
 		}
-		m.logger.Warn("registry/mirror: watch ended — resubscribing", "topic", topic, "err", err)
-		m.audit.event("ws_reconnect", map[string]any{"topic": topic, "err": fmt.Sprint(err)})
+		m.logger.Warn("registry/mirror: watch ended — resubscribing", "topic", topic, "ver", ver, "err", err)
+		m.audit.event("ws_reconnect", map[string]any{"topic": topic, "ver": ver, "err": fmt.Sprint(err)})
 		m.sleep(ctx, 2*time.Second)
 	}
 }
 
-// forwardRow applies one grain row to the cache and the target.
-func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDataRow) {
+// forwardRow applies one grain row to the cache and the target. ver is
+// the wire minor of the source subscription the row arrived on — the
+// resource's registered minor, preserved into the served store's
+// version stamp.
+func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.GrainDataRow) {
 	switch row.Kind() {
 	case is04.ChangeAdded, is04.ChangeModified:
 		m.mu.Lock()
 		m.cache[topic][row.Path] = row.Post
+		m.cacheVer[topic][row.Path] = ver
 		m.mu.Unlock()
-		m.applyServeRow(topic, row, true)
+		m.applyServeRow(topic, ver, row, true)
 		// Live path: a 400 here means a parent has not been forwarded
 		// yet (the six topics stream concurrently), so allow it to
 		// trigger an ordered resync.
-		m.postResource(ctx, topic, row.Post, true)
+		m.postResource(ctx, topic, ver, row.Post, true)
 	case is04.ChangeRemoved:
 		m.mu.Lock()
 		delete(m.cache[topic], row.Path)
+		delete(m.cacheVer[topic], row.Path)
 		m.mu.Unlock()
-		m.applyServeRow(topic, row, true)
-		m.deleteResource(ctx, topic, row.Path)
+		m.applyServeRow(topic, ver, row, true)
+		m.deleteResource(ctx, topic, ver, row.Path)
 	default:
 		m.logger.Warn("registry/mirror: grain row with neither pre nor post", "topic", topic, "id", row.Path)
 	}
 }
 
-// postResource POSTs one document to the target Registration API.
+// postResource POSTs one document to the target Registration API at
+// the resource's own registered minor — a v1.0 body legitimately
+// lacks fields the v1.3 schema requires, so posting it to the v1.3
+// URL would earn a 400 from any spec-strict target.
 //
 // allowResync gates the parent-missing recovery: the live forward path
 // passes true so a 400 (target rejects a child whose parent has not
 // landed yet) schedules an ordered resync; resync itself passes false so
 // a 400 during an already-ordered pass cannot trigger another resync (no
 // runaway loop when a resource is genuinely un-postable).
-func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMessage, allowResync bool) {
+func (m *Mirror) postResource(ctx context.Context, topic, ver string, doc json.RawMessage, allowResync bool) {
 	body, err := json.Marshal(map[string]any{
 		"type": mirrorSingular[topic],
 		"data": doc,
@@ -327,7 +394,7 @@ func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMes
 		m.fail("encode", topic, err)
 		return
 	}
-	url := m.registrationBase() + "/resource"
+	url := m.registrationBase(ver) + "/resource"
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		m.fail("build POST", topic, err)
@@ -383,9 +450,10 @@ func (m *Mirror) scheduleResync() {
 	})
 }
 
-// deleteResource DELETEs one document from the target.
-func (m *Mirror) deleteResource(ctx context.Context, topic, id string) {
-	url := m.registrationBase() + "/resource/" + topic + "/" + id
+// deleteResource DELETEs one document from the target, at the minor
+// it was forwarded on.
+func (m *Mirror) deleteResource(ctx context.Context, topic, ver, id string) {
+	url := m.registrationBase(ver) + "/resource/" + topic + "/" + id
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodDelete, url, nil)
 	if err != nil {
 		m.fail("build DELETE", topic, err)
@@ -418,10 +486,10 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			for _, id := range m.nodeIDs() {
-				if m.sendHealth(ctx, id) == errMirrorEvicted {
-					m.logger.Warn("registry/mirror: target evicted node — full resync", "node", id)
-					m.audit.event("target_evicted", map[string]any{"node": id})
+			for _, n := range m.nodeIDs() {
+				if m.sendHealth(ctx, n.id, n.ver) == errMirrorEvicted {
+					m.logger.Warn("registry/mirror: target evicted node — full resync", "node", n.id)
+					m.audit.event("target_evicted", map[string]any{"node": n.id})
 					m.resync(ctx)
 					break
 				}
@@ -436,8 +504,8 @@ var errMirrorEvicted = errors.New("registry/mirror: target answered 404 to a hea
 // deliberate: it guarantees a Content-Length header, which some
 // registries (EVS Cerebrum) demand on POST — without it they answer
 // 411 and their GC silently sweeps the catalogue.
-func (m *Mirror) sendHealth(ctx context.Context, nodeID string) error {
-	url := m.registrationBase() + "/health/nodes/" + nodeID
+func (m *Mirror) sendHealth(ctx context.Context, nodeID, ver string) error {
+	url := m.registrationBase(ver) + "/health/nodes/" + nodeID
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(nil))
 	if err != nil {
 		m.fail("build health", "nodes", err)
@@ -464,34 +532,39 @@ func (m *Mirror) sendHealth(ctx context.Context, nodeID string) error {
 	}
 }
 
-// resync re-POSTs the whole cached catalogue in dependency order.
+// resync re-POSTs the whole cached catalogue in dependency order,
+// each resource at its registered minor.
 func (m *Mirror) resync(ctx context.Context) {
 	m.audit.event("resync", nil)
+	type verDoc struct {
+		ver string
+		doc json.RawMessage
+	}
 	m.mu.Lock()
 	m.stats.Resyncs++
-	snapshot := make(map[string][]json.RawMessage, len(mirrorTopics))
+	snapshot := make(map[string][]verDoc, len(mirrorTopics))
 	for _, topic := range mirrorTopics {
 		ids := make([]string, 0, len(m.cache[topic]))
 		for id := range m.cache[topic] {
 			ids = append(ids, id)
 		}
 		sort.Strings(ids) // deterministic order for tests + logs
-		docs := make([]json.RawMessage, 0, len(ids))
+		docs := make([]verDoc, 0, len(ids))
 		for _, id := range ids {
-			docs = append(docs, m.cache[topic][id])
+			docs = append(docs, verDoc{ver: m.cacheVer[topic][id], doc: m.cache[topic][id]})
 		}
 		snapshot[topic] = docs
 	}
 	m.mu.Unlock()
 
 	for _, topic := range mirrorTopics {
-		for _, doc := range snapshot[topic] {
+		for _, vd := range snapshot[topic] {
 			if ctx.Err() != nil {
 				return
 			}
 			// allowResync=false: this pass is already in dependency
 			// order, so a 400 here is a genuine reject, not a race.
-			m.postResource(ctx, topic, doc, false)
+			m.postResource(ctx, topic, vd.ver, vd.doc, false)
 		}
 	}
 	// The served face is fed from the same authoritative cache, so a
@@ -500,8 +573,16 @@ func (m *Mirror) resync(ctx context.Context) {
 	m.serveReplay()
 }
 
-// nodeIDs snapshots the cached source node ids.
-func (m *Mirror) nodeIDs() []string {
+// nodeRef is one cached source node — id plus the wire minor its
+// heartbeat is proxied at.
+type nodeRef struct {
+	id  string
+	ver string
+}
+
+// nodeIDs snapshots the cached source node ids with their registered
+// minors, id-sorted.
+func (m *Mirror) nodeIDs() []nodeRef {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	ids := make([]string, 0, len(m.cache["nodes"]))
@@ -509,14 +590,25 @@ func (m *Mirror) nodeIDs() []string {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	return ids
+	out := make([]nodeRef, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, nodeRef{id: id, ver: m.cacheVer["nodes"][id]})
+	}
+	return out
 }
 
-// registrationBase returns the target Registration API base URL.
-func (m *Mirror) registrationBase() string {
+// registrationBase returns the target Registration API base URL for
+// one wire minor. A target given as a bare origin gets the minor
+// appended (empty minor falls back to the primary APIVer); a target
+// the operator pinned to an explicit /x-nmos/registration/<ver> path
+// is used verbatim for every resource — their pin outranks fidelity.
+func (m *Mirror) registrationBase(ver string) string {
 	base := strings.TrimRight(m.opts.Target, "/")
 	if !strings.Contains(base, "/x-nmos/registration/") {
-		base += "/x-nmos/registration/" + m.opts.APIVer
+		if ver == "" {
+			ver = m.opts.APIVer
+		}
+		base += "/x-nmos/registration/" + ver
 	}
 	return base
 }

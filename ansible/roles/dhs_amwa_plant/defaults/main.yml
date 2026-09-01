@@ -28,6 +28,13 @@ dhs_amwa_plant_mirror_status_addr: ":9101"
 # the plant THROUGH the audited mirror. Empty string disables the
 # served face (unit then runs the plain one-way bridge).
 dhs_amwa_plant_mirror_serve: ":8335"
+# Advertise identity for the mirror's served face
+# (--serve-advertise-host): minted into ws_href and mDNS-announced as
+# _nmos-query._tcp (pri defaults to 100 in the CLI — dev range, never
+# outranks the source registry at pri 0). Without it the served face
+# falls back to the OS hostname, which the AMWA tool host cannot
+# resolve (IS-04-02 test_02 / test_22_2 fleet failures).
+dhs_amwa_plant_mirror_serve_advertise: "{{ dhs_amwa_plant_advertise_ip }}:8335"
 # BCP-003-02 Authorization Server base for the mirror's SERVED face
 # (--auth-url, issue #946). Empty = disarmed, the default — the plant
 # mirror serves Cerebrum unauthenticated today. Only meaningful with a
