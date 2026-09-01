@@ -25,9 +25,9 @@ one TXT** record per face (Registration / Query). The four IS-04
 
 | Key | Spec | Example |
 |---|---|---|
-| `api_proto` | IS-04 §3.1.1.1 | `http` (or `https` once IS-10 lands) |
+| `api_proto` | IS-04 §3.1.1.1 | `http`; `https` when TLS is armed (`--est-host` / `--tls-cert`, BCP-003-01) |
 | `api_ver` | IS-04 §3.1.1.1 | comma-list — `v1.3` or `v1.1,v1.2,v1.3` |
-| `api_auth` | IS-04 §3.1.1.1 | `false` (until IS-10 deployed) |
+| `api_auth` | IS-04 §3.1.1.1 | `false`; `true` when `--auth-url` arms IS-10 authorization |
 | `pri` | IS-04 §3.1.1.1 | `0`–`99` production, `100`+ dev/staging |
 
 Multiple instances of the same service type all PTR back to the bare
@@ -193,12 +193,12 @@ For an IS-09 System server, use `_nmos-system._tcp` instead — and
 **omit `api_auth`** from its TXT record (IS-09 v1.0 predates IS-10).
 For Node P2P (Mode D), use `_nmos-node._tcp`.
 
-Compliance events fired by `dhs consumer nmos discover` when a peer's
-records deviate (priority collisions, missing keys, malformed `pri`)
-are catalogued in
-[`../codec/dnssd/types.go`](../codec/dnssd/types.go) and surface via
-the `compliance.Event` channel — see
-[`internal/consumer/compliance/`](../../consumer/compliance/).
+Deviations in a peer's records (missing TXT keys, malformed `pri`)
+are absorbed by discovery and surface only in the log — there are no
+per-record DNS-SD compliance events today. The emitted NMOS event set
+is catalogued in
+[`matrix-compliance.md`](matrix-compliance.md) "Compliance event
+catalogue".
 
 ---
 

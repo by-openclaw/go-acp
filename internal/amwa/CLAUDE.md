@@ -42,19 +42,26 @@ implementing all three roles correctly; it is not a separate feature.
 > NMOS and another dhs protocol. Cross-protocol architecture lives
 > elsewhere; the NMOS plugin only ever speaks NMOS.
 
-CLI surface mapping (planned):
+CLI surface mapping (shipped — dispatch in `cmd/dhs/cmd_nmos.go`):
 
 ```
 dhs producer nmos serve                       # Node side (the device — default)
+dhs producer nmos events                      # Node side — IS-07 event emitter
 dhs registry nmos serve                       # Registry side (dual-face middleware)
                                               #   - serves Registration API (consumes from Nodes)
                                               #   - serves Query API + WS subs (provides to Controllers)
-dhs consumer nmos walk     <reg-host>         # Controller — walk a Registry
-dhs consumer nmos watch    <reg-host>         # Controller — subscribe via Query WS
-dhs consumer nmos connect  <node-host> ...    # Controller — drive IS-05 on a Node
+dhs registry nmos mirror                      # Registry side — bridge one Registry into another
+dhs consumer nmos discover                    # Controller — DNS-SD discovery
+dhs consumer nmos system                      # Controller — read an IS-09 System API
+dhs consumer nmos walk                        # Controller — walk a Registry (or --node direct)
+dhs consumer nmos watch                       # Controller — subscribe via Query WS
+dhs consumer nmos connect                     # Controller — drive IS-05 on a Node
+dhs consumer nmos set                         # Controller — stage a Sender's IS-05 transport
+dhs consumer nmos facade                      # Controller — AMWA-tool facade (drives the Controller)
+dhs consumer nmos events                      # Controller — IS-07 WS/MQTT subscriber
 ```
 
-The new `dhs registry` top-level verb is needed because the Registry's
+The `dhs registry` top-level verb exists because the Registry's
 dual-face nature does not fit `producer` (which historically means
 "serves a canonical tree of my own state") nor `consumer` (which
 historically means "talks outbound to a remote device").
@@ -69,7 +76,7 @@ historically means "talks outbound to a remote device").
 | **Bootstrap config** | HTTP/JSON, single `/global` resource | IS-09 |
 | **Resource graph** | HTTP/JSON REST (`/x-nmos/<api>/<ver>/...`) + WebSocket subscription on Query API | IS-04 |
 | **Connection control** | HTTP/JSON REST, stage-then-activate pattern, SDP payload for RTP | IS-05, IS-08 |
-| **Event & tally** | WebSocket OR MQTT, JSON envelope (`message_type` ∈ {state, health, reboot, shutdown}) | IS-07 |
+| **Event & tally** | WebSocket OR MQTT, JSON envelope (`message_type` ∈ {state, health, reboot, shutdown, connection_status (MQTT-only)}) | IS-07 |
 | **Device model + control** | WebSocket, JSON envelope (`messageType` ∈ {Command, CommandResponse, Subscription, SubscriptionResponse, Notification, Error}) | IS-12 (wire), MS-05-01 (architecture), MS-05-02 (class library) |
 | **Annotation** | HTTP/JSON PATCH (sibling of Node API) | IS-13 (WIP) |
 | **Profiles** | JSON-Schema rules layered onto IS-04 / IS-05 | BCP-002, BCP-004, BCP-006, BCP-007 |
@@ -224,6 +231,9 @@ provider (`internal/amwa/provider/`), which is a different question.
 | IS-05 Connection | `/x-nmos/connection/{ver}/` + SDP + activation scheduler | `connection*.go` |
 | IS-07 Event & Tally | `/x-nmos/events/{ver}/` REST + the WebSocket at `…/ws` | `events.go` |
 | IS-08 Channel Mapping | `/x-nmos/channelmapping/{ver}/` incl. `inputs`/`outputs` | `channelmapping.go` |
+| IS-11 Stream Compatibility | `/x-nmos/streamcompatibility/{ver}/` incl. `inputs`/`outputs` + EDID | `streamcompat.go` |
+| IS-12 / MS-05 Control | the WebSocket at `/x-nmos/ncp/v1.0` | `ncp.go` |
+| IS-14 Device Configuration | `/x-nmos/configuration/{ver}/` (rolePaths view of the MS-05 model) | `configuration.go` + `configuration_mount.go` |
 | IS-09 System | **client**, not server — the Node reads a System API | `system_client.go` |
 
 IS-09 is the odd one and worth stating: every other row is something
@@ -272,7 +282,9 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
    combinations:
    - **Mode A — Full mDNS + Registry** (greenfield / spec-compliant peers).
    - **Mode B — Unicast Registry** (`--no-mdns --registry <ip>:<port>`).
-   - **Mode C — Direct-Node** (`--no-mdns --no-registry --peer-list peers.csv`).
+   - **Mode C — Direct-Node** (producer: `--no-mdns --no-registry`;
+     consumer: `--peer-list peers.csv` on `discover`/`system`,
+     `--node <url>` on `walk`).
    - **Mode D — mDNS direct-Node** (`--mdns --no-registry`) — Cerebrum P2P.
    Default to mDNS but never assume it works. See
    [`docs/matrix-compliance.md`](docs/matrix-compliance.md) and
@@ -322,9 +334,10 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     v1.3.3 mandates single-target selection: *"The Node selects a
     Registration API to use based on the priority"*. HA is
     client-driven failover via `pri` ranking + 5xx fallback, NOT
-    multi-Registry replication. dhs supports active/passive priority
-    pair + ST 2022-7 dual-network out of the box; active/active
-    shared-store is out of scope for v1. See
+    multi-Registry replication. dhs supports the active/passive
+    priority pair out of the box (`--bind` is a single address; an
+    ST 2022-7 dual-network plant runs one process per network);
+    active/active shared-store is out of scope for v1. See
     [`docs/ha.md`](docs/ha.md). Heartbeat 5 s, GC 12 s — failover
     must complete inside GC window.
 14. **`pri` 0–99 are production; 100+ are dev.** Spec carves the
@@ -361,7 +374,7 @@ flow**:
 
 ```
 LAYER 4  cmd/dhs/cmd_nmos.go                    (CLI)
-LAYER 3  internal/amwa/{consumer,provider,registry}  (PLUGIN)
+LAYER 3  internal/amwa/{consumer,provider,registry,facade}  (PLUGIN)
 LAYER 2  internal/amwa/session/*                (SESSION)
 LAYER 1  internal/amwa/codec/*                  (CODEC — stdlib only)
 ```
@@ -398,7 +411,8 @@ internal/amwa/codec/
   spec/                          # NMOS-wide base (Versioned interface, generic Registry[T],
                                  # SelectHighestMutual, ComplianceEvent + Reporter)
   is04/  is05/  is07/  is08/     # one folder per spec — canonical structs + Codec interface
-  is09/  is12/  ms0501/  ms0502/
+  is09/  is10/  is11/  is12/
+  is14/  ms05/                   # (ms05 = MS-05-02 control framework, single package)
     codec.go                     # extends spec.Versioned with the spec's resource methods
     {node,device,...}.go         # canonical union structs (every minor's fields, omitempty)
     patterns.go enums.go         # shared regex / URN tables
@@ -408,9 +422,12 @@ internal/amwa/codec/
     v10/  v11/  v12/  v13/       # per-minor Strategy impls — SELF-CONTAINED
       codec.go                   # this minor's identity + its own drop table + its strip
 
+  edid/                          # BCP-005-01 EDID parsing (base block + CTA-861)
+  est/                           # BCP-003-03 EST client bytes (enrollment + PKCS#7)
+
   bcp/                           # JSON-shape validators (no own wire — layer onto host spec)
     bcp00201/  bcp00202/         # BCP-002-01 / 002-02
-    bcp00401/  bcp00402/         # BCP-004-01 / 002-02
+    bcp00401/  bcp00402/         # BCP-004-01 / 004-02
     bcp00601/  bcp00604/         # BCP-006-01 / 006-04
     bcp00801/  bcp00802/         # BCP-008-01 / 008-02
 ```
@@ -443,7 +460,9 @@ validates against them.
 (ADR-0006) covering exactly the keywords a scan of the four schema sets
 reports. **An unimplemented keyword is REPORTED, never skipped** — a
 silent skip means a document went unchecked and nobody notices;
-`TestNoUnimplementedKeyword` fails the build if AMWA ships one.
+`TestNoUnimplementedKeyword` (in
+`codec/is04/schemas/schemas_test.go`) fails the build if AMWA ships
+one.
 
 ### Each minor is self-contained
 

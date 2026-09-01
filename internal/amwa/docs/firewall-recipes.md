@@ -18,14 +18,14 @@ host's local firewall.
 
 | Role | Binary invocation | Inbound TCP | Inbound UDP | Notes |
 |---|---|---|---|---|
-| **Node** | `dhs producer nmos serve` | **8080** (Node API HTTP — Phase 1 step #3) | 5353 (Mode A only) | Default port; override with `--bind`. |
-| **Registry** | `dhs registry nmos serve` | **8235** (Registration + Query HTTP — Phase 1 step #4) | 5353 (Mode A only) | Default port; override with `--bind`. |
+| **Node** | `dhs producer nmos serve` | **8080** (Node API HTTP) | 5353 (Mode A only) | Default port; override with `--bind`. |
+| **Registry** | `dhs registry nmos serve` | **8235** (Registration + Query HTTP) | 5353 (Mode A only) | Default port; override with `--bind`. |
 | **Controller** | `dhs consumer nmos discover` / `walk` | none — outbound only | 5353 (Mode A only — to receive mDNS responses) | No HTTP listener. |
 | **Cerebrum host** (peer Registry) | EVS Cerebrum app | 8080 | 5353 (Mode A only) | Per [`cerebrum-interop.md`](cerebrum-interop.md) §4. |
 
-Phase 1 step #1 (PR #149) ships discovery only — no HTTP REST yet. The
-TCP rules below take effect once Phase 1 #3/#4 land; add them now so the
-firewall doesn't become a surprise blocker later.
+Both HTTP servers ship (`dhs producer nmos serve --bind :8080`,
+`dhs registry nmos serve --bind :8235`); the TCP rules below are live
+requirements, not future-proofing.
 
 ---
 
@@ -149,7 +149,7 @@ pass in proto udp from any           to any port 5353 keep state
 |---|---|
 | TCP listener bound | `netstat -an \| grep 8235` (Win/Linux) / `lsof -nP -iTCP:8235 -sTCP:LISTEN` (Linux/macOS) |
 | Reachable from peer | `Test-NetConnection -ComputerName <host> -Port 8235` (Win) / `nc -zv <host> 8235` (Linux/macOS) |
-| HTTP response | `curl http://<host>:8235/x-nmos/registration/` once Phase 1 #4 lands |
+| HTTP response | `curl http://<host>:8235/x-nmos/registration/` |
 | mDNS observable | `dns-sd -B _nmos-register._tcp` (mDNSResponder, Win/macOS) / `avahi-browse -r _nmos-register._tcp` (Linux) |
 
 Equivalent dhs end-to-end:
