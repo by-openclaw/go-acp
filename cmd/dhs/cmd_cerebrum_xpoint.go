@@ -229,7 +229,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	check := fs.Bool("check", false, "dry-run: read live state, report would_change per cell, send nothing")
 	allowClear := fs.Bool("allow-clear", false, "an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC=\"\" — clear form live-UNVERIFIED; always --check first)")
 	output := fs.String("output", "text", "output format: text|json — json emits the ADR-0007 {changed|would_change, diff[]} shape on stdout (per-action detail goes to stderr)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -639,7 +639,7 @@ func cerebrumExportXpoint(ctx context.Context, args []string) error {
 	seeds := fs.String("path", "", "device mode: start group(s), ';'-separated (Object Browser top folders)")
 	format := fs.String("format", "", "device mode: json | yaml | csv (default from the --out extension, else json)")
 	maxReq := fs.Int("max-requests", 20000, "device mode: cap on walk obtains")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *outDir != "" && *out != "" {

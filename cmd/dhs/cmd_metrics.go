@@ -76,7 +76,7 @@ func runMetricsExport(ctx context.Context, args []string) error {
 		outPath = fs.String("file", "", "output file (default stdout)")
 		timeout = fs.Duration("timeout", 5*time.Second, "HTTP request timeout")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	payload, err := fetchSnapshot(ctx, *url, *timeout)
@@ -109,7 +109,7 @@ func runMetricsShow(ctx context.Context, args []string) error {
 		url     = fs.String("url", "http://127.0.0.1:9100/snapshot.json", "producer snapshot URL")
 		timeout = fs.Duration("timeout", 5*time.Second, "HTTP request timeout")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	payload, err := fetchSnapshot(ctx, *url, *timeout)

@@ -45,7 +45,7 @@ func runNMOSSet(ctx context.Context, args []string) error {
 	when := fs.String("when", "", "TAI time <secs>:<nanos> for the scheduled modes")
 	dryRun := fs.Bool("dry-run", false,
 		"print the endpoint, the exact PATCH body and the sender's current legs — send nothing")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *sender == "" {

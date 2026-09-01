@@ -19,7 +19,7 @@ func runDiscover(ctx context.Context, args []string) error {
 	durationStr := fs.String("duration", "5s", "how long to listen (e.g. 5s, 30s)")
 	active := fs.Bool("active", true, "also send a broadcast probe (recommended)")
 	port := fs.Int("scan-port", 2071, "ACP port to scan")
-	_ = fs.Parse(args)
+	_ = parseVerbFlags(fs, args)
 	_ = cf // global flags reserved for parity; discover ignores them
 
 	d, err := time.ParseDuration(*durationStr)

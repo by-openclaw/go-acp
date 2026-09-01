@@ -38,7 +38,7 @@ func runNoArgMutate(ctx context.Context, verb string, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer acp1 %s <host> --slot N (--path P | --label L | --id I)", verb)
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	if *pathFlag == "" && *label == "" && *id < 0 {
 		return fmt.Errorf("either --path, --label, or --id is required")
 	}

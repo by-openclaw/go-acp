@@ -362,7 +362,7 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return nil, nil, nil, nil, err
 	}
 	p, sess, rest, err := dialCerebrum(cf, fs.Args(), verb)
@@ -459,7 +459,7 @@ func cerebrumKeepaliveProbe(_ context.Context, args []string) error {
 	cf := newCerebrumFlags(fs)
 	idle := fs.Duration("idle", 120*time.Second, "hold the connection idle for this long, then exit")
 	sendLogin := fs.Bool("send-login", false, "send <LOGIN .../> after handshake then idle (isolates whether LOGIN alone arms a server-side timer)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	rest := fs.Args()
@@ -1638,7 +1638,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	args = reorderFlagsFirst(rest)
 	fs := flag.NewFlagSet("cerebrum-nb watch", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "watch")
@@ -2438,7 +2438,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read live routes, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -2612,7 +2612,7 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | released (overrides the default "+verb+" verb)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live lock state, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -2784,7 +2784,7 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	alt := fs.String("alt", "", "alternate mnemonic slot (ALT_MNE)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live label, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -2900,7 +2900,7 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	tags := fs.String("tags", "", "comma-separated tag list")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live tags where the server allows, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -2989,7 +2989,7 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	desc := fs.String("description", "", "description text (op=description; §4.3 DESCRIPTION)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read live state, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	salvoType, err := salvoOpType(*op)
@@ -3110,7 +3110,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	label := fs.String("label", "", "label (create)")
 	inherits := fs.String("inherits", "", "parent category (create)")
 	desc := fs.String("description", "", "description (create / modify-desc)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	catType, err := categoryOpType(*op)
@@ -3185,7 +3185,7 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	mode := fs.String("mode", "", "CSV write mode: SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE (default SET)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live value, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -3308,7 +3308,7 @@ func cerebrumObtainDatastore(_ context.Context, args []string) error {
 	fs := flag.NewFlagSet("cerebrum-nb obtain-datastore", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	name := fs.String("name", "", "datastore path/name")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *name == "" {
@@ -3400,7 +3400,7 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	check := fs.Bool("check", false, "dry-run (ADR-0007): consult the live device LIST, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 
-	if err := fs.Parse(rest); err != nil {
+	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)

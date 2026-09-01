@@ -32,7 +32,7 @@ func runExport(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE | --out -] [--slot N] [--path SEG.SEG] [--out-dir DIR --prefix P]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	// ADR-0028 default home: --out omitted → snapshots/<proto>/<host>/
 	// params.<fmt> (deterministic, never a cwd surprise). --out "-"

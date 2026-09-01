@@ -269,6 +269,15 @@ jobs:
         with:
           version: v2.1.6
 
+      # docs/cli.md is GENERATED from the binary's own -h output
+      # (tools/gencli); a verb or flag changed without regenerating it
+      # fails here rather than rotting silently.
+      - name: docs/cli.md is current
+        run: |
+          go build -o /tmp/dhs ./cmd/dhs
+          go run ./tools/gencli -dhs /tmp/dhs > /tmp/cli.md
+          diff -u docs/cli.md /tmp/cli.md
+
   build-all:
     name: Cross-compile
     runs-on: ubuntu-latest

@@ -53,7 +53,7 @@ func parseProbelSW02Flags(args []string, want struct{ src, badSource bool }) (pr
 	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, err
 	}
 	pf.addr = addr
@@ -245,7 +245,7 @@ func runProbelsw02pGo(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	goOp, err := parseGoOp(*op)
@@ -285,7 +285,7 @@ func runProbelsw02pSalvoConnect(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	dsts, err := parseDsts(*dstsCSV)
@@ -464,7 +464,7 @@ func runProbelsw02pProtectDump(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *startDst < 0 || *startDst > 0x3FFF {
@@ -526,7 +526,7 @@ func runProbelsw02pProtectName(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *device < 0 || *device > 0x3FF {
@@ -586,7 +586,7 @@ func runProbelsw02pLockStatus(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -638,7 +638,7 @@ func runProbelsw02pStatus(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -724,7 +724,7 @@ func parseProbelSW02ProtectFlags(args []string) (probelSW02Flags, int, error) {
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, 0, err
 	}
 	pf.addr = addr
@@ -754,7 +754,7 @@ func parseProbelSW02AddrOutput(args []string, name string) (string, time.Duratio
 	if addr == "" {
 		return "", 0, false, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return "", 0, false, err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)

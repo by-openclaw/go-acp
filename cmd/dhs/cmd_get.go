@@ -27,7 +27,7 @@ func runGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> get <host> --slot N (--path P | --label L | --id I) [--capture out.jsonl]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	// --object is a deprecated alias for --id. Fold it in unless both
 	// were set with conflicting values.
 	if *objectAlias >= 0 {

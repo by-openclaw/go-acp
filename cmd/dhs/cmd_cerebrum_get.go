@@ -20,7 +20,7 @@ func cerebrumGet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("cerebrum-nb get", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	pathFlag := fs.String("path", "", `canonical object path DEVICE.SUB.OBJECT… — DEVICE_NAME verbatim incl. whitespace (e.g. "bm-n-nncvt-001 .1.PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay")`)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *pathFlag == "" {

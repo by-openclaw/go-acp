@@ -43,7 +43,7 @@ func runProfile(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> profile <host> [--port N] [--timeout DUR]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {

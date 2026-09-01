@@ -47,7 +47,7 @@ func runProbelSW02Discover(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)

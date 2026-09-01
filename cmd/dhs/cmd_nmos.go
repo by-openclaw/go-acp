@@ -113,7 +113,7 @@ func runNMOSDiscover(ctx context.Context, args []string) error {
 	peerList := fs.String("peer-list", "", "static CSV peer list (Mode C: host,port[,api_ver])")
 	service := fs.String("service", codec.ServiceRegister, "DNS-SD service type to discover")
 	timeout := fs.Duration("timeout", 5*time.Second, "discovery deadline")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 
@@ -299,7 +299,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")
 	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
 	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *configPath == "" {
@@ -380,7 +380,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version (TXT api_ver filter + URL prefix)")
 	apiProto := fs.String("api-proto", "http", "TXT api_proto filter (http | https)")
 	timeout := fs.Duration("timeout", 5*time.Second, "discovery deadline")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 
@@ -511,7 +511,7 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version exposed under /x-nmos/system/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *configPath == "" {
@@ -573,7 +573,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	regTLSCert := fs.String("tls-cert", "", "manually installed TLS certificate (PEM) - alternative to EST")
 	regTLSKey := fs.String("tls-key", "", "private key for --tls-cert")
 	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	mode := "mdns"
@@ -758,7 +758,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 	source := fs.String("source", "", "source Registry origin (http://host:port) — Query API side")
 	targetURL := fs.String("target", "", "target Registry origin (http://host:port) — Registration API side")
 	apiVer := fs.String("api-ver", "", "IS-04 wire version used on both faces (default v1.3)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
@@ -803,7 +803,7 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	persist := fs.Bool("persist", false, "ask the Registry to keep the subscription after the socket closes")
 	rate := fs.Int("rate", 0, "max_update_rate_ms; 0 lets the Registry choose")
 	duration := fs.Duration("duration", 0, "stop after this long; 0 = until interrupted")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *registry == "" && !*mdns && !*unicast {
@@ -916,7 +916,7 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
 	asJSON := fs.Bool("json", false, "emit the whole catalogue as JSON instead of a summary")
 	long := fs.Bool("l", false, "list every resource, not just the counts")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *node == "" && *registry == "" && !*mdns && !*unicast {

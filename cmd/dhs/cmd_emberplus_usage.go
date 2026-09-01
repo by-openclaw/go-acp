@@ -198,7 +198,7 @@ func runEmberUsage(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer emberplus usage <host> [--path <matrix.path>] [--srce N | --dest N] [--format csv|ascii]")
 	}
-	if err := fs.Parse(rest); err != nil {
+	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
 	if *format != "csv" && *format != "ascii" {
@@ -290,7 +290,7 @@ func runEmberReplace(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer emberplus replace <host> --srce A --with B [--path <matrix.path>] [--check]")
 	}
-	if err := fs.Parse(rest); err != nil {
+	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
 	if *from < 0 || *with < 0 {
