@@ -213,10 +213,13 @@ dhs_amwa_validate_suites:
   # (rows never template vars — a templated port would reach the tool
   # as a string, not an int) and must match
   # dhs_amwa_validate_mirror_serve_port / dhs_amwa_plant_mirror_serve.
-  # baseline placeholders 0/0 — filled from the first fleet run.
+  # Baselines (2026-09-01, #946 fleet receipts after the ws_href,
+  # announce, per-minor-fidelity and identical-put fixes plus the
+  # seeded subscription): pass=73 fail=0, cnt=2 = the same structural
+  # auto_registration 5/6 pair every registry-shaped entry carries.
   - { id: IS-04-02, scope: mirror, target: registry,
       rows: [{ver: v1.3}, {ver: v1.3, port: 8335}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 73, baseline_cnt: 2 }
 
   # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
   # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +
