@@ -30,10 +30,13 @@
     update_cache: true
     cache_valid_time: 86400
 
+# Port 1884, not the MQTT default: the nmos-cpp reference stack's
+# registry container publishes ITS bundled mosquitto on 1883 of this
+# same host.
 - name: Mosquitto listens for the lab (open, LAN-only)
   ansible.builtin.copy:
     content: |
-      listener 1883 0.0.0.0
+      listener 1884 0.0.0.0
       allow_anonymous true
     dest: /etc/mosquitto/conf.d/dhs-lab.conf
     mode: "0644"
