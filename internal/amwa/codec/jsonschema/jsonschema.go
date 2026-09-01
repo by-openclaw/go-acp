@@ -241,7 +241,7 @@ func (v *validator) applyObject(s map[string]any, inst any, path string) {
 func (v *validator) applyRef(ref string, inst any, path string) {
 	file, frag, _ := strings.Cut(ref, "#")
 	base := v.base
-	root := any(nil)
+	var root any
 
 	if file == "" {
 		var err error

@@ -588,7 +588,7 @@ func applyProbelNameCSV(ctx context.Context, p *probelproto.Plugin, path, typ st
 	// Apply changed labels, batched into contiguous same-(matrix,level) id runs
 	// sized to the SW-P-08 DATA cap. Skipped entirely on --check.
 	if !check {
-		perFrame := 120 / int(width.Bytes())
+		perFrame := 120 / width.Bytes()
 		if perFrame < 1 {
 			perFrame = 1
 		}

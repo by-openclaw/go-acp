@@ -107,7 +107,7 @@ func (s *IS14ConfigurationServer) objectByOid(oid int) *configObject {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, o := range s.objects {
-		if o.oid == ms05.NcOid(uint32(oid)) {
+		if o.oid == ms05.NcOid(oid) {
 			return o
 		}
 	}

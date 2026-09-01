@@ -232,7 +232,7 @@ func (p *Plugin) buildElement(e *treeEntry) (canonical.Element, error) {
 // threads them from the relevant Glow struct.
 func buildHeader(e *treeEntry, identifier, description string, isOnline bool, access int64) canonical.Header {
 	return canonical.Header{
-		Number:      int(e.obj.ID),
+		Number:      e.obj.ID,
 		Identifier:  identifier,
 		Path:        strings.Join(e.obj.Path, "."),
 		OID:         e.obj.OID,

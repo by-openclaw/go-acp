@@ -39,7 +39,7 @@ func checksum7(b []byte) byte {
 	for _, x := range b {
 		s += x
 	}
-	return byte(-s) & 0x7F
+	return -s & 0x7F
 }
 
 // EncodeFrame wraps command + payload into one SW-P-02 frame per §3.1:

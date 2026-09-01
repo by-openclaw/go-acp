@@ -486,7 +486,7 @@ func splitURLHostPort(urlStr string) (string, int) {
 		return "", 0
 	}
 	host := u.Hostname()
-	port := 0
+	var port int
 	if p := u.Port(); p != "" {
 		port, _ = strconv.Atoi(p)
 	} else if u.Scheme == "wss" {

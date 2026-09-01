@@ -275,7 +275,7 @@ func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDat
 func (m *Mirror) postResource(ctx context.Context, topic string, doc json.RawMessage, allowResync bool) {
 	body, err := json.Marshal(map[string]any{
 		"type": mirrorSingular[topic],
-		"data": json.RawMessage(doc),
+		"data": doc,
 	})
 	if err != nil {
 		m.fail("encode", topic, err)

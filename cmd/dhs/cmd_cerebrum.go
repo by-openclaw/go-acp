@@ -1134,7 +1134,7 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 			out.Available = &av
 			out.Description = c.Details.Description
 			for _, it := range c.Details.Items {
-				out.Items = append(out.Items, item{it.Index, string(it.Type), it.Value})
+				out.Items = append(out.Items, item{it.Index, it.Type, it.Value})
 			}
 		}
 		return printCerebrumJSON(out)

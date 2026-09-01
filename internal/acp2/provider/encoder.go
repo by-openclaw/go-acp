@@ -444,7 +444,7 @@ func stringMaxLen(p *canonical.Parameter) uint16 {
 		return 256
 	}
 	if ml := maxLenHint(p); ml > 0 {
-		return uint16(ml)
+		return ml
 	}
 	if p.Maximum != nil {
 		if u, err := asUint32(p.Maximum, "max"); err == nil && u > 0 && u <= 0xFFFF {

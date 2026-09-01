@@ -61,7 +61,7 @@ func Dial(ctx context.Context, urlStr string, opts *DialOptions) (*Conn, error) 
 		return nil, fmt.Errorf("ws: tcp dial: %w", err)
 	}
 
-	nc := net.Conn(rawConn)
+	nc := rawConn
 	if u.Scheme == "wss" {
 		cfg := opts.TLSConfig
 		if cfg == nil {
