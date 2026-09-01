@@ -295,12 +295,16 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	authClientSecret := fs.String("auth-client-secret", "", "OAuth client secret for the client_credentials grant (with --auth-url)")
 	estHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the Node bootstraps the network Root CA + enrolls for its TLS certificate there, then serves HTTPS/WSS only")
 	estLabel := fs.String("est-label", "", "EST api_selector arbitrary label (appended to /.well-known/est)")
-	tlsCert := fs.String("tls-cert", "", "manually installed TLS certificate (PEM, leaf+chain) - alternative to EST")
-	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")
+	var tlsCerts, tlsKeys stringSliceFlag
+	fs.Var(&tlsCerts, "tls-cert", "manually installed TLS certificate (PEM, leaf+chain) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair (the mandatory cipher set needs RSA, the recommended posture ECDSA) — paired with --tls-key positionally; the handshake picks per client")
+	fs.Var(&tlsKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
 	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if len(tlsCerts) != len(tlsKeys) {
+		return fmt.Errorf("producer nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(tlsCerts), len(tlsKeys))
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
@@ -341,8 +345,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		AuthClientSecret: *authClientSecret,
 		ESTHost:          *estHost,
 		ESTLabel:         *estLabel,
-		TLSCertFile:      *tlsCert,
-		TLSKeyFile:       *tlsKey,
+		TLSCertFile:      tlsCerts.String(),
+		TLSKeyFile:       tlsKeys.String(),
 		TLSCAFile:        *tlsCA,
 		TLSDataDir:       *tlsDir,
 	}
@@ -570,11 +574,15 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	regAuthURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, both faces validate Bearer tokens and api_auth=true is advertised")
 	regESTHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the registry enrolls for its TLS certificate there, then serves HTTPS/WSS only")
 	regESTLabel := fs.String("est-label", "", "EST api_selector arbitrary label")
-	regTLSCert := fs.String("tls-cert", "", "manually installed TLS certificate (PEM) - alternative to EST")
-	regTLSKey := fs.String("tls-key", "", "private key for --tls-cert")
+	var regTLSCerts, regTLSKeys stringSliceFlag
+	fs.Var(&regTLSCerts, "tls-cert", "manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client")
+	fs.Var(&regTLSKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if len(regTLSCerts) != len(regTLSKeys) {
+		return fmt.Errorf("registry nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(regTLSCerts), len(regTLSKeys))
 	}
 	mode := "mdns"
 	if !*mdns || *noMDNS {
@@ -602,8 +610,8 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		AuthURL:          *regAuthURL,
 		ESTHost:          *regESTHost,
 		ESTLabel:         *regESTLabel,
-		TLSCertFile:      *regTLSCert,
-		TLSKeyFile:       *regTLSKey,
+		TLSCertFile:      regTLSCerts.String(),
+		TLSKeyFile:       regTLSKeys.String(),
 		TLSDataDir:       *regTLSDir,
 	}
 	verLabel := *apiVer
@@ -814,16 +822,22 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
 			"mirror never wins a production Registry election against its own "+
 			"source registry at pri 0")
-	serveTLSCert := fs.String("serve-tls-cert", "",
+	var serveTLSCerts, serveTLSKeys stringSliceFlag
+	fs.Var(&serveTLSCerts, "serve-tls-cert",
 		"BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query "+
 			"face — with --serve-tls-key the face serves HTTPS/WSS ONLY, mints "+
 			"wss:// ws_hrefs and announces api_proto=https, the same manual "+
-			"pair path as the registry's --tls-cert. Requires --serve; the "+
-			"mirror's outbound source/target legs are untouched")
-	serveTLSKey := fs.String("serve-tls-key", "",
-		"private key for --serve-tls-cert")
+			"pair path as the registry's --tls-cert. Repeatable for "+
+			"dual-certificate serving (RSA + ECDSA), paired with "+
+			"--serve-tls-key positionally. Requires --serve; the mirror's "+
+			"outbound source/target legs are untouched")
+	fs.Var(&serveTLSKeys, "serve-tls-key",
+		"private key for --serve-tls-cert (repeatable, one per certificate, same order)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if len(serveTLSCerts) != len(serveTLSKeys) {
+		return fmt.Errorf("nmos mirror: %d --serve-tls-cert but %d --serve-tls-key — every certificate needs its private key, given in the same order", len(serveTLSCerts), len(serveTLSKeys))
 	}
 	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
 		Source:             *source,
@@ -836,8 +850,8 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		ServeAuthURL:       *serveAuthURL,
 		ServeAdvertiseHost: *serveAdvertiseHost,
 		ServePri:           *servePri,
-		ServeTLSCert:       *serveTLSCert,
-		ServeTLSKey:        *serveTLSKey,
+		ServeTLSCert:       serveTLSCerts.String(),
+		ServeTLSKey:        serveTLSKeys.String(),
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)

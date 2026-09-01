@@ -10,9 +10,11 @@ package registry
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -32,14 +34,36 @@ import (
 	codec "dhs/internal/amwa/codec/dnssd"
 )
 
-// mintServeTLSPair writes a self-signed serving pair (SAN: 127.0.0.1
-// + mirror-tls.test) to a temp dir and returns the paths plus a root
-// pool trusting it.
-func mintServeTLSPair(t *testing.T) (certFile, keyFile string, pool *x509.CertPool) {
+// mintServeTLSPairAlgo writes a self-signed serving pair for one
+// public-key algorithm ("rsa" | "ecdsa"; SAN: 127.0.0.1 +
+// mirror-tls.test) to a temp dir — the two halves of BCP-003-01
+// dual-certificate serving.
+func mintServeTLSPairAlgo(t *testing.T, algo string) (certFile, keyFile string, parsed *x509.Certificate) {
 	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
+	var pub any
+	var signer crypto.Signer
+	var keyBlock *pem.Block
+	switch algo {
+	case "ecdsa":
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		keyDER, err := x509.MarshalECPrivateKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pub, signer = &key.PublicKey, key
+		keyBlock = &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}
+	case "rsa":
+		key, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pub, signer = &key.PublicKey, key
+		keyBlock = &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}
+	default:
+		t.Fatalf("unknown algo %q", algo)
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
@@ -53,13 +77,13 @@ func mintServeTLSPair(t *testing.T) (certFile, keyFile string, pool *x509.CertPo
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, pub, signer)
 	if err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	certFile = filepath.Join(dir, "serve.crt")
-	keyFile = filepath.Join(dir, "serve.key")
+	certFile = filepath.Join(dir, algo+".serve.crt")
+	keyFile = filepath.Join(dir, algo+".serve.key")
 	certOut, err := os.Create(certFile)
 	if err != nil {
 		t.Fatal(err)
@@ -68,22 +92,26 @@ func mintServeTLSPair(t *testing.T) (certFile, keyFile string, pool *x509.CertPo
 		t.Fatal(err)
 	}
 	_ = certOut.Close()
-	keyDER, err := x509.MarshalECPrivateKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
 	keyOut, err := os.Create(keyFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
+	if err := pem.Encode(keyOut, keyBlock); err != nil {
 		t.Fatal(err)
 	}
 	_ = keyOut.Close()
-	parsed, err := x509.ParseCertificate(der)
+	parsed, err = x509.ParseCertificate(der)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return certFile, keyFile, parsed
+}
+
+// mintServeTLSPair keeps the single-pair (ECDSA) shape the earlier
+// tests use — path pair plus a root pool trusting it.
+func mintServeTLSPair(t *testing.T) (certFile, keyFile string, pool *x509.CertPool) {
+	t.Helper()
+	certFile, keyFile, parsed := mintServeTLSPairAlgo(t, "ecdsa")
 	pool = x509.NewCertPool()
 	pool.AddCert(parsed)
 	return certFile, keyFile, pool
@@ -214,5 +242,78 @@ func TestNewMirrorServeTLSValidation(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "--serve") {
 		t.Errorf("TLS pair without serve = %v, want the add---serve error", err)
+	}
+	// Dual-certificate lists pair positionally — a count mismatch is
+	// caught before any file is touched.
+	_, err = NewMirror(MirrorOptions{
+		Source: "http://s:1", Target: "http://t:2", ServeAddr: ":0",
+		ServeTLSCert: "rsa.pem,ecdsa.pem", ServeTLSKey: "rsa.key",
+	})
+	if err == nil || !strings.Contains(err.Error(), "counts differ") {
+		t.Errorf("mismatched pair counts = %v, want the counts-differ error", err)
+	}
+}
+
+// TestMirrorServeTLSDualCert: BCP-003-01 dual-certificate serving —
+// with an RSA AND an ECDSA pair installed, an RSA-only TLS 1.2 client
+// (pinned to the spec's mandatory TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+// completes the handshake against the RSA certificate, and an
+// ECDSA-pinned client against the ECDSA one — Go's handshake selects
+// per ClientHello, no custom selection code (the tool's test_02/test_08
+// pair of findings, reproduced as a unit test).
+func TestMirrorServeTLSDualCert(t *testing.T) {
+	stubServeTLSDataDir(t)
+	rsaCert, rsaKey, rsaParsed := mintServeTLSPairAlgo(t, "rsa")
+	ecdsaCert, ecdsaKey, ecdsaParsed := mintServeTLSPairAlgo(t, "ecdsa")
+	pool := x509.NewCertPool()
+	pool.AddCert(rsaParsed)
+	pool.AddCert(ecdsaParsed)
+
+	plant := &fakePlant{}
+	target := httptest.NewServer(plant.targetHandler())
+	t.Cleanup(target.Close)
+	push := newPushSource()
+	src := httptest.NewServer(stdhttp.NotFoundHandler())
+	src.Config.Handler = push.handler(t, func() string { return src.URL })
+	t.Cleanup(src.Close)
+
+	m, err := NewMirror(MirrorOptions{
+		Source: src.URL, Target: target.URL, APIVer: "v1.3",
+		ServeAddr:    "127.0.0.1:0",
+		ServeTLSCert: rsaCert + "," + ecdsaCert,
+		ServeTLSKey:  rsaKey + "," + ecdsaKey,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go func() { _ = m.Run(ctx) }()
+	waitFor(t, 5*time.Second, func() bool { return m.ServeAddr() != "" }, "served face to bind")
+
+	// handshake pins TLS 1.2 (1.3 ignores CipherSuites) and exactly one
+	// cipher, then reports the leaf certificate the server presented.
+	handshake := func(cipher uint16) *x509.Certificate {
+		t.Helper()
+		conn, err := tls.Dial("tcp", m.ServeAddr(), &tls.Config{
+			RootCAs:      pool,
+			MinVersion:   tls.VersionTLS12,
+			MaxVersion:   tls.VersionTLS12,
+			CipherSuites: []uint16{cipher},
+		})
+		if err != nil {
+			t.Fatalf("handshake with cipher %#x: %v", cipher, err)
+		}
+		defer func() { _ = conn.Close() }()
+		return conn.ConnectionState().PeerCertificates[0]
+	}
+
+	rsaLeaf := handshake(tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+	if _, ok := rsaLeaf.PublicKey.(*rsa.PublicKey); !ok {
+		t.Errorf("RSA-only client got a %T leaf — the mandatory RSA cipher needs the RSA certificate", rsaLeaf.PublicKey)
+	}
+	ecdsaLeaf := handshake(tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
+	if _, ok := ecdsaLeaf.PublicKey.(*ecdsa.PublicKey); !ok {
+		t.Errorf("ECDSA-pinned client got a %T leaf — want the ECDSA certificate", ecdsaLeaf.PublicKey)
 	}
 }

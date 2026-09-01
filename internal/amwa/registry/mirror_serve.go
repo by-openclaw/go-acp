@@ -100,11 +100,15 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		}
 	}
 	// BCP-003-01 on the SERVED face (issue #948): the same certmgr
-	// manual-pair path Registry.Serve's --tls-cert arms (LoadManual →
-	// TLSServerConfig: TLS 1.2 floor + the BCP-003-01 suite set),
-	// wrapped around the mirror's own listener. Once armed the face is
-	// HTTPS/WSS ONLY — the plain listener is replaced, never kept
-	// alongside (a secured server SHALL NOT accept plain HTTP).
+	// manual-pair path Registry.Serve's --tls-cert arms (LoadManual per
+	// pair → TLSServerConfig: TLS 1.2 floor + the BCP-003-01 suite set,
+	// every pair handed to Go's handshake for per-client selection),
+	// wrapped around the mirror's own listener. Comma-separated lists
+	// carry multiple pairs — dual-certificate serving needs an RSA AND
+	// an ECDSA pair (the spec's mandatory cipher is RSA, its
+	// recommendation ECDSA). Once armed the face is HTTPS/WSS ONLY —
+	// the plain listener is replaced, never kept alongside (a secured
+	// server SHALL NOT accept plain HTTP).
 	serveScheme := "http"
 	if m.opts.ServeTLSCert != "" {
 		tlsMgr, err := certmgr.New(certmgr.Options{DataDir: mirrorServeTLSDataDir, Logger: m.logger})
@@ -112,9 +116,13 @@ func (m *Mirror) startServe(ctx context.Context) error {
 			_ = ln.Close()
 			return fmt.Errorf("registry/mirror: serve TLS: %w", err)
 		}
-		if err := tlsMgr.LoadManual(m.opts.ServeTLSCert, m.opts.ServeTLSKey); err != nil {
-			_ = ln.Close()
-			return fmt.Errorf("registry/mirror: serve TLS: %w", err)
+		certs := strings.Split(m.opts.ServeTLSCert, ",")
+		keys := strings.Split(m.opts.ServeTLSKey, ",")
+		for i := range certs {
+			if err := tlsMgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+				_ = ln.Close()
+				return fmt.Errorf("registry/mirror: serve TLS: %w", err)
+			}
 		}
 		ln = tls.NewListener(ln, tlsMgr.TLSServerConfig())
 		serveScheme = "https"

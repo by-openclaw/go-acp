@@ -107,10 +107,14 @@ type MirrorOptions struct {
 	ServePri int
 	// ServeTLSCert / ServeTLSKey, when both set, make the served face
 	// HTTPS/WSS-only (BCP-003-01: a secured server SHALL NOT accept
-	// plain HTTP) using this manually installed pair — the same
-	// certmgr path Registry.Serve's --tls-cert arms. ws_href is then
-	// minted wss:// and the announce carries api_proto=https. Both
-	// require ServeAddr, and each other. The mirror's OUTBOUND legs
+	// plain HTTP) using these manually installed pairs — the same
+	// certmgr path (and comma-separated list contract) Registry.Serve's
+	// --tls-cert arms. BCP-003-01 dual-certificate serving passes TWO
+	// pairs, RSA + ECDSA, matched positionally: the mandatory cipher
+	// set needs an RSA certificate and the recommended posture ECDSA;
+	// Go's handshake picks per client. ws_href is minted wss:// and
+	// the announce carries api_proto=https. Both require ServeAddr,
+	// each other, and equal entry counts. The mirror's OUTBOUND legs
 	// stay untouched.
 	ServeTLSCert string
 	ServeTLSKey  string
@@ -213,6 +217,10 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	}
 	if (opts.ServeTLSCert != "") != (opts.ServeTLSKey != "") {
 		return nil, errors.New("registry/mirror: --serve-tls-cert and --serve-tls-key travel together — a certificate without its key (or the reverse) serves nothing")
+	}
+	if opts.ServeTLSCert != "" &&
+		len(strings.Split(opts.ServeTLSCert, ",")) != len(strings.Split(opts.ServeTLSKey, ",")) {
+		return nil, errors.New("registry/mirror: --serve-tls-cert and --serve-tls-key counts differ — every certificate needs its private key, given in the same order")
 	}
 	if opts.ServeTLSCert != "" && opts.ServeAddr == "" {
 		return nil, errors.New("registry/mirror: --serve-tls-cert secures the served Query face, and no face is being served — add --serve ADDR or drop the TLS pair")

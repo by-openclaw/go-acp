@@ -115,12 +115,18 @@ dhs_amwa_validate_tls_tool_container: nmos-testing-tls
 dhs_amwa_validate_tls_port_base: 5800
 dhs_amwa_validate_tls_ws_port_base: 6800
 dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
-# Which premade CuT pair the window serves. ecdsa: BCP-003-01
-# RECOMMENDS ECDSA and the tool's test_08 warns "Server is not
-# providing an ECDSA certificate" when only RSA is offered (first
-# #948 fleet score: 6 pass + that warning; the historic 7/0 implies
-# the ECDSA pair). Both algorithms ship in the image.
-dhs_amwa_validate_tls_cut_algo: ecdsa
+# The window serves BOTH premade CuT pairs — dual-certificate TLS is
+# the compliant posture, not a choice (single-algo runs proved it on
+# the fleet): RSA-only scores 6 with test_08 warning "Server is not
+# providing an ECDSA certificate"; ECDSA-only scores 6 with test_02
+# FAILING outright ("Implementation of the following TLS 1.2 ciphers
+# is required: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" — the spec's
+# mandatory cipher is an RSA one). Serving RSA AND ECDSA together
+# lets the handshake pick per client and satisfies both tests, so the
+# former single-algo selector var is gone; the algo list below drives
+# the copy-out, the plant install, and the transient's repeated
+# --tls-cert/--tls-key pairs.
+dhs_amwa_validate_tls_cut_algos: [rsa, ecdsa]
 # http, not https: in this tool build ENABLE_HTTPS wraps only the
 # MOCK apps (PORT_BASE+100+n serve https, verified in the container
 # logs) — the core GUI/API at PORT_BASE stays plain http, and an
@@ -134,10 +140,10 @@ dhs_amwa_validate_tls_tool_url: "http://localhost:{{ dhs_amwa_validate_tls_port_
 # generate scripts live at ca/generateCerts in this image build, but
 # `openssl ca` mutates CA state (index.txt/serial) per issue and
 # refuses same-CN re-issues — copying the premade pair is
-# deterministic. The RSA chain+key are docker-cp'd out once and the
-# CuT serves them via --tls-cert/--tls-key; tooling /etc/hosts pins
-# the name at the plant IP (host-net tool containers read the host's
-# /etc/hosts).
+# deterministic. Both algorithms' chains+keys are docker-cp'd out
+# once and the CuT serves them via repeated --tls-cert/--tls-key
+# pairs; tooling /etc/hosts pins the name at the plant IP (host-net
+# tool containers read the host's /etc/hosts).
 dhs_amwa_validate_tls_cut_fqdn: dhs-node.testsuite.nmos.tv
 # In-container CA tree (image workdir is /home/nmos-testing) and the
 # tooling-host staging dir the material is copied to; the plant-side

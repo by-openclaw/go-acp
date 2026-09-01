@@ -15,27 +15,32 @@
   delegate_to: "{{ groups['plant'][0] }}"
 
 # Tooling → plant via slurp+copy: the PEMs are small and the role has
-# no controller-side staging of its own.
-- name: Read the staged CuT chain + key
+# no controller-side staging of its own. BOTH algorithms travel —
+# dual-certificate serving (see defaults: test_02 needs RSA for the
+# mandatory cipher, test_08 wants ECDSA alongside).
+- name: Read the staged CuT chains + keys
   ansible.builtin.slurp:
-    src: "{{ dhs_amwa_validate_tls_dir }}/{{ item }}"
+    src: "{{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}"
   register: _tls_material
-  loop:
-    - "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem"
-    - "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem"
+  loop: "{{ dhs_amwa_validate_tls_cut_algos | product(['cert.chain.pem', 'key.pem']) | list }}"
+  loop_control:
+    label: "{{ item.0 }}.{{ item.1 }}"
 
-- name: Install the CuT chain + key on the plant
+- name: Install the CuT chains + keys on the plant
   ansible.builtin.copy:
     content: "{{ item.content | b64decode }}"
-    dest: "{{ dhs_amwa_validate_tls_plant_dir }}/{{ item.item }}"
+    dest: "{{ dhs_amwa_validate_tls_plant_dir }}/{{ item.source | basename }}"
     mode: "0600"
   loop: "{{ _tls_material.results }}"
   loop_control:
-    label: "{{ item.item }}"
+    label: "{{ item.source | basename }}"
   delegate_to: "{{ groups['plant'][0] }}"
 
 # Advertise the certificate's DNS identity, not the IP — every URL
-# the node mints must carry the name the certificate vouches for.
+# the node mints must carry the name the certificates vouch for. The
+# repeated --tls-cert/--tls-key flags pair positionally: certificates
+# and keys ride in the same algorithm order, and the handshake picks
+# the pair each client can use.
 - name: Start the transient TLS node
   ansible.builtin.command: >-
     systemd-run --unit dhs-nmos-validate-cut --collect
@@ -45,8 +50,8 @@
     --advertise-host {{ dhs_amwa_validate_tls_cut_fqdn }}:{{ dhs_amwa_validate_cut_port }}
     --api-ver v1.3
     --config {{ dhs_amwa_validate_plant_config }}
-    --tls-cert {{ dhs_amwa_validate_tls_plant_dir }}/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem
-    --tls-key {{ dhs_amwa_validate_tls_plant_dir }}/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem
+    {% for algo in dhs_amwa_validate_tls_cut_algos %}--tls-cert {{ dhs_amwa_validate_tls_plant_dir }}/{{ algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem {% endfor %}
+    {% for algo in dhs_amwa_validate_tls_cut_algos %}--tls-key {{ dhs_amwa_validate_tls_plant_dir }}/{{ algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem {% endfor %}
   delegate_to: "{{ groups['plant'][0] }}"
   changed_when: true
 

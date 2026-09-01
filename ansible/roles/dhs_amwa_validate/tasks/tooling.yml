@@ -196,21 +196,26 @@
     mode: "0755"
   when: _validate_need_tls
 
-- name: Copy the CuT chain + key + CA out of the tool image
+# BOTH algorithms come out: dual-certificate serving needs the RSA
+# pair (mandatory cipher set, test_02) AND the ECDSA pair
+# (recommended posture, test_08 warns without it).
+- name: Copy the CuT chains + keys out of the tool image (both algorithms)
   ansible.builtin.command: >-
-    docker cp {{ dhs_amwa_validate_tool_container }}:{{ item.src }}
-    {{ dhs_amwa_validate_tls_dir }}/{{ item.dest }}
+    docker cp {{ dhs_amwa_validate_tool_container }}:{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/{{ 'certs' if item.1 == 'cert.chain.pem' else 'private' }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}
+    {{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}
   args:
-    creates: "{{ dhs_amwa_validate_tls_dir }}/{{ item.dest }}"
-  loop:
-    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/certs/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem",
-        dest: "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem" }
-    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/private/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem",
-        dest: "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem" }
-    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/certs/ca.cert.pem",
-        dest: "ca.cert.pem" }
+    creates: "{{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}"
+  loop: "{{ dhs_amwa_validate_tls_cut_algos | product(['cert.chain.pem', 'key.pem']) | list }}"
   loop_control:
-    label: "{{ item.dest }}"
+    label: "{{ item.0 }}.{{ item.1 }}"
+  when: _validate_need_tls
+
+- name: Copy the CA out of the tool image
+  ansible.builtin.command: >-
+    docker cp {{ dhs_amwa_validate_tool_container }}:{{ dhs_amwa_validate_tls_image_ca_dir }}/certs/ca.cert.pem
+    {{ dhs_amwa_validate_tls_dir }}/ca.cert.pem
+  args:
+    creates: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
   when: _validate_need_tls
 
 - name: The TLS tool container exists
