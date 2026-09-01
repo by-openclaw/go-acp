@@ -42,6 +42,13 @@ dhs_amwa_plant_mirror_serve_advertise: "{{ dhs_amwa_plant_advertise_ip }}:8335"
 # without --serve), so the unit template nests it inside the --serve
 # block.
 dhs_amwa_plant_mirror_serve_auth: ""
+# BCP-003-01 TLS pair for the mirror's SERVED face
+# (--serve-tls-cert/--serve-tls-key, issue #948). Empty = plain HTTP,
+# the default — Cerebrum reads the served face unauthenticated over
+# plain HTTP today. Both must be set together; only meaningful inside
+# the --serve block (the CLI refuses the pair without --serve).
+dhs_amwa_plant_mirror_serve_tls_cert: ""
+dhs_amwa_plant_mirror_serve_tls_key: ""
 dhs_amwa_plant_registry_page_limit: 1000
 # Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
 # configurable; the CONFORMANCE plant runs 30s, matched by the AMWA

@@ -270,12 +270,12 @@ Usage of serve:
     	IS-09 System API as host:port, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional
   -tls-ca string
     	trust root PEM for OUTBOUND https verification (registry over https)
-  -tls-cert string
-    	manually installed TLS certificate (PEM, leaf+chain) - alternative to EST
+  -tls-cert value
+    	manually installed TLS certificate (PEM, leaf+chain) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair (the mandatory cipher set needs RSA, the recommended posture ECDSA) — paired with --tls-key positionally; the handshake picks per client
   -tls-dir string
     	directory for EST-provisioned material (default .cache/nmos-tls)
-  -tls-key string
-    	private key for --tls-cert
+  -tls-key value
+    	private key for --tls-cert (repeatable, one per certificate, same order)
   -unicast
     	discover the Registry via unicast DNS-SD instead of mDNS (IS-04 §3.1 for multicast-blocked plants)
 ```
@@ -312,12 +312,12 @@ Usage of serve:
     	Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
-  -tls-cert string
-    	manually installed TLS certificate (PEM) - alternative to EST
+  -tls-cert value
+    	manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client
   -tls-dir string
     	directory for EST-provisioned material (default .cache/nmos-registry-tls)
-  -tls-key string
-    	private key for --tls-cert
+  -tls-key value
+    	private key for --tls-cert (repeatable, one per certificate, same order)
 ```
 
 ## NMOS registry mirror
@@ -338,6 +338,10 @@ Usage of mirror:
     	identity minted into the served face's ws_href and mDNS announce, as host or host:port (a bare host takes the bound --serve port). Precedence: this flag wins; empty derives from the bound address (concrete IP, else OS hostname — which off-link controllers may not resolve). Setting it also enables the _nmos-query._tcp announce of the served face
   -serve-pri int
     	DNS-SD pri TXT for the served face's announce (with --serve-advertise-host). Defaults into the 100+ dev range so the mirror never wins a production Registry election against its own source registry at pri 0 (default 100)
+  -serve-tls-cert value
+    	BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query face — with --serve-tls-key the face serves HTTPS/WSS ONLY, mints wss:// ws_hrefs and announces api_proto=https, the same manual pair path as the registry's --tls-cert. Repeatable for dual-certificate serving (RSA + ECDSA), paired with --serve-tls-key positionally. Requires --serve; the mirror's outbound source/target legs are untouched
+  -serve-tls-key value
+    	private key for --serve-tls-cert (repeatable, one per certificate, same order)
   -source string
     	source Registry origin (http://host:port) — Query API side
   -status-addr string

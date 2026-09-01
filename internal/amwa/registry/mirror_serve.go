@@ -25,6 +25,7 @@ package registry
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,10 +42,19 @@ import (
 	codec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
 	authsession "dhs/internal/amwa/session/auth"
+	"dhs/internal/amwa/session/certmgr"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	registryslot "dhs/internal/registry"
 )
+
+// mirrorServeTLSDataDir is the certmgr working directory for the
+// served face's manual TLS pair — the mirror twin of the registry's
+// .cache/nmos-registry-tls default (manual mode touches it only to
+// exist; no EST material lands there). A var, not a const: tests
+// point it at a temp dir so `go test` leaves no .cache/ droppings in
+// the package directory (the repo ignores /.cache/ at the root only).
+var mirrorServeTLSDataDir = ".cache/nmos-mirror-serve-tls"
 
 // mirrorServe is the embedded Query face's immutable wiring — built
 // once by startServe before the watch goroutines run.
@@ -89,6 +99,34 @@ func (m *Mirror) startServe(ctx context.Context) error {
 			}
 		}
 	}
+	// BCP-003-01 on the SERVED face (issue #948): the same certmgr
+	// manual-pair path Registry.Serve's --tls-cert arms (LoadManual per
+	// pair → TLSServerConfig: TLS 1.2 floor + the BCP-003-01 suite set,
+	// every pair handed to Go's handshake for per-client selection),
+	// wrapped around the mirror's own listener. Comma-separated lists
+	// carry multiple pairs — dual-certificate serving needs an RSA AND
+	// an ECDSA pair (the spec's mandatory cipher is RSA, its
+	// recommendation ECDSA). Once armed the face is HTTPS/WSS ONLY —
+	// the plain listener is replaced, never kept alongside (a secured
+	// server SHALL NOT accept plain HTTP).
+	serveScheme := "http"
+	if m.opts.ServeTLSCert != "" {
+		tlsMgr, err := certmgr.New(certmgr.Options{DataDir: mirrorServeTLSDataDir, Logger: m.logger})
+		if err != nil {
+			_ = ln.Close()
+			return fmt.Errorf("registry/mirror: serve TLS: %w", err)
+		}
+		certs := strings.Split(m.opts.ServeTLSCert, ",")
+		keys := strings.Split(m.opts.ServeTLSKey, ",")
+		for i := range certs {
+			if err := tlsMgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+				_ = ln.Close()
+				return fmt.Errorf("registry/mirror: serve TLS: %w", err)
+			}
+		}
+		ln = tls.NewListener(ln, tlsMgr.TLSServerConfig())
+		serveScheme = "https"
+	}
 	store := NewStore()
 	apiVers := pickAPIVersions("")
 	srv := httpsession.NewServer(m.logger)
@@ -116,6 +154,12 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	for _, apiVer := range apiVers {
 		queryBase := "/x-nmos/query/" + apiVer
 		mgr := NewSubscriptionManager(m.logger, store, advertise, apiVer)
+		if serveScheme == "https" {
+			// Same rule as Registry.Serve: a secured face mints wss://
+			// ws_hrefs — a ws:// one would point subscribers at a plain
+			// socket the server refuses to speak.
+			mgr.SetWSScheme("wss")
+		}
 		mgr.setWSLifecycleHooks(m.serveWSOpened, m.serveWSClosed)
 		installQueryRoutes(srv, store, mgr, queryBase, apiVer)
 		wsPrefix := queryBase + "/subscriptions/"
@@ -214,7 +258,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	}
 	m.logger.Info("registry/mirror: serving mirrored Query API",
 		"addr", ln.Addr().String(), "api_vers", apiVers,
-		"auth", m.opts.ServeAuthURL != "")
+		"auth", m.opts.ServeAuthURL != "", "proto", serveScheme)
 	return nil
 }
 
@@ -242,7 +286,11 @@ func (m *Mirror) announceServe(ctx context.Context, advertise string, apiVers []
 		return
 	}
 	defer func() { _ = resp.Close() }()
-	ins := serveAnnounceInstance(host, port, apiVers, m.opts.ServePri, m.opts.ServeAuthURL != "")
+	proto := "http"
+	if m.opts.ServeTLSCert != "" {
+		proto = "https"
+	}
+	ins := serveAnnounceInstance(host, port, apiVers, m.opts.ServePri, m.opts.ServeAuthURL != "", proto)
 	if err := resp.Announce(ctx, ins); err != nil {
 		m.logger.Warn("registry/mirror: serve announce failed", "err", err)
 		return
@@ -256,14 +304,17 @@ func (m *Mirror) announceServe(ctx context.Context, advertise string, apiVers []
 // _nmos-query._tcp ONLY — the mirror's Query face is real, and there
 // is deliberately no _nmos-register._tcp twin because the mirror
 // refuses registrations. The TXT set mirrors Registry.Serve's
-// announce: api_proto (the served face speaks plain HTTP today),
-// api_ver per served minor, api_auth tracking the Bearer gate (#946),
-// and pri — CLI-defaulted to 100, the dev range, so the plant mirror
-// never wins a production Registry election against its own source
-// registry at pri 0.
-func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, auth bool) codec.Instance {
+// announce: api_proto tracking the TLS pair (#948 — https once
+// armed), api_ver per served minor, api_auth tracking the Bearer
+// gate (#946), and pri — CLI-defaulted to 100, the dev range, so the
+// plant mirror never wins a production Registry election against its
+// own source registry at pri 0.
+func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, auth bool, proto string) codec.Instance {
 	if pri < 0 {
 		pri = 0
+	}
+	if proto == "" {
+		proto = "http"
 	}
 	return codec.Instance{
 		Name:    "dhs-nmos-mirror",
@@ -273,7 +324,7 @@ func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, 
 		Port:    port,
 		IPv4:    localIPv4Candidates(host),
 		TXT: map[string]string{
-			codec.TXTKeyAPIProto: "http",
+			codec.TXTKeyAPIProto: proto,
 			codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
 			codec.TXTKeyAPIAuth:  strconv.FormatBool(auth),
 			codec.TXTKeyPriority: strconv.Itoa(pri),

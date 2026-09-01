@@ -105,6 +105,19 @@ type MirrorOptions struct {
 	// range — because the plant mirror must never win a production
 	// Registry election against its own source registry (pri 0).
 	ServePri int
+	// ServeTLSCert / ServeTLSKey, when both set, make the served face
+	// HTTPS/WSS-only (BCP-003-01: a secured server SHALL NOT accept
+	// plain HTTP) using these manually installed pairs — the same
+	// certmgr path (and comma-separated list contract) Registry.Serve's
+	// --tls-cert arms. BCP-003-01 dual-certificate serving passes TWO
+	// pairs, RSA + ECDSA, matched positionally: the mandatory cipher
+	// set needs an RSA certificate and the recommended posture ECDSA;
+	// Go's handshake picks per client. ws_href is minted wss:// and
+	// the announce carries api_proto=https. Both require ServeAddr,
+	// each other, and equal entry counts. The mirror's OUTBOUND legs
+	// stay untouched.
+	ServeTLSCert string
+	ServeTLSKey  string
 	// ServeAuthURL, when set, arms the served Query face with the
 	// BCP-003-02 Bearer gate: tokens are validated against the
 	// Authorization Server at this base URL, exactly the way the
@@ -201,6 +214,16 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	}
 	if opts.ServeAuthURL != "" && opts.ServeAddr == "" {
 		return nil, errors.New("registry/mirror: --auth-url guards the served Query face, and no face is being served — add --serve ADDR or drop --auth-url")
+	}
+	if (opts.ServeTLSCert != "") != (opts.ServeTLSKey != "") {
+		return nil, errors.New("registry/mirror: --serve-tls-cert and --serve-tls-key travel together — a certificate without its key (or the reverse) serves nothing")
+	}
+	if opts.ServeTLSCert != "" &&
+		len(strings.Split(opts.ServeTLSCert, ",")) != len(strings.Split(opts.ServeTLSKey, ",")) {
+		return nil, errors.New("registry/mirror: --serve-tls-cert and --serve-tls-key counts differ — every certificate needs its private key, given in the same order")
+	}
+	if opts.ServeTLSCert != "" && opts.ServeAddr == "" {
+		return nil, errors.New("registry/mirror: --serve-tls-cert secures the served Query face, and no face is being served — add --serve ADDR or drop the TLS pair")
 	}
 	if opts.APIVer == "" {
 		opts.APIVer = is04.APIVersion

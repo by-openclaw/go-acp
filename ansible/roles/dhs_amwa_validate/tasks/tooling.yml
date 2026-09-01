@@ -162,3 +162,106 @@
   ansible.builtin.command: docker start {{ dhs_amwa_validate_auth_tool_container }}
   when: _validate_need_auth and _auth_tool_state.rc == 0 and 'running' not in _auth_tool_state.stdout
   changed_when: true
+
+# ---- the TLS tool instance (issue #948) ----
+# FOURTH container, same created-stopped-then-pin pattern (the #942
+# crash-loop lesson: config first, first start after). Host networking
+# + host dbus like the others; shifted PORT_BASE because the resident
+# owns 5000 and the armed one 5500. ENABLE_HTTPS flips the tool's
+# scheme globally, GUI/API included, using the image's shipped
+# CERTS_MOCKS (mocks.testsuite.nmos.tv) — untouched defaults.
+
+# The tool's own certificates name DNS identities only, so both TLS
+# parties get hosts pins: the CuT's FQDN at the plant IP (the tool
+# validates the CuT's cert against that name; host-net containers
+# read the host /etc/hosts) and the mock identity at loopback (so the
+# uri probes and suite POSTs can CA-validate the tool's own https).
+- name: The TLS identities resolve on the tooling host
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^.*\\s{{ item.name }}\\s*$"
+    line: "{{ item.ip }} {{ item.name }}"
+  loop:
+    - { name: "{{ dhs_amwa_validate_tls_cut_fqdn }}", ip: "{{ dhs_amwa_validate_plant_host }}" }
+    - { name: "{{ dhs_amwa_validate_tls_tool_host }}", ip: "127.0.0.1" }
+  when: _validate_need_tls
+
+# The CuT pair + CA come out of the RESIDENT container (same pinned
+# image, always exists by this point) — docker cp works regardless of
+# the TLS container's create/start ordering.
+- name: Stage the TLS material directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_validate_tls_dir }}"
+    state: directory
+    mode: "0755"
+  when: _validate_need_tls
+
+# BOTH algorithms come out: dual-certificate serving needs the RSA
+# pair (mandatory cipher set, test_02) AND the ECDSA pair
+# (recommended posture, test_08 warns without it).
+- name: Copy the CuT chains + keys out of the tool image (both algorithms)
+  ansible.builtin.command: >-
+    docker cp {{ dhs_amwa_validate_tool_container }}:{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/{{ 'certs' if item.1 == 'cert.chain.pem' else 'private' }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}
+    {{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}
+  args:
+    creates: "{{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}"
+  loop: "{{ dhs_amwa_validate_tls_cut_algos | product(['cert.chain.pem', 'key.pem']) | list }}"
+  loop_control:
+    label: "{{ item.0 }}.{{ item.1 }}"
+  when: _validate_need_tls
+
+- name: Copy the CA out of the tool image
+  ansible.builtin.command: >-
+    docker cp {{ dhs_amwa_validate_tool_container }}:{{ dhs_amwa_validate_tls_image_ca_dir }}/certs/ca.cert.pem
+    {{ dhs_amwa_validate_tls_dir }}/ca.cert.pem
+  args:
+    creates: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
+  when: _validate_need_tls
+
+- name: The TLS tool container exists
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Status}}"{% endraw %} {{ dhs_amwa_validate_tls_tool_container }}
+  register: _tls_tool_state
+  changed_when: false
+  failed_when: false
+  when: _validate_need_tls
+
+- name: Create the TLS tool container (stopped)
+  ansible.builtin.command: >-
+    docker create --name {{ dhs_amwa_validate_tls_tool_container }}
+    --network host
+    -v /run/dbus:/run/dbus
+    --restart unless-stopped
+    {{ dhs_amwa_validate_tool_image }}
+  when: _validate_need_tls and _tls_tool_state.rc != 0
+  changed_when: true
+
+# Same conformance profile as the resident PLUS the https knobs —
+# ENABLE_HTTPS is the tool's global scheme switch (Config.py line 92);
+# CERTS_MOCKS / KEYS_MOCKS / CERT_TRUST_ROOT_CA stay at their shipped
+# defaults, which already point at the image's own CA material.
+- name: Render the TLS UserConfig
+  ansible.builtin.copy:
+    content: |
+      PULL_REPOS = False
+      from . import Config as CONFIG
+      CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30
+      CONFIG.ENABLE_HTTPS = True
+      CONFIG.PORT_BASE = {{ dhs_amwa_validate_tls_port_base }}
+      CONFIG.WEBSOCKET_PORT_BASE = {{ dhs_amwa_validate_tls_ws_port_base }}
+    dest: /opt/dhs-validate-userconfig-tls.py
+    mode: "0644"
+  register: _tls_userconfig
+  when: _validate_need_tls
+
+- name: Pin the TLS tool UserConfig
+  ansible.builtin.shell: >-
+    docker cp /opt/dhs-validate-userconfig-tls.py {{ dhs_amwa_validate_tls_tool_container }}:/config/UserConfig.py
+    && docker restart {{ dhs_amwa_validate_tls_tool_container }}
+  when: _validate_need_tls and (_tls_userconfig.changed or _tls_tool_state.rc != 0)
+  changed_when: true
+
+# After the pin so a first start always runs the https config.
+- name: The TLS tool container is running
+  ansible.builtin.command: docker start {{ dhs_amwa_validate_tls_tool_container }}
+  when: _validate_need_tls and _tls_tool_state.rc == 0 and 'running' not in _tls_tool_state.stdout
+  changed_when: true
