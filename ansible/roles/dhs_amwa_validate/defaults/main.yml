@@ -115,7 +115,12 @@ dhs_amwa_validate_tls_tool_container: nmos-testing-tls
 dhs_amwa_validate_tls_port_base: 5800
 dhs_amwa_validate_tls_ws_port_base: 6800
 dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
-dhs_amwa_validate_tls_tool_url: "https://{{ dhs_amwa_validate_tls_tool_host }}:{{ dhs_amwa_validate_tls_port_base }}/api"
+# http, not https: in this tool build ENABLE_HTTPS wraps only the
+# MOCK apps (PORT_BASE+100+n serve https, verified in the container
+# logs) — the core GUI/API at PORT_BASE stays plain http, and an
+# https probe dies with SSL WRONG_VERSION_NUMBER (first #948 fleet
+# rerun). TLS on the wire lives between the tool and the CuT.
+dhs_amwa_validate_tls_tool_url: "http://localhost:{{ dhs_amwa_validate_tls_port_base }}/api"
 # The CuT's TLS identity: the tool image ships a PREMADE pair for
 # dhs-node.testsuite.nmos.tv (the historic 7/0 run's identity — SAN
 # DNS:dhs-node.testsuite.nmos.tv, notAfter 2076) under

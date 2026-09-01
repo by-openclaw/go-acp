@@ -40,7 +40,6 @@
     - name: "{{ suite.id }} — score with the TLS tool instance"
       ansible.builtin.set_fact:
         _tool_url_override: "{{ dhs_amwa_validate_tls_tool_url }}"
-        _tool_ca_override: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
       when: suite.tls | default(false)
 
     # Fill each row's absent members from the (possibly window-
