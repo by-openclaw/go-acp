@@ -1,0 +1,4078 @@
+{
+  "info": {
+    "_postman_id": "6f7f9a68-2b1c-4e0f-9d64-3a5c1b7e42f0",
+    "name": "dhs NMOS Node + Registry",
+    "description": "HTTP surfaces of the dhs AMWA NMOS implementation: the Node provider (IS-04/05/07/08/11/14 + the standalone IS-09 System server) and the Registry (IS-04 Registration + Query APIs) plus the registry mirror status endpoint. Every request URL is derived from the Go route registrations in internal/amwa/provider/ and internal/amwa/registry/ — see docs/postman/README.md for the variable table and the WebSocket endpoints this collection cannot carry (IS-12 /x-nmos/ncp/v1.0, IS-07 /x-nmos/events/v1.0/ws, Query API subscription sockets).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "IS-04 Node API",
+      "description": "AMWA IS-04 Node API served by `dhs producer nmos serve` (internal/amwa/provider/node.go, default bind :8080). Read-only resource graph plus the legacy PUT /receivers/{id}/target.",
+      "item": [
+        {
+          "name": "GET /x-nmos (API trees)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos"
+              ]
+            },
+            "description": "Lists the NMOS API trees this host serves (IS-04 v1.3 §4 API root)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /x-nmos/node (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node"
+              ]
+            },
+            "description": "Lists the Node API version subtrees served."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Node API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                ""
+              ]
+            },
+            "description": "Node API index: self/, devices/, sources/, flows/, senders/, receivers/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET self",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/self",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "self"
+              ]
+            },
+            "description": "The Node resource itself (IS-04 Node API /self)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET devices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/devices",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "devices"
+              ]
+            },
+            "description": "Lists every Device on the Node."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET device by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/devices/{{device_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "devices",
+                "{{device_id}}"
+              ]
+            },
+            "description": "One Device by UUID; 404 for unknown ids."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/sources",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "sources"
+              ]
+            },
+            "description": "Lists every Source on the Node."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET source by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/sources/{{source_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "sources",
+                "{{source_id}}"
+              ]
+            },
+            "description": "One Source by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET flows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/flows",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "flows"
+              ]
+            },
+            "description": "Lists every Flow on the Node."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET flow by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/flows/{{flow_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "flows",
+                "{{flow_id}}"
+              ]
+            },
+            "description": "One Flow by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET senders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/senders",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "senders"
+              ]
+            },
+            "description": "Lists every Sender on the Node."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET sender by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/senders/{{sender_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "senders",
+                "{{sender_id}}"
+              ]
+            },
+            "description": "One Sender by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender transportfile (SDP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/senders/{{sender_id}}/transportfile",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "transportfile"
+              ]
+            },
+            "description": "The Sender's SDP transport file; Content-Type application/sdp (404 for MXL senders, which carry no transport file per BCP-007-03)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receivers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/receivers",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "receivers"
+              ]
+            },
+            "description": "Lists every Receiver on the Node."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET receiver by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/receivers/{{receiver_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "receivers",
+                "{{receiver_id}}"
+              ]
+            },
+            "description": "One Receiver by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT receiver target (connect)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/receivers/{{receiver_id}}/target",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "receivers",
+                "{{receiver_id}}",
+                "target"
+              ]
+            },
+            "description": "IS-04 §4.3.1 legacy connection control: body is a Sender JSON object; answers 202 Accepted. v1.2+ recommends IS-05 instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{sender_id}}\",\n  \"version\": \"0:0\",\n  \"label\": \"example sender\",\n  \"description\": \"\",\n  \"tags\": {},\n  \"flow_id\": \"{{flow_id}}\",\n  \"transport\": \"urn:x-nmos:transport:rtp.mcast\",\n  \"device_id\": \"{{device_id}}\",\n  \"manifest_href\": \"\",\n  \"interface_bindings\": [],\n  \"caps\": {},\n  \"subscription\": {\n    \"receiver_id\": null,\n    \"active\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT receiver target (disconnect)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/node/{{is04_ver}}/receivers/{{receiver_id}}/target",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "node",
+                "{{is04_ver}}",
+                "receivers",
+                "{{receiver_id}}",
+                "target"
+              ]
+            },
+            "description": "IS-04 §4.3.1: an empty object body disconnects the Receiver; answers 202 Accepted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IS-05 Connection API",
+      "description": "AMWA IS-05 Connection Management API served alongside the Node API on the same listener (internal/amwa/provider/connection.go). Every registered minor (v1.0/v1.1/v1.2) is mounted in parallel; switch {{is05_ver}} to pick one.",
+      "item": [
+        {
+          "name": "GET /x-nmos/connection (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection"
+              ]
+            },
+            "description": "Lists the mounted Connection API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Connection API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                ""
+              ]
+            },
+            "description": "Connection API index: bulk/, single/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET single index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                ""
+              ]
+            },
+            "description": "Single-endpoint index: receivers/, senders/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET senders list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                ""
+              ]
+            },
+            "description": "Lists the connection-managed Sender ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET sender endpoint index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                ""
+              ]
+            },
+            "description": "Per-sender index: constraints/, staged/, active/, transportfile/, transporttype/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender constraints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/constraints/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                ""
+              ]
+            },
+            "description": "Transport parameter constraints for this Sender (IS-05 single sender constraints)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender staged",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "The Sender's staged (pending) transport parameters and activation state."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender active",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "active",
+                ""
+              ]
+            },
+            "description": "The Sender's active transport parameters."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender transporttype",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/transporttype/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "transporttype",
+                ""
+              ]
+            },
+            "description": "The Sender's base transport URN (e.g. urn:x-nmos:transport:rtp)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender transportfile (SDP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/transportfile/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "transportfile",
+                ""
+              ]
+            },
+            "description": "The Sender's SDP; Content-Type application/sdp. Byte-identical to the IS-04 manifest_href route (both render from one generator)."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH sender staged (stage transport params)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "Stages transport parameters without activating (IS-05 stage-then-activate pattern).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transport_params\": [\n    {\n      \"destination_ip\": \"239.100.20.1\",\n      \"destination_port\": 5004\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH sender staged (activate_immediate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/senders/{{sender_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "senders",
+                "{{sender_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "Activates the staged parameters immediately and enables the Sender (master_enable gates the endpoint).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"master_enable\": true,\n  \"activation\": {\n    \"mode\": \"activate_immediate\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET receivers list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                ""
+              ]
+            },
+            "description": "Lists the connection-managed Receiver ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET receiver endpoint index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                ""
+              ]
+            },
+            "description": "Per-receiver index: constraints/, staged/, active/, transporttype/ (no transportfile — receivers accept SDP, they never serve it)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver constraints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/constraints/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "constraints",
+                ""
+              ]
+            },
+            "description": "Transport parameter constraints for this Receiver."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver staged",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "The Receiver's staged transport parameters and activation state."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver active",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "active",
+                ""
+              ]
+            },
+            "description": "The Receiver's active transport parameters."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver transporttype",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/transporttype/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "transporttype",
+                ""
+              ]
+            },
+            "description": "The Receiver's base transport URN."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH receiver staged (stage sender + SDP)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "Stages a connection to a Sender: sender_id plus the Sender's SDP in transport_file.data.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_id\": \"{{sender_id}}\",\n  \"transport_file\": {\n    \"type\": \"application/sdp\",\n    \"data\": \"v=0\\r\\no=- 0 0 IN IP4 0.0.0.0\\r\\ns=example\\r\\nt=0 0\\r\\nm=audio 5004 RTP/AVP 96\\r\\nc=IN IP4 239.100.20.1\\r\\na=rtpmap:96 L24/48000/2\\r\\n\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH receiver staged (activate_immediate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/single/receivers/{{receiver_id}}/staged/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "single",
+                "receivers",
+                "{{receiver_id}}",
+                "staged",
+                ""
+              ]
+            },
+            "description": "Activates the staged connection immediately with master_enable=true.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"master_enable\": true,\n  \"activation\": {\n    \"mode\": \"activate_immediate\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET bulk index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/bulk/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "bulk",
+                ""
+              ]
+            },
+            "description": "Bulk-endpoint index: receivers/, senders/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST bulk senders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/bulk/senders/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "bulk",
+                "senders",
+                ""
+              ]
+            },
+            "description": "Bulk staging: an array of {id, params}; the response is a per-id status array (bulk endpoints are POST-only — GET answers 405).",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"{{sender_id}}\",\n    \"params\": {\n      \"master_enable\": true,\n      \"activation\": {\n        \"mode\": \"activate_immediate\"\n      }\n    }\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST bulk receivers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/connection/{{is05_ver}}/bulk/receivers/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "connection",
+                "{{is05_ver}}",
+                "bulk",
+                "receivers",
+                ""
+              ]
+            },
+            "description": "Bulk staging for receivers; same array-of-{id, params} shape.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"{{receiver_id}}\",\n    \"params\": {\n      \"master_enable\": false,\n      \"activation\": {\n        \"mode\": \"activate_immediate\"\n      }\n    }\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IS-07 Events",
+      "description": "AMWA IS-07 Event & Tally REST API (internal/amwa/provider/events.go). The push side is the WebSocket at /x-nmos/events/{ver}/ws (not representable in Postman collections of this format — see README).",
+      "item": [
+        {
+          "name": "GET /x-nmos/events (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events"
+              ]
+            },
+            "description": "Lists the mounted Events API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Events API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events/{{is07_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events",
+                "{{is07_ver}}",
+                ""
+              ]
+            },
+            "description": "Events API index: sources/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET event sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events/{{is07_ver}}/sources/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events",
+                "{{is07_ver}}",
+                "sources",
+                ""
+              ]
+            },
+            "description": "Lists the event source ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET event source index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events/{{is07_ver}}/sources/{{source_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events",
+                "{{is07_ver}}",
+                "sources",
+                "{{source_id}}",
+                ""
+              ]
+            },
+            "description": "Per-source index: type/, state/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET event source type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events/{{is07_ver}}/sources/{{source_id}}/type/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events",
+                "{{is07_ver}}",
+                "sources",
+                "{{source_id}}",
+                "type",
+                ""
+              ]
+            },
+            "description": "The source's event type definition."
+          },
+          "response": []
+        },
+        {
+          "name": "GET event source state",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/events/{{is07_ver}}/sources/{{source_id}}/state/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "events",
+                "{{is07_ver}}",
+                "sources",
+                "{{source_id}}",
+                "state",
+                ""
+              ]
+            },
+            "description": "The source's current event state."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IS-08 Channel Mapping",
+      "description": "AMWA IS-08 Audio Channel Mapping API (internal/amwa/provider/channelmapping.go).",
+      "item": [
+        {
+          "name": "GET /x-nmos/channelmapping (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping"
+              ]
+            },
+            "description": "Lists the mounted Channel Mapping API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Channel Mapping API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                ""
+              ]
+            },
+            "description": "API index: io/, inputs/, outputs/, map/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET io",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/io/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "io",
+                ""
+              ]
+            },
+            "description": "The whole input/output resource view in one document."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET inputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                ""
+              ]
+            },
+            "description": "Lists the input ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET input index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/{{input_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                "{{input_id}}",
+                ""
+              ]
+            },
+            "description": "Per-input index: caps/, channels/, parent/, properties/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/{{input_id}}/properties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "properties",
+                ""
+              ]
+            },
+            "description": "The input's name and description."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input parent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/{{input_id}}/parent/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "parent",
+                ""
+              ]
+            },
+            "description": "The IS-04 resource the input derives from."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input channels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/{{input_id}}/channels/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "channels",
+                ""
+              ]
+            },
+            "description": "The input's channel list."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input caps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/inputs/{{input_id}}/caps/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "caps",
+                ""
+              ]
+            },
+            "description": "The input's routing capabilities."
+          },
+          "response": []
+        },
+        {
+          "name": "GET outputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                ""
+              ]
+            },
+            "description": "Lists the output ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET output index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/{{output_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                "{{output_id}}",
+                ""
+              ]
+            },
+            "description": "Per-output index: caps/, channels/, properties/, sourceid/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/{{output_id}}/properties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "properties",
+                ""
+              ]
+            },
+            "description": "The output's name and description."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output sourceid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/{{output_id}}/sourceid/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "sourceid",
+                ""
+              ]
+            },
+            "description": "The IS-04 Source the output feeds (spec spells the path 'sourceid')."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output channels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/{{output_id}}/channels/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "channels",
+                ""
+              ]
+            },
+            "description": "The output's channel list."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output caps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/outputs/{{output_id}}/caps/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "caps",
+                ""
+              ]
+            },
+            "description": "The output's routable-input constraints."
+          },
+          "response": []
+        },
+        {
+          "name": "GET map index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                ""
+              ]
+            },
+            "description": "Map index: active/, activations/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET map active",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "active",
+                ""
+              ]
+            },
+            "description": "The complete active channel map with its activation block."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET map active for output",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/active/{{output_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "active",
+                "{{output_id}}",
+                ""
+              ]
+            },
+            "description": "The active map narrowed to one output (same {activation, map} shape)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET map activations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/activations/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "activations",
+                ""
+              ]
+            },
+            "description": "Every pending/known activation, keyed by activation id (an object, not a list)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST map activation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/activations/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "activations",
+                ""
+              ]
+            },
+            "description": "Posts a map activation: activation.mode plus the per-output action entries.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activation\": {\n    \"mode\": \"activate_immediate\"\n  },\n  \"action\": {\n    \"{{output_id}}\": {\n      \"0\": {\n        \"input\": \"{{input_id}}\",\n        \"channel_index\": 0\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET map activation by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/activations/{{activation_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "activations",
+                "{{activation_id}}"
+              ]
+            },
+            "description": "One activation by id."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE map activation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/channelmapping/{{is08_ver}}/map/activations/{{activation_id}}",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "channelmapping",
+                "{{is08_ver}}",
+                "map",
+                "activations",
+                "{{activation_id}}"
+              ]
+            },
+            "description": "Cancels a scheduled activation."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IS-09 System",
+      "description": "AMWA IS-09 System API served by `dhs producer nmos serve --role system` (internal/amwa/provider/system.go, default bind :10641 — a separate listener from the Node API).",
+      "item": [
+        {
+          "name": "GET System API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{system_url}}/x-nmos/system/{{is09_ver}}/",
+              "host": [
+                "{{system_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "system",
+                "{{is09_ver}}",
+                ""
+              ]
+            },
+            "description": "System API index."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET global",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{system_url}}/x-nmos/system/{{is09_ver}}/global",
+              "host": [
+                "{{system_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "system",
+                "{{is09_ver}}",
+                "global"
+              ]
+            },
+            "description": "The single IS-09 global configuration resource."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IS-11 Stream Compatibility",
+      "description": "AMWA IS-11 Stream Compatibility Management API (internal/amwa/provider/streamcompat.go).",
+      "item": [
+        {
+          "name": "GET /x-nmos/streamcompatibility (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility"
+              ]
+            },
+            "description": "Lists the mounted Stream Compatibility API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Stream Compatibility API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                ""
+              ]
+            },
+            "description": "API index: inputs/, outputs/, receivers/, senders/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET senders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                ""
+              ]
+            },
+            "description": "Lists the Sender ids under stream-compatibility management."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET sender index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                ""
+              ]
+            },
+            "description": "Per-sender index: constraints/, inputs/, status/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender inputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/inputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "inputs",
+                ""
+              ]
+            },
+            "description": "The Inputs this Sender consumes."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/status/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "status",
+                ""
+              ]
+            },
+            "description": "The Sender's stream-compatibility state."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender constraints index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/constraints/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                ""
+              ]
+            },
+            "description": "Constraints index: active/, supported/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender supported constraints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/constraints/supported/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                "supported",
+                ""
+              ]
+            },
+            "description": "The parameter constraint URNs this Sender supports."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender active constraints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/constraints/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                "active",
+                ""
+              ]
+            },
+            "description": "The Active Constraints currently applied to the Sender."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT sender active constraints",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/constraints/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                "active",
+                ""
+              ]
+            },
+            "description": "Applies Active Constraints (400 on unsupported URNs; 423 while the sender is active).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"constraint_sets\": [\n    {\n      \"urn:x-nmos:cap:meta:label\": \"example constraint set\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE sender active constraints",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/senders/{{sender_id}}/constraints/active/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "senders",
+                "{{sender_id}}",
+                "constraints",
+                "active",
+                ""
+              ]
+            },
+            "description": "Resets the Sender to unconstrained (423 while the sender is active)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receivers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/receivers/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "receivers",
+                ""
+              ]
+            },
+            "description": "Lists the Receiver ids under stream-compatibility management."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET receiver index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/receivers/{{receiver_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "receivers",
+                "{{receiver_id}}",
+                ""
+              ]
+            },
+            "description": "Per-receiver index: outputs/, status/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/receivers/{{receiver_id}}/status/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "receivers",
+                "{{receiver_id}}",
+                "status",
+                ""
+              ]
+            },
+            "description": "The Receiver's stream-compatibility state."
+          },
+          "response": []
+        },
+        {
+          "name": "GET receiver outputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/receivers/{{receiver_id}}/outputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "receivers",
+                "{{receiver_id}}",
+                "outputs",
+                ""
+              ]
+            },
+            "description": "The Outputs this Receiver feeds."
+          },
+          "response": []
+        },
+        {
+          "name": "GET inputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                ""
+              ]
+            },
+            "description": "Lists the Input ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET input index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                ""
+              ]
+            },
+            "description": "Per-input index: edid/, properties/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/properties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "properties",
+                ""
+              ]
+            },
+            "description": "The Input resource."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input edid index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/edid/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "edid",
+                ""
+              ]
+            },
+            "description": "EDID index: base/, effective/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input base EDID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/edid/base/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "edid",
+                "base",
+                ""
+              ]
+            },
+            "description": "The Base EDID as binary (application/octet-stream; 204 when none is set)."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT input base EDID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/edid/base/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "edid",
+                "base",
+                ""
+              ]
+            },
+            "description": "Installs a Base EDID; body is the raw EDID byte blob (use Postman's binary body mode with an EDID file).",
+            "body": {
+              "mode": "raw",
+              "raw": "<raw EDID bytes - switch the body to binary mode and attach an EDID file>",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE input base EDID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/edid/base/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "edid",
+                "base",
+                ""
+              ]
+            },
+            "description": "Removes the Base EDID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET input effective EDID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/inputs/{{input_id}}/edid/effective/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "inputs",
+                "{{input_id}}",
+                "edid",
+                "effective",
+                ""
+              ]
+            },
+            "description": "The Effective EDID as binary (application/octet-stream)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET outputs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/outputs/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "outputs",
+                ""
+              ]
+            },
+            "description": "Lists the Output ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET output index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/outputs/{{output_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "outputs",
+                "{{output_id}}",
+                ""
+              ]
+            },
+            "description": "Per-output index."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/outputs/{{output_id}}/properties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "properties",
+                ""
+              ]
+            },
+            "description": "The Output resource."
+          },
+          "response": []
+        },
+        {
+          "name": "GET output edid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/streamcompatibility/{{is11_ver}}/outputs/{{output_id}}/edid/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "streamcompatibility",
+                "{{is11_ver}}",
+                "outputs",
+                "{{output_id}}",
+                "edid",
+                ""
+              ]
+            },
+            "description": "The Output's EDID as binary (application/octet-stream)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "IS-14 Configuration",
+      "description": "AMWA IS-14 Device Configuration API — the rolePaths view of the MS-05 device model (internal/amwa/provider/configuration.go + configuration_mount.go). The same model is also served over the IS-12 WebSocket at /x-nmos/ncp/v1.0 (see README).",
+      "item": [
+        {
+          "name": "GET /x-nmos/configuration (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration"
+              ]
+            },
+            "description": "Lists the mounted Configuration API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Configuration API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                ""
+              ]
+            },
+            "description": "API index: rolePaths/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET rolePaths",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                ""
+              ]
+            },
+            "description": "Lists every role path in the device model (root and its blocks)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET role path index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                ""
+              ]
+            },
+            "description": "Per-role-path index: bulkProperties/, descriptor/, methods/, properties/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET role path descriptor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/descriptor/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "descriptor",
+                ""
+              ]
+            },
+            "description": "The MS-05 class descriptor for the object at this role path."
+          },
+          "response": []
+        },
+        {
+          "name": "GET properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/properties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "properties",
+                ""
+              ]
+            },
+            "description": "Lists the property ids (level p index form, e.g. 1p6) on this object."
+          },
+          "response": []
+        },
+        {
+          "name": "GET property index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/properties/{{property_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "properties",
+                "{{property_id}}",
+                ""
+              ]
+            },
+            "description": "Per-property index: descriptor/, value/."
+          },
+          "response": []
+        },
+        {
+          "name": "GET property descriptor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/properties/{{property_id}}/descriptor/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "properties",
+                "{{property_id}}",
+                "descriptor",
+                ""
+              ]
+            },
+            "description": "The property's datatype descriptor."
+          },
+          "response": []
+        },
+        {
+          "name": "GET property value",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/properties/{{property_id}}/value/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "properties",
+                "{{property_id}}",
+                "value",
+                ""
+              ]
+            },
+            "description": "The property's current value wrapped in an NcMethodResult."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT property value",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/properties/{{property_id}}/value/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "properties",
+                "{{property_id}}",
+                "value",
+                ""
+              ]
+            },
+            "description": "Writes the property (readonly properties refuse with NcMethodStatus 405).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"new value\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/methods/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "methods",
+                ""
+              ]
+            },
+            "description": "Lists the method ids (level m index form, e.g. 1m1) on this object."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH method (invoke)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/methods/{{method_id}}/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "methods",
+                "{{method_id}}",
+                ""
+              ]
+            },
+            "description": "Invokes a method; arguments must be a JSON object (empty for parameterless methods).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arguments\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET bulkProperties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/bulkProperties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "bulkProperties",
+                ""
+              ]
+            },
+            "description": "Reads the bulk properties dataSet for this subtree."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT bulkProperties",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/bulkProperties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "bulkProperties",
+                ""
+              ]
+            },
+            "description": "Restores a bulk properties dataSet; arguments requires dataSet, recurse and restoreMode.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arguments\": {\n    \"dataSet\": {\n      \"values\": []\n    },\n    \"recurse\": true,\n    \"restoreMode\": \"Modify\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH bulkProperties (validate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{node_url}}/x-nmos/configuration/{{is14_ver}}/rolePaths/{{role_path}}/bulkProperties/",
+              "host": [
+                "{{node_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "configuration",
+                "{{is14_ver}}",
+                "rolePaths",
+                "{{role_path}}",
+                "bulkProperties",
+                ""
+              ]
+            },
+            "description": "Validates a bulk properties dataSet against the model without applying it; same body shape as PUT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arguments\": {\n    \"dataSet\": {\n      \"values\": []\n    },\n    \"recurse\": true,\n    \"restoreMode\": \"Modify\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Registry - Registration API",
+      "description": "IS-04 Registration API — the Registry's Node-facing face, served by `dhs registry nmos serve` (internal/amwa/registry/registration.go, default bind :8235). Every registered IS-04 minor is mounted in parallel.",
+      "item": [
+        {
+          "name": "GET /x-nmos (registry root)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos"
+              ]
+            },
+            "description": "Lists the API trees the Registry serves: registration/, query/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /x-nmos/registration (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration"
+              ]
+            },
+            "description": "Lists the Registration API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Registration API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                ""
+              ]
+            },
+            "description": "Registration API index: resource/, health/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST resource (register node)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/resource",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                "resource"
+              ]
+            },
+            "description": "Registers (or updates) a resource; 201 on create, 200 on update, with a Location header per IS-04 §6.1.1. Body shown is a minimal Node registration.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"node\",\n  \"data\": {\n    \"id\": \"{{node_id}}\",\n    \"version\": \"1441700172:318426300\",\n    \"label\": \"example node\",\n    \"description\": \"\",\n    \"tags\": {},\n    \"href\": \"http://10.6.250.101:8080/\",\n    \"hostname\": \"example-node\",\n    \"caps\": {},\n    \"api\": {\n      \"versions\": [\n        \"v1.3\"\n      ],\n      \"endpoints\": [\n        {\n          \"host\": \"10.6.250.101\",\n          \"port\": 8080,\n          \"protocol\": \"http\"\n        }\n      ]\n    },\n    \"services\": [],\n    \"clocks\": [],\n    \"interfaces\": []\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET resource (node read-back)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/resource/nodes/{{node_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                "resource",
+                "nodes",
+                "{{node_id}}"
+              ]
+            },
+            "description": "Reads one registered resource back (any plural works: nodes, devices, sources, flows, senders, receivers)."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE resource (deregister node)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/resource/nodes/{{node_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                "resource",
+                "nodes",
+                "{{node_id}}"
+              ]
+            },
+            "description": "Explicitly deregisters a resource; 204 on success."
+          },
+          "response": []
+        },
+        {
+          "name": "POST health (heartbeat)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/health/nodes/{{node_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                "health",
+                "nodes",
+                "{{node_id}}"
+              ]
+            },
+            "description": "Node heartbeat; 404 tells the Node to re-register (IS-04 heartbeat contract)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/registration/{{registration_ver}}/health/nodes/{{node_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "registration",
+                "{{registration_ver}}",
+                "health",
+                "nodes",
+                "{{node_id}}"
+              ]
+            },
+            "description": "Reads the last-heartbeat timestamp for a Node."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Registry - Query API",
+      "description": "IS-04 Query API — the Registry's Controller-facing face (internal/amwa/registry/query.go). Paged lists carry X-Paging-* and Link headers; filters (id/label/description, query.rql=eq(...), query.downgrade, query.ancestry_*) go in the query string. The subscription WebSocket itself is at ws://<registry>/x-nmos/query/{ver}/subscriptions/{id}/ws.",
+      "item": [
+        {
+          "name": "GET /x-nmos/query (versions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query"
+              ]
+            },
+            "description": "Lists the Query API version subtrees."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Query API index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                ""
+              ]
+            },
+            "description": "Query API index: nodes/, devices/, sources/, flows/, senders/, receivers/, subscriptions/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET nodes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/nodes",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "nodes"
+              ]
+            },
+            "description": "Paged list of registered Nodes (IS-04 §6.1.6 pagination headers)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET devices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/devices",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "devices"
+              ]
+            },
+            "description": "Paged list of registered Devices."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/sources",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "sources"
+              ]
+            },
+            "description": "Paged list of registered Sources."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET flows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/flows",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "flows"
+              ]
+            },
+            "description": "Paged list of registered Flows."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET senders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/senders",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "senders"
+              ]
+            },
+            "description": "Paged list of registered Senders."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET receivers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/receivers",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "receivers"
+              ]
+            },
+            "description": "Paged list of registered Receivers."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET node by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/nodes/{{node_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "nodes",
+                "{{node_id}}"
+              ]
+            },
+            "description": "One registered Node by UUID (per-id routes exist for every resource plural)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET sender by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/senders/{{sender_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "senders",
+                "{{sender_id}}"
+              ]
+            },
+            "description": "One registered Sender by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/subscriptions",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "subscriptions"
+              ]
+            },
+            "description": "Lists the active Query API subscriptions."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/subscriptions",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "subscriptions"
+              ]
+            },
+            "description": "Creates a WebSocket subscription; the response's ws_href is where the Controller connects.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_update_rate_ms\": 100,\n  \"persist\": false,\n  \"resource_path\": \"/nodes\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET subscription by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/subscriptions/{{subscription_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "subscriptions",
+                "{{subscription_id}}"
+              ]
+            },
+            "description": "One subscription by id."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{registry_url}}/x-nmos/query/{{query_ver}}/subscriptions/{{subscription_id}}",
+              "host": [
+                "{{registry_url}}"
+              ],
+              "path": [
+                "x-nmos",
+                "query",
+                "{{query_ver}}",
+                "subscriptions",
+                "{{subscription_id}}"
+              ]
+            },
+            "description": "Releases a subscription (only persistent ones may be deleted by clients)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Registry Mirror",
+      "description": "`dhs registry nmos mirror --status-addr` status endpoint (internal/amwa/registry/mirror_audit.go). The plant default is :9101 on the mirror host (ansible/roles/dhs_amwa_plant/defaults/main.yml).",
+      "item": [
+        {
+          "name": "GET status.json",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mirror_status_url}}/status.json",
+              "host": [
+                "{{mirror_status_url}}"
+              ],
+              "path": [
+                "status.json"
+              ]
+            },
+            "description": "Mirror bridge status: source/target, uptime, forward/heartbeat counters, per-collection cache sizes and the recent audit ring."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"content-type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
