@@ -105,6 +105,61 @@
   until: _auth_meta.status == 200
   when: _validate_need_auth
 
+# ---- the TLS tool instance (issue #948) ----
+# Same shape as the armed checks: a TLS play asserts ONLY its own
+# instance plus the resident (whose disarmed/plain state is part of
+# the contract, asserted above).
+- name: Read the TLS tool container image
+  ansible.builtin.command: docker inspect --format {% raw %}"{{.Config.Image}}"{% endraw %} {{ dhs_amwa_validate_tls_tool_container }}
+  register: _tls_tool_image
+  changed_when: false
+  when: _validate_need_tls
+
+- name: The TLS tool image must be the pinned one
+  ansible.builtin.assert:
+    that: _tls_tool_image.stdout.strip() == dhs_amwa_validate_tool_image
+    fail_msg: >-
+      TLS tool container runs {{ _tls_tool_image.stdout }} — the gate
+      is only meaningful against {{ dhs_amwa_validate_tool_image }}
+  when: _validate_need_tls
+
+- name: Read the TLS tool UserConfig
+  ansible.builtin.command: docker exec {{ dhs_amwa_validate_tls_tool_container }} cat /config/UserConfig.py
+  register: _tls_tool_cfg
+  changed_when: false
+  when: _validate_need_tls
+
+- name: The TLS tool knobs must match the https profile
+  ansible.builtin.assert:
+    that:
+      - "'PULL_REPOS = False' in _tls_tool_cfg.stdout"
+      - "'CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30' in _tls_tool_cfg.stdout"
+      - "'CONFIG.ENABLE_HTTPS = True' in _tls_tool_cfg.stdout"
+      - "('CONFIG.PORT_BASE = ' ~ dhs_amwa_validate_tls_port_base) in _tls_tool_cfg.stdout"
+      - "'ENABLE_AUTH' not in _tls_tool_cfg.stdout"
+    fail_msg: >-
+      TLS /config/UserConfig.py drifted — expected PULL_REPOS=False,
+      CONFIG.GARBAGE_COLLECTION_TIMEOUT=30 and https ON at
+      PORT_BASE {{ dhs_amwa_validate_tls_port_base }} (auth stays off).
+      Got: {{ _tls_tool_cfg.stdout }}
+  when: _validate_need_tls
+
+# ENABLE_HTTPS makes the GUI/API itself serve https (every flask app
+# gets the ssl_context) — so the probe is https, CA-validated against
+# the image's own root at the hosts-pinned mock identity. Same long
+# first-boot window as the armed instance.
+- name: The TLS tool API must answer over https
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_tls_tool_url }}"
+    method: GET
+    status_code: [200, 405]
+    ca_path: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
+  register: _tls_tool_api
+  retries: 36
+  delay: 5
+  until: _tls_tool_api.status in [200, 405]
+  when: _validate_need_tls
+
 # Stamped from a live clock read, NOT ansible_date_time — cached facts
 # hand every run the same stamp and the runs then overwrite each other.
 - name: Stamp the run

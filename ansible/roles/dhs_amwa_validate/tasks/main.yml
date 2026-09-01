@@ -23,34 +23,43 @@
          | list }}
     _validate_verdicts: []
 
-# Auth-mode split (issue #942): a play scores EITHER the plain
-# entries of its scope or their auth: true twins. The twins share
-# suite ids with the plain entries, so this filter must run before
-# anything keys on id alone.
-- name: Keep only this play's auth-mode side of the catalog
+# Tool-instance split (issues #942 + #948): a play scores EITHER the
+# plain entries of its scope, their auth: true twins, or their
+# tls: true entries — never a mix, because each side scores against
+# its own tool instance (resident / armed / TLS) and interleaving
+# would change the exam. Twins share suite ids with plain entries, so
+# this filter must run before anything keys on id alone.
+- name: Keep only this play's tool-instance side of the catalog
   ansible.builtin.set_fact:
     _validate_suites: >-
-      {{ _validate_suites | selectattr('auth', 'defined') | selectattr('auth') | list
+      {{ _validate_suites | selectattr('tls', 'defined') | selectattr('tls') | list
+         if dhs_amwa_validate_tls_mode else
+         _validate_suites | selectattr('auth', 'defined') | selectattr('auth') | list
          if dhs_amwa_validate_auth_mode else
-         _validate_suites | rejectattr('auth', 'defined') | list
-         + _validate_suites | selectattr('auth', 'defined') | rejectattr('auth') | list }}
+         _validate_suites | rejectattr('auth', 'defined') | rejectattr('tls', 'defined') | list
+         + _validate_suites | selectattr('auth', 'defined') | rejectattr('auth') | list
+         + _validate_suites | selectattr('tls', 'defined') | rejectattr('tls') | list }}
     _skipped_suites: >-
-      {{ _skipped_suites | selectattr('auth', 'defined') | selectattr('auth') | list
+      {{ _skipped_suites | selectattr('tls', 'defined') | selectattr('tls') | list
+         if dhs_amwa_validate_tls_mode else
+         _skipped_suites | selectattr('auth', 'defined') | selectattr('auth') | list
          if dhs_amwa_validate_auth_mode else
-         _skipped_suites | rejectattr('auth', 'defined') | list
-         + _skipped_suites | selectattr('auth', 'defined') | rejectattr('auth') | list }}
+         _skipped_suites | rejectattr('auth', 'defined') | rejectattr('tls', 'defined') | list
+         + _skipped_suites | selectattr('auth', 'defined') | rejectattr('auth') | list
+         + _skipped_suites | selectattr('tls', 'defined') | rejectattr('tls') | list }}
 
 - name: Apply the subset filter
   ansible.builtin.set_fact:
     _validate_suites: "{{ _validate_suites | selectattr('id', 'in', dhs_amwa_validate_only) | list }}"
   when: dhs_amwa_validate_only | length > 0
 
-# The armed tool instance only converges/preflights when an auth
-# window will actually use it — a plain scope run must not create or
+# The armed/TLS tool instances only converge/preflight when a window
+# will actually use them — a plain scope run must not create or
 # assert containers it never talks to.
-- name: Note whether this play needs the armed tool instance
+- name: Note whether this play needs the armed or TLS tool instances
   ansible.builtin.set_fact:
     _validate_need_auth: "{{ _validate_suites | selectattr('auth', 'defined') | selectattr('auth') | list | length > 0 }}"
+    _validate_need_tls: "{{ _validate_suites | selectattr('tls', 'defined') | selectattr('tls') | list | length > 0 }}"
 
 - name: Converge the tooling host
   ansible.builtin.include_tasks: tooling.yml

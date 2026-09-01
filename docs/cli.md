@@ -338,6 +338,10 @@ Usage of mirror:
     	identity minted into the served face's ws_href and mDNS announce, as host or host:port (a bare host takes the bound --serve port). Precedence: this flag wins; empty derives from the bound address (concrete IP, else OS hostname — which off-link controllers may not resolve). Setting it also enables the _nmos-query._tcp announce of the served face
   -serve-pri int
     	DNS-SD pri TXT for the served face's announce (with --serve-advertise-host). Defaults into the 100+ dev range so the mirror never wins a production Registry election against its own source registry at pri 0 (default 100)
+  -serve-tls-cert string
+    	BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query face — with --serve-tls-key the face serves HTTPS/WSS ONLY, mints wss:// ws_hrefs and announces api_proto=https, the same manual pair path as the registry's --tls-cert. Requires --serve; the mirror's outbound source/target legs are untouched
+  -serve-tls-key string
+    	private key for --serve-tls-cert
   -source string
     	source Registry origin (http://host:port) — Query API side
   -status-addr string

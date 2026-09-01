@@ -4,12 +4,13 @@
 # AMWA spec link. The play FAILS at the end (not mid-run) so a
 # regression in one suite never hides the results of the rest.
 
-# Auth twins (issue #942) carry a " (auth)" suffix so an armed run's
-# line can never be misread as its plain sibling's.
+# Auth twins (issue #942) carry a " (auth)" suffix — and TLS entries
+# (issue #948) a " (tls)" one — so a windowed run's line can never be
+# misread as its plain sibling's.
 - name: Suite summary
   ansible.builtin.debug:
     msg: >-
-      {{ '%-16s' | format(item.suite ~ (' (auth)' if item.auth | default(false) else '')) }}
+      {{ '%-16s' | format(item.suite ~ (' (auth)' if item.auth | default(false) else (' (tls)' if item.tls | default(false) else ''))) }}
       {{ 'OK  ' if item.ok else 'FAIL' }}
       pass={{ item['pass'] }}/{{ item.baseline_pass }}
       fail={{ item.fail }} cnt={{ item.cnt }}/{{ item.baseline_cnt }}
@@ -18,7 +19,7 @@
       {{ '(+%d above baseline — raise it in git)' | format(item.above_baseline) if item.above_baseline > 0 else '' }}
   loop: "{{ _validate_verdicts }}"
   loop_control:
-    label: "{{ item.suite }}{{ ' (auth)' if item.auth | default(false) else '' }}"
+    label: "{{ item.suite }}{{ ' (auth)' if item.auth | default(false) else (' (tls)' if item.tls | default(false) else '') }}"
 
 # Per-test detail: every non-pass row, named by the tool's own test
 # names, with the reason and the AMWA spec link.
@@ -27,7 +28,7 @@
     msg: "[{{ item.1.state }}] {{ item.1.test }}: {{ item.1.reason }}{% if item.1.amwa_link %}  ({{ item.1.amwa_link }}){% endif %}"
   loop: "{{ _validate_verdicts | subelements('problems') }}"
   loop_control:
-    label: "{{ item.0.suite }}{{ ' (auth)' if item.0.auth | default(false) else '' }} {{ item.1.test }}"
+    label: "{{ item.0.suite }}{{ ' (auth)' if item.0.auth | default(false) else (' (tls)' if item.0.tls | default(false) else '') }} {{ item.1.test }}"
 
 - name: Suites this play cannot drive yet
   ansible.builtin.debug:

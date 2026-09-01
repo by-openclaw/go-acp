@@ -105,6 +105,15 @@ type MirrorOptions struct {
 	// range — because the plant mirror must never win a production
 	// Registry election against its own source registry (pri 0).
 	ServePri int
+	// ServeTLSCert / ServeTLSKey, when both set, make the served face
+	// HTTPS/WSS-only (BCP-003-01: a secured server SHALL NOT accept
+	// plain HTTP) using this manually installed pair — the same
+	// certmgr path Registry.Serve's --tls-cert arms. ws_href is then
+	// minted wss:// and the announce carries api_proto=https. Both
+	// require ServeAddr, and each other. The mirror's OUTBOUND legs
+	// stay untouched.
+	ServeTLSCert string
+	ServeTLSKey  string
 	// ServeAuthURL, when set, arms the served Query face with the
 	// BCP-003-02 Bearer gate: tokens are validated against the
 	// Authorization Server at this base URL, exactly the way the
@@ -201,6 +210,12 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	}
 	if opts.ServeAuthURL != "" && opts.ServeAddr == "" {
 		return nil, errors.New("registry/mirror: --auth-url guards the served Query face, and no face is being served — add --serve ADDR or drop --auth-url")
+	}
+	if (opts.ServeTLSCert != "") != (opts.ServeTLSKey != "") {
+		return nil, errors.New("registry/mirror: --serve-tls-cert and --serve-tls-key travel together — a certificate without its key (or the reverse) serves nothing")
+	}
+	if opts.ServeTLSCert != "" && opts.ServeAddr == "" {
+		return nil, errors.New("registry/mirror: --serve-tls-cert secures the served Query face, and no face is being served — add --serve ADDR or drop the TLS pair")
 	}
 	if opts.APIVer == "" {
 		opts.APIVer = is04.APIVersion

@@ -8,12 +8,13 @@
   ansible.builtin.set_fact:
     _attempt_suffix: "{{ '-retry' if _suite_verdict else '' }}"
     # Result-file stem: auth twins keep the manual sweep's
-    # <SUITE>-auth.json convention so armed and plain receipts of the
-    # same suite id never overwrite each other.
-    _suite_file: "{{ suite.id }}{{ '-auth' if suite.auth | default(false) else '' }}"
+    # <SUITE>-auth.json convention (tls entries the -tls sibling) so
+    # receipts of the same suite id never overwrite each other.
+    _suite_file: "{{ suite.id }}{{ '-auth' if suite.auth | default(false) else ('-tls' if suite.tls | default(false) else '') }}"
     _suite_host_override: !!null
     _suite_port_override: !!null
     _tool_url_override: !!null
+    _tool_ca_override: !!null
     _norm_rows: []
 
 - name: "{{ suite.id }} — attempt{{ _attempt_suffix }}"
@@ -30,6 +31,17 @@
       ansible.builtin.set_fact:
         _tool_url_override: "{{ dhs_amwa_validate_auth_tool_url }}"
       when: suite.auth | default(false)
+
+    # TLS suites are scored by the TLS tool instance (issue #948):
+    # ENABLE_HTTPS there flips the tool's scheme globally (its API
+    # carries no per-row scheme field), and the instance's own API
+    # serves https — the invocation validates it against the image's
+    # CA copied out at tooling-converge time.
+    - name: "{{ suite.id }} — score with the TLS tool instance"
+      ansible.builtin.set_fact:
+        _tool_url_override: "{{ dhs_amwa_validate_tls_tool_url }}"
+        _tool_ca_override: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
+      when: suite.tls | default(false)
 
     # Fill each row's absent members from the (possibly window-
     # overridden) target. An EXPLICIT null in the catalog stays null —
@@ -55,6 +67,7 @@
         body_format: json
         timeout: "{{ dhs_amwa_validate_suite_timeout }}"
         return_content: true
+        ca_path: "{{ _tool_ca_override | default(omit, true) }}"
         body:
           suite: "{{ suite.id }}"
           host: "{{ _norm_rows | map(attribute='host') | list }}"
@@ -85,7 +98,8 @@
         _suite_verdict: >-
           {{ _suite_gate.stdout | from_json
              | combine({'retried': _attempt_suffix != '',
-                        'auth': suite.auth | default(false)}) }}
+                        'auth': suite.auth | default(false),
+                        'tls': suite.tls | default(false)}) }}
   always:
     - name: "{{ suite.id }} — close the window"
       ansible.builtin.include_tasks: window_teardown.yml

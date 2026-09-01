@@ -105,7 +105,11 @@ type mirrorStatus struct {
 	// disarmed-but-serving mirror reports an explicit false while a
 	// mirror with no served face omits the key — same presence rule
 	// as serve_addr.
-	ServeAuth   *bool        `json:"serve_auth,omitempty"`
+	ServeAuth *bool `json:"serve_auth,omitempty"`
+	// ServeTLS reports whether the served face speaks HTTPS/WSS only
+	// (--serve-tls-cert/-key, issue #948). Same pointer presence rule
+	// as serve_auth.
+	ServeTLS    *bool        `json:"serve_tls,omitempty"`
 	RecentAudit []AuditEvent `json:"recent_audit"`
 }
 
@@ -130,6 +134,8 @@ func (m *Mirror) serveStatus(ctx context.Context, addr string) {
 			st.ServeAddr = m.serve.addr
 			armed := m.opts.ServeAuthURL != ""
 			st.ServeAuth = &armed
+			secured := m.opts.ServeTLSCert != ""
+			st.ServeTLS = &secured
 		}
 		m.mu.Unlock()
 		st.RecentAudit = m.audit.recent()

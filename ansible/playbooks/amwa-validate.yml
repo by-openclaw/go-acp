@@ -16,3 +16,7 @@
 # running, and the auth plays only add transients they tear down.
 - import_playbook: amwa-validate-registry-auth.yml
 - import_playbook: amwa-validate-node-auth.yml
+# TLS window after the auth ones (issue #948): same transient-only
+# posture — the plant residents never serve https; only the window's
+# CuT does, scored by the TLS tool instance.
+- import_playbook: amwa-validate-node-tls.yml

@@ -769,7 +769,13 @@ that identity instead of the bound address (a bare host takes the
 --serve port) and announces itself as _nmos-query._tcp via mDNS with
 --serve-pri (default 100 — dev range, so the mirror never outranks
 the production source registry). The announce's api_auth TXT tracks
---auth-url.`)
+--auth-url.
+
+With --serve-tls-cert/--serve-tls-key (requires --serve) the served
+face speaks HTTPS/WSS ONLY per BCP-003-01 — the same manual pair path
+"registry nmos serve --tls-cert" arms: ws_href becomes wss://, the
+announce carries api_proto=https, and /status.json reports
+"serve_tls". Outbound legs stay untouched.`)
 }
 
 // runNMOSRegistryMirror bridges a source Registry into a target one.
@@ -808,6 +814,14 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
 			"mirror never wins a production Registry election against its own "+
 			"source registry at pri 0")
+	serveTLSCert := fs.String("serve-tls-cert", "",
+		"BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query "+
+			"face — with --serve-tls-key the face serves HTTPS/WSS ONLY, mints "+
+			"wss:// ws_hrefs and announces api_proto=https, the same manual "+
+			"pair path as the registry's --tls-cert. Requires --serve; the "+
+			"mirror's outbound source/target legs are untouched")
+	serveTLSKey := fs.String("serve-tls-key", "",
+		"private key for --serve-tls-cert")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -822,6 +836,8 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		ServeAuthURL:       *serveAuthURL,
 		ServeAdvertiseHost: *serveAdvertiseHost,
 		ServePri:           *servePri,
+		ServeTLSCert:       *serveTLSCert,
+		ServeTLSKey:        *serveTLSKey,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)

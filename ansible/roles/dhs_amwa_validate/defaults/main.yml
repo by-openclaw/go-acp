@@ -94,6 +94,47 @@ dhs_amwa_validate_auth_server_url: "http://{{ dhs_amwa_validate_tooling_host }}:
 # against different tool instances and must not interleave.
 dhs_amwa_validate_auth_mode: false
 
+# TLS window (issue #948): BCP-003-01 needs an HTTPS-scoring tool and
+# an HTTPS/WSS-only CuT. FOURTH container, same created-stopped-then-
+# pin pattern as the armed one (the #942 crash-loop lesson).
+# ENABLE_HTTPS (Config.py line 92, default False) flips the tool's
+# scheme GLOBALLY — GenericTest.py derives protocol/ws_protocol from
+# it and the tool's POST /api body carries NO per-row scheme field —
+# so selecting the TLS container IS the https knob for a suite. With
+# ENABLE_HTTPS=True every flask app INCLUDING the GUI/API serves
+# https using the shipped CERTS_MOCKS defaults (mocks.testsuite.
+# nmos.tv chains — left untouched), hence the https tool URL below at
+# a hosts-pinned name that the mock certificate actually names (SAN
+# verified: DNS:mocks.testsuite.nmos.tv, DNS:nmos-mocks.local).
+dhs_amwa_validate_tls_tool_container: nmos-testing-tls
+dhs_amwa_validate_tls_port_base: 5600
+dhs_amwa_validate_tls_ws_port_base: 6600
+dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
+dhs_amwa_validate_tls_tool_url: "https://{{ dhs_amwa_validate_tls_tool_host }}:{{ dhs_amwa_validate_tls_port_base }}/api"
+# The CuT's TLS identity: the tool image ships a PREMADE pair for
+# dhs-node.testsuite.nmos.tv (the historic 7/0 run's identity — SAN
+# DNS:dhs-node.testsuite.nmos.tv, notAfter 2076) under
+# test_data/BCP00301/ca/intermediate. No cert minting per window: the
+# generate scripts live at ca/generateCerts in this image build, but
+# `openssl ca` mutates CA state (index.txt/serial) per issue and
+# refuses same-CN re-issues — copying the premade pair is
+# deterministic. The RSA chain+key are docker-cp'd out once and the
+# CuT serves them via --tls-cert/--tls-key; tooling /etc/hosts pins
+# the name at the plant IP (host-net tool containers read the host's
+# /etc/hosts).
+dhs_amwa_validate_tls_cut_fqdn: dhs-node.testsuite.nmos.tv
+# In-container CA tree (image workdir is /home/nmos-testing) and the
+# tooling-host staging dir the material is copied to; the plant-side
+# dir the window installs the CuT pair into.
+dhs_amwa_validate_tls_image_ca_dir: /home/nmos-testing/test_data/BCP00301/ca
+dhs_amwa_validate_tls_dir: /opt/dhs-validate-tls
+dhs_amwa_validate_tls_plant_dir: /opt/dhs-amwa-plant/tls
+
+# TLS-mode scope selector: set true by the amwa-validate-*-tls.yml
+# playbooks — same exclusivity rule as auth mode: a play scores
+# against exactly one tool instance (resident / armed / TLS).
+dhs_amwa_validate_tls_mode: false
+
 # The catalog. Fields:
 #   id            AMWA suite id, verbatim
 #   scope         node | registry | controller | mirror
@@ -156,12 +197,19 @@ dhs_amwa_validate_suites:
   - { id: BCP-008-02-01, scope: node, target: node,
       rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
       baseline_pass: 94, baseline_cnt: 0 }
-  # BCP-003-01 needs the TLS-serving window (EST/cert pair) which is
-  # not encoded here yet — historic score 7/0. Follows with the
-  # auth-mode windows.
-  - { id: BCP-003-01, scope: node, target: node, enabled: false,
-      note: "TLS window not yet encoded (historic 7/0)",
-      rows: [{ver: v1.3}], baseline_pass: 7, baseline_cnt: 0 }
+  # ---- TLS window (issue #948): BCP-003-01 against an HTTPS-only CuT ----
+  # tls: true selects the TLS tool instance (ENABLE_HTTPS=True — the
+  # tool's GLOBAL https/wss switch; there is no per-row scheme field
+  # on its API) and rides only the amwa-validate-*-tls.yml plays. The
+  # row addresses the CuT by the certificate's DNS identity — the
+  # premade dhs-node.testsuite.nmos.tv pair names no IP SAN, and the
+  # tool validates against its own CA — with the port defaulting to
+  # the CuT window port; tooling /etc/hosts resolves the name.
+  # baseline_pass 7 is the historic 7/0 score — first fleet rerun
+  # confirms whether the current tool version still scores 7.
+  - { id: BCP-003-01, scope: node, target: cut, window: tls, tls: true,
+      rows: [{host: dhs-node.testsuite.nmos.tv, ver: v1.3}],
+      baseline_pass: 7, baseline_cnt: 0 }
 
   # ---- node scope, CuT windows :18500 ----
   # IS-04-01 scores a REGISTERED node against the tool's own mock
