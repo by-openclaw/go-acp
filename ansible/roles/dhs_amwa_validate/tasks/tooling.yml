@@ -17,6 +17,12 @@
 # apt can install mosquitto. The plant node publishes to it and the
 # testing tool subscribes — both by address, neither cares where it
 # runs.
+- name: Apt sources use HTTPS (fleet egress allows TCP 443 only)
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: "http://(archive|security)\\.ubuntu\\.com"
+    replace: "https://\\1.ubuntu.com"
+
 - name: Mosquitto is installed
   ansible.builtin.apt:
     name: mosquitto
