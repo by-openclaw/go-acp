@@ -217,8 +217,11 @@ dhs_amwa_validate_suites:
   # the CuT window port; tooling /etc/hosts resolves the name.
   # baseline_pass 7 is the historic 7/0 score — first fleet rerun
   # confirms whether the current tool version still scores 7.
+  # ver v1.0 is the BCP-003-01 SPEC version (its repo has only v1.0.x
+  # branches), not an IS-04 api_ver — v1.3 made the tool die with
+  # "No branch matching ... secure v1.3 cache/bcp-003-01".
   - { id: BCP-003-01, scope: node, target: cut, window: tls, tls: true,
-      rows: [{host: dhs-node.testsuite.nmos.tv, ver: v1.3}],
+      rows: [{host: dhs-node.testsuite.nmos.tv, ver: v1.0}],
       baseline_pass: 7, baseline_cnt: 0 }
 
   # ---- node scope, CuT windows :18500 ----
