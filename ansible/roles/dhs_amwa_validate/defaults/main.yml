@@ -107,8 +107,13 @@ dhs_amwa_validate_auth_mode: false
 # a hosts-pinned name that the mock certificate actually names (SAN
 # verified: DNS:mocks.testsuite.nmos.tv, DNS:nmos-mocks.local).
 dhs_amwa_validate_tls_tool_container: nmos-testing-tls
-dhs_amwa_validate_tls_port_base: 5600
-dhs_amwa_validate_tls_ws_port_base: 6600
+# 5800, not 5600: an instance's real footprint is ~PORT_BASE..+110 —
+# the per-suite mock APIs bind at PORT_BASE+100+n, so the armed
+# instance (5500) owns 5601-5606 and a 5600 base crash-loops on
+# "port may already be in use" (first fleet run of #948). Resident
+# 5000-5110, armed 5500-5610, TLS 5800-5910.
+dhs_amwa_validate_tls_port_base: 5800
+dhs_amwa_validate_tls_ws_port_base: 6800
 dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
 dhs_amwa_validate_tls_tool_url: "https://{{ dhs_amwa_validate_tls_tool_host }}:{{ dhs_amwa_validate_tls_port_base }}/api"
 # The CuT's TLS identity: the tool image ships a PREMADE pair for
