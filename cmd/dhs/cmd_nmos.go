@@ -758,14 +758,23 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 	source := fs.String("source", "", "source Registry origin (http://host:port) — Query API side")
 	targetURL := fs.String("target", "", "target Registry origin (http://host:port) — Registration API side")
 	apiVer := fs.String("api-ver", "", "IS-04 wire version used on both faces (default v1.3)")
+	auditLog := fs.String("audit-log", "",
+		"append one JSONL observation per external-registry behaviour "+
+			"(refused forwards with the target's own words, evictions, WS drops) — "+
+			"the evidence trail for auditing the registry on the far side")
+	statusAddr := fs.String("status-addr", "",
+		"serve /status.json (counters, per-collection cache sizes for parity "+
+			"checks, recent audit ring) on this address, e.g. :9101")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
-		Source: *source,
-		Target: *targetURL,
-		APIVer: *apiVer,
-		Logger: slog.Default(),
+		Source:     *source,
+		Target:     *targetURL,
+		APIVer:     *apiVer,
+		Logger:     slog.Default(),
+		AuditPath:  *auditLog,
+		StatusAddr: *statusAddr,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)

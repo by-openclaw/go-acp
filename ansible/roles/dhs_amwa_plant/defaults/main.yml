@@ -16,6 +16,14 @@ dhs_amwa_plant_go: /usr/local/go/bin/go
 # The registry the whole plant registers into.
 dhs_amwa_plant_registry_bind: ":8235"
 dhs_amwa_plant_registry_port: 8235
+
+# The registry mirror: bridges the plant registry into an EXTERNAL
+# one (the Cerebrum-side registry) with an audit trail + status
+# endpoint. Empty target disables the unit.
+dhs_amwa_plant_mirror_source: "http://10.6.250.101:8235"
+dhs_amwa_plant_mirror_target: "http://10.6.250.5:8080"
+dhs_amwa_plant_mirror_audit_log: "{{ dhs_amwa_plant_dir }}/mirror-audit.jsonl"
+dhs_amwa_plant_mirror_status_addr: ":9101"
 dhs_amwa_plant_registry_page_limit: 1000
 # Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
 # configurable; the CONFORMANCE plant runs 30s, matched by the AMWA

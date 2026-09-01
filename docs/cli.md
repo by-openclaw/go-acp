@@ -16,6 +16,7 @@ Ansible templates render the same shape.
 - [Producer verbs](#producer-verbs)
 - [NMOS node (producer)](#nmos-node-producer)
 - [NMOS registry](#nmos-registry)
+- [NMOS registry mirror](#nmos-registry-mirror)
 - [NMOS controller: walk](#nmos-controller-walk)
 - [NMOS controller: watch](#nmos-controller-watch)
 - [NMOS controller: connect (IS-05)](#nmos-controller-connect-is-05)
@@ -317,6 +318,24 @@ Usage of serve:
     	directory for EST-provisioned material (default .cache/nmos-registry-tls)
   -tls-key string
     	private key for --tls-cert
+```
+
+## NMOS registry mirror
+
+`dhs registry nmos mirror --help`
+
+```text
+Usage of mirror:
+  -api-ver string
+    	IS-04 wire version used on both faces (default v1.3)
+  -audit-log string
+    	append one JSONL observation per external-registry behaviour (refused forwards with the target's own words, evictions, WS drops) — the evidence trail for auditing the registry on the far side
+  -source string
+    	source Registry origin (http://host:port) — Query API side
+  -status-addr string
+    	serve /status.json (counters, per-collection cache sizes for parity checks, recent audit ring) on this address, e.g. :9101
+  -target string
+    	target Registry origin (http://host:port) — Registration API side
 ```
 
 ## NMOS controller: walk

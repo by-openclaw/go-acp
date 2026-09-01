@@ -76,15 +76,22 @@ type MirrorOptions struct {
 	APIVer string
 	// Logger receives operational events. nil = slog.Default().
 	Logger *slog.Logger
+	// AuditPath, when set, appends one JSONL AuditEvent per external-
+	// registry observation — the evidence trail (mirror_audit.go).
+	AuditPath string
+	// StatusAddr, when set, serves /status.json — counters, cache
+	// parity data and the recent audit ring.
+	StatusAddr string
 }
 
-// MirrorStats is a snapshot of forward counters.
+// MirrorStats is a snapshot of forward counters. JSON names are the
+// /status.json contract amwa-validate-mirror.yml asserts on.
 type MirrorStats struct {
-	Forwarded  uint64 // POSTs accepted by the target
-	Deleted    uint64 // DELETEs accepted by the target
-	Heartbeats uint64 // health POSTs accepted by the target
-	Resyncs    uint64 // full re-registrations (target 404 recovery)
-	Failures   uint64 // requests the target refused
+	Forwarded  uint64 `json:"forwarded"`  // POSTs accepted by the target
+	Deleted    uint64 `json:"deleted"`    // DELETEs accepted by the target
+	Heartbeats uint64 `json:"heartbeats"` // health POSTs accepted by the target
+	Resyncs    uint64 `json:"resyncs"`    // full re-registrations (target 404 recovery)
+	Failures   uint64 `json:"failures"`   // requests the target refused
 }
 
 // Mirror bridges one source Registry into one target Registry.
@@ -107,6 +114,11 @@ type Mirror struct {
 	// (Cerebrum answers 400, not 404, to a missing parent reference).
 	// Non-nil while a resync is pending. Guarded by mu.
 	resyncTimer *time.Timer
+
+	// audit is the observation sink (mirror_audit.go); started stamps
+	// the uptime the status endpoint reports.
+	audit   *auditor
+	started time.Time
 }
 
 // mirrorResyncDebounce collapses a burst of parent-missing 400s during
@@ -156,12 +168,25 @@ func (m *Mirror) Run(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("registry/mirror: unknown api-ver %q", m.opts.APIVer)
 	}
+	audit, err := newAuditor(m.opts.AuditPath)
+	if err != nil {
+		return err
+	}
 	m.mu.Lock()
 	m.runCtx = ctx
+	m.audit = audit
+	m.started = time.Now()
 	m.mu.Unlock()
+	defer audit.close()
+	audit.event("mirror_start", map[string]any{
+		"source": m.opts.Source, "target": m.opts.Target, "api_ver": m.opts.APIVer,
+	})
 	qc, err := query.NewClient(m.opts.Source, codec)
 	if err != nil {
 		return fmt.Errorf("registry/mirror: source: %w", err)
+	}
+	if m.opts.StatusAddr != "" {
+		go m.serveStatus(ctx, m.opts.StatusAddr)
 	}
 
 	var wg sync.WaitGroup
@@ -200,6 +225,7 @@ func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic string)
 		sub, err := qc.Subscribe(ctx, query.SubscribeRequest{ResourcePath: "/" + topic})
 		if err != nil {
 			m.logger.Warn("registry/mirror: subscribe failed", "topic", topic, "err", err)
+			m.audit.event("ws_subscribe_failed", map[string]any{"topic": topic, "err": err.Error()})
 			m.sleep(ctx, 2*time.Second)
 			continue
 		}
@@ -213,6 +239,7 @@ func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic string)
 			return
 		}
 		m.logger.Warn("registry/mirror: watch ended — resubscribing", "topic", topic, "err", err)
+		m.audit.event("ws_reconnect", map[string]any{"topic": topic, "err": fmt.Sprint(err)})
 		m.sleep(ctx, 2*time.Second)
 	}
 }
@@ -348,6 +375,7 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 			for _, id := range m.nodeIDs() {
 				if m.sendHealth(ctx, id) == errMirrorEvicted {
 					m.logger.Warn("registry/mirror: target evicted node — full resync", "node", id)
+					m.audit.event("target_evicted", map[string]any{"node": id})
 					m.resync(ctx)
 					break
 				}
@@ -392,6 +420,7 @@ func (m *Mirror) sendHealth(ctx context.Context, nodeID string) error {
 
 // resync re-POSTs the whole cached catalogue in dependency order.
 func (m *Mirror) resync(ctx context.Context) {
+	m.audit.event("resync", nil)
 	m.mu.Lock()
 	m.stats.Resyncs++
 	snapshot := make(map[string][]json.RawMessage, len(mirrorTopics))
@@ -444,6 +473,7 @@ func (m *Mirror) registrationBase() string {
 
 func (m *Mirror) fail(op, topic string, err error) {
 	m.logger.Warn("registry/mirror: "+op+" failed", "topic", topic, "err", err)
+	m.audit.event("forward_failed", map[string]any{"op": op, "topic": topic, "err": err.Error()})
 	m.mu.Lock()
 	m.stats.Failures++
 	m.mu.Unlock()
