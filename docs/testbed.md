@@ -134,6 +134,15 @@ as the `dhs-nmos-registry` systemd unit
 (`/opt/dhs-amwa-plant/dhs registry nmos serve --bind :8235`). Never
 drive the fleet from a Windows workstation (PowerShell) — ADR-0025 §5.
 
+**Secondary runner** (#938): `dhs-tools` (`10.6.250.104`) carries its
+own pipx `ansible-core` and repo mirror (`/root/acp-runner`, cloned
+from the primary's `/root/acp-plant`), converged by
+`playbooks/amwa-runner.yml`. It exists for exactly one class of play:
+ones that reboot the primary control node itself
+(`amwa-reboot-resilience.yml`, `amwa-reboot-gate.yml`) — a play cannot
+survive rebooting the host it runs on. Everything else stays on the
+primary.
+
 Monitoring a run (#790): every play logs to `/tmp/ansible-fleet.log`
 on the control node (`tail -f` it) and prints per-task timings
 (`profile_tasks`); `ps -eo pid,lstart,etimes,args | grep ansible-playbook`
@@ -147,7 +156,7 @@ Ad-hoc `ssh by-rune@win11 '<cmd>'` now lands in PowerShell, not cmd.
 
 ## Access — actor keys, not per-host keys
 
-Exactly three ed25519 identities are authorized on every host, managed
+Exactly four ed25519 identities are authorized on every host, managed
 by the `dhs_access` role (#782); anything else is removed:
 
 | Actor | Key comment | Purpose |
@@ -155,6 +164,7 @@ by the `dhs_access` role (#782); anything else is removed:
 | by-rune (agent, desk-03) | `by-rune-dhs-lxc` | agent SSH to every host |
 | control node `.101` | `root@dhs` | Ansible → fleet |
 | codeowner | (owner's ed25519) | direct SSH |
+| secondary runner `.104` | `runner-dhs-tools` | plays that reboot the primary control node (#938) |
 
 Linux: `/root/.ssh/authorized_keys` (login user is `root`; `by-rune` is
 rejected by sshd on the LXCs). Windows: `by-rune` is in the local
