@@ -116,19 +116,20 @@
   failed_when: false
   when: _validate_need_auth
 
-- name: Create the auth tool container
+# docker CREATE, not run: the tool must never execute with default
+# config. With defaults PULL_REPOS=True kicks off git operations at
+# startup, and the config pin's restart then lands mid `git reset`,
+# leaving a stale cache .git/HEAD.lock that crash-loops the container
+# forever (first fleet run of #942 hit exactly this). Config first,
+# first start after.
+- name: Create the auth tool container (stopped)
   ansible.builtin.command: >-
-    docker run -d --name {{ dhs_amwa_validate_auth_tool_container }}
+    docker create --name {{ dhs_amwa_validate_auth_tool_container }}
     --network host
     -v /run/dbus:/run/dbus
     --restart unless-stopped
     {{ dhs_amwa_validate_tool_image }}
   when: _validate_need_auth and _auth_tool_state.rc != 0
-  changed_when: true
-
-- name: The auth tool container is running
-  ansible.builtin.command: docker start {{ dhs_amwa_validate_auth_tool_container }}
-  when: _validate_need_auth and _auth_tool_state.rc == 0 and 'running' not in _auth_tool_state.stdout
   changed_when: true
 
 # Same conformance profile as the resident PLUS the armed knobs —
@@ -154,4 +155,10 @@
     docker cp /opt/dhs-validate-userconfig-auth.py {{ dhs_amwa_validate_auth_tool_container }}:/config/UserConfig.py
     && docker restart {{ dhs_amwa_validate_auth_tool_container }}
   when: _validate_need_auth and (_auth_userconfig.changed or _auth_tool_state.rc != 0)
+  changed_when: true
+
+# After the pin so a first start always runs the armed config.
+- name: The auth tool container is running
+  ansible.builtin.command: docker start {{ dhs_amwa_validate_auth_tool_container }}
+  when: _validate_need_auth and _auth_tool_state.rc == 0 and 'running' not in _auth_tool_state.stdout
   changed_when: true
