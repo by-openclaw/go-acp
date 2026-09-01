@@ -40,6 +40,68 @@
   delay: 3
   until: _tool_api.status in [200, 405]
 
+# ---- the auth-ARMED tool instance (issue #942) ----
+# The resident checks above still ran: an auth play arms ONLY its own
+# instance, and the resident staying disarmed is part of the contract
+# being asserted.
+- name: Read the auth tool container image
+  ansible.builtin.command: docker inspect --format {% raw %}"{{.Config.Image}}"{% endraw %} {{ dhs_amwa_validate_auth_tool_container }}
+  register: _auth_tool_image
+  changed_when: false
+  when: _validate_need_auth
+
+- name: The auth tool image must be the pinned one
+  ansible.builtin.assert:
+    that: _auth_tool_image.stdout.strip() == dhs_amwa_validate_tool_image
+    fail_msg: >-
+      auth tool container runs {{ _auth_tool_image.stdout }} — the gate
+      is only meaningful against {{ dhs_amwa_validate_tool_image }}
+  when: _validate_need_auth
+
+- name: Read the auth tool UserConfig
+  ansible.builtin.command: docker exec {{ dhs_amwa_validate_auth_tool_container }} cat /config/UserConfig.py
+  register: _auth_tool_cfg
+  changed_when: false
+  when: _validate_need_auth
+
+- name: The auth tool knobs must match the armed profile
+  ansible.builtin.assert:
+    that:
+      - "'PULL_REPOS = False' in _auth_tool_cfg.stdout"
+      - "'CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30' in _auth_tool_cfg.stdout"
+      - "'CONFIG.ENABLE_AUTH = True' in _auth_tool_cfg.stdout"
+      - "('CONFIG.PORT_BASE = ' ~ dhs_amwa_validate_auth_port_base) in _auth_tool_cfg.stdout"
+    fail_msg: >-
+      auth /config/UserConfig.py drifted — expected PULL_REPOS=False,
+      CONFIG.GARBAGE_COLLECTION_TIMEOUT=30 and auth ARMED at
+      PORT_BASE {{ dhs_amwa_validate_auth_port_base }}.
+      Got: {{ _auth_tool_cfg.stdout }}
+  when: _validate_need_auth
+
+- name: The auth tool API must answer
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_auth_tool_url }}"
+    method: GET
+    status_code: [200, 405]
+  register: _auth_tool_api
+  retries: 5
+  delay: 3
+  until: _auth_tool_api.status in [200, 405]
+  when: _validate_need_auth
+
+# The exact URL the CuT will be armed with must serve the RFC 8414
+# metadata — this catches the bridged-networking failure mode (issuer
+# baked to an unreachable IP) before a 30-minute suite does.
+- name: The mock Authorization Server must answer where the CuT will look
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_auth_server_url }}/.well-known/oauth-authorization-server"
+    method: GET
+  register: _auth_meta
+  retries: 5
+  delay: 3
+  until: _auth_meta.status == 200
+  when: _validate_need_auth
+
 # Stamped from a live clock read, NOT ansible_date_time — cached facts
 # hand every run the same stamp and the runs then overwrite each other.
 - name: Stamp the run

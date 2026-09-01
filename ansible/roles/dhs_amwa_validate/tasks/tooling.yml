@@ -101,3 +101,57 @@
     && docker restart {{ dhs_amwa_validate_tool_container }}
   when: _userconfig.changed or _tool_state.rc != 0
   changed_when: true
+
+# ---- the auth-ARMED tool instance (issue #942) ----
+# Third container, same pinned image, HOST networking + host dbus like
+# the resident (its mock Authorization Server derives issuer/jwks_uri
+# from the machine's default IP — a bridge would bake in an
+# unreachable 172.x; IS-04-02's DNS-SD rounds also need real
+# multicast). Shifted PORT_BASE because the resident owns 5000; the
+# mock auth server follows at PORT_BASE+10.
+- name: The auth tool container exists
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Status}}"{% endraw %} {{ dhs_amwa_validate_auth_tool_container }}
+  register: _auth_tool_state
+  changed_when: false
+  failed_when: false
+  when: _validate_need_auth
+
+- name: Create the auth tool container
+  ansible.builtin.command: >-
+    docker run -d --name {{ dhs_amwa_validate_auth_tool_container }}
+    --network host
+    -v /run/dbus:/run/dbus
+    --restart unless-stopped
+    {{ dhs_amwa_validate_tool_image }}
+  when: _validate_need_auth and _auth_tool_state.rc != 0
+  changed_when: true
+
+- name: The auth tool container is running
+  ansible.builtin.command: docker start {{ dhs_amwa_validate_auth_tool_container }}
+  when: _validate_need_auth and _auth_tool_state.rc == 0 and 'running' not in _auth_tool_state.stdout
+  changed_when: true
+
+# Same conformance profile as the resident PLUS the armed knobs —
+# ENABLE_AUTH is the tool's own switch (its receipts CONFIG dump names
+# it), PORT_BASE moves the GUI/API + every PORT_BASE-relative mock,
+# WEBSOCKET_PORT_BASE moves the WS mocks off the resident's range.
+- name: Render the armed UserConfig
+  ansible.builtin.copy:
+    content: |
+      PULL_REPOS = False
+      from . import Config as CONFIG
+      CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30
+      CONFIG.ENABLE_AUTH = True
+      CONFIG.PORT_BASE = {{ dhs_amwa_validate_auth_port_base }}
+      CONFIG.WEBSOCKET_PORT_BASE = {{ dhs_amwa_validate_auth_ws_port_base }}
+    dest: /opt/dhs-validate-userconfig-auth.py
+    mode: "0644"
+  register: _auth_userconfig
+  when: _validate_need_auth
+
+- name: Pin the auth tool UserConfig
+  ansible.builtin.shell: >-
+    docker cp /opt/dhs-validate-userconfig-auth.py {{ dhs_amwa_validate_auth_tool_container }}:/config/UserConfig.py
+    && docker restart {{ dhs_amwa_validate_auth_tool_container }}
+  when: _validate_need_auth and (_auth_userconfig.changed or _auth_tool_state.rc != 0)
+  changed_when: true

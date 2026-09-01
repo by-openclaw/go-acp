@@ -1,0 +1,60 @@
+---
+# Registry CuT window (IS-04-02 auth, issue #942): a transient
+# registry on the plant host, armed with --auth-url so BOTH faces
+# (Registration + Query) Bearer-gate and api_auth=true is advertised.
+# The plant registry stays running and DISARMED — resident units are
+# never armed — and keeps its pri-0 announce; the transient announces
+# at dev priority 100 under its own instance name so no plant node
+# re-elects onto an armed registry it holds no token for (pri 0-99
+# production, 100+ dev — IS-04 §3).
+#
+# The transient mirrors the plant registry's exam-shaping flags
+# (dhs_amwa_plant's dhs-nmos-registry.service.j2): the tool's pinned
+# GARBAGE_COLLECTION_TIMEOUT=30 profile assumes the 30 s heartbeat
+# window, and the paging default changes which Query paging rounds
+# the tool can score — a drifted transient sits a different exam than
+# the committed non-auth baseline did.
+#
+# Same transient unit name as the p2p window so window_teardown.yml
+# closes either window identically.
+
+- name: Start the transient registry CuT
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cut --collect
+    {{ dhs_amwa_validate_plant_bin }} registry nmos serve
+    --bind 0.0.0.0:{{ dhs_amwa_validate_cut_port }}
+    --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
+    --priority 100
+    --instance-name dhs-nmos-validate-auth
+    --page-limit-default 1000
+    --heartbeat-timeout 30s
+    {{ ('--auth-url ' ~ dhs_amwa_validate_auth_server_url) if suite.auth | default(false) else '' }}
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+- name: Arm the CuT safety-stop timer
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cutstop --collect
+    --on-active={{ dhs_amwa_validate_window_safety_sec }}
+    systemctl stop dhs-nmos-validate-cut
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+# An armed registry answers a tokenless probe with 401 — that IS the
+# readiness proof (the Bearer gate is up before the tool knocks);
+# 200 is the disarmed shape.
+- name: Wait for the transient registry
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/nodes"
+    status_code: [200, 401]
+  register: _cut_up
+  retries: 15
+  delay: 2
+  until: _cut_up.status == (401 if suite.auth | default(false) else 200)
+
+# The catalog rows carry the registry target; point them at the
+# transient instead of the plant resident.
+- name: Point this suite at the transient registry
+  ansible.builtin.set_fact:
+    _suite_host_override: "{{ dhs_amwa_validate_plant_host }}"
+    _suite_port_override: "{{ dhs_amwa_validate_cut_port }}"

@@ -7,6 +7,10 @@
 - name: "{{ suite.id }} — attempt bookkeeping"
   ansible.builtin.set_fact:
     _attempt_suffix: "{{ '-retry' if _suite_verdict else '' }}"
+    # Result-file stem: auth twins keep the manual sweep's
+    # <SUITE>-auth.json convention so armed and plain receipts of the
+    # same suite id never overwrite each other.
+    _suite_file: "{{ suite.id }}{{ '-auth' if suite.auth | default(false) else '' }}"
     _suite_host_override: !!null
     _suite_port_override: !!null
     _tool_url_override: !!null
@@ -17,6 +21,15 @@
     - name: "{{ suite.id }} — open the {{ suite.window | default('no') }} window"
       ansible.builtin.include_tasks: "window_{{ suite.window }}.yml"
       when: suite.window is defined
+
+    # Auth suites are scored by the ARMED tool instance (issue #942).
+    # After the window include on purpose: no auth suite runs in the
+    # isolated window today, but if one ever does, the armed URL must
+    # win over the isolated instance's override.
+    - name: "{{ suite.id }} — score with the armed tool instance"
+      ansible.builtin.set_fact:
+        _tool_url_override: "{{ dhs_amwa_validate_auth_tool_url }}"
+      when: suite.auth | default(false)
 
     # Fill each row's absent members from the (possibly window-
     # overridden) target. An EXPLICIT null in the catalog stays null —
@@ -55,13 +68,13 @@
     - name: "{{ suite.id }} — store the raw result"
       ansible.builtin.copy:
         content: "{{ _suite_resp.content }}"
-        dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}{{ _attempt_suffix }}.json"
+        dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ _suite_file }}{{ _attempt_suffix }}.json"
         mode: "0644"
 
     - name: "{{ suite.id }} — gate against the baseline"
       ansible.builtin.command: >-
         python3 {{ dhs_amwa_validate_results_dir }}/parse_suite.py
-        {{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}{{ _attempt_suffix }}.json
+        {{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ _suite_file }}{{ _attempt_suffix }}.json
         {{ suite.id }} {{ suite.baseline_pass }} {{ suite.baseline_cnt }}
       register: _suite_gate
       changed_when: false
@@ -69,7 +82,10 @@
 
     - name: "{{ suite.id }} — record the verdict"
       ansible.builtin.set_fact:
-        _suite_verdict: "{{ _suite_gate.stdout | from_json | combine({'retried': _attempt_suffix != ''}) }}"
+        _suite_verdict: >-
+          {{ _suite_gate.stdout | from_json
+             | combine({'retried': _attempt_suffix != '',
+                        'auth': suite.auth | default(false)}) }}
   always:
     - name: "{{ suite.id }} — close the window"
       ansible.builtin.include_tasks: window_teardown.yml

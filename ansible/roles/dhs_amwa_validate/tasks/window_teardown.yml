@@ -29,7 +29,7 @@
     content: |
       {{ _cut_log.stdout | default('') }}
       {{ _cut_log.stderr | default('') }}
-    dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ suite.id }}-node.log"
+    dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ _suite_file | default(suite.id) }}-node.log"
     mode: "0644"
   when: _cut_log.rc | default(1) == 0
 
