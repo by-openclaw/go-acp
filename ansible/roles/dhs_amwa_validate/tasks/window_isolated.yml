@@ -16,9 +16,23 @@
   changed_when: _iso_net.rc == 0
   failed_when: _iso_net.rc != 0 and 'already exists' not in _iso_net.stderr
 
+# The binary + fixture live on the PLANT host. On the primary control
+# node the controller IS the plant, but the secondary runner (#938) is
+# not — so stage via an explicit plant -> controller -> tooling hop
+# instead of assuming the controller holds /opt/dhs-amwa-plant.
+- name: Current node binary + fixture pulled from the plant
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: /tmp/dhs-validate-stage/
+    flat: true
+  delegate_to: "{{ groups['plant'][0] }}"
+  loop:
+    - "{{ dhs_amwa_validate_plant_bin }}"
+    - "{{ dhs_amwa_validate_plant_config }}"
+
 - name: Current node binary + fixture staged on the tooling host
   ansible.builtin.copy:
-    src: "{{ item }}"
+    src: "/tmp/dhs-validate-stage/{{ item | basename }}"
     dest: /opt/dhs-validate/
     mode: "0755"
   loop:
