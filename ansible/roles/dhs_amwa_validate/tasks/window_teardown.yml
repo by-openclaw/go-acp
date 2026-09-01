@@ -10,6 +10,8 @@
     state: stopped
   loop:
     - dhs-nmos-validate-cut
+    - dhs-nmos-validate-cutnode
+    - dhs-nmos-validate-cutnodestop.timer
     - dhs-nmos-validate-cutstop.timer
     - dhs-nmos-validate-cutkick.timer
     - dhs-nmos-validate-restore.timer

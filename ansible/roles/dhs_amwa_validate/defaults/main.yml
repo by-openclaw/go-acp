@@ -29,6 +29,9 @@ dhs_amwa_validate_plant_host: "10.6.250.101"
 dhs_amwa_validate_node_port: 18080
 dhs_amwa_validate_registry_port: 8235
 dhs_amwa_validate_cut_port: 18500
+# The token-bearing companion node the armed registry window registers
+# into the transient armed registry (#942 S3c).
+dhs_amwa_validate_cutnode_port: 18510
 dhs_amwa_validate_plant_bin: /opt/dhs-amwa-plant/dhs
 dhs_amwa_validate_plant_config: /opt/dhs-amwa-plant/amwa-test-node.json
 dhs_amwa_validate_registry_unit: dhs-nmos-registry

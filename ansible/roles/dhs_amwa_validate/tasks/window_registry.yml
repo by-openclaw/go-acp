@@ -52,6 +52,94 @@
   delay: 2
   until: _cut_up.status == (401 if suite.auth | default(false) else 200)
 
+# ---- token-bearing companion node (#942 follow-up S3c) --------------
+# An empty armed registry leaves nine Query rounds "No resources
+# found" (the first armed baseline). The companion node registers a
+# real resource graph INTO the armed registry so those rounds score.
+# Credentials come from the mock Authorization Server's own RFC 7591
+# registration endpoint — read from its RFC 8414 metadata, never
+# hardcoded — and the node arms with them via --auth-client-id/secret
+# (the same client_credentials flow a production node would use).
+- name: Read the Authorization Server metadata
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_auth_server_url }}/.well-known/oauth-authorization-server"
+    return_content: true
+  register: _auth_meta
+  when: suite.auth | default(false)
+
+- name: Register the companion node as an OAuth client
+  ansible.builtin.uri:
+    url: "{{ _auth_meta.json.registration_endpoint }}"
+    method: POST
+    body_format: json
+    body:
+      client_name: dhs-nmos-validate-cutnode
+      grant_types: [client_credentials]
+      token_endpoint_auth_method: client_secret_basic
+      scope: "registration query"
+    status_code: [200, 201]
+  register: _dcr
+  no_log: true
+  when: suite.auth | default(false)
+
+- name: Start the token-bearing companion node
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cutnode --collect
+    {{ dhs_amwa_validate_plant_bin }} producer nmos serve
+    --bind 0.0.0.0:{{ dhs_amwa_validate_cutnode_port }}
+    --no-mdns
+    --registry http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
+    --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cutnode_port }}
+    --api-ver {{ suite.rows[0].ver }}
+    --config {{ dhs_amwa_validate_plant_config }}
+    --auth-url {{ dhs_amwa_validate_auth_server_url }}
+    --auth-client-id {{ _dcr.json.client_id }}
+    --auth-client-secret {{ _dcr.json.client_secret }}
+  delegate_to: "{{ groups['plant'][0] }}"
+  no_log: true
+  changed_when: true
+  when: suite.auth | default(false)
+
+- name: Arm the companion-node safety-stop timer
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cutnodestop --collect
+    --on-active={{ dhs_amwa_validate_window_safety_sec }}
+    systemctl stop dhs-nmos-validate-cutnode
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+  when: suite.auth | default(false)
+
+# Proof of registration, not just liveness: fetch our own token (the
+# registered client carries the query scope too) and poll the armed
+# Query API until the companion's node document is in it.
+- name: Fetch a verification token
+  ansible.builtin.uri:
+    url: "{{ _auth_meta.json.token_endpoint }}"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      grant_type: client_credentials
+      scope: query
+    url_username: "{{ _dcr.json.client_id }}"
+    url_password: "{{ _dcr.json.client_secret }}"
+    force_basic_auth: true
+  register: _verify_tok
+  no_log: true
+  when: suite.auth | default(false)
+
+- name: The companion node is registered in the armed registry
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/nodes"
+    headers:
+      Authorization: "Bearer {{ _verify_tok.json.access_token }}"
+    return_content: true
+  register: _cut_reg
+  retries: 20
+  delay: 3
+  until: _cut_reg.status == 200 and (_cut_reg.json | length) >= 1
+  no_log: true
+  when: suite.auth | default(false)
+
 # The catalog rows carry the registry target; point them at the
 # transient instead of the plant resident.
 - name: Point this suite at the transient registry
