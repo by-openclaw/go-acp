@@ -206,12 +206,16 @@ dhs_amwa_validate_suites:
   # here in git).
   - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
-  # baseline_cnt 2 inherited from the non-auth twin: auto_registration
-  # 5/6 are structurally untestable for ANY implementation (RAML id
-  # substitution — see the registry-scope entry above), and arming
-  # auth does not change that.
+  # Armed baselines from the 2026-09-01 first fleet run: pass=79
+  # fail=0. cnt 11 = the non-auth twin's structural pair
+  # (auto_registration 5/6, RAML id substitution) PLUS nine
+  # "No resources found" rows: the transient armed registry is EMPTY
+  # by design — it announces at dev pri 100 and plant nodes hold no
+  # tokens, so nothing registers into it. Registering a token-bearing
+  # transient node into the armed window (shrinking these CNTs) is
+  # the named follow-up in #942.
   - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
-      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 0, baseline_cnt: 2 }
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 79, baseline_cnt: 11 }
 
   # ---- controller scope: needs the controller facade (issue backlog,
   # user-owned item #7) — listed so the report says "not automatable

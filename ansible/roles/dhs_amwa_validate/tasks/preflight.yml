@@ -78,14 +78,17 @@
       Got: {{ _auth_tool_cfg.stdout }}
   when: _validate_need_auth
 
+# First boot after (re)create loads every suite before the GUI binds —
+# ~1-2 min on this LXC; 5x3s only covered the already-running case and
+# failed the first fleet run of #942.
 - name: The auth tool API must answer
   ansible.builtin.uri:
     url: "{{ dhs_amwa_validate_auth_tool_url }}"
     method: GET
     status_code: [200, 405]
   register: _auth_tool_api
-  retries: 5
-  delay: 3
+  retries: 36
+  delay: 5
   until: _auth_tool_api.status in [200, 405]
   when: _validate_need_auth
 
