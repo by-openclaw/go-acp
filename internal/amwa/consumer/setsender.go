@@ -176,6 +176,17 @@ func buildSenderPatch(legs int, mode is05.ActivationMode, req SetSenderRequest) 
 	if legs == 0 {
 		return nil, fmt.Errorf("nmos set: sender %s reports no transport legs", req.SenderID)
 	}
+	// A trailing EMPTY slot means "leave that leg alone" — and a leg
+	// the device does not have needs no leaving-alone. Trimming lets
+	// `--leg red` (always rendered as a two-slot list) drive a
+	// single-leg sender; a NON-empty value beyond the device's legs
+	// still errors below, because that is a real addressing mistake.
+	for len(req.DestinationIPs) > legs && req.DestinationIPs[len(req.DestinationIPs)-1] == "" {
+		req.DestinationIPs = req.DestinationIPs[:len(req.DestinationIPs)-1]
+	}
+	for len(req.DestinationPorts) > legs && req.DestinationPorts[len(req.DestinationPorts)-1] == 0 {
+		req.DestinationPorts = req.DestinationPorts[:len(req.DestinationPorts)-1]
+	}
 	if n := len(req.DestinationIPs); n > 0 && n != legs {
 		return nil, fmt.Errorf("nmos set: sender %s has %d transport leg(s), you gave "+
 			"%d --destination value(s); give one per leg (ST 2022-7 legs must not "+
