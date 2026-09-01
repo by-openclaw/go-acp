@@ -140,6 +140,26 @@
   no_log: true
   when: suite.auth | default(false)
 
+# auto_query_18/19 page the /subscriptions collection; the plant
+# resident always holds live ones (the mirror's), the fresh transient
+# holds none. A persistent subscription (survives with no WS client
+# attached) gives those rounds a resource to score.
+- name: Seed a persistent subscription so the subscription rounds score
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/subscriptions"
+    method: POST
+    body_format: json
+    body:
+      max_update_rate_ms: 100
+      persist: true
+      resource_path: /nodes
+      params: {}
+    headers:
+      Authorization: "Bearer {{ _verify_tok.json.access_token }}"
+    status_code: [200, 201]
+  no_log: true
+  when: suite.auth | default(false)
+
 # The catalog rows carry the registry target; point them at the
 # transient instead of the plant resident.
 - name: Point this suite at the transient registry
