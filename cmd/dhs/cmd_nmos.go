@@ -749,7 +749,13 @@ Bridges one Registry into another: subscribes to every collection on
 the source's Query-WS (controller role) and forwards each change to
 the target's Registration API (node role), proxying one heartbeat per
 source node. Use case: dhs Registry as the plant's source of truth
-feeding a controller vendor's own registry.`)
+feeding a controller vendor's own registry.
+
+With --serve ADDR the mirror also serves the mirrored catalogue as a
+read-only IS-04 Query API (REST + WebSocket subscriptions), so a
+controller reads the plant THROUGH the audited mirror. Served reads,
+WS subscription opens/closes, and refused registration attempts all
+land in the same --audit-log trail and /status.json counters.`)
 }
 
 // runNMOSRegistryMirror bridges a source Registry into a target one.
@@ -765,6 +771,11 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 	statusAddr := fs.String("status-addr", "",
 		"serve /status.json (counters, per-collection cache sizes for parity "+
 			"checks, recent audit ring) on this address, e.g. :9101")
+	serveAddr := fs.String("serve", "",
+		"serve the mirrored catalogue as a read-only IS-04 Query API "+
+			"(REST + WS subscriptions) on this address, e.g. :8335 — "+
+			"controllers read the plant THROUGH the audited mirror; "+
+			"registration attempts are refused and audited")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -775,11 +786,15 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		Logger:     slog.Default(),
 		AuditPath:  *auditLog,
 		StatusAddr: *statusAddr,
+		ServeAddr:  *serveAddr,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)
 	}
 	fmt.Printf("Mirroring %s -> %s. Interrupt to stop.\n", *source, *targetURL)
+	if *serveAddr != "" {
+		fmt.Printf("Serving the mirrored Query API on %s.\n", *serveAddr)
+	}
 	err = m.Run(ctx)
 	st := m.Stats()
 	fmt.Fprintf(os.Stderr, "forwarded=%d deleted=%d heartbeats=%d resyncs=%d failures=%d\n",

@@ -97,7 +97,10 @@ type mirrorStatus struct {
 	UptimeSec   int64          `json:"uptime_sec"`
 	Stats       MirrorStats    `json:"stats"`
 	CacheCounts map[string]int `json:"cache_counts"`
-	RecentAudit []AuditEvent   `json:"recent_audit"`
+	// ServeAddr is the served read-only Query face's bound address
+	// (--serve, mirror_serve.go); absent when serving is disabled.
+	ServeAddr   string       `json:"serve_addr,omitempty"`
+	RecentAudit []AuditEvent `json:"recent_audit"`
 }
 
 // serveStatus runs the status endpoint until ctx ends.
@@ -116,6 +119,9 @@ func (m *Mirror) serveStatus(ctx context.Context, addr string) {
 			UptimeSec:   int64(time.Since(m.started).Seconds()),
 			Stats:       m.stats,
 			CacheCounts: counts,
+		}
+		if m.serve != nil {
+			st.ServeAddr = m.serve.addr
 		}
 		m.mu.Unlock()
 		st.RecentAudit = m.audit.recent()

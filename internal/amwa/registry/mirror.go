@@ -82,6 +82,12 @@ type MirrorOptions struct {
 	// StatusAddr, when set, serves /status.json — counters, cache
 	// parity data and the recent audit ring.
 	StatusAddr string
+	// ServeAddr, when set, serves the mirrored catalogue as a
+	// read-only IS-04 Query API (REST + WS subscriptions) on this
+	// address, so a controller reads the plant THROUGH the audited
+	// mirror (mirror_serve.go). Empty disables the served face —
+	// pre-#940 behaviour unchanged.
+	ServeAddr string
 }
 
 // MirrorStats is a snapshot of forward counters. JSON names are the
@@ -92,6 +98,12 @@ type MirrorStats struct {
 	Heartbeats uint64 `json:"heartbeats"` // health POSTs accepted by the target
 	Resyncs    uint64 `json:"resyncs"`    // full re-registrations (target 404 recovery)
 	Failures   uint64 `json:"failures"`   // requests the target refused
+
+	// Served Query face counters (--serve, mirror_serve.go). Zero when
+	// serving is disabled.
+	ServedQueries uint64 `json:"served_queries"` // REST requests answered on the served Query API
+	ServedWSSubs  uint64 `json:"served_ws_subs"` // WS subscription sockets opened by consumers
+	ServedRejects uint64 `json:"served_rejects"` // write attempts refused (the mirror serves Query only)
 }
 
 // Mirror bridges one source Registry into one target Registry.
@@ -114,6 +126,16 @@ type Mirror struct {
 	// (Cerebrum answers 400, not 404, to a missing parent reference).
 	// Non-nil while a resync is pending. Guarded by mu.
 	resyncTimer *time.Timer
+
+	// serve is the embedded read-only Query face (mirror_serve.go);
+	// nil when opts.ServeAddr is empty. Assigned once in Run before the
+	// watch goroutines start, immutable after.
+	serve *mirrorServe
+	// serveReplayTimer debounces the ordered replay of the cache into
+	// the embedded store — the served-face twin of resyncTimer, fired
+	// when a grain row's parent has not landed in the store yet (the
+	// six topic streams race). Guarded by mu.
+	serveReplayTimer *time.Timer
 
 	// audit is the observation sink (mirror_audit.go); started stamps
 	// the uptime the status endpoint reports.
@@ -188,6 +210,13 @@ func (m *Mirror) Run(ctx context.Context) error {
 	if m.opts.StatusAddr != "" {
 		go m.serveStatus(ctx, m.opts.StatusAddr)
 	}
+	if m.opts.ServeAddr != "" {
+		// Started before the watch goroutines so forwardRow always sees
+		// a fully-built embedded store.
+		if err := m.startServe(ctx); err != nil {
+			return err
+		}
+	}
 
 	var wg sync.WaitGroup
 	for _, topic := range mirrorTopics {
@@ -209,6 +238,10 @@ func (m *Mirror) Run(ctx context.Context) error {
 	if m.resyncTimer != nil {
 		m.resyncTimer.Stop()
 		m.resyncTimer = nil
+	}
+	if m.serveReplayTimer != nil {
+		m.serveReplayTimer.Stop()
+		m.serveReplayTimer = nil
 	}
 	m.mu.Unlock()
 	return ctx.Err()
@@ -251,6 +284,7 @@ func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDat
 		m.mu.Lock()
 		m.cache[topic][row.Path] = row.Post
 		m.mu.Unlock()
+		m.applyServeRow(topic, row, true)
 		// Live path: a 400 here means a parent has not been forwarded
 		// yet (the six topics stream concurrently), so allow it to
 		// trigger an ordered resync.
@@ -259,6 +293,7 @@ func (m *Mirror) forwardRow(ctx context.Context, topic string, row is04.GrainDat
 		m.mu.Lock()
 		delete(m.cache[topic], row.Path)
 		m.mu.Unlock()
+		m.applyServeRow(topic, row, true)
 		m.deleteResource(ctx, topic, row.Path)
 	default:
 		m.logger.Warn("registry/mirror: grain row with neither pre nor post", "topic", topic, "id", row.Path)
@@ -448,6 +483,10 @@ func (m *Mirror) resync(ctx context.Context) {
 			m.postResource(ctx, topic, doc, false)
 		}
 	}
+	// The served face is fed from the same authoritative cache, so a
+	// full resync repopulates it too — an eviction-recovery pass must
+	// leave both downstream copies (target AND embedded store) whole.
+	m.serveReplay()
 }
 
 // nodeIDs snapshots the cached source node ids.
