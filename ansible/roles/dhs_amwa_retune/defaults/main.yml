@@ -1,0 +1,16 @@
+---
+# dhs_amwa_retune — drive `dhs consumer nmos set` for one live retune.
+# The verb does the IS-05 work and its --verify re-reads ACTIVE; the
+# role adds the Query-API check (what every OTHER controller sees).
+
+dhs_amwa_retune_bin: /opt/dhs-amwa-plant/dhs
+dhs_amwa_retune_node_url: "http://10.6.250.101:18080"
+dhs_amwa_retune_registry_url: "http://10.6.250.101:8235"
+dhs_amwa_retune_settings_dir: /opt/dhs-amwa-plant
+
+retune_sender: ""
+retune_label: ""
+retune_leg: red
+retune_destination: ""
+retune_port: 0
+retune_enable: false

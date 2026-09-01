@@ -33,11 +33,22 @@ func runNMOSSet(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor; empty = highest mutual")
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
 
-	sender := fs.String("sender", "", "IS-04 Sender UUID to configure (required)")
+	sender := fs.String("sender", "", "IS-04 Sender UUID to configure (this or --label)")
+	label := fs.String("label", "",
+		"resolve the Sender by its IS-04 label instead of --sender; labels are "+
+			"non-unique by spec, so anything but exactly one match is an error")
 	dest := fs.String("destination", "",
 		"destination IP per transport leg, comma-separated in device order "+
 			"(ST 2022-7 senders have two legs and they must not share a group)")
 	port := fs.String("port", "", "destination port per leg, comma-separated; empty leaves the device's own")
+	leg := fs.String("leg", "",
+		"red | blue | both — name the ST 2022-7 leg instead of positional lists: "+
+			"red = leg 1, blue = leg 2, the other leg is left untouched. With "+
+			"--leg, --destination and --port take ONE value ('both' + one "+
+			"--destination is refused: the legs must not share a group)")
+	verify := fs.Bool("verify", false,
+		"after activation, read the sender's ACTIVE parameters back and fail "+
+			"if they do not carry what was asked")
 	enable := fs.Bool("enable", false, "also set master_enable=true")
 	disable := fs.Bool("disable", false, "also set master_enable=false")
 	mode := fs.String("mode", "activate_immediate",
@@ -48,9 +59,12 @@ func runNMOSSet(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
-	if *sender == "" {
-		return fmt.Errorf("nmos set: --sender <uuid> is required " +
+	if *sender == "" && *label == "" {
+		return fmt.Errorf("nmos set: --sender <uuid> or --label <name> is required " +
 			"(run `dhs consumer nmos walk -l` to list them)")
+	}
+	if *sender != "" && *label != "" {
+		return fmt.Errorf("nmos set: --sender and --label are mutually exclusive")
 	}
 	if *enable && *disable {
 		return fmt.Errorf("nmos set: --enable and --disable are mutually exclusive")
@@ -72,6 +86,13 @@ func runNMOSSet(ctx context.Context, args []string) error {
 				return fmt.Errorf("nmos set --port: %q is not a port number", p)
 			}
 			ports = append(ports, n)
+		}
+	}
+
+	if *leg != "" {
+		ips, ports, err = expandLeg(*leg, *dest, *port, ports)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -110,6 +131,15 @@ func runNMOSSet(ctx context.Context, args []string) error {
 		return fmt.Errorf("nmos set: %w", err)
 	}
 
+	if *label != "" {
+		id, err := c.ResolveSenderByLabel(ctx, *label)
+		if err != nil {
+			return fmt.Errorf("nmos set: %w", err)
+		}
+		fmt.Printf("label %q resolved to sender %s\n", *label, id)
+		*sender = id
+	}
+
 	res, err := c.SetSender(ctx, consumer.SetSenderRequest{
 		SenderID:         *sender,
 		DestinationIPs:   ips,
@@ -142,12 +172,48 @@ func runNMOSSet(ctx context.Context, args []string) error {
 
 	// The device's own answer is the truth. A leg still on 0.0.0.0 emits
 	// nothing no matter how the request looked.
-	for i, leg := range res.Legs {
-		if leg.DestinationIP == "" || leg.DestinationIP == "0.0.0.0" {
+	for i, l := range res.Legs {
+		if l.DestinationIP == "" || l.DestinationIP == "0.0.0.0" {
 			fmt.Fprintf(os.Stderr,
 				"\nWARNING: leg %d has no destination (%q) — this leg emits nothing.\n",
-				i, leg.DestinationIP)
+				i, l.DestinationIP)
 		}
+	}
+
+	// --verify: re-read ACTIVE and hold it against what was asked. The
+	// stage/activate replies said yes; this is the device saying what
+	// it is DOING now — the retune contract for a live plant.
+	if *verify {
+		activeLegs, activeMaster, err := c.SenderActiveLegs(ctx, *sender)
+		if err != nil {
+			return fmt.Errorf("nmos set --verify: %w", err)
+		}
+		var problems []string
+		for i := range ips {
+			if ips[i] == "" || i >= len(activeLegs) {
+				continue
+			}
+			if activeLegs[i].DestinationIP != ips[i] {
+				problems = append(problems, fmt.Sprintf(
+					"leg %d destination_ip = %q, asked %q", i, activeLegs[i].DestinationIP, ips[i]))
+			}
+		}
+		for i := range ports {
+			if ports[i] == 0 || i >= len(activeLegs) {
+				continue
+			}
+			if activeLegs[i].DestinationPort != ports[i] {
+				problems = append(problems, fmt.Sprintf(
+					"leg %d destination_port = %d, asked %d", i, activeLegs[i].DestinationPort, ports[i]))
+			}
+		}
+		if master != nil && activeMaster != *master {
+			problems = append(problems, fmt.Sprintf("master_enable = %t, asked %t", activeMaster, *master))
+		}
+		if len(problems) > 0 {
+			return fmt.Errorf("nmos set --verify: ACTIVE disagrees: %s", strings.Join(problems, "; "))
+		}
+		fmt.Printf("  verified      ACTIVE carries the requested addressing\n")
 	}
 	printComplianceSummary(rep.Snapshot())
 	return nil
