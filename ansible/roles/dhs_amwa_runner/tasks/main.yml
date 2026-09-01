@@ -5,8 +5,13 @@
 # ---- 1. ansible-core via pipx (mirrors control-node.yml) -------------
 - name: pipx present
   ansible.builtin.package:
-    name: [pipx, python3-venv, git]
+    name: [pipx, python3-venv, git, git-lfs]
     state: present
+
+- name: git-lfs filters installed for root
+  ansible.builtin.command: git lfs install --skip-repo
+  register: runner_lfs
+  changed_when: "'Git LFS initialized' in runner_lfs.stdout and 'already' not in runner_lfs.stdout"
 
 - name: "ansible-core {{ dhs_amwa_runner_ansible_core_spec }} via pipx"
   ansible.builtin.command:

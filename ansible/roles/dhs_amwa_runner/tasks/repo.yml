@@ -13,12 +13,15 @@
   environment:
     GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
 
+# --force repairs any local state (a clone interrupted by a missing
+# git-lfs filter once left the whole index staged-deleted); errors are
+# NOT redirected away — a failed refresh must say why.
 - name: Runner repo refreshed to the primary's checked-out branch
   ansible.builtin.shell:
     cmd: >-
       git fetch origin &&
       branch=$(git ls-remote --symref origin HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}') &&
-      git checkout -B "$branch" "origin/$branch" >/dev/null 2>&1 &&
+      git checkout --force -B "$branch" "origin/$branch" &&
       git rev-parse --short HEAD
   args:
     chdir: "{{ dhs_amwa_runner_repo }}"
