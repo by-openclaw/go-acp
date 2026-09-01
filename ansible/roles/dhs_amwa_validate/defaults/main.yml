@@ -29,6 +29,9 @@ dhs_amwa_validate_plant_host: "10.6.250.101"
 dhs_amwa_validate_node_port: 18080
 dhs_amwa_validate_registry_port: 8235
 dhs_amwa_validate_cut_port: 18500
+# The token-bearing companion node the armed registry window registers
+# into the transient armed registry (#942 S3c).
+dhs_amwa_validate_cutnode_port: 18510
 dhs_amwa_validate_plant_bin: /opt/dhs-amwa-plant/dhs
 dhs_amwa_validate_plant_config: /opt/dhs-amwa-plant/amwa-test-node.json
 dhs_amwa_validate_registry_unit: dhs-nmos-registry
@@ -208,16 +211,14 @@ dhs_amwa_validate_suites:
   # connection suite passes against the Bearer-gated node, no CNTs.
   - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.2}], baseline_pass: 67, baseline_cnt: 0 }
-  # Armed baselines from the 2026-09-01 first fleet run: pass=79
-  # fail=0. cnt 11 = the non-auth twin's structural pair
-  # (auto_registration 5/6, RAML id substitution) PLUS nine
-  # "No resources found" rows: the transient armed registry is EMPTY
-  # by design — it announces at dev pri 100 and plant nodes hold no
-  # tokens, so nothing registers into it. Registering a token-bearing
-  # transient node into the armed window (shrinking these CNTs) is
-  # the named follow-up in #942.
+  # Armed baselines (2026-09-01, #944): the token-bearing companion
+  # node + seeded persistent subscription give every Query round a
+  # resource, so the armed window sits the SAME exam shape as the
+  # disarmed twin — cnt 2 is the identical structural
+  # auto_registration 5/6 pair (RAML id substitution, untestable for
+  # any implementation).
   - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
-      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 79, baseline_cnt: 11 }
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 88, baseline_cnt: 2 }
 
   # ---- controller scope: needs the controller facade (issue backlog,
   # user-owned item #7) — listed so the report says "not automatable
