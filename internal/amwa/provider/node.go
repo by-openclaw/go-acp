@@ -456,10 +456,6 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.connection.Store().setNodeIP(firstNodeIP(s.bundle))
 		s.connection.Store().setNodeBase(s.controlHost())
 		s.connection.Store().reresolveActive()
-		// Bundle-seeded endpoints with master_enable=true activate
-		// now — after the address pass, so their concrete params and
-		// SDP name the address the Node actually answers on.
-		s.connection.Store().promoteBootEnabled()
 	}
 
 	srv := httpsession.NewServer(s.logger)
@@ -566,6 +562,17 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	s.attachConfigurationAPI(srv)
 	s.attachNCPAPI(srv)
 	s.attachEventsAPI(srv)
+	// Bundle-seeded endpoints with master_enable=true activate now —
+	// after the address pass (their concrete params and SDP name the
+	// address the Node actually answers on) and AFTER every cross-API
+	// hook is wired: activation fans out to the BCP-008 monitors, the
+	// IS-12 notifier and the IS-07 MQTT bridge in goroutines, and
+	// wiring those hooks concurrently with a running activation is a
+	// data race (caught by -race the day the MQTT hook widened the
+	// window).
+	if s.connection != nil {
+		s.connection.Store().promoteBootEnabled()
+	}
 	s.http = srv
 
 	// DNS-SD announce.
