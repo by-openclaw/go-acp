@@ -55,11 +55,47 @@ dhs_amwa_validate_isolated_net: dhs-validate-mdns
 dhs_amwa_validate_isolated_tool: nmos-testing-validate
 dhs_amwa_validate_isolated_tool_port: 5001
 
+# Auth-mode windows (issue #942): every upgrade is proven WITHOUT and
+# WITH IS-10/BCP-003-02 authorization. A THIRD tool instance carries
+# the armed profile — the resident tool stays auth-DISARMED (preflight
+# asserts it), because flipping ENABLE_AUTH on the shared arbiter
+# mid-gate would change the exam for the suites around it.
+#
+# The armed instance runs on HOST networking like the resident: the
+# tool's mock Authorization Server builds its issuer / token_endpoint
+# / jwks_uri from the machine's own default IP (nmos-testing
+# mocks/Auth.py make_issuer -> get_default_ip), so on a docker bridge
+# the RFC 8414 metadata would name a 172.x address the plant-side CuT
+# can never reach. Host networking in turn forces a shifted PORT_BASE
+# — the resident already owns 5000 — so the mock auth server lands on
+# PORT_BASE+10 = 5510. (The manual sweep receipts show :5010 only
+# because that sweep's tool was the sole instance at PORT_BASE 5000.)
+dhs_amwa_validate_tooling_host: "10.6.250.104"
+dhs_amwa_validate_auth_tool_container: nmos-testing-auth
+dhs_amwa_validate_auth_port_base: 5500
+# WS mocks shift with the instance too, so an auth suite can never
+# race the resident tool for the 6000+ websocket mock range.
+dhs_amwa_validate_auth_ws_port_base: 6500
+dhs_amwa_validate_auth_tool_url: "http://localhost:{{ dhs_amwa_validate_auth_port_base }}/api"
+# What the transient CuT is armed with (--auth-url): the armed tool's
+# mock Authorization Server, reachable from the plant host.
+dhs_amwa_validate_auth_server_url: "http://{{ dhs_amwa_validate_tooling_host }}:{{ dhs_amwa_validate_auth_port_base + 10 }}"
+
+# Auth-mode scope selector: set true by the amwa-validate-*-auth.yml
+# playbooks. A play runs EITHER a scope's plain entries or its
+# auth: true twins, never a mix — armed and disarmed windows score
+# against different tool instances and must not interleave.
+dhs_amwa_validate_auth_mode: false
+
 # The catalog. Fields:
 #   id            AMWA suite id, verbatim
 #   scope         node | registry | controller | mirror
 #   target        node | registry | cut  (which host:port the rows use)
-#   window        absent | mdns | p2p   (CuT window around the run)
+#   window        absent | isolated | p2p | registry  (CuT window
+#                 around the run — window_<name>.yml)
+#   auth          true = IS-10 window (issue #942): the window's CuT
+#                 is armed with --auth-url and the ARMED tool instance
+#                 scores it; plant resident units are never armed
 #   rows          endpoint rows in the suite's declared order; each row
 #                 may carry ver / urlpath / selector; host+port come
 #                 from the target unless the row overrides them (null
@@ -155,6 +191,33 @@ dhs_amwa_validate_suites:
   # (nmos-cpp included).
   - { id: IS-04-02, scope: registry, target: registry,
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
+
+  # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
+  # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +
+  # IS-05-01-auth.json on dhs-tools) proved the recipe: tool
+  # ENABLE_AUTH=True, transient CuT armed via --auth-url at the tool's
+  # mock Authorization Server, every request tokened. Auth activates
+  # the per-endpoint 401/403/WWW-Authenticate auto rounds, so pass
+  # counts sit ABOVE the non-auth twins once baselined.
+  # baseline_pass 0 = baseline set from first fleet run: the gate
+  # still fails on any Fail/Error and on cnt above baseline (the
+  # parse_suite.py rules are unchanged — pass >= 0 is trivially true,
+  # so the pass-regression arm only bites once the real number lands
+  # here in git).
+  # Armed baseline from the 2026-09-01 first fleet run: the full
+  # connection suite passes against the Bearer-gated node, no CNTs.
+  - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.2}], baseline_pass: 67, baseline_cnt: 0 }
+  # Armed baselines from the 2026-09-01 first fleet run: pass=79
+  # fail=0. cnt 11 = the non-auth twin's structural pair
+  # (auto_registration 5/6, RAML id substitution) PLUS nine
+  # "No resources found" rows: the transient armed registry is EMPTY
+  # by design — it announces at dev pri 100 and plant nodes hold no
+  # tokens, so nothing registers into it. Registering a token-bearing
+  # transient node into the armed window (shrinking these CNTs) is
+  # the named follow-up in #942.
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 79, baseline_cnt: 11 }
 
   # ---- controller scope: needs the controller facade (issue backlog,
   # user-owned item #7) — listed so the report says "not automatable
