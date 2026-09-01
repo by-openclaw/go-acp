@@ -3,8 +3,13 @@
 # Dual-NIC: eth0 10.100.0.101 (ansible_host) / eth1 10.100.0.111.
 # Roles: Ansible CONTROL NODE for the whole fleet; Docker host.
 # Never bring eth1/.111 down — it is part of the access path.
-# This host IS the control node: run local, no SSH loop-back needed.
-ansible_connection: local
+# This host is USUALLY the control node: run local, no SSH loop-back.
+# But plays can also run from the SECONDARY runner (dhs-tools, #938),
+# and a hard `local` silently executes "dhs-debian" tasks on the
+# runner instead — the reboot-resilience pre-flight caught exactly
+# that (every plant unit "unknown" because the loopback landed on
+# dhs-tools). Local only when the controller IS this host.
+ansible_connection: "{{ 'local' if lookup('pipe', 'hostname') == 'dhs-debian' else 'ssh' }}"
 
 pve_vmid: 651
 pve_name: dhs.debian12
