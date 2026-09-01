@@ -88,6 +88,14 @@ type MirrorOptions struct {
 	// mirror (mirror_serve.go). Empty disables the served face —
 	// pre-#940 behaviour unchanged.
 	ServeAddr string
+	// ServeAuthURL, when set, arms the served Query face with the
+	// BCP-003-02 Bearer gate: tokens are validated against the
+	// Authorization Server at this base URL, exactly the way the
+	// standalone Registry's --auth-url arms its faces. Requires
+	// ServeAddr — a gate with no served face guards nothing. The
+	// mirror's OUTBOUND legs (source Query-WS, target forwards) are
+	// untouched. Empty keeps the served face unauthenticated.
+	ServeAuthURL string
 }
 
 // MirrorStats is a snapshot of forward counters. JSON names are the
@@ -155,6 +163,9 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	}
 	if strings.TrimRight(opts.Source, "/") == strings.TrimRight(opts.Target, "/") {
 		return nil, errors.New("registry/mirror: source and target must differ")
+	}
+	if opts.ServeAuthURL != "" && opts.ServeAddr == "" {
+		return nil, errors.New("registry/mirror: --auth-url guards the served Query face, and no face is being served — add --serve ADDR or drop --auth-url")
 	}
 	if opts.APIVer == "" {
 		opts.APIVer = is04.APIVersion

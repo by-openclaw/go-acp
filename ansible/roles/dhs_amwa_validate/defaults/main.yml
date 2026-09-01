@@ -28,6 +28,10 @@ dhs_amwa_validate_results_dir: /root/amwa-validate
 dhs_amwa_validate_plant_host: "10.6.250.101"
 dhs_amwa_validate_node_port: 18080
 dhs_amwa_validate_registry_port: 8235
+# The mirror's served read-only Query face (--serve on the resident
+# mirror unit — dhs_amwa_plant_mirror_serve). Mirror-scope query rows
+# score THROUGH it via the per-row port override.
+dhs_amwa_validate_mirror_serve_port: 8335
 dhs_amwa_validate_cut_port: 18500
 # The token-bearing companion node the armed registry window registers
 # into the transient armed registry (#942 S3c).
@@ -194,6 +198,25 @@ dhs_amwa_validate_suites:
   # (nmos-cpp included).
   - { id: IS-04-02, scope: registry, target: registry,
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
+
+  # ---- mirror scope, plant registry :8235 + mirror served face :8335 ----
+  # IS-04-02 end-to-end THROUGH the mirror (issue #946, S2b). The
+  # suite's two rows split across the mirrored path: the registration
+  # row targets the SOURCE plant registry (:8235, the target default —
+  # the mirror's own upstream), the query row overrides the port to the
+  # mirror's served read-only Query face (:8335; suite_attempt.yml's
+  # row normalisation honours row.host/row.port). The tool registers
+  # its mock resources at the source and scores every Query read
+  # THROUGH the audited mirror. No window: the resident registry and
+  # resident mirror already run, exactly like the plant-resident
+  # entries above. The row port is a literal per this file's row style
+  # (rows never template vars — a templated port would reach the tool
+  # as a string, not an int) and must match
+  # dhs_amwa_validate_mirror_serve_port / dhs_amwa_plant_mirror_serve.
+  # baseline placeholders 0/0 — filled from the first fleet run.
+  - { id: IS-04-02, scope: mirror, target: registry,
+      rows: [{ver: v1.3}, {ver: v1.3, port: 8335}],
+      baseline_pass: 0, baseline_cnt: 0 }
 
   # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
   # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +

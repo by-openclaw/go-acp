@@ -28,6 +28,13 @@ dhs_amwa_plant_mirror_status_addr: ":9101"
 # the plant THROUGH the audited mirror. Empty string disables the
 # served face (unit then runs the plain one-way bridge).
 dhs_amwa_plant_mirror_serve: ":8335"
+# BCP-003-02 Authorization Server base for the mirror's SERVED face
+# (--auth-url, issue #946). Empty = disarmed, the default — the plant
+# mirror serves Cerebrum unauthenticated today. Only meaningful with a
+# non-empty dhs_amwa_plant_mirror_serve (the CLI refuses --auth-url
+# without --serve), so the unit template nests it inside the --serve
+# block.
+dhs_amwa_plant_mirror_serve_auth: ""
 dhs_amwa_plant_registry_page_limit: 1000
 # Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
 # configurable; the CONFORMANCE plant runs 30s, matched by the AMWA

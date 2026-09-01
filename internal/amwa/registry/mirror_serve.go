@@ -30,11 +30,13 @@ import (
 	"fmt"
 	"net"
 	stdhttp "net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	authsession "dhs/internal/amwa/session/auth"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
@@ -71,6 +73,25 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	store := NewStore()
 	apiVers := pickAPIVersions("")
 	srv := httpsession.NewServer(m.logger)
+	// BCP-003-02 gate on the SERVED face only (issue #946) — the same
+	// KeyCache + AuthGate wiring Registry.Serve arms with --auth-url.
+	// The route table is covered via srv.Auth; the dispatcher branches
+	// that bypass the route table (registration block, WS upgrades) are
+	// gated explicitly below, mirroring registry.go's dispatcher.
+	var authGate *httpsession.AuthGate
+	if m.opts.ServeAuthURL != "" {
+		kc := authsession.NewKeyCache(authsession.MetadataURL(m.opts.ServeAuthURL, ""), m.logger)
+		if err := kc.Fetch(ctx); err != nil {
+			m.logger.Warn("registry/mirror: initial JWKS fetch failed; served requests will 401 until keys arrive", "err", err)
+		}
+		go kc.Run(ctx)
+		gateHosts := []string{advertiseHostOnly(advertise)}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: m.logger}
+		srv.Auth = authGate
+	}
 	wsPrefixes := make([]string, 0, len(apiVers))
 	upgradeHandlers := make(map[string]stdhttp.HandlerFunc, len(apiVers))
 	for _, apiVer := range apiVers {
@@ -88,8 +109,33 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	// Same dispatcher shape as Registry.Serve (WS upgrades hijack the
 	// connection, so they bypass the route table), plus two mirror-only
 	// concerns: the registration block and the per-request audit.
+	// denyUnauthed applies the armed gate on the dispatcher branches
+	// that bypass the route table (where srv.Auth lives). True means
+	// the denial has been written — same body shape registry.go's WS
+	// branch emits. Disarmed gate denies nothing.
+	denyUnauthed := func(w stdhttp.ResponseWriter, req *stdhttp.Request) bool {
+		if authGate == nil {
+			return false
+		}
+		status, hdrs, body, _, ok := authGate.Check(req)
+		if ok {
+			return false
+		}
+		for hk, hv := range hdrs {
+			w.Header().Set(hk, hv)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(body)
+		return true
+	}
 	dispatcher := stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
 		if req.URL.Path == "/x-nmos/registration" || strings.HasPrefix(req.URL.Path, "/x-nmos/registration/") {
+			// The armed face answers 401 before revealing anything —
+			// even the "read-only mirror" refusal is behind the gate.
+			if denyUnauthed(w, req) {
+				return
+			}
 			m.serveWriteRejected(req)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(stdhttp.StatusNotImplemented)
@@ -103,6 +149,13 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		if strings.HasSuffix(req.URL.Path, "/ws") {
 			for _, prefix := range wsPrefixes {
 				if strings.HasPrefix(req.URL.Path, prefix) {
+					// The spec says a server SHALL NOT upgrade on an
+					// invalid token, and this branch bypasses the route
+					// table where srv.Auth lives — gate it explicitly,
+					// exactly like Registry.Serve's dispatcher.
+					if denyUnauthed(w, req) {
+						return
+					}
 					// Audited as serve_ws_subscribe/serve_ws_close via
 					// the lifecycle hooks, not as serve_query — and the
 					// upgrade must see the raw hijackable writer.
@@ -133,7 +186,8 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		}
 	}()
 	m.logger.Info("registry/mirror: serving mirrored Query API",
-		"addr", ln.Addr().String(), "api_vers", apiVers)
+		"addr", ln.Addr().String(), "api_vers", apiVers,
+		"auth", m.opts.ServeAuthURL != "")
 	return nil
 }
 
@@ -149,6 +203,16 @@ func serveAdvertise(addr net.Addr) string {
 		host = osHostname()
 	}
 	return net.JoinHostPort(host, port)
+}
+
+// advertiseHostOnly strips the port from a host:port advertise string —
+// the auth gate's aud matching wants host identities, not endpoints.
+func advertiseHostOnly(advertise string) string {
+	host, _, err := net.SplitHostPort(advertise)
+	if err != nil {
+		return advertise
+	}
+	return host
 }
 
 // installMirrorServeRoots is installAPIRootRoutes minus the
