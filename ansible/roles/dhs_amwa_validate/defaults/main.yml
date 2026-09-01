@@ -115,6 +115,12 @@ dhs_amwa_validate_tls_tool_container: nmos-testing-tls
 dhs_amwa_validate_tls_port_base: 5800
 dhs_amwa_validate_tls_ws_port_base: 6800
 dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
+# Which premade CuT pair the window serves. ecdsa: BCP-003-01
+# RECOMMENDS ECDSA and the tool's test_08 warns "Server is not
+# providing an ECDSA certificate" when only RSA is offered (first
+# #948 fleet score: 6 pass + that warning; the historic 7/0 implies
+# the ECDSA pair). Both algorithms ship in the image.
+dhs_amwa_validate_tls_cut_algo: ecdsa
 # http, not https: in this tool build ENABLE_HTTPS wraps only the
 # MOCK apps (PORT_BASE+100+n serve https, verified in the container
 # logs) — the core GUI/API at PORT_BASE stays plain http, and an

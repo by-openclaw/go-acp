@@ -203,10 +203,10 @@
   args:
     creates: "{{ dhs_amwa_validate_tls_dir }}/{{ item.dest }}"
   loop:
-    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/certs/rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem",
-        dest: "rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem" }
-    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/private/rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem",
-        dest: "rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem" }
+    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/certs/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem",
+        dest: "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem" }
+    - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/intermediate/private/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem",
+        dest: "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem" }
     - { src: "{{ dhs_amwa_validate_tls_image_ca_dir }}/certs/ca.cert.pem",
         dest: "ca.cert.pem" }
   loop_control:

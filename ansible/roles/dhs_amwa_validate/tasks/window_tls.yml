@@ -21,8 +21,8 @@
     src: "{{ dhs_amwa_validate_tls_dir }}/{{ item }}"
   register: _tls_material
   loop:
-    - "rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem"
-    - "rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem"
+    - "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem"
+    - "{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem"
 
 - name: Install the CuT chain + key on the plant
   ansible.builtin.copy:
@@ -45,8 +45,8 @@
     --advertise-host {{ dhs_amwa_validate_tls_cut_fqdn }}:{{ dhs_amwa_validate_cut_port }}
     --api-ver v1.3
     --config {{ dhs_amwa_validate_plant_config }}
-    --tls-cert {{ dhs_amwa_validate_tls_plant_dir }}/rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem
-    --tls-key {{ dhs_amwa_validate_tls_plant_dir }}/rsa.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem
+    --tls-cert {{ dhs_amwa_validate_tls_plant_dir }}/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem
+    --tls-key {{ dhs_amwa_validate_tls_plant_dir }}/{{ dhs_amwa_validate_tls_cut_algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem
   delegate_to: "{{ groups['plant'][0] }}"
   changed_when: true
 
