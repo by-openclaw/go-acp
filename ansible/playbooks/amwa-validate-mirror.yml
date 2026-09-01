@@ -69,6 +69,26 @@
 - name: AMWA validate — mirror suites
   hosts: tooling
   gather_facts: true
+  pre_tasks:
+    # auto_query_18/19 page /subscriptions; the served face starts with
+    # none (the plant registry always holds the mirror's own upstream
+    # ones, the mirror's SERVED face holds only what controllers
+    # create). One persistent subscription (survives with no WS client)
+    # gives those rounds a resource — same reasoning as the armed
+    # registry window's seed in window_registry.yml.
+    - name: Seed a persistent subscription on the mirror's served face
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[groups['plant'][0]].ansible_host }}:{{ dhs_amwa_validate_mirror_serve_port }}/x-nmos/query/v1.3/subscriptions"
+        method: POST
+        body_format: json
+        body:
+          max_update_rate_ms: 100
+          persist: true
+          resource_path: /nodes
+          params: {}
+        status_code: [200, 201]
+      vars:
+        dhs_amwa_validate_mirror_serve_port: 8335
   roles:
     - role: dhs_amwa_validate
       vars:
