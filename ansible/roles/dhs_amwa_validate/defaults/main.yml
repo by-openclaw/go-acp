@@ -204,8 +204,10 @@ dhs_amwa_validate_suites:
   # parse_suite.py rules are unchanged — pass >= 0 is trivially true,
   # so the pass-regression arm only bites once the real number lands
   # here in git).
+  # Armed baseline from the 2026-09-01 first fleet run: the full
+  # connection suite passes against the Bearer-gated node, no CNTs.
   - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
-      rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
+      rows: [{ver: v1.2}], baseline_pass: 67, baseline_cnt: 0 }
   # Armed baselines from the 2026-09-01 first fleet run: pass=79
   # fail=0. cnt 11 = the non-auth twin's structural pair
   # (auto_registration 5/6, RAML id substitution) PLUS nine
