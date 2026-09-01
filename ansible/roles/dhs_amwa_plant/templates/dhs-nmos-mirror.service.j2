@@ -1,0 +1,18 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=dhs AMWA NMOS registry mirror (plant -> external, audited)
+After=dhs-nmos-registry.service
+Wants=dhs-nmos-registry.service
+
+[Service]
+Type=simple
+ExecStart={{ dhs_amwa_plant_bin }} registry nmos mirror \
+  --source {{ dhs_amwa_plant_mirror_source }} \
+  --target {{ dhs_amwa_plant_mirror_target }} \
+  --audit-log {{ dhs_amwa_plant_mirror_audit_log }} \
+  --status-addr {{ dhs_amwa_plant_mirror_status_addr }}
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

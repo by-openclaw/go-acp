@@ -15,6 +15,7 @@
   vars:
     dhs_amwa_validate_plant_host: "10.6.250.101"
     dhs_amwa_validate_registry_port: 8235
+    dhs_amwa_validate_mirror_status: "http://10.6.250.101:9101/status.json"
   tasks:
     - name: The upstream registry must hold at least one live subscription
       ansible.builtin.uri:
@@ -22,10 +23,38 @@
         return_content: true
       register: _subs
 
+    - name: The mirror status endpoint answers
+      ansible.builtin.uri:
+        url: "{{ dhs_amwa_validate_mirror_status }}"
+        return_content: true
+      register: _mstatus
+
+    - name: The upstream node count, for parity
+      ansible.builtin.uri:
+        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/nodes?paging.limit=300"
+        return_content: true
+      register: _upnodes
+
     - name: Gate
       ansible.builtin.assert:
-        that: _subs.json | length > 0
+        that:
+          - _subs.json | length > 0
+          - _mstatus.json.stats.forwarded | int > 0
+          # Parity: the mirror's authoritative cache carries every
+          # node the upstream Query API shows.
+          - _mstatus.json.cache_counts.nodes | int == _upnodes.json | length
         fail_msg: >-
-          no subscriptions on the upstream Query API — the mirror is
-          not connected (or was restarted and did not re-subscribe)
-        success_msg: "mirror holds {{ _subs.json | length }} subscription(s) upstream"
+          mirror unhealthy: subscriptions={{ _subs.json | length }},
+          forwarded={{ _mstatus.json.stats.forwarded | default('?') }},
+          cache nodes={{ _mstatus.json.cache_counts.nodes | default('?') }}
+          vs upstream {{ _upnodes.json | length }}
+        success_msg: >-
+          mirror OK: {{ _subs.json | length }} subscription(s),
+          forwarded={{ _mstatus.json.stats.forwarded }},
+          failures={{ _mstatus.json.stats.failures }},
+          resyncs={{ _mstatus.json.stats.resyncs }},
+          node parity {{ _mstatus.json.cache_counts.nodes }}/{{ _upnodes.json | length }}
+
+    - name: Recent audit observations
+      ansible.builtin.debug:
+        msg: "{{ _mstatus.json.recent_audit | map(attribute='kind') | list | join(', ') }}"

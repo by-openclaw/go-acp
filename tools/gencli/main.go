@@ -35,6 +35,7 @@ var matrix = []helpEntry{
 	// AMWA NMOS — the three roles.
 	{"NMOS node (producer)", []string{"producer", "nmos", "serve", "--help"}},
 	{"NMOS registry", []string{"registry", "nmos", "serve", "--help"}},
+	{"NMOS registry mirror", []string{"registry", "nmos", "mirror", "--help"}},
 	{"NMOS controller: walk", []string{"consumer", "nmos", "walk", "--help"}},
 	{"NMOS controller: watch", []string{"consumer", "nmos", "watch", "--help"}},
 	{"NMOS controller: connect (IS-05)", []string{"consumer", "nmos", "connect", "--help"}},

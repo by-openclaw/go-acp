@@ -133,6 +133,17 @@
     mode: "0644"
   register: dhs_amwa_plant_regunit
 
+# The mirror bridges the plant registry into the external one
+# (Cerebrum side) with an audit trail + status endpoint — a systemd
+# unit like everything else on this host, never a shell background job.
+- name: Install the mirror unit
+  ansible.builtin.template:
+    src: dhs-nmos-mirror.service.j2
+    dest: /etc/systemd/system/dhs-nmos-mirror.service
+    mode: "0644"
+  register: dhs_amwa_plant_mirrorunit
+  when: dhs_amwa_plant_mirror_target != ""
+
 - name: Install the resident node units
   ansible.builtin.template:
     src: dhs-nmos-node.service.j2
@@ -208,6 +219,14 @@
          or dhs_amwa_plant_scalecfgs is changed }}
   loop: "{{ (dhs_amwa_plant_nodes | map(attribute='name') | list)
             + (range(0, dhs_amwa_plant_scale_count) | map('regex_replace', '^', 'scale') | list) }}"
+
+- name: Enable + start the mirror
+  ansible.builtin.systemd:
+    name: dhs-nmos-mirror.service
+    enabled: true
+    daemon_reload: true
+    state: "{{ 'restarted' if (dhs_amwa_plant_bincopy is changed or dhs_amwa_plant_mirrorunit is changed) else 'started' }}"
+  when: dhs_amwa_plant_mirror_target != ""
 
 # Stamp the deployed commit AFTER the fleet is (re)started, so a run
 # that failed part-way does not claim success and skip the retry.
