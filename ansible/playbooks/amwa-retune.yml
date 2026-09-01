@@ -1,0 +1,28 @@
+---
+# Retune a LIVE sender's multicast addressing per ST 2022-7 leg —
+# RED (leg 1), BLUE (leg 2) or BOTH — through IS-05 staged→activate,
+# verified against the device's own ACTIVE answer and the Query API.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-retune.yml \
+#     -e retune_label=dhs-sender-wide -e retune_leg=red \
+#     -e retune_destination=239.60.1.1 -e retune_port=5010
+#
+# Vars (retune_sender OR retune_label required):
+#   retune_sender        IS-04 Sender UUID
+#   retune_label         sender label (exactly-one match enforced)
+#   retune_leg           red | blue | both        (default red)
+#   retune_destination   multicast group for the named leg
+#   retune_port          destination port for the named leg (optional)
+#   retune_enable        also master_enable=true  (default false)
+#
+# What NMOS cannot retune (documented, not faked): grouphint, labels
+# and every other IS-04 tag are READ-ONLY on the wire — IS-13
+# (Annotation) is still AMWA-WIP. Those are bundle-authored: edit
+# ansible/roles/dhs_amwa_plant/files/amwa-test-node.json in git and
+# converge — the snapshot stays the source of truth.
+
+- name: AMWA retune — live sender addressing
+  hosts: plant
+  gather_facts: false
+  roles:
+    - role: dhs_amwa_retune

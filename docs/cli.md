@@ -430,6 +430,10 @@ Usage of set:
     	print the endpoint, the exact PATCH body and the sender's current legs — send nothing
   -enable
     	also set master_enable=true
+  -label string
+    	resolve the Sender by its IS-04 label instead of --sender; labels are non-unique by spec, so anything but exactly one match is an error
+  -leg string
+    	red | blue | both — name the ST 2022-7 leg instead of positional lists: red = leg 1, blue = leg 2, the other leg is left untouched. With --leg, --destination and --port take ONE value ('both' + one --destination is refused: the legs must not share a group)
   -mdns
     	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
   -mode string
@@ -443,9 +447,11 @@ Usage of set:
   -resolver string
     	unicast DNS resolver IP (implies unicast discovery)
   -sender string
-    	IS-04 Sender UUID to configure (required)
+    	IS-04 Sender UUID to configure (this or --label)
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
+  -verify
+    	after activation, read the sender's ACTIVE parameters back and fail if they do not carry what was asked
   -when string
     	TAI time <secs>:<nanos> for the scheduled modes
 ```

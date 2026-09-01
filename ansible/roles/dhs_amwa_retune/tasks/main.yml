@@ -1,0 +1,64 @@
+---
+- name: One of retune_sender / retune_label is given
+  ansible.builtin.assert:
+    that: retune_sender != "" or retune_label != ""
+    fail_msg: "pass -e retune_sender=<uuid> or -e retune_label=<name>"
+
+- name: A destination or port is given
+  ansible.builtin.assert:
+    that: retune_destination != "" or retune_port | int != 0
+    fail_msg: "pass -e retune_destination=<group> and/or -e retune_port=<n>"
+
+# The settings file IS the operator interface the CLI documents:
+# flat flag-name: value, rendered from the play's vars — one shape
+# for a human at the prompt and for this role.
+- name: Render the retune settings
+  ansible.builtin.copy:
+    content: |
+      # rendered by dhs_amwa_retune — flat flag defaults for `nmos set`
+      node: {{ dhs_amwa_retune_node_url }}
+      mdns: false
+      leg: {{ retune_leg }}
+      verify: true
+      {% if retune_sender != "" %}
+      sender: {{ retune_sender }}
+      {% else %}
+      label: {{ retune_label }}
+      {% endif %}
+      {% if retune_destination != "" %}
+      destination: {{ retune_destination }}
+      {% endif %}
+      {% if retune_port | int != 0 %}
+      port: {{ retune_port }}
+      {% endif %}
+      {% if retune_enable %}
+      enable: true
+      {% endif %}
+    dest: "{{ dhs_amwa_retune_settings_dir }}/retune-settings.yaml"
+    mode: "0644"
+
+- name: Retune (staged -> activate -> verify ACTIVE)
+  ansible.builtin.command: >-
+    {{ dhs_amwa_retune_bin }} consumer nmos set
+    --settings {{ dhs_amwa_retune_settings_dir }}/retune-settings.yaml
+  register: _retune
+  changed_when: true
+
+- name: What the verb said
+  ansible.builtin.debug:
+    msg: "{{ _retune.stdout_lines }}"
+
+# The second witness: the Query API — the view every OTHER controller
+# routes by. The sender re-registers on activation, so its version
+# must have moved and its subscription reflect master_enable.
+- name: The Query API carries the retuned sender
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_retune_registry_url }}/x-nmos/query/v1.3/senders/{{ retune_sender }}"
+    return_content: true
+  register: _query
+  when: retune_sender != ""
+
+- name: Query view
+  ansible.builtin.debug:
+    msg: "query version={{ _query.json.version }} subscription.active={{ _query.json.subscription.active }}"
+  when: retune_sender != ""
