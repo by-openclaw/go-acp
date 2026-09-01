@@ -99,7 +99,13 @@ type mirrorStatus struct {
 	CacheCounts map[string]int `json:"cache_counts"`
 	// ServeAddr is the served read-only Query face's bound address
 	// (--serve, mirror_serve.go); absent when serving is disabled.
-	ServeAddr   string       `json:"serve_addr,omitempty"`
+	ServeAddr string `json:"serve_addr,omitempty"`
+	// ServeAuth reports whether the served face is armed with the
+	// BCP-003-02 Bearer gate (--auth-url, issue #946). A pointer so a
+	// disarmed-but-serving mirror reports an explicit false while a
+	// mirror with no served face omits the key — same presence rule
+	// as serve_addr.
+	ServeAuth   *bool        `json:"serve_auth,omitempty"`
 	RecentAudit []AuditEvent `json:"recent_audit"`
 }
 
@@ -122,6 +128,8 @@ func (m *Mirror) serveStatus(ctx context.Context, addr string) {
 		}
 		if m.serve != nil {
 			st.ServeAddr = m.serve.addr
+			armed := m.opts.ServeAuthURL != ""
+			st.ServeAuth = &armed
 		}
 		m.mu.Unlock()
 		st.RecentAudit = m.audit.recent()

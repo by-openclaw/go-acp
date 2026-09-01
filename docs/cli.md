@@ -330,8 +330,14 @@ Usage of mirror:
     	IS-04 wire version used on both faces (default v1.3)
   -audit-log string
     	append one JSONL observation per external-registry behaviour (refused forwards with the target's own words, evictions, WS drops) — the evidence trail for auditing the registry on the far side
+  -auth-url string
+    	BCP-003-02 Authorization Server base (scheme://host[:port]). When set with --serve, the served Query face validates Bearer tokens (WS upgrades included) exactly like the registry's own --auth-url; the mirror's outbound source/target legs are untouched. Requires --serve
   -serve string
     	serve the mirrored catalogue as a read-only IS-04 Query API (REST + WS subscriptions) on this address, e.g. :8335 — controllers read the plant THROUGH the audited mirror; registration attempts are refused and audited
+  -serve-advertise-host string
+    	identity minted into the served face's ws_href and mDNS announce, as host or host:port (a bare host takes the bound --serve port). Precedence: this flag wins; empty derives from the bound address (concrete IP, else OS hostname — which off-link controllers may not resolve). Setting it also enables the _nmos-query._tcp announce of the served face
+  -serve-pri int
+    	DNS-SD pri TXT for the served face's announce (with --serve-advertise-host). Defaults into the 100+ dev range so the mirror never wins a production Registry election against its own source registry at pri 0 (default 100)
   -source string
     	source Registry origin (http://host:port) — Query API side
   -status-addr string

@@ -11,6 +11,12 @@ ExecStart={{ dhs_amwa_plant_bin }} registry nmos mirror \
   --target {{ dhs_amwa_plant_mirror_target }} \
 {% if dhs_amwa_plant_mirror_serve | default('') | length > 0 %}
   --serve {{ dhs_amwa_plant_mirror_serve }} \
+{% if dhs_amwa_plant_mirror_serve_advertise | default('') | length > 0 %}
+  --serve-advertise-host {{ dhs_amwa_plant_mirror_serve_advertise }} \
+{% endif %}
+{% if dhs_amwa_plant_mirror_serve_auth | default('') | length > 0 %}
+  --auth-url {{ dhs_amwa_plant_mirror_serve_auth }} \
+{% endif %}
 {% endif %}
   --audit-log {{ dhs_amwa_plant_mirror_audit_log }} \
   --status-addr {{ dhs_amwa_plant_mirror_status_addr }}

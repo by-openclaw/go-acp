@@ -755,7 +755,21 @@ With --serve ADDR the mirror also serves the mirrored catalogue as a
 read-only IS-04 Query API (REST + WebSocket subscriptions), so a
 controller reads the plant THROUGH the audited mirror. Served reads,
 WS subscription opens/closes, and refused registration attempts all
-land in the same --audit-log trail and /status.json counters.`)
+land in the same --audit-log trail and /status.json counters.
+
+With --auth-url URL (requires --serve) the served Query face validates
+BCP-003-02 Bearer tokens against that Authorization Server, the same
+gate "registry nmos serve --auth-url" arms: tokenless or invalid
+requests answer 401 with WWW-Authenticate, WS upgrades included.
+/status.json reports the armed state as "serve_auth". The mirror's
+outbound legs (source Query-WS, target forwards) stay untouched.
+
+With --serve-advertise-host H[:P] the served face mints ws_href from
+that identity instead of the bound address (a bare host takes the
+--serve port) and announces itself as _nmos-query._tcp via mDNS with
+--serve-pri (default 100 — dev range, so the mirror never outranks
+the production source registry). The announce's api_auth TXT tracks
+--auth-url.`)
 }
 
 // runNMOSRegistryMirror bridges a source Registry into a target one.
@@ -776,17 +790,38 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 			"(REST + WS subscriptions) on this address, e.g. :8335 — "+
 			"controllers read the plant THROUGH the audited mirror; "+
 			"registration attempts are refused and audited")
+	serveAuthURL := fs.String("auth-url", "",
+		"BCP-003-02 Authorization Server base (scheme://host[:port]). "+
+			"When set with --serve, the served Query face validates Bearer "+
+			"tokens (WS upgrades included) exactly like the registry's own "+
+			"--auth-url; the mirror's outbound source/target legs are untouched. "+
+			"Requires --serve")
+	serveAdvertiseHost := fs.String("serve-advertise-host", "",
+		"identity minted into the served face's ws_href and mDNS announce, "+
+			"as host or host:port (a bare host takes the bound --serve port). "+
+			"Precedence: this flag wins; empty derives from the bound address "+
+			"(concrete IP, else OS hostname — which off-link controllers may "+
+			"not resolve). Setting it also enables the _nmos-query._tcp "+
+			"announce of the served face")
+	servePri := fs.Int("serve-pri", 100,
+		"DNS-SD pri TXT for the served face's announce (with "+
+			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
+			"mirror never wins a production Registry election against its own "+
+			"source registry at pri 0")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
-		Source:     *source,
-		Target:     *targetURL,
-		APIVer:     *apiVer,
-		Logger:     slog.Default(),
-		AuditPath:  *auditLog,
-		StatusAddr: *statusAddr,
-		ServeAddr:  *serveAddr,
+		Source:             *source,
+		Target:             *targetURL,
+		APIVer:             *apiVer,
+		Logger:             slog.Default(),
+		AuditPath:          *auditLog,
+		StatusAddr:         *statusAddr,
+		ServeAddr:          *serveAddr,
+		ServeAuthURL:       *serveAuthURL,
+		ServeAdvertiseHost: *serveAdvertiseHost,
+		ServePri:           *servePri,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)

@@ -30,12 +30,20 @@ import (
 	"fmt"
 	"net"
 	stdhttp "net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"log/slog"
+	"strconv"
+
+	codec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
+	authsession "dhs/internal/amwa/session/auth"
+	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	registryslot "dhs/internal/registry"
 )
 
 // mirrorServe is the embedded Query face's immutable wiring — built
@@ -67,10 +75,42 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("registry/mirror: serve listen %s: %w", m.opts.ServeAddr, err)
 	}
+	// The advertise identity minted into ws_href (and announced via
+	// mDNS below). Precedence: an explicit --serve-advertise-host wins
+	// outright — a bare host is completed with the bound serve port;
+	// otherwise the bound address decides (concrete IP advertises
+	// itself, unspecified bind falls back to the OS hostname).
 	advertise := serveAdvertise(ln.Addr())
+	if m.opts.ServeAdvertiseHost != "" {
+		advertise = m.opts.ServeAdvertiseHost
+		if _, _, err := net.SplitHostPort(advertise); err != nil {
+			if _, boundPort, perr := net.SplitHostPort(ln.Addr().String()); perr == nil {
+				advertise = net.JoinHostPort(advertise, boundPort)
+			}
+		}
+	}
 	store := NewStore()
 	apiVers := pickAPIVersions("")
 	srv := httpsession.NewServer(m.logger)
+	// BCP-003-02 gate on the SERVED face only (issue #946) — the same
+	// KeyCache + AuthGate wiring Registry.Serve arms with --auth-url.
+	// The route table is covered via srv.Auth; the dispatcher branches
+	// that bypass the route table (registration block, WS upgrades) are
+	// gated explicitly below, mirroring registry.go's dispatcher.
+	var authGate *httpsession.AuthGate
+	if m.opts.ServeAuthURL != "" {
+		kc := authsession.NewKeyCache(authsession.MetadataURL(m.opts.ServeAuthURL, ""), m.logger)
+		if err := kc.Fetch(ctx); err != nil {
+			m.logger.Warn("registry/mirror: initial JWKS fetch failed; served requests will 401 until keys arrive", "err", err)
+		}
+		go kc.Run(ctx)
+		gateHosts := []string{advertiseHostOnly(advertise)}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: m.logger}
+		srv.Auth = authGate
+	}
 	wsPrefixes := make([]string, 0, len(apiVers))
 	upgradeHandlers := make(map[string]stdhttp.HandlerFunc, len(apiVers))
 	for _, apiVer := range apiVers {
@@ -88,8 +128,33 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	// Same dispatcher shape as Registry.Serve (WS upgrades hijack the
 	// connection, so they bypass the route table), plus two mirror-only
 	// concerns: the registration block and the per-request audit.
+	// denyUnauthed applies the armed gate on the dispatcher branches
+	// that bypass the route table (where srv.Auth lives). True means
+	// the denial has been written — same body shape registry.go's WS
+	// branch emits. Disarmed gate denies nothing.
+	denyUnauthed := func(w stdhttp.ResponseWriter, req *stdhttp.Request) bool {
+		if authGate == nil {
+			return false
+		}
+		status, hdrs, body, _, ok := authGate.Check(req)
+		if ok {
+			return false
+		}
+		for hk, hv := range hdrs {
+			w.Header().Set(hk, hv)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(body)
+		return true
+	}
 	dispatcher := stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, req *stdhttp.Request) {
 		if req.URL.Path == "/x-nmos/registration" || strings.HasPrefix(req.URL.Path, "/x-nmos/registration/") {
+			// The armed face answers 401 before revealing anything —
+			// even the "read-only mirror" refusal is behind the gate.
+			if denyUnauthed(w, req) {
+				return
+			}
 			m.serveWriteRejected(req)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(stdhttp.StatusNotImplemented)
@@ -103,6 +168,13 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		if strings.HasSuffix(req.URL.Path, "/ws") {
 			for _, prefix := range wsPrefixes {
 				if strings.HasPrefix(req.URL.Path, prefix) {
+					// The spec says a server SHALL NOT upgrade on an
+					// invalid token, and this branch bypasses the route
+					// table where srv.Auth lives — gate it explicitly,
+					// exactly like Registry.Serve's dispatcher.
+					if denyUnauthed(w, req) {
+						return
+					}
 					// Audited as serve_ws_subscribe/serve_ws_close via
 					// the lifecycle hooks, not as serve_query — and the
 					// upgrade must see the raw hijackable writer.
@@ -132,9 +204,81 @@ func (m *Mirror) startServe(ctx context.Context) error {
 			m.logger.Warn("registry/mirror: served query face failed", "addr", ln.Addr().String(), "err", err)
 		}
 	}()
+	// DNS-SD announce of the served Query face (AMWA IS-04-02 test_02):
+	// only with an operator-provided advertise identity — the
+	// bound-address fallbacks (loopback binds, bare OS hostnames) are
+	// exactly the identities off-link peers cannot resolve, and
+	// announcing one of those helps nobody.
+	if m.opts.ServeAdvertiseHost != "" {
+		go m.announceServe(ctx, advertise, apiVers)
+	}
 	m.logger.Info("registry/mirror: serving mirrored Query API",
-		"addr", ln.Addr().String(), "api_vers", apiVers)
+		"addr", ln.Addr().String(), "api_vers", apiVers,
+		"auth", m.opts.ServeAuthURL != "")
 	return nil
+}
+
+// newServeResponder is the mDNS seam — production uses the same
+// session/dnssd backend detection Registry.Serve does; unit tests
+// inject a recording fake (same seam pattern as osHostnameFn).
+var newServeResponder = func(logger *slog.Logger) (session.Responder, error) {
+	return session.NewResponder(logger)
+}
+
+// announceServe announces the served Query face as _nmos-query._tcp
+// via the same Responder machinery Registry.Serve uses and keeps the
+// announce alive until ctx ends. mDNS being unavailable is a warning,
+// not a mirror failure — the REST face works without it.
+func (m *Mirror) announceServe(ctx context.Context, advertise string, apiVers []string) {
+	host, port, err := pickAdvertiseHostPort(registryslot.ServeOptions{AdvertiseHost: advertise})
+	if err != nil {
+		m.logger.Warn("registry/mirror: serve announce: bad advertise host",
+			"advertise", advertise, "err", err)
+		return
+	}
+	resp, err := newServeResponder(m.logger)
+	if err != nil {
+		m.logger.Warn("registry/mirror: serve announce: mDNS unavailable", "err", err)
+		return
+	}
+	defer func() { _ = resp.Close() }()
+	ins := serveAnnounceInstance(host, port, apiVers, m.opts.ServePri, m.opts.ServeAuthURL != "")
+	if err := resp.Announce(ctx, ins); err != nil {
+		m.logger.Warn("registry/mirror: serve announce failed", "err", err)
+		return
+	}
+	m.logger.Info("registry/mirror: mDNS announce active for served Query API",
+		"host", host, "port", port, "pri", m.opts.ServePri)
+	<-ctx.Done()
+}
+
+// serveAnnounceInstance builds the served face's one DNS-SD instance:
+// _nmos-query._tcp ONLY — the mirror's Query face is real, and there
+// is deliberately no _nmos-register._tcp twin because the mirror
+// refuses registrations. The TXT set mirrors Registry.Serve's
+// announce: api_proto (the served face speaks plain HTTP today),
+// api_ver per served minor, api_auth tracking the Bearer gate (#946),
+// and pri — CLI-defaulted to 100, the dev range, so the plant mirror
+// never wins a production Registry election against its own source
+// registry at pri 0.
+func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, auth bool) codec.Instance {
+	if pri < 0 {
+		pri = 0
+	}
+	return codec.Instance{
+		Name:    "dhs-nmos-mirror",
+		Service: codec.ServiceQuery,
+		Domain:  codec.DefaultDomain,
+		Host:    host,
+		Port:    port,
+		IPv4:    localIPv4Candidates(host),
+		TXT: map[string]string{
+			codec.TXTKeyAPIProto: "http",
+			codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
+			codec.TXTKeyAPIAuth:  strconv.FormatBool(auth),
+			codec.TXTKeyPriority: strconv.Itoa(pri),
+		},
+	}
 }
 
 // serveAdvertise derives the host:port minted into ws_href. A bind on
@@ -149,6 +293,16 @@ func serveAdvertise(addr net.Addr) string {
 		host = osHostname()
 	}
 	return net.JoinHostPort(host, port)
+}
+
+// advertiseHostOnly strips the port from a host:port advertise string —
+// the auth gate's aud matching wants host identities, not endpoints.
+func advertiseHostOnly(advertise string) string {
+	host, _, err := net.SplitHostPort(advertise)
+	if err != nil {
+		return advertise
+	}
+	return host
 }
 
 // installMirrorServeRoots is installAPIRootRoutes minus the
@@ -222,14 +376,20 @@ func (m *Mirror) serveWriteRejected(req *stdhttp.Request) {
 
 // applyServeRow writes one grain row through to the embedded store —
 // the same ingest/delete functions the Registration API handlers use,
-// so the store fans the change out to WS subscribers as grains.
+// so the store fans the change out to WS subscribers as grains. ver is
+// the resource's registered wire minor (the minor of the source
+// subscription the row arrived on) — stamping it here is what keeps
+// the IS-04 §6.1.5 downgrade view intact across the mirrored hop: a
+// v1.0-registered resource must stay hidden from an un-downgraded
+// v1.3 read of the served face and appear with query.downgrade=v1.0,
+// exactly as it would on the source (AMWA IS-04-02 test_22/test_32).
 //
 // allowReplay gates the parent-ordering recovery: the six topic
 // streams race, so a device can reach the store before its node; a
 // debounced ordered replay of the cache repairs that. The replay pass
 // itself runs with allowReplay=false — in dependency order a failure
 // is a genuine reject, and rescheduling would loop forever.
-func (m *Mirror) applyServeRow(topic string, row is04.GrainDataRow, allowReplay bool) {
+func (m *Mirror) applyServeRow(topic, ver string, row is04.GrainDataRow, allowReplay bool) {
 	if m.serve == nil {
 		return
 	}
@@ -241,7 +401,7 @@ func (m *Mirror) applyServeRow(topic string, row is04.GrainDataRow, allowReplay 
 	switch row.Kind() {
 	case is04.ChangeAdded, is04.ChangeModified:
 		env := &is04.RegistrationRequest{Type: t, Data: row.Post}
-		if err := m.serve.store.IngestRegistrationVersioned(env, m.opts.APIVer); err != nil {
+		if err := m.serve.store.IngestRegistrationVersioned(env, ver); err != nil {
 			m.logger.Warn("registry/mirror: serve: store ingest failed",
 				"topic", topic, "id", row.Path, "err", err)
 			if allowReplay {
@@ -284,19 +444,29 @@ func (m *Mirror) scheduleServeReplay() {
 // serveReplay re-applies the whole cache to the embedded store in
 // dependency order (node → device → source → flow → sender →
 // receiver), so every parent precedes its children. Re-ingesting an
-// unchanged resource is an idempotent update; subscribers may see a
-// same-body modified grain on a replay, which is the honest rendering
-// of "the mirror re-asserted its copy".
+// unchanged resource is a true no-op: the store's identical-put
+// short-circuit emits NO grain for a byte-identical document, so a
+// replay never leaks a same-body "modified" grain to subscribers
+// (IS-04 §5.2 gives `pre` to modified/removed only — AMWA IS-04-02
+// test_24_1 fails on anything else).
 func (m *Mirror) serveReplay() {
 	if m.serve == nil {
 		return
 	}
+	type verDoc struct {
+		ver string
+		doc json.RawMessage
+	}
 	m.mu.Lock()
-	snapshot := make(map[string][]json.RawMessage, len(mirrorTopics))
+	snapshot := make(map[string][]verDoc, len(mirrorTopics))
 	for _, topic := range mirrorTopics {
-		docs := make([]json.RawMessage, 0, len(m.cache[topic]))
+		docs := make([]verDoc, 0, len(m.cache[topic]))
 		for _, id := range sortedKeys(m.cache[topic]) {
-			docs = append(docs, m.cache[topic][id])
+			ver := m.cacheVer[topic][id]
+			if ver == "" {
+				ver = m.opts.APIVer
+			}
+			docs = append(docs, verDoc{ver: ver, doc: m.cache[topic][id]})
 		}
 		snapshot[topic] = docs
 	}
@@ -306,9 +476,11 @@ func (m *Mirror) serveReplay() {
 		if !ok {
 			continue
 		}
-		for _, doc := range snapshot[topic] {
-			env := &is04.RegistrationRequest{Type: t, Data: doc}
-			if err := m.serve.store.IngestRegistrationVersioned(env, m.opts.APIVer); err != nil {
+		for _, vd := range snapshot[topic] {
+			env := &is04.RegistrationRequest{Type: t, Data: vd.doc}
+			// Re-stamp at the minor the row originally arrived on —
+			// a replay must not flatten the downgrade view.
+			if err := m.serve.store.IngestRegistrationVersioned(env, vd.ver); err != nil {
 				m.logger.Warn("registry/mirror: serve: replay ingest failed",
 					"topic", topic, "err", err)
 			}
