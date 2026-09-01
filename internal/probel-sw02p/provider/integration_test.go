@@ -100,6 +100,20 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	}
 	defer func() { _ = plB.Disconnect() }()
 
+	// Registration barrier (#936): Connect returning only proves the
+	// TCP handshake — the kernel backlog completes it before the
+	// provider's accept loop runs. On a starved CI container, A's
+	// stages + GO can all execute before the accept goroutine puts B
+	// into s.sessions, so B joins mid-broadcast and permanently
+	// misses the leading tx 04 frames. acceptLoop registers a session
+	// BEFORE starting its goroutine, so a reply on B proves B is a
+	// fan-out target. rx 50 → tx 51 is the cheapest round-trip.
+	barrierCtx, barrierCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer barrierCancel()
+	if _, err := plB.SendDualControllerStatusRequest(barrierCtx); err != nil {
+		t.Fatalf("B registration barrier: %v", err)
+	}
+
 	// Subscribe B to every incoming frame. We need to observe the
 	// fan-out from A's rx 36 GO command. Also subscribe A for
 	// diagnostic visibility — it does not affect the Send validator
