@@ -12,6 +12,33 @@
 #     the pinned image;
 #   - its UserConfig carries the conformance profile.
 
+# The IS-07 MQTT broker lives HERE, not on the plant host: the fleet
+# has no internet egress except this host, so this is the one place
+# apt can install mosquitto. The plant node publishes to it and the
+# testing tool subscribes — both by address, neither cares where it
+# runs.
+- name: Mosquitto is installed
+  ansible.builtin.apt:
+    name: mosquitto
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+
+- name: Mosquitto listens for the lab (open, LAN-only)
+  ansible.builtin.copy:
+    content: |
+      listener 1883 0.0.0.0
+      allow_anonymous true
+    dest: /etc/mosquitto/conf.d/dhs-lab.conf
+    mode: "0644"
+  register: _mosq_cfg
+
+- name: Mosquitto is running
+  ansible.builtin.systemd:
+    name: mosquitto
+    state: "{{ 'restarted' if _mosq_cfg.changed else 'started' }}"
+    enabled: true
+
 - name: Docker uses the cgroupfs driver
   ansible.builtin.copy:
     content: |

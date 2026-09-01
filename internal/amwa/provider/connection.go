@@ -60,6 +60,10 @@ type IS05ConnectionServer struct {
 	// monitor tied to the endpoint (nil = no monitors served).
 	onMonitorState func(resourceID string, active bool)
 
+	// onSenderActivated hands the full activated state to the IS-07
+	// MQTT bridge (nil = no MQTT event senders in the bundle).
+	onSenderActivated func(id string, active is05.StagedSender)
+
 	// onResourceChanged fires after an activation has rewritten an
 	// IS-04 resource, so the Node can re-POST it to its Registry.
 	//
@@ -83,6 +87,9 @@ func (s *IS05ConnectionServer) SetOnResourceChanged(fn func(is04.ResourceType, a
 func NewIS05ConnectionServer(logger *slog.Logger, bundle *NodeConfig, cfg IS05ConnectionConfig) *IS05ConnectionServer {
 	st := newConnectionStore()
 	st.seedFromBundle(bundle)
+	if bundle != nil && bundle.Events != nil {
+		st.mqttBroker = bundle.Events.MQTTBroker
+	}
 	// "auto" on source_ip / interface_ip resolves to an address a
 	// controller can actually reach. Taken from the Node's own
 	// interface list, because that is what the Node already tells the
@@ -116,6 +123,12 @@ func (s *IS05ConnectionServer) afterActivation(kind, id string, active is05.Stag
 		go s.onMonitorState(id, active.MasterEnable)
 	}
 	if kind == "senders" {
+		if s.onSenderActivated != nil {
+			// Same rule as the monitor hook: the bridge dials brokers
+			// and writes sockets, none of which may run under the
+			// connection store's lock.
+			go s.onSenderActivated(id, cloneStaged(active))
+		}
 		return s.sdpForSender(id, active)
 	}
 	return ""

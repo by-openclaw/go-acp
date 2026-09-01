@@ -79,6 +79,11 @@ type IS07EventsServer struct {
 	mu      sync.RWMutex
 	sources map[string]*eventSource
 	now     func() time.Time
+
+	// onStateChanged mirrors every published change to the MQTT side
+	// (events_mqtt.go). The WebSocket fan-out stays in pub; separate
+	// hooks because their failure modes are independent.
+	onStateChanged func(sourceID string, msg any)
 }
 
 // NewIS07EventsServer derives the event sources from an IS-04 bundle.
@@ -375,7 +380,26 @@ func (s *IS07EventsServer) SetState(sourceID string, payload any) (any, bool) {
 			}
 		}
 	}
+	if s.onStateChanged != nil {
+		if m, isMsg := withFlowID(es.state, es.flowID); isMsg {
+			s.onStateChanged(sourceID, m)
+		}
+	}
 	return es.state, true
+}
+
+// StateMessage returns the source's current state as the message a
+// subscriber receives (flow_id included) — what the MQTT side
+// publishes retained at activation.
+func (s *IS07EventsServer) StateMessage(sourceID string) (any, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	es, found := s.sources[sourceID]
+	if !found {
+		return nil, false
+	}
+	m, isMsg := withFlowID(es.state, es.flowID)
+	return m, isMsg
 }
 
 // Mount registers every Event & Tally route on srv.

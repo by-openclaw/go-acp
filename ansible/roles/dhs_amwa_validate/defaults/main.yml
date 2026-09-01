@@ -82,8 +82,8 @@ dhs_amwa_validate_suites:
   # reads a device mid-someone-else's-test. A restart resets it.
   - { id: IS-07-02, scope: node, target: node, fresh: true,
       rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0}],
-      # baseline_cnt 1 = test_06 (MQTT senders) until the MQTT unit lands.
-      baseline_pass: 52, baseline_cnt: 1 }
+      # test_06 (MQTT senders) covered since the MQTT transport unit.
+      baseline_pass: 53, baseline_cnt: 0 }
   - { id: IS-08-01, scope: node, target: node,
       rows: [{ver: v1.0}], baseline_pass: 36, baseline_cnt: 0 }
   - { id: IS-08-02, scope: node, target: node,

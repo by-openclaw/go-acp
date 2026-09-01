@@ -347,7 +347,22 @@ func (s *connectionStore) promoteLocked(e *connectionEndpoint) {
 	// decide" is not something it can still be doing once activated,
 	// so every "auto" is replaced with the value actually chosen.
 	for i := range e.active.TransportParams {
-		resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i)
+		resolveAuto(e.active.TransportParams[i], s.nodeIP, e.isSender, i, s.mqttBroker)
+	}
+	// An MQTT event sender's ACTIVE topics must be concrete: a
+	// controller (and the AMWA suite) reads broker_topic to subscribe.
+	// A null topic means "the device chooses" — so the device chooses,
+	// following the spec's recommended convention.
+	if e.isSender && e.transportType == transportMQTTURN && e.eventSourceID != "" {
+		for i := range e.active.TransportParams {
+			p := e.active.TransportParams[i]
+			if v, ok := p["broker_topic"]; !ok || v == nil || v == autoKeyword {
+				p["broker_topic"] = "x-nmos/events/" + eventsWireVersion + "/sources/" + e.eventSourceID
+			}
+			if v, ok := p["connection_status_broker_topic"]; !ok || v == nil || v == autoKeyword {
+				p["connection_status_broker_topic"] = "x-nmos/events/" + eventsWireVersion + "/connection_status/" + e.eventSourceID
+			}
+		}
 	}
 	now := is05.FormatTAINow(s.now())
 	// The ACTIVE block records the activation that produced it; the
