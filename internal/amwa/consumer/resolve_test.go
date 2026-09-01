@@ -32,3 +32,27 @@ func TestMatchSenderLabel(t *testing.T) {
 		t.Errorf("unknown label must list the labels present: %v", err)
 	}
 }
+
+// TestBuildSenderPatchTrimsEmptyOverflow: `--leg red` always renders
+// two slots; on a single-leg sender the trailing EMPTY slot trims
+// away, while a non-empty overflow stays a hard error.
+func TestBuildSenderPatchTrimsEmptyOverflow(t *testing.T) {
+	req := SetSenderRequest{
+		SenderID:         "s",
+		DestinationIPs:   []string{"239.60.1.1", ""},
+		DestinationPorts: []int{5010, 0},
+	}
+	patch, err := buildSenderPatch(1, "activate_immediate", req)
+	if err != nil {
+		t.Fatalf("empty overflow must trim: %v", err)
+	}
+	params := patch["transport_params"].([]map[string]any)
+	if len(params) != 1 || params[0]["destination_ip"] != "239.60.1.1" || params[0]["destination_port"] != 5010 {
+		t.Errorf("patch legs = %+v", params)
+	}
+
+	bad := SetSenderRequest{SenderID: "s", DestinationIPs: []string{"239.60.1.1", "239.62.1.1"}}
+	if _, err := buildSenderPatch(1, "activate_immediate", bad); err == nil {
+		t.Error("non-empty overflow must stay an error")
+	}
+}
