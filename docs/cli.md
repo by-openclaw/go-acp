@@ -330,6 +330,8 @@ Usage of mirror:
     	IS-04 wire version used on both faces (default v1.3)
   -audit-log string
     	append one JSONL observation per external-registry behaviour (refused forwards with the target's own words, evictions, WS drops) — the evidence trail for auditing the registry on the far side
+  -serve string
+    	serve the mirrored catalogue as a read-only IS-04 Query API (REST + WS subscriptions) on this address, e.g. :8335 — controllers read the plant THROUGH the audited mirror; registration attempts are refused and audited
   -source string
     	source Registry origin (http://host:port) — Query API side
   -status-addr string

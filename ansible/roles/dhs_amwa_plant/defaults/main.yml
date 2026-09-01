@@ -24,6 +24,10 @@ dhs_amwa_plant_mirror_source: "http://10.6.250.101:8235"
 dhs_amwa_plant_mirror_target: "http://10.6.250.5:8080"
 dhs_amwa_plant_mirror_audit_log: "{{ dhs_amwa_plant_dir }}/mirror-audit.jsonl"
 dhs_amwa_plant_mirror_status_addr: ":9101"
+# Served read-only Query API on the mirror (--serve): controllers read
+# the plant THROUGH the audited mirror. Empty string disables the
+# served face (unit then runs the plain one-way bridge).
+dhs_amwa_plant_mirror_serve: ":8335"
 dhs_amwa_plant_registry_page_limit: 1000
 # Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
 # configurable; the CONFORMANCE plant runs 30s, matched by the AMWA

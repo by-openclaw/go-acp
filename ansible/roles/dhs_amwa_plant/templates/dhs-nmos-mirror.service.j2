@@ -9,6 +9,9 @@ Type=simple
 ExecStart={{ dhs_amwa_plant_bin }} registry nmos mirror \
   --source {{ dhs_amwa_plant_mirror_source }} \
   --target {{ dhs_amwa_plant_mirror_target }} \
+{% if dhs_amwa_plant_mirror_serve | default('') | length > 0 %}
+  --serve {{ dhs_amwa_plant_mirror_serve }} \
+{% endif %}
   --audit-log {{ dhs_amwa_plant_mirror_audit_log }} \
   --status-addr {{ dhs_amwa_plant_mirror_status_addr }}
 Restart=on-failure

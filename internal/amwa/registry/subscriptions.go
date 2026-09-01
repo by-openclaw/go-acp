@@ -132,6 +132,10 @@ type subscription struct {
 	ws      *httpsession.WebSocket
 	source  string // sub UUID echoed in grain.source_id
 	closeCh chan struct{}
+	// remote is the subscriber's RemoteAddr, captured at upgrade time so
+	// the close-side lifecycle hook can name who disconnected after the
+	// socket (and its request) are gone.
+	remote string
 
 	// bufMu guards the change-aggregation buffer below. IS-04 lets a
 	// grain carry many changes, and max_update_rate_ms is the window we
@@ -160,6 +164,22 @@ type SubscriptionManager struct {
 
 	mu   sync.Mutex
 	subs map[string]*subscription
+
+	// onWSOpen / onWSClose are optional subscriber-socket lifecycle
+	// hooks. The mirror's served Query face uses them to land one audit
+	// event per WS open/close in its JSONL trail; the plain Registry
+	// leaves them nil. Installed via setWSLifecycleHooks before the
+	// manager accepts traffic, invoked outside the manager's lock.
+	onWSOpen  func(resourcePath, remote string)
+	onWSClose func(resourcePath, remote string)
+}
+
+// setWSLifecycleHooks installs the WS open/close callbacks. Must be
+// called before the manager starts accepting upgrades — the fields are
+// read without the lock on the upgrade path.
+func (m *SubscriptionManager) setWSLifecycleHooks(open, closed func(resourcePath, remote string)) {
+	m.onWSOpen = open
+	m.onWSClose = closed
 }
 
 // NewSubscriptionManager builds the manager + wires it to the store.
@@ -411,7 +431,11 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		}
 		m.mu.Lock()
 		sub.ws = ws
+		sub.remote = r.RemoteAddr
 		m.mu.Unlock()
+		if m.onWSOpen != nil {
+			m.onWSOpen(sub.ResourcePath, r.RemoteAddr)
+		}
 
 		// Send the SYNC snapshot for every existing resource matching the
 		// resource_path AND the subscription params filter. SYNC has
@@ -755,6 +779,11 @@ func jsonMatchesFilter(data json.RawMessage, q map[string][]string) bool {
 }
 
 func (m *SubscriptionManager) removeSub(id string) {
+	// Close-hook state captured under the lock, invoked outside it —
+	// the hook lands an audit event and must not run into the manager's
+	// mutex from a callback.
+	var closedPath, closedRemote string
+	notifyClose := false
 	m.mu.Lock()
 	if s, ok := m.subs[id]; ok {
 		s.bufMu.Lock()
@@ -765,10 +794,17 @@ func (m *SubscriptionManager) removeSub(id string) {
 		s.bufMu.Unlock()
 		if s.ws != nil {
 			_ = s.ws.Close()
+			// Only sockets that actually opened fire the close hook, so
+			// open/close audit events always pair up.
+			notifyClose = m.onWSClose != nil
+			closedPath, closedRemote = s.ResourcePath, s.remote
 		}
 		delete(m.subs, id)
 	}
 	m.mu.Unlock()
+	if notifyClose {
+		m.onWSClose(closedPath, closedRemote)
+	}
 }
 
 // subscriptionMatches reports whether c targets the given
