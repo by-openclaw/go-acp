@@ -1,0 +1,28 @@
+---
+# Converge the SECONDARY Ansible runner on dhs-tools (#938), then
+# authorize its actor key on the Linux fleet. Run from the PRIMARY
+# control node:
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-runner.yml
+#
+# Order matters: play 1 generates the runner key and fetches its .pub
+# into roles/dhs_access/files/keys/ on this controller's checkout, so
+# play 2 can converge dhs_access with the new actor in the same run.
+# The fetched .pub is a committed artifact — sync it back to git after
+# the first converge (same rule as DM stores: host artifacts land in
+# the repo, never stay host-only).
+#
+# Windows is deliberately not converged here (the runner never targets
+# it); the next fleet-converge.yml pass syncs win11's key list.
+
+- name: AMWA secondary runner — converge dhs-tools
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - dhs_amwa_runner
+
+- name: AMWA secondary runner — authorize the actor on the Linux fleet
+  hosts: linux
+  gather_facts: true
+  roles:
+    - dhs_access

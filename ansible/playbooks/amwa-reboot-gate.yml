@@ -1,0 +1,16 @@
+---
+# Reboot + conformance gate (#938): prove the plant survives a host
+# reboot AND still passes its full node conformance baseline — the
+# firmware/OS-update drill. Run from the SECONDARY runner (dhs-tools);
+# see amwa-reboot-resilience.yml for why the primary control node
+# cannot drive this.
+#
+#   (on dhs-tools)
+#   cd /root/acp-runner/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-reboot-gate.yml
+
+- name: Reboot resilience
+  ansible.builtin.import_playbook: amwa-reboot-resilience.yml
+
+- name: Node conformance gate after the reboot
+  ansible.builtin.import_playbook: amwa-validate-node.yml

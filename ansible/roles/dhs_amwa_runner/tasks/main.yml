@@ -1,0 +1,85 @@
+---
+# Converge the secondary runner (#938). Idempotent — run-twice = 0
+# changes once the actor key is committed and authorized.
+
+# ---- 1. ansible-core via pipx (mirrors control-node.yml) -------------
+- name: pipx present
+  ansible.builtin.package:
+    name: [pipx, python3-venv, git]
+    state: present
+
+- name: "ansible-core {{ dhs_amwa_runner_ansible_core_spec }} via pipx"
+  ansible.builtin.command:
+    cmd: pipx install --force "ansible-core{{ dhs_amwa_runner_ansible_core_spec }}"
+  register: runner_pipx
+  changed_when: "'installed package' in runner_pipx.stdout"
+  environment:
+    PIPX_HOME: /opt/pipx
+    PIPX_BIN_DIR: /usr/local/bin
+
+- name: ansible-playbook resolves to the pipx core
+  ansible.builtin.command: ansible-playbook --version
+  register: runner_ansver
+  changed_when: false
+  failed_when: "'core 2.17' not in runner_ansver.stdout"
+
+# ---- 2. the runner's actor identity ---------------------------------
+# Private key is born here and never leaves the runner. The .pub is
+# fetched into the CONTROLLER's checkout so (a) the same play run can
+# converge dhs_access with it and (b) it gets committed to the repo.
+- name: Runner ed25519 actor key generated
+  ansible.builtin.command:
+    cmd: >-
+      ssh-keygen -t ed25519 -N ""
+      -C {{ dhs_amwa_runner_key_comment }}
+      -f {{ dhs_amwa_runner_key }}
+    creates: "{{ dhs_amwa_runner_key }}"
+
+- name: Runner public key fetched into the dhs_access key store
+  ansible.builtin.fetch:
+    src: "{{ dhs_amwa_runner_key }}.pub"
+    dest: "{{ role_path }}/../dhs_access/files/keys/{{ dhs_amwa_runner_key_comment }}.pub"
+    flat: true
+
+# ---- 3. SSH client config so plays target the fleet cleanly ---------
+- name: Fleet SSH client config for the runner
+  ansible.builtin.copy:
+    dest: /root/.ssh/config
+    mode: "0600"
+    content: |
+      # Managed by dhs_amwa_runner (#938). The runner drives Ansible at
+      # the fleet as root with its own actor key.
+      Host 10.6.250.* dhs-*
+        User root
+        IdentityFile {{ dhs_amwa_runner_key }}
+        StrictHostKeyChecking accept-new
+
+# ---- 4. repo mirror from the primary control node -------------------
+# Cloned over SSH from the plant checkout; refresh = fetch + hard reset
+# so the runner always runs the exact tree the primary has.
+- name: Runner repo cloned from the primary control node
+  ansible.builtin.command:
+    cmd: >-
+      git clone
+      root@{{ dhs_amwa_runner_origin_host }}:{{ dhs_amwa_runner_origin_path }}
+      {{ dhs_amwa_runner_repo }}
+    creates: "{{ dhs_amwa_runner_repo }}/.git"
+  environment:
+    GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
+
+- name: Runner repo refreshed to the primary's HEAD
+  ansible.builtin.shell:
+    cmd: >-
+      git fetch origin &&
+      git reset --hard origin/HEAD >/dev/null &&
+      git rev-parse HEAD
+  args:
+    chdir: "{{ dhs_amwa_runner_repo }}"
+  environment:
+    GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
+  register: runner_head
+  changed_when: false
+
+- name: Runner ready
+  ansible.builtin.debug:
+    msg: "runner at {{ inventory_hostname }}: repo {{ dhs_amwa_runner_repo }} @ {{ runner_head.stdout_lines[-1] }}"

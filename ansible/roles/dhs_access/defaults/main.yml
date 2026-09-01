@@ -8,6 +8,7 @@
 #   control node control-node-dhs-debian    dhs-debian (.103) -> fleet, for Ansible
 #   owner        owner-yboujraf-personal    codeowner (personal workstation)
 #   owner        owner-by-systems-ws        codeowner (by-systems workstation)
+#   runner       runner-dhs-tools           dhs-tools secondary Ansible runner (#938)
 #
 # To rotate or add an actor: drop/replace the .pub file and list it here —
 # the next converge removes what is no longer listed.
@@ -16,6 +17,7 @@ dhs_access_keys:
   - control-node-dhs-debian.pub
   - owner-yboujraf-personal.pub
   - owner-by-systems-ws.pub
+  - runner-dhs-tools.pub
 
 # Linux login user on the fleet (LXC sshd only accepts root).
 dhs_access_linux_user: root
