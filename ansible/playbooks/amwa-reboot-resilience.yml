@@ -115,6 +115,18 @@
       delay: 5
       when: dhs_amwa_plant_mirror_target | length > 0
 
+    # The stamp carries the post-reboot boot_id; amwa-reboot-gate.yml's
+    # guard play refuses to run the conformance half unless the stamp
+    # matches the CURRENT boot — i.e. this play passed for this boot.
+    - name: Resilience stamp for the gate guard
+      ansible.builtin.copy:
+        dest: "{{ dhs_amwa_plant_dir }}/reboot-resilience.json"
+        mode: "0644"
+        content: |
+          {"boot_id": "{{ rr_boot_post.content | b64decode | trim }}",
+           "nodes": {{ rr_post_nodes.json | length }},
+           "units": {{ rr_units | length }}}
+
     - name: Reboot-resilience verdict
       ansible.builtin.debug:
         msg: >-
