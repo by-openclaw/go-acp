@@ -50,6 +50,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat     = fs.String("log-format", "text", "log format: text | json (Loki/Promtail) | syslog (RFC 5424 lines, severity mapped incl. critical — #751 G6)")
+		syslogAddr    = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
 		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
 		announceSlot  = fs.Int("announce-demo-slot", 1, "slot for --announce-demo target")
 		announceGroup = fs.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
@@ -95,6 +96,14 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 
 	logger := newLogger(*logLevel, *logFormat)
+	if *syslogAddr != "" {
+		udp, err := dialSyslogUDP(*syslogAddr)
+		if err != nil {
+			return err
+		}
+		defer udp.Close()
+		logger = slog.New(teeHandler{logger.Handler(), udp.Handler(parseLogLevel(*logLevel))})
+	}
 
 	factory, ok := provider.Lookup(protoName)
 	if !ok {
@@ -485,20 +494,23 @@ func loadTree(path string) (*canonical.Export, error) {
 	return &exp, nil
 }
 
-func newLogger(level, format string) *slog.Logger {
-	var lvl slog.Level
+func parseLogLevel(level string) slog.Level {
 	switch level {
 	case "debug":
-		lvl = slog.LevelDebug
+		return slog.LevelDebug
 	case "warn":
-		lvl = slog.LevelWarn
+		return slog.LevelWarn
 	case "error":
-		lvl = slog.LevelError
+		return slog.LevelError
 	case "critical":
-		lvl = LevelCritical
+		return LevelCritical
 	default:
-		lvl = slog.LevelInfo
+		return slog.LevelInfo
 	}
+}
+
+func newLogger(level, format string) *slog.Logger {
+	lvl := parseLogLevel(level)
 	opts := &slog.HandlerOptions{Level: lvl}
 	switch format {
 	case "json":
