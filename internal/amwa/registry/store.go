@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,20 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 )
+
+// putUnchanged reports whether a re-registered document is
+// byte-identical to the stored copy. An identical re-registration is
+// a no-op: IS-04 §5.2 grain grammar gives `pre` to modified/removed
+// events only, and a same-body "modified" grain is a spec violation
+// on the wire (AMWA IS-04-02 test_24_1 catches it — the tool sees an
+// unexpected `pre` where it awaited `added`). Both structs decoded
+// through the same codec marshal deterministically, so byte equality
+// is semantic equality.
+func putUnchanged(prev, next any) bool {
+	a, errA := json.Marshal(prev)
+	b, errB := json.Marshal(next)
+	return errA == nil && errB == nil && bytes.Equal(a, b)
+}
 
 // ErrNotFound is returned by every getter when the resource is unknown.
 var ErrNotFound = errors.New("registry: resource not found")
@@ -241,6 +256,9 @@ func (s *Store) PutNode(n is04.Node) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	prev, hadPrev := s.nodes[n.ID]
+	if hadPrev && putUnchanged(prev, n) {
+		return nil // identical re-registration: no grain, no update_ts bump
+	}
 	s.nodes[n.ID] = n
 	s.markUpdated(is04.ResourceNode, n.ID)
 	// On insert, mark health = now so the GC doesn't immediately evict.
@@ -272,6 +290,9 @@ func (s *Store) PutDevice(d is04.Device) error {
 		return fmt.Errorf("registry: device %s.node_id %q not registered", d.ID, d.NodeID)
 	}
 	prev, hadPrev := s.devices[d.ID]
+	if hadPrev && putUnchanged(prev, d) {
+		return nil
+	}
 	s.devices[d.ID] = d
 	s.markUpdated(is04.ResourceDevice, d.ID)
 	post, _ := json.Marshal(d)
@@ -298,6 +319,9 @@ func (s *Store) PutSource(src is04.Source) error {
 		return fmt.Errorf("registry: source %s.device_id %q not registered", src.ID, src.DeviceID)
 	}
 	prev, hadPrev := s.sources[src.ID]
+	if hadPrev && putUnchanged(prev, src) {
+		return nil
+	}
 	s.sources[src.ID] = src
 	s.markUpdated(is04.ResourceSource, src.ID)
 	post, _ := json.Marshal(src)
@@ -332,6 +356,9 @@ func (s *Store) PutFlow(f is04.Flow) error {
 		return fmt.Errorf("registry: flow %s.source_id %q not registered", f.ID, f.SourceID)
 	}
 	prev, hadPrev := s.flows[f.ID]
+	if hadPrev && putUnchanged(prev, f) {
+		return nil
+	}
 	s.flows[f.ID] = f
 	s.markUpdated(is04.ResourceFlow, f.ID)
 	post, _ := json.Marshal(f)
@@ -358,6 +385,9 @@ func (s *Store) PutSender(snd is04.Sender) error {
 		return fmt.Errorf("registry: sender %s.device_id %q not registered", snd.ID, snd.DeviceID)
 	}
 	prev, hadPrev := s.senders[snd.ID]
+	if hadPrev && putUnchanged(prev, snd) {
+		return nil
+	}
 	s.senders[snd.ID] = snd
 	s.markUpdated(is04.ResourceSender, snd.ID)
 	post, _ := json.Marshal(snd)
@@ -384,6 +414,9 @@ func (s *Store) PutReceiver(r is04.Receiver) error {
 		return fmt.Errorf("registry: receiver %s.device_id %q not registered", r.ID, r.DeviceID)
 	}
 	prev, hadPrev := s.receivers[r.ID]
+	if hadPrev && putUnchanged(prev, r) {
+		return nil
+	}
 	s.receivers[r.ID] = r
 	s.markUpdated(is04.ResourceReceiver, r.ID)
 	post, _ := json.Marshal(r)
@@ -408,6 +441,19 @@ func (s *Store) DeleteNode(id string) {
 	s.deleteNodeLocked(id)
 }
 
+// deletionChangeLocked builds a stamped ChangeDeleted for (t, id).
+// MUST be called BEFORE dropUpdated clears the api_ver stamp: an
+// unstamped deletion Change fans out to EVERY minor's subscribers
+// (versionAllowed treats "" as any-version), so one source-side
+// delete would reach v1.0 through v1.3 sockets alike — a downstream
+// mirror then issues one DELETE per minor and earns 409s from a
+// version-locking target. Stamped, the removal partitions exactly
+// like the add that preceded it.
+func (s *Store) deletionChangeLocked(t is04.ResourceType, id string, pre json.RawMessage, now time.Time) Change {
+	return Change{Kind: ChangeDeleted, ResourceType: t, ID: id,
+		APIVer: s.apiVerOfLocked(t, id), Pre: pre, Timestamp: now}
+}
+
 func (s *Store) deleteNodeLocked(id string) {
 	if _, ok := s.nodes[id]; !ok {
 		return
@@ -427,47 +473,53 @@ func (s *Store) deleteNodeLocked(id string) {
 		for sid, src := range s.sources {
 			if src.DeviceID == did {
 				pre, _ := json.Marshal(src)
+				c := s.deletionChangeLocked(is04.ResourceSource, sid, pre, now)
 				delete(s.sources, sid)
 				s.dropUpdated(is04.ResourceSource, sid)
 				removedSourceIDs[sid] = struct{}{}
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSource, ID: sid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for fid, f := range s.flows {
 			_, sourceGone := removedSourceIDs[f.SourceID]
 			if f.DeviceID == did || sourceGone {
 				pre, _ := json.Marshal(f)
+				c := s.deletionChangeLocked(is04.ResourceFlow, fid, pre, now)
 				delete(s.flows, fid)
 				s.dropUpdated(is04.ResourceFlow, fid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceFlow, ID: fid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for sid, snd := range s.senders {
 			if snd.DeviceID == did {
 				pre, _ := json.Marshal(snd)
+				c := s.deletionChangeLocked(is04.ResourceSender, sid, pre, now)
 				delete(s.senders, sid)
 				s.dropUpdated(is04.ResourceSender, sid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSender, ID: sid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for rid, r := range s.receivers {
 			if r.DeviceID == did {
 				pre, _ := json.Marshal(r)
+				c := s.deletionChangeLocked(is04.ResourceReceiver, rid, pre, now)
 				delete(s.receivers, rid)
 				s.dropUpdated(is04.ResourceReceiver, rid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceReceiver, ID: rid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		pre, _ := json.Marshal(d)
+		c := s.deletionChangeLocked(is04.ResourceDevice, did, pre, now)
 		delete(s.devices, did)
 		s.dropUpdated(is04.ResourceDevice, did)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceDevice, ID: did, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	}
 	pre, _ := json.Marshal(s.nodes[id])
+	c := s.deletionChangeLocked(is04.ResourceNode, id, pre, now)
 	delete(s.nodes, id)
 	delete(s.health, id)
 	s.dropUpdated(is04.ResourceNode, id)
-	s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceNode, ID: id, Pre: pre, Timestamp: now})
+	s.fanOut(c)
 }
 
 // DeleteResource evicts a non-Node resource. For Node, use DeleteNode.
@@ -485,45 +537,50 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(d)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.devices, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceSource:
 		v, ok := s.sources[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.sources, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceFlow:
 		v, ok := s.flows[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.flows, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceSender:
 		v, ok := s.senders[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.senders, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceReceiver:
 		v, ok := s.receivers[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.receivers, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	default:
 		return fmt.Errorf("registry: invalid resource type %q", t)
 	}

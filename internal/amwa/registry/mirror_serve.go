@@ -444,9 +444,11 @@ func (m *Mirror) scheduleServeReplay() {
 // serveReplay re-applies the whole cache to the embedded store in
 // dependency order (node → device → source → flow → sender →
 // receiver), so every parent precedes its children. Re-ingesting an
-// unchanged resource is an idempotent update; subscribers may see a
-// same-body modified grain on a replay, which is the honest rendering
-// of "the mirror re-asserted its copy".
+// unchanged resource is a true no-op: the store's identical-put
+// short-circuit emits NO grain for a byte-identical document, so a
+// replay never leaks a same-body "modified" grain to subscribers
+// (IS-04 §5.2 gives `pre` to modified/removed only — AMWA IS-04-02
+// test_24_1 fails on anything else).
 func (m *Mirror) serveReplay() {
 	if m.serve == nil {
 		return

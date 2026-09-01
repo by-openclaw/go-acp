@@ -167,6 +167,14 @@ func (c *Client) ListReceivers(ctx context.Context, filter map[string]string) ([
 	return decodeList(raw, "receiver", c.Codec.DecodeReceiver)
 }
 
+// ListRaw fetches one collection as raw JSON documents, following
+// IS-04 §6.2 pagination. For callers that must keep the WIRE bytes —
+// a registry mirror caches and re-forwards documents verbatim, and a
+// typed decode + re-marshal would silently normalise them.
+func (c *Client) ListRaw(ctx context.Context, plural string, filter map[string]string) ([]json.RawMessage, error) {
+	return c.fetchListRaw(ctx, plural, filter)
+}
+
 // fetchListRaw issues GET /x-nmos/query/<api_ver>/<plural>?<filter>
 // and returns the raw JSON array, following IS-04 §6.2 pagination.
 //
