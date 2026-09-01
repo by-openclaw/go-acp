@@ -3,6 +3,11 @@
 # runner's actor key on the primary control node. Cloned over SSH from
 # the plant checkout; refresh = fetch + hard reset so the runner always
 # runs the exact tree the primary has.
+# GIT_LFS_SKIP_SMUDGE: a plain SSH-path remote has no LFS server
+# (git-lfs-authenticate), and the runner never needs the LFS-tracked
+# vendor assets — it only runs playbooks. Pointer files stay pointers;
+# any play that ships LFS assets (Windows installers) runs on the
+# PRIMARY control node, never here.
 - name: Runner repo cloned from the primary control node
   ansible.builtin.command:
     cmd: >-
@@ -12,6 +17,7 @@
     creates: "{{ dhs_amwa_runner_repo }}/.git"
   environment:
     GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
+    GIT_LFS_SKIP_SMUDGE: "1"
 
 # --force repairs any local state (a clone interrupted by a missing
 # git-lfs filter once left the whole index staged-deleted); errors are
@@ -27,6 +33,7 @@
     chdir: "{{ dhs_amwa_runner_repo }}"
   environment:
     GIT_SSH_COMMAND: "ssh -i {{ dhs_amwa_runner_key }} -o StrictHostKeyChecking=accept-new"
+    GIT_LFS_SKIP_SMUDGE: "1"
   register: runner_head
   changed_when: false
 
