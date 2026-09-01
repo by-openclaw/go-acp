@@ -55,7 +55,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	// ADR-0028 default home: --out omitted → the host's snapshot
@@ -311,7 +311,7 @@ func runProbelImport(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	// ADR-0028 default home: --in omitted → the host's snapshot folder

@@ -31,7 +31,7 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 	domain := fs.String("domain", "testsuite.nmos.tv", "unicast DNS-SD discovery domain (the tool's DNS zone)")
 	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor; empty = highest mutual")
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *registry == "" && *resolver == "" && !*mdns {

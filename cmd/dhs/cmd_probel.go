@@ -447,7 +447,7 @@ func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags,
 	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, err
 	}
 	pf.addr = addr
@@ -528,7 +528,7 @@ func runProbelWatch(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *timeout > 0 {
@@ -565,7 +565,7 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	var mfn codec.MaintenanceFunction
@@ -603,7 +603,7 @@ func runProbelDualStatus(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
@@ -692,7 +692,7 @@ func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, 0, err
 	}
 	pf.addr = addr
@@ -834,7 +834,7 @@ func runProbelProtectName(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
@@ -863,7 +863,7 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)

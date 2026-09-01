@@ -30,7 +30,7 @@ func runDiff(ctx context.Context, args []string) error {
 	into := fs.String("into", "",
 		"when --format=changelog, prepend the new section to this CHANGELOG.md file (creates if absent)")
 
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	rest := fs.Args()

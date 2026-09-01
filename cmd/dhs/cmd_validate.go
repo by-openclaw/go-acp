@@ -34,7 +34,7 @@ func runValidate(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.New("usage: dhs consumer <proto> validate <frames.jsonl> [flags]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	factory, err := consumer.Get(cf.protocol)
 	if err != nil {

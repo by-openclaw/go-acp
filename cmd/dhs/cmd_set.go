@@ -40,7 +40,7 @@ func runSet(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	// Detect whether --value / --raw were explicitly passed (even if
 	// empty). fs.Visit walks only flags the user actually supplied, so
 	// `--value ""` is distinguishable from "--value omitted" — needed

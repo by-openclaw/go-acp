@@ -70,7 +70,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		pidfile       = fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop --pidfile PATH` can signal it")
 		announceReplay = fs.String("announce-replay", "", "acp2: loop a recorded announce stream (.jsonl from a real-device capture) to subscribed sessions — real cards announce continuously and controllers derive module liveness from it")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *treePath == "" && *manifestPath == "" {

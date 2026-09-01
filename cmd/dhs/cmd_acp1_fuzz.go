@@ -34,7 +34,7 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 		logLevel  = fs.String("log-level", "info", "log level: debug / info / warn / error")
 		logFormat = fs.String("log-format", "text", "log format: text / json")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *treePath == "" {

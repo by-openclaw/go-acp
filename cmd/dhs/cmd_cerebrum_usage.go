@@ -262,7 +262,7 @@ func cerebrumUsage(_ context.Context, args []string) error {
 	format := fs.String("format", "csv", "output format: csv | ascii")
 	out := fs.String("out", "", "csv output file (omitted = snapshots/<proto>/<router>/usage.csv per ADR-0028; \"-\" = stdout)")
 	idle := fs.Duration("idle", 3*time.Second, "stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *format != "csv" && *format != "ascii" {
@@ -386,7 +386,7 @@ func cerebrumReplace(_ context.Context, args []string) error {
 	check := fs.Bool("check", false, "dry-run (ADR-0007): list the cells that would change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	idle := fs.Duration("idle", 3*time.Second, "snapshot idle fallback")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *from == "" || *with == "" {

@@ -80,7 +80,7 @@ func runImport(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] | --xpoint FILE [--matrix FILE] [--check] [--output json]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *xpointPath != "" {
 		jsonOut, oerr := resolveEnsureOutput(*output, false)

@@ -21,7 +21,7 @@ func runProducerTree(_ context.Context, protoName string, args []string) error {
 	manifestPath := fs.String("manifest", "", "path to manifest JSON (assembles the tree from DMs under --cache-dir)")
 	cacheDir := fs.String("cache-dir", ".cache", "cache root for --manifest DM lookup")
 	output := fs.String("output", "text", "output format: text | json")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *treePath == "" && *manifestPath == "" {

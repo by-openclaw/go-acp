@@ -499,6 +499,15 @@ USAGE
   dhs version
   dhs -h | --help                            this page
 
+GLOBAL FLAGS (every verb)
+  --settings <file.yaml>   flag DEFAULTS from a flat YAML file
+                           (flag-name: value, exactly the -h names).
+                           Precedence: explicit flags > file > built-in.
+                           Keys for other verbs are ignored, so ONE file
+                           can serve a whole deployment; DHS_SETTINGS
+                           names a fallback path. Full reference:
+                           docs/cli.md
+
 CONSUMER (outbound — connect to a device, query / control it)
   Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,

@@ -44,13 +44,13 @@ func runTree(ctx context.Context, args []string) error {
 	if err != nil {
 		// Tolerate missing host when --dm is set — offline rendering needs no host.
 		// Parse the rest unchanged so --dm/--format/etc still bind.
-		_ = fs.Parse(args)
+		_ = parseVerbFlags(fs, args)
 		if *dmIdentity == "" {
 			return fmt.Errorf("usage: dhs consumer <proto> tree <host> [--port N] [--format ascii|plantuml] [--path P | --oid O] [--depth N] [--out FILE] [--dm IDENTITY [--no-walk]]")
 		}
 		dmOnly = true
 	} else {
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 	}
 
 	if *format != "ascii" && *format != "plantuml" {

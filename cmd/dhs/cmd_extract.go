@@ -62,7 +62,7 @@ func runExtract(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *manufacturer == "" || *product == "" || *direction == "" || *ver == "" || *outDir == "" {
 		return fmt.Errorf("--manufacturer, --product, --direction, --version, and --out are all required")

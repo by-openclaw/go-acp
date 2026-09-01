@@ -70,7 +70,7 @@ func runWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L] [--path P1,P2] [--no-streams | --streams-only]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *noStreams && *streamsOnly {
 		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")

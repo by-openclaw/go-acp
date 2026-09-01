@@ -49,7 +49,7 @@ func runEnsure(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check] [--json]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	jsonOut, oerr := resolveEnsureOutput(*output, *asJSON)
 	if oerr != nil {

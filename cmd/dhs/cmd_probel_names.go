@@ -42,7 +42,7 @@ func parseProbelNameFlags(args []string, want struct{ level, src, dst bool }) (p
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, 0, err
 	}
 	pf.addr = addr
@@ -229,7 +229,7 @@ func runProbelDiscover(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	nameLen, err := parseNameLen(*size)

@@ -272,7 +272,7 @@ func runProbelUsage(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *format != "csv" && *format != "ascii" {
@@ -388,7 +388,7 @@ func runProbelReplace(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *from < 0 || *with < 0 {

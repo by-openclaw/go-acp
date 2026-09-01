@@ -133,7 +133,7 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 	fs := flag.NewFlagSet(proto+"-"+verbName, flag.ContinueOnError)
 	f := &tslSendFlags{}
 	registerTSLSendFlags(fs, version, f)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 

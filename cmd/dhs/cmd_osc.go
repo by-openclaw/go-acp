@@ -84,7 +84,7 @@ func runOSCWatch(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 	listen := fs.String("listen", "udp:8000", "transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001")
 	pattern := fs.String("pattern", "", "OSC address pattern to subscribe to (empty = match all)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	transport, port, err := parseListenAddr(*listen)
@@ -130,7 +130,7 @@ func runOSCSend(ctx context.Context, proto string, args []string) error {
 	address := fs.String("address", "/test", "OSC address")
 	types := fs.String("types", "", "OSC type-tag string without leading comma (e.g. ifs)")
 	bind := fs.String("bind", "0.0.0.0:0", "local bind for UDP (use :PORT to share with watch)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	host, port, err := oscSplitHostPort(*to)
@@ -187,7 +187,7 @@ func runOSCFader(ctx context.Context, proto string, args []string) error {
 	min := fs.Float64("min", 0, "minimum fader value")
 	max := fs.Float64("max", 1, "maximum fader value")
 	pattern := fs.String("pattern", "ramp", "ramp | sine | random")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	host, port, err := oscSplitHostPort(*to)
@@ -300,7 +300,7 @@ func runOSCServe(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	bind := fs.String("bind", "udp:8000", "transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001")
 	pattern := fs.String("pattern", "", "OSC address pattern to log (empty = log all)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	transport, port, err := parseListenAddr(*bind)

@@ -27,7 +27,7 @@ func writePIDFile(path string) error {
 func runProducerStop(_ context.Context, protoName string, args []string) error {
 	fs := flag.NewFlagSet("producer "+protoName+" stop", flag.ContinueOnError)
 	pidfile := fs.String("pidfile", "", "PID file the target `serve --pidfile` wrote (required)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *pidfile == "" {

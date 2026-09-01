@@ -54,7 +54,7 @@ func runProducerEnsure(_ context.Context, protoName string, args []string) error
 	pidfile := fs.String("pidfile", "", "PID file the target serve wrote (required)")
 	check := fs.Bool("check", false, "dry-run: report would_change, do nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *pidfile == "" {

@@ -19,7 +19,7 @@ func runDiag(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> diag <host> [--slot N]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	_ = cf
 
 	lvl := slog.LevelDebug

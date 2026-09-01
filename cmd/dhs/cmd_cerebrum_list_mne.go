@@ -36,7 +36,7 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	idle := fs.Duration("idle", 5*time.Second, "stop collecting this long after the last row if no WILDCARD_COMPLETE arrives")
 	out := fs.String("out", "", "write the list as a CSV here (default: print a table)")
 	output := fs.String("output", "text", "stdout format: text | json")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	rest := fs.Args()

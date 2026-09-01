@@ -59,7 +59,7 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	bind := fs.String("bind", "", "bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)")
 	tcp := fs.Bool("tcp", false, "v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP")
 	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — SO_KEEPALIVE period (default 30s; ignored on UDP)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 

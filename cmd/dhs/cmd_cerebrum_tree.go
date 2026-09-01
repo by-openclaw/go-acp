@@ -45,7 +45,7 @@ func cerebrumTree(_ context.Context, args []string) error {
 	maxReq := fs.Int("max-requests", 2000, "--device mode: cap on group obtains for the walk (safety against unexpected fan-out)")
 	alt := fs.Int("alt", 0, "label set for SOURCE/DEST item annotation: 0 = primary mnemonic, N = alternate set N (ALT_MNE, e.g. 1 = Panels on the NOC)")
 	noMne := fs.Bool("no-mne", false, "skip the mnemonic join — show raw item IDs only (also skips the two SRCE/DEST_MNE wildcard reads)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	switch *domain {
