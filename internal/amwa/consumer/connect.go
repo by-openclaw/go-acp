@@ -70,7 +70,8 @@ type ConnectResult struct {
 // fetch the Sender's transport file, stage it on the Receiver together
 // with sender_id and master_enable, and activate. Staging without
 // master_enable=true is the classic silent failure — everything reports
-// success and no signal moves.
+// success and no signal moves. MXL legs are the one exception: no
+// transport file is fetched or staged (see mxlLeg).
 func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectResult, error) {
 	if req.ReceiverID == "" {
 		return nil, fmt.Errorf("nmos connect: receiver id is required")
@@ -111,6 +112,14 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 		// Disconnect. sender_id must be explicitly null — omitting it
 		// would leave the existing one in place, because PATCH merges.
 		patch["sender_id"] = nil
+	} else if mxlLeg(snap, req.SenderID, req.ReceiverID) {
+		// BCP-007-03: an MXL connection carries NO transport file —
+		// the receiver locates the flow through the MXL runtime, not
+		// an SDP, and the spec's Controller suite (BCP-007-03-02
+		// test_03) scores a PATCH that attaches one as non-conformant.
+		// Deliberately not even requesting /transportfile: an MXL
+		// sender has none to serve.
+		patch["sender_id"] = req.SenderID
 	} else {
 		patch["sender_id"] = req.SenderID
 		sdp, err := cl.TransportFile(ctx, req.SenderID)
@@ -239,6 +248,27 @@ func pickConnectionControl(controls []is04.DeviceControl) string {
 		}
 	}
 	return best
+}
+
+// mxlLeg reports whether either end of the requested connection rides
+// urn:x-nmos:transport:mxl (or a dotted subclassification), looked up
+// in the snapshot already fetched for control-href resolution. BCP-007-03
+// forbids a transport file on MXL connections, so Connect branches on it.
+func mxlLeg(snap *CatalogueSnapshot, senderID, receiverID string) bool {
+	isMXL := func(t string) bool {
+		return t == is04.TransportMXL || strings.HasPrefix(t, is04.TransportMXL+".")
+	}
+	for _, r := range snap.Receivers {
+		if r.ID == receiverID && isMXL(r.Transport) {
+			return true
+		}
+	}
+	for _, s := range snap.Senders {
+		if s.ID == senderID && isMXL(s.Transport) {
+			return true
+		}
+	}
+	return false
 }
 
 // activationBody builds the IS-05 activation object. Only the scheduled

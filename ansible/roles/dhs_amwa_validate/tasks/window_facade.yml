@@ -1,0 +1,75 @@
+---
+# Controller CuT window (IS-04-04 / IS-05-03 / BCP-006-01-02 /
+# BCP-007-03-02, issue #954): the CuT is OUR testing facade
+# (`dhs consumer nmos facade`) — the tool POSTs its testquestion
+# rounds to it and it answers by driving the consumer Controller
+# against the tool's own PRIMARY mock registry (deterministic port,
+# see dhs_amwa_validate_mock_registry_port; nothing is mDNS-announced
+# on the controller path, and the one DNS-SD round self-disables in
+# multicast mode).
+#
+# A container, not systemd-run: tooling-host transients follow the
+# window_isolated pattern because this LXC's systemd never holds its
+# dbus name (tooling.yml's cgroupfs note). Fresh per attempt, removed
+# in window_teardown.yml — no plant-side safety timer applies, and a
+# leaked facade container serves nothing but an idle listener the
+# next window's remove-then-run clears.
+
+- name: Facade staging directory exists on the tooling host
+  ansible.builtin.file:
+    path: /opt/dhs-validate
+    state: directory
+    mode: "0755"
+
+# The binary lives on the PLANT host — explicit plant -> controller ->
+# tooling hop, same as window_isolated (the secondary runner is not
+# the plant).
+- name: Current dhs binary pulled from the plant
+  ansible.builtin.fetch:
+    src: "{{ dhs_amwa_validate_plant_bin }}"
+    dest: /tmp/dhs-validate-stage/
+    flat: true
+  delegate_to: "{{ groups['plant'][0] }}"
+
+- name: Current dhs binary staged on the tooling host
+  ansible.builtin.copy:
+    src: "/tmp/dhs-validate-stage/{{ dhs_amwa_validate_plant_bin | basename }}"
+    dest: /opt/dhs-validate/
+    mode: "0755"
+
+# A FRESH facade per attempt — remove-then-run clears any half-created
+# corpse holding the name.
+- name: Remove any previous facade container
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_facade_container }}
+  changed_when: true
+  failed_when: false
+
+# Host networking, both directions: the tool (also host-net) POSTs
+# questions to 127.0.0.1:{{ dhs_amwa_validate_facade_port }} (the
+# testquestion row) and answers land on its answer_uri; the facade's
+# outbound legs reach the mock registry + mock node on the same
+# loopback. --api-ver pins the Query walk to the suites' v1.3 query
+# row (IS-04-04 test_02 asserts the requested version).
+- name: Start the facade CuT
+  ansible.builtin.command: >-
+    docker run -d --name {{ dhs_amwa_validate_facade_container }}
+    --network host
+    -v /opt/dhs-validate:/dv:ro
+    --entrypoint /dv/{{ dhs_amwa_validate_plant_bin | basename }}
+    {{ dhs_amwa_validate_tool_image }}
+    consumer nmos facade
+    --bind 0.0.0.0:{{ dhs_amwa_validate_facade_port }}
+    --registry http://127.0.0.1:{{ dhs_amwa_validate_mock_registry_port }}
+    --api-ver v1.3
+  changed_when: true
+
+# The facade's only route is the question POST — a GET answering 405
+# IS the readiness signal (listening, wrong method).
+- name: Wait for the facade
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_validate_facade_port }}/"
+    status_code: [405]
+  register: _facade_up
+  retries: 10
+  delay: 2
+  until: _facade_up.status == 405

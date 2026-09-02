@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/consumer"
 )
 
@@ -43,18 +44,54 @@ func (s *Server) chooseMulti(ctx context.Context, q Question) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
+	question := strings.ToLower(q.Question)
 	var keep map[string]bool
 	switch {
 	case mentionsOffline(q.Question):
 		// "select the ones which have been put offline" — the right
 		// answers are the offered resources the registry NO LONGER has.
 		keep = complementOf(snapshotIDs(snap), q.Answers)
+	case q.Metadata != nil && q.Metadata.Sender != nil:
+		// BCP-007-03-02 test_04: "select the Receivers that are
+		// compatible with the following MXL Sender" — the sender rides
+		// in metadata, and compatibility is the suite's published rule
+		// (both ends MXL, flow media_type in caps.media_types, any
+		// BCP-004-01 constraint set satisfied by the flow's fields).
+		keep = compatibleReceiversForSender(snap, q.Metadata.Sender.ID)
+	case strings.Contains(question, "compatible"):
+		// BCP-006-01-02 test_03/test_04: TR-08 capability-set /
+		// conformance-level compatibility with a counterpart named
+		// ONLY in prose (no metadata) — display strings are mutable
+		// label+description, and this facade matches by UUID alone by
+		// design. Unanswerable without guessing, so take the
+		// question's own "If unable to identify ..., press 'Submit'
+		// without making a selection" branch. COVERAGE GAP, reported:
+		// closing it needs the tool to carry the counterpart's id in
+		// metadata, or a TR-08 matcher plus prose-label resolution.
+		s.logger.Warn("nmos/facade: TR-08 compatibility question without metadata — answering 'unable to identify' (coverage gap)",
+			"question_id", q.QuestionID)
+		keep = map[string]bool{}
 	case mentionsConnectionAPI(q.Question):
 		// IS-05-03 test_01: only receivers whose Device advertises an
 		// IS-05 control are correct — the registry lists more, and a
 		// controller that offers to route what it cannot route is
 		// worse than one that hides it.
 		keep = connectableReceivers(snap)
+	case strings.Contains(question, "jpeg xs") && strings.Contains(question, "senders"):
+		// BCP-006-01-02 test_01: a Sender is JPEG XS capable when the
+		// Flow it transmits carries media_type video/jxsv (BCP-006-01
+		// puts the coding on the Flow, not the Sender).
+		keep = jxsvCapableSenders(snap)
+	case strings.Contains(question, "jpeg xs") && strings.Contains(question, "receivers"):
+		// BCP-006-01-02 test_02: a Receiver is JPEG XS capable when
+		// video/jxsv is a member of caps.media_types.
+		keep = jxsvCapableReceivers(snap)
+	case strings.Contains(question, "mxl senders"):
+		// BCP-007-03-02 test_01: transport urn:x-nmos:transport:mxl.
+		keep = mxlSenders(snap)
+	case strings.Contains(question, "mxl receivers"):
+		// BCP-007-03-02 test_02.
+		keep = mxlReceivers(snap)
 	default:
 		keep = snapshotIDs(snap)
 	}
@@ -419,6 +456,238 @@ func connectableReceivers(snap *consumer.CatalogueSnapshot) map[string]bool {
 		}
 	}
 	return out
+}
+
+// ---- BCP-006-01-02 / BCP-007-03-02 capability selection -----------------
+//
+// The four helpers below mirror the published rules the two Controller
+// suites score, driven from the registry snapshot alone.
+
+// jxsvCapableSenders — a Sender is JPEG XS capable when the Flow it
+// transmits carries media_type video/jxsv.
+func jxsvCapableSenders(snap *consumer.CatalogueSnapshot) map[string]bool {
+	flowMediaType := map[string]string{}
+	for _, f := range snap.Flows {
+		flowMediaType[f.ID] = f.MediaType
+	}
+	out := map[string]bool{}
+	for _, s := range snap.Senders {
+		if s.FlowID != nil && flowMediaType[*s.FlowID] == "video/jxsv" {
+			out[s.ID] = true
+		}
+	}
+	return out
+}
+
+// jxsvCapableReceivers — video/jxsv is a member of caps.media_types.
+func jxsvCapableReceivers(snap *consumer.CatalogueSnapshot) map[string]bool {
+	out := map[string]bool{}
+	for _, r := range snap.Receivers {
+		for _, mt := range r.Caps.MediaTypes {
+			if mt == "video/jxsv" {
+				out[r.ID] = true
+				break
+			}
+		}
+	}
+	return out
+}
+
+// isMXLTransport matches urn:x-nmos:transport:mxl (and any dotted
+// subclassification, the way RTP variants subclass their base URN).
+func isMXLTransport(t string) bool {
+	return t == is04.TransportMXL || strings.HasPrefix(t, is04.TransportMXL+".")
+}
+
+// mxlSenders / mxlReceivers — BCP-007-03 discovery: transport is the
+// MXL URN.
+func mxlSenders(snap *consumer.CatalogueSnapshot) map[string]bool {
+	out := map[string]bool{}
+	for _, s := range snap.Senders {
+		if isMXLTransport(s.Transport) {
+			out[s.ID] = true
+		}
+	}
+	return out
+}
+
+func mxlReceivers(snap *consumer.CatalogueSnapshot) map[string]bool {
+	out := map[string]bool{}
+	for _, r := range snap.Receivers {
+		if isMXLTransport(r.Transport) {
+			out[r.ID] = true
+		}
+	}
+	return out
+}
+
+// compatibleReceiversForSender — BCP-007-03-02's compatibility rule,
+// exactly as the suite scores it: both ends on the MXL transport, the
+// sender's Flow media_type a member of the receiver's caps.media_types,
+// and at least one BCP-004-01 constraint set satisfied by the Flow's
+// fields (a receiver with NO constraint_sets is not compatible — the
+// suite requires the capability declaration, not just the media type).
+// A sender that is missing or not MXL selects nothing: the only
+// metadata-carrying multi_choice the tool ships today is the MXL one,
+// and an empty selection is the question's own "unable to identify".
+func compatibleReceiversForSender(snap *consumer.CatalogueSnapshot, senderID string) map[string]bool {
+	out := map[string]bool{}
+	var flow *is04.Flow
+	for _, s := range snap.Senders {
+		if s.ID != senderID || !isMXLTransport(s.Transport) || s.FlowID == nil {
+			continue
+		}
+		for i := range snap.Flows {
+			if snap.Flows[i].ID == *s.FlowID {
+				flow = &snap.Flows[i]
+				break
+			}
+		}
+		break
+	}
+	if flow == nil {
+		return out
+	}
+	for _, r := range snap.Receivers {
+		if !isMXLTransport(r.Transport) {
+			continue
+		}
+		mtOK := false
+		for _, mt := range r.Caps.MediaTypes {
+			if mt == flow.MediaType {
+				mtOK = true
+				break
+			}
+		}
+		if !mtOK || len(r.Caps.ConstraintSets) == 0 {
+			continue
+		}
+		for _, cs := range r.Caps.ConstraintSets {
+			if flowMatchesConstraintSet(flow, cs) {
+				out[r.ID] = true
+				break
+			}
+		}
+	}
+	return out
+}
+
+// flowMatchesConstraintSet applies one BCP-004-01 constraint set to a
+// Flow. Only the parameter constraints the MXL suite scores are
+// evaluated (the CAP_URI table below); meta keys and unknown cap URNs
+// are skipped, matching the suite's own leniency.
+func flowMatchesConstraintSet(f *is04.Flow, cs map[string]any) bool {
+	for capURI, raw := range cs {
+		constraint, ok := raw.(map[string]any)
+		if !ok {
+			continue // meta:label / meta:enabled and friends
+		}
+		v, known := flowCapValue(f, capURI)
+		if !known {
+			continue
+		}
+		if !constraintSatisfied(v, constraint) {
+			return false
+		}
+	}
+	return true
+}
+
+// flowCapValue resolves one urn:x-nmos:cap:format:* parameter to the
+// Flow's value. Numbers come back as float64 so they compare cleanly
+// with JSON-decoded constraint values.
+func flowCapValue(f *is04.Flow, capURI string) (any, bool) {
+	switch capURI {
+	case "urn:x-nmos:cap:format:media_type":
+		return f.MediaType, true
+	case "urn:x-nmos:cap:format:frame_width":
+		return float64(f.FrameWidth), true
+	case "urn:x-nmos:cap:format:frame_height":
+		return float64(f.FrameHeight), true
+	case "urn:x-nmos:cap:format:grain_rate":
+		if f.GrainRate == nil {
+			return nil, false
+		}
+		return *f.GrainRate, true
+	case "urn:x-nmos:cap:format:interlace_mode":
+		return f.Interlace, true
+	case "urn:x-nmos:cap:format:colorspace":
+		return f.ColorSpace, true
+	case "urn:x-nmos:cap:format:transfer_characteristic":
+		return f.TransferChar, true
+	case "urn:x-nmos:cap:format:component_depth":
+		depth := 0
+		for _, c := range f.Components {
+			if c.BitDepth > depth {
+				depth = c.BitDepth
+			}
+		}
+		if depth == 0 {
+			return nil, false
+		}
+		return float64(depth), true
+	}
+	return nil, false
+}
+
+// constraintSatisfied applies the BCP-004-01 enum / minimum / maximum
+// keywords to one value.
+func constraintSatisfied(v any, constraint map[string]any) bool {
+	if enum, ok := constraint["enum"].([]any); ok {
+		found := false
+		for _, e := range enum {
+			if capValueEqual(v, e) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	if minRaw, ok := constraint["minimum"].(float64); ok {
+		n, isNum := v.(float64)
+		if !isNum || n < minRaw {
+			return false
+		}
+	}
+	if maxRaw, ok := constraint["maximum"].(float64); ok {
+		n, isNum := v.(float64)
+		if !isNum || n > maxRaw {
+			return false
+		}
+	}
+	return true
+}
+
+// capValueEqual compares a Flow value with one JSON-decoded enum entry.
+// Rational entries (grain_rate) compare numerator/denominator with the
+// spec's implicit denominator of 1.
+func capValueEqual(v any, entry any) bool {
+	switch fv := v.(type) {
+	case string:
+		s, ok := entry.(string)
+		return ok && s == fv
+	case float64:
+		n, ok := entry.(float64)
+		return ok && n == fv
+	case is04.GrainRate:
+		m, ok := entry.(map[string]any)
+		if !ok {
+			return false
+		}
+		num, _ := m["numerator"].(float64)
+		den := 1.0
+		if d, ok := m["denominator"].(float64); ok {
+			den = d
+		}
+		fDen := fv.Denominator
+		if fDen == 0 {
+			fDen = 1
+		}
+		return int(num) == fv.Numerator && int(den) == fDen
+	}
+	return false
 }
 
 func mentionsOffline(q string) bool {

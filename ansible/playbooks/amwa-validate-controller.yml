@@ -1,8 +1,12 @@
 ---
-# Validate the CONTROLLER role. The AMWA controller suites (IS-04-04,
-# IS-05-03) need the interactive controller facade — until that unit
-# lands this play only reports them as not-automatable, so the gap
-# stays visible instead of silently absent.
+# Validate the CONTROLLER role (issue #954): the four testing-facade
+# exams — IS-04-04, IS-05-03, BCP-006-01-02, BCP-007-03-02 — scored by
+# the RESIDENT tool instance against OUR shipped facade
+# (`dhs consumer nmos facade`, window_facade.yml), which answers the
+# tool's questions by driving the consumer Controller against the
+# tool's own mock registry.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-controller.yml
 
 - name: AMWA validate — controller
   hosts: tooling
