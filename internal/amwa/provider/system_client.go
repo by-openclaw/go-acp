@@ -140,15 +140,20 @@ func (s *IS04NodeServer) watchForSystem(ctx context.Context) {
 // minor today; a constant beats a lookup that can only ever return it.
 const is09WireVersion = "v1.0"
 
-// applySystemGlobal records what the System API told this Node.
+// applySystemGlobal records what the System API told this Node, and
+// ACTS on exactly one field: is04.heartbeat_interval, which the
+// registration client reads live (IS-09's stated purpose — "System
+// API configuration takes effect in the Node", the AMWA suite's
+// IS-09-02 test_05).
 //
-// Recording rather than enforcing, deliberately. The PTP domain and
+// Every other field stays recorded, deliberately. The PTP domain and
 // syslog host are facts about the plant that belong to whatever
-// subsystem uses them, and a Node that silently reconfigured its clock
-// from a resource it fetched over unauthenticated HTTP would be a
-// worse citizen than one that reports what it was told. The Registry
-// hint is the part this Node acts on, and only when the operator has
-// not already named a Registry.
+// subsystem uses them — this Node has no PTP clock to retune and no
+// syslog emitter to repoint, and a Node that silently reconfigured
+// hardware from a resource fetched over unauthenticated HTTP would be
+// a worse citizen than one that reports what it was told. When such a
+// subsystem exists, its field graduates from recorded to applied the
+// way heartbeat_interval did; nothing is applied speculatively.
 func (s *IS04NodeServer) applySystemGlobal(g *is09.Global, url string) {
 	s.mu.Lock()
 	s.systemGlobal = g
@@ -159,6 +164,27 @@ func (s *IS04NodeServer) applySystemGlobal(g *is09.Global, url string) {
 		"url", url,
 		"id", g.ID,
 		"version", g.Version)
+	// Operator visibility: the plant's configuration just changed this
+	// Node's registration cadence away from the IS-04 §6.1 default.
+	if hb := time.Duration(g.IS04.HeartbeatInterval) * time.Second; hb > 0 && hb != HeartbeatInterval {
+		s.logger.Info("provider/node: System API heartbeat_interval overrides the IS-04 default",
+			"plugin", "amwa", "api", "is-09",
+			"heartbeat_interval", hb, "default", HeartbeatInterval)
+	}
+}
+
+// systemHeartbeatInterval surfaces the recorded IS-09 heartbeat
+// interval to the registration client — 0 when no /global has been
+// read (or it carries no positive value), which keeps the IS-04
+// default in force.
+func (s *IS04NodeServer) systemHeartbeatInterval() time.Duration {
+	s.mu.Lock()
+	g := s.systemGlobal
+	s.mu.Unlock()
+	if g == nil || g.IS04.HeartbeatInterval <= 0 {
+		return 0
+	}
+	return time.Duration(g.IS04.HeartbeatInterval) * time.Second
 }
 
 // SystemGlobal returns the last global resource read from a System API,

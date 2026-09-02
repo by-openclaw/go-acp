@@ -315,11 +315,11 @@
       "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0032",
       "version": "1777651501:0",
       "label": "dhs-source-wide-out",
-      "description": "4-channel audio source backing the constrained wide sender (IS-08 constraint surface)",
+      "description": "4-channel audio source derived from dhs-source-block-in (authored ancestry: the wide output re-orders the internally-generated block input; also the IS-08 constraint surface)",
       "tags": {},
       "caps": {},
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
-      "parents": [],
+      "parents": ["2c47bf5e-1b2c-4abc-9def-deadbeef0031"],
       "clock_name": "clk0",
       "format": "urn:x-nmos:format:audio",
       "channels": [
@@ -877,13 +877,13 @@
       "interface_bindings": ["eth0"],
       "format": "urn:x-nmos:format:mux",
       "caps": {
-        "media_types": ["video/MP2T"],
+        "media_types": ["video/SMPTE2022-6", "video/MP2T"],
         "version": "1777651501:0",
         "constraint_sets": [
           {
             "urn:x-nmos:cap:meta:label": "MPEG transport stream",
             "urn:x-nmos:cap:meta:enabled": true,
-            "urn:x-nmos:cap:format:media_type": { "enum": ["video/MP2T"] }
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/SMPTE2022-6", "video/MP2T"] }
           }
         ]
       },

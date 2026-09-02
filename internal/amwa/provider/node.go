@@ -387,6 +387,12 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 	if s.connection != nil && s.configuration != nil {
 		s.connection.onMonitorState = s.configuration.SetMonitorActive
 	}
+	// IS-04 §3.1.1: an activation rewrites the Sender/Receiver resource,
+	// and a P2P peer learns of that ONLY through the matching ver_* TXT
+	// counter — so the change hook is installed from construction, not
+	// just when a Registration client exists (Serve's registration
+	// branches re-install it with the client attached).
+	s.wireResourceChanged(nil)
 	if !cfg.NoEventsAPI {
 		s.events = NewIS07EventsServer(logger, fullBundle, IS07EventsConfig{
 			APIVer: cfg.EventsAPIVer,
@@ -617,8 +623,9 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachAuthToken(rc)
 		s.attachTLSTrust(rc)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		s.regClient = rc
-		s.wireRepublish(rc)
+		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
 	} else if s.cfg.DiscoveryMode == "unicast" {
 		// Mode B with discovery: registries come from a conventional
@@ -633,8 +640,9 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachTLSTrust(rc)
 		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		s.regClient = rc
-		s.wireRepublish(rc)
+		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
 	} else if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		w, err := NewRegistryWatcher(s.logger, s.cfg.APIVer)
@@ -653,8 +661,9 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachTLSTrust(rc)
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		s.regClient = rc
-		s.wireRepublish(rc)
+		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
 	}
 
@@ -1165,22 +1174,33 @@ func tlsIdentities(advertiseHost string) []string {
 	return out
 }
 
-// wireRepublish connects IS-05 activations to the Registration API, so
-// a route changes the Registry's copy and not just the Node's own.
+// wireResourceChanged connects IS-05 activations to BOTH of IS-04's
+// change-propagation duties:
 //
-// IS-04 §4.2 requires the Node to re-POST a resource whose data
-// changed. Skipping it left the Query API insisting a live receiver was
-// idle — invisible on the Node API, which reported the truth, and the
-// exact disagreement a Controller cannot see past because it renders
-// routing state from the Registry.
-func (s *IS04NodeServer) wireRepublish(rc *RegistrationClient) {
+//   - §3.1.1 (Peer-to-Peer Operation): the matching `ver_*` TXT
+//     counter increments whenever the corresponding Node API resource
+//     changes — an activation rewrites the Sender/Receiver resource
+//     (subscription block + version), so ver_snd / ver_rcv bumps.
+//     Mode-D peers learn of the change no other way (the AMWA suite's
+//     IS-04-03 test_02 names exactly this behaviour).
+//   - §4.2: re-POST the changed resource to the Registry, when one is
+//     in play (rc nil = peer-to-peer, nothing to tell).
+//
+// Skipping the re-POST left the Query API insisting a live receiver was
+// idle; skipping the bump left P2P peers reading stale resource lists.
+func (s *IS04NodeServer) wireResourceChanged(rc *RegistrationClient) {
 	if s.connection == nil {
 		return
 	}
 	s.connection.SetOnResourceChanged(func(t is04.ResourceType, data any) {
 		// Non-blocking by contract: this runs inside the connection
-		// store's lock during an activation.
-		rc.Republish(t, data)
+		// store's lock during an activation. The bump republishes the
+		// TXT via responder I/O, so it runs detached — same pattern as
+		// the monitor hook.
+		go s.BumpResourceVersion(t)
+		if rc != nil {
+			rc.Republish(t, data)
+		}
 	})
 }
 
