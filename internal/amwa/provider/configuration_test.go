@@ -93,7 +93,7 @@ func TestConfigurationTreeAndRolePaths(t *testing.T) {
 	if err := json.Unmarshal(raw, &paths); err != nil {
 		t.Fatalf("rolePaths decode: %v", err)
 	}
-	want := []string{"root/", "root.DeviceManager/", "root.ClassManager/", "root.BulkPropertiesManager/", "root.GainControl/"}
+	want := []string{"root/", "root.DeviceManager/", "root.ClassManager/", "root.BulkPropertiesManager/", "root.GainControl/", "root.FaultControl/"}
 	if len(paths) != len(want) {
 		t.Fatalf("rolePaths = %v, want %v", paths, want)
 	}
@@ -218,9 +218,9 @@ func TestConfigurationMethods(t *testing.T) {
 		t.Fatalf("2m1 = %d %s", st, raw)
 	}
 
-	// 1m7 GetSequenceLength on members (3 managers + gain worker).
+	// 1m7 GetSequenceLength on members (3 managers + gain + fault workers).
 	st, raw = doJSON(t, "PATCH", v1+"root/methods/1m7/", `{"arguments":{"id":{"level":2,"index":2}}}`)
-	if st != 200 || !bytes.Contains(raw, []byte(`"value":4`)) {
+	if st != 200 || !bytes.Contains(raw, []byte(`"value":5`)) {
 		t.Errorf("1m7 = %d %s", st, raw)
 	}
 
@@ -282,8 +282,8 @@ func TestConfigurationBulkProperties(t *testing.T) {
 	if err := json.Unmarshal(raw, &backup); err != nil {
 		t.Fatalf("backup decode: %v", err)
 	}
-	if backup.Value.ValidationFingerprint == nil || len(backup.Value.Values) != 5 {
-		t.Fatalf("backup holders = %d fp=%v, want 5 + fingerprint", len(backup.Value.Values), backup.Value.ValidationFingerprint)
+	if backup.Value.ValidationFingerprint == nil || len(backup.Value.Values) != 6 {
+		t.Fatalf("backup holders = %d fp=%v, want 6 + fingerprint", len(backup.Value.Values), backup.Value.ValidationFingerprint)
 	}
 	if backup.Value.Values[0].Values[0].Descriptor == nil {
 		t.Error("includeDescriptors default must attach descriptors")
@@ -323,9 +323,10 @@ func TestConfigurationBulkProperties(t *testing.T) {
 		t.Fatalf("backup nodesc = %d", st)
 	}
 	paths := holderPaths(raw)
-	if len(paths) != 4 || paths[0] != "root" || paths[1] != "root.DeviceManager" ||
-		paths[2] != "root.BulkPropertiesManager" || paths[3] != "root.GainControl" {
-		t.Errorf("includeDescriptors=false holders = %v, want [root root.DeviceManager root.BulkPropertiesManager root.GainControl]", paths)
+	if len(paths) != 5 || paths[0] != "root" || paths[1] != "root.DeviceManager" ||
+		paths[2] != "root.BulkPropertiesManager" || paths[3] != "root.GainControl" ||
+		paths[4] != "root.FaultControl" {
+		t.Errorf("includeDescriptors=false holders = %v, want [root root.DeviceManager root.BulkPropertiesManager root.GainControl root.FaultControl]", paths)
 	}
 
 	// recurse=false: root only.

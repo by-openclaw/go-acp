@@ -91,6 +91,10 @@ type IS14ConfigurationServer struct {
 	// monitorByResource maps an IS-04 sender/receiver id to its status
 	// monitor's role-path key (BCP-008 touchpoint, inverted).
 	monitorByResource map[string]string
+
+	// monHealth is the per-monitor runtime state of the BCP-008 health
+	// engine (monitor_health.go), keyed like objects.
+	monHealth map[string]*monitorHealth
 }
 
 // SetOnPropertyChanged installs the IS-12 notification hook.
@@ -339,6 +343,18 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 		panic(fmt.Sprintf("provider/is14: gain worker model load: %v", err5))
 	}
 	objs = append(objs, gain)
+	nextOid++
+
+	// The DhsFaultControl worker: the operator/Ansible seam into the
+	// BCP-008 health engine (vendor_fault.go).
+	fault, err6 := newConfigObject(faultClassID, nextOid, []string{"root", faultRole}, map[string]any{
+		"userLabel": "Fault injection control",
+		"enabled":   true,
+	})
+	if err6 != nil {
+		panic(fmt.Sprintf("provider/is14: fault worker model load: %v", err6))
+	}
+	objs = append(objs, fault)
 
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
 		members := make([]ms05.NcBlockMemberDescriptor, 0, len(objs)-1)
@@ -356,48 +372,8 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	return s
 }
 
-// SetMonitorActive flips the status monitor tied to an IS-04 sender or
-// receiver between Inactive and Healthy on IS-05 activation — BCP-008
-// "monitor transitions to Healthy state on activation" and its
-// deactivation mirror. Every changed property fires the IS-12
-// notification hook.
-func (s *IS14ConfigurationServer) SetMonitorActive(resourceID string, active bool) {
-	key, ok := s.monitorByResource[resourceID]
-	if !ok {
-		return
-	}
-	s.mu.Lock()
-	obj := s.objects[key]
-	if obj == nil {
-		s.mu.Unlock()
-		return
-	}
-	status := 0 // Inactive
-	if active {
-		status = 1 // Healthy
-	}
-	type change struct {
-		id ms05.NcPropertyId
-		v  any
-	}
-	var fired []change
-	for _, name := range []string{"overallStatus", "connectionStatus", "streamStatus", "transmissionStatus", "essenceStatus"} {
-		for _, p := range obj.props {
-			if p.desc.Name == name {
-				if p.value != status {
-					p.value = status
-					fired = append(fired, change{p.desc.ID, status})
-				}
-			}
-		}
-	}
-	s.mu.Unlock()
-	if s.onPropertyChanged != nil {
-		for _, c := range fired {
-			s.onPropertyChanged(obj.oid, c.id, c.v)
-		}
-	}
-}
+// SetMonitorActive lives in monitor_health.go — the BCP-008 health
+// engine drives every monitor status from IS-05 activation state.
 
 // Versions lists the mounted IS-14 minors.
 func (s *IS14ConfigurationServer) Versions() []string { return s.vers }
@@ -836,6 +812,15 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		}
 		if st, err := s.setProperty(obj, p, gainArgs.GainDb); err != nil {
 			return ms05Err(400, st, err.Error())
+		}
+		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+
+	case "InjectMonitorFault", "ClearMonitorFault", "SetMonitorSyncSource", "AddMonitorPacketCounters":
+		// DhsFaultControl — the BCP-008 fault-injection seam, invocable
+		// over IS-14 REST so the Ansible verify plays reach it with
+		// plain HTTP.
+		if err := s.invokeFaultMethod(md.Name, rawArgs); err != nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, err.Error())
 		}
 		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
 

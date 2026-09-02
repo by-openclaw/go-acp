@@ -159,5 +159,8 @@ func registerVendorModels() {
 		if err := ms05.RegisterDatatype(vendorGainDatatype()); err != nil {
 			panic("provider: vendor datatype registration: " + err.Error())
 		}
+		if err := ms05.RegisterClass(vendorFaultClass()); err != nil {
+			panic("provider: fault class registration: " + err.Error())
+		}
 	})
 }

@@ -228,16 +228,29 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 		return s.methodGetControlClass(obj, cmd.Arguments)
 	case is12.MethodID{Level: 3, Index: 2}: // ClassManager.GetDatatype
 		return s.methodGetDatatype(obj, cmd.Arguments)
-	case is12.MethodID{Level: 4, Index: 1}, is12.MethodID{Level: 4, Index: 2}, is12.MethodID{Level: 4, Index: 3}:
+	case is12.MethodID{Level: 4, Index: 1}, is12.MethodID{Level: 4, Index: 2},
+		is12.MethodID{Level: 4, Index: 3}, is12.MethodID{Level: 4, Index: 4}:
 		// BCP-008 monitor methods (NcReceiverMonitor 4m1/4m2 counter
 		// getters + 4m3 reset; NcSenderMonitor 4m1 getter + 4m2 reset).
-		if classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2}) {
+		if classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2}) && cmd.MethodID.Index <= 3 {
 			return s.methodMonitor(obj, cmd.MethodID)
 		}
 		// DhsGainControl.SetGainDb shares the 4m1 slot on a different
 		// class branch.
 		if cmd.MethodID == (is12.MethodID{Level: 4, Index: 1}) && classKey(obj.classID) == classKey(vendorClassID) {
 			return s.methodSetGainDb(obj, cmd.Arguments)
+		}
+		// DhsFaultControl 4m1-4m4: dispatch by declared method name so
+		// IS-12 and IS-14 REST invoke share one implementation.
+		if classKey(obj.classID) == classKey(faultClassID) {
+			for _, md := range obj.class.Methods {
+				if int(md.ID.Level) == cmd.MethodID.Level && int(md.ID.Index) == cmd.MethodID.Index && isFaultMethod(md.Name) {
+					if err := s.config.invokeFaultMethod(md.Name, cmd.Arguments); err != nil {
+						return ncpErr(ms05.NcMethodStatusParameterError, err.Error())
+					}
+					return ncpOK()
+				}
+			}
 		}
 	}
 	return ncpErr(ms05.NcMethodStatusMethodNotImplemented,
@@ -592,10 +605,11 @@ func (s *IS12NCPServer) methodGetDatatype(obj *configObject, args json.RawMessag
 	return ncpOKValue(dt)
 }
 
-// methodMonitor implements the BCP-008 monitor methods. A reference
-// node carries no media plane, so the packet/error counter getters
-// truthfully answer an empty counter list; reset clears the transition
-// counters and messages the model does carry.
+// methodMonitor implements the BCP-008 monitor methods. Reset routes
+// through the health engine (transition counters, status messages AND
+// the injected packet counters all clear together); the counter
+// getters answer whatever DhsFaultControl injected — the empty list
+// is the truthful default for a node with no media plane.
 func (s *IS12NCPServer) methodMonitor(obj *configObject, id is12.MethodID) is12.MethodResult {
 	isReceiver := classDerivedFrom(obj.classID, ms05.NcClassId{1, 2, 2, 1})
 	resetIdx := 2 // NcSenderMonitor.ResetCountersAndMessages = 4m2
@@ -604,19 +618,27 @@ func (s *IS12NCPServer) methodMonitor(obj *configObject, id is12.MethodID) is12.
 	}
 	if id.Index == resetIdx {
 		s.config.mu.Lock()
-		for _, p := range obj.props {
-			if strings.HasSuffix(p.desc.Name, "TransitionCounter") {
-				p.value = uint64(0)
-			}
-			if strings.HasSuffix(p.desc.Name, "Message") && p.desc.IsNullable {
-				p.value = nil
-			}
-		}
+		key := strings.Join(obj.path, ".")
+		changes := s.config.resetCountersLocked(key, obj)
 		s.config.mu.Unlock()
+		s.config.fire(changes)
 		return ncpOK()
 	}
-	// Remaining indices are counter getters.
-	return ncpOKValue([]any{})
+	// Remaining indices are counter getters: receivers 4m1 lost / 4m2
+	// late, senders 4m1 transmission errors.
+	kind := "transmission"
+	if isReceiver {
+		kind = "lost"
+		if id.Index == 2 {
+			kind = "late"
+		}
+	}
+	counters := s.config.MonitorPacketCounters(obj.oid, kind)
+	out := make([]any, 0, len(counters))
+	for _, c := range counters {
+		out = append(out, c)
+	}
+	return ncpOKValue(out)
 }
 
 // attachNCPAPI mounts IS-12 and advertises it on every Device. The
