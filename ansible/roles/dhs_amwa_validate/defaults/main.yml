@@ -332,3 +332,15 @@ dhs_amwa_validate_suites:
       note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
   - { id: IS-05-03, scope: controller, target: node, enabled: false,
       note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
+  # Found via the "a suite we cannot name IS the signal" audit (#952):
+  # two more testing-facade-driven controller exams the tool registers
+  # (its TEST_DEFINITIONS: "BCP-006-01 Controller", "BCP-007-03
+  # Controller" — testing-facade/testquestion spec rows like the two
+  # above). Named here so the catalog covers every suite the tool
+  # ships; they enable together with IS-04-04/IS-05-03 when the
+  # controller-facade decision lands. Their sibling -01 node suites
+  # are in the gate at baseline.
+  - { id: BCP-006-01-02, scope: controller, target: node, enabled: false,
+      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, enabled: false,
+      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
