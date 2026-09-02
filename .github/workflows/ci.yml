@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+  # Manual trigger for dropped push events: GitHub occasionally fails to
+  # dispatch a workflow for a push (seen live 2026-09-02 — the v0.20.0
+  # release merge c12f9ec7 got zero runs; API total_count 0, status page
+  # all-operational). On main this re-runs the full verification AND the
+  # Release Please job, which recovers a missed release cut.
+  workflow_dispatch:
   pull_request:
     branches: [main]
     # The release-please PR touches ONLY these two bot-owned files and is
