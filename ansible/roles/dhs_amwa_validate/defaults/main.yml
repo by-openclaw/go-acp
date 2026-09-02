@@ -373,19 +373,19 @@ dhs_amwa_validate_suites:
   - { id: IS-04-04, scope: controller, target: node, window: facade,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 4, baseline_cnt: 0 }
   - { id: IS-05-03, scope: controller, target: node, window: facade,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 4, baseline_cnt: 0 }
   - { id: BCP-006-01-02, scope: controller, target: node, window: facade,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 5, baseline_cnt: 0 }
   - { id: BCP-007-03-02, scope: controller, target: node, window: facade,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 4, baseline_cnt: 0 }
