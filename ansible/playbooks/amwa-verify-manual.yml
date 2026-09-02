@@ -20,10 +20,8 @@
 #                         |   per-topic id-set snapshot (stronger:
 #                         |   exact set equality across 6 topics).
 #   IS-04-02 test_25_1    | dhs equivalent HERE (REST ancestry — the
-#                         |   engine the WS face would use; the WS
-#                         |   subscription path currently STRIPS
-#                         |   query.ancestry_* params, a reported
-#                         |   product gap, phase 2).
+#                         |   same set logic the WS face applies
+#                         |   since #956).
 #   IS-08-01 test_09/10   | dhs equivalent HERE (authored, non-
 #                         |   placeholder properties — "human-readable"
 #                         |   approximated by "equal to the values a
@@ -44,15 +42,25 @@
 #                         |   a product gap — /global was recorded,
 #                         |   never applied; the registration client
 #                         |   now reads the interval live.)
-#   PHASE 2               | WS ancestry: the Query API's WebSocket
-#                         |   subscription path strips every query.*
-#                         |   param except query.rql
-#                         |   (subscriptions.go:242-250), so ancestry
-#                         |   params on a subscription silently select
-#                         |   nothing — implement-or-501 is the
-#                         |   phase-2 product decision.
-#   BCP-008 rows,         | OUT OF SCOPE phase 1 (per #950).
-#   BCP-007-03 test_15    |
+#   (WS ancestry)         | PRODUCT-FIXED phase 2 (#956): the WS
+#                         |   subscription path now validates and
+#                         |   applies query.ancestry_* like REST;
+#                         |   pinned by Go unit tests
+#                         |   (subscriptions_ancestry_test.go).
+#   BCP-008 test_04/11,   | dhs equivalents HERE (phase 2, #956): a
+#   008-01 test_15/16,    |   transient node window drives the
+#   008-02 test_15        |   DhsFaultControl worker over IS-14 REST —
+#                         |   injected faults, delayed recovery, sync
+#                         |   source change, packet counters + reset.
+#                         |   (test_03/05/06/07 are TOOL-SCORED now:
+#                         |   the health engine degrades honestly
+#                         |   after statusReportingDelay.)
+#   BCP-007-03 test_15    | dhs equivalent HERE (phase 2): MXL
+#                         |   read/write starts/stops on activation,
+#                         |   observed as the MXL legs' monitors
+#                         |   tracking IS-05 master_enable — the only
+#                         |   observable "read/write" a reference node
+#                         |   has (tool: unconditional MANUAL).
 #
 #   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-verify-manual.yml
 
@@ -82,14 +90,28 @@
     vm_cut_port: "{{ dhs_amwa_validate_cut_port }}"
     vm_sys_port: 10641
     vm_is05_receiver: "{{ vm_is08_input }}"
+    # The BCP-008 / BCP-007-03 drill window (phase 2, #956): its own
+    # transient direct-mode node so activations never touch the
+    # registered resident fleet. Monitor roles follow fixture order.
+    vm_b8_port: 10643
+    vm_b8_node: "http://{{ dhs_amwa_validate_plant_host }}:{{ vm_b8_port }}"
+    vm_b8_cfg: "{{ vm_b8_node }}/x-nmos/configuration/v1.0/rolePaths"
+    vm_b8_conn: "{{ vm_b8_node }}/x-nmos/connection/v1.2/single"
+    vm_b8_rx: "{{ vm_is08_input }}"                          # dhs-test-receiver-audio
+    vm_b8_rm: "root.ReceiverMonitor-03"
+    vm_b8_tx: "2c47bf5e-1b2c-4abc-9def-deadbeef0005"         # dhs-test-sender-rtp
+    vm_b8_sm: "root.SenderMonitor-03"
+    vm_mxl_rx: "2c47bf5e-1b2c-4abc-9def-deadbeef0303"        # dhs-test-receiver-mxl
+    vm_mxl_rm: "root.ReceiverMonitor-02"
+    vm_mxl_tx: "2c47bf5e-1b2c-4abc-9def-deadbeef0302"        # dhs-test-sender-mxl
+    vm_mxl_sm: "root.SenderMonitor-02"
   tasks:
     # ---- IS-04-02 test_25_1: "Query API WebSockets implement ancestry
-    # queries". The ancestry ENGINE (ancestry.go — the one the WS face
-    # would consult) is driven over the REST Query API in both
-    # directions against the authored family. The WS-side param
-    # plumbing is a reported phase-2 product gap (subscriptions.go
-    # strips query.* except query.rql), so this check deliberately
-    # claims the engine, not the socket.
+    # queries". The ancestry ENGINE (ancestry.go — the same set logic
+    # the WS face consults since #956) is driven over the REST Query
+    # API in both directions against the authored family; the WS-side
+    # param plumbing and grain clipping are pinned by Go unit tests
+    # (subscriptions_ancestry_test.go).
     - name: "IS-04-02 test_25_1 — ancestry children: block-in's descendants"
       ansible.builtin.uri:
         url: "{{ vm_registry }}/sources?query.ancestry_id={{ vm_ancestry_parent }}&query.ancestry_type=children"
@@ -294,6 +316,334 @@
           delegate_to: "{{ groups['plant'][0] }}"
           failed_when: false
 
+    # ---- BCP-008 fault drills + BCP-007-03 MXL activation (phase 2,
+    # #956). The tool's unconditional-Manual rows say "check by
+    # manually forcing an error condition"; the DhsFaultControl worker
+    # is that force, over IS-14's rolePaths methods PATCH, and every
+    # injected transition runs the same health engine the tool-scored
+    # rows exercise. statusReportingDelay is dropped to 1 s (3p3 is
+    # writable by class definition) so the drills stay fast.
+    - name: "BCP-008 / BCP-007-03 — transient drill window"
+      block:
+        - name: "Start the transient drill node (direct mode)"
+          ansible.builtin.command: >-
+            systemd-run --unit dhs-nmos-verify-b8 --collect
+            {{ dhs_amwa_validate_plant_bin }} producer nmos serve
+            --bind 0.0.0.0:{{ vm_b8_port }}
+            --no-registry --no-mdns
+            --api-ver v1.3
+            --config {{ dhs_amwa_validate_plant_config }}
+          delegate_to: "{{ groups['plant'][0] }}"
+          changed_when: true
+
+        - name: "Arm the drill-window safety-stop timer"
+          ansible.builtin.command: >-
+            systemd-run --unit dhs-nmos-verify-b8-stop --collect
+            --on-active={{ dhs_amwa_validate_window_safety_sec }}
+            systemctl stop dhs-nmos-verify-b8
+          delegate_to: "{{ groups['plant'][0] }}"
+          changed_when: true
+
+        - name: "Wait for the drill node"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_node }}/x-nmos/node/v1.3/self"
+          register: vm_b8_up
+          retries: 15
+          delay: 2
+          until: vm_b8_up.status == 200
+
+        - name: "Shorten statusReportingDelay to 1 s on the drill monitors"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ item }}/properties/3p3/value"
+            method: PUT
+            body_format: json
+            body: { value: 1 }
+            status_code: [200]
+          loop: ["{{ vm_b8_rm }}", "{{ vm_b8_sm }}"]
+
+        - name: "Activate the drill receiver over IS-05"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_conn }}/receivers/{{ vm_b8_rx }}/staged"
+            method: PATCH
+            body_format: json
+            body: { master_enable: true, activation: { mode: activate_immediate } }
+            status_code: [200]
+
+        - name: "BCP-008-01 test_02-equiv — monitor Healthy on activation"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/3p1/value"
+            return_content: true
+          register: vm_b8_overall
+          retries: 10
+          delay: 1
+          until: vm_b8_overall.json.value | int == 1
+
+        - name: "BCP-008-01 test_03-equiv — honest no-stream degradation after the delay"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/4p4/value"
+            return_content: true
+          register: vm_b8_conn_status
+          retries: 10
+          delay: 1
+          until: vm_b8_conn_status.json.value | int == 3
+
+        - name: "BCP-008 test_04 — inject a link fault (counted, immediate past the window)"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/root.FaultControl/methods/4m1/"
+            method: PATCH
+            body_format: json
+            body:
+              arguments:
+                monitorRole: ReceiverMonitor-03
+                domain: linkStatus
+                status: 2
+                message: "drill: one path down"
+            status_code: [200]
+
+        - name: "BCP-008 test_04 — linkStatus degraded and its transition counted"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/{{ item.prop }}/value"
+            return_content: true
+          register: vm_b8_link
+          failed_when: vm_b8_link.json.value | int != item.want
+          loop:
+            - { prop: "4p1", want: 2 }   # linkStatus SomeDown
+            - { prop: "4p3", want: 1 }   # linkStatusTransitionCounter
+          loop_control:
+            label: "{{ item.prop }}={{ item.want }}"
+
+        - name: "BCP-008 test_04 — clear the fault"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/root.FaultControl/methods/4m2/"
+            method: PATCH
+            body_format: json
+            body: { arguments: { monitorRole: ReceiverMonitor-03, domain: linkStatus } }
+            status_code: [200]
+
+        - name: "BCP-008 test_04 — recovery is DELAYED: still degraded right after the clear"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/4p1/value"
+            return_content: true
+          register: vm_b8_link_hold
+          failed_when: vm_b8_link_hold.json.value | int != 2
+
+        - name: "BCP-008 test_04 — recovery lands after statusReportingDelay"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/4p1/value"
+            return_content: true
+          register: vm_b8_link_rec
+          retries: 8
+          delay: 1
+          until: vm_b8_link_rec.json.value | int == 1
+
+        - name: "BCP-008 test_11 — synchronization source change"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/root.FaultControl/methods/4m3/"
+            method: PATCH
+            body_format: json
+            body: { arguments: { monitorRole: ReceiverMonitor-03, sourceId: "ptp-drill-gm" } }
+            status_code: [200]
+
+        - name: "BCP-008 test_11 — PartiallyHealthy dip + published source id"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/{{ item.prop }}/value"
+            return_content: true
+          register: vm_b8_sync
+          failed_when: vm_b8_sync.json.value != item.want
+          loop:
+            - { prop: "4p7", want: 2 }               # externalSynchronizationStatus
+            - { prop: "4p10", want: "ptp-drill-gm" } # synchronizationSourceId
+          loop_control:
+            label: "{{ item.prop }}"
+
+        - name: "BCP-008 test_11 — temporary: back to Healthy after the delay"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/properties/4p7/value"
+            return_content: true
+          register: vm_b8_sync_rec
+          retries: 8
+          delay: 1
+          until: vm_b8_sync_rec.json.value | int == 1
+
+        - name: "BCP-008-01 test_15 — inject late-packet counters"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/root.FaultControl/methods/4m4/"
+            method: PATCH
+            body_format: json
+            body:
+              arguments:
+                monitorRole: ReceiverMonitor-03
+                counter: late
+                name: drill-session
+                increment: 5
+            status_code: [200]
+
+        - name: "BCP-008-01 test_15 — GetLatePacketCounters answers the injected entry"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/methods/4m2/"
+            method: PATCH
+            body_format: json
+            body: { arguments: {} }
+            return_content: true
+          register: vm_b8_late
+          failed_when: >-
+            vm_b8_late.status != 200
+            or vm_b8_late.json.value | length != 1
+            or vm_b8_late.json.value[0].name != 'drill-session'
+            or vm_b8_late.json.value[0].value | int != 5
+
+        - name: "BCP-008-01 test_16 — ResetCountersAndMessages"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/methods/4m3/"
+            method: PATCH
+            body_format: json
+            body: { arguments: {} }
+            status_code: [200]
+
+        - name: "BCP-008-01 test_16 — packet AND transition counters read zero after reset"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_rm }}/{{ item.tail }}"
+            method: "{{ item.method }}"
+            body_format: json
+            body: "{{ item.body | default(omit) }}"
+            return_content: true
+          register: vm_b8_reset
+          failed_when: >-
+            vm_b8_reset.status != 200
+            or (item.empty and vm_b8_reset.json.value | length != 0)
+            or (not item.empty and vm_b8_reset.json.value | int != 0)
+          loop:
+            - { tail: "methods/4m2/", method: "PATCH", body: { arguments: {} }, empty: true }
+            - { tail: "properties/4p3/value", method: "GET", empty: false }
+            - { tail: "properties/4p6/value", method: "GET", empty: false }
+          loop_control:
+            label: "{{ item.tail }}"
+
+        # Sender side (BCP-008-02): the same engine on the
+        # transmission domain, plus its own counter getter + reset.
+        - name: "Activate the drill sender over IS-05"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_conn }}/senders/{{ vm_b8_tx }}/staged"
+            method: PATCH
+            body_format: json
+            body: { master_enable: true, activation: { mode: activate_immediate } }
+            status_code: [200]
+
+        - name: "BCP-008-02 — transmissionStatus degrades honestly after the delay"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_sm }}/properties/4p4/value"
+            return_content: true
+          register: vm_b8_tx_status
+          retries: 10
+          delay: 1
+          until: vm_b8_tx_status.json.value | int == 3
+
+        - name: "BCP-008-02 test_15 — inject + read transmission error counters"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/root.FaultControl/methods/4m4/"
+            method: PATCH
+            body_format: json
+            body:
+              arguments:
+                monitorRole: SenderMonitor-03
+                counter: transmission
+                name: drill-errors
+                increment: 3
+            status_code: [200]
+
+        - name: "BCP-008-02 test_15 — GetTransmissionErrorCounters answers the injected entry"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_sm }}/methods/4m1/"
+            method: PATCH
+            body_format: json
+            body: { arguments: {} }
+            return_content: true
+          register: vm_b8_tx_cnt
+          failed_when: >-
+            vm_b8_tx_cnt.status != 200
+            or vm_b8_tx_cnt.json.value | length != 1
+            or vm_b8_tx_cnt.json.value[0].name != 'drill-errors'
+            or vm_b8_tx_cnt.json.value[0].value | int != 3
+
+        - name: "BCP-008-02 test_15 — invoke the sender reset"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_sm }}/methods/4m2/"
+            method: PATCH
+            body_format: json
+            body: { arguments: {} }
+            status_code: [200]
+
+        - name: "BCP-008-02 test_15 — getter empty after reset"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ vm_b8_sm }}/methods/4m1/"
+            method: PATCH
+            body_format: json
+            body: { arguments: {} }
+            return_content: true
+          register: vm_b8_tx_after
+          failed_when: vm_b8_tx_after.status != 200 or vm_b8_tx_after.json.value | length != 0
+
+        # BCP-007-03-01 test_15 — "MXL read/write starts or stops on
+        # activation". The only observable read/write a reference node
+        # has is its monitors: both MXL legs' monitors must track
+        # IS-05 master_enable, and the receiver PATCH carries no
+        # transport_file (an MXL sender MUST NOT provide one).
+        - name: "BCP-007-03 test_15 — activate both MXL legs"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_conn }}/{{ item.kind }}/{{ item.id }}/staged"
+            method: PATCH
+            body_format: json
+            body: { master_enable: true, activation: { mode: activate_immediate } }
+            status_code: [200]
+          loop:
+            - { kind: "receivers", id: "{{ vm_mxl_rx }}" }
+            - { kind: "senders", id: "{{ vm_mxl_tx }}" }
+          loop_control:
+            label: "{{ item.kind }}"
+
+        - name: "BCP-007-03 test_15 — MXL read/write STARTED (monitors Healthy)"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ item }}/properties/3p1/value"
+            return_content: true
+          register: vm_b8_mxl_on
+          retries: 10
+          delay: 1
+          until: vm_b8_mxl_on.json.value | int == 1
+          loop: ["{{ vm_mxl_rm }}", "{{ vm_mxl_sm }}"]
+
+        - name: "BCP-007-03 test_15 — deactivate both MXL legs"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_conn }}/{{ item.kind }}/{{ item.id }}/staged"
+            method: PATCH
+            body_format: json
+            body: { master_enable: false, activation: { mode: activate_immediate } }
+            status_code: [200]
+          loop:
+            - { kind: "receivers", id: "{{ vm_mxl_rx }}" }
+            - { kind: "senders", id: "{{ vm_mxl_tx }}" }
+          loop_control:
+            label: "{{ item.kind }}"
+
+        - name: "BCP-007-03 test_15 — MXL read/write STOPPED (monitors Inactive)"
+          ansible.builtin.uri:
+            url: "{{ vm_b8_cfg }}/{{ item }}/properties/3p1/value"
+            return_content: true
+          register: vm_b8_mxl_off
+          retries: 10
+          delay: 1
+          until: vm_b8_mxl_off.json.value | int == 0
+          loop: ["{{ vm_mxl_rm }}", "{{ vm_mxl_sm }}"]
+      always:
+        - name: "Close the drill window"
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: stopped
+          loop:
+            - dhs-nmos-verify-b8
+            - dhs-nmos-verify-b8-stop.timer
+          delegate_to: "{{ groups['plant'][0] }}"
+          failed_when: false
+
     # ---- EVS-style summary: one line per manual row this phase
     # touches — checks that ran, conversions that moved rows to the
     # tool, and the gaps deliberately left visible.
@@ -309,7 +659,13 @@
         - { row: "IS-08-01 test_10", check: "output properties authored", state: "PASS" }
         - { row: "IS-04-03 test_02", check: "ver_rcv TXT +1 on IS-05 activation", state: "PASS" }
         - { row: "IS-09-02 test_05", check: "heartbeat_interval applied (INFO log)", state: "PASS" }
-        - { row: "(WS ancestry)", check: "subscription query.* params", state: "PHASE 2 (subscriptions.go:242-250 strips them)" }
+        - { row: "(WS ancestry)", check: "subscription query.ancestry_* params", state: "PRODUCT-FIXED #956 (Go unit tests)" }
+        - { row: "BCP-008 test_03/05/06/07", check: "honest no-stream degradation", state: "TOOL-SCORED (see BCP-008 receipts)" }
+        - { row: "BCP-008 test_04", check: "fault clear held by reporting delay", state: "PASS" }
+        - { row: "BCP-008 test_11", check: "sync change dips PartiallyHealthy", state: "PASS" }
+        - { row: "BCP-008-01 test_15/16", check: "late counters inject/get/reset", state: "PASS" }
+        - { row: "BCP-008-02 test_15", check: "tx error counters inject/get/reset", state: "PASS" }
+        - { row: "BCP-007-03 test_15", check: "MXL monitors track master_enable", state: "PASS" }
       loop_control:
         label: "{{ item.row }}"
 
@@ -319,6 +675,9 @@
       ansible.builtin.debug:
         msg: >-
           manual-row equivalents green: ancestry engine, IS-08
-          properties, ver_* bump on activation, and applied IS-09
-          heartbeat_interval all verified live; 2 rows tool-scored via
-          the fixture; WS ancestry remains the one phase-2 item.
+          properties, ver_* bump on activation, applied IS-09
+          heartbeat_interval, BCP-008 fault drills (delayed recovery,
+          sync-source dip, packet counters + resets) and BCP-007-03
+          MXL activation tracking all verified live; 2 rows
+          tool-scored via the fixture; WS ancestry product-fixed
+          (#956, Go unit tests).

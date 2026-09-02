@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -129,6 +130,26 @@ type subscription struct {
 	// to its own api_ver.
 	downgrade string
 
+	// ancestry* mirror the IS-04 §6.1.5 `query.ancestry_*` control
+	// params on the Query WS, validated at POST time with the same
+	// rules as the REST path (parseAncestry). ancestryType empty means
+	// no ancestry filter.
+	//
+	// Store listeners run under the store's lock, so membership can't
+	// be answered by calling Store.ParentsIndex from the fan-out path.
+	// Instead the subscription keeps its own id→parents index (ancMu),
+	// seeded from the sync snapshot at WS-upgrade time and maintained
+	// incrementally from the change stream. Membership is evaluated
+	// for the CHANGED resource only: a change that silently re-shapes
+	// another resource's ancestry emits no synthetic grain for that
+	// other resource — the same point-in-time semantics a REST poll
+	// has between two GETs.
+	ancestryID   string
+	ancestryType string
+	ancestryGens int
+	ancMu        sync.Mutex
+	ancIndex     map[string][]string
+
 	ws      *httpsession.WebSocket
 	source  string // sub UUID echoed in grain.source_id
 	closeCh chan struct{}
@@ -235,6 +256,43 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 			downgrade = vs[0]
 			delete(params, "query.downgrade")
 		}
+		// Ancestry control params get the same POST-time validation the
+		// Query API GET path applies (parseAncestry) — reject early with
+		// the same status codes rather than silently dropping the filter
+		// in the strip loop below.
+		ancID, ancType, ancGens := "", "", 0
+		if hasAncestryFilter(params) {
+			if _, ok := ancestryTypeForPath(req.ResourcePath); !ok {
+				return stdhttp.StatusNotImplemented, httpsession.ErrorBody{
+					Code: 501, Error: "Not Implemented",
+					Debug: "ancestry queries apply to sources and flows; this registry does not define them for " + req.ResourcePath,
+				}, nil
+			}
+			ancID = first(params["query.ancestry_id"])
+			ancType = first(params["query.ancestry_type"])
+			if ancID == "" || ancType == "" {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: 400, Error: "Bad Request",
+					Debug: "query.ancestry_id and query.ancestry_type must be supplied together",
+				}, nil
+			}
+			if ancType != ancestryChildren && ancType != ancestryParents {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: 400, Error: "Bad Request",
+					Debug: "query.ancestry_type must be \"children\" or \"parents\", got " + ancType,
+				}, nil
+			}
+			if g := first(params["query.ancestry_generations"]); g != "" {
+				n, err := strconv.Atoi(g)
+				if err != nil || n < 1 {
+					return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+						Code: 400, Error: "Bad Request",
+						Debug: "query.ancestry_generations must be a positive integer, got " + g,
+					}, nil
+				}
+				ancGens = n
+			}
+		}
 		// Strip pagination + non-rql control params — they're not
 		// equality filters. Keep `query.rql` (the RQL predicate) so
 		// jsonMatchesFilter can honor it. Same handling as the Query
@@ -261,6 +319,9 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 			MaxUpdateRate: req.MaxUpdateRate,
 			params:        params,
 			downgrade:     downgrade,
+			ancestryID:    ancID,
+			ancestryType:  ancType,
+			ancestryGens:  ancGens,
 			source:        id,
 			closeCh:       make(chan struct{}),
 		}
@@ -459,7 +520,9 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		now := time.Now()
 		var order []string
 		byTopic := map[string][]Change{}
-		for _, c := range m.store.SnapshotChanges(m.apiVer) {
+		snapshot := m.store.SnapshotChanges(m.apiVer)
+		sub.seedAncestry(snapshot)
+		for _, c := range snapshot {
 			if !subscriptionMatches(sub.ResourcePath, c) {
 				continue
 			}
@@ -467,6 +530,9 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 				continue
 			}
 			if !jsonMatchesFilter(c.Post, sub.params) && len(sub.params) > 0 {
+				continue
+			}
+			if !sub.ancestryMember(c.ID) {
 				continue
 			}
 			topic := "/" + c.ResourceType.Plural() + "/"
@@ -543,7 +609,11 @@ func (m *SubscriptionManager) onChange(c Change) {
 		// the wire. After projection, re-encode the surviving
 		// pre/post bodies via the wire codec so the subscriber
 		// only sees fields that exist in their wire minor.
-		projected, ok := projectChange(c, s.params)
+		projected, ok := s.ancestryProject(c)
+		if !ok {
+			continue
+		}
+		projected, ok = projectChange(projected, s.params)
 		if !ok {
 			continue
 		}
@@ -721,6 +791,109 @@ func projectChange(c Change, params map[string][]string) (Change, bool) {
 		} else {
 			out.Kind = ChangeUpdated
 		}
+	case len(out.Pre) > 0:
+		out.Kind = ChangeDeleted
+	case len(out.Post) > 0:
+		out.Kind = ChangeCreated
+	}
+	return out, true
+}
+
+// ancestryTypeForPath maps a subscription resource_path to the IS-04
+// kind ancestry is defined for. Only Sources and Flows carry
+// `parents` — every other path answers (zero, false), which the POST
+// handler turns into the same 501 the REST path uses.
+func ancestryTypeForPath(resourcePath string) (is04.ResourceType, bool) {
+	switch strings.Trim(resourcePath, "/") {
+	case "sources":
+		return is04.ResourceSource, true
+	case "flows":
+		return is04.ResourceFlow, true
+	}
+	return "", false
+}
+
+// parentsFromBody pulls the `parents` array out of a Source/Flow JSON
+// body. A missing or malformed field reads as no parents.
+func parentsFromBody(data json.RawMessage) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	var v struct {
+		Parents []string `json:"parents"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return nil
+	}
+	return v.Parents
+}
+
+// seedAncestry (re)builds the subscription's local parents index from
+// the sync snapshot rows of the subscribed kind. Runs at WS-upgrade
+// time, before the snapshot is filtered, so the sync grains and the
+// index agree on one point in time.
+func (s *subscription) seedAncestry(snapshot []Change) {
+	if s.ancestryType == "" {
+		return
+	}
+	idx := make(map[string][]string, len(snapshot))
+	for _, c := range snapshot {
+		if !subscriptionMatches(s.ResourcePath, c) || len(c.Post) == 0 {
+			continue
+		}
+		idx[c.ID] = parentsFromBody(c.Post)
+	}
+	s.ancMu.Lock()
+	s.ancIndex = idx
+	s.ancMu.Unlock()
+}
+
+// ancestryMember answers whether id is currently selected by the
+// subscription's ancestry filter. Callers without a filter always get
+// true.
+func (s *subscription) ancestryMember(id string) bool {
+	if s.ancestryType == "" {
+		return true
+	}
+	s.ancMu.Lock()
+	defer s.ancMu.Unlock()
+	return ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[id]
+}
+
+// ancestryProject applies the ancestry filter to one live change:
+// updates the local index with the change, then clips the grain to the
+// changed resource's membership transition — entering the set drops
+// pre, leaving it drops post, outside on both sides emits nothing.
+// Mirrors projectChange's filter-set semantics.
+func (s *subscription) ancestryProject(c Change) (Change, bool) {
+	if s.ancestryType == "" {
+		return c, true
+	}
+	s.ancMu.Lock()
+	if s.ancIndex == nil {
+		s.ancIndex = map[string][]string{}
+	}
+	before := ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[c.ID]
+	if len(c.Post) > 0 {
+		s.ancIndex[c.ID] = parentsFromBody(c.Post)
+	} else {
+		delete(s.ancIndex, c.ID)
+	}
+	after := ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[c.ID]
+	s.ancMu.Unlock()
+	if !before && !after {
+		return c, false
+	}
+	out := c
+	if !before {
+		out.Pre = nil
+	}
+	if !after {
+		out.Post = nil
+	}
+	switch {
+	case len(out.Pre) > 0 && len(out.Post) > 0:
+		out.Kind = ChangeUpdated
 	case len(out.Pre) > 0:
 		out.Kind = ChangeDeleted
 	case len(out.Post) > 0:
