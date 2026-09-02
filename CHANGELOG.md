@@ -7,6 +7,15 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.20.0](https://github.com/by-openclaw/go-acp/compare/v0.19.0...v0.20.0) (2026-09-02)
+
+
+### Features
+
+* **amwa+ansible:** controller scope validated - facade window, 4 suites green ([#954](https://github.com/by-openclaw/go-acp/issues/954)) ([#955](https://github.com/by-openclaw/go-acp/issues/955)) ([a490910](https://github.com/by-openclaw/go-acp/commit/a490910bd2f29af85c90556607357a3f3a85fb19))
+* **amwa+ansible:** IS-09-01 System API server suite - the catalog is complete ([#958](https://github.com/by-openclaw/go-acp/issues/958)) ([#960](https://github.com/by-openclaw/go-acp/issues/960)) ([d31ffb8](https://github.com/by-openclaw/go-acp/commit/d31ffb8cf66fa9042828f6a3b1e9e705fddb7860))
+* **amwa+ansible:** phase 2 - BCP-008 health engine, fault drills, WS ancestry ([#956](https://github.com/by-openclaw/go-acp/issues/956)) ([#959](https://github.com/by-openclaw/go-acp/issues/959)) ([7266e24](https://github.com/by-openclaw/go-acp/commit/7266e24320260e925ceb39262970e48259571a2e))
+
 ## [0.19.0](https://github.com/by-openclaw/go-acp/compare/v0.18.0...v0.19.0) (2026-09-02)
 
 
