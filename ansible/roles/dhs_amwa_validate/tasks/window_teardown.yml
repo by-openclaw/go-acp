@@ -15,6 +15,8 @@
     - dhs-nmos-validate-cutstop.timer
     - dhs-nmos-validate-cutkick.timer
     - dhs-nmos-validate-restore.timer
+    - dhs-nmos-validate-sys
+    - dhs-nmos-validate-sysstop.timer
   delegate_to: "{{ groups['plant'][0] }}"
   failed_when: false
 
