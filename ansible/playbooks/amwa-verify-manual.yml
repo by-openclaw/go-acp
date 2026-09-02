@@ -675,6 +675,9 @@
       ansible.builtin.debug:
         msg: >-
           manual-row equivalents green: ancestry engine, IS-08
-          properties, ver_* bump on activation, and applied IS-09
-          heartbeat_interval all verified live; 2 rows tool-scored via
-          the fixture; WS ancestry remains the one phase-2 item.
+          properties, ver_* bump on activation, applied IS-09
+          heartbeat_interval, BCP-008 fault drills (delayed recovery,
+          sync-source dip, packet counters + resets) and BCP-007-03
+          MXL activation tracking all verified live; 2 rows
+          tool-scored via the fixture; WS ancestry product-fixed
+          (#956, Go unit tests).
