@@ -246,10 +246,10 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
   - { id: BCP-008-01-01, scope: node, target: node,
       rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
-      baseline_pass: 94, baseline_cnt: 0 }
+      baseline_pass: 98, baseline_cnt: 0 }
   - { id: BCP-008-02-01, scope: node, target: node,
       rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
-      baseline_pass: 94, baseline_cnt: 0 }
+      baseline_pass: 98, baseline_cnt: 0 }
   # ---- TLS window (issue #948): BCP-003-01 against an HTTPS-only CuT ----
   # tls: true selects the TLS tool instance (ENABLE_HTTPS=True — the
   # tool's GLOBAL https/wss switch; there is no per-row scheme field
@@ -281,7 +281,7 @@ dhs_amwa_validate_suites:
   # RTP receiver with a templatable media_types[0] (#950 phase 1) —
   # expect 58 (confirm from the fleet before raising).
   - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
-      rows: [{ver: v1.3}], baseline_pass: 58, baseline_cnt: 0 }
+      rows: [{ver: v1.3}], baseline_pass: 59, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
   # own two-row shape with a null first endpoint.
