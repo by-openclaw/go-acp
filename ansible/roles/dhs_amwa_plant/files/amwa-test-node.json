@@ -119,6 +119,7 @@
       "description": "mux source feeding the MPEG-TS flow",
       "tags": {},
       "caps": {},
+      "grain_rate": { "numerator": 50, "denominator": 1 },
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "parents": [],
       "clock_name": "clk0",
