@@ -46,6 +46,21 @@ const (
 // reference node: nothing is ever received or transmitted.
 const monNoStreamMessage = "no stream on the synthetic media plane (reference node)"
 
+// monGraceMargin pads the post-activation hold past statusReportingDelay.
+// The delay is a MINIMUM ("delay the reporting ... for the duration,
+// and then transition"), and an observer clocks the window from its
+// RECEIPT of the Healthy notification — later than the activation
+// instant the timer runs from. Firing at exactly the delay makes the
+// degradation notification race the observer's window cutoff: the
+// AMWA suites' check_overall_status aggregates mid-window
+// notifications with no tolerance, so connectionStatus=Unhealthy
+// could land inside the window while the overallStatus that follows
+// lands outside it — scored as an overall-status mapping error
+// (BCP-008 test_08, seen live on the first fleet run). Half a second
+// clears the cutoff deterministically and stays well inside the
+// suites' post-window observation sleep (delay + 2 s).
+const monGraceMargin = 500 * time.Millisecond
+
 // monitorFault is one injected domain override.
 type monitorFault struct {
 	status  int
@@ -317,9 +332,9 @@ func (s *IS14ConfigurationServer) SetMonitorActive(resourceID string, active boo
 		for _, d := range inactiveableDomainsFor(obj.classID) {
 			changes = append(changes, s.setDomainLocked(obj, d, monStatusHealthy, "")...)
 		}
-		delay := monitorDelayLocked(obj)
-		h.graceEnd = time.Now().Add(delay)
-		h.graceTimer = time.AfterFunc(delay, func() { s.monitorGraceExpired(key) })
+		hold := monitorDelayLocked(obj) + monGraceMargin
+		h.graceEnd = time.Now().Add(hold)
+		h.graceTimer = time.AfterFunc(hold, func() { s.monitorGraceExpired(key) })
 	} else {
 		h.active = false
 		h.faults = map[string]monitorFault{}
