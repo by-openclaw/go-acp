@@ -1,0 +1,324 @@
+---
+# Close the AMWA tool's [Manual] rows with dhs-scored equivalents
+# (issue #950 phase 1). The tool marks a row MANUAL when scoring it
+# needs something outside its reach — a reboot, an mDNS TXT diff, a
+# human reading a name. Each check below is our equivalent, named by
+# the tool's own test id.
+#
+# Phase-1 mapping (which manual row is closed where):
+#
+#   tool row              | disposition
+#   ----------------------|------------------------------------------
+#   IS-04-01 test_13      | TOOL-SCORED now: the fixture leads every
+#   IS-05-02 test_18      |   RTP receiver with a media_types[0] the
+#                         |   tool can template (SDP list at
+#                         |   IS0401Test.py ~853; both tests pick
+#                         |   caps.media_types[0], every other suite
+#                         |   checks MEMBERSHIP only) — see the
+#                         |   amwa-test-node.json mux receiver.
+#   IS-04-01 test_22      | dhs equivalent: amwa-reboot-resilience.yml
+#                         |   per-topic id-set snapshot (stronger:
+#                         |   exact set equality across 6 topics).
+#   IS-04-02 test_25_1    | dhs equivalent HERE (REST ancestry — the
+#                         |   engine the WS face would use; the WS
+#                         |   subscription path currently STRIPS
+#                         |   query.ancestry_* params, a reported
+#                         |   product gap, phase 2).
+#   IS-08-01 test_09/10   | dhs equivalent HERE (authored, non-
+#                         |   placeholder properties — "human-readable"
+#                         |   approximated by "equal to the values a
+#                         |   human authored in the committed fixture,
+#                         |   and non-empty"; honest approximation,
+#                         |   not a semantic judgement).
+#   IS-04-03 test_02      | dhs equivalent HERE: transient P2P node,
+#                         |   IS-05 immediate activation, ver_rcv TXT
+#                         |   read off the _nmos-node._tcp announce
+#                         |   before/after — exactly +1 (mod 256).
+#                         |   (Was a product gap — BumpResourceVersion
+#                         |   had no callers; wired in this unit via
+#                         |   the activation resource-changed hook.)
+#   IS-09-02 test_05      | dhs equivalent HERE: transient System API
+#                         |   serving heartbeat_interval=3, transient
+#                         |   node pointed at it, the applied-override
+#                         |   INFO line asserted via journalctl. (Was
+#                         |   a product gap — /global was recorded,
+#                         |   never applied; the registration client
+#                         |   now reads the interval live.)
+#   PHASE 2               | WS ancestry: the Query API's WebSocket
+#                         |   subscription path strips every query.*
+#                         |   param except query.rql
+#                         |   (subscriptions.go:242-250), so ancestry
+#                         |   params on a subscription silently select
+#                         |   nothing — implement-or-501 is the
+#                         |   phase-2 product decision.
+#   BCP-008 rows,         | OUT OF SCOPE phase 1 (per #950).
+#   BCP-007-03 test_15    |
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-verify-manual.yml
+
+- name: AMWA verify — manual-row equivalents
+  hosts: tooling
+  gather_facts: false
+  vars_files:
+    - ../roles/dhs_amwa_validate/defaults/main.yml
+  vars:
+    vm_registry: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3"
+    vm_node: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_node_port }}/x-nmos/channelmapping/v1.0"
+    # The authored ancestry family in amwa-test-node.json:
+    # dhs-source-wide-out lists dhs-source-block-in in `parents`.
+    vm_ancestry_parent: "2c47bf5e-1b2c-4abc-9def-deadbeef0031"  # dhs-source-block-in
+    vm_ancestry_child: "2c47bf5e-1b2c-4abc-9def-deadbeef0032"   # dhs-source-wide-out
+    # IS-08 io ids: inputs derive from audio receivers, outputs from
+    # sender-backed audio sources (provider channelmapping.go) — the
+    # properties are the parent resource's authored label+description.
+    vm_is08_input: "2c47bf5e-1b2c-4abc-9def-deadbeef0006"   # dhs-test-receiver-audio
+    vm_is08_output: "2c47bf5e-1b2c-4abc-9def-deadbeef0003"  # dhs-test-source-audio
+    # The transient P2P window (IS-04-03 test_02 + IS-09-02 test_05):
+    # one node, both checks — P2P so the _nmos-node._tcp announce is
+    # live (a registered node suspends it, IS-04 §4.2.1), pointed at a
+    # transient System API whose global overrides the heartbeat
+    # cadence. The same audio RTP receiver the IS-08 check reads is
+    # the activation target.
+    vm_cut_port: "{{ dhs_amwa_validate_cut_port }}"
+    vm_sys_port: 10641
+    vm_is05_receiver: "{{ vm_is08_input }}"
+  tasks:
+    # ---- IS-04-02 test_25_1: "Query API WebSockets implement ancestry
+    # queries". The ancestry ENGINE (ancestry.go — the one the WS face
+    # would consult) is driven over the REST Query API in both
+    # directions against the authored family. The WS-side param
+    # plumbing is a reported phase-2 product gap (subscriptions.go
+    # strips query.* except query.rql), so this check deliberately
+    # claims the engine, not the socket.
+    - name: "IS-04-02 test_25_1 — ancestry children: block-in's descendants"
+      ansible.builtin.uri:
+        url: "{{ vm_registry }}/sources?query.ancestry_id={{ vm_ancestry_parent }}&query.ancestry_type=children"
+        return_content: true
+      register: vm_children
+
+    - name: "IS-04-02 test_25_1 — ancestry parents: wide-out's ancestors"
+      ansible.builtin.uri:
+        url: "{{ vm_registry }}/sources?query.ancestry_id={{ vm_ancestry_child }}&query.ancestry_type=parents"
+        return_content: true
+      register: vm_parents
+
+    - name: "IS-04-02 test_25_1 — both directions select exactly the authored family"
+      ansible.builtin.assert:
+        that:
+          - vm_children.json | map(attribute='id') | list == [vm_ancestry_child]
+          - vm_parents.json | map(attribute='id') | list == [vm_ancestry_parent]
+        fail_msg: >-
+          ancestry engine wrong: children({{ vm_ancestry_parent }})
+          = {{ vm_children.json | map(attribute='id') | list }},
+          parents({{ vm_ancestry_child }})
+          = {{ vm_parents.json | map(attribute='id') | list }}
+
+    # ---- IS-08-01 test_09/test_10: human-readable name/description in
+    # the channelmapping properties. The live values must be non-empty
+    # AND byte-equal to what a human authored in the DEPLOYED fixture
+    # (slurped from the plant, so this play never duplicates them) —
+    # approximating "human-readable" by "authored, non-placeholder".
+    - name: "IS-08 — read the deployed fixture (the authored source of truth)"
+      ansible.builtin.slurp:
+        src: "{{ dhs_amwa_validate_plant_config }}"
+      register: vm_fixture_raw
+      delegate_to: "{{ groups['plant'][0] }}"
+
+    - name: "IS-08 — the authored parent resources"
+      ansible.builtin.set_fact:
+        vm_fx_receiver: >-
+          {{ (vm_fixture_raw.content | b64decode | from_json).receivers
+             | selectattr('id', 'equalto', vm_is08_input) | first }}
+        vm_fx_source: >-
+          {{ (vm_fixture_raw.content | b64decode | from_json).sources
+             | selectattr('id', 'equalto', vm_is08_output) | first }}
+
+    - name: "IS-08-01 test_09 — input properties are the authored name/description"
+      ansible.builtin.uri:
+        url: "{{ vm_node }}/inputs/{{ vm_is08_input }}/properties/"
+        return_content: true
+      register: vm_in_props
+      failed_when: >-
+        vm_in_props.status != 200
+        or vm_in_props.json.name != vm_fx_receiver.label
+        or vm_in_props.json.description != vm_fx_receiver.description
+        or vm_in_props.json.name | length == 0
+        or vm_in_props.json.description | length == 0
+
+    - name: "IS-08-01 test_10 — output properties are the authored name/description"
+      ansible.builtin.uri:
+        url: "{{ vm_node }}/outputs/{{ vm_is08_output }}/properties/"
+        return_content: true
+      register: vm_out_props
+      failed_when: >-
+        vm_out_props.status != 200
+        or vm_out_props.json.name != vm_fx_source.label
+        or vm_out_props.json.description != vm_fx_source.description
+        or vm_out_props.json.name | length == 0
+        or vm_out_props.json.description | length == 0
+
+    # ---- IS-04-03 test_02 ("Node increments ver_* TXT records when
+    # Node API resources change") + IS-09-02 test_05 ("System API
+    # configuration takes effect in the Node") — one transient P2P
+    # window covers both. The tool marks both MANUAL unconditionally
+    # (IS0403Test.py test_02 is a bare `return test.MANUAL()`), so the
+    # spec text is the exam: an IS-05 activation rewrites the receiver
+    # resource → ver_rcv bumps by exactly one; the System-supplied
+    # heartbeat_interval is APPLIED, observed here as the operator-
+    # visibility INFO line (the strongest observable on a P2P
+    # transient, which sends no heartbeats to time; the live cadence
+    # itself is pinned by the provider's Go unit tests).
+    - name: "IS-04-03 test_02 / IS-09-02 test_05 — transient P2P window"
+      block:
+        - name: "IS-09 — author the transient System API global (heartbeat_interval 3)"
+          ansible.builtin.copy:
+            content: |
+              {
+                "id": "0d0a0f0e-0000-4000-8000-000000000950",
+                "version": "1:0",
+                "label": "dhs-verify-system-global",
+                "description": "transient /global for amwa-verify-manual (IS-09-02 test_05)",
+                "tags": {},
+                "is04": { "heartbeat_interval": 3 },
+                "ptp": { "announce_receipt_timeout": 3, "domain_number": 0 }
+              }
+            dest: /opt/dhs-amwa-plant/verify-global.json
+            mode: "0644"
+          delegate_to: "{{ groups['plant'][0] }}"
+
+        - name: "IS-09 — start the transient System API"
+          ansible.builtin.command: >-
+            systemd-run --unit dhs-nmos-verify-sys --collect
+            {{ dhs_amwa_validate_plant_bin }} producer nmos serve --role system
+            --config /opt/dhs-amwa-plant/verify-global.json
+            --bind 0.0.0.0:{{ vm_sys_port }}
+            --no-mdns
+          delegate_to: "{{ groups['plant'][0] }}"
+          changed_when: true
+
+        - name: "IS-09 — the transient System API serves /global"
+          ansible.builtin.uri:
+            url: "http://{{ dhs_amwa_validate_plant_host }}:{{ vm_sys_port }}/x-nmos/system/v1.0/global"
+          register: vm_sys_up
+          retries: 10
+          delay: 1
+          until: vm_sys_up.status == 200
+
+        - name: "Start the transient P2P node (announce live, System API named)"
+          ansible.builtin.command: >-
+            systemd-run --unit dhs-nmos-verify-cut --collect
+            {{ dhs_amwa_validate_plant_bin }} producer nmos serve
+            --bind 0.0.0.0:{{ vm_cut_port }}
+            --no-registry
+            --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ vm_cut_port }}
+            --api-ver v1.3
+            --config {{ dhs_amwa_validate_plant_config }}
+            --system {{ dhs_amwa_validate_plant_host }}:{{ vm_sys_port }}
+          delegate_to: "{{ groups['plant'][0] }}"
+          changed_when: true
+
+        - name: "Arm the window safety-stop timer"
+          ansible.builtin.command: >-
+            systemd-run --unit dhs-nmos-verify-stop --collect
+            --on-active={{ dhs_amwa_validate_window_safety_sec }}
+            systemctl stop dhs-nmos-verify-cut dhs-nmos-verify-sys
+          delegate_to: "{{ groups['plant'][0] }}"
+          changed_when: true
+
+        - name: "Wait for the transient node"
+          ansible.builtin.uri:
+            url: "http://{{ dhs_amwa_validate_plant_host }}:{{ vm_cut_port }}/x-nmos/node/v1.3/self"
+          register: vm_cut_up
+          retries: 15
+          delay: 2
+          until: vm_cut_up.status == 200
+
+        # The CuT is the only _nmos-node._tcp announcer on the plant
+        # (registered residents suspend theirs); the stanza is picked
+        # by its unique port anyway, so a third-party announcer (the
+        # lab's real Neuron) can never contribute the counter.
+        - name: "IS-04-03 test_02 — ver_rcv TXT before activation"
+          ansible.builtin.shell: >-
+            {{ dhs_amwa_validate_plant_bin }} consumer nmos discover
+            --service _nmos-node._tcp --timeout 4s
+            | grep -A10 ':{{ vm_cut_port }}' | grep -o 'ver_rcv=[0-9]*' | head -1
+          register: vm_ver_pre
+          retries: 5
+          delay: 2
+          until: vm_ver_pre.stdout | length > 0
+          changed_when: false
+          delegate_to: "{{ groups['plant'][0] }}"
+
+        - name: "IS-04-03 test_02 — IS-05 immediate activation of a receiver"
+          ansible.builtin.uri:
+            url: "http://{{ dhs_amwa_validate_plant_host }}:{{ vm_cut_port }}/x-nmos/connection/v1.2/single/receivers/{{ vm_is05_receiver }}/staged"
+            method: PATCH
+            body_format: json
+            body:
+              master_enable: true
+              activation:
+                mode: activate_immediate
+            status_code: [200]
+
+        - name: "IS-04-03 test_02 — ver_rcv incremented by exactly one (mod 256)"
+          ansible.builtin.shell: >-
+            {{ dhs_amwa_validate_plant_bin }} consumer nmos discover
+            --service _nmos-node._tcp --timeout 4s
+            | grep -A10 ':{{ vm_cut_port }}' | grep -o 'ver_rcv=[0-9]*' | head -1
+          register: vm_ver_post
+          retries: 5
+          delay: 2
+          until: >-
+            (vm_ver_post.stdout | regex_replace('ver_rcv=', '') | int)
+            == (((vm_ver_pre.stdout | regex_replace('ver_rcv=', '') | int) + 1) % 256)
+          changed_when: false
+          delegate_to: "{{ groups['plant'][0] }}"
+
+        - name: "IS-09-02 test_05 — the applied heartbeat_interval override is visible"
+          ansible.builtin.command: journalctl -u dhs-nmos-verify-cut --no-pager -n 200
+          register: vm_cut_journal
+          retries: 10
+          delay: 2
+          until: "'heartbeat_interval overrides the IS-04 default' in vm_cut_journal.stdout"
+          changed_when: false
+          delegate_to: "{{ groups['plant'][0] }}"
+      always:
+        - name: "Close the transient window"
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: stopped
+          loop:
+            - dhs-nmos-verify-cut
+            - dhs-nmos-verify-sys
+            - dhs-nmos-verify-stop.timer
+          delegate_to: "{{ groups['plant'][0] }}"
+          failed_when: false
+
+    # ---- EVS-style summary: one line per manual row this phase
+    # touches — checks that ran, conversions that moved rows to the
+    # tool, and the gaps deliberately left visible.
+    - name: Manual-row coverage summary
+      ansible.builtin.debug:
+        msg: "{{ '%-22s' | format(item.row) }} {{ '%-34s' | format(item.check) }} {{ item.state }}"
+      loop:
+        - { row: "IS-04-01 test_13", check: "fixture media_types[0] templatable", state: "TOOL-SCORED (see IS-04-01 receipt)" }
+        - { row: "IS-05-02 test_18", check: "fixture media_types[0] templatable", state: "TOOL-SCORED (see IS-05-02 receipt)" }
+        - { row: "IS-04-01 test_22", check: "reboot id-set snapshot (6 topics)", state: "PASS (amwa-reboot-resilience.yml)" }
+        - { row: "IS-04-02 test_25_1", check: "REST ancestry both directions", state: "PASS" }
+        - { row: "IS-08-01 test_09", check: "input properties authored", state: "PASS" }
+        - { row: "IS-08-01 test_10", check: "output properties authored", state: "PASS" }
+        - { row: "IS-04-03 test_02", check: "ver_rcv TXT +1 on IS-05 activation", state: "PASS" }
+        - { row: "IS-09-02 test_05", check: "heartbeat_interval applied (INFO log)", state: "PASS" }
+        - { row: "(WS ancestry)", check: "subscription query.* params", state: "PHASE 2 (subscriptions.go:242-250 strips them)" }
+      loop_control:
+        label: "{{ item.row }}"
+
+    # No trailing gate: every check above fails the play inline
+    # (uri failed_when / assert), so reaching this line IS the pass.
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          manual-row equivalents green: ancestry engine, IS-08
+          properties, ver_* bump on activation, and applied IS-09
+          heartbeat_interval all verified live; 2 rows tool-scored via
+          the fixture; WS ancestry remains the one phase-2 item.

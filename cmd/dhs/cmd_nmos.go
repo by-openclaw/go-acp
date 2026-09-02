@@ -238,6 +238,25 @@ func printInstances(service string, insts []codec.Instance) {
 		if v, ok := ins.TXT[codec.TXTKeyAPIAuth]; ok {
 			fmt.Printf("    auth = %s\n", v)
 		}
+		// Every remaining TXT key, sorted — for _nmos-node._tcp that is
+		// the six IS-04 §3.1.1 ver_* counters, which ARE the peer-to-peer
+		// change signal (a P2P peer re-reads a Node only when one of
+		// them moves), so a discovery tool that hides them hides the
+		// mechanism.
+		shown := map[string]bool{
+			codec.TXTKeyPriority: true, codec.TXTKeyAPIProto: true,
+			codec.TXTKeyAPIVer: true, codec.TXTKeyAPIAuth: true,
+		}
+		rest := make([]string, 0, len(ins.TXT))
+		for k := range ins.TXT {
+			if !shown[k] {
+				rest = append(rest, k)
+			}
+		}
+		sort.Strings(rest)
+		for _, k := range rest {
+			fmt.Printf("    txt  = %s=%s\n", k, ins.TXT[k])
+		}
 		for _, ip := range ins.IPv4 {
 			fmt.Printf("    ipv4 = %s\n", ip)
 		}

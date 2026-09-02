@@ -176,11 +176,14 @@ dhs_amwa_validate_suites:
   # ---- node scope, plant node :18080 ----
   - { id: IS-05-01, scope: node, target: node,
       rows: [{ver: v1.2}], baseline_pass: 60, baseline_cnt: 0 }
-  # baseline 55: the tool's MP2T-SDP round (test_18) flips Pass<->Manual
-  # nondeterministically depending on which receiver it draws — 55 is
-  # the honest floor, 56 the good day.
+  # baseline 55: historically the tool's mux-SDP round (test_18)
+  # returned MANUAL(warn_sdp_untested) because the MP2T receiver's
+  # media_types[0] had no tool SDP template; the fixture now leads
+  # that receiver with video/SMPTE2022-6 (templatable; MP2T stays a
+  # member for BCP-006-04), so test_18 is tool-scored — confirmed 56
+  # on the 2026-09-02 fleet rescore (#950 phase 1).
   - { id: IS-05-02, scope: node, target: node,
-      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 56, baseline_cnt: 0 }
   - { id: IS-07-01, scope: node, target: node,
       rows: [{ver: v1.0}], baseline_pass: 19, baseline_cnt: 0 }
   # fresh: earlier suites in a sequential run leave staged IS-05 state
@@ -246,8 +249,11 @@ dhs_amwa_validate_suites:
   # different Node ID"), so the mDNS suites score on the private
   # bridge. flaky_retry stays as belt-and-braces; retries are
   # reported.
+  # test_13's SDP round is tool-scored since the fixture leads every
+  # RTP receiver with a templatable media_types[0] (#950 phase 1) —
+  # expect 58 (confirm from the fleet before raising).
   - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
-      rows: [{ver: v1.3}], baseline_pass: 57, baseline_cnt: 0 }
+      rows: [{ver: v1.3}], baseline_pass: 58, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
   # own two-row shape with a null first endpoint.

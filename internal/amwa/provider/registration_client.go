@@ -79,6 +79,15 @@ type RegistrationClient struct {
 	// bare requests).
 	tokenSource func(context.Context) (string, error)
 
+	// heartbeatIntervalFn, when set, supplies the live heartbeat
+	// cadence — the IS-09 System API's is04.heartbeat_interval
+	// (seconds on the wire), read fresh each loop tick so a /global
+	// that arrives after the loop started still takes effect
+	// (IS-09-02 test_05: "System API configuration takes effect in
+	// the Node"). Nil, or a non-positive return, keeps the IS-04 §6.1
+	// default of HeartbeatInterval (5 s).
+	heartbeatIntervalFn atomic.Pointer[func() time.Duration]
+
 	mu         sync.Mutex
 	cancelLoop context.CancelFunc
 	registered atomic.Bool
@@ -292,6 +301,24 @@ func (c *RegistrationClient) shouldSwitchToBetter() bool {
 	return cand.FullName != c.currentRegistry
 }
 
+// SetHeartbeatIntervalFn installs the live heartbeat-cadence source
+// (see the field doc). Safe to call before or during Run.
+func (c *RegistrationClient) SetHeartbeatIntervalFn(fn func() time.Duration) {
+	c.heartbeatIntervalFn.Store(&fn)
+}
+
+// heartbeatInterval returns the cadence in force right now: the
+// System-API-supplied value when one is recorded and positive, else
+// the IS-04 §6.1 default (HeartbeatInterval, 5 s).
+func (c *RegistrationClient) heartbeatInterval() time.Duration {
+	if p := c.heartbeatIntervalFn.Load(); p != nil {
+		if d := (*p)(); d > 0 {
+			return d
+		}
+	}
+	return HeartbeatInterval
+}
+
 // Run drives the registration + heartbeat loop until ctx is
 // cancelled. Performs initial registration, starts the heartbeat
 // ticker, handles 404 → re-register, then deregisters on cancel.
@@ -401,12 +428,14 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 					continue
 				}
 			}
-			// Throttle actual /health POSTs near HeartbeatInterval — the
+			// Throttle actual /health POSTs near the live cadence — the
 			// 1 s tick above is for fast failover detection only. AMWA
-			// test_05 enforces 5 s ± 0.5 s between heartbeats, so we
-			// fire when the elapsed budget is within 0.5 s of due to
-			// keep the tick-quantisation jitter inside the window.
-			if time.Since(lastHeartbeat) < HeartbeatInterval-500*time.Millisecond {
+			// test_05 enforces the interval ± 0.5 s between heartbeats,
+			// so we fire when the elapsed budget is within 0.5 s of due
+			// to keep the tick-quantisation jitter inside the window.
+			// The cadence is the IS-09 System API's heartbeat_interval
+			// when one has been read, else the IS-04 §6.1 default.
+			if time.Since(lastHeartbeat) < c.heartbeatInterval()-500*time.Millisecond {
 				continue
 			}
 			lastHeartbeat = time.Now()
