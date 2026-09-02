@@ -113,6 +113,21 @@ func (s *IS09Server) Serve(ctx context.Context) error {
 	indexPath := "/x-nmos/system/" + s.cfg.APIVer + "/"
 	globalPath := "/x-nmos/system/" + s.cfg.APIVer + "/global"
 
+	// The base-path indexes above the versioned tree are part of the
+	// RAML surface (the AMWA suite's auto_system_1/2 GET /x-nmos/ and
+	// /x-nmos/system/ — 404s until the IS-09-01 window first scored
+	// this server, issue #958). Same shape the Node server serves.
+	for _, p := range []string{"/x-nmos", "/x-nmos/"} {
+		srv.Handle(stdhttp.MethodGet, p, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			return 0, []string{"system/"}, nil
+		})
+	}
+	for _, p := range []string{"/x-nmos/system", "/x-nmos/system/"} {
+		srv.Handle(stdhttp.MethodGet, p, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+			return 0, []string{s.cfg.APIVer + "/"}, nil
+		})
+	}
+
 	srv.Handle(stdhttp.MethodGet, indexPath, func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
 		atomic.AddUint64(&s.indexHits, 1)
 		return 0, is09.IndexBody(), nil
