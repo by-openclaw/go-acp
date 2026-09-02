@@ -157,12 +157,40 @@ dhs_amwa_validate_tls_plant_dir: /opt/dhs-amwa-plant/tls
 # against exactly one tool instance (resident / armed / TLS).
 dhs_amwa_validate_tls_mode: false
 
+# Controller scope (issue #954): the CuT is OUR testing facade
+# (`dhs consumer nmos facade`) answering the tool's testquestion
+# POSTs by driving the consumer Controller against the tool's own
+# mock registry. The RESIDENT tool instance scores these suites: the
+# controller path does no zeroconf at all (ControllerTest.py — the
+# mock registries are named by URL, never announced, and IS-04-04
+# test_01, the one DNS-SD round, self-DISABLEs unless
+# DNS_SD_MODE=unicast), so the LAN-pollution concern that sends
+# IS-04-01 to the isolated instance does not apply; neither auth nor
+# tls is in play either. The facade runs as a CONTAINER on the
+# tooling host (window_facade.yml, host networking) — tooling-host
+# transients follow the window_isolated container pattern because
+# this LXC's systemd never holds its dbus name (tooling.yml's
+# cgroupfs note); systemd-run windows stay a plant-host thing.
+dhs_amwa_validate_facade_container: dhs-validate-facade
+# 5320 sits in the gap between the resident instance's real footprint
+# (5000..5110 — per-suite mock APIs bind PORT_BASE+100+n) and the
+# armed one (5500..5610). The facade verb's own default :5001 would
+# collide with the isolated tool's published port.
+dhs_amwa_validate_facade_port: 5320
+# The tool's PRIMARY mock registry: mocks/Registry.py binds instance
+# i at PORT_BASE+100+(i+1) and ControllerTest picks registries[1] —
+# resident PORT_BASE 5000 + 102. The facade is pointed straight at
+# it: in multicast mode nothing announces it and the tool's own
+# pre-test question hands a human this URL — the URL IS the
+# discovery contract, so --registry is the honest automated twin.
+dhs_amwa_validate_mock_registry_port: 5102
+
 # The catalog. Fields:
 #   id            AMWA suite id, verbatim
 #   scope         node | registry | controller | mirror
 #   target        node | registry | cut  (which host:port the rows use)
-#   window        absent | isolated | p2p | registry  (CuT window
-#                 around the run — window_<name>.yml)
+#   window        absent | isolated | p2p | registry | tls | facade
+#                 (CuT window around the run — window_<name>.yml)
 #   auth          true = IS-10 window (issue #942): the window's CuT
 #                 is armed with --auth-url and the ARMED tool instance
 #                 scores it; plant resident units are never armed
@@ -325,22 +353,39 @@ dhs_amwa_validate_suites:
   - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 88, baseline_cnt: 2 }
 
-  # ---- controller scope: needs the controller facade (issue backlog,
-  # user-owned item #7) — listed so the report says "not automatable
-  # yet" instead of silently omitting them. ----
-  - { id: IS-04-04, scope: controller, target: node, enabled: false,
-      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
-  - { id: IS-05-03, scope: controller, target: node, enabled: false,
-      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
-  # Found via the "a suite we cannot name IS the signal" audit (#952):
-  # two more testing-facade-driven controller exams the tool registers
-  # (its TEST_DEFINITIONS: "BCP-006-01 Controller", "BCP-007-03
-  # Controller" — testing-facade/testquestion spec rows like the two
-  # above). Named here so the catalog covers every suite the tool
-  # ships; they enable together with IS-04-04/IS-05-03 when the
-  # controller-facade decision lands. Their sibling -01 node suites
-  # are in the gate at baseline.
-  - { id: BCP-006-01-02, scope: controller, target: node, enabled: false,
-      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
-  - { id: BCP-007-03-02, scope: controller, target: node, enabled: false,
-      note: "controller facade not built yet", rows: [], baseline_pass: 0, baseline_cnt: 0 }
+  # ---- controller scope (issue #954): the four testing-facade exams,
+  # driven by our shipped facade (window_facade.yml). Row shapes are
+  # the tool's own TEST_DEFINITIONS, verified from NMOSTesting.py:
+  # row 1 is the testing-facade/testquestion slot — the ONLY row that
+  # names the CuT (our facade on the tooling host; host:port literals
+  # per this file's row style, matching dhs_amwa_validate_facade_port);
+  # the is-04/query and is-05/connection rows carry
+  # disable_fields host+port — the TOOL fills its own mocks — spelled
+  # as the explicit-null row shape IS-09-02 already uses. Row versions
+  # are the tool's spec defaults (testquestion v1.0, query v1.3,
+  # connection v1.1). IS-04-04 has NO connection row (2-row suite).
+  # baseline 0/0 placeholders — the fleet fills them. Expected first
+  # run: IS-04-04 test_01 reports DISABLED (multicast mode);
+  # BCP-006-01-02 test_03/test_04 FAIL — a named facade coverage gap
+  # (TR-08 compatibility with the counterpart identified only in
+  # prose; the facade answers the question's own "unable to
+  # identify" branch) — keep-or-disable is the post-fleet decision.
+  - { id: IS-04-04, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-05-03, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: BCP-006-01-02, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 5, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 4, baseline_cnt: 0 }

@@ -154,6 +154,78 @@ func TestFetchListSinglePageRegistry(t *testing.T) {
 	}
 }
 
+// TestFetchListToolMockRegistry models the AMWA testing tool's OWN
+// mock registry (nmos-testing mocks/Registry.py): collections sorted
+// version-ASCENDING, an unanchored GET returns the OLDEST window, and
+// BOTH rel="prev" and rel="next" are always present — prev pointing
+// before the window (empty from the anchor), next at the rest of the
+// collection. The first #954 fleet run proved that guessing
+// prev-when-offered walks into the void here and truncates the
+// catalogue at one page (IS-04-04 test_03 drops the page size to 2
+// exactly to catch that); the two-direction walk must yield every
+// item exactly once.
+func TestFetchListToolMockRegistry(t *testing.T) {
+	const total, pageSize = 5, 2
+	var srv *httptest.Server
+	srv = httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		// Window: [since, since+pageSize) ascending; paging.until
+		// without since anchors a window ENDING at until (exclusive).
+		var start, end int
+		switch {
+		case r.URL.Query().Get("paging.since") != "":
+			start, _ = strconv.Atoi(r.URL.Query().Get("paging.since"))
+			end = start + pageSize
+		case r.URL.Query().Get("paging.until") != "":
+			end, _ = strconv.Atoi(r.URL.Query().Get("paging.until"))
+			start = end - pageSize
+		default:
+			start, end = 0, pageSize
+		}
+		if start < 0 {
+			start = 0
+		}
+		if end > total {
+			end = total
+		}
+		var page []map[string]any
+		for i := start; i < end; i++ { // ascending body, like the mock
+			page = append(page, map[string]any{"id": fmt.Sprintf("00000000-0000-4000-8000-%012d", i)})
+		}
+		// Both links, always — the mock's shape.
+		w.Header().Set("Link", fmt.Sprintf(
+			`<%s/x-nmos/query/v1.3/senders/?paging.since=%d&paging.limit=%d>; rel="next",`+
+				`<%s/x-nmos/query/v1.3/senders/?paging.until=%d&paging.limit=%d>; rel="prev"`,
+			srv.URL, end, pageSize, srv.URL, start, pageSize))
+		w.Header().Set("X-Paging-Limit", strconv.Itoa(pageSize))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(page)
+	}))
+	defer srv.Close()
+
+	c, err := NewClient(srv.URL, v13.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.fetchListRaw(context.Background(), "senders", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) != total {
+		t.Fatalf("got %d senders, want %d — the walk must exhaust the NEXT chain when the anchor is the oldest page", len(raw), total)
+	}
+	seen := map[string]bool{}
+	for _, rb := range raw {
+		var v struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal(rb, &v)
+		if seen[v.ID] {
+			t.Fatalf("duplicate %s in walk", v.ID)
+		}
+		seen[v.ID] = true
+	}
+}
+
 // TestFetchListStopsOnLinkLoop: a server whose chain link points back
 // at an earlier page must not hang the client.
 func TestFetchListStopsOnLinkLoop(t *testing.T) {

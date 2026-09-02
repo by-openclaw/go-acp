@@ -194,46 +194,88 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		}
 		u += "?" + q.Encode()
 	}
-	// Whole-collection walk direction, per the AMWA-pinned IS-04
-	// §6.1.6 orientation: collections are newest-first and the Link
-	// cursors move through TIME — rel="next" is NEWER data, rel="prev"
-	// OLDER. The unanchored first response is the HEAD page, so the
-	// rest of the collection lies behind rel="prev"; following next
-	// from the head asks for the future and legally returns nothing —
-	// which is exactly how a live walk of a 211-sender plant returned
-	// 100 (2026-08-29). Some servers instead treat next as an
-	// ascending index cursor and emit no prev; the first page picks
-	// the chain: prev when offered, next otherwise. Either chain ends
-	// at an empty page, a missing link, or a URL already visited.
+	// Whole-collection walk, BOTH directions. IS-04 §6.1.6 pins the
+	// cursor semantics (rel="next" = newer data, rel="prev" = older)
+	// but NOT which window an unanchored GET returns: our registry
+	// serves the newest page (the rest lies behind prev), while the
+	// AMWA tool's own mock registry serves the OLDEST page with both
+	// links present (the rest lies ahead of next). IS-04-04 test_03
+	// drops the mock's page size to 2 exactly to catch controllers
+	// that guess one direction — and this walker's earlier
+	// prev-when-offered guess walked into the void there and
+	// truncated the catalogue at one page (first #954 fleet run). So:
+	// take the anchor page, exhaust the prev chain, then exhaust the
+	// next chain from the same anchor, deduplicating by resource id —
+	// whichever direction is the empty one costs one fetch and
+	// nothing else. Every chain ends at an empty page, a missing
+	// link, or a URL already visited.
 	var out []json.RawMessage
-	seen := map[string]bool{}
-	followPrev := false
-	// 10k pages caps a runaway server that links to itself forever; a
-	// real catalogue at limit=2 never gets near it.
-	for i := 0; u != "" && i < 10000; i++ {
-		if seen[u] {
-			break // servers that Link back to an earlier page
+	seenURL := map[string]bool{u: true}
+	seenID := map[string]bool{}
+	appendPage := func(page []json.RawMessage) {
+		for _, r := range page {
+			if id := rawResourceID(r); id != "" {
+				if seenID[id] {
+					continue
+				}
+				seenID[id] = true
+			}
+			out = append(out, r)
 		}
-		seen[u] = true
-		var page []json.RawMessage
-		next, prev, err := c.HTTP.GetJSONPageLinks(ctx, u, &page)
-		if err != nil {
-			return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
-		}
-		out = append(out, page...)
-		if len(page) == 0 {
-			break
-		}
-		if i == 0 {
-			followPrev = prev != ""
-		}
-		if followPrev {
-			u = prev
-		} else {
-			u = next
+	}
+	var first []json.RawMessage
+	firstNext, firstPrev, err := c.HTTP.GetJSONPageLinks(ctx, u, &first)
+	if err != nil {
+		return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
+	}
+	appendPage(first)
+	if len(first) == 0 {
+		return out, nil
+	}
+	chains := []struct {
+		start   string
+		usePrev bool
+	}{
+		{start: firstPrev, usePrev: true},
+		{start: firstNext, usePrev: false},
+	}
+	for _, chain := range chains {
+		u := chain.start
+		// 10k pages caps a runaway server that links to itself
+		// forever; a real catalogue at limit=2 never gets near it.
+		for i := 0; u != "" && i < 10000; i++ {
+			if seenURL[u] {
+				break // servers that Link back to an earlier page
+			}
+			seenURL[u] = true
+			var page []json.RawMessage
+			next, prev, err := c.HTTP.GetJSONPageLinks(ctx, u, &page)
+			if err != nil {
+				return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
+			}
+			appendPage(page)
+			if len(page) == 0 {
+				break
+			}
+			if chain.usePrev {
+				u = prev
+			} else {
+				u = next
+			}
 		}
 	}
 	return out, nil
+}
+
+// rawResourceID pulls the IS-04 id out of one raw listing element —
+// the dedupe key for the two-direction page walk (windows should
+// never overlap, but a server bug must not double resources).
+func rawResourceID(r json.RawMessage) string {
+	var v struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(r, &v)
+	return v.ID
 }
 
 // decodeList runs each raw element through the per-resource codec

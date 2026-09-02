@@ -40,6 +40,29 @@
   changed_when: false
   failed_when: false
 
+# The facade window's CuT (issue #954) — its log is the question /
+# answer decision trail, the one artefact that explains a controller
+# suite verdict.
+- name: What the facade CuT said
+  ansible.builtin.command: docker logs --tail 120 {{ dhs_amwa_validate_facade_container }}
+  register: _facade_log
+  changed_when: false
+  failed_when: false
+
+- name: Keep the facade log beside the results
+  ansible.builtin.copy:
+    content: |
+      {{ _facade_log.stdout | default('') }}
+      {{ _facade_log.stderr | default('') }}
+    dest: "{{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ _suite_file | default(suite.id) }}-facade.log"
+    mode: "0644"
+  when: _facade_log.rc | default(1) == 0
+
+- name: Remove the facade container
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_facade_container }}
+  changed_when: false
+  failed_when: false
+
 - name: Ensure the plant registry is running
   ansible.builtin.systemd:
     name: "{{ dhs_amwa_validate_registry_unit }}"
