@@ -8,6 +8,10 @@ package facade
 // one BCP-004-01 constraint set satisfied by the Flow's fields.
 
 import (
+	"context"
+	"fmt"
+	stdhttp "net/http"
+	"net/http/httptest"
 	"testing"
 
 	"dhs/internal/amwa/codec/is04"
@@ -107,89 +111,194 @@ func TestMXLCompatibility(t *testing.T) {
 	}
 }
 
-// tr08Snap models the BCP-006-01-02 mock plant: JPEG XS senders whose
-// flows carry the TR-08 discriminators (profile ⇔ capability set,
-// level ⇔ conformance level — the tool registers them via
-// flow_params), a video/raw sender, and receivers whose BCP-004-01
-// constraint sets enumerate exactly their compatible interop points'
-// profile/level pairs (how ControllerTest builds mock caps).
-func tr08Snap() *consumer.CatalogueSnapshot {
-	profLevel := func(profile, level string) map[string]any {
-		return map[string]any{
-			"urn:x-nmos:cap:meta:label":         profile + " " + level,
-			"urn:x-nmos:cap:format:media_type":  map[string]any{"enum": []any{"video/jxsv"}},
-			"urn:x-nmos:cap:format:profile":     map[string]any{"enum": []any{profile}},
-			"urn:x-nmos:cap:format:level":       map[string]any{"enum": []any{level}},
-			"urn:x-nmos:cap:format:frame_width": map[string]any{"enum": []any{float64(1920)}},
-		}
+// ---- TR-08 (BCP-006-01-02 test_03/test_04) fixtures --------------------
+//
+// Modeled verbatim on the tool's fixture book, INCLUDING its trap: the
+// Set A/B UHD1 base point (IP 7b) and the Set C UHD1 base point (IP 3c)
+// are byte-identical in every REGISTERED flow field — same 3840x2160,
+// 60000/1001, profile High444.12, level 4k-2, BT2100, PQ, even the same
+// derived bit rate — and differ ONLY in the SDP's sampling
+// (YCbCr-4:2:2 vs 4:4:4). That twin is what the second fleet run's
+// over-selection receipts scored, and why the matcher reads the SDP.
+
+// jxsvSDP renders an SDP the way the tool's video-jxsv.sdp template
+// does.
+func jxsvSDP(width, height int, framerate, sampling, colorimetry, tcs, profile, level string, bitrate int) string {
+	return fmt.Sprintf(`v=0
+o=- 1 1 IN IP4 10.0.0.1
+s=Test
+t=0 0
+m=video 5004 RTP/AVP 97
+c=IN IP4 239.1.1.1/32
+b=AS:%d
+a=rtpmap:97 jxsv/90000
+a=fmtp:97 packetmode=0; profile=%s; level=%s; sublevel=Sublev3bpp; depth=10; width=%d; height=%d; exactframerate=%s; sampling=%s; colorimetry=%s; TCS=%s; SSN=ST2110-22:2022; TP=2110TPW
+a=mediaclk:direct=0
+`, bitrate, profile, level, width, height, framerate, sampling, colorimetry, tcs)
+}
+
+// tr08ConstraintSet builds one per-interop-point constraint set the
+// way ControllerTest._generate_constraint_set does.
+func tr08ConstraintSet(sampling string, w, h float64, grNum, grDen float64, colorimetry, tcs, profile, level string, minBR, maxBR float64) map[string]any {
+	return map[string]any{
+		"urn:x-nmos:cap:format:color_sampling":              map[string]any{"enum": []any{sampling}},
+		"urn:x-nmos:cap:format:frame_width":                 map[string]any{"enum": []any{w}},
+		"urn:x-nmos:cap:format:frame_height":                map[string]any{"enum": []any{h}},
+		"urn:x-nmos:cap:format:grain_rate":                  map[string]any{"enum": []any{map[string]any{"numerator": grNum, "denominator": grDen}}},
+		"urn:x-nmos:cap:format:interlace_mode":              map[string]any{"enum": []any{"progressive"}},
+		"urn:x-nmos:cap:format:component_depth":             map[string]any{"enum": []any{float64(10)}},
+		"urn:x-nmos:cap:format:colorspace":                  map[string]any{"enum": []any{colorimetry}},
+		"urn:x-nmos:cap:format:transfer_characteristic":     map[string]any{"enum": []any{tcs}},
+		"urn:x-nmos:cap:format:profile":                     map[string]any{"enum": []any{profile}},
+		"urn:x-nmos:cap:format:level":                       map[string]any{"enum": []any{level}},
+		"urn:x-nmos:cap:format:sublevel":                    map[string]any{"enum": []any{"Sublev3bpp", "Sublev4bpp"}},
+		"urn:x-nmos:cap:transport:packet_transmission_mode": map[string]any{"enum": []any{"codestream"}},
+		"urn:x-nmos:cap:format:bit_rate":                    map[string]any{"minimum": minBR, "maximum": maxBR},
+		"urn:x-nmos:cap:transport:st2110_21_sender_type":    map[string]any{"enum": []any{"2110TN", "2110TNL", "2110TPW"}},
 	}
+}
+
+const (
+	tr08S30ID = "4db45e3b-0000-4000-8000-000000000030" // s30/collapse — Set C, UHD2, IP 4c
+	tr08R1ID  = "89bab259-0000-4000-8000-000000000001" // r1/tb2 — Set A/B, UHD1
+)
+
+// tr08Snap builds the snapshot + SDP server. The registered fields are
+// deliberately IDENTICAL for the UHD1 A/B and C senders — only their
+// SDPs differ.
+func tr08Snap(t *testing.T) *consumer.CatalogueSnapshot {
+	t.Helper()
+	sdps := map[string]string{
+		// Set A/B UHD1, IP 7b (PQ) — sampling 4:2:2.
+		"/ab-uhd1.sdp": jxsvSDP(3840, 2160, "60000/1001", "YCbCr-4:2:2", "BT2100", "PQ", "High444.12", "4k-2", 995000),
+		// Set C UHD1, IP 3c (PQ) — the registered-twin: ONLY sampling differs.
+		"/c-uhd1.sdp": jxsvSDP(3840, 2160, "60000/1001", "YCbCr-4:4:4", "BT2100", "PQ", "High444.12", "4k-2", 995000),
+		// Set A/B UHD2, IP 9c (HLG) — sampling 4:2:2.
+		"/ab-uhd2.sdp": jxsvSDP(7680, 4320, "60000/1001", "YCbCr-4:2:2", "BT2100", "HLG", "High444.12", "8k-2", 3977000),
+		// Set C UHD2, IP 4c (HLG) — the receipts' s30/collapse.
+		"/s30.sdp": jxsvSDP(7680, 4320, "60000/1001", "YCbCr-4:4:4", "BT2100", "HLG", "High444.12", "8k-2", 3981000),
+	}
+	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		sdp, ok := sdps[r.URL.Path]
+		if !ok {
+			w.WriteHeader(404)
+			return
+		}
+		w.Header().Set("Content-Type", "application/sdp")
+		_, _ = w.Write([]byte(sdp))
+	}))
+	t.Cleanup(srv.Close)
+	href := func(p string) *string { u := srv.URL + p; return &u }
+
+	// Per-point constraint sets (the tool builds each mock receiver's
+	// caps from exactly its compatible interop points).
+	set7b := tr08ConstraintSet("YCbCr-4:2:2", 3840, 2160, 60000, 1001, "BT2100", "PQ", "High444.12", "4k-2", 746000, 1989000)
+	set3c := tr08ConstraintSet("YCbCr-4:4:4", 3840, 2160, 60000, 1001, "BT2100", "PQ", "High444.12", "4k-2", 746000, 1991000)
+	set9c := tr08ConstraintSet("YCbCr-4:2:2", 7680, 4320, 60000, 1001, "BT2100", "HLG", "High444.12", "8k-2", 2983000, 7955000)
+	set4c := tr08ConstraintSet("YCbCr-4:4:4", 7680, 4320, 60000, 1001, "BT2100", "HLG", "High444.12", "8k-2", 2986000, 7963000)
+
 	return &consumer.CatalogueSnapshot{
-		Flows: []is04.Flow{
-			{ResourceCore: is04.ResourceCore{ID: "flow-ab"}, MediaType: "video/jxsv",
-				Profile: "Main422.10", Level: "2k-1", FrameWidth: 1920},
-			{ResourceCore: is04.ResourceCore{ID: "flow-c"}, MediaType: "video/jxsv",
-				Profile: "High444.12", Level: "2k-1", FrameWidth: 1920},
-			{ResourceCore: is04.ResourceCore{ID: "flow-raw"}, MediaType: "video/raw",
-				FrameWidth: 1920},
-		},
 		Senders: []is04.Sender{
-			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-00000000ab01"},
-				FlowID: strPtr("flow-ab"), Transport: "urn:x-nmos:transport:rtp.mcast"},
-			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-00000000c001"},
-				FlowID: strPtr("flow-c"), Transport: "urn:x-nmos:transport:rtp.mcast"},
-			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-0000000faw01"},
-				FlowID: strPtr("flow-raw"), Transport: "urn:x-nmos:transport:rtp.mcast"},
+			{ResourceCore: is04.ResourceCore{ID: "ab0d0000-0000-4000-8000-00000000ud01"},
+				Transport: "urn:x-nmos:transport:rtp.mcast", ManifestHref: href("/ab-uhd1.sdp")},
+			{ResourceCore: is04.ResourceCore{ID: "c0000000-0000-4000-8000-00000000ud01"},
+				Transport: "urn:x-nmos:transport:rtp.mcast", ManifestHref: href("/c-uhd1.sdp")},
+			{ResourceCore: is04.ResourceCore{ID: "ab0d0000-0000-4000-8000-00000000ud02"},
+				Transport: "urn:x-nmos:transport:rtp.mcast", ManifestHref: href("/ab-uhd2.sdp")},
+			{ResourceCore: is04.ResourceCore{ID: tr08S30ID},
+				Transport: "urn:x-nmos:transport:rtp.mcast", ManifestHref: href("/s30.sdp")},
+			// A sender advertising no manifest can never be judged compatible.
+			{ResourceCore: is04.ResourceCore{ID: "0000dead-0000-4000-8000-000000000000"},
+				Transport: "urn:x-nmos:transport:rtp.mcast"},
 		},
 		Receivers: []is04.Receiver{
-			// Set A/B receiver: compatible with A/B senders only.
-			{ResourceCore: is04.ResourceCore{ID: "rcv-ab"}, Transport: "urn:x-nmos:transport:rtp",
+			// r1/tb2 — Set A/B, UHD1: A/B-UHD1 point sets only.
+			{ResourceCore: is04.ResourceCore{ID: tr08R1ID}, Transport: "urn:x-nmos:transport:rtp",
 				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
-					ConstraintSets: []map[string]any{profLevel("Main422.10", "2k-1")}}},
-			// Set D receiver: compatible with A/B AND C senders (its
-			// constraint sets enumerate both points).
-			{ResourceCore: is04.ResourceCore{ID: "rcv-d"}, Transport: "urn:x-nmos:transport:rtp",
+					ConstraintSets: []map[string]any{set7b}}},
+			// Set C, UHD2 receiver: A/B-UHD2 + C-UHD2 point sets.
+			{ResourceCore: is04.ResourceCore{ID: "c0000000-0000-4000-8000-00000000ud02"}, Transport: "urn:x-nmos:transport:rtp",
 				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
-					ConstraintSets: []map[string]any{
-						profLevel("Main422.10", "2k-1"), profLevel("High444.12", "2k-1")}}},
-			// Raw receiver: no constraint sets, no JPEG XS capability.
-			{ResourceCore: is04.ResourceCore{ID: "rcv-raw"}, Transport: "urn:x-nmos:transport:rtp",
+					ConstraintSets: []map[string]any{set9c, set4c}}},
+			// Set A/B, UHD2 receiver: A/B-UHD2 point sets only.
+			{ResourceCore: is04.ResourceCore{ID: "ab0d0000-0000-4000-8000-00000000rc02"}, Transport: "urn:x-nmos:transport:rtp",
+				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
+					ConstraintSets: []map[string]any{set9c}}},
+			// Set C, UHD1 receiver: A/B-UHD1 + C-UHD1 point sets.
+			{ResourceCore: is04.ResourceCore{ID: "c0000000-0000-4000-8000-00000000rc01"}, Transport: "urn:x-nmos:transport:rtp",
+				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
+					ConstraintSets: []map[string]any{set7b, set3c}}},
+			// Raw receiver: no coded-format capability declared.
+			{ResourceCore: is04.ResourceCore{ID: "0000fa00-0000-4000-8000-000000000000"}, Transport: "urn:x-nmos:transport:rtp",
 				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/raw"}}},
 		},
 	}
 }
 
-// TestTR08CompatibleFromProse: the counterpart UUID embedded in the
-// question prose (the tool's display_answer format) drives both
-// directions — a sender selects its compatible receivers (test_03), a
-// receiver its compatible senders (test_04); no resolvable UUID means
-// nil (the caller's "unable to identify" branch).
+// TestTR08CompatibleFromProse pins the two receipt shapes exactly:
+//
+//	test_03 — "… compatible for Sender s30/collapse …: Capability Set
+//	C, Conformance Level UHD2, IP 4c": expected receivers are the C
+//	and D families at UHD2 (here: the C-UHD2 receiver), and the A/B
+//	UHD2 receiver must be rejected — its only discriminator against
+//	s30 is the SDP's sampling.
+//	test_04 — "… compatible for Receiver r1/tb2 …: Capability Set
+//	A/B, Conformance Level UHD1": expected senders are A/B-UHD1 only;
+//	the C-UHD1 sender is the registered-twin and must be rejected on
+//	its SDP sampling alone.
 func TestTR08CompatibleFromProse(t *testing.T) {
-	snap := tr08Snap()
+	snap := tr08Snap(t)
+	ctx := context.Background()
 
-	// test_03 shape: given the A/B sender, both jxsv receivers admit
-	// its profile/level; the raw receiver never does.
-	q := "select the Receivers compatible with:\n\ns0/rush (Mock Sender 0, b0b00000-0000-4000-8000-00000000ab01)\n"
-	got := tr08CompatibleFromProse(snap, q)
-	if len(got) != 2 || !got["rcv-ab"] || !got["rcv-d"] {
-		t.Errorf("A/B sender receivers = %v, want rcv-ab + rcv-d", got)
+	// test_03 direction (sender named in prose).
+	q := "select the Receivers that are compatible with the following Sender:\n\ns30/collapse (Mock Sender 30, " + tr08S30ID + ")\n"
+	got := tr08CompatibleFromProse(ctx, snap, q)
+	if len(got) != 1 || !got["c0000000-0000-4000-8000-00000000ud02"] {
+		t.Errorf("s30 receivers = %v, want exactly the C-UHD2 receiver (A/B-UHD2 must fall to sampling)", got)
 	}
-	// Given the C sender, only the D receiver's sets admit it.
-	q = "compatible with (x, b0b00000-0000-4000-8000-00000000c001)"
-	got = tr08CompatibleFromProse(snap, q)
-	if len(got) != 1 || !got["rcv-d"] {
-		t.Errorf("C sender receivers = %v, want exactly rcv-d", got)
+
+	// test_04 direction (receiver named in prose).
+	q = "select the Senders that are compatible with the following Receiver:\n\nr1/tb2 (Mock Receiver 1, " + tr08R1ID + ")\n"
+	got = tr08CompatibleFromProse(ctx, snap, q)
+	if len(got) != 1 || !got["ab0d0000-0000-4000-8000-00000000ud01"] {
+		t.Errorf("r1 senders = %v, want exactly the A/B-UHD1 sender (the C-UHD1 registered-twin must fall to sampling)", got)
 	}
-	// test_04 shape: given the D receiver, both jxsv senders match,
-	// the raw sender (no profile/level) never.
-	q = "select the Senders compatible with (x, rcv-d)" // not a UUID — resolve failure first
-	if got = tr08CompatibleFromProse(snap, q); got != nil {
+
+	// No resolvable UUID → nil (the caller's "unable to identify").
+	if got = tr08CompatibleFromProse(ctx, snap, "compatible with (x, not-a-uuid)"); got != nil {
 		t.Errorf("non-UUID prose must resolve to nil, got %v", got)
 	}
-	snap.Receivers[1].ID = "d0d00000-0000-4000-8000-000000000d01"
-	q = "select the Senders compatible with (x, d0d00000-0000-4000-8000-000000000d01)"
-	got = tr08CompatibleFromProse(snap, q)
-	if len(got) != 2 || !got["b0b00000-0000-4000-8000-00000000ab01"] || !got["b0b00000-0000-4000-8000-00000000c001"] {
-		t.Errorf("D receiver senders = %v, want the two jxsv senders", got)
+	// A named sender whose SDP cannot be read → nil.
+	if got = tr08CompatibleFromProse(ctx, snap, "compatible with (x, 0000dead-0000-4000-8000-000000000000)"); got != nil {
+		t.Errorf("manifest-less sender must resolve to nil, got %v", got)
+	}
+}
+
+// TestSDPCapParams pins the fmtp → BCP-004-01 parameter mapping on the
+// tool's own template shape.
+func TestSDPCapParams(t *testing.T) {
+	params := sdpCapParams(jxsvSDP(7680, 4320, "60000/1001", "YCbCr-4:4:4", "BT2100", "HLG", "High444.12", "8k-2", 3981000))
+	want := map[string]any{
+		"urn:x-nmos:cap:format:media_type":                  "video/jxsv",
+		"urn:x-nmos:cap:format:profile":                     "High444.12",
+		"urn:x-nmos:cap:format:level":                       "8k-2",
+		"urn:x-nmos:cap:format:sublevel":                    "Sublev3bpp",
+		"urn:x-nmos:cap:format:color_sampling":              "YCbCr-4:4:4",
+		"urn:x-nmos:cap:format:colorspace":                  "BT2100",
+		"urn:x-nmos:cap:format:transfer_characteristic":     "HLG",
+		"urn:x-nmos:cap:transport:st2110_21_sender_type":    "2110TPW",
+		"urn:x-nmos:cap:transport:packet_transmission_mode": "codestream",
+		"urn:x-nmos:cap:format:component_depth":             float64(10),
+		"urn:x-nmos:cap:format:frame_width":                 float64(7680),
+		"urn:x-nmos:cap:format:frame_height":                float64(4320),
+		"urn:x-nmos:cap:format:interlace_mode":              "progressive",
+		"urn:x-nmos:cap:format:bit_rate":                    float64(3981000),
+		"urn:x-nmos:cap:format:grain_rate":                  is04.GrainRate{Numerator: 60000, Denominator: 1001},
+	}
+	for k, v := range want {
+		if params[k] != v {
+			t.Errorf("params[%s] = %v, want %v", k, params[k], v)
+		}
 	}
 }
 

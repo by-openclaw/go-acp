@@ -3,6 +3,8 @@ package facade
 import (
 	"context"
 	"fmt"
+	"io"
+	stdhttp "net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -66,17 +68,15 @@ func (s *Server) chooseMulti(ctx context.Context, q Question) ([]string, error) 
 		// "label (description, <uuid>)" (ControllerTest.py
 		// _format_device_metadata), so the counterpart's id — the one
 		// stable identifier NMOS has — is extracted with a UUID
-		// pattern, never by label matching. Compatibility then reads
-		// from the registry: TR-08's capability set ⇔ JPEG XS profile
-		// and conformance level ⇔ level, both registered on the Flow,
-		// and the tool builds each mock receiver's BCP-004-01
-		// constraint sets from exactly its compatible interop points —
-		// so "some constraint set admits the flow's profile+level" IS
-		// the tool's own capability_set/conformance_level rule seen
-		// through registry data.
-		keep = tr08CompatibleFromProse(snap, q.Question)
+		// pattern, never by label matching. Compatibility is judged
+		// the way a real BCP-006-01 controller judges it: fetch the
+		// sender's transport file and match the receiver's BCP-004-01
+		// constraint sets against the SDP's parameters (see
+		// tr08CompatibleFromProse for why the registry alone cannot
+		// express the rule).
+		keep = tr08CompatibleFromProse(ctx, snap, q.Question)
 		if keep == nil {
-			s.logger.Warn("nmos/facade: compatibility question names no resolvable counterpart UUID — answering 'unable to identify'",
+			s.logger.Warn("nmos/facade: compatibility question names no resolvable counterpart (or its SDP is unreadable) — answering 'unable to identify'",
 				"question_id", q.QuestionID)
 			keep = map[string]bool{}
 		}
@@ -539,32 +539,52 @@ var uuidRE = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 // UUID; whichever side it resolves to in the registry decides the
 // direction — a sender selects compatible receivers (test_03), a
 // receiver selects compatible senders (test_04). Returns nil when no
-// embedded UUID resolves, so the caller can log and take the
-// question's own "unable to identify" branch.
-func tr08CompatibleFromProse(snap *consumer.CatalogueSnapshot, questionText string) map[string]bool {
+// embedded UUID resolves (or the named sender's SDP is unreadable),
+// so the caller can log and take the question's own "unable to
+// identify" branch.
+//
+// Why the SENDER'S SDP, not its registered Flow: TR-08 capability
+// sets differ by color sampling and depth, and IS-04 registers
+// neither — the tool's own fixture book has Set A/B and Set C interop
+// points that are byte-identical in every registered flow field
+// (same geometry, framerate, profile High444.12, level, colorimetry,
+// TCS, even the same derived bit_rate) and differ ONLY in the SDP's
+// sampling=YCbCr-4:2:2 vs 4:4:4. The first #954 receipts are that
+// ambiguity scored ("Receivers incorrectly identified as compatible").
+// So the facade does what BCP-006-01 says a controller does: fetch
+// the transport file from the sender's manifest_href and match the
+// receiver's BCP-004-01 constraint sets against SDP-derived
+// parameters. That reproduces the tool's capability_set /
+// conformance_level table exactly, because each mock receiver's
+// constraint sets enumerate precisely its compatible interop points —
+// sampling and depth included.
+func tr08CompatibleFromProse(ctx context.Context, snap *consumer.CatalogueSnapshot, questionText string) map[string]bool {
 	for _, id := range uuidRE.FindAllString(questionText, -1) {
-		for _, snd := range snap.Senders {
-			if snd.ID != id {
+		for i := range snap.Senders {
+			if snap.Senders[i].ID != id {
 				continue
 			}
-			flow := flowForSender(snap, &snd)
+			params := senderSDPParams(ctx, &snap.Senders[i])
+			if params == nil {
+				return nil
+			}
 			out := map[string]bool{}
 			for _, r := range snap.Receivers {
-				if tr08Match(flow, r.Caps) {
+				if tr08SDPMatch(params, r.Caps) {
 					out[r.ID] = true
 				}
 			}
 			return out
 		}
-		for _, r := range snap.Receivers {
-			if r.ID != id {
+		for i := range snap.Receivers {
+			if snap.Receivers[i].ID != id {
 				continue
 			}
-			caps := r.Caps
+			caps := snap.Receivers[i].Caps
 			out := map[string]bool{}
-			for _, snd := range snap.Senders {
-				if tr08Match(flowForSender(snap, &snd), caps) {
-					out[snd.ID] = true
+			for j := range snap.Senders {
+				if params := senderSDPParams(ctx, &snap.Senders[j]); params != nil && tr08SDPMatch(params, caps) {
+					out[snap.Senders[j].ID] = true
 				}
 			}
 			return out
@@ -573,57 +593,192 @@ func tr08CompatibleFromProse(snap *consumer.CatalogueSnapshot, questionText stri
 	return nil
 }
 
-// flowForSender resolves a Sender's Flow in the snapshot, nil when the
-// sender carries no flow_id or the flow is not registered.
-func flowForSender(snap *consumer.CatalogueSnapshot, snd *is04.Sender) *is04.Flow {
-	if snd.FlowID == nil {
+// sdpClient fetches sender transport files (manifest_href) — the
+// BCP-006-01 controller's evidence source for capability matching.
+var sdpClient = &stdhttp.Client{Timeout: 5 * time.Second}
+
+// senderSDPParams fetches and parses one sender's transport file into
+// BCP-004-01 parameter values. nil when the sender advertises no
+// manifest, the fetch fails, or the SDP yields nothing usable — a
+// sender whose capabilities cannot be read is never claimed
+// compatible.
+func senderSDPParams(ctx context.Context, snd *is04.Sender) map[string]any {
+	if snd.ManifestHref == nil || *snd.ManifestHref == "" {
 		return nil
 	}
-	for i := range snap.Flows {
-		if snap.Flows[i].ID == *snd.FlowID {
-			return &snap.Flows[i]
-		}
+	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodGet, *snd.ManifestHref, nil)
+	if err != nil {
+		return nil
 	}
-	return nil
+	resp, err := sdpClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != stdhttp.StatusOK {
+		return nil
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil
+	}
+	params := sdpCapParams(string(body))
+	if len(params) == 0 {
+		return nil
+	}
+	return params
 }
 
-// tr08Match is the TR-08 compatibility predicate over registered data:
-// the flow's media type is a member of the receiver's caps.media_types
-// and some BCP-004-01 constraint set admits the flow's JPEG XS
-// profile AND level. Profile encodes the TR-08 capability set and
-// level the conformance level, so this reproduces the tool's
-// capability_set/conformance_level rule exactly; the sets' other
-// members (frame geometry, depth, sampling) are deliberately NOT
-// evaluated here — the tool registers its mock flows without depth or
-// sampling, so judging them would compare template noise, not
-// authored data. A flow without profile+level (video/raw) matches no
-// TR-08 set; a receiver without constraint sets declares no JPEG XS
-// capability and matches nothing.
-func tr08Match(f *is04.Flow, caps is04.ReceiverCaps) bool {
-	if f == nil || f.Profile == "" || f.Level == "" {
+// sdpCapParams maps an SDP's media description onto BCP-004-01
+// parameter-constraint values, keyed by cap URN. Field names follow
+// the ST 2110 / RFC 9134 fmtp grammar the AMWA tool's own SDP
+// templates emit (sampling, depth, width, height, exactframerate,
+// interlace, colorimetry, TCS, RANGE, profile, level, sublevel,
+// packetmode, TP) plus b=AS for bit_rate. Numbers land as float64 so
+// they compare cleanly with JSON-decoded constraint values.
+func sdpCapParams(sdp string) map[string]any {
+	out := map[string]any{}
+	kind := ""
+	for _, line := range strings.Split(sdp, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "m="):
+			if f := strings.Fields(strings.TrimPrefix(line, "m=")); len(f) > 0 {
+				kind = f[0]
+			}
+		case strings.HasPrefix(line, "b=AS:"):
+			if n, err := strconv.ParseFloat(strings.TrimPrefix(line, "b=AS:"), 64); err == nil {
+				out["urn:x-nmos:cap:format:bit_rate"] = n
+			}
+		case strings.HasPrefix(line, "a=rtpmap:"):
+			// a=rtpmap:<pt> <subtype>/<clock> — with the m= kind this
+			// is the media type.
+			if f := strings.Fields(line); len(f) >= 2 && kind != "" {
+				if sub, _, ok := strings.Cut(f[1], "/"); ok {
+					out["urn:x-nmos:cap:format:media_type"] = kind + "/" + sub
+				}
+			}
+		case strings.HasPrefix(line, "a=fmtp:"):
+			rest := strings.TrimPrefix(line, "a=fmtp:")
+			if i := strings.IndexByte(rest, ' '); i >= 0 {
+				rest = rest[i+1:]
+			}
+			interlaced := false
+			for _, kv := range strings.Split(rest, ";") {
+				kv = strings.TrimSpace(kv)
+				if kv == "" {
+					continue
+				}
+				k, v, has := strings.Cut(kv, "=")
+				if !has {
+					if strings.TrimSpace(k) == "interlace" {
+						interlaced = true
+					}
+					continue
+				}
+				k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+				switch k {
+				case "profile":
+					out["urn:x-nmos:cap:format:profile"] = v
+				case "level":
+					out["urn:x-nmos:cap:format:level"] = v
+				case "sublevel":
+					out["urn:x-nmos:cap:format:sublevel"] = v
+				case "sampling":
+					out["urn:x-nmos:cap:format:color_sampling"] = v
+				case "colorimetry":
+					out["urn:x-nmos:cap:format:colorspace"] = v
+				case "TCS":
+					out["urn:x-nmos:cap:format:transfer_characteristic"] = v
+				case "TP":
+					out["urn:x-nmos:cap:transport:st2110_21_sender_type"] = v
+				case "packetmode":
+					if v == "0" {
+						out["urn:x-nmos:cap:transport:packet_transmission_mode"] = "codestream"
+					}
+				case "depth":
+					if n, err := strconv.ParseFloat(v, 64); err == nil {
+						out["urn:x-nmos:cap:format:component_depth"] = n
+					}
+				case "width":
+					if n, err := strconv.ParseFloat(v, 64); err == nil {
+						out["urn:x-nmos:cap:format:frame_width"] = n
+					}
+				case "height":
+					if n, err := strconv.ParseFloat(v, 64); err == nil {
+						out["urn:x-nmos:cap:format:frame_height"] = n
+					}
+				case "exactframerate":
+					num, den, ok := strings.Cut(v, "/")
+					d := 1
+					if ok {
+						if n, err := strconv.Atoi(den); err == nil {
+							d = n
+						}
+					}
+					if n, err := strconv.Atoi(num); err == nil {
+						out["urn:x-nmos:cap:format:grain_rate"] = is04.GrainRate{Numerator: n, Denominator: d}
+					}
+				}
+			}
+			if interlaced {
+				out["urn:x-nmos:cap:format:interlace_mode"] = "interlaced_tff"
+			} else {
+				out["urn:x-nmos:cap:format:interlace_mode"] = "progressive"
+			}
+		}
+	}
+	return out
+}
+
+// tr08SDPMatch — the sender's SDP parameters against one receiver's
+// declared capabilities: media type membership, then at least one
+// BCP-004-01 constraint set every one of whose parameter constraints
+// is satisfied by the SDP value (constraints for parameters the SDP
+// does not carry are skipped, the tool's own leniency; a receiver
+// with no constraint sets declares no coded-format capability and
+// matches nothing).
+func tr08SDPMatch(params map[string]any, caps is04.ReceiverCaps) bool {
+	mt, _ := params["urn:x-nmos:cap:format:media_type"].(string)
+	if mt == "" {
 		return false
 	}
-	mtOK := false
-	for _, mt := range caps.MediaTypes {
-		if mt == f.MediaType {
-			mtOK = true
+	member := false
+	for _, m := range caps.MediaTypes {
+		if m == mt {
+			member = true
 			break
 		}
 	}
-	if !mtOK {
+	if !member || len(caps.ConstraintSets) == 0 {
 		return false
 	}
 	for _, cs := range caps.ConstraintSets {
-		p, pok := cs["urn:x-nmos:cap:format:profile"].(map[string]any)
-		l, lok := cs["urn:x-nmos:cap:format:level"].(map[string]any)
-		if !pok || !lok {
-			continue
-		}
-		if constraintSatisfied(f.Profile, p) && constraintSatisfied(f.Level, l) {
+		if sdpMatchesConstraintSet(params, cs) {
 			return true
 		}
 	}
 	return false
+}
+
+// sdpMatchesConstraintSet applies one constraint set to SDP-derived
+// values — meta keys and parameters without an SDP-derived value are
+// skipped.
+func sdpMatchesConstraintSet(params map[string]any, cs map[string]any) bool {
+	for capURI, raw := range cs {
+		constraint, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		v, known := params[capURI]
+		if !known {
+			continue
+		}
+		if !constraintSatisfied(v, constraint) {
+			return false
+		}
+	}
+	return true
 }
 
 // compatibleReceiversForSender — BCP-007-03-02's compatibility rule,
