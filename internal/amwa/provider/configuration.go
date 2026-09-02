@@ -824,6 +824,32 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		}
 		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
 
+	case "ResetCountersAndMessages":
+		// BCP-008 monitor reset over the IS-14 face — same body as the
+		// IS-12 method (transition counters, messages AND injected
+		// packet counters clear together).
+		s.mu.Lock()
+		changes := s.resetCountersLocked(strings.Join(obj.path, "."), obj)
+		s.mu.Unlock()
+		s.fire(changes)
+		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+
+	case "GetLostPacketCounters", "GetLatePacketCounters", "GetTransmissionErrorCounters":
+		kind := map[string]string{
+			"GetLostPacketCounters":        "lost",
+			"GetLatePacketCounters":        "late",
+			"GetTransmissionErrorCounters": "transmission",
+		}[md.Name]
+		counters := s.MonitorPacketCounters(obj.oid, kind)
+		if counters == nil {
+			counters = []ncCounter{}
+		}
+		raw, err := json.Marshal(counters)
+		if err != nil {
+			return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
+		}
+		return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: raw}, nil
+
 	case "GetMemberDescriptors":
 		return 200, ms05.NcMethodResultBlockMemberDescriptors{
 			Status: ms05.NcMethodStatusOk, Value: s.membersOf(obj, args.Recurse != nil && *args.Recurse),
