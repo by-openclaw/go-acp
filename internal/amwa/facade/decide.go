@@ -3,6 +3,7 @@ package facade
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -59,18 +60,26 @@ func (s *Server) chooseMulti(ctx context.Context, q Question) ([]string, error) 
 		// BCP-004-01 constraint set satisfied by the flow's fields).
 		keep = compatibleReceiversForSender(snap, q.Metadata.Sender.ID)
 	case strings.Contains(question, "compatible"):
-		// BCP-006-01-02 test_03/test_04: TR-08 capability-set /
-		// conformance-level compatibility with a counterpart named
-		// ONLY in prose (no metadata) — display strings are mutable
-		// label+description, and this facade matches by UUID alone by
-		// design. Unanswerable without guessing, so take the
-		// question's own "If unable to identify ..., press 'Submit'
-		// without making a selection" branch. COVERAGE GAP, reported:
-		// closing it needs the tool to carry the counterpart's id in
-		// metadata, or a TR-08 matcher plus prose-label resolution.
-		s.logger.Warn("nmos/facade: TR-08 compatibility question without metadata — answering 'unable to identify' (coverage gap)",
-			"question_id", q.QuestionID)
-		keep = map[string]bool{}
+		// BCP-006-01-02 test_03/test_04: TR-08 compatibility with a
+		// counterpart carried in prose, not metadata. The prose IS
+		// machine-usable by UUID: the tool's display_answer format is
+		// "label (description, <uuid>)" (ControllerTest.py
+		// _format_device_metadata), so the counterpart's id — the one
+		// stable identifier NMOS has — is extracted with a UUID
+		// pattern, never by label matching. Compatibility then reads
+		// from the registry: TR-08's capability set ⇔ JPEG XS profile
+		// and conformance level ⇔ level, both registered on the Flow,
+		// and the tool builds each mock receiver's BCP-004-01
+		// constraint sets from exactly its compatible interop points —
+		// so "some constraint set admits the flow's profile+level" IS
+		// the tool's own capability_set/conformance_level rule seen
+		// through registry data.
+		keep = tr08CompatibleFromProse(snap, q.Question)
+		if keep == nil {
+			s.logger.Warn("nmos/facade: compatibility question names no resolvable counterpart UUID — answering 'unable to identify'",
+				"question_id", q.QuestionID)
+			keep = map[string]bool{}
+		}
 	case mentionsConnectionAPI(q.Question):
 		// IS-05-03 test_01: only receivers whose Device advertises an
 		// IS-05 control are correct — the registry lists more, and a
@@ -519,6 +528,102 @@ func mxlReceivers(snap *consumer.CatalogueSnapshot) map[string]bool {
 		}
 	}
 	return out
+}
+
+// uuidRE matches an RFC 4122 UUID — the id embedded in the tool's
+// display_answer prose ("label (description, <uuid>)").
+var uuidRE = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
+// tr08CompatibleFromProse answers the BCP-006-01-02 TR-08
+// compatibility questions. The question embeds the counterpart's
+// UUID; whichever side it resolves to in the registry decides the
+// direction — a sender selects compatible receivers (test_03), a
+// receiver selects compatible senders (test_04). Returns nil when no
+// embedded UUID resolves, so the caller can log and take the
+// question's own "unable to identify" branch.
+func tr08CompatibleFromProse(snap *consumer.CatalogueSnapshot, questionText string) map[string]bool {
+	for _, id := range uuidRE.FindAllString(questionText, -1) {
+		for _, snd := range snap.Senders {
+			if snd.ID != id {
+				continue
+			}
+			flow := flowForSender(snap, &snd)
+			out := map[string]bool{}
+			for _, r := range snap.Receivers {
+				if tr08Match(flow, r.Caps) {
+					out[r.ID] = true
+				}
+			}
+			return out
+		}
+		for _, r := range snap.Receivers {
+			if r.ID != id {
+				continue
+			}
+			caps := r.Caps
+			out := map[string]bool{}
+			for _, snd := range snap.Senders {
+				if tr08Match(flowForSender(snap, &snd), caps) {
+					out[snd.ID] = true
+				}
+			}
+			return out
+		}
+	}
+	return nil
+}
+
+// flowForSender resolves a Sender's Flow in the snapshot, nil when the
+// sender carries no flow_id or the flow is not registered.
+func flowForSender(snap *consumer.CatalogueSnapshot, snd *is04.Sender) *is04.Flow {
+	if snd.FlowID == nil {
+		return nil
+	}
+	for i := range snap.Flows {
+		if snap.Flows[i].ID == *snd.FlowID {
+			return &snap.Flows[i]
+		}
+	}
+	return nil
+}
+
+// tr08Match is the TR-08 compatibility predicate over registered data:
+// the flow's media type is a member of the receiver's caps.media_types
+// and some BCP-004-01 constraint set admits the flow's JPEG XS
+// profile AND level. Profile encodes the TR-08 capability set and
+// level the conformance level, so this reproduces the tool's
+// capability_set/conformance_level rule exactly; the sets' other
+// members (frame geometry, depth, sampling) are deliberately NOT
+// evaluated here — the tool registers its mock flows without depth or
+// sampling, so judging them would compare template noise, not
+// authored data. A flow without profile+level (video/raw) matches no
+// TR-08 set; a receiver without constraint sets declares no JPEG XS
+// capability and matches nothing.
+func tr08Match(f *is04.Flow, caps is04.ReceiverCaps) bool {
+	if f == nil || f.Profile == "" || f.Level == "" {
+		return false
+	}
+	mtOK := false
+	for _, mt := range caps.MediaTypes {
+		if mt == f.MediaType {
+			mtOK = true
+			break
+		}
+	}
+	if !mtOK {
+		return false
+	}
+	for _, cs := range caps.ConstraintSets {
+		p, pok := cs["urn:x-nmos:cap:format:profile"].(map[string]any)
+		l, lok := cs["urn:x-nmos:cap:format:level"].(map[string]any)
+		if !pok || !lok {
+			continue
+		}
+		if constraintSatisfied(f.Profile, p) && constraintSatisfied(f.Level, l) {
+			return true
+		}
+	}
+	return false
 }
 
 // compatibleReceiversForSender — BCP-007-03-02's compatibility rule,

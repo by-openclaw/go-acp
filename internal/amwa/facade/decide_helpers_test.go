@@ -107,6 +107,92 @@ func TestMXLCompatibility(t *testing.T) {
 	}
 }
 
+// tr08Snap models the BCP-006-01-02 mock plant: JPEG XS senders whose
+// flows carry the TR-08 discriminators (profile ⇔ capability set,
+// level ⇔ conformance level — the tool registers them via
+// flow_params), a video/raw sender, and receivers whose BCP-004-01
+// constraint sets enumerate exactly their compatible interop points'
+// profile/level pairs (how ControllerTest builds mock caps).
+func tr08Snap() *consumer.CatalogueSnapshot {
+	profLevel := func(profile, level string) map[string]any {
+		return map[string]any{
+			"urn:x-nmos:cap:meta:label":         profile + " " + level,
+			"urn:x-nmos:cap:format:media_type":  map[string]any{"enum": []any{"video/jxsv"}},
+			"urn:x-nmos:cap:format:profile":     map[string]any{"enum": []any{profile}},
+			"urn:x-nmos:cap:format:level":       map[string]any{"enum": []any{level}},
+			"urn:x-nmos:cap:format:frame_width": map[string]any{"enum": []any{float64(1920)}},
+		}
+	}
+	return &consumer.CatalogueSnapshot{
+		Flows: []is04.Flow{
+			{ResourceCore: is04.ResourceCore{ID: "flow-ab"}, MediaType: "video/jxsv",
+				Profile: "Main422.10", Level: "2k-1", FrameWidth: 1920},
+			{ResourceCore: is04.ResourceCore{ID: "flow-c"}, MediaType: "video/jxsv",
+				Profile: "High444.12", Level: "2k-1", FrameWidth: 1920},
+			{ResourceCore: is04.ResourceCore{ID: "flow-raw"}, MediaType: "video/raw",
+				FrameWidth: 1920},
+		},
+		Senders: []is04.Sender{
+			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-00000000ab01"},
+				FlowID: strPtr("flow-ab"), Transport: "urn:x-nmos:transport:rtp.mcast"},
+			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-00000000c001"},
+				FlowID: strPtr("flow-c"), Transport: "urn:x-nmos:transport:rtp.mcast"},
+			{ResourceCore: is04.ResourceCore{ID: "b0b00000-0000-4000-8000-0000000faw01"},
+				FlowID: strPtr("flow-raw"), Transport: "urn:x-nmos:transport:rtp.mcast"},
+		},
+		Receivers: []is04.Receiver{
+			// Set A/B receiver: compatible with A/B senders only.
+			{ResourceCore: is04.ResourceCore{ID: "rcv-ab"}, Transport: "urn:x-nmos:transport:rtp",
+				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
+					ConstraintSets: []map[string]any{profLevel("Main422.10", "2k-1")}}},
+			// Set D receiver: compatible with A/B AND C senders (its
+			// constraint sets enumerate both points).
+			{ResourceCore: is04.ResourceCore{ID: "rcv-d"}, Transport: "urn:x-nmos:transport:rtp",
+				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, Version: "0:1",
+					ConstraintSets: []map[string]any{
+						profLevel("Main422.10", "2k-1"), profLevel("High444.12", "2k-1")}}},
+			// Raw receiver: no constraint sets, no JPEG XS capability.
+			{ResourceCore: is04.ResourceCore{ID: "rcv-raw"}, Transport: "urn:x-nmos:transport:rtp",
+				Caps: is04.ReceiverCaps{MediaTypes: []string{"video/raw"}}},
+		},
+	}
+}
+
+// TestTR08CompatibleFromProse: the counterpart UUID embedded in the
+// question prose (the tool's display_answer format) drives both
+// directions — a sender selects its compatible receivers (test_03), a
+// receiver its compatible senders (test_04); no resolvable UUID means
+// nil (the caller's "unable to identify" branch).
+func TestTR08CompatibleFromProse(t *testing.T) {
+	snap := tr08Snap()
+
+	// test_03 shape: given the A/B sender, both jxsv receivers admit
+	// its profile/level; the raw receiver never does.
+	q := "select the Receivers compatible with:\n\ns0/rush (Mock Sender 0, b0b00000-0000-4000-8000-00000000ab01)\n"
+	got := tr08CompatibleFromProse(snap, q)
+	if len(got) != 2 || !got["rcv-ab"] || !got["rcv-d"] {
+		t.Errorf("A/B sender receivers = %v, want rcv-ab + rcv-d", got)
+	}
+	// Given the C sender, only the D receiver's sets admit it.
+	q = "compatible with (x, b0b00000-0000-4000-8000-00000000c001)"
+	got = tr08CompatibleFromProse(snap, q)
+	if len(got) != 1 || !got["rcv-d"] {
+		t.Errorf("C sender receivers = %v, want exactly rcv-d", got)
+	}
+	// test_04 shape: given the D receiver, both jxsv senders match,
+	// the raw sender (no profile/level) never.
+	q = "select the Senders compatible with (x, rcv-d)" // not a UUID — resolve failure first
+	if got = tr08CompatibleFromProse(snap, q); got != nil {
+		t.Errorf("non-UUID prose must resolve to nil, got %v", got)
+	}
+	snap.Receivers[1].ID = "d0d00000-0000-4000-8000-000000000d01"
+	q = "select the Senders compatible with (x, d0d00000-0000-4000-8000-000000000d01)"
+	got = tr08CompatibleFromProse(snap, q)
+	if len(got) != 2 || !got["b0b00000-0000-4000-8000-00000000ab01"] || !got["b0b00000-0000-4000-8000-00000000c001"] {
+		t.Errorf("D receiver senders = %v, want the two jxsv senders", got)
+	}
+}
+
 // TestConstraintSatisfied covers the three BCP-004-01 keywords over the
 // value shapes the MXL profiles use.
 func TestConstraintSatisfied(t *testing.T) {
