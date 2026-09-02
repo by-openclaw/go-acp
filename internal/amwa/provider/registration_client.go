@@ -88,6 +88,12 @@ type RegistrationClient struct {
 	// default of HeartbeatInterval (5 s).
 	heartbeatIntervalFn atomic.Pointer[func() time.Duration]
 
+	// defaultInterval, when positive, replaces the IS-04 §6.1 5 s
+	// fallback above — the `--heartbeat` operator knob (#855). The
+	// IS-09 value still outranks it: the System API is the
+	// plant-wide config, the flag is a local default.
+	defaultInterval time.Duration
+
 	mu         sync.Mutex
 	cancelLoop context.CancelFunc
 	registered atomic.Bool
@@ -307,16 +313,59 @@ func (c *RegistrationClient) SetHeartbeatIntervalFn(fn func() time.Duration) {
 	c.heartbeatIntervalFn.Store(&fn)
 }
 
-// heartbeatInterval returns the cadence in force right now: the
-// System-API-supplied value when one is recorded and positive, else
-// the IS-04 §6.1 default (HeartbeatInterval, 5 s).
+// SetDefaultHeartbeatInterval replaces the fallback cadence used when
+// no System API supplies one — the `--heartbeat` operator knob
+// (issue #855). Non-positive keeps the IS-04 §6.1 default. Safe to
+// call before Run only.
+func (c *RegistrationClient) SetDefaultHeartbeatInterval(d time.Duration) {
+	c.defaultInterval = d
+}
+
+// heartbeatInterval returns the cadence in force right now:
+// the System-API-supplied value when one is recorded and positive
+// (IS-09 is the plant-wide operator config and outranks a local
+// flag), else the operator's --heartbeat default, else the IS-04
+// §6.1 default (HeartbeatInterval, 5 s).
 func (c *RegistrationClient) heartbeatInterval() time.Duration {
 	if p := c.heartbeatIntervalFn.Load(); p != nil {
 		if d := (*p)(); d > 0 {
 			return d
 		}
 	}
+	if c.defaultInterval > 0 {
+		return c.defaultInterval
+	}
 	return HeartbeatInterval
+}
+
+// heartbeatTick is the loop's poll rate for a given cadence: fast
+// enough for failover detection AND for sub-second cadences (half the
+// beat), never slower than the historic 1 s, floored so a pathological
+// cadence cannot spin the loop.
+func heartbeatTick(cadence time.Duration) time.Duration {
+	t := cadence / 2
+	if t > time.Second {
+		t = time.Second
+	}
+	if t < 50*time.Millisecond {
+		t = 50 * time.Millisecond
+	}
+	return t
+}
+
+// heartbeatSlack is the early-fire allowance that keeps the
+// tick-quantisation jitter inside an observer's ±window (AMWA test_05
+// uses ±0.5 s at the 5 s default). It must scale down with the
+// cadence — a 500 ms slack swallows a 500 ms beat whole.
+func heartbeatSlack(cadence time.Duration) time.Duration {
+	s := cadence / 4
+	if s > 500*time.Millisecond {
+		s = 500 * time.Millisecond
+	}
+	if s < 10*time.Millisecond {
+		s = 10 * time.Millisecond
+	}
+	return s
 }
 
 // Run drives the registration + heartbeat loop until ctx is
@@ -346,8 +395,13 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 	// AMWA test_15/16 cascade-disables mocks every (HeartbeatInterval+1)
 	// seconds. To detect dead mocks reliably and fail over within that
 	// window, the loop ticks faster than the heartbeat cadence. We
-	// throttle actual heartbeats to HeartbeatInterval below.
-	ticker := time.NewTicker(1 * time.Second)
+	// throttle actual heartbeats to the live cadence below. The tick
+	// scales with the cadence (heartbeatTick) so a sub-second
+	// --heartbeat / IS-09 value still beats on time — at the 5 s
+	// default this is the historic 1 s tick — and is Reset when a
+	// live IS-09 change moves the cadence.
+	curTick := heartbeatTick(c.heartbeatInterval())
+	ticker := time.NewTicker(curTick)
 	defer ticker.Stop()
 	lastHeartbeat := time.Time{}
 
@@ -429,13 +483,19 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 				}
 			}
 			// Throttle actual /health POSTs near the live cadence — the
-			// 1 s tick above is for fast failover detection only. AMWA
+			// fast tick above is for failover detection only. AMWA
 			// test_05 enforces the interval ± 0.5 s between heartbeats,
-			// so we fire when the elapsed budget is within 0.5 s of due
-			// to keep the tick-quantisation jitter inside the window.
-			// The cadence is the IS-09 System API's heartbeat_interval
-			// when one has been read, else the IS-04 §6.1 default.
-			if time.Since(lastHeartbeat) < c.heartbeatInterval()-500*time.Millisecond {
+			// so we fire when the elapsed budget is within the scaled
+			// slack of due, keeping tick-quantisation jitter inside the
+			// window at every cadence. The cadence is the IS-09 System
+			// API's heartbeat_interval when one has been read, else the
+			// --heartbeat default, else IS-04 §6.1's 5 s.
+			cadence := c.heartbeatInterval()
+			if nt := heartbeatTick(cadence); nt != curTick {
+				curTick = nt
+				ticker.Reset(nt)
+			}
+			if time.Since(lastHeartbeat) < cadence-heartbeatSlack(cadence) {
 				continue
 			}
 			lastHeartbeat = time.Now()

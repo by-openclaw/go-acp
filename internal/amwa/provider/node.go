@@ -8,12 +8,13 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"os"
 	stdhttp "net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
@@ -166,6 +167,13 @@ type IS04NodeConfig struct {
 	// _nmos-node._tcp, so a Node allowed to find a Registry cannot
 	// also be a peer-to-peer Node.
 	NoRegistry bool
+
+	// HeartbeatInterval, when positive, replaces the IS-04 §6.1 5 s
+	// default heartbeat cadence (`--heartbeat`, issue #855) — the knob
+	// that makes a registry's GC drills testable. An IS-09 System
+	// API's heartbeat_interval still outranks it: the System API is
+	// the plant-wide operator config, this is a local default.
+	HeartbeatInterval time.Duration
 
 	// AuthURL, when non-empty, turns on BCP-003-02: every API this
 	// Node serves validates Bearer tokens against the named
@@ -624,6 +632,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachTLSTrust(rc)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
+		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
 		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
@@ -641,6 +650,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
+		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
 		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
@@ -662,6 +672,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
+		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
 		s.wireResourceChanged(rc)
 		go rc.Run(ctx)
