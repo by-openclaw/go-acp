@@ -304,7 +304,8 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	domain := fs.String("domain", "", "search domain the registration SRV records live under (with --unicast)")
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
+	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats at the --heartbeat cadence")
+	heartbeat := fs.Duration("heartbeat", 5*time.Second, "heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value")
 	noConnection := fs.Bool("no-connection-api", false, "do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device")
 	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
 	systemURL := fs.String("system", "", "IS-09 System API as `host:port`, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional")
@@ -347,27 +348,28 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		mode = "unicast"
 	}
 	cfg := provider.IS04NodeConfig{
-		Bind:             *bind,
-		AdvertiseHost:    *advertise,
-		DiscoveryMode:    mode,
-		Priority:         *priority,
-		APIVer:           *apiVer,
-		RegistryURL:      *registry,
-		UnicastResolver:  *resolver,
-		UnicastDomain:    *domain,
-		NoConnectionAPI:  *noConnection,
-		ConnectionAPIVer: *connectionAPIVer,
-		SystemURL:        *systemURL,
-		NoRegistry:       *noRegistry,
-		AuthURL:          *authURL,
-		AuthClientID:     *authClientID,
-		AuthClientSecret: *authClientSecret,
-		ESTHost:          *estHost,
-		ESTLabel:         *estLabel,
-		TLSCertFile:      tlsCerts.String(),
-		TLSKeyFile:       tlsKeys.String(),
-		TLSCAFile:        *tlsCA,
-		TLSDataDir:       *tlsDir,
+		Bind:              *bind,
+		AdvertiseHost:     *advertise,
+		DiscoveryMode:     mode,
+		Priority:          *priority,
+		APIVer:            *apiVer,
+		RegistryURL:       *registry,
+		UnicastResolver:   *resolver,
+		UnicastDomain:     *domain,
+		NoConnectionAPI:   *noConnection,
+		ConnectionAPIVer:  *connectionAPIVer,
+		SystemURL:         *systemURL,
+		NoRegistry:        *noRegistry,
+		HeartbeatInterval: *heartbeat,
+		AuthURL:           *authURL,
+		AuthClientID:      *authClientID,
+		AuthClientSecret:  *authClientSecret,
+		ESTHost:           *estHost,
+		ESTLabel:          *estLabel,
+		TLSCertFile:       tlsCerts.String(),
+		TLSKeyFile:        tlsKeys.String(),
+		TLSCAFile:         *tlsCA,
+		TLSDataDir:        *tlsDir,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -384,7 +386,10 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
 	}
 	if *registry != "" {
-		fmt.Printf("Registering against %s every %s + heartbeat.\n", *registry, "5s")
+		// The banner prints the cadence actually configured, not a
+		// hard-coded default (#855); a discovered IS-09 System API can
+		// still override it live.
+		fmt.Printf("Registering against %s + heartbeat every %s (IS-09 may override).\n", *registry, *heartbeat)
 	}
 	return srv.Serve(ctx)
 }

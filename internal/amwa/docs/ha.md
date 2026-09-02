@@ -65,6 +65,23 @@ Controllers do the failover work; Registries are independent.
 > "It is RECOMMENDED that heartbeat and garbage collection intervals
 > are user-configurable to non-default values"
 
+Both knobs exist in dhs: the registry's `--heartbeat-timeout` /
+`--gc-interval` and the node's `--heartbeat` (#855; an IS-09 System
+API's `heartbeat_interval` outranks the flag — the System API is the
+plant-wide operator config).
+
+**Spec gap — the threshold is not discoverable.** IS-04 defines the
+defaults and no way for a Registry to advertise the values it actually
+uses: DNS-SD TXT carries `api_proto` / `api_ver` / `api_auth` / `pri`,
+nothing about timing; `POST /health/nodes/{id}` answers the last-seen
+time, never the deadline; the Query API exposes no registry
+configuration. A node configured off the registry's real timeout finds
+out only when a heartbeat 404s. A controller watching the Query API
+cannot tell eviction from clean deregistration either — a `removed`
+grain is `pre`-only in both cases — so "node disappeared" findings
+must always be phrased as two possibilities (clean DELETE vs GC).
+Nothing to fix in our code; recorded so nobody re-derives it.
+
 ### Multi-network exception (closest to "HA" in the spec)
 
 > "Registered discovery MAY use either a single registry, or an

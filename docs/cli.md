@@ -250,6 +250,8 @@ Usage of serve:
     	BCP-003-03 EST server host:port - the Node bootstraps the network Root CA + enrolls for its TLS certificate there, then serves HTTPS/WSS only
   -est-label string
     	EST api_selector arbitrary label (appended to /.well-known/est)
+  -heartbeat duration
+    	heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value (default 5s)
   -mdns
     	advertise via mDNS (default true)
   -no-connection-api
@@ -261,7 +263,7 @@ Usage of serve:
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
   -registry string
-    	Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s
+    	Registration API base URL — when set, the Node POSTs to /resource + heartbeats at the --heartbeat cadence
   -resolver IP[:port]
     	DNS server IP[:port] holding the _nmos-register._tcp records (with --unicast)
   -role string
