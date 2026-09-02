@@ -180,10 +180,10 @@ dhs_amwa_validate_suites:
   # returned MANUAL(warn_sdp_untested) because the MP2T receiver's
   # media_types[0] had no tool SDP template; the fixture now leads
   # that receiver with video/SMPTE2022-6 (templatable; MP2T stays a
-  # member for BCP-006-04), so test_18 is tool-scored — expect 56
-  # (#950 phase 1; confirm from the fleet before raising).
+  # member for BCP-006-04), so test_18 is tool-scored — confirmed 56
+  # on the 2026-09-02 fleet rescore (#950 phase 1).
   - { id: IS-05-02, scope: node, target: node,
-      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 56, baseline_cnt: 0 }
   - { id: IS-07-01, scope: node, target: node,
       rows: [{ver: v1.0}], baseline_pass: 19, baseline_cnt: 0 }
   # fresh: earlier suites in a sequential run leave staged IS-05 state
@@ -253,7 +253,7 @@ dhs_amwa_validate_suites:
   # RTP receiver with a templatable media_types[0] (#950 phase 1) —
   # expect 58 (confirm from the fleet before raising).
   - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
-      rows: [{ver: v1.3}], baseline_pass: 57, baseline_cnt: 0 }
+      rows: [{ver: v1.3}], baseline_pass: 58, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
   # own two-row shape with a null first endpoint.
