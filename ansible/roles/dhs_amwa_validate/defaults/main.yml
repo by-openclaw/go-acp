@@ -292,6 +292,12 @@ dhs_amwa_validate_suites:
   - { id: IS-09-02, scope: node, target: cut, window: isolated, flaky_retry: true,
       rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
       baseline_pass: 4, baseline_cnt: 0 }
+  # IS-09-01 scores our System API SERVER (issue #958) — the one
+  # registered tool suite that had no row and no receipt anywhere. A
+  # pure GenericTest (auto RAML/schema rows only); the window serves a
+  # transient `--role system` with an authored /global on the CuT port.
+  - { id: IS-09-01, scope: node, target: cut, window: system,
+      rows: [{ver: v1.0}], baseline_pass: 0, baseline_cnt: 0 }
   # IS-04-03 scores peer-to-peer mode: a registered node MUST NOT
   # advertise _nmos-node._tcp (IS-04 §4.2.1), so P2P needs its own
   # --no-registry transient.
