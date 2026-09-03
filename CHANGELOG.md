@@ -7,6 +7,18 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.21.0](https://github.com/by-openclaw/go-acp/compare/v0.20.0...v0.21.0) (2026-09-03)
+
+
+### Features
+
+* **nmos/node:** configurable heartbeat cadence - the registry's GC is testable ([#855](https://github.com/by-openclaw/go-acp/issues/855)) ([#962](https://github.com/by-openclaw/go-acp/issues/962)) ([2d577c7](https://github.com/by-openclaw/go-acp/commit/2d577c74eecad5532e7d290babbca37f4ca29b57))
+
+
+### Bug Fixes
+
+* **ci:** Release Please cuts releases with the svc-rune service token - GITHUB_TOKEN create-release began 403ing org-side 2026-09-02 (ansible-platform pattern) ([#964](https://github.com/by-openclaw/go-acp/issues/964)) ([b8afa7c](https://github.com/by-openclaw/go-acp/commit/b8afa7cfa8f55c1c6d26b4c37830b40b2a8775d0))
+
 ## [0.20.0](https://github.com/by-openclaw/go-acp/compare/v0.19.0...v0.20.0) (2026-09-02)
 
 
