@@ -113,7 +113,7 @@
 
     - name: validate — offline decode of the slot-1 capture
       ansible.builtin.command: >-
-        {{ a2_bin }} consumer acp2 validate --file {{ a2_out }}/walk-slot1.jsonl
+        {{ a2_bin }} consumer acp2 validate {{ a2_out }}/walk-slot1.jsonl
       register: a2_validate
       changed_when: false
       failed_when: a2_validate.rc != 0 or 'decoded' not in a2_validate.stdout
