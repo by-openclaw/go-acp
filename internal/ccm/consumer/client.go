@@ -17,7 +17,7 @@ import (
 	"net/http"
 	"time"
 
-	"dhs/internal/neuron/codec"
+	"dhs/internal/ccm/codec"
 )
 
 // Client talks to one Neuron REST API.
@@ -72,6 +72,13 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("neuron GET %s: HTTP %d", path, resp.StatusCode)
 	}
 	return body, nil
+}
+
+// FetchSpec downloads the device's own OpenAPI schema (the CCM DM
+// contract) from /api/v1/docs/api.yml. It is served unauthenticated and
+// is the artifact to diff across firmware upgrades.
+func (c *Client) FetchSpec(ctx context.Context) ([]byte, error) {
+	return c.get(ctx, "/docs/api.yml")
 }
 
 // Walk reads /self plus every io/ip sender and receiver, returning the

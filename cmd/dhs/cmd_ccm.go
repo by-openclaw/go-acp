@@ -1,12 +1,12 @@
 package main
 
-// `dhs consumer neuron <verb>` — the EVS Neuron REST API connector
+// `dhs consumer ccm <verb>` — the EVS Neuron REST API connector
 // (issue #975), UUID-addressed. Distinct from acp2 (AN2/binary): this
 // is the HTTPS/JSON control surface, and it lines its streams up with
 // the plant's NMOS registry by the same UUIDs.
 //
-//   dhs consumer neuron walk <host>            list streams by UUID
-//   dhs consumer neuron walk <host> --json     the whole device as JSON
+//   dhs consumer ccm walk <host>            list streams by UUID
+//   dhs consumer ccm walk <host> --json     the whole device as JSON
 
 import (
 	"context"
@@ -16,13 +16,14 @@ import (
 	"os"
 	"sort"
 
-	neuron "dhs/internal/neuron/consumer"
+	ccmc "dhs/internal/ccm/consumer"
 )
 
-func runNeuron(ctx context.Context, args []string) error {
+func runCCM(ctx context.Context, args []string) error {
 	if len(args) == 0 || isHelpToken(args[0]) {
-		fmt.Println("usage: dhs consumer neuron <verb> <host> [flags]")
-		fmt.Println("  walk <host>    connect to the Neuron REST API and list its streams by UUID")
+		fmt.Println("usage: dhs consumer ccm <verb> <host> [flags]")
+		fmt.Println("  walk <host>    connect to the CCM (Neuron REST) API and list its streams by UUID")
+		fmt.Println("  export <host>  store api.yml (schema) + tree (DM) + extract, versioned for firmware diff")
 		fmt.Println("  flags: --json  emit the whole device as JSON")
 		fmt.Println("         --verify-tls  verify the device certificate (default: skip, lab self-signed)")
 		fmt.Println("         --timeout D   per-request timeout (default 8s)")
@@ -32,13 +33,15 @@ func runNeuron(ctx context.Context, args []string) error {
 	rest := args[1:]
 	switch verb {
 	case "walk":
-		return runNeuronWalk(ctx, rest)
+		return runCCMWalk(ctx, rest)
+	case "export":
+		return runCCMExport(ctx, rest)
 	}
-	return fmt.Errorf("consumer neuron: unknown verb %q (expected: walk)", verb)
+	return fmt.Errorf("consumer ccm: unknown verb %q (expected: walk, export)", verb)
 }
 
-func runNeuronWalk(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("consumer neuron walk", flag.ContinueOnError)
+func runCCMWalk(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("consumer ccm walk", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "emit the whole device as JSON")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
@@ -51,13 +54,13 @@ func runNeuronWalk(ctx context.Context, args []string) error {
 		return err
 	}
 	if host == "" {
-		return fmt.Errorf("consumer neuron walk: a host is required (e.g. 10.6.255.102)")
+		return fmt.Errorf("consumer ccm walk: a host is required (e.g. 10.6.255.102)")
 	}
 
-	c := neuron.New(neuron.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout})
 	dev, deviations, err := c.Walk(ctx)
 	if err != nil {
-		return fmt.Errorf("consumer neuron walk: %w", err)
+		return fmt.Errorf("consumer ccm walk: %w", err)
 	}
 
 	if *asJSON {
