@@ -69,6 +69,7 @@ var deviceChecks = []checkFn{
 	checkIS05TransportParams,
 	checkTransportReport,
 	checkQueryVersionIsolation,
+	checkSDPConformance,
 }
 
 // Run audits every harvest and returns the merged result.
