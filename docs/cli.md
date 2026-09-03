@@ -22,6 +22,8 @@ Ansible templates render the same shape.
 - [NMOS controller: connect (IS-05)](#nmos-controller-connect-is-05)
 - [NMOS controller: set](#nmos-controller-set)
 - [NMOS controller: events (IS-07)](#nmos-controller-events-is-07)
+- [NMOS plant export](#nmos-plant-export)
+- [NMOS plant audit](#nmos-plant-audit)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -503,6 +505,60 @@ USAGE
 EXAMPLES
   dhs consumer nmos events watch --url ws://10.0.0.10:8090/x-nmos/events/v1.0/ws \
        --sources 1f1e1d1c-1b1a-4019-8817-161514131211
+```
+
+## NMOS plant export
+
+`dhs consumer nmos export --help`
+
+```text
+Usage of consumer nmos export:
+  -all-versions
+    	walk every minor of every API
+  -deep
+    	also fetch staged / constraints / transporttype per IS-05 endpoint
+  -https
+    	use TLS
+  -json
+    	print the capture summary as JSON
+  -max-nodes int
+    	cap how many registered nodes to follow (0 = no cap)
+  -no-sdp
+    	skip SDP retrieval
+  -no-stamp
+    	name folders without a timestamp
+  -out string
+    	output directory (default "nmos-export")
+  -page-limit int
+    	resources per Query API page to ask for (default 100); a registry may clamp it and reports the applied value in X-Paging-Limit
+  -quiet
+    	suppress progress output
+  -raw
+    	also keep the verbatim response body of every request under raw/ (tree.json already holds them)
+  -target string
+    	device or registry to capture, as host:port (required)
+  -timeout duration
+    	per-request deadline (default 10s)
+  -workers int
+    	how many nodes to capture at once (default 6)
+```
+
+## NMOS plant audit
+
+`dhs consumer nmos audit --help`
+
+```text
+Usage of consumer nmos audit:
+  -dir string
+    	export directory to audit (required)
+  -fail-on string
+    	exit non-zero when a finding at or above this severity is present
+  -format string
+    	output format: text | json | jsonl (default "text")
+  -min-severity string
+    	drop findings below this severity: info | warn | error | critical (default "info")
+  -out string
+    	write the report to this file instead of stdout
 ```
 
 ## consumer info

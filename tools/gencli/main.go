@@ -41,6 +41,8 @@ var matrix = []helpEntry{
 	{"NMOS controller: connect (IS-05)", []string{"consumer", "nmos", "connect", "--help"}},
 	{"NMOS controller: set", []string{"consumer", "nmos", "set", "--help"}},
 	{"NMOS controller: events (IS-07)", []string{"consumer", "nmos", "events", "--help"}},
+	{"NMOS plant export", []string{"consumer", "nmos", "export", "--help"}},
+	{"NMOS plant audit", []string{"consumer", "nmos", "audit", "--help"}},
 
 	// The generic consumer verb set (shape shared by acp1/acp2/emberplus).
 	{"consumer info", []string{"consumer", "acp1", "info", "--help"}},
