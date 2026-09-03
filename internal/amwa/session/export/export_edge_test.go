@@ -22,7 +22,7 @@ func TestAPIsWithoutADedicatedWalk(t *testing.T) {
 	p.paths["/x-nmos/channelmapping/"] = []string{"v1.0/"}
 	p.paths["/x-nmos/channelmapping/v1.0/io"] = map[string]any{"inputs": map[string]any{}}
 	p.paths["/x-nmos/channelmapping/v1.0/map/active"] = map[string]any{}
-	p.paths["/x-nmos/channelmapping/v1.0/map/staged"] = map[string]any{}
+	p.paths["/x-nmos/channelmapping/v1.0/map/activations"] = map[string]any{}
 	p.paths["/x-nmos/events/"] = []string{"v1.0/"}
 	p.paths["/x-nmos/events/v1.0/"] = []string{"sources/"}
 
@@ -46,7 +46,7 @@ func TestAPIsWithoutADedicatedWalk(t *testing.T) {
 		}
 	}
 	cm := apis["channelmapping"].(map[string]any)["data"].(map[string]any)["v1.0"].(map[string]any)
-	for _, k := range []string{"io", "map_active", "map_staged"} {
+	for _, k := range []string{"io", "map_active", "map_activations"} {
 		if _, ok := cm[k]; !ok {
 			t.Errorf("channelmapping capture is missing %s", k)
 		}

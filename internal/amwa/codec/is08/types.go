@@ -71,10 +71,10 @@ type MapActive struct {
 	Map        MapEntries         `json:"map"`
 }
 
-// MapStaged is the body of GET /map/active and PATCH-style staging
-// targets — same shape as MapActive on the wire. Kept as a distinct
-// type so callers can tell the two state apart in code.
-type MapStaged = MapActive
+// (A MapStaged alias lived here, documented against a GET /map/staged
+// endpoint IS-08 v1.0 does not define — staging is an IS-05 concept;
+// IS-08 changes are POSTed to /map/activations. Removed with zero
+// users, issue #857.)
 
 // MapActivationRequest is the body of POST /map/activations.
 // Spec: APIs/schemas/map-activations-post-request-schema.json.

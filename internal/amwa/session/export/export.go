@@ -572,7 +572,11 @@ func (h *harvester) walkAPI(ctx context.Context, api, v string) map[string]json.
 	case "channelmapping":
 		bucket["io"] = h.get(ctx, base+"/io")
 		bucket["map_active"] = h.get(ctx, base+"/map/active")
-		bucket["map_staged"] = h.get(ctx, base+"/map/staged")
+		// IS-08 v1.0 has no /map/staged - staging is an IS-05 concept;
+		// changes are POSTed to /map/activations. Fetching a "staged"
+		// endpoint logged a spurious 404 on every conformant device
+		// (issue #857) and scheduled activations were never captured.
+		bucket["map_activations"] = h.get(ctx, base+"/map/activations")
 
 	case "system":
 		bucket["global"] = h.get(ctx, base+"/global")
