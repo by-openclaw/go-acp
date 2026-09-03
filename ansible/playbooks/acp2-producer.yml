@@ -114,19 +114,21 @@
       changed_when: false
       failed_when: a2p_watch.stdout | int < 5
 
-    - name: Metrics endpoint up
-      ansible.builtin.uri:
-        url: "http://127.0.0.1{{ a2p_metrics }}/metrics"
-        return_content: false
-      changed_when: false
+    # NOTE: --metrics-addr is served in the unit file but the acp2
+    # provider does not implement Metrics() yet ("--metrics-addr set
+    # but provider does not expose Metrics() — skipping" in the
+    # journal) — a named #969 code sub-unit; the listener appears the
+    # moment it lands, no play change needed. Until then no /metrics
+    # probe here.
 
     - name: Verdict
       ansible.builtin.debug:
         msg: >-
           acp2 provider fixed-config green on {{ inventory_hostname }}:
           {{ a2p_walk.stdout | regex_search('slot 1 — [0-9]+ objects') }},
-          announce lines in 12s: {{ a2p_watch.stdout }}, metrics {{ a2p_metrics }}.
+          announce lines in 12s: {{ a2p_watch.stdout }}.
           Cerebrum (.5) can now add 10.6.250.101:{{ a2p_port }} as a Neuron driver.
+          (provider Metrics() pending — #969 sub-unit)
 
   handlers:
     - name: restart dhs-acp2
