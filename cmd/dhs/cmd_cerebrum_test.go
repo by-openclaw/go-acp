@@ -544,36 +544,50 @@ func TestTruncatePathKeepsBothEnds(t *testing.T) {
 		t.Errorf("short path was modified: %q", got)
 	}
 }
-// TestExpandKeepsValuelessLeaves pins the bug that dropped Last_Error.
-//
-// A group obtain answers with available=0 for a child GROUP and also
-// for a leaf that has no value right now. Filtering on `available`
-// therefore silently dropped Last_Error - the one object on an NMOS
-// node that says WHY it is disconnected - and made "Nodes.*" expand to
-// nothing at all, because all 68 node children are available=0.
-//
-// So availability is never the group/leaf test: every child is kept,
-// and a deep expansion PROBES the valueless ones instead of guessing.
-func TestHasOtherPathsIsTheGroupTest(t *testing.T) {
-	self := "Nodes.[abc].Interfaces"
-	// A group answers with rows for OTHER paths.
-	group := []codec.DeviceObjectValue{
-		{Object: self + ".[eno1]"},
-		{Object: self + ".[eno2]"},
+// TestNBNodeClassification pins the NB group/leaf classifier that drives
+// the DM walk's descent. Availability is never the test (a valueless leaf
+// like Last_Error is available=0, but so is a group handle); the real
+// rules are: a scalar descriptor is always a leaf, and a non-scalar row
+// (typeless handle, or a STRING that could be a summary/list node such as
+// io.sdi="uuid,uuid,…") is worth obtaining to find out. This is exactly
+// the bug that made value-bearing summary nodes look like leaves and
+// truncated the DM.
+func TestNBNodeClassification(t *testing.T) {
+	scalarLeaf := []codec.DeviceObjectValue{
+		{Object: "a.enable", DataType: "INTEGER", Available: true, Value: "1"},
+		{Object: "a.dir", DataType: "ENUM", Available: true, Value: "Input"},
+		{Object: "a.on", DataType: "BOOL", Available: false},
+		{Object: "a.gain", DataType: "FLOAT", Available: true, Value: "0.5"},
 	}
-	if !hasOtherPaths(group, self) {
-		t.Error("rows for other paths mean a group")
+	for _, ov := range scalarLeaf {
+		if !nbScalarLeaf(ov) {
+			t.Errorf("%s (%s) must be a scalar leaf", ov.Object, ov.DataType)
+		}
+		if nbMaybeNode(ov) {
+			t.Errorf("%s (%s) is scalar; must not be probed as a node", ov.Object, ov.DataType)
+		}
 	}
-	// A valueless leaf answers with itself, or with nothing.
-	if hasOtherPaths([]codec.DeviceObjectValue{{Object: self}}, self) {
-		t.Error("a row for the path itself is not a child")
+
+	// Non-scalar rows worth obtaining (could be nodes).
+	nodes := []codec.DeviceObjectValue{
+		{Object: "io.handle", DataType: ""},                                                  // typeless handle
+		{Object: "io.sdi", DataType: "STRING", Available: true, Value: "uuid-a,uuid-b,uuid"}, // CSV summary node
+		{Object: "io.one", DataType: "STRING", Available: true, Value: "8fd150f9-883f-421c-b568-808e5fbf9712"}, // single-child list (bare UUID)
+		{Object: "io.empty", DataType: "STRING", Available: false, Value: ""},                // empty STRING handle
 	}
-	if hasOtherPaths(nil, self) {
-		t.Error("no rows is not a group")
+	for _, ov := range nodes {
+		if nbScalarLeaf(ov) {
+			t.Errorf("%s must not be scalar", ov.Object)
+		}
+		if !nbMaybeNode(ov) {
+			t.Errorf("%s (%q) must be probed as a possible node", ov.Object, ov.Value)
+		}
 	}
-	// Empty object names are noise, not children.
-	if hasOtherPaths([]codec.DeviceObjectValue{{Object: ""}}, self) {
-		t.Error("an empty object name is not a child")
+
+	// A plain STRING leaf (a real value, not a list) must NOT be probed.
+	plain := codec.DeviceObjectValue{Object: "a.name", DataType: "STRING", Available: true, Value: "SDI Input 6"}
+	if nbMaybeNode(plain) {
+		t.Errorf("plain STRING leaf %q must not be re-obtained as a node", plain.Value)
 	}
 }
 // TestConstraintsSurviveToTheWatch: the wire carries MIN/MAX/STEP and

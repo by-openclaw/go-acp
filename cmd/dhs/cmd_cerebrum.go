@@ -1899,14 +1899,9 @@ func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device stri
 	return got.Device.ObjectValues, nil
 }
 
-// maxExpandDepth bounds "**". The deepest live NB tree seen is a node's
-// Interfaces/Devices at two levels; the cap is a guard against a cyclic
-// or pathological tree, not a real limit.
-const maxExpandDepth = 8
-
-// maxExpandObjects bounds what one expansion may subscribe.
+// maxExpandObjects bounds what one "**" expansion may subscribe.
 //
-// A deep walk probes every child, so "Nodes.**" on a live NOC is 68
+// A deep walk descends every node, so "Nodes.**" on a live NOC is 68
 // nodes x ~16 fields, then into Interfaces and Devices, then into each
 // device's Senders/Receivers/Sources — tens of thousands of obtains
 // against a production control system, from one careless command.
@@ -1929,74 +1924,52 @@ const maxExpandObjects = 2000
 // a group answers with rows for OTHER paths, a valueless leaf does
 // not. One obtain per candidate, and only for candidates.
 func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]string, error) {
-	var out []string
 	seen := map[string]bool{}
-
-	var walk func(g string, depth int) error
-	walk = func(g string, depth int) error {
-		if len(out) > maxExpandObjects {
-			return fmt.Errorf("expansion exceeded %d objects at %q — narrow the path (one node rather than Nodes) or use .* instead of .**", maxExpandObjects, g)
+	var out []string
+	keep := func(object string) {
+		if object == "" || seen[object] {
+			return
 		}
-		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, g)
+		seen[object] = true
+		if wantLeaf(want, object) {
+			out = append(out, object)
+		}
+	}
+
+	if !deep {
+		// Shallow ("GROUP.*"): the group's direct children, one obtain.
+		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, group)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, ov := range kids {
-			if ov.Object == "" || ov.Object == g || seen[ov.Object] {
+			if ov.Object == group {
 				continue
 			}
-			if !deep || depth >= maxExpandDepth {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-				continue
-			}
-			// Every child is probed on a deep walk, including the ones
-			// that already carry a value.
-			//
-			// Carrying a value does NOT mean being a leaf here.
-			// Interfaces answers with "en8,en12" AND has [en8]/[en12]
-			// beneath it, each holding Chassis_ID and Port_ID; Devices
-			// does the same with its UUID list. Skipping value-carrying
-			// rows stopped the descent exactly at the two nodes worth
-			// descending into.
-			//
-			// A value-carrying group is kept as well as descended into
-			// — the summary string is real data, not a placeholder for
-			// the children.
-			if ov.Available {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-			}
-			// Candidate group. Ask it for children; anything that
-			// answers with OTHER paths is a group and is descended
-			// into, anything else is a valueless leaf and is kept.
-			sub, err := cerebrumChildren(sess, timeout, device, byName, subDev, ov.Object)
-			if err != nil || !hasOtherPaths(sub, ov.Object) {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-				continue
-			}
-			if err := walk(ov.Object, depth+1); err != nil {
-				return err
-			}
+			keep(ov.Object)
 		}
-		return nil
+		return out, nil
 	}
-	if err := walk(group, 0); err != nil {
+
+	// Deep ("GROUP.**"): reuse the DM walk — the SAME NB self-echo
+	// recursion extract and tree use — so a subtree watch registers exactly
+	// the LEAVES the DM holds, and only leaves (intermediate group handles
+	// deliver no change events, so subscribing them is pointless). The wire
+	// refuses wildcards, so this is client-side enumeration; a subtree too
+	// large to enumerate is refused (not truncated) so the caller narrows
+	// the path or raises the limit rather than getting a watch that
+	// silently misses objects.
+	leaves, _, truncated, err := cerebrumDeviceWalkValues(sess, timeout, device, byName, subDev, []string{group}, maxExpandObjects)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-// hasOtherPaths reports whether an obtain answered with rows for paths
-// other than the one asked for — the signature of a group.
-func hasOtherPaths(rows []codec.DeviceObjectValue, self string) bool {
-	for _, ov := range rows {
-		if ov.Object != "" && ov.Object != self {
-			return true
-		}
+	if truncated {
+		return nil, fmt.Errorf("%q expands past %d objects — narrow the path (a node rather than the whole subtree) or raise --max-requests", group, maxExpandObjects)
 	}
-	return false
+	for _, lv := range leaves {
+		keep(lv.Object)
+	}
+	return out, nil
 }
 
 // cerebrumSubscribeRows registers every row, batching first and
@@ -3507,12 +3480,12 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 // deviceConfigBodyFlags carries the flattened per-type body flags so
 // buildDeviceConfigBody can map them onto the right codec struct.
 type deviceConfigBodyFlags struct {
-	device, version, name             string
-	connType, port, timeout, poll     string
-	cpf, panelID, panelType           string
-	routerType, baud, parity          string
-	maxLevel, maxSource, maxDest      string
-	snmpPort, snmpName                string
+	device, version, name         string
+	connType, port, timeout, poll string
+	cpf, panelID, panelType       string
+	routerType, baud, parity      string
+	maxLevel, maxSource, maxDest  string
+	snmpPort, snmpName            string
 }
 
 // buildDeviceConfigBody attaches the body struct chosen by deviceType to dc
