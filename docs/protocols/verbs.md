@@ -296,7 +296,7 @@ probel-sw02p is **watch-only** today (interrogate/connect/protect gated behind `
 | Connector | Consumer | Producer | Dissector | docs/ set | Coverage floors | Status |
 |---|---|---|---|---|---|---|
 | **acp1** | ✅ all verbs | ✅ all transports | ✅ | ✅ | ✅ codec 100 / consumer 90 / provider 90 | **DONE (gold template)** |
-| acp2 | ⚠️ core unvalidated (AN2-only, no emulator) | ⚠️ | ✅ | ⚠️ no runbook | ❌ | partial |
+| acp2 | ✅ all verbs (info live vs the real Neuron; rest loopback-proven) | ✅ incl. --manifest + --announce-replay | ✅ | ✅ full set incl. runbook | ✅ 100/100/100 | near-done (fleet redeploy + fresh Cerebrum verify pending, #969) |
 | emberplus | ✅ + matrix/invoke/stream | ✅ | ✅ | ✅ | ❌ | near-done |
 | probel-sw08p | ✅ matrix verbs | ✅ | ✅ | ❌ | ❌ | partial |
 | probel-sw02p | ⚠️ watch-only | ❌ not wired | ✅ | ❌ | ❌ | early |
@@ -304,6 +304,6 @@ probel-sw02p is **watch-only** today (interrogate/connect/protect gated behind `
 | tsl-v31/40/50 | ✅ listen | ❌ not wired | ✅ | ❌ | ❌ | consumer-only wired |
 | cerebrum-nb | ✅ 12 NB verbs | — by design | n/a | ⚠️ | ❌ | consumer-only |
 
-**Deferred** (scoped out, not gaps): acp1 mDNS discovery → AMWA cycle · acp1 live-AN2 + AN2 dissector → no hardware · `replay` verb → ADR-0021 · acp2 emulator → none exists (device-gated).
+**Deferred** (scoped out, not gaps): acp1 mDNS discovery → AMWA cycle · acp1 live-AN2 + AN2 dissector → no hardware · `replay` verb → ADR-0021. (The former "acp2 emulator - none exists" entry was stale: the real EVS Neuron at the lab IS the vendor oracle, and our own provider emulates a Neuron for controller-side tests.)
 
 To bring any non-acp1 connector to ✅, follow the **"Bringing a connector to DONE" playbook** in the root `CLAUDE.md` — the same audit → fix → unit → integration → verbs → dissector → fixtures → docs → CI sequence (ADR-0025).

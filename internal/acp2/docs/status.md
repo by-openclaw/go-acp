@@ -6,11 +6,11 @@ against a real **EVS Neuron** (CONVERT Hybrid, the vendor oracle, never our own
 provider as the consumer oracle); "code" means implemented and unit-tested but
 not in the live verify matrix.
 
-- **As of:** 2026-06-13
+- **As of:** 2026-09-03 (truth pass; see §11 for the 2026-08 Cerebrum-interop fixes)
 - **Spec:** `internal/acp2/assets/acp2_protocol.pdf` + `an2_protocol.pdf` · wire ref: `internal/acp2/wireshark/dhs_acpv2.lua`
 - **Transport:** AN2/TCP **only** (port 2072, AN2 proto=2) — no UDP, no direct TCP.
 - **Oracle:** real EVS Neuron CONVERT Hybrid (lab, reached from a device-side host) + our provider emulator (`dhs producer acp2 serve`, validated against Cerebrum + Lawo VSM) for the loopback-regression tier.
-- **Coverage:** codec **98.8%** · consumer **84.2%** · provider **90.0%** (CI floors enforce no-regression). Consumer < 90 because the residual gap is live-session / timer / device-response-shape branches reachable only via the integration tier (now present), not unit-coverable without a live peer.
+- **Coverage:** CI floors enforce **100/100/100** for codec/consumer/provider (.github/workflows/ci.yml).
 
 Legend: ✅ verified live · 🟢 code + unit test · 🟡 partial · ⬜ not started · — N/A
 
@@ -106,3 +106,25 @@ go through `set`). `matrix` / `invoke` / `stream` are Ember+-only — N/A.
 1. **Real-device verb matrix** — only `info` is verified live against the real Neuron (`10.44.72.28`) so far; walk/get/set/watch are unit + loopback-verified and run against the device via `ACP2_TEST_HOST` once a device-side runner is available (the dev host is firewalled from the device net by the manufacturer firewall).
 2. **acp2 emulator on the fleet** — the LXC + win11 fleet currently serve ACP1; standing up `dhs producer acp2 serve` there (the fleet emulator) is the remaining deploy step for the Ansible idempotency tier.
 3. **Provider Tier-3 (real controller)** — our provider was validated against Cerebrum / Lawo VSM previously; a fresh live walk by a real controller is lab/VPN-bound, not CI-runnable.
+
+---
+
+## 11. 2026-08 Cerebrum-interop fixes (post-dating the tables above)
+
+Four wire-proven root causes of "Cerebrum does not discover our
+provider", all found 2026-08-20 against Cerebrum's Neuron driver and
+all FIXED in the repo:
+
+| # | Defect | Fix | Where |
+|---:|---|---|---|
+| 1 | GetSlotInfo advertised protos `[2]` only; Cerebrum refuses to proceed past a card that does not advertise `[2,3,4]`/`[2,3]` | manifest slot `protos` (#723) | `provider/handlers.go` SetSlotProtos |
+| 2 | label charset rewrite (`ROOT_NODE_V2` -> `ROOT-NODE-V2`) orphaned Cerebrum's exact-path object-model binding | serve labels verbatim (#725) | `provider/tree.go` wireLabel |
+| 3 | announce silence read as "no connection" (a real Neuron pushes ~2.6 announces/s; controllers derive liveness from the chatter) | `--announce-replay` + committed `neuron-announces.jsonl` (#726) | `provider/announce_replay.go` |
+| 4 | EnableProtocolEvents reply carried trailing bytes; Cerebrum drops the session at its 5 s timeout | exact reply shape | `provider/handlers.go` |
+
+**Deployment caveat the tables above cannot show:** the fixes shipped
+in the BINARY, but the fleet service configuration predates them —
+`dhs-acp2.service` still runs `--tree` with the June toy tree, no
+`--manifest`, no `--announce-replay`. Redeploy + a fresh two-instance
+Cerebrum verification (real Neuron + our emulator side by side) is
+tracked as the acp2 close-out unit (#969).
