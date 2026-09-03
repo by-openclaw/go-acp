@@ -27,6 +27,7 @@ func runNMOSAudit(_ context.Context, args []string) (err error) {
 		minSev = fs.String("min-severity", "info", "drop findings below this severity: info | warn | error | critical")
 		outPh  = fs.String("out", "", "write the report to this file instead of stdout")
 		failOn = fs.String("fail-on", "", "exit non-zero when a finding at or above this severity is present")
+		policy = fs.String("policy", "", "site policy JSON (#852): multicast bandwidth classes, expected PTP grandmaster/domain, private/public media plane. Without it, the policy-specific checks report SKIP")
 	)
 
 	// A bare positional is the friendlier spelling of --dir, and the one
@@ -69,7 +70,14 @@ func runNMOSAudit(_ context.Context, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	res := audit.Run(harvests, audit.Options{MinSeverity: sev})
+	var pol *audit.Policy
+	if *policy != "" {
+		pol, err = audit.LoadPolicy(*policy)
+		if err != nil {
+			return fmt.Errorf("consumer nmos audit: %w", err)
+		}
+	}
+	res := audit.Run(harvests, audit.Options{MinSeverity: sev, Policy: pol})
 
 	var w io.Writer = os.Stdout
 	if *outPh != "" {

@@ -10,6 +10,11 @@ type Options struct {
 	// MinSeverity drops findings below the given rank. Inventory lines
 	// are SevInfo, so `--min-severity warn` gives the deviations alone.
 	MinSeverity Severity
+
+	// Policy is the optional site policy (#852) driving the
+	// multicast-class, expected-grandmaster, and private/public
+	// checks. nil means those checks report SKIP, never PASS.
+	Policy *Policy
 }
 
 // Inventory is what one captured device actually exposes — the answer
@@ -89,8 +94,12 @@ func Run(harvests []*Harvest, opts Options) Result {
 		for _, c := range deviceChecks {
 			res.Findings = append(res.Findings, c(h)...)
 		}
+		// Network-plane checks take the policy, so they are called
+		// explicitly rather than through the deviceChecks slice (#852).
+		res.Findings = append(res.Findings, checkNetworkPlane(h, opts.Policy)...)
 	}
 	res.Findings = append(res.Findings, checkPlantMulticast(all)...)
+	res.Findings = append(res.Findings, checkPlantGrandmaster(all, opts.Policy)...)
 	res.Findings = append(res.Findings, checkPlantRegistration(harvests)...)
 
 	groups, groupFindings := checkPlantGroups(all)
