@@ -445,7 +445,9 @@ func TestWatchObjectListGrammar(t *testing.T) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 			for i := range got {
-				if got[i] != tc.want[i] {
+				// cerebrumWatchObjects now returns descriptor-bearing rows;
+				// the grammar is about which OBJECTS are resolved.
+				if got[i].Object != tc.want[i] {
 					t.Errorf("got %v, want %v", got, tc.want)
 					break
 				}

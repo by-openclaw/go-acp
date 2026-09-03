@@ -1674,12 +1674,22 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 
 	// Resolve the object list BEFORE subscribing, so an expansion that
 	// finds nothing fails loudly instead of quietly watching one row.
-	objects := []string{object}
+	objectRows := []codec.DeviceObjectValue{{Object: object}}
 	if subDev != "" {
-		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
+		objectRows, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
 		if err != nil {
 			return err
 		}
+	}
+	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
+	// the wire (no type/access/units), so the resolve step's descriptors are
+	// remembered here and merged into every rendered row — giving the watch
+	// the same detail (type, R/W, units, enum/range) as acp1/acp2/ember+.
+	objects := make([]string, 0, len(objectRows))
+	desc := make(map[string]codec.DeviceObjectValue, len(objectRows))
+	for _, r := range objectRows {
+		objects = append(objects, r.Object)
+		desc[r.Object] = r
 	}
 
 	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
@@ -1745,6 +1755,16 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 				if !changed(ov) {
 					continue
 				}
+				// Enrich the value-only change event with the cached
+				// descriptor so type/access/units/enum render on every row.
+				if ov.DataType == "" {
+					if d, ok := desc[ov.Object]; ok {
+						live := ov
+						ov = d
+						ov.Value = live.Value
+						ov.Available = live.Available
+					}
+				}
 				header.Do(cerebrumDMHeader)
 				cerebrumDMRow(now, ov)
 			}
@@ -1798,9 +1818,9 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 // response, not a recursive registration. Change events come from leaf
 // rows only, so watching a subtree means enumerating it first and
 // subscribing to each leaf.
-func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]string, error) {
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]codec.DeviceObjectValue, error) {
 	want := parseOnly(only)
-	var out []string
+	var out []codec.DeviceObjectValue
 	for _, part := range strings.Split(object, ";") {
 		part = strings.TrimSpace(part)
 		if part == "" {
@@ -1813,7 +1833,22 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 			group, expand = strings.CutSuffix(part, ".*")
 		}
 		if !expand {
-			out = append(out, part)
+			// A literal single object: obtain it once so the watch has its
+			// descriptor (type/access/units) to render change events with —
+			// a leaf self-echoes, carrying the full descriptor. If the
+			// obtain fails or it is not a leaf, subscribe it bare.
+			row := codec.DeviceObjectValue{Object: part}
+			if sess != nil {
+				if rows, err := cerebrumChildren(sess, timeout, device, byName, subDev, part); err == nil {
+					for _, ov := range rows {
+						if ov.Object == part {
+							row = ov
+							break
+						}
+					}
+				}
+			}
+			out = append(out, row)
 			continue
 		}
 		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep, want)
@@ -1923,16 +1958,19 @@ const maxExpandObjects = 2000
 // regardless, and for a deep expansion the available=0 rows are PROBED:
 // a group answers with rows for OTHER paths, a valueless leaf does
 // not. One obtain per candidate, and only for candidates.
-func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]string, error) {
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]codec.DeviceObjectValue, error) {
 	seen := map[string]bool{}
-	var out []string
-	keep := func(object string) {
-		if object == "" || seen[object] {
+	var out []codec.DeviceObjectValue
+	// Rows are returned WITH their descriptor (type/access/units/enum/range)
+	// so the watch can render change events — which arrive value-only over
+	// the wire — with the same detail as every other protocol's watch.
+	keep := func(ov codec.DeviceObjectValue) {
+		if ov.Object == "" || seen[ov.Object] {
 			return
 		}
-		seen[object] = true
-		if wantLeaf(want, object) {
-			out = append(out, object)
+		seen[ov.Object] = true
+		if wantLeaf(want, ov.Object) {
+			out = append(out, ov)
 		}
 	}
 
@@ -1946,7 +1984,7 @@ func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string
 			if ov.Object == group {
 				continue
 			}
-			keep(ov.Object)
+			keep(ov)
 		}
 		return out, nil
 	}
@@ -1967,7 +2005,7 @@ func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string
 		return nil, fmt.Errorf("%q expands past %d objects — narrow the path (a node rather than the whole subtree) or raise --max-requests", group, maxExpandObjects)
 	}
 	for _, lv := range leaves {
-		keep(lv.Object)
+		keep(lv)
 	}
 	return out, nil
 }
