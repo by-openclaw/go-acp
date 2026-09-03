@@ -27,3 +27,5 @@
 internal/*/testdata/fixtures/**/raw.*.jsonl -text
 internal/*/testdata/fixtures/**/tree.json -text
 internal/*/testdata/fixtures/**/glow.json -text
+internal/neuron/codec/testdata/*.yml text eol=lf
+internal/neuron/codec/testdata/*.json text eol=lf
