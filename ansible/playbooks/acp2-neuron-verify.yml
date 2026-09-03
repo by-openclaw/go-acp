@@ -61,10 +61,10 @@
     - name: walk slot 1 — a real tree, not a toy
       ansible.builtin.assert:
         that:
-          - (a2_walk1.stdout | regex_search('slot 1 — ([0-9]+) objects', '\1') | first | int) >= a2_slot1_min_objects
+          - (a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') | regex_replace('[^0-9]', '') | int) >= a2_slot1_min_objects
         fail_msg: >-
-          slot 1 walked {{ a2_walk1.stdout | regex_search('slot 1 — ([0-9]+) objects', '\1') | first }}
-          objects — below the {{ a2_slot1_min_objects }} floor of a real CONVERT Hybrid
+          slot 1 walked {{ a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') }}
+          — below the {{ a2_slot1_min_objects }}-object floor of a real CONVERT Hybrid
 
     - name: get — one known leaf by numeric id
       ansible.builtin.command: >-
