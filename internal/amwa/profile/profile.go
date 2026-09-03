@@ -147,6 +147,7 @@ var checks = []checkFn{
 	checkQueryDowngrade,
 	checkHeartbeatUnknownNode,
 	checkTransportFileContentType,
+	checkSenderSDPConformance,
 }
 
 // Run probes the target and returns the report.

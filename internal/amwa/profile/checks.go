@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"dhs/internal/amwa/codec/sdp"
 )
 
 // checkRoot fetches /x-nmos and records which APIs the device serves.
@@ -554,6 +556,80 @@ func checkTransportFileContentType(ctx context.Context, s *Session) []Result {
 		}
 	}
 	return out
+}
+
+// checkSenderSDPConformance fetches a live sender's transport file and
+// parses it with codec/sdp (#850). A non-conformant SDP a controller
+// relays verbatim is the invisible cause of a route that "comes up"
+// and decodes nothing — this is the live counterpart to the offline
+// audit's SDP checks. Deviations are WARN (permitted-but-risky), an
+// unparseable body is FAIL. A 404 (inactive sender) is a SKIP: there
+// is no SDP to judge.
+func checkSenderSDPConformance(ctx context.Context, s *Session) []Result {
+	const (
+		id   = "PROFILE-SDP-001"
+		name = "served SDP transport files are ST 2110 conformant"
+		spec = "SMPTE ST 2110 / RFC 4566 SDP"
+	)
+	vs, has := s.APIs["connection"]
+	if !has || len(vs) == 0 {
+		return []Result{s.skip(id, name, spec, "device serves no connection API")}
+	}
+	ver := highestVersion(vs)
+
+	list := s.get(ctx, "/x-nmos/connection/"+ver+"/single/senders")
+	ids, ok := jsonArray(list.Body)
+	if list.Status != http.StatusOK || !ok || len(ids) == 0 {
+		return []Result{s.skip(id, name, spec, "the device publishes no IS-05 senders")}
+	}
+	if !s.opts.Deep {
+		ids = ids[:1]
+	}
+
+	var out []Result
+	for _, sid := range ids {
+		sid = strings.TrimSuffix(sid, "/")
+		path := "/x-nmos/connection/" + ver + "/single/senders/" + sid + "/transportfile"
+		r := s.get(ctx, path)
+		switch {
+		case r.Status == http.StatusNotFound:
+			out = append(out, s.result(id, name, spec, StatusSkip, r,
+				fmt.Sprintf("sender %s has no transport file (inactive) — no SDP to check", sid)))
+			continue
+		case r.Err != nil || r.Status != http.StatusOK:
+			out = append(out, s.result(id, name, spec, StatusSkip, r,
+				fmt.Sprintf("sender %s transport file not retrievable (status %d) — covered by PROFILE-IS05-001", sid, r.Status)))
+			continue
+		}
+		sess, devs, err := sdp.Parse(string(r.Body))
+		switch {
+		case err != nil:
+			out = append(out, s.result(id, name, spec, StatusFail, r,
+				fmt.Sprintf("sender %s SDP is structurally invalid: %v", sid, err)))
+		case len(devs) > 0:
+			out = append(out, s.result(id, name, spec, StatusWarn, r,
+				fmt.Sprintf("sender %s SDP has %d deviation(s), first: line %d %s", sid, len(devs), devs[0].Line, devs[0].Reason)))
+		case dupUnderfilled(sess):
+			out = append(out, s.result(id, name, spec, StatusWarn, r,
+				fmt.Sprintf("sender %s SDP declares a=group:DUP but only one leg resolves (ST 2022-7 redundancy not carried)", sid)))
+		default:
+			out = append(out, s.result(id, name, spec, StatusPass, r,
+				fmt.Sprintf("sender %s SDP is conformant (%d media section(s))", sid, len(sess.Media))))
+		}
+	}
+	return out
+}
+
+// dupUnderfilled reports an a=group:DUP that resolves to fewer than two
+// legs — the same rule the offline audit applies.
+func dupUnderfilled(sess *sdp.Session) bool {
+	hasDUP := false
+	for _, g := range sess.Groups {
+		if g.Semantics == "DUP" {
+			hasDUP = true
+		}
+	}
+	return hasDUP && len(sess.Legs()) < 2
 }
 
 func sortedKeys(m map[string][]string) []string {
