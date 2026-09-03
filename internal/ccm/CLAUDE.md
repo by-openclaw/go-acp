@@ -4,10 +4,23 @@ Atomic per-protocol context for the CCM connector — the REST API EVS
 positions as the acp2 successor on Neuron (#706). Read the root
 `CLAUDE.md` first.
 
-**STATUS: SPEC-COLLECTION PHASE — no code lands in this tree until
-the spec review below is done and the owner gives the build go
-(design-first rule).** The acp2 connector stays regardless: the fleet
-is mixed-firmware.
+**STATUS: BUILDING (owner go 2026-09-03).** Spec review done; the
+device's own OpenAPI (`/api/v1/docs/api.yml`) is captured. Unit 1
+shipped: stdlib UUID-keyed codec + `dhs consumer ccm walk` + `ccm
+export` (stores api.yml schema + walked tree DM + extract, keyed by
+productName@productVersion for firmware diff). The acp2 connector
+stays regardless: this bridge runs acp2 + REST/CCM + NMOS at once
+(mixed-firmware, multi-protocol box).
+
+**Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**
+this build serves the CCM resource MODEL (UUID-addressed REST, `/self`,
+recursive `{uuid}` paths) but a SUBSET of the CCM 0v1 PROTOCOL — it has
+GET+PUT only (no PATCH-maps per §11.2) and **no `/ws`** (verified with
+a real Upgrade handshake — every candidate path 404s, not a connection
+error). So `watch` over `/ws` is not available on this firmware; the
+owner is upgrading to a CCM-enabled build where it is. Deviations are
+absorbed + reported, never worked around (spec-strict posture). The
+api.yml is stored versioned so the upgrade's diff shows what CCM adds.
 
 ---
 
