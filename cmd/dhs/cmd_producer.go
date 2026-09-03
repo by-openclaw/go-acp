@@ -42,33 +42,33 @@ type metricsExposer interface {
 func runProducer(ctx context.Context, protoName string, args []string) error {
 	fs := flag.NewFlagSet("producer "+protoName+" serve", flag.ContinueOnError)
 	var (
-		treePath      = fs.String("tree", "", "path to canonical tree.json (one of --tree | --manifest required)")
-		manifestPath  = fs.String("manifest", "", "path to manifest JSON (.cache/manifest/<device>.json) — assembles the tree from referenced DMs under .cache/dm/<proto>/ per ADR-0022. Mutually exclusive with --tree.")
-		cacheDir      = fs.String("cache-dir", ".cache", "root of the cache tree (`.cache/dm/<proto>/<Model@SwRev>.json` lookup base; only used with --manifest)")
-		port          = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
-		host          = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
-		bind          = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
-		logLevel      = fs.String("log-level", "info", "log level: debug, info, warn, error")
-		logFormat     = fs.String("log-format", "text", "log format: text | json (Loki/Promtail) | syslog (RFC 5424 lines, severity mapped incl. critical — #751 G6)")
-		syslogAddr    = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
-		announceDemo  = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
-		announceSlot  = fs.Int("announce-demo-slot", 1, "slot for --announce-demo target")
-		announceGroup = fs.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
-		announceID    = fs.Int("announce-demo-id", 0, "acp1: object id for --announce-demo target (must be Integer type)")
-		announceObj   = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
-		announceEvery = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
-		metricsAddr   = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
-		transport     = fs.String("transport", "udp", "acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag.")
-		tcpPort       = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
-		an2Port       = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
-		adminName     = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
-		insertTiming  = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
-		dmLibraryRoot = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
-		preload       = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
-		play          = fs.String("play", "", "acp1 only: oscillate objects with random values; each tick fires a spontaneous status announce. Pass `all` to oscillate every oscillatable object on every slot (slot 0 included), or a comma-separated path list 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7 oscillates Temp_Left + Temp_Right on slot 0")
-		playEvery     = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
-		playMode      = fs.String("play-mode", "walk", "acp1 only: --play value strategy — `walk` (mean-reverting drift, realistic) or `random` (force a uniform value across the object's full [min,max] each tick)")
-		pidfile       = fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop --pidfile PATH` can signal it")
+		treePath       = fs.String("tree", "", "path to canonical tree.json (one of --tree | --manifest required)")
+		manifestPath   = fs.String("manifest", "", "path to manifest JSON (.cache/manifest/<device>.json) — assembles the tree from referenced DMs under .cache/dm/<proto>/ per ADR-0022. Mutually exclusive with --tree.")
+		cacheDir       = fs.String("cache-dir", ".cache", "root of the cache tree (`.cache/dm/<proto>/<Model@SwRev>.json` lookup base; only used with --manifest)")
+		port           = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
+		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
+		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
+		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
+		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
+		syslogAddr     = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
+		announceDemo   = fs.Bool("announce-demo", false, "oscillate a target value every --announce-demo-interval and broadcast announces (acp1/acp2 only)")
+		announceSlot   = fs.Int("announce-demo-slot", 1, "slot for --announce-demo target")
+		announceGroup  = fs.Int("announce-demo-group", 2, "acp1: object group for --announce-demo target (2=Control)")
+		announceID     = fs.Int("announce-demo-id", 0, "acp1: object id for --announce-demo target (must be Integer type)")
+		announceObj    = fs.Int("announce-demo-obj", 18, "acp2: obj-id for --announce-demo target (must be Number+Float)")
+		announceEvery  = fs.Duration("announce-demo-interval", 2*time.Second, "--announce-demo tick interval")
+		metricsAddr    = fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + Go/process collectors on this address")
+		transport      = fs.String("transport", "udp", "acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag.")
+		tcpPort        = fs.Int("tcp-port", 0, "acp1 only: TCP listen port for --transport tcp/all (0 = same as --port)")
+		an2Port        = fs.Int("an2-port", 2072, "acp1 only: AN2/TCP listen port for --transport an2/all")
+		adminName      = fs.String("name", "dhs-acp1", "acp1 only: instance name for admin RPC discovery file")
+		insertTiming   = fs.String("insert-timing", "real", "acp1 only: cascade timing for slot insert (real / fast)")
+		dmLibraryRoot  = fs.String("dm-library", "", "acp1 only: DM library root for admin slot.load (#260)")
+		preload        = fs.String("preload", "", "acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1")
+		play           = fs.String("play", "", "acp1 only: oscillate objects with random values; each tick fires a spontaneous status announce. Pass `all` to oscillate every oscillatable object on every slot (slot 0 included), or a comma-separated path list 1.<slot+1>.<group>.<id>[,...] e.g. 1.1.3.6,1.1.3.7 oscillates Temp_Left + Temp_Right on slot 0")
+		playEvery      = fs.Duration("play-interval", 2*time.Second, "acp1 only: tick interval for --play")
+		playMode       = fs.String("play-mode", "walk", "acp1 only: --play value strategy — `walk` (mean-reverting drift, realistic) or `random` (force a uniform value across the object's full [min,max] each tick)")
+		pidfile        = fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop --pidfile PATH` can signal it")
 		announceReplay = fs.String("announce-replay", "", "acp2: loop a recorded announce stream (.jsonl from a real-device capture) to subscribed sessions — real cards announce continuously and controllers derive module liveness from it")
 	)
 	if err := parseVerbFlags(fs, args); err != nil {
@@ -510,14 +510,8 @@ func parseLogLevel(level string) slog.Level {
 }
 
 func newLogger(level, format string) *slog.Logger {
-	lvl := parseLogLevel(level)
-	opts := &slog.HandlerOptions{Level: lvl}
-	switch format {
-	case "json":
-		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
-	case "syslog":
-		// RFC 5424 lines for rsyslog/syslog-ng/promtail (#751 G6).
-		return slog.New(newSyslogHandler(os.Stderr, lvl))
-	}
-	return slog.New(slog.NewTextHandler(os.Stderr, opts))
+	// Delegate to the shared format chooser (epic #987) so producer and
+	// consumer pick the log FORMAT identically. Sinks (stderr here, +file/
+	// +syslog-addr) are layered by the caller.
+	return newLoggerTo(os.Stderr, parseLogLevel(level), format)
 }

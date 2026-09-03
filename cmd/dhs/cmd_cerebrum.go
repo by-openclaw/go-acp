@@ -61,15 +61,25 @@ func printCerebrumJSON(v any) error {
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
 type cerebrumFlags struct {
-	port     int
-	user     string
-	pass     string
-	tls      bool
-	insecure bool
-	debug    bool
-	logPath  string
-	capture  string
-	timeout  time.Duration
+	port       int
+	user       string
+	pass       string
+	tls        bool
+	insecure   bool
+	debug      bool
+	logPath    string
+	logFormat  string
+	logLevel   string
+	syslogAddr string
+	capture    string
+	timeout    time.Duration
+
+	// logger + logCleanup are built once by newLogger and cached so a verb
+	// (e.g. watch) can route its own event stream through the SAME logger
+	// the plugin uses — one set of sinks (stderr/file/syslog-addr), one
+	// format. Do not set directly.
+	logger     *slog.Logger
+	logCleanup func()
 }
 
 func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
@@ -81,6 +91,9 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
 	fs.StringVar(&c.logPath, "log", "", "write the diagnostic log (incl. RX/TX XML at full debug verbosity) to this file — clean UTF-8, no PowerShell 2> stderr wrapping; stderr stays silent. Literal \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (ADR-0028)")
+	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
+	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
+	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
 	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal \"auto\" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
@@ -92,6 +105,34 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 // otherwise stderr at Warn (quiet success) or Debug with --debug. The
 // returned closer is a no-op for stderr.
 func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
+	if c.logger != nil { // built once, shared by the plugin and the verb
+		return c.logger, c.logCleanup, nil
+	}
+	format := c.logFormat
+	if format == "" {
+		format = DefaultLogFormat
+	}
+	var closers []func()
+	cleanup := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			closers[i]()
+		}
+	}
+
+	// Local sink + level. --log FILE writes clean UTF-8 at full debug
+	// verbosity (stderr untouched — avoids PowerShell 5.1 wrapping
+	// redirected native stderr into error records); otherwise stderr at
+	// Warn (quiet success) or Debug with --debug. A structured stream
+	// (syslog/json) carries the verb's EVENTS at Info, so it must not sit
+	// at Warn. --log-level overrides everything.
+	var w io.Writer = os.Stderr
+	level := slog.LevelWarn
+	if format != "text" {
+		level = slog.LevelInfo
+	}
+	if c.debug {
+		level = slog.LevelDebug
+	}
 	if c.logPath != "" {
 		if dir := filepath.Dir(c.logPath); dir != "." {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -102,13 +143,30 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
 		}
-		return slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: slog.LevelDebug})), func() { _ = f.Close() }, nil
-	}
-	level := slog.LevelWarn // quiet stderr on success (PS 2> flags any stderr as error)
-	if c.debug {
+		w = f
 		level = slog.LevelDebug
+		closers = append(closers, func() { _ = f.Close() })
 	}
-	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})), func() {}, nil
+	if c.logLevel != "" {
+		level = parseLogLevel(c.logLevel)
+	}
+
+	logger := newLoggerTo(w, level, format)
+
+	// Remote server sink: forward RFC 5424 to --syslog-addr (non-blocking),
+	// teed alongside the local sink.
+	if c.syslogAddr != "" {
+		udp, err := dialSyslogUDP(c.syslogAddr)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("--syslog-addr %s: %w", c.syslogAddr, err)
+		}
+		closers = append(closers, func() { udp.Close() })
+		logger = slog.New(teeHandler{logger.Handler(), udp.Handler(level)})
+	}
+
+	c.logger, c.logCleanup = logger, cleanup
+	return logger, cleanup, nil
 }
 
 // cerebrumWriteFile writes an output file, creating missing parent
@@ -1646,6 +1704,15 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	if cf.logCleanup != nil {
+		defer cf.logCleanup()
+	}
+	// structured = the events go to the LOG stream (syslog/json) — one
+	// record per change, to stderr/file/syslog-addr — rather than the human
+	// table. Default (syslog) is structured; --log-format text keeps the
+	// table (epic #987).
+	structured := cf.logFormat != "" && cf.logFormat != "text"
+	evLogger := cf.logger
 
 	newRow := func(obj string) *codec.DeviceChange {
 		dc := &codec.DeviceChange{}
@@ -1764,6 +1831,31 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 						ov.Value = live.Value
 						ov.Available = live.Available
 					}
+				}
+				if structured && evLogger != nil {
+					// The event IS the output — one structured record to the
+					// log stream (syslog/json → stderr/file/syslog-addr), the
+					// Loki/server path. Same fields the table shows.
+					label := ov.Label
+					if label == "" {
+						if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+							label = ov.Object[i+1:]
+						} else {
+							label = ov.Object
+						}
+					}
+					evLogger.Info("cerebrum_value_change",
+						slog.String("device", device),
+						slog.String("sub_device", subDev),
+						slog.String("object", ov.Object),
+						slog.String("label", label),
+						slog.String("value", ov.Value),
+						slog.String("type", strings.ToLower(ov.DataType)),
+						slog.String("access", cerebrumAccess(ov)),
+						slog.String("units", ov.Units),
+						slog.Bool("available", ov.Available),
+					)
+					continue
 				}
 				header.Do(cerebrumDMHeader)
 				cerebrumDMRow(now, ov)
