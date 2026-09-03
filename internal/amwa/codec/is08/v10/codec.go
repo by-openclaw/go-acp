@@ -3,7 +3,8 @@
 //
 //   - HTTP REST endpoints under `/x-nmos/channelmapping/v1.0/...`.
 //   - Stage / activate flow on POST /map/activations.
-//   - GET /map/active, /map/staged, /map/io.
+//   - GET /io, /map/active, /map/activations (issue #857: v1.0 has
+//     no /map/staged and the io tree is /io, not /map/io).
 //
 // IS-08 has not received a v1.1 release; this codec is the only
 // minor we register. The spec.Registry gracefully extends the day
