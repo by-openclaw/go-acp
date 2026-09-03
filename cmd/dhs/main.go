@@ -298,6 +298,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "cerebrum-nb" {
 		return runCerebrum(ctx, rest)
 	}
+	if proto == "neuron" {
+		return runNeuron(ctx, rest)
+	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
 	}
