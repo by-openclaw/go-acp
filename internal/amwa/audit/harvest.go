@@ -225,17 +225,24 @@ func loadOne(dir string) (*Harvest, error) {
 		h.Report = splitLines(string(b))
 	}
 
+	// SDPs are exported under sdp/{is04,is05,receivers}/<id>.sdp — a
+	// flat ReadDir misses them all (it skips directories). Walk the
+	// subtree; key each file by its relative path so is04 and is05
+	// captures of the same sender id stay distinct.
 	sdpDir := filepath.Join(dir, "sdp")
-	if entries, err := os.ReadDir(sdpDir); err == nil {
-		for _, e := range entries {
-			if e.IsDir() || !strings.EqualFold(filepath.Ext(e.Name()), ".sdp") {
-				continue
-			}
-			if b, err := os.ReadFile(filepath.Join(sdpDir, e.Name())); err == nil {
-				h.SDP[e.Name()] = b
-			}
+	_ = filepath.WalkDir(sdpDir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.EqualFold(filepath.Ext(d.Name()), ".sdp") {
+			return nil //nolint:nilerr // a missing sdp dir is not an error
 		}
-	}
+		if b, rerr := os.ReadFile(p); rerr == nil {
+			rel, relErr := filepath.Rel(sdpDir, p)
+			if relErr != nil {
+				rel = d.Name()
+			}
+			h.SDP[filepath.ToSlash(rel)] = b
+		}
+		return nil
+	})
 
 	// Followed nodes. Each is a full harvest in its own right.
 	kidsDir := filepath.Join(dir, "nodes")

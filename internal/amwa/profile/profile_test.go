@@ -724,3 +724,29 @@ func TestHTTPSOption(t *testing.T) {
 	}
 	want(t, rep, "PROFILE-ROOT-001", StatusPass)
 }
+
+// #850: the live probe parses a sender's transport file with codec/sdp.
+// Default mock SDP is minimal-but-valid → PASS; a malformed rtpmap →
+// WARN (deviation); a non-SDP body → FAIL; an inactive sender (404) →
+// SKIP.
+func TestSenderSDPConformance(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		set  func(*device)
+		want Status
+	}{
+		{"conformant", func(d *device) {}, StatusPass},
+		{"deviation", func(d *device) {
+			d.transportFile = "v=0\r\no=- 1 1 IN IP4 198.51.100.5\r\ns=x\r\nt=0 0\r\nm=video 5004 RTP/AVP 96\r\na=rtpmap:96 raw\r\n"
+		}, StatusWarn},
+		{"unparseable", func(d *device) { d.transportFile = "not an sdp\r\n" }, StatusFail},
+		{"inactive 404", func(d *device) { d.transportCode = http.StatusNotFound }, StatusSkip},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := newDevice()
+			d.apis["connection"] = []string{"v1.1"}
+			tc.set(d)
+			want(t, profileIt(t, d), "PROFILE-SDP-001", tc.want)
+		})
+	}
+}
