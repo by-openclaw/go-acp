@@ -70,8 +70,10 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSAudit(ctx, rest)
 	case "probe":
 		return runNMOSProfile(ctx, rest)
+	case "registers":
+		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.

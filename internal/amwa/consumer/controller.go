@@ -2,11 +2,14 @@ package consumer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"dhs/internal/amwa/codec/bcp"
+	_ "dhs/internal/amwa/codec/bcp/bcp00401" // register the BCP-004-01 receiver-caps validator
 	"dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/spec"
@@ -227,6 +230,27 @@ func (c *Controller) Walk(ctx context.Context) (*CatalogueSnapshot, []error) {
 		snap.Receivers = v
 		return err
 	})
+
+	// BCP-004-01: run the receiver-caps validators over each receiver
+	// as the controller reads it (#851) — a receiver whose caps
+	// reference a cap URN outside the AMWA register is one a filtering
+	// controller silently drops. Events flow to the same Reporter as
+	// every other walk finding.
+	for i := range snap.Receivers {
+		body, err := json.Marshal(snap.Receivers[i])
+		if err != nil {
+			continue
+		}
+		for _, v := range bcp.ForKind(bcp.KindReceiver) {
+			for _, ev := range v.Validate(body) {
+				ev.PeerHost = trimURLScheme(c.client.Base)
+				if ev.At.IsZero() {
+					ev.At = time.Now()
+				}
+				c.reporter.Report(ev)
+			}
+		}
+	}
 
 	return snap, errs
 }
