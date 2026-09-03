@@ -29,12 +29,23 @@ type Inventory struct {
 	Senders   int `json:"senders,omitempty"`
 	Receivers int `json:"receivers,omitempty"`
 	SDPFiles  int `json:"sdp_files,omitempty"`
+
+	// HintedSenders / HintedReceivers / Groups measure BCP-002-01
+	// grouping on this device: how many resources carry a group hint,
+	// and how many distinct groups they name. This is the answer to
+	// "which nodes actually express which essences belong together".
+	HintedSenders   int `json:"hinted_senders,omitempty"`
+	HintedReceivers int `json:"hinted_receivers,omitempty"`
+	Groups          int `json:"groups,omitempty"`
 }
 
 // Result is a complete audit: what was found, and what is wrong with it.
 type Result struct {
 	Inventory []Inventory `json:"inventory"`
-	Findings  []Finding   `json:"findings"`
+	// Groups is the plant pivoted by BCP-002-01 group hint: what a
+	// controller would be able to offer as one signal.
+	Groups   []GroupRow `json:"groups,omitempty"`
+	Findings []Finding  `json:"findings"`
 	// Counts is the per-severity tally of Findings, after filtering.
 	Counts map[string]int `json:"counts"`
 }
@@ -80,6 +91,10 @@ func Run(harvests []*Harvest, opts Options) Result {
 	}
 	res.Findings = append(res.Findings, checkPlantMulticast(all)...)
 	res.Findings = append(res.Findings, checkPlantRegistration(harvests)...)
+
+	groups, groupFindings := checkPlantGroups(all)
+	res.Groups = groups
+	res.Findings = append(res.Findings, groupFindings...)
 
 	kept := res.Findings[:0]
 	for _, f := range res.Findings {
@@ -127,6 +142,7 @@ func inventoryOf(h *Harvest) Inventory {
 		inv.APIs[name] = vs
 	}
 	inv.SDPFiles = len(h.SDP)
+	inv.HintedSenders, inv.HintedReceivers, inv.Groups = hintCounts(h)
 
 	// A Registry's catalogue lives under `query`; a Node's own
 	// resources under `node`. Counting both keeps one field set

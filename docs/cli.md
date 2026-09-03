@@ -24,6 +24,7 @@ Ansible templates render the same shape.
 - [NMOS controller: events (IS-07)](#nmos-controller-events-is-07)
 - [NMOS plant export](#nmos-plant-export)
 - [NMOS plant audit](#nmos-plant-audit)
+- [NMOS live probe](#nmos-live-probe)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -559,6 +560,28 @@ Usage of consumer nmos audit:
     	drop findings below this severity: info | warn | error | critical (default "info")
   -out string
     	write the report to this file instead of stdout
+```
+
+## NMOS live probe
+
+`dhs consumer nmos probe --help`
+
+```text
+Usage of consumer nmos probe:
+  -deep
+    	assert every IS-05 endpoint, not just the first
+  -fail-on string
+    	exit non-zero when a result at or above this status is present: warn | fail
+  -format string
+    	output format: text | json | jsonl (default "text")
+  -https
+    	use TLS
+  -out string
+    	write the report to this file instead of stdout
+  -target string
+    	device to probe, as host:port (required)
+  -timeout duration
+    	per-request deadline (default 10s)
 ```
 
 ## consumer info

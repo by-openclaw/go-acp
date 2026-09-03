@@ -68,8 +68,10 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSExport(ctx, rest)
 	case "audit":
 		return runNMOSAudit(ctx, rest)
+	case "probe":
+		return runNMOSProfile(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -758,7 +760,20 @@ same bytes always produce the same report.
   --format FORMAT       text (default) | json | jsonl
   --min-severity SEV    info (default) | warn | error | critical
   --out FILE            Write the report to FILE instead of stdout
-  --fail-on SEV         Exit non-zero when a finding at or above SEV is present`)
+  --fail-on SEV         Exit non-zero when a finding at or above SEV is present
+
+probe — live protocol conformance against one device, plus per-endpoint latency.
+Answers what a capture cannot: whether an unknown API version is rejected,
+whether CORS is present, whether a paging limit is honoured and reported back,
+whether health for an unregistered node 404s. Strictly read-only — it never
+PATCHes, activates, or registers, so it is safe against a plant that is on air.
+  --target host:port    Device to probe (required)
+  --https               Use TLS
+  --deep                Assert every IS-05 endpoint, not just the first
+  --format FORMAT       text (default) | json | jsonl
+  --out FILE            Write the report to FILE instead of stdout
+  --fail-on STATUS      Exit non-zero at or above this status: warn | fail
+  --timeout DURATION    Per-request deadline (default 10s)`)
 }
 
 func printNMOSProducerHelp() {

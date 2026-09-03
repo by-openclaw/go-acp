@@ -45,6 +45,43 @@ func RenderText(w io.Writer, r Result) error {
 		bw.printf("%-24s %s\n", trunc(inv.Target, 24), strings.Join(parts, " "))
 	}
 
+	// Grouping comes before the findings because it changes how they
+	// read. "13 hints absent" means one thing on a plant with 40 healthy
+	// groups and another on a plant with none.
+	bw.printf("\nGROUPING (BCP-002-01) — which devices say what belongs together\n\n")
+	bw.printf("%-24s %-28s %6s %6s %7s\n", "TARGET", "LABEL", "SND+", "RCV+", "GROUPS")
+	bw.printf("%s\n", strings.Repeat("-", 78))
+	for _, inv := range r.Inventory {
+		if inv.Senders == 0 && inv.Receivers == 0 {
+			continue
+		}
+		bw.printf("%-24s %-28s %6s %6s %7d\n",
+			trunc(inv.Target, 24), trunc(inv.Label, 28),
+			ofTotal(inv.HintedSenders, inv.Senders),
+			ofTotal(inv.HintedReceivers, inv.Receivers),
+			inv.Groups)
+	}
+	if len(r.Groups) == 0 {
+		bw.printf("\n  no group hints anywhere in this plant — a controller sees a flat\n")
+		bw.printf("  list of essences and cannot offer a grouped route or a breakaway\n")
+	} else {
+		bw.printf("\n%-28s %-34s %5s %5s %s\n", "GROUP", "ROLES (levels)", "SND", "RCV", "DEVICES")
+		bw.printf("%s\n", strings.Repeat("-", 78))
+		shown := r.Groups
+		const maxGroups = 40
+		if len(shown) > maxGroups {
+			shown = shown[:maxGroups]
+		}
+		for _, g := range shown {
+			bw.printf("%-28s %-34s %5d %5d %s\n",
+				trunc(g.Name, 28), trunc(strings.Join(g.Roles, ", "), 34),
+				g.Senders, g.Receivers, trunc(strings.Join(g.Devices, ", "), 20))
+		}
+		if len(r.Groups) > maxGroups {
+			bw.printf("  … %d more group(s); use --format json for the full pivot\n", len(r.Groups)-maxGroups)
+		}
+	}
+
 	bw.printf("\nFINDINGS — %d\n\n", len(r.Findings))
 	if len(r.Findings) == 0 {
 		bw.printf("  none at or above the requested severity\n")
@@ -116,6 +153,16 @@ func (e *errWriter) printf(format string, args ...any) {
 		return
 	}
 	_, e.err = fmt.Fprintf(e.w, format, args...)
+}
+
+// ofTotal renders "3/176", or a bare dash when the device publishes
+// nothing of that kind — an empty cell reads as zero coverage, which is
+// a different statement from having nothing to cover.
+func ofTotal(n, total int) string {
+	if total == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%d/%d", n, total)
 }
 
 // trunc clips a column value, marking that it was clipped.
