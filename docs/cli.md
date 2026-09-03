@@ -25,6 +25,7 @@ Ansible templates render the same shape.
 - [NMOS plant export](#nmos-plant-export)
 - [NMOS plant audit](#nmos-plant-audit)
 - [NMOS live probe](#nmos-live-probe)
+- [NMOS parameter registers](#nmos-parameter-registers)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -584,6 +585,17 @@ Usage of consumer nmos probe:
     	device to probe, as host:port (required)
   -timeout duration
     	per-request deadline (default 10s)
+```
+
+## NMOS parameter registers
+
+`dhs consumer nmos registers --help`
+
+```text
+usage: dhs consumer nmos registers <list|show> [urn] [--json]
+  list          every parameter, URN-sorted
+  show <urn>    one parameter's typed constraint
+  --json        machine-readable output
 ```
 
 ## consumer info

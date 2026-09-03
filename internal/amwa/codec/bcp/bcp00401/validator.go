@@ -13,9 +13,13 @@ package bcp00401
 
 import (
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"dhs/internal/amwa/codec/bcp"
+	"dhs/internal/amwa/codec/registers"
 	"dhs/internal/amwa/codec/spec"
 )
 
@@ -56,10 +60,37 @@ func (Validator) Validate(payload []byte) []spec.ComplianceEvent {
 	for i, set := range body.Caps.ConstraintSets {
 		if len(set) == 0 {
 			out = append(out, event("bcp_004_01_empty_constraint_set",
-				spec.SeverityWarn, "caps.constraint_sets["+itoa(i)+"]: empty"))
+				spec.SeverityWarn, fmt.Sprintf("caps.constraint_sets[%d]: empty", i)))
+			continue
+		}
+		// Every x-nmos cap parameter URN must be in the AMWA
+		// capabilities register (#851). A urn:x-nmos:cap:* not in any
+		// register is a vendor that invented a capability — a
+		// controller filtering against it silently drops the receiver.
+		// Vendor URNs outside the urn:x-nmos: namespace are permitted
+		// (BCP-004-01 §3) and not flagged.
+		for _, urn := range sortedParamURNs(set) {
+			if urn == "" || !strings.HasPrefix(urn, "urn:x-nmos:cap:") {
+				continue
+			}
+			if !registers.Known(urn) {
+				out = append(out, event("bcp_004_01_unknown_cap_urn", spec.SeverityWarn,
+					fmt.Sprintf("caps.constraint_sets[%d]: %q is not in the AMWA capabilities register", i, urn)))
+			}
 		}
 	}
 	return out
+}
+
+// sortedParamURNs returns a constraint set's parameter keys (its URNs)
+// in a stable order — meta keys and cap URNs alike; the caller filters.
+func sortedParamURNs(set map[string]any) []string {
+	keys := make([]string, 0, len(set))
+	for k := range set {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func event(code string, sev spec.Severity, detail string) spec.ComplianceEvent {
@@ -67,20 +98,6 @@ func event(code string, sev spec.Severity, detail string) spec.ComplianceEvent {
 		SpecID: SpecID, APIVer: APIVer, SpecPatch: SpecPatch,
 		Code: code, Severity: sev, Detail: detail, At: time.Now(),
 	}
-}
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var b [20]byte
-	pos := len(b)
-	for i > 0 {
-		pos--
-		b[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	return string(b[pos:])
 }
 
 func init() { bcp.Register(Validator{}) }
