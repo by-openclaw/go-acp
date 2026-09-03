@@ -21,7 +21,11 @@ func specText(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("read api spec: %v", err)
 	}
-	return string(b)
+	// Normalise CRLF → LF: a Windows checkout may store the committed
+	// spec with CRLF, and the segment-boundary heuristic below keys on
+	// "\n    ". Without this the schema-window math slices differently
+	// on Windows and the uuid check false-negatives (CI, 2026-09-03).
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }
 
 func TestSpecIsOpenAPINeuron(t *testing.T) {
