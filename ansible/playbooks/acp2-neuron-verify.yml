@@ -18,12 +18,17 @@
     a2_bin: /usr/local/bin/dhs
     a2_host: 10.6.255.102
     a2_port: 2072
-    a2_out: "/root/acp2-neuron-verify/{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
     # The big card (slot 1, CONVERT Hybrid) must expose a real tree —
     # thousands of objects, not the toy fixture's dozens.
     a2_slot1_min_objects: 10000
     a2_watch_secs: 20
   tasks:
+    # Frozen once — a lazy lookup in vars: re-evaluates per task and
+    # every task would compute a different timestamp directory.
+    - name: Receipts path (one timestamp for the whole run)
+      ansible.builtin.set_fact:
+        a2_out: "/root/acp2-neuron-verify/{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
+
     - name: Receipts directory
       ansible.builtin.file:
         path: "{{ a2_out }}"
