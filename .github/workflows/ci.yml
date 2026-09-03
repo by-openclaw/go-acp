@@ -364,7 +364,14 @@ jobs:
         id: release
         with:
           release-type: go
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # The svc-rune service token (org convention, same as
+          # ansible-platform) — NOT anyone's personal PAT. GITHUB_TOKEN
+          # began 403ing on create-a-release on 2026-09-02 despite
+          # logged contents:write (org/platform-side tightening; repos
+          # on the rune token were untouched). Falls back to
+          # GITHUB_TOKEN so PR bookkeeping still works if the secret
+          # is ever absent.
+          token: ${{ secrets.RUNE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
   build-release:
     name: Build release binaries
