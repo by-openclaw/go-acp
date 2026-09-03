@@ -1,0 +1,196 @@
+{
+  "node": {
+    "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
+    "version": "1777651501:0",
+    "label": "dhs-test-node",
+    "description": "dhs Phase 2 - AMWA NMOS Testing harness (full bundle)",
+    "tags": {
+      "urn:x-nmos:tag:asset:manufacturer/v1.0": [
+        "BY-SYSTEMS"
+      ],
+      "urn:x-nmos:tag:asset:product/v1.0": [
+        "dhs"
+      ],
+      "urn:x-nmos:tag:asset:instance-id/v1.0": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0001"
+      ],
+      "urn:x-nmos:tag:asset:function/v1.0": [
+        "NMOS Node"
+      ]
+    },
+    "href": "http://127.0.0.1:18080/",
+    "caps": {},
+    "api": {
+      "versions": [
+        "v1.0",
+        "v1.1",
+        "v1.2",
+        "v1.3"
+      ],
+      "endpoints": []
+    },
+    "services": [],
+    "clocks": [
+      {
+        "name": "clk0",
+        "ref_type": "internal"
+      }
+    ],
+    "interfaces": [
+      {
+        "chassis_id": "ff-ff-ff-ff-ff-ff",
+        "port_id": "ff-ff-ff-ff-ff-ff",
+        "name": "eth0",
+        "attached_network_device": {
+          "chassis_id": "00-11-22-33-44-55",
+          "port_id": "00-11-22-33-44-66"
+        }
+      }
+    ],
+    "hostname": "dhs-test-node"
+  },
+  "devices": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "version": "1777651501:0",
+      "label": "dhs-test-device",
+      "description": "single device under dhs-test-node",
+      "tags": {
+        "urn:x-nmos:tag:asset:manufacturer/v1.0": [
+          "BY-SYSTEMS"
+        ],
+        "urn:x-nmos:tag:asset:product/v1.0": [
+          "dhs"
+        ],
+        "urn:x-nmos:tag:asset:instance-id/v1.0": [
+          "2c47bf5e-1b2c-4abc-9def-deadbeef0002"
+        ],
+        "urn:x-nmos:tag:asset:function/v1.0": [
+          "audio-bridge"
+        ]
+      },
+      "type": "urn:x-nmos:device:generic",
+      "node_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0001",
+      "senders": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0102"
+      ],
+      "receivers": [
+        "2c47bf5e-1b2c-4abc-9def-deadbeef0103"
+      ],
+      "controls": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0100",
+      "version": "1777651501:0",
+      "label": "dhs-test-source-jxsv",
+      "description": "1080p50 video source feeding the JPEG XS flow",
+      "tags": {},
+      "caps": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "parents": [],
+      "clock_name": "clk0",
+      "format": "urn:x-nmos:format:video",
+      "grain_rate": {
+        "numerator": 50,
+        "denominator": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0101",
+      "version": "1777651501:0",
+      "label": "dhs-test-flow-jxsv",
+      "description": "JPEG XS 1080p50 coded video (BCP-006-01)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "source_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0100",
+      "parents": [],
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/jxsv",
+      "grain_rate": {
+        "numerator": 50,
+        "denominator": 1
+      },
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "progressive",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "profile": "High444.12",
+      "level": "2k-1",
+      "sublevel": "Sublev3bpp",
+      "bit_rate": 497664,
+      "components": [
+        {
+          "name": "Y",
+          "width": 1920,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cb",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cr",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        }
+      ]
+    }
+  ],
+  "senders": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0102",
+      "version": "1777651501:0",
+      "label": "dhs-test-sender-jxsv",
+      "description": "ST 2110-22 JPEG XS multicast sender (BCP-006-01)",
+      "tags": {},
+      "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0101",
+      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0102/transportfile",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "caps": {},
+      "bit_rate": 497664,
+      "packet_transmission_mode": "codestream",
+      "st2110_21_sender_type": "2110TPW",
+      "subscription": {
+        "receiver_id": null,
+        "active": false
+      }
+    }
+  ],
+  "receivers": [
+    {
+      "id": "2c47bf5e-1b2c-4abc-9def-deadbeef0103",
+      "version": "1777651501:0",
+      "label": "dhs-test-receiver-jxsv",
+      "description": "JPEG XS receiver (BCP-006-01)",
+      "tags": {},
+      "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:video",
+      "caps": {},
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    }
+  ],
+  "connection": {
+    "senders": {},
+    "receivers": {}
+  }
+}
