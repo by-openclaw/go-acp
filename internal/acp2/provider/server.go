@@ -10,6 +10,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/metrics"
 )
 
 // Server is the exported alias for the concrete provider — lets
@@ -43,16 +44,30 @@ type server struct {
 	sessions map[*session]struct{}
 	closed   bool
 	stopped  chan struct{}
+
+	// metrics is the server-wide connector snapshot exposed via
+	// Metrics() so `producer acp2 serve --metrics-addr` scrapes it
+	// (#969). Frames are attributed by AN2 Type (request/reply/event/
+	// error/data) — the natural command axis for AN2. Always non-nil.
+	metrics *metrics.Connector
 }
 
 func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	met := metrics.NewConnector()
+	for _, t := range []codec.AN2Type{
+		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
+		codec.AN2TypeError, codec.AN2TypeData,
+	} {
+		met.RegisterCmd(uint8(t), t.String())
+	}
 	s := &server{
 		logger:   logger,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
+		metrics:  met,
 	}
 	t, err := newTree(exp)
 	if err != nil {
@@ -70,6 +85,11 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	}
 	return s
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes
+// the acp2 provider (#969). Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }
 
 // Serve binds addr (e.g. "0.0.0.0:2072") and blocks until ctx is
 // cancelled or a fatal listen error occurs.

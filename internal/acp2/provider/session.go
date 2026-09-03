@@ -25,6 +25,12 @@ func newSession(srv *server, conn net.Conn) *session {
 	return &session{srv: srv, conn: conn}
 }
 
+// an2HeaderBytes is the fixed AN2 frame header size (magic u16 + proto
+// + slot + mtid + type + dlen u16 — CLAUDE.md "AN2 frame header").
+// ReadAN2Frame returns Payload without it, so rx byte accounting adds
+// it back for a true on-wire count.
+const an2HeaderBytes = 8
+
 // run reads AN2 frames until the connection closes. Every frame is
 // dispatched inline through handleFrame; fatal errors close the conn.
 //
@@ -49,12 +55,16 @@ func (s *session) run() {
 				s.srv.logger.Debug("acp2 session closed", slog.String("remote", remote))
 				return
 			}
+			s.srv.metrics.ObserveDecodeError()
 			s.srv.logger.Warn("acp2 session read error",
 				slog.String("remote", remote),
 				slog.String("err", err.Error()),
 			)
 			return
 		}
+		// Attributed by AN2 frame Type; the 8-byte header is not counted
+		// in Payload, so add it back for a true on-wire byte count.
+		s.srv.metrics.ObserveCmdRx(uint8(frame.Type), len(frame.Payload)+an2HeaderBytes)
 		s.handleFrame(frame)
 	}
 }

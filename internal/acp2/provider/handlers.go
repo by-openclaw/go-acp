@@ -492,5 +492,9 @@ func (s *session) write(f *codec.AN2Frame) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	_, err = s.conn.Write(raw)
+	// raw already includes the 8-byte AN2 header — count it whole. No
+	// per-handler latency axis here: replies fan out from the same
+	// synchronous dispatch, so byte/frame counters carry the signal.
+	s.srv.metrics.ObserveCmdTx(uint8(f.Type), len(raw), 0)
 	return err
 }
