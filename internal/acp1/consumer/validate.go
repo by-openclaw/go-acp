@@ -95,13 +95,13 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 		case codec.MTypeRequest:
 			if msg.MTID == 0 {
 				report.Invariants = append(report.Invariants,
-					fmt.Sprintf("trame %d: request with MTID=0 (spec: must be non-zero)", i))
+					fmt.Sprintf("frame %d: request with MTID=0 (spec: must be non-zero)", i))
 			}
 			lastReqMTID = msg.MTID
 		case codec.MTypeReply:
 			if msg.MTID != lastReqMTID {
 				report.Invariants = append(report.Invariants,
-					fmt.Sprintf("trame %d: reply MTID=%d does not match last request MTID=%d", i, msg.MTID, lastReqMTID))
+					fmt.Sprintf("frame %d: reply MTID=%d does not match last request MTID=%d", i, msg.MTID, lastReqMTID))
 			}
 			// Capture getObject replies into the per-slot tree map
 			// when --out-tree is requested. We can decode every reply

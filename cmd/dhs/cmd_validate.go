@@ -68,7 +68,7 @@ func runValidate(ctx context.Context, args []string) error {
 		return fmt.Errorf("validate: %w", err)
 	}
 
-	fmt.Printf("validate: %d trames decoded\n", report.TramesProcessed)
+	fmt.Printf("validate: %d frames decoded\n", report.TramesProcessed)
 	dirs := make([]string, 0, len(report.PerDirection))
 	for d := range report.PerDirection {
 		dirs = append(dirs, string(d))
@@ -83,7 +83,7 @@ func runValidate(ctx context.Context, args []string) error {
 	if len(report.Errors) > 0 {
 		fmt.Fprintf(os.Stderr, "errors: %d\n", len(report.Errors))
 		for _, e := range report.Errors {
-			fmt.Fprintf(os.Stderr, "  trame %d (%s): %s\n", e.TrameIndex, e.Direction, e.Err)
+			fmt.Fprintf(os.Stderr, "  frame %d (%s): %s\n", e.TrameIndex, e.Direction, e.Err)
 		}
 	}
 	if len(report.Invariants) > 0 {
@@ -114,10 +114,10 @@ with existing capture tooling.
 Flags:
   --out-tree <path>     also write a canonical tree.json
   --out-params <path>   also write a canonical params dump (csv/json by ext)
-  --stop-at <note>      halt at the first trame whose .note matches
+  --stop-at <note>      halt at the first frame whose .note matches
 
 IN   dhs consumer acp1 validate captures/acp1/slot0_walk/frames.jsonl
-OUT  validate: 642 trames decoded
+OUT  validate: 642 frames decoded
        rx: 321
        tx: 321
 
