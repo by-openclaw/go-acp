@@ -553,3 +553,35 @@ func TestEmitFloatAnnounce_NoConstraints(t *testing.T) {
 
 // ensure binary import stays referenced.
 var _ = binary.BigEndian
+
+// TestMetricsExposed pins the Metrics() accessor (#969): it is non-nil,
+// stable across calls, and the connector actually counts a served
+// frame — so --metrics-addr has something to scrape.
+func TestMetricsExposed(t *testing.T) {
+	srv := newServer(quietLogger(), buildServeExport())
+	m := srv.Metrics()
+	if m == nil {
+		t.Fatal("Metrics() returned nil")
+	}
+	if srv.Metrics() != m {
+		t.Fatal("Metrics() must return the same connector each call")
+	}
+	before := m.Snapshot().TxFrames
+	// A served reply flows through session.write, which counts tx.
+	sess := &session{srv: srv, conn: &nopConn{}}
+	if err := sess.write(&codec.AN2Frame{
+		Proto: codec.AN2ProtoACP2, Slot: 1, Type: codec.AN2TypeData, Payload: []byte{0, 0, 0, 0},
+	}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if got := m.Snapshot().TxFrames; got != before+1 {
+		t.Fatalf("tx frames = %d, want %d (write must be counted)", got, before+1)
+	}
+}
+
+// nopConn is a net.Conn whose Write succeeds and discards — lets a
+// session.write run without a real socket.
+type nopConn struct{ net.Conn }
+
+func (*nopConn) Write(b []byte) (int, error) { return len(b), nil }
+func (*nopConn) Close() error                { return nil }
