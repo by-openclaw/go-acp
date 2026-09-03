@@ -560,6 +560,8 @@ Usage of consumer nmos audit:
     	drop findings below this severity: info | warn | error | critical (default "info")
   -out string
     	write the report to this file instead of stdout
+  -policy string
+    	site policy JSON (#852): multicast bandwidth classes, expected PTP grandmaster/domain, private/public media plane. Without it, the policy-specific checks report SKIP
 ```
 
 ## NMOS live probe
