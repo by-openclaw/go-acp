@@ -12,7 +12,8 @@ import (
 	"dhs/internal/amwa/profile"
 )
 
-// runNMOSProfile implements `dhs consumer nmos profile`.
+// runNMOSProfile implements `dhs consumer nmos probe` (issue #839;
+// the internal package keeps its original name, profile).
 //
 // Where `export` + `audit` answer "what does this plant look like",
 // probe answers "does this device behave". The difference is the live
@@ -26,7 +27,7 @@ import (
 // connection is one that can take a live source off air, and this one
 // is meant to be safe to point at a plant that is on.
 func runNMOSProfile(ctx context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("consumer nmos profile", flag.ContinueOnError)
+	fs := flag.NewFlagSet("consumer nmos probe", flag.ContinueOnError)
 	var (
 		target  = fs.String("target", "", "device to probe, as host:port (required)")
 		https   = fs.Bool("https", false, "use TLS")
@@ -47,15 +48,15 @@ func runNMOSProfile(ctx context.Context, args []string) (err error) {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return fmt.Errorf("consumer nmos profile: unexpected argument %q (one target only)", fs.Arg(0))
+		return fmt.Errorf("consumer nmos probe: unexpected argument %q (one target only)", fs.Arg(0))
 	}
 	if *target == "" {
 		*target = positional
 	} else if positional != "" {
-		return fmt.Errorf("consumer nmos profile: target given twice (%q and --target %q)", positional, *target)
+		return fmt.Errorf("consumer nmos probe: target given twice (%q and --target %q)", positional, *target)
 	}
 	if *target == "" {
-		return fmt.Errorf("consumer nmos profile: --target is required (host:port of the device to probe)")
+		return fmt.Errorf("consumer nmos probe: --target is required (host:port of the device to probe)")
 	}
 
 	var gate profile.Status
@@ -66,7 +67,7 @@ func runNMOSProfile(ctx context.Context, args []string) (err error) {
 	case "fail":
 		gate = profile.StatusFail
 	default:
-		return fmt.Errorf("consumer nmos profile: unknown --fail-on %q (want warn or fail)", *failOn)
+		return fmt.Errorf("consumer nmos probe: unknown --fail-on %q (want warn or fail)", *failOn)
 	}
 
 	rep, err := profile.Run(ctx, profile.Options{
@@ -83,13 +84,13 @@ func runNMOSProfile(ctx context.Context, args []string) (err error) {
 	if *outPath != "" {
 		f, ferr := os.Create(*outPath)
 		if ferr != nil {
-			return fmt.Errorf("consumer nmos profile: %w", ferr)
+			return fmt.Errorf("consumer nmos probe: %w", ferr)
 		}
 		// A truncated report reads as a healthier device than the probe
 		// actually found, so a failed Close is surfaced.
 		defer func() {
 			if cerr := f.Close(); cerr != nil && err == nil {
-				err = fmt.Errorf("consumer nmos profile: writing %s: %w", *outPath, cerr)
+				err = fmt.Errorf("consumer nmos probe: writing %s: %w", *outPath, cerr)
 			}
 		}()
 		w = f
@@ -103,7 +104,7 @@ func runNMOSProfile(ctx context.Context, args []string) (err error) {
 	case "jsonl":
 		err = profile.RenderJSONL(w, rep)
 	default:
-		return fmt.Errorf("consumer nmos profile: unknown --format %q (want text, json or jsonl)", *format)
+		return fmt.Errorf("consumer nmos probe: unknown --format %q (want text, json or jsonl)", *format)
 	}
 	if err != nil {
 		return err
@@ -116,7 +117,7 @@ func runNMOSProfile(ctx context.Context, args []string) (err error) {
 	}
 	rank := map[profile.Status]int{profile.StatusPass: 0, profile.StatusSkip: 1, profile.StatusWarn: 2, profile.StatusFail: 3}
 	if worst, any := rep.Worst(); any && rank[worst] >= rank[gate] {
-		return fmt.Errorf("consumer nmos profile: worst result %s (--fail-on %s)", worst, gate)
+		return fmt.Errorf("consumer nmos probe: worst result %s (--fail-on %s)", worst, gate)
 	}
 	return nil
 }
