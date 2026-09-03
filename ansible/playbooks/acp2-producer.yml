@@ -1,0 +1,138 @@
+---
+# acp2 provider fleet deploy — the FIXED configuration (issue #969).
+#
+# The 2026-08 Cerebrum-interop fixes (#723 #725 #726) shipped in the
+# binary, but dhs-acp2.service was hand-installed in June and still
+# served the toy --tree with no slot-proto manifest and no announce
+# replay — exactly the configuration Cerebrum reads as "no device".
+# This play brings the service under Ansible and deploys what the
+# fixes need: the committed neuron manifest (slot protos [2,3,4]/[2,3]),
+# the full CONVERT Hybrid + SHPRM1 DMs, and the real-Neuron announce
+# loop, plus Prometheus metrics.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/acp2-producer.yml
+
+- name: acp2 — provider serve, fixed configuration
+  hosts: plant
+  gather_facts: false
+  vars:
+    a2p_root: /etc/dhs/acp2
+    a2p_port: 2072
+    a2p_metrics: ":9102"
+    a2p_fixtures: "{{ playbook_dir }}/../../internal/acp2/testdata/integration-test"
+  tasks:
+    - name: Fixture directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ a2p_root }}"
+        - "{{ a2p_root }}/cache/dm/acp2"
+
+    - name: Committed DM store (ADR-0022 identity-keyed)
+      ansible.builtin.copy:
+        src: "{{ a2p_fixtures }}/dm/acp2/{{ item }}"
+        dest: "{{ a2p_root }}/cache/dm/acp2/{{ item }}"
+        mode: "0644"
+      loop:
+        - "SHPRM1@5.3.5.json"
+        - "CONVERT Hybrid@6.7.4.json"
+      notify: restart dhs-acp2
+
+    - name: Neuron manifest (slot protos - the #723 fix's food)
+      ansible.builtin.copy:
+        src: "{{ a2p_fixtures }}/manifest/neuron-test.json"
+        dest: "{{ a2p_root }}/manifest.json"
+        mode: "0644"
+      notify: restart dhs-acp2
+
+    - name: Real-Neuron announce stream (the #726 liveness fix's food)
+      ansible.builtin.copy:
+        src: "{{ a2p_fixtures }}/announces/neuron-announces.jsonl"
+        dest: "{{ a2p_root }}/neuron-announces.jsonl"
+        mode: "0644"
+      notify: restart dhs-acp2
+
+    - name: dhs-acp2.service (Ansible-owned from here on)
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/acp2-producer.yml (issue #969).
+          [Unit]
+          Description=dhs acp2 provider (neuron emulation, fixed config)
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/dhs producer acp2 serve \
+            --manifest {{ a2p_root }}/manifest.json \
+            --cache-dir {{ a2p_root }}/cache \
+            --announce-replay {{ a2p_root }}/neuron-announces.jsonl \
+            --port {{ a2p_port }} --host 0.0.0.0 \
+            --metrics-addr {{ a2p_metrics }} \
+            --log-level info
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-acp2.service
+        mode: "0644"
+      notify: restart dhs-acp2
+
+    - name: Service enabled + running
+      ansible.builtin.systemd:
+        name: dhs-acp2
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Flush handlers (restart before verifying)
+      ansible.builtin.meta: flush_handlers
+
+    # ---- verify: the exact observables Cerebrum's driver needs ----
+    - name: Provider answers info (identity + slots)
+      ansible.builtin.command: >-
+        /usr/local/bin/dhs consumer acp2 info 127.0.0.1 --port {{ a2p_port }}
+      register: a2p_info
+      changed_when: false
+      retries: 5
+      delay: 2
+      until: a2p_info.rc == 0 and 'slots' in a2p_info.stdout
+
+    - name: Slot 1 serves the real CONVERT Hybrid tree, not the toy
+      ansible.builtin.command: >-
+        /usr/local/bin/dhs consumer acp2 walk 127.0.0.1 --port {{ a2p_port }} --slot 1
+      register: a2p_walk
+      changed_when: false
+      failed_when: >-
+        a2p_walk.rc != 0
+        or (a2p_walk.stdout | regex_search('slot 1 — [0-9]+ objects') | regex_replace('[^0-9]', '') | int) < 10000
+
+    - name: Announce replay is flowing (Cerebrum liveness signal)
+      ansible.builtin.shell: >-
+        timeout 12 /usr/local/bin/dhs consumer acp2 watch 127.0.0.1
+        --port {{ a2p_port }} --slot 1 | wc -l
+      register: a2p_watch
+      changed_when: false
+      failed_when: a2p_watch.stdout | int < 5
+
+    # NOTE: --metrics-addr is served in the unit file but the acp2
+    # provider does not implement Metrics() yet ("--metrics-addr set
+    # but provider does not expose Metrics() — skipping" in the
+    # journal) — a named #969 code sub-unit; the listener appears the
+    # moment it lands, no play change needed. Until then no /metrics
+    # probe here.
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          acp2 provider fixed-config green on {{ inventory_hostname }}:
+          {{ a2p_walk.stdout | regex_search('slot 1 — [0-9]+ objects') }},
+          announce lines in 12s: {{ a2p_watch.stdout }}.
+          Cerebrum (.5) can now add 10.6.250.101:{{ a2p_port }} as a Neuron driver.
+          (provider Metrics() pending — #969 sub-unit)
+
+  handlers:
+    - name: restart dhs-acp2
+      ansible.builtin.systemd:
+        name: dhs-acp2
+        state: restarted
+        daemon_reload: true
