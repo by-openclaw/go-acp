@@ -90,7 +90,7 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
-	fs.StringVar(&c.logPath, "log", "", "write the diagnostic log (incl. RX/TX XML at full debug verbosity) to this file — clean UTF-8, no PowerShell 2> stderr wrapping; stderr stays silent. Literal \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (ADR-0028)")
+	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
 	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
 	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
@@ -147,7 +147,13 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		sinkLevel = parseLogLevel(c.logLevel)
 	}
 
-	// Local file sink (structured).
+	// Local file sink (structured). ON by default ("auto" is resolved to
+	// the ADR-0028 path by cerebrumExpandAutoPaths before this runs);
+	// "off"/"none"/"-" disable it.
+	switch c.logPath {
+	case "off", "none", "-":
+		c.logPath = ""
+	}
 	if c.logPath != "" {
 		if dir := filepath.Dir(c.logPath); dir != "." {
 			if err := os.MkdirAll(dir, 0o755); err != nil {

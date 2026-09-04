@@ -97,7 +97,7 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
-	fs.StringVar(&cf.logPath, "log", "", "also write the log to this FILE in --log-format (local sink; the terminal stays the human table). Literal \"auto\" = .cache/logs/<proto>/<host>/<verb>.log")
+	fs.StringVar(&cf.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/<proto>/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
 	fs.StringVar(&cf.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (remote server sink; non-blocking, drops counted)")
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+

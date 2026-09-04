@@ -63,10 +63,15 @@ func buildConsumerLoggers(level slog.Level, format, logPath, syslogAddr, autoPat
 	}
 
 	var sinks []slog.Handler
+	// Local file is ON by default (like the DM cache): "auto" resolves to
+	// the ADR-0028 path; "off"/"none"/"-"/"" disable it.
+	switch logPath {
+	case "off", "none", "-", "":
+		logPath = ""
+	case "auto":
+		logPath = autoPath
+	}
 	if logPath != "" {
-		if logPath == "auto" {
-			logPath = autoPath
-		}
 		if dir := filepath.Dir(logPath); dir != "." {
 			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
 				return nil, nil, cleanup, false, fmt.Errorf("--log %s: %w", logPath, mkErr)
