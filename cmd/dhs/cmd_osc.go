@@ -91,7 +91,9 @@ func runOSCWatch(ctx context.Context, proto string, args []string) error {
 	if err != nil {
 		return err
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger(proto, fmt.Sprintf("%s.%d", transport, port), "watch")
+	defer logClean()
 	plugin := newOSCConsumer(proto, logger)
 
 	switch transport {
@@ -310,7 +312,9 @@ func runOSCServe(ctx context.Context, proto string, args []string) error {
 	if err := requireVersion(proto, transport); err != nil {
 		return err
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger(proto, fmt.Sprintf("%s.%d", transport, port), "serve")
+	defer logClean()
 	plugin := newOSCConsumer(proto, logger)
 
 	switch transport {

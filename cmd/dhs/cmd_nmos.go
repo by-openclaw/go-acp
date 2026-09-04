@@ -178,7 +178,9 @@ func runNMOSDiscoverUnicast(ctx context.Context, resolver, service string, timeo
 }
 
 func runNMOSDiscoverMDNS(ctx context.Context, service string, timeout time.Duration) error {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	defer logClean()
 	br, err := session.NewBrowser(logger)
 	if err != nil {
 		return err
@@ -338,7 +340,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	defer logClean()
 
 	bundle, err := provider.LoadNodeConfigFromFile(*configPath)
 	if err != nil {
@@ -420,7 +424,9 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	defer logClean()
 
 	// Direct override — skip discovery entirely.
 	if *direct != "" {
@@ -554,7 +560,9 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 		return fmt.Errorf("producer nmos serve --role system: --config FILE required")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	defer logClean()
 
 	g, err := provider.LoadIS09GlobalFromFile(*configPath)
 	if err != nil {
@@ -621,7 +629,9 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	defer logClean()
 
 	f, ok := registryslot.Lookup("nmos")
 	if !ok {

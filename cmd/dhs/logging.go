@@ -8,6 +8,23 @@ import (
 	"path/filepath"
 )
 
+// consumerModelBLogger is the default Model B logger for connectors whose
+// per-verb flagsets don't parse the logging flags yet (probel-sw08p,
+// probel-sw02p, osc, nmos): stderr stays HUMAN, and the log is ALSO written
+// to the default local .cache/logs/<proto>/<host>/<verb>.log in syslog —
+// so every connector logs syslog locally by default (epic #987). A #987
+// follow-up adds --log-format/--syslog-addr to those flagsets for the
+// remote sink; the local default is live now. Falls back to a plain stderr
+// logger if the file can't be opened.
+func consumerModelBLogger(proto, host, verb string) (*slog.Logger, func()) {
+	op, _, cleanup, _, err := buildConsumerLoggers(
+		slog.LevelInfo, DefaultLogFormat, "auto", "", defaultLogPath(proto, hostOnly(host), verb))
+	if err != nil || op == nil {
+		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})), func() {}
+	}
+	return op, cleanup
+}
+
 // DefaultLogFormat is the uniform logging default for every connector,
 // consumer and provider alike (epic #987): RFC 5424 syslog. `text` (the
 // human logger) and `json` (Loki/Promtail, one record per line) are opt-in

@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -185,7 +183,12 @@ space-separated lowercase-hex line for debugging:
 // the probel root dispatcher) it is attached before Connect so the
 // JSONL file captures the full TX/RX stream.
 func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, logClean := consumerModelBLogger("probel-sw08p", host, "session")
 	f := &probelproto.Factory{}
 	p := f.New(logger).(*probelproto.Plugin)
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
@@ -194,14 +197,11 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 	if mc, ok := ctx.Value(probelMatrixConfigKey{}).(probelproto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
 }
 
 // probelTarget resolves the wire (matrix, level) a read verb should query.
