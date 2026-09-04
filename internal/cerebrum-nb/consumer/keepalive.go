@@ -58,7 +58,9 @@ type keepAlive struct {
 func (s *Session) SetKeepAlive(cfg consumer.KeepAliveConfig) {
 	interval, timeout := resolveKeepAlive(cfg)
 	s.stopKeepAlive()
-	s.conn.SetIdleTimeout(timeout)
+	if s.conn != nil {
+		s.conn.SetIdleTimeout(timeout)
+	}
 	if interval > 0 {
 		s.startKeepAlive(interval, clock.System())
 	}
@@ -169,7 +171,10 @@ func (s *Session) SessionLive() bool {
 		return false
 	default:
 	}
-	window := s.conn.IdleTimeout()
+	var window time.Duration
+	if s.conn != nil {
+		window = s.conn.IdleTimeout()
+	}
 	if window <= 0 {
 		window = defaultKeepAliveTimeout
 	}

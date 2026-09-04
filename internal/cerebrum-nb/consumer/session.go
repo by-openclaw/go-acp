@@ -554,8 +554,15 @@ func (s *Session) close() error {
 		// Stop the prober BEFORE the socket goes away, so its final tick
 		// cannot race the close and report a spurious "keepalive failed".
 		s.stopKeepAlive()
-		close(s.stopRX)
-		s.closeErr = s.conn.Close(1000, "client closing")
+		if s.stopRX != nil {
+			close(s.stopRX)
+		}
+		// conn is nil when a dial failed partway, or when the supervisor
+		// tears down a session it never finished building. Closing such a
+		// session must be a no-op, not a panic on the cleanup path.
+		if s.conn != nil {
+			s.closeErr = s.conn.Close(1000, "client closing")
+		}
 		s.markLost(fmt.Errorf("%w: session closed by client", transport.ErrConnectionLost))
 		_ = s.rec.Close() // nil-safe; flush the --capture wire-trace
 	})
