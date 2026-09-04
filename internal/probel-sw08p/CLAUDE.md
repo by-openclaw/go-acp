@@ -130,6 +130,37 @@ spec is single source of truth.
 | 124 | Rx  | Crosspoint Salvo Group Interrogate|
 | 125 | Tx  | Crosspoint Group Salvo Tally      |
 
+## Keep-alive — cmd 08 is the spec's, 0x11/0x22 is not
+
+Two different things get called "keepalive" here. Only one is in the spec,
+and the distinction decides whether a half-open link is detectable.
+
+| | 0x11 / 0x22 | **cmd 08 / 09** |
+|---|---|---|
+| In SW-P-08 Issue 30? | **No.** Byte 17 in the spec is Soft Key Assignment (§3.1) / Protect Device Name Request; byte 34 is not a keepalive either. Observed testbed convention only. | **Yes** — §3.1.5 Dual Controller Status Request, zero message bytes |
+| Who starts it | the **matrix** — we can only answer (`keepaliveAutoResponder`) | the **client**, i.e. us |
+| Usable as our probe | no — a matrix that never pings gives us nothing | yes |
+
+§5 *"Supporting dual controllers over IP"* prescribes the poll verbatim:
+
+> "Continue to poll the idle controller with the appropriate active / idle
+> status request message **(to keep the connections open)**."
+
+and §5.1 adds that cmd 09 is *"sent as a reply to the request command and
+also automatically when the status changes"* — bit 1 of byte 1 carries
+active/idle. So a controller may either poll or wait to be told.
+
+`consumer/keepalive_poll.go` implements the poll (default 10 s) and arms the
+reader's dead-man deadline **only while it runs** — the two are meaningless
+apart, because without a probe of our own, a silent matrix is
+indistinguishable from a healthy idle one. Disable both with
+`SetKeepalivePollSpacing(-1)`.
+
+Liveness does not require the matrix to implement cmd 09: §2 mandates a DLE
+ACK for every good frame, so even a controller that ignores cmd 08 at the
+application layer still returns framing bytes — inbound traffic, therefore
+proof of life. Lawo VSM in server mode is exactly this case (see Testbed).
+
 ## Quirks to remember
 
 - Level-scoped matrix: every command that carries `<matrix, level>` is

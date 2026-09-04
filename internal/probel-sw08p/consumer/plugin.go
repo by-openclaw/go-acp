@@ -23,10 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/metrics"
-	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/metrics"
+	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/transport"
 )
 
@@ -91,6 +92,15 @@ type Plugin struct {
 	port     int
 	client   *codec.Client
 	recorder *transport.Recorder
+
+	// kaPoll owns the spec-sanctioned cmd 08 keep-alive prober (§5
+	// "Supporting dual controllers over IP" — poll "to keep the connections
+	// open"). See keepalive_poll.go.
+	kaPoll *keepalivePollState
+
+	// kaPollSpacing is the cmd 08 poll cadence. 0 = DefaultKeepalivePollSpacing;
+	// negative disables the poll AND its dead-man deadline.
+	kaPollSpacing time.Duration
 
 	// matrixCfg holds caller-supplied matrix shape. Set via
 	// SetMatrixConfig before Connect; defaults applied at use sites.
@@ -248,11 +258,34 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.port = port
 	p.profile = prof
 	p.metricsConn = met
+	// Start the spec-sanctioned cmd 08 poll (§5 "…to keep the connections
+	// open") and arm the reader's dead-man deadline alongside it. Our own
+	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
+	// matrix that never pings leaves the session with no liveness signal.
+	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), clock.System())
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
 	)
 	return nil
+}
+
+// SetKeepalivePollSpacing sets the cmd 08 keep-alive cadence. 0 selects
+// DefaultKeepalivePollSpacing; a negative value disables the poll and, with
+// it, the reader's dead-man deadline — the two are meaningless apart. Call
+// before Connect.
+func (p *Plugin) SetKeepalivePollSpacing(d time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.kaPollSpacing = d
+}
+
+// resolvedKeepalivePollSpacing expands the 0 = default sentinel.
+func (p *Plugin) resolvedKeepalivePollSpacing() time.Duration {
+	if p.kaPollSpacing == 0 {
+		return DefaultKeepalivePollSpacing
+	}
+	return p.kaPollSpacing
 }
 
 // Disconnect closes the TCP session. Safe to call on an unconnected plugin.
@@ -261,6 +294,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 // summary at INFO before closing.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
+	// Stop the prober BEFORE dropping the client, so its final tick cannot
+	// race the close and log a spurious write failure.
+	p.stopKeepalivePoll()
 	cli := p.client
 	met := p.metricsConn
 	p.client = nil
