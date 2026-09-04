@@ -99,11 +99,19 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	return c
 }
 
-// newLogger builds the verb logger per flags: --log FILE writes a clean
-// debug-verbosity log to the file (stderr untouched — avoids PowerShell 5.1
-// wrapping redirected native stderr into error records, the "red flag");
-// otherwise stderr at Warn (quiet success) or Debug with --debug. The
-// returned closer is a no-op for stderr.
+// newLogger builds the verb logger under the uniform contract (epic #987,
+// Model B): the TERMINAL is always human, the SINKS are structured.
+//
+//   - stderr: human TEXT at Warn (quiet success) / Debug with --debug — the
+//     operator's operational log. Data tables print to STDOUT separately;
+//     Info-level EVENTS sit below Warn so they never clutter the terminal.
+//   - --log FILE: structured (--log-format, default syslog) at Info (or
+//     Debug with --debug) — local machine sink.
+//   - --syslog-addr host:port: structured RFC 5424 at Info — remote server.
+//
+// So `--log-format` chooses the SINK format only; the terminal stays
+// readable. Events reach file/server (Info) but not stderr (Warn). A tee
+// with per-handler levels does the routing.
 func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 	if c.logger != nil { // built once, shared by the plugin and the verb
 		return c.logger, c.logCleanup, nil
@@ -119,20 +127,27 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		}
 	}
 
-	// Local sink + level. --log FILE writes clean UTF-8 at full debug
-	// verbosity (stderr untouched — avoids PowerShell 5.1 wrapping
-	// redirected native stderr into error records); otherwise stderr at
-	// Warn (quiet success) or Debug with --debug. A structured stream
-	// (syslog/json) carries the verb's EVENTS at Info, so it must not sit
-	// at Warn. --log-level overrides everything.
-	var w io.Writer = os.Stderr
-	level := slog.LevelWarn
-	if format != "text" {
-		level = slog.LevelInfo
-	}
+	// Terminal (human, operational). Never the structured format.
+	termLevel := slog.LevelWarn
 	if c.debug {
-		level = slog.LevelDebug
+		termLevel = slog.LevelDebug
 	}
+	if c.logLevel != "" {
+		termLevel = parseLogLevel(c.logLevel)
+	}
+	handlers := []slog.Handler{slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: termLevel})}
+
+	// Sink level: Info carries the verb's events; Debug with --debug adds
+	// the RX/TX wire detail; --log-level overrides.
+	sinkLevel := slog.LevelInfo
+	if c.debug {
+		sinkLevel = slog.LevelDebug
+	}
+	if c.logLevel != "" {
+		sinkLevel = parseLogLevel(c.logLevel)
+	}
+
+	// Local file sink (structured).
 	if c.logPath != "" {
 		if dir := filepath.Dir(c.logPath); dir != "." {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -143,30 +158,32 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
 		}
-		w = f
-		level = slog.LevelDebug
+		handlers = append(handlers, newLoggerTo(f, sinkLevel, format).Handler())
 		closers = append(closers, func() { _ = f.Close() })
 	}
-	if c.logLevel != "" {
-		level = parseLogLevel(c.logLevel)
-	}
 
-	logger := newLoggerTo(w, level, format)
-
-	// Remote server sink: forward RFC 5424 to --syslog-addr (non-blocking),
-	// teed alongside the local sink.
+	// Remote server sink (structured RFC 5424, non-blocking).
 	if c.syslogAddr != "" {
 		udp, err := dialSyslogUDP(c.syslogAddr)
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("--syslog-addr %s: %w", c.syslogAddr, err)
 		}
+		handlers = append(handlers, udp.Handler(sinkLevel))
 		closers = append(closers, func() { udp.Close() })
-		logger = slog.New(teeHandler{logger.Handler(), udp.Handler(level)})
 	}
 
+	logger := slog.New(teeHandler(handlers))
 	c.logger, c.logCleanup = logger, cleanup
 	return logger, cleanup, nil
+}
+
+// hasLogSink reports whether a structured sink (local file or remote
+// server) is configured — the terminal (stderr) is human and never carries
+// the Info-level event stream, so the verb only emits structured events
+// when there is somewhere for them to go.
+func (c *cerebrumFlags) hasLogSink() bool {
+	return c.logPath != "" || c.syslogAddr != ""
 }
 
 // cerebrumWriteFile writes an output file, creating missing parent
@@ -1707,11 +1724,11 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if cf.logCleanup != nil {
 		defer cf.logCleanup()
 	}
-	// structured = the events go to the LOG stream (syslog/json) — one
-	// record per change, to stderr/file/syslog-addr — rather than the human
-	// table. Default (syslog) is structured; --log-format text keeps the
-	// table (epic #987).
-	structured := cf.logFormat != "" && cf.logFormat != "text"
+	// Model B (epic #987): the terminal ALWAYS gets the human table; when a
+	// structured sink (--log file / --syslog-addr server) is configured, each
+	// change is ALSO emitted as a structured record to that sink — so you
+	// read the table live AND ship syslog/json to file/Loki at the same time.
+	logToSink := cf.hasLogSink()
 	evLogger := cf.logger
 
 	newRow := func(obj string) *codec.DeviceChange {
@@ -1832,10 +1849,12 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 						ov.Available = live.Available
 					}
 				}
-				if structured && evLogger != nil {
-					// The event IS the output — one structured record to the
-					// log stream (syslog/json → stderr/file/syslog-addr), the
-					// Loki/server path. Same fields the table shows.
+				// Terminal: the human table, always.
+				header.Do(cerebrumDMHeader)
+				cerebrumDMRow(now, ov)
+				// Sinks: the same change as a structured record (file/server),
+				// only when a sink exists (stderr is human, never the events).
+				if logToSink && evLogger != nil {
 					label := ov.Label
 					if label == "" {
 						if i := strings.LastIndex(ov.Object, "."); i >= 0 {
@@ -1855,10 +1874,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 						slog.String("units", ov.Units),
 						slog.Bool("available", ov.Available),
 					)
-					continue
 				}
-				header.Do(cerebrumDMHeader)
-				cerebrumDMRow(now, ov)
 			}
 			return
 		}
