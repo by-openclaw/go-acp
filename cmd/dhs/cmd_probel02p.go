@@ -20,6 +20,10 @@ import (
 // connect, protect-*, dual-status, router-config) follow the
 // per-command file pattern from SW-P-08.
 func runProbelsw02p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip + stash before verb dispatch.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -355,7 +359,7 @@ func dialProbelSW02(ctx context.Context, addr string) (*probelsw02proto.Plugin, 
 		return nil, func() {}, err
 	}
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("probel-sw02p", host, "session")
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw02p", host, "session")
 	f := &probelsw02proto.Factory{}
 	p := f.New(logger).(*probelsw02proto.Plugin)
 	if rec, ok := ctx.Value(probelSW02RecorderKey{}).(*transport.Recorder); ok && rec != nil {

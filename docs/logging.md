@@ -96,14 +96,17 @@ records are standard RFC 5424 and route by app-name `dhs`.
 
 ## Per-connector coverage
 
-| Connector | `--log-format` / `--syslog-addr` | local syslog default | watch events → sink |
-|---|---|---|---|
-| acp1 / acp2 / emberplus / tsl | ✅ (all `addCommonFlags` verbs) | ✅ | ✅ (generic watch) |
-| cerebrum-nb | ✅ | ✅ | ✅ |
-| producer (all protocols) | ✅ | stderr + `--syslog-addr` | serve logs |
-| probel-sw08p / probel-sw02p | local default (flags: follow-up) | ✅ | follow-up |
-| osc / nmos | local default (flags: follow-up) | ✅ | follow-up |
+Every connector accepts all four flags and logs syslog locally by default.
 
-All connectors log syslog **locally** by default today; adding the remote
-`--syslog-addr` / `--log-format` flags to the probel/osc/nmos per-verb
-flagsets is the remaining #987 follow-up.
+| Connector | flags (`--log-format`/`--log`/`--syslog-addr`/`--log-level`) | local syslog default | watch events → sink |
+|---|---|---|---|
+| acp1 / acp2 / emberplus / tsl | ✅ (`addCommonFlags` verbs) | ✅ | ✅ (generic watch) |
+| cerebrum-nb | ✅ | ✅ | ✅ |
+| producer (all protocols) | ✅ | ✅ | ✅ (serve) |
+| probel-sw08p / probel-sw02p | ✅ (stripped at dispatcher → ctx) | ✅ | operational (per-event: follow-up) |
+| osc / nmos | ✅ (stripped at dispatcher → ctx) | ✅ | operational (per-event: follow-up) |
+
+probel/osc/nmos honour the flags for operational + connection logs (so
+`--syslog-addr` forwards them to a server); routing each individual
+watch/tally *event* through the sink for those three (as cerebrum-nb and the
+generic watch already do) is the one remaining refinement.

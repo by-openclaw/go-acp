@@ -1,28 +1,102 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-// consumerModelBLogger is the default Model B logger for connectors whose
-// per-verb flagsets don't parse the logging flags yet (probel-sw08p,
-// probel-sw02p, osc, nmos): stderr stays HUMAN, and the log is ALSO written
-// to the default local .cache/logs/<proto>/<host>/<verb>.log in syslog —
-// so every connector logs syslog locally by default (epic #987). A #987
-// follow-up adds --log-format/--syslog-addr to those flagsets for the
-// remote sink; the local default is live now. Falls back to a plain stderr
-// logger if the file can't be opened.
-func consumerModelBLogger(proto, host, verb string) (*slog.Logger, func()) {
-	op, _, cleanup, _, err := buildConsumerLoggers(
-		slog.LevelInfo, DefaultLogFormat, "auto", "", defaultLogPath(proto, hostOnly(host), verb))
-	if err != nil || op == nil {
-		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})), func() {}
+// logFlags carries the four uniform logging flags for connectors whose
+// per-verb flagsets don't register them directly (probel-sw08p, probel-sw02p,
+// osc, nmos). Their dispatcher strips these flags from the args ONCE with
+// stripLogFlags and stashes the result in the context; the dial/logger spots
+// read it back with consumerLogger. Same flags, same Model B behaviour as
+// every other connector (epic #987).
+type logFlags struct {
+	format     string
+	level      string
+	path       string
+	syslogAddr string
+}
+
+type logFlagsKey struct{}
+
+// stripLogFlags pulls --log-format / --log / --syslog-addr / --log-level
+// (each as "--flag value" or "--flag=value", one or two dashes) out of args
+// so a connector's own FlagSet never sees them, and returns the parsed
+// values plus the remaining args. Defaults match every other connector.
+func stripLogFlags(args []string) (*logFlags, []string) {
+	lf := &logFlags{format: DefaultLogFormat, level: "info", path: "auto"}
+	out := make([]string, 0, len(args))
+	set := func(name, val string) bool {
+		switch name {
+		case "log-format":
+			lf.format = val
+		case "log":
+			lf.path = val
+		case "syslog-addr":
+			lf.syslogAddr = val
+		case "log-level":
+			lf.level = val
+		default:
+			return false
+		}
+		return true
 	}
-	return op, cleanup
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if len(a) < 2 || a[0] != '-' {
+			out = append(out, a)
+			continue
+		}
+		name := strings.TrimLeft(a, "-")
+		if eq := strings.IndexByte(name, '='); eq >= 0 { // --flag=value
+			if set(name[:eq], name[eq+1:]) {
+				continue
+			}
+			out = append(out, a)
+			continue
+		}
+		// --flag value
+		if i+1 < len(args) && set(name, args[i+1]) {
+			i++
+			continue
+		}
+		if set(name, "") { // flag with no following value
+			continue
+		}
+		out = append(out, a)
+	}
+	return lf, out
+}
+
+// withLogFlags stashes stripped log flags on the context for consumerLogger.
+func withLogFlags(ctx context.Context, lf *logFlags) context.Context {
+	return context.WithValue(ctx, logFlagsKey{}, lf)
+}
+
+// consumerLogger builds the Model B loggers for a connector that stashed its
+// log flags on ctx (via stripLogFlags + withLogFlags). op is the operational
+// logger (human stderr + structured sinks); event is the sink-only event
+// logger (nil without a sink) for the verb's event stream; cleanup closes the
+// sinks. Falls back to sane defaults (local syslog only) when no flags are on
+// the context.
+func consumerLogger(ctx context.Context, proto, host, verb string) (op, event *slog.Logger, cleanup func(), hasSink bool) {
+	lf, _ := ctx.Value(logFlagsKey{}).(*logFlags)
+	if lf == nil {
+		lf = &logFlags{format: DefaultLogFormat, level: "info", path: "auto"}
+	}
+	o, e, c, has, err := buildConsumerLoggers(
+		parseLogLevel(lf.level), lf.format, lf.path, lf.syslogAddr,
+		defaultLogPath(proto, hostOnly(host), verb))
+	if err != nil || o == nil {
+		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})), nil, func() {}, false
+	}
+	return o, e, c, has
 }
 
 // DefaultLogFormat is the uniform logging default for every connector,

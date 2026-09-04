@@ -39,6 +39,9 @@ import (
 
 // runNMOSConsumer dispatches `dhs consumer nmos <verb> [args]`.
 func runNMOSConsumer(ctx context.Context, args []string) error {
+	var lf *logFlags // uniform logging flags (epic #987), stripped before dispatch
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
 	// the verb's own FlagSet (#462).
 	if len(args) == 0 || isHelpToken(args[0]) {
@@ -179,7 +182,7 @@ func runNMOSDiscoverUnicast(ctx context.Context, resolver, service string, timeo
 
 func runNMOSDiscoverMDNS(ctx context.Context, service string, timeout time.Duration) error {
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
 	defer logClean()
 	br, err := session.NewBrowser(logger)
 	if err != nil {
@@ -341,7 +344,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
 	defer logClean()
 
 	bundle, err := provider.LoadNodeConfigFromFile(*configPath)
@@ -425,7 +428,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
 	defer logClean()
 
 	// Direct override — skip discovery entirely.
@@ -561,7 +564,7 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
 	defer logClean()
 
 	g, err := provider.LoadIS09GlobalFromFile(*configPath)
@@ -630,7 +633,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("nmos", "session", "run")
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
 	defer logClean()
 
 	f, ok := registryslot.Lookup("nmos")

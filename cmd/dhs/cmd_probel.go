@@ -23,6 +23,11 @@ import (
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
 func runProbelsw08p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip them here so every verb's own
+	// FlagSet is unaffected; consumerLogger reads them back from ctx.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -188,7 +193,7 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 		return nil, func() {}, err
 	}
 	// Uniform logging (epic #987): human stderr + default local syslog file.
-	logger, logClean := consumerModelBLogger("probel-sw08p", host, "session")
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw08p", host, "session")
 	f := &probelproto.Factory{}
 	p := f.New(logger).(*probelproto.Plugin)
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
