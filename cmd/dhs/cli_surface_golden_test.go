@@ -97,6 +97,12 @@ var perProtocolVerbs = map[string][]string{
 	// are PRODUCER verbs and are captured under producerVerbs.
 	"osc-v10": {"watch", "listen", "validate"},
 	"osc-v11": {"watch", "listen", "validate"},
+	// tsl consumer is listen (alias: watch) + validate, one entry per wire
+	// version. These were missing from the first freeze, so a whole
+	// connector's consumer surface was unprotected.
+	"tsl-v31": {"listen", "watch", "validate"},
+	"tsl-v40": {"listen", "watch", "validate"},
+	"tsl-v50": {"listen", "watch", "validate"},
 	"nmos": {
 		"discover", "system", "walk", "watch", "connect", "set", "facade",
 		"events", "export", "audit", "probe", "registers",
@@ -112,9 +118,9 @@ var producerVerbs = map[string][]string{
 	"emberplus":    {"serve"},
 	"probel-sw08p": {"serve"},
 	"probel-sw02p": {"serve"},
-	"tsl-v31":      {"serve"},
-	"tsl-v40":      {"serve"},
-	"tsl-v50":      {"serve"},
+	"tsl-v31":      {"send", "serve"},
+	"tsl-v40":      {"send", "serve"},
+	"tsl-v50":      {"send", "serve"},
 	"osc-v10":      {"send", "fader", "serve"},
 	"osc-v11":      {"send", "fader", "serve"},
 	"nmos":         {"serve", "events"},

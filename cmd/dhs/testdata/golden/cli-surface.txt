@@ -3159,6 +3159,165 @@ error: missing <host:port>
 
 [exit status 1]
 
+========== consumer/tsl-v31/<dispatcher-help> ==========
+$ dhs consumer tsl-v31 --help
+dhs consumer tsl-v31 — TSL UMD listener (push protocol from a switcher / VSM / Kaleido)
+
+USAGE
+  dhs consumer tsl-v31 watch [--bind HOST:PORT] [--tcp]
+
+VERBS
+  watch           bind a UDP listener (or v5.0 TCP listener with --tcp)
+                  and print every decoded frame until Ctrl-C
+                  (alias: listen — historical TSL spelling)
+  validate        decode a captured frames.jsonl offline (ADR-0021)
+
+DEFAULT PORTS
+  tsl-v31, tsl-v40   UDP 4000
+  tsl-v50            UDP 8901 (or TCP 8901 with --tcp)
+
+EXAMPLES
+  dhs consumer tsl-v31 listen
+  dhs consumer tsl-v40 listen --bind 0.0.0.0:4040
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901 --tcp
+
+========== consumer/tsl-v31/listen ==========
+$ dhs consumer tsl-v31 listen --help
+Usage of tsl-v31-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v31/watch ==========
+$ dhs consumer tsl-v31 watch --help
+Usage of tsl-v31-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v31/validate ==========
+$ dhs consumer tsl-v31 validate --help
+error: usage: dhs consumer <proto> validate <frames.jsonl> [flags]
+
+[exit status 1]
+
+========== consumer/tsl-v40/<dispatcher-help> ==========
+$ dhs consumer tsl-v40 --help
+dhs consumer tsl-v40 — TSL UMD listener (push protocol from a switcher / VSM / Kaleido)
+
+USAGE
+  dhs consumer tsl-v40 watch [--bind HOST:PORT] [--tcp]
+
+VERBS
+  watch           bind a UDP listener (or v5.0 TCP listener with --tcp)
+                  and print every decoded frame until Ctrl-C
+                  (alias: listen — historical TSL spelling)
+  validate        decode a captured frames.jsonl offline (ADR-0021)
+
+DEFAULT PORTS
+  tsl-v31, tsl-v40   UDP 4000
+  tsl-v50            UDP 8901 (or TCP 8901 with --tcp)
+
+EXAMPLES
+  dhs consumer tsl-v31 listen
+  dhs consumer tsl-v40 listen --bind 0.0.0.0:4040
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901 --tcp
+
+========== consumer/tsl-v40/listen ==========
+$ dhs consumer tsl-v40 listen --help
+Usage of tsl-v40-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v40/watch ==========
+$ dhs consumer tsl-v40 watch --help
+Usage of tsl-v40-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v40/validate ==========
+$ dhs consumer tsl-v40 validate --help
+error: usage: dhs consumer <proto> validate <frames.jsonl> [flags]
+
+[exit status 1]
+
+========== consumer/tsl-v50/<dispatcher-help> ==========
+$ dhs consumer tsl-v50 --help
+dhs consumer tsl-v50 — TSL UMD listener (push protocol from a switcher / VSM / Kaleido)
+
+USAGE
+  dhs consumer tsl-v50 watch [--bind HOST:PORT] [--tcp]
+
+VERBS
+  watch           bind a UDP listener (or v5.0 TCP listener with --tcp)
+                  and print every decoded frame until Ctrl-C
+                  (alias: listen — historical TSL spelling)
+  validate        decode a captured frames.jsonl offline (ADR-0021)
+
+DEFAULT PORTS
+  tsl-v31, tsl-v40   UDP 4000
+  tsl-v50            UDP 8901 (or TCP 8901 with --tcp)
+
+EXAMPLES
+  dhs consumer tsl-v31 listen
+  dhs consumer tsl-v40 listen --bind 0.0.0.0:4040
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901
+  dhs consumer tsl-v50 listen --bind 0.0.0.0:8901 --tcp
+
+========== consumer/tsl-v50/listen ==========
+$ dhs consumer tsl-v50 listen --help
+Usage of tsl-v50-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v50/watch ==========
+$ dhs consumer tsl-v50 watch --help
+Usage of tsl-v50-listen:
+  -bind string
+    	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -idle-timeout duration
+    	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
+  -keepalive duration
+    	v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP) (default 30s)
+  -tcp
+    	v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP
+
+========== consumer/tsl-v50/validate ==========
+$ dhs consumer tsl-v50 validate --help
+error: usage: dhs consumer <proto> validate <frames.jsonl> [flags]
+
+[exit status 1]
+
 ========== producer/acp1/<dispatcher-help> ==========
 $ dhs producer acp1 --help
 dhs producer — inbound (serve a canonical tree over the wire)
@@ -3991,6 +4150,32 @@ EXAMPLES
   dhs producer tsl-v50 send  --dest 10.0.0.5:8901 --screen 0 --index 2 --lh red --text "PGM"
   dhs producer tsl-v50 send  --dest 10.0.0.5:8902 --tcp --screen 0 --index 2 --rh amber
 
+========== producer/tsl-v31/send ==========
+$ dhs producer tsl-v31 send --help
+Usage of tsl-v31-send:
+  -addr int
+    	display address 0..126
+  -bind string
+    	local UDP egress bind (':0' = ephemeral) (default "0.0.0.0:0")
+  -brightness int
+    	brightness 0=off 1=1/7 2=1/2 3=full (default 3)
+  -dest value
+    	destination MV host:port (repeatable; required for UDP)
+  -refresh duration
+    	if >0 (serve only), re-emit the frame every DURATION
+  -tally1
+    	binary tally bit 1 (CTRL bit 0)
+  -tally2
+    	binary tally bit 2 (CTRL bit 1)
+  -tally3
+    	binary tally bit 3 (CTRL bit 2)
+  -tally4
+    	binary tally bit 4 (CTRL bit 3)
+  -text string
+    	UMD label text (≤16 ASCII for v3.1/v4.0, free for v5.0)
+  -text-pad string
+    	DATA pad: spaces (spec) | nul (TallyArbiter off-spec) (default "spaces")
+
 ========== producer/tsl-v31/serve ==========
 $ dhs producer tsl-v31 serve --help
 Usage of tsl-v31-serve:
@@ -4061,6 +4246,36 @@ EXAMPLES
   dhs producer tsl-v40 serve --dest 10.0.0.5:4000 --refresh 1s --addr 3 --display-left red:green:off
   dhs producer tsl-v50 send  --dest 10.0.0.5:8901 --screen 0 --index 2 --lh red --text "PGM"
   dhs producer tsl-v50 send  --dest 10.0.0.5:8902 --tcp --screen 0 --index 2 --rh amber
+
+========== producer/tsl-v40/send ==========
+$ dhs producer tsl-v40 send --help
+Usage of tsl-v40-send:
+  -addr int
+    	display address 0..126
+  -bind string
+    	local UDP egress bind (':0' = ephemeral) (default "0.0.0.0:0")
+  -brightness int
+    	brightness 0=off 1=1/7 2=1/2 3=full (default 3)
+  -dest value
+    	destination MV host:port (repeatable; required for UDP)
+  -display-left string
+    	v4.0 XDATA Display L LH:Text:RH (off|red|green|amber) (default "off:off:off")
+  -display-right string
+    	v4.0 XDATA Display R LH:Text:RH (off|red|green|amber) (default "off:off:off")
+  -refresh duration
+    	if >0 (serve only), re-emit the frame every DURATION
+  -tally1
+    	binary tally bit 1 (CTRL bit 0)
+  -tally2
+    	binary tally bit 2 (CTRL bit 1)
+  -tally3
+    	binary tally bit 3 (CTRL bit 2)
+  -tally4
+    	binary tally bit 4 (CTRL bit 3)
+  -text string
+    	UMD label text (≤16 ASCII for v3.1/v4.0, free for v5.0)
+  -text-pad string
+    	DATA pad: spaces (spec) | nul (TallyArbiter off-spec) (default "spaces")
 
 ========== producer/tsl-v40/serve ==========
 $ dhs producer tsl-v40 serve --help
@@ -4136,6 +4351,40 @@ EXAMPLES
   dhs producer tsl-v40 serve --dest 10.0.0.5:4000 --refresh 1s --addr 3 --display-left red:green:off
   dhs producer tsl-v50 send  --dest 10.0.0.5:8901 --screen 0 --index 2 --lh red --text "PGM"
   dhs producer tsl-v50 send  --dest 10.0.0.5:8902 --tcp --screen 0 --index 2 --rh amber
+
+========== producer/tsl-v50/send ==========
+$ dhs producer tsl-v50 send --help
+Usage of tsl-v50-send:
+  -bind string
+    	local UDP egress bind (':0' = ephemeral) (default "0.0.0.0:0")
+  -brightness int
+    	brightness 0=off 1=1/7 2=1/2 3=full (default 3)
+  -broadcast
+    	set SCREEN=0xFFFF (broadcast all screens)
+  -dest value
+    	destination MV host:port (repeatable; required for UDP)
+  -dmsg value
+    	repeatable v5.0 DMSG: index=N,lh=COL,text-tally=COL,rh=COL,brightness=0..3,umd=STR (overrides singular flags)
+  -index int
+    	v5.0 display Index 0..65534 (use --broadcast for 0xFFFF)
+  -keepalive duration
+    	TCP SO_KEEPALIVE period (default 30s; --tcp only) (default 30s)
+  -lh string
+    	LH tally colour (off|red|green|amber) (default "off")
+  -refresh duration
+    	if >0 (serve only), re-emit the frame every DURATION
+  -rh string
+    	RH tally colour (off|red|green|amber) (default "off")
+  -screen int
+    	v5.0 screen 0..65534
+  -tcp
+    	send via TCP (DLE/STX wrapper) instead of UDP
+  -text string
+    	UMD label text (≤16 ASCII for v3.1/v4.0, free for v5.0)
+  -text-tally string
+    	Text tally colour (off|red|green|amber) (default "off")
+  -utf16
+    	encode TEXT as UTF-16LE (FLAGS bit 0)
 
 ========== producer/tsl-v50/serve ==========
 $ dhs producer tsl-v50 serve --help
