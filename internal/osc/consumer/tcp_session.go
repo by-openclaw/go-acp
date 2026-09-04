@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/osc/codec"
@@ -45,10 +46,38 @@ type tcpSession struct {
 	subs      []subscriber
 	wg        sync.WaitGroup
 	closeOnce sync.Once
+
+	// idleTimeout, when > 0, closes an accepted connection that has sent
+	// nothing for that long, reaping half-open peers (a NAT or firewall
+	// drop with no RST) that would otherwise hold a goroutine and a socket
+	// forever.
+	//
+	// It defaults to 0 (OFF), deliberately. This is a PASSIVE receiver and
+	// OSC 1.0/1.1 define no heartbeat — a control surface that sends
+	// nothing until someone moves a fader is perfectly healthy, so silence
+	// carries no information about liveness and an on-by-default deadline
+	// would disconnect working peers. OS-level SO_KEEPALIVE (set on every
+	// accepted connection) stays the always-on detector; this is the opt-in
+	// for deployments that would rather reap aggressively.
+	idleTimeout atomic.Int64 // time.Duration
 }
 
 func newTCPSession(f framerKind) *tcpSession {
 	return &tcpSession{framer: f}
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-connection idle
+// reaper. See the field comment for why this is off by default.
+func (s *tcpSession) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	s.idleTimeout.Store(int64(d))
+}
+
+// IdleTimeout reports the currently armed idle reaper window.
+func (s *tcpSession) IdleTimeout() time.Duration {
+	return time.Duration(s.idleTimeout.Load())
 }
 
 func (s *tcpSession) listen(ctx context.Context, addr string) error {
@@ -106,6 +135,9 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 	for {
 		if ctx.Err() != nil {
 			return
+		}
+		if d := s.IdleTimeout(); d > 0 {
+			_ = conn.SetReadDeadline(time.Now().Add(d))
 		}
 		pkt, err := rd.ReadPacket()
 		if err != nil {

@@ -56,6 +56,20 @@ func (p *Plugin) runKeepalive(
 	if cfg.InitialPoll {
 		p.bootstrapSweep(ctx, cli, cfg, bootstrapSpacing)
 	}
+	// Arm the reader's dead-man deadline for exactly as long as we are
+	// polling. SW-P-02 gives us no unsolicited heartbeat from the matrix,
+	// so our rx01 poll is the ONLY thing that makes silence meaningful: with
+	// it, no reply within the window means the link is gone; without it, a
+	// quiet router is indistinguishable from a dead one and a deadline would
+	// tear down a perfectly good session.
+	//
+	// The window is a multiple of the poll spacing so a single missed or
+	// delayed reply never trips it.
+	if keepaliveSpacing > 0 {
+		cli.SetIdleTimeout(idleWindowFor(keepaliveSpacing))
+		defer cli.SetIdleTimeout(0)
+	}
+
 	if keepaliveSpacing < 0 {
 		// Caller explicitly disabled the keep-alive ping.
 		return
@@ -146,4 +160,24 @@ func sendInterrogate(ctx context.Context, cli *codec.Client, dst uint16) error {
 		f = codec.EncodeExtendedInterrogate(codec.ExtendedInterrogateParams{Destination: dst})
 	}
 	return cli.Write(codec.Pack(f))
+}
+
+// idleWindowMultiple is how many keep-alive periods the matrix may miss
+// before the link is judged dead. Three gives a delayed or dropped reply
+// two more chances before a healthy session is torn down.
+const idleWindowMultiple = 3
+
+// minIdleWindow floors the dead-man window. The keep-alive spacing is
+// deliberately aggressive (2s by default), and 3x that is short enough that
+// ordinary scheduling jitter on a loaded host could trip it; 30s keeps the
+// detection useful without making it twitchy.
+const minIdleWindow = 30 * time.Second
+
+// idleWindowFor derives the reader's dead-man window from the poll spacing.
+func idleWindowFor(keepaliveSpacing time.Duration) time.Duration {
+	w := keepaliveSpacing * idleWindowMultiple
+	if w < minIdleWindow {
+		return minIdleWindow
+	}
+	return w
 }
