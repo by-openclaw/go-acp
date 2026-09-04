@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -274,6 +275,33 @@ func runWatch(ctx context.Context, args []string) error {
 			// root-stripped form --path accepts. Display only; ev.Path
 			// is not used for resolution past this point.
 			ev.Path = stripDisplayRoot(ev.Path)
+
+			// Uniform logging (epic #987, Model B): the terminal keeps the
+			// human table below; when a structured sink (--log/--syslog-addr)
+			// is configured, ALSO emit each change as one structured record
+			// to that sink — the Loki/server path — never to the terminal.
+			if cf.logHasSink && cf.eventLogger != nil {
+				attrs := []any{
+					slog.String("proto", cf.protocol),
+					slog.String("oid", oid),
+					slog.Int("slot", ev.Slot),
+					slog.String("group", ev.Group),
+					slog.Int("id", ev.ID),
+					slog.String("path", ev.Path),
+					slog.String("label", label),
+					slog.String("access", accessStr(ev.Access)),
+				}
+				if mc := ev.MatrixChange; mc != nil {
+					attrs = append(attrs, slog.String("kind", "matrix"))
+				} else {
+					v := formatValueInline(ev.Value)
+					if ev.Unit != "" {
+						v += " " + ev.Unit
+					}
+					attrs = append(attrs, slog.String("value", v))
+				}
+				cf.eventLogger.Info("value_change", attrs...)
+			}
 
 			// Matrix crosspoint events render differently —
 			// target/sources/disposition replace the single value

@@ -4,15 +4,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"dhs/internal/logging"
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
+	"dhs/internal/consumer"
 	"dhs/internal/datastore"
+	"dhs/internal/logging"
 	"dhs/internal/transport"
 )
 
@@ -33,16 +34,29 @@ func init() {
 type commonFlags struct {
 	// verb is the FlagSet name ("export", "walk", …) — labels the
 	// ADR-0028 default capture folder; never user-visible otherwise.
-	verb              string
-	protocol          string
-	transport         string
-	port              int
-	timeout           time.Duration
-	keepalive         time.Duration
-	keepaliveTimeout  time.Duration
-	verbose           bool
-	logLevel          string
-	capture           string
+	verb             string
+	protocol         string
+	transport        string
+	port             int
+	timeout          time.Duration
+	keepalive        time.Duration
+	keepaliveTimeout time.Duration
+	verbose          bool
+	logLevel         string
+	logFormat        string
+	logPath          string
+	syslogAddr       string
+	capture          string
+
+	// eventLogger + logHasSink are set by connect(): the uniform-logging
+	// contract (epic #987, Model B). The terminal always shows the human
+	// data tables; when a structured sink (--log file / --syslog-addr
+	// server) is configured, a verb (e.g. watch) ALSO emits each event as a
+	// structured record through eventLogger — which writes ONLY to the
+	// sinks, never the terminal. nil / false when no sink is configured.
+	eventLogger *slog.Logger
+	logHasSink  bool
+	logCleanup  func()
 
 	// captureDir is populated by connect() when --capture points at a
 	// directory (or at a path without a .jsonl extension). In that
@@ -82,6 +96,9 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 			"this elapses without rx; values stay decoded against the cached schema.")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
+	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
+	fs.StringVar(&cf.logPath, "log", "", "also write the log to this FILE in --log-format (local sink; the terminal stays the human table). Literal \"auto\" = .cache/logs/<proto>/<host>/<verb>.log")
+	fs.StringVar(&cf.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (remote server sink; non-blocking, drops counted)")
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
@@ -160,7 +177,17 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	if cf.verbose && lvl > logging.LevelDebug {
 		lvl = logging.LevelDebug // --verbose is shortcut for --log-level debug
 	}
-	logger := logging.NewTextLogger(lvl)
+	// Uniform logging (epic #987, Model B): stderr stays human; --log FILE
+	// and --syslog-addr are structured sinks in --log-format (syslog
+	// default). With no sink this is exactly the old stderr text logger.
+	op, event, logCleanup, hasSink, lerr := buildConsumerLoggers(
+		lvl, cf.logFormat, cf.logPath, cf.syslogAddr,
+		defaultLogPath(cf.protocol, hostOnly(host), cf.verb))
+	if lerr != nil {
+		return nil, nil, lerr
+	}
+	cf.eventLogger, cf.logHasSink, cf.logCleanup = event, hasSink, logCleanup
+	logger := op
 
 	// Optional traffic capture for test data generation. The literal
 	// "auto" resolves to the ADR-0028 evidence home as a capture DIR
@@ -257,6 +284,9 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		_ = plug.Disconnect()
 		if recorder != nil {
 			_ = recorder.Close()
+		}
+		if cf.logCleanup != nil {
+			cf.logCleanup()
 		}
 	}
 	return plug, cleanup, nil
