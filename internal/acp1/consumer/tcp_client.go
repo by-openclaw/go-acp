@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // TCPClient is the ACP1 session layer for TCP direct mode (spec v1.4
@@ -54,6 +55,26 @@ type TCPClient struct {
 	closed    bool
 
 	readerDone chan struct{}
+
+	// idleTimeout, when > 0, bounds how long the device may be silent before
+	// a read fails. Without it the reader blocks forever on a half-open
+	// connection (a NAT/firewall drop with no RST): closing the socket
+	// locally unblocks it, but a DEAD PEER never does, so the reader parks
+	// in the kernel and the watch goes quiet with no error to report.
+	idleTimeout atomic.Int64 // time.Duration
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-read deadline.
+func (c *TCPClient) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	c.idleTimeout.Store(int64(d))
+}
+
+// IdleTimeout reports the currently armed per-read deadline.
+func (c *TCPClient) IdleTimeout() time.Duration {
+	return time.Duration(c.idleTimeout.Load())
 }
 
 // NewTCPClient takes an already-connected TCPConn and starts the
@@ -215,9 +236,19 @@ func (c *TCPClient) readerLoop() {
 	}()
 
 	for {
-		// Blocking read with no deadline — closing the socket (via
-		// Close) unblocks it with an error.
-		raw, err := c.conn.Receive(context.Background(), codec.MaxPacket)
+		// Bounded read. Closing the socket locally unblocks it, but a DEAD
+		// peer never does — only a deadline reveals a half-open link. The
+		// keep-alive prober's replies re-arm it every pass, so a healthy
+		// but quiet device is never torn down.
+		rctx := context.Background()
+		var rcancel context.CancelFunc
+		if d := c.IdleTimeout(); d > 0 {
+			rctx, rcancel = context.WithTimeout(rctx, d)
+		}
+		raw, err := c.conn.Receive(rctx, codec.MaxPacket)
+		if rcancel != nil {
+			rcancel()
+		}
 		if err != nil {
 			// Close → exit. Any other error → also exit, since a
 			// framing error on a TCP stream means we can't resync.

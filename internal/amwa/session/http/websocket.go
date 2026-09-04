@@ -63,6 +63,36 @@ type WebSocket struct {
 	// writeFrame from Ping/Pong handlers.
 	closed     atomic.Bool
 	clientSide bool // when true, outgoing frames are masked (RFC 6455 §5.3 client requirement)
+
+	// idleTimeout, when > 0, bounds how long the peer may be silent before a
+	// read fails. Re-armed before EVERY frame — including Ping/Pong handled
+	// inline — so it means "no bytes at all from the peer", not "no text
+	// frame". That distinction matters: a subscription answering our
+	// keep-alive pings is alive, and must not be torn down by the very
+	// watchdog it is satisfying.
+	//
+	// Without it a half-open connection (a NAT/firewall drop with no RST)
+	// blocks the reader forever and the watch goes silent without failing.
+	idleTimeout atomic.Int64 // time.Duration
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
+// deadline. Applied immediately so a reader already blocked picks it up.
+func (w *WebSocket) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	w.idleTimeout.Store(int64(d))
+	if d > 0 {
+		_ = w.conn.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = w.conn.SetReadDeadline(time.Time{})
+	}
+}
+
+// IdleTimeout reports the currently armed per-frame read deadline.
+func (w *WebSocket) IdleTimeout() time.Duration {
+	return time.Duration(w.idleTimeout.Load())
 }
 
 // AcceptWebSocket completes the RFC 6455 handshake on r and returns a
@@ -153,6 +183,9 @@ func (w *WebSocket) ReadText() ([]byte, error) {
 	for {
 		if w.closed.Load() {
 			return nil, ErrWebSocketClosed
+		}
+		if d := w.IdleTimeout(); d > 0 {
+			_ = w.conn.SetReadDeadline(time.Now().Add(d))
 		}
 		opcode, payload, err := readFrame(w.bufr)
 		if err != nil {
