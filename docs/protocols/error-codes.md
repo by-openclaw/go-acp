@@ -48,6 +48,8 @@ This file locks the error contract across every connector.
 | `transport:write-failed` | defined (R1b) | TCP/UDP write returned an OS error mid-send | OS |
 | `transport:short-write` | defined (R1b) | UDP wrote fewer bytes than the payload — datagram truncated | OS |
 | `transport:read-failed` | defined (R1b) | TCP/UDP read returned an OS error mid-receive (not a deadline; deadlines map to `context.DeadlineExceeded` for compatibility) | OS |
+| `transport:connection-lost` | defined (B1) | an **established** session died — peer closed, socket errored mid-stream, or the dead-man watchdog expired. The sentinel a 24/7 watcher dispatches on: distinguishes "connected then lost" (recoverable → reconnect with backoff) from `refused` / `dial-failed` ("never got in"). The `ConnectionLostError` arm of the CLAUDE.md hierarchy | dhs session layer |
+| `transport:idle-timeout` | defined (B1) | transport healthy but the peer went silent past the liveness threshold — the half-open TCP/WebSocket a NAT or firewall dropped without an RST. Reported alongside `connection-lost`; test `connection-lost` for the general "session gone" case | dhs session layer |
 | `transport:oversized-datagram` | defined (R1b) | received UDP datagram > caller-supplied `maxSize` | dhs |
 | `transport:mlen-out-of-range` | defined (R1b) | TCP framer: MLEN < 8 or > caller-supplied `maxPayload` | dhs framing |
 | `transport:wrong-conn-type` | defined (R1b) | `net.Dial` / `net.ListenPacket` returned a connection of unexpected concrete type | dhs |

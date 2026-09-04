@@ -6,8 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
+	"strconv"
 	"strings"
+
+	"dhs/internal/clock"
 )
 
 // logFlags carries the four uniform logging flags for connectors whose
@@ -21,6 +23,7 @@ type logFlags struct {
 	level      string
 	path       string
 	syslogAddr string
+	retention  int
 }
 
 type logFlagsKey struct{}
@@ -42,6 +45,13 @@ func stripLogFlags(args []string) (*logFlags, []string) {
 			lf.syslogAddr = val
 		case "log-level":
 			lf.level = val
+		case "log-retention":
+			// Ignore a malformed value rather than failing the verb: the
+			// flag only prunes history, and 0 (keep everything) is the safe
+			// reading of an unparseable input.
+			if n, cerr := strconv.Atoi(val); cerr == nil {
+				lf.retention = n
+			}
 		default:
 			return false
 		}
@@ -92,7 +102,7 @@ func consumerLogger(ctx context.Context, proto, host, verb string) (op, event *s
 	}
 	o, e, c, has, err := buildConsumerLoggers(
 		parseLogLevel(lf.level), lf.format, lf.path, lf.syslogAddr,
-		defaultLogPath(proto, hostOnly(host), verb))
+		defaultLogPath(proto, hostOnly(host), verb), lf.retention)
 	if err != nil || o == nil {
 		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})), nil, func() {}, false
 	}
@@ -142,7 +152,10 @@ func newLoggerTo(w io.Writer, level slog.Level, format string) *slog.Logger {
 // --syslog-addr host:port, both in `format` (syslog default). hasSink is
 // true when at least one exists. With no sink, op is exactly the old
 // stderr text logger and event is nil — a pure no-op change to defaults.
-func buildConsumerLoggers(level slog.Level, format, logPath, syslogAddr, autoPath string) (op, event *slog.Logger, cleanup func(), hasSink bool, err error) {
+// retainDays is the --log-retention value: days of rotated daily files to
+// keep. 0 keeps every day (the default — silently deleting an operator's
+// history is worse than a large directory).
+func buildConsumerLoggers(level slog.Level, format, logPath, syslogAddr, autoPath string, retainDays int) (op, event *slog.Logger, cleanup func(), hasSink bool, err error) {
 	if format == "" {
 		format = DefaultLogFormat
 	}
@@ -163,12 +176,10 @@ func buildConsumerLoggers(level slog.Level, format, logPath, syslogAddr, autoPat
 		logPath = autoPath
 	}
 	if logPath != "" {
-		if dir := filepath.Dir(logPath); dir != "." {
-			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
-				return nil, nil, cleanup, false, fmt.Errorf("--log %s: %w", logPath, mkErr)
-			}
-		}
-		f, ferr := os.Create(logPath)
+		// One file per calendar day (logrotate.go). Watchers run 24/7/365;
+		// a single unbounded file that is truncated on every restart is not
+		// a usable operational record.
+		f, ferr := newDailyWriter(logPath, retainDays, clock.System())
 		if ferr != nil {
 			return nil, nil, cleanup, false, fmt.Errorf("--log %s: %w", logPath, ferr)
 		}

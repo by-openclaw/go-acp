@@ -20,6 +20,7 @@ import (
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 )
 
@@ -61,18 +62,19 @@ func printCerebrumJSON(v any) error {
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
 type cerebrumFlags struct {
-	port       int
-	user       string
-	pass       string
-	tls        bool
-	insecure   bool
-	debug      bool
-	logPath    string
-	logFormat  string
-	logLevel   string
-	syslogAddr string
-	capture    string
-	timeout    time.Duration
+	port         int
+	user         string
+	pass         string
+	tls          bool
+	insecure     bool
+	debug        bool
+	logPath      string
+	logFormat    string
+	logLevel     string
+	syslogAddr   string
+	logRetention int
+	capture      string
+	timeout      time.Duration
 
 	// logger + logCleanup are built once by newLogger and cached so a verb
 	// (e.g. watch) can route its own event stream through the SAME logger
@@ -94,6 +96,7 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
 	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
 	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal \"auto\" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
@@ -155,12 +158,10 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		c.logPath = ""
 	}
 	if c.logPath != "" {
-		if dir := filepath.Dir(c.logPath); dir != "." {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
-			}
-		}
-		f, err := os.Create(c.logPath)
+		// One file per calendar day (logrotate.go). cerebrum-nb watch is the
+		// canonical 24/7/365 verb, so it must never write a single unbounded
+		// file that a restart truncates.
+		f, err := newDailyWriter(c.logPath, c.logRetention, clock.System())
 		if err != nil {
 			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
 		}

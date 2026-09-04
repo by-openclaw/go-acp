@@ -13,10 +13,12 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/transport"
 	"dhs/internal/cerebrum-nb/codec/ws"
+	"dhs/internal/clock"
+	"dhs/internal/transport"
 )
 
 // Session is the live WebSocket session against one Cerebrum host. It
@@ -39,15 +41,71 @@ type Session struct {
 
 	mtidNext atomic.Uint32
 
-	mu         sync.Mutex
-	pending    map[string]chan *codec.Frame
-	subs       []*Subscription
-	apiVer     string
-	loggedIn   bool
+	mu       sync.Mutex
+	pending  map[string]chan *codec.Frame
+	subs     []*Subscription
+	apiVer   string
+	loggedIn bool
 
 	closeOnce sync.Once
 	closeErr  error
 	stopRX    chan struct{}
+
+	// --- 24/7 liveness (see keepalive.go) ---------------------------------
+	//
+	// lastRX is the unix-nano timestamp of the most recent frame received
+	// from the server. It is the input to SessionLive and the evidence a
+	// watcher uses to prove it is still being fed.
+	lastRX atomic.Int64
+
+	// done is closed exactly once, when the session dies (read error, idle
+	// timeout, peer close, or local close). A supervisor blocks on it to
+	// drive reconnection; lostErr says why.
+	done     chan struct{}
+	lostOnce sync.Once
+	lostMu   sync.Mutex
+	lostErr  error
+
+	// ka owns the keep-alive prober goroutine, when one is running.
+	ka *keepAlive
+}
+
+// Done returns a channel closed when the session dies, for whatever reason.
+// A 24/7 watcher selects on this to notice a dead connection instead of
+// blocking forever on an event stream that will never produce another frame.
+func (s *Session) Done() <-chan struct{} { return s.done }
+
+// Err reports why the session died, or nil while it is alive. The error
+// always wraps transport.ErrConnectionLost so callers can dispatch with
+// errors.Is without string-matching.
+func (s *Session) Err() error {
+	s.lostMu.Lock()
+	defer s.lostMu.Unlock()
+	return s.lostErr
+}
+
+// LastRx returns the time of the most recent frame from the server, or the
+// zero time if nothing has arrived yet.
+func (s *Session) LastRx() time.Time {
+	ns := s.lastRX.Load()
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
+// noteRX records that a frame arrived. Called on EVERY inbound frame.
+func (s *Session) noteRX() { s.lastRX.Store(time.Now().UnixNano()) }
+
+// markLost records the cause of death and closes Done. Idempotent — the
+// first cause wins, because it is the one that explains the others.
+func (s *Session) markLost(err error) {
+	s.lostOnce.Do(func() {
+		s.lostMu.Lock()
+		s.lostErr = err
+		s.lostMu.Unlock()
+		close(s.done)
+	})
 }
 
 // EventFunc is the cerebrum-nb-specific event callback. It receives
@@ -115,9 +173,16 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS,
 		rec:        rec,
 		pending:    map[string]chan *codec.Frame{},
 		stopRX:     make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 	s.mtidNext.Store(1)
+	// Liveness is ON by default. A watcher that runs for months must not
+	// depend on the operator remembering a flag to avoid hanging forever on
+	// a half-open socket; --keepalive / --keepalive-timeout tune it, and
+	// consumer.DisableInterval / DisableTimeout turn it off deliberately.
+	s.conn.SetIdleTimeout(defaultKeepAliveTimeout)
 	go s.readLoop()
+	s.startKeepAlive(defaultKeepAliveInterval, clock.System())
 	return s, nil
 }
 
@@ -191,8 +256,13 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 
 	// Raw TX at debug level — the wire truth for diagnostics; --debug on the
 	// CLI promises "verbose RX/TX XML logging" and this is that promise.
-	s.logger.Debug("tx", slog.String("xml", string(payload)))
-	s.rec.Record("cerebrum-nb", "tx", payload)
+	// Redact credentials before the frame reaches ANY sink: the LOGIN frame
+	// carries the NB password in cleartext, and the log now persists daily
+	// files (and may forward them to a remote collector), while the capture
+	// is the artefact operators attach to vendor bug reports. See redact.go.
+	safe := redactSecrets(payload)
+	s.logger.Debug("tx", slog.String("xml", string(safe)))
+	s.rec.Record("cerebrum-nb", "tx", safe)
 	if err := s.conn.WriteText(ctx, payload); err != nil {
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
 	}
@@ -369,19 +439,28 @@ func (s *Session) readLoop() {
 		}
 		op, payload, err := s.conn.ReadMessage(context.Background())
 		if err != nil {
+			// The session is over. Classify WHY, then publish it on Done so
+			// a supervisor can reconnect. Returning silently here — the old
+			// behaviour — is precisely what made a 24/7 watcher go quiet
+			// without crashing: the reader vanished and nobody was told.
+			s.markLost(s.classifyReadErr(err))
 			if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
 				s.logger.Debug("read", slog.String("err", err.Error()))
 			}
 			return
 		}
+		s.noteRX()
 		if op != ws.OpText {
 			// Cerebrum doesn't speak Binary; log and drop.
 			s.logger.Debug("dropping non-text frame", slog.Int("opcode", int(op)))
 			continue
 		}
 		// Raw RX at debug level — see the tx twin in roundTrip.
-		s.logger.Debug("rx", slog.String("xml", string(payload)))
-		s.rec.Record("cerebrum-nb", "rx", payload)
+		// RX is redacted too: a server echo or an error frame can quote the
+		// offending request back at us, credentials included.
+		safeRX := redactSecrets(payload)
+		s.logger.Debug("rx", slog.String("xml", string(safeRX)))
+		s.rec.Record("cerebrum-nb", "rx", safeRX)
 		f, err := codec.Decode(payload)
 		if err != nil {
 			s.logger.Warn("decode failed",
@@ -472,8 +551,12 @@ func (s *Session) dispatch(f *codec.Frame) {
 // close tears down the session. Idempotent.
 func (s *Session) close() error {
 	s.closeOnce.Do(func() {
+		// Stop the prober BEFORE the socket goes away, so its final tick
+		// cannot race the close and report a spurious "keepalive failed".
+		s.stopKeepAlive()
 		close(s.stopRX)
 		s.closeErr = s.conn.Close(1000, "client closing")
+		s.markLost(fmt.Errorf("%w: session closed by client", transport.ErrConnectionLost))
 		_ = s.rec.Close() // nil-safe; flush the --capture wire-trace
 	})
 	return s.closeErr

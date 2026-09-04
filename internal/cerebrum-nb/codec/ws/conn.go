@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,12 +26,49 @@ type Conn struct {
 	br         *bufio.Reader
 	maxPayload int64
 
+	// idleTimeout, when > 0, is the maximum time the peer may be silent
+	// before a read fails. It is re-armed before EVERY frame read —
+	// including control frames handled inline — so it means "no bytes at
+	// all from the peer", not "no application message". That distinction
+	// matters: a connection carrying only Pongs is alive, and must not be
+	// declared dead by the watchdog it is answering.
+	//
+	// Without this, a read blocks forever on a half-open connection (a NAT
+	// or firewall that dropped the flow without sending an RST), which is
+	// exactly how a 24/7 watcher goes silent without crashing.
+	idleTimeout atomic.Int64 // time.Duration
+
 	// writeMu serialises all outbound frames so control + data frames
 	// don't interleave on the wire.
 	writeMu sync.Mutex
 
 	closeOnce sync.Once
 	closeErr  error
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
+// deadline. Safe to call concurrently with an in-flight ReadMessage; the new
+// value applies from the next frame.
+func (c *Conn) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	c.idleTimeout.Store(int64(d))
+	// Apply immediately. A reader is normally already blocked in the kernel
+	// on the PREVIOUS deadline, and storing the new value alone would not
+	// reach it — the change would not take effect until that old (possibly
+	// 90 s, possibly infinite) deadline expired. Re-arming the socket here
+	// makes a tightened window take hold at once.
+	if d > 0 {
+		_ = c.c.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = c.c.SetReadDeadline(time.Time{})
+	}
+}
+
+// IdleTimeout reports the currently armed per-frame read deadline.
+func (c *Conn) IdleTimeout() time.Duration {
+	return time.Duration(c.idleTimeout.Load())
 }
 
 // newConn wraps a post-handshake net.Conn into a *Conn. br carries any
@@ -64,7 +102,18 @@ func (c *Conn) ReadMessage(ctx context.Context) (opcode byte, payload []byte, er
 		dataOpcode byte
 		buf        []byte
 	)
+	// An explicit ctx deadline (a bounded request) wins over the rolling
+	// idle timeout (an unbounded watch); only arm the idle deadline when the
+	// caller did not set one of its own.
+	_, ctxHasDeadline := ctx.Deadline()
 	for {
+		if !ctxHasDeadline {
+			if d := c.IdleTimeout(); d > 0 {
+				if err := c.c.SetReadDeadline(time.Now().Add(d)); err != nil {
+					return 0, nil, err
+				}
+			}
+		}
 		f, err := readFrame(c.br, c.maxPayload)
 		if err != nil {
 			return 0, nil, err
