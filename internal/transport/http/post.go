@@ -21,11 +21,11 @@ import (
 func (c *Client) PostJSON(ctx context.Context, url string, src, dst any) (int, error) {
 	body, err := json.Marshal(src)
 	if err != nil {
-		return 0, fmt.Errorf("nmos/http: marshal body: %w", err)
+		return 0, fmt.Errorf("http: marshal body: %w", err)
 	}
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return 0, fmt.Errorf("nmos/http: build POST: %w", err)
+		return 0, fmt.Errorf("http: build POST: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -35,7 +35,7 @@ func (c *Client) PostJSON(ctx context.Context, url string, src, dst any) (int, e
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("nmos/http: POST %s: %w", url, err)
+		return 0, fmt.Errorf("http: POST %s: %w", url, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -45,10 +45,10 @@ func (c *Client) PostJSON(ctx context.Context, url string, src, dst any) (int, e
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, max+1))
 	if err != nil {
-		return resp.StatusCode, fmt.Errorf("nmos/http: read POST body: %w", err)
+		return resp.StatusCode, fmt.Errorf("http: read POST body: %w", err)
 	}
 	if int64(len(raw)) > max {
-		return resp.StatusCode, fmt.Errorf("nmos/http: POST response exceeds %d bytes", max)
+		return resp.StatusCode, fmt.Errorf("http: POST response exceeds %d bytes", max)
 	}
 
 	if dst == nil {
@@ -60,7 +60,7 @@ func (c *Client) PostJSON(ctx context.Context, url string, src, dst any) (int, e
 	d := json.NewDecoder(strings.NewReader(string(raw)))
 	d.DisallowUnknownFields()
 	if err := d.Decode(dst); err != nil {
-		return resp.StatusCode, fmt.Errorf("nmos/http: decode POST response: %w", err)
+		return resp.StatusCode, fmt.Errorf("http: decode POST response: %w", err)
 	}
 	return resp.StatusCode, nil
 }
