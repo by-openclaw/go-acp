@@ -139,19 +139,19 @@ func TestInflateTemplate_DstAlreadySet(t *testing.T) {
 	en := "dstEnum"
 	// Parameter dst with everything set.
 	dstParam := &canonical.Parameter{
-		Header:           canonical.Header{Description: &d},
-		Type:             canonical.ParamInteger,
-		Default:          int64(1), Minimum: int64(0), Maximum: int64(9), Step: int64(1),
-		Unit:             &u, Format: &f, Factor: &fa, Formula: &fo, Enumeration: &en,
+		Header:  canonical.Header{Description: &d},
+		Type:    canonical.ParamInteger,
+		Default: int64(1), Minimum: int64(0), Maximum: int64(9), Step: int64(1),
+		Unit: &u, Format: &f, Factor: &fa, Formula: &fo, Enumeration: &en,
 		EnumMap:          []canonical.EnumEntry{{Key: "x", Value: 0}},
 		StreamDescriptor: &canonical.StreamDescriptor{Format: 1},
 	}
 	td := "tpl desc"
 	tu := "tplUnit"
 	tplParam := &canonical.Parameter{
-		Header:           canonical.Header{Description: &td},
-		Type:             canonical.ParamReal,
-		Default:          int64(2), Minimum: int64(-1), Maximum: int64(99), Step: int64(2),
+		Header:  canonical.Header{Description: &td},
+		Type:    canonical.ParamReal,
+		Default: int64(2), Minimum: int64(-1), Maximum: int64(99), Step: int64(2),
 		Unit:             &tu,
 		EnumMap:          []canonical.EnumEntry{{Key: "y", Value: 1}},
 		StreamDescriptor: &canonical.StreamDescriptor{Format: 2},
@@ -196,10 +196,10 @@ func TestInflateTemplate_AllFieldsCopied(t *testing.T) {
 	te := "off\non"
 	tsch := "tpl-sch"
 	tplParam := &canonical.Parameter{
-		Header:            canonical.Header{Description: &td},
-		Type:              canonical.ParamInteger,
-		Default:           int64(1), Minimum: int64(0), Maximum: int64(10), Step: int64(1),
-		Unit:              &tu, Format: &tf, Factor: &tfa, Formula: &tfo, Enumeration: &te,
+		Header:  canonical.Header{Description: &td},
+		Type:    canonical.ParamInteger,
+		Default: int64(1), Minimum: int64(0), Maximum: int64(10), Step: int64(1),
+		Unit: &tu, Format: &tf, Factor: &tfa, Formula: &tfo, Enumeration: &te,
 		EnumMap:           []canonical.EnumEntry{{Key: "off", Value: 0}},
 		StreamDescriptor:  &canonical.StreamDescriptor{Format: 1, Offset: 2},
 		SchemaIdentifiers: &tsch,
@@ -234,8 +234,8 @@ func TestInflateTemplate_AllFieldsCopied(t *testing.T) {
 // root (empty parent OID) continue branches.
 func TestRemoveFromTree_NoParent(t *testing.T) {
 	elements := map[string]canonical.Element{
-		"1":   &canonical.Node{Header: canonical.Header{OID: "1"}},          // root: parentOID == ""
-		"9.9": &canonical.Node{Header: canonical.Header{OID: "9.9"}},        // parent "9" absent
+		"1":   &canonical.Node{Header: canonical.Header{OID: "1"}},   // root: parentOID == ""
+		"9.9": &canonical.Node{Header: canonical.Header{OID: "9.9"}}, // parent "9" absent
 	}
 	removeFromTree(elements, []string{"1", "9.9"})
 	if _, ok := elements["1"]; ok {

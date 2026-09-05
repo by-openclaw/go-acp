@@ -314,10 +314,10 @@ func TestSeedTreeFromCachedObjects_Mixed(t *testing.T) {
 			"element": "matrix", "type": "nToN", "mode": "nonLinear",
 			"targetCount": float64(2), "sourceCount": float64(2),
 			"parametersLocation": "1.6", "gainParameterNumber": float64(1),
-			"schemaIdentifiers":  "sch",
-			"labels":             []map[string]any{{"basePath": "1.7", "description": "P"}},
-			"targets":            []any{float64(0), float64(1)},
-			"sources":            []any{float64(0)},
+			"schemaIdentifiers": "sch",
+			"labels":            []map[string]any{{"basePath": "1.7", "description": "P"}},
+			"targets":           []any{float64(0), float64(1)},
+			"sources":           []any{float64(0)},
 			"connections": map[string]any{
 				"0": map[string]any{"target": float64(0), "sources": []any{float64(1)}, "operation": "connect", "disposition": "tally"},
 			},
@@ -328,7 +328,7 @@ func TestSeedTreeFromCachedObjects_Mixed(t *testing.T) {
 		{OID: "5.1", Label: "tmpl", Path: []string{"tmpl"}, Meta: map[string]any{
 			"element": "template", "qualified": true, "number": float64(1),
 		}},
-		{OID: "", Label: "noid"},                                    // empty OID → seedOneEntry nil
+		{OID: "", Label: "noid"}, // empty OID → seedOneEntry nil
 		{OID: "1.9", Label: "unk", Meta: map[string]any{"element": "weird"}}, // unknown element
 	}
 	p.SeedTreeFromCachedObjects(0, objs)

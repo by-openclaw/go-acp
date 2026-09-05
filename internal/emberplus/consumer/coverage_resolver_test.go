@@ -120,9 +120,9 @@ func TestResolveMatrixGain_EdgeCases(t *testing.T) {
 func TestResolveTemplates(t *testing.T) {
 	// Parameter template: type + unit copied into a value-only referrer.
 	paramTpl := &canonical.Parameter{
-		Header: canonical.Header{Number: 1, Identifier: "tpl-p", OID: "10.1"},
-		Type:   canonical.ParamInteger,
-		Unit:   sp("dB"),
+		Header:  canonical.Header{Number: 1, Identifier: "tpl-p", OID: "10.1"},
+		Type:    canonical.ParamInteger,
+		Unit:    sp("dB"),
 		Minimum: int64(0), Maximum: int64(100),
 	}
 	// Node template: children + description copied.

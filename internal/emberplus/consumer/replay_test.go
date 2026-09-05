@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/emberplus/consumer"
 	"dhs/internal/consumer"
+	"dhs/internal/emberplus/consumer"
 	"dhs/internal/wiretrace"
 )
 

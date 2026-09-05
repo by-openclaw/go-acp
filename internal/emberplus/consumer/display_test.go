@@ -3,8 +3,8 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/consumer"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 func TestExtractFormatUnit(t *testing.T) {

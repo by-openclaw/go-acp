@@ -80,7 +80,7 @@ func TestReadLoop_FrameKinds(t *testing.T) {
 		}
 	}
 	writeFrag(s101.FlagFirst, payload[:half])
-	writeFrag(0, nil)                 // middle fragment (empty body tolerated)
+	writeFrag(0, nil) // middle fragment (empty body tolerated)
 	writeFrag(s101.FlagLast, payload[half:])
 
 	// Single EmBER frame.
