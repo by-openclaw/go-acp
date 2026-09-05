@@ -210,7 +210,13 @@ func TestCLISurfaceGolden(t *testing.T) {
 		t.Fatalf("read golden %s: %v\ngenerate it with: go test ./cmd/dhs -run TestCLISurfaceGolden -update-cli-surface",
 			goldenCLISurfacePath, err)
 	}
-	want := string(wantBytes)
+	// Normalise the GOLDEN's line endings too, not just the captured output.
+	// The file is stored with LF, but git checks it out as CRLF on Windows
+	// (core.autocrlf), so a byte comparison fails there with a diff that
+	// renders identically on screen — every line differing by an invisible
+	// trailing \r. The CLI contract is the text, not the checkout's line
+	// endings.
+	want := strings.ReplaceAll(string(wantBytes), "\r\n", "\n")
 	if got == want {
 		return
 	}

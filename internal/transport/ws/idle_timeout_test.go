@@ -161,3 +161,42 @@ func TestReadMessageSetDeadlineFailure(t *testing.T) {
 		t.Fatal("ReadMessage returned nil after the deadline could not be armed")
 	}
 }
+
+// Regression: tightening the deadline must not be clobbered by the reader
+// re-arming with a value it read a moment earlier.
+//
+//	reader: d := IdleTimeout()          -> old, long value
+//	setter: store short; SetReadDeadline(short)
+//	reader: SetReadDeadline(old)        -> overwrites; blocks for the long window
+//
+// This passed on three CI runners and hung on a fourth, which is exactly how a
+// data race presents. Hammering both sides makes it deterministic enough to
+// catch: with the arming unsynchronised this times out.
+func TestSetIdleTimeoutRaceWithReaderArming(t *testing.T) {
+	c, _ := tcpPair(t) // peer never writes
+	conn := newConn(c, bufio.NewReader(c), 0)
+	conn.SetIdleTimeout(time.Hour) // start long, as production does (90s)
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := conn.ReadMessage(context.Background())
+		done <- err
+	}()
+
+	// Tighten repeatedly while the reader is arming/blocking, to land inside
+	// the read-then-arm window.
+	for i := 0; i < 200; i++ {
+		conn.SetIdleTimeout(50 * time.Millisecond)
+		time.Sleep(time.Millisecond)
+	}
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("ReadMessage returned nil on a silent peer")
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("the tightened deadline was clobbered by the reader's stale re-arm " +
+			"— the reader is still blocked on the original long window")
+	}
+}

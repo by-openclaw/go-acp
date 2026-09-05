@@ -47,28 +47,57 @@ type Conn struct {
 	// It is the only wire difference between the two ends.
 	clientSide bool
 
+	// armMu serialises arming the read deadline against SetIdleTimeout.
+	armMu sync.Mutex
+
 	closeOnce sync.Once
 	closeErr  error
 }
 
 // SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
-// deadline. Safe to call concurrently with an in-flight ReadMessage; the new
-// value applies from the next frame.
+// deadline. Safe to call concurrently with an in-flight ReadMessage.
 func (c *Conn) SetIdleTimeout(d time.Duration) {
 	if d < 0 {
 		d = 0
 	}
+	// armMu makes "store the value" and "push it onto the socket" one step
+	// with respect to the reader's own arming. Without it the two race, and
+	// the reader can win with a STALE value:
+	//
+	//	reader: d := IdleTimeout()          -> reads the old 90s
+	//	here:   store 150ms; SetReadDeadline(now+150ms)
+	//	reader: SetReadDeadline(now+90s)    -> overwrites the 150ms
+	//
+	// The reader then blocks for 90s holding a window the caller believes is
+	// 150ms. That is not theoretical: it is why a tightened-deadline test
+	// passed on three CI runners and hung on a fourth.
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
 	c.idleTimeout.Store(int64(d))
-	// Apply immediately. A reader is normally already blocked in the kernel
-	// on the PREVIOUS deadline, and storing the new value alone would not
-	// reach it — the change would not take effect until that old (possibly
-	// 90 s, possibly infinite) deadline expired. Re-arming the socket here
-	// makes a tightened window take hold at once.
-	if d > 0 {
+	// Apply immediately: a reader is normally already blocked in the kernel
+	// on the PREVIOUS deadline, and storing alone would not reach it until
+	// that old (possibly infinite) deadline expired.
+	c.armLocked()
+}
+
+// armLocked pushes the current bound onto the socket. Caller holds armMu.
+func (c *Conn) armLocked() {
+	if d := time.Duration(c.idleTimeout.Load()); d > 0 {
 		_ = c.c.SetReadDeadline(time.Now().Add(d))
 	} else {
 		_ = c.c.SetReadDeadline(time.Time{})
 	}
+}
+
+// armRead re-arms the per-frame deadline before a read. It takes armMu so a
+// concurrent SetIdleTimeout cannot be clobbered by a stale value read here.
+func (c *Conn) armRead() error {
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	if d := time.Duration(c.idleTimeout.Load()); d > 0 {
+		return c.c.SetReadDeadline(time.Now().Add(d))
+	}
+	return nil
 }
 
 // IdleTimeout reports the currently armed per-frame read deadline.
@@ -113,10 +142,8 @@ func (c *Conn) ReadMessage(ctx context.Context) (opcode byte, payload []byte, er
 	_, ctxHasDeadline := ctx.Deadline()
 	for {
 		if !ctxHasDeadline {
-			if d := c.IdleTimeout(); d > 0 {
-				if err := c.c.SetReadDeadline(time.Now().Add(d)); err != nil {
-					return 0, nil, err
-				}
+			if err := c.armRead(); err != nil {
+				return 0, nil, err
 			}
 		}
 		f, err := readFrame(c.br, c.maxPayload)
