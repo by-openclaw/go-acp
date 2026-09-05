@@ -7,7 +7,8 @@ import (
 	"io"
 	"net"
 	"sync"
-	"sync/atomic"
+
+	"dhs/internal/transport"
 	"time"
 
 	"dhs/internal/tsl/codec"
@@ -43,7 +44,7 @@ type tcpSession struct {
 	// working producers. OS-level SO_KEEPALIVE (set on every accepted
 	// connection) stays the always-on detector; this is the opt-in for
 	// deployments that would rather reap aggressively.
-	idleTimeout atomic.Int64 // time.Duration
+	idle transport.Idle
 }
 
 func newTCPSession() *tcpSession {
@@ -53,15 +54,12 @@ func newTCPSession() *tcpSession {
 // SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-connection idle
 // reaper. See the field comment for why this is off by default.
 func (s *tcpSession) SetIdleTimeout(d time.Duration) {
-	if d < 0 {
-		d = 0
-	}
-	s.idleTimeout.Store(int64(d))
+	s.idle.Set(d)
 }
 
 // IdleTimeout reports the currently armed idle reaper window.
 func (s *tcpSession) IdleTimeout() time.Duration {
-	return time.Duration(s.idleTimeout.Load())
+	return s.idle.Get()
 }
 
 // listen binds a TCP listener on addr and accepts connections until ctx
@@ -121,9 +119,10 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 		if ctx.Err() != nil {
 			return
 		}
-		if d := s.IdleTimeout(); d > 0 {
-			_ = conn.SetReadDeadline(time.Now().Add(d))
-		}
+		// Arm via the shared bound (transport.Idle): Arm and SetOn share a
+		// mutex there, so a concurrent change cannot be clobbered by a stale
+		// value read here. Disabled is a no-op, leaving any caller deadline.
+		_ = s.idle.Arm(conn)
 		pkt, err := dec.ReadFrame()
 		if err != nil {
 			if err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
