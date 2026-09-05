@@ -922,3 +922,13 @@ func (c *Client) armRead(conn net.Conn) {
 func (c *Client) IdleTimeout() time.Duration {
 	return time.Duration(c.idleTimeout.Load())
 }
+
+// ReaderDone is closed when the reader goroutine exits — i.e. when this
+// client's session is over, whether from a peer close, an I/O error, or the
+// idle deadline firing.
+//
+// It is the signal a supervisor blocks on to drive reconnection, mirroring
+// the role Session.Done() plays in the acp2 consumer. Exposing it (rather
+// than polling IsOnline) means a lost link is acted on the moment it is
+// detected instead of at the next poll tick.
+func (c *Client) ReaderDone() <-chan struct{} { return c.readerDone }

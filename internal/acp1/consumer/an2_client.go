@@ -276,3 +276,6 @@ func (c *AN2Client) readerLoop() {
 		}
 	}
 }
+
+// ReaderDone is closed when the reader goroutine exits — see TCPClient.
+func (c *AN2Client) ReaderDone() <-chan struct{} { return c.readerDone }

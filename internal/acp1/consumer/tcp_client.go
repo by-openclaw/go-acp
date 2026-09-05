@@ -324,3 +324,9 @@ func (c *TCPClient) readerLoop() {
 		}
 	}
 }
+
+// ReaderDone is closed when the reader goroutine exits — the session is over,
+// whether from a peer close, an I/O error, or the idle deadline firing. A
+// supervisor blocks on it to drive reconnection (mirrors acp2's
+// Session.Done()).
+func (c *TCPClient) ReaderDone() <-chan struct{} { return c.readerDone }
