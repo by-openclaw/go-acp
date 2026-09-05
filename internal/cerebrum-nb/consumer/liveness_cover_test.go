@@ -135,40 +135,16 @@ func TestLastRxZeroAndSet(t *testing.T) {
 	}
 }
 
-func TestSupervisorLogFallbacks(t *testing.T) {
-	// No logger at all -> a discard logger, never nil.
-	s := &Supervisor{}
-	if s.log() == nil {
-		t.Fatal("log() returned nil with no logger configured")
-	}
-	// Logger field only.
-	explicit := slog.New(slog.NewTextHandler(discard{}, nil))
-	s = &Supervisor{Logger: explicit}
-	if s.log() != explicit {
-		t.Fatal("log() ignored the Logger field")
-	}
-	// LoggerFn wins over Logger when it yields one.
-	fn := slog.New(slog.NewTextHandler(discard{}, nil))
-	s = &Supervisor{Logger: explicit, LoggerFn: func() *slog.Logger { return fn }}
-	if s.log() != fn {
-		t.Fatal("LoggerFn must take precedence over Logger")
-	}
-	// A LoggerFn that yields nil falls back to Logger.
-	s = &Supervisor{Logger: explicit, LoggerFn: func() *slog.Logger { return nil }}
-	if s.log() != explicit {
-		t.Fatal("a nil from LoggerFn must fall back to Logger")
-	}
-}
+// discard is a logger sink for the tests below. It used to live in
+// supervisor.go; the supervisor's own logger fallbacks are now tested in
+// internal/consumer, where the implementation moved.
+type discard struct{}
 
-func TestErrTextAndCloseSessionNil(t *testing.T) {
-	if got := errText(nil); got != "unknown" {
-		t.Fatalf("errText(nil) = %q, want \"unknown\"", got)
-	}
-	if got := errText(errors.New("boom")); got != "boom" {
-		t.Fatalf("errText = %q, want \"boom\"", got)
-	}
-	// closeSession must tolerate nil — the supervisor calls it on paths where
-	// the session was never built.
+func (discard) Write(p []byte) (int, error) { return len(p), nil }
+
+// The Cerebrum wrapper still owns session teardown, and it must tolerate nil:
+// Run calls it on paths where the session was never built.
+func TestCloseSessionNil(t *testing.T) {
 	(&Supervisor{}).closeSession(nil)
 }
 
