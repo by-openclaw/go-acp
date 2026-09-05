@@ -19,6 +19,7 @@ package transport
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -61,9 +62,17 @@ func watchCancel(ctx context.Context, c deadlineSetter) (stop func()) {
 		case <-stopped:
 		}
 	}()
+
+	// Idempotent, like context.CancelFunc, which this is shaped exactly
+	// like. Every caller today uses a single `defer stop()`, so an unguarded
+	// close would be safe — right up until someone calls it on an error path
+	// as well and gets a close-of-closed-channel panic in a transport.
+	var once sync.Once
 	return func() {
-		close(stopped)
-		<-exited
+		once.Do(func() {
+			close(stopped)
+			<-exited
+		})
 	}
 }
 
