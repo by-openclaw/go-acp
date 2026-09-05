@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -32,10 +33,23 @@ type tcpDialer struct {
 
 	mu    sync.Mutex
 	conns map[string]net.Conn
+
+	// dialer opens each outbound connection. Injected rather than calling
+	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
+	// applied by the shared dialer instead of by a separate call here.
+	dialer transport.Dialer
 }
 
 func newTCPDialer(f framerKind) *tcpDialer {
-	return &tcpDialer{framer: f, conns: map[string]net.Conn{}}
+	return &tcpDialer{
+		framer: f,
+		conns:  map[string]net.Conn{},
+		dialer: transport.TCPDialer{
+			Options: transport.SocketOptions{
+				KeepalivePeriod: DefaultTCPKeepalivePeriod,
+			},
+		},
+	}
 }
 
 func destKey(host string, port int) string {
@@ -49,11 +63,10 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := net.Dial("tcp", key)
+	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("osc tcp dial %s: %w", key, err)
 	}
-	_ = transport.ApplyTCPKeepalive(c, DefaultTCPKeepalivePeriod)
 	d.conns[key] = c
 	return c, nil
 }
