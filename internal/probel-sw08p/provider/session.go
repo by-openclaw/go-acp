@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/transport"
 )
 
 // session is one connected SW-P-08 client (typically a controller).
@@ -34,6 +35,18 @@ type session struct {
 
 	dispatchCh chan pendingFrame
 	dispatchWG sync.WaitGroup
+
+	// idle bounds how long this CLIENT may be silent before the session is
+	// reaped. A provider without it holds a goroutine, a socket and a
+	// session entry for every controller that vanished without an RST — the
+	// same half-open bug the consumer side had, pointed the other way, and
+	// worse here because it accumulates one leak per lost client over the
+	// life of the process while nothing ever errors.
+	//
+	// Off unless the server was configured with a window: SW-P-08 mandates
+	// no keep-alive (§2), so a quiet-but-healthy controller must not be
+	// disconnected by default.
+	idle transport.Idle
 }
 
 // pendingFrame carries everything dispatch() needs once the read loop
@@ -54,11 +67,13 @@ type pendingFrame struct {
 const dispatchChanCap = 256
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{
+	s := &session{
 		srv:        srv,
 		conn:       conn,
 		dispatchCh: make(chan pendingFrame, dispatchChanCap),
 	}
+	s.idle.Set(srv.idleTimeout())
+	return s
 }
 
 // run reads frames until EOF or ctx cancellation. Each frame is decoded,
@@ -83,6 +98,12 @@ func (s *session) run(ctx context.Context) {
 	tmp := make([]byte, codec.DefaultReadBufferSize)
 	for {
 		if err := ctx.Err(); err != nil {
+			return
+		}
+		// Re-arm the reaper before every read. Any inbound byte — an
+		// application frame or a bare DLE ACK — refreshes it, so a client
+		// that is talking at all is never reaped.
+		if err := s.idle.Arm(s.conn); err != nil {
 			return
 		}
 		n, err := s.conn.Read(tmp)

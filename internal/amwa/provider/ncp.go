@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is12"
@@ -44,6 +45,23 @@ type IS12NCPServer struct {
 
 	mu    sync.Mutex
 	conns map[*ncpConn]struct{}
+
+	// wsIdle, when > 0, reaps a Controller whose IS-12 socket has gone
+	// silent, so the provider stops holding a goroutine, a socket and a
+	// subscription set for one that vanished without an RST.
+	//
+	// Off by default: IS-12 mandates no client heartbeat, so a Controller
+	// that is connected and simply not issuing commands is healthy. Arm it
+	// only where something guarantees inbound traffic.
+	wsIdle time.Duration
+}
+
+// SetWSIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent IS-12
+// Controller sockets. Applies to connections accepted after this call.
+func (s *IS12NCPServer) SetWSIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.wsIdle = d
 }
 
 // ncpConn is one connected Controller with its subscription set.
@@ -77,6 +95,13 @@ func (s *IS12NCPServer) serveWS(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		s.logger.Warn("provider/ncp: upgrade", "err", err)
 		return
 	}
+	s.mu.Lock()
+	idle := s.wsIdle
+	s.mu.Unlock()
+	// Re-armed by the transport on every inbound frame, Pongs included, so
+	// a Controller answering pings is never reaped by the window.
+	ws.SetIdleTimeout(idle)
+
 	c := &ncpConn{ws: ws, subs: map[int]struct{}{}}
 	s.mu.Lock()
 	s.conns[c] = struct{}{}
@@ -516,9 +541,9 @@ func (s *IS12NCPServer) methodFindByPath(obj *configObject, args json.RawMessage
 
 func (s *IS12NCPServer) methodFindByRole(obj *configObject, args json.RawMessage) is12.MethodResult {
 	var a struct {
-		Role            string `json:"role"`
-		CaseSensitive   *bool  `json:"caseSensitive"`
-		MatchWholeString *bool `json:"matchWholeString"`
+		Role             string `json:"role"`
+		CaseSensitive    *bool  `json:"caseSensitive"`
+		MatchWholeString *bool  `json:"matchWholeString"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return ncpErr(ms05.NcMethodStatusParameterError, "FindMembersByRole: "+err.Error())
