@@ -88,7 +88,7 @@ func TestConsumerLoopback(t *testing.T) {
 		t.Fatalf("parse port: %v", err)
 	}
 
-	p := (&Factory{}).New(slog.Default()).(*Plugin)
+	p := fastWalk((&Factory{}).New(slog.Default()).(*Plugin))
 	ctx := context.Background()
 
 	if err := p.Connect(ctx, host, port); err != nil {

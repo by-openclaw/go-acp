@@ -10,9 +10,9 @@ import (
 
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/datastore"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
-	"dhs/internal/datastore"
 	"dhs/internal/transport"
 )
 
@@ -255,7 +255,7 @@ func TestSession_ConnectWithRecorder(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
 	// Attach a recorder so Plugin.Connect's recorder!=nil arm + the
 	// session writer/reader SetTap arms execute.
 	rec, err := transport.NewRecorder(filepath.Join(t.TempDir(), "cap.jsonl"))

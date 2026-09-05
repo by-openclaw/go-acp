@@ -113,6 +113,21 @@ type Plugin struct {
 	walkGraceInterval  time.Duration
 	walkGraceMax       int
 
+	// walkInitialDelay is the pause after GetDirectory before the settle
+	// loop starts, giving the first burst of elements time to arrive.
+	// walkPollInterval paces that loop.
+	//
+	// Both were hardcoded sleeps, which made them the one part of Walk a
+	// test could not shorten — every walk test paid 500 ms plus 100 ms per
+	// pass, and there are seven of them. Injectable on the same terms as
+	// the settle knobs above: zero means the production default.
+	walkInitialDelay time.Duration
+	walkPollInterval time.Duration
+
+	// writeTimeout bounds the wait for a provider to echo a SetValue.
+	// Zero means defaultWriteTimeout; see effectiveWriteTimeout.
+	writeTimeout time.Duration
+
 	// templates is keyed by the canonical numeric RelOID of the
 	// template; used by ResolveTemplate and TemplateFor callers.
 	// Spec p.54–58 (Ember+ 1.4 Templates).
@@ -597,10 +612,26 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 		return nil, err
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	// Settle/grace timings — zero fields take the production defaults; tests
 	// set small values to exercise the grace loop deterministically.
+	initialDelay := p.walkInitialDelay
+	if initialDelay == 0 {
+		initialDelay = 500 * time.Millisecond
+	}
+	pollIvl := p.walkPollInterval
+	if pollIvl == 0 {
+		pollIvl = 100 * time.Millisecond
+	}
+
+	// Let the first burst of elements arrive before the settle loop starts
+	// counting. Interruptible: a cancelled walk should stop here, not sit
+	// out the delay first.
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(initialDelay):
+	}
+
 	settleInit := p.walkSettleInitial
 	if settleInit == 0 {
 		settleInit = 15 * time.Second
@@ -649,11 +680,21 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 				lastCount = count
 				settle.Reset(settleIvl)
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(pollIvl)
 		}
 	}
 done:
 	return p.snapshot(), nil
+}
+
+// effectiveWriteTimeout resolves the SetValue confirmation window: zero means
+// the production default. Split out so both arms are testable without a test
+// sitting out three real seconds to prove the default is three seconds.
+func (p *Plugin) effectiveWriteTimeout() time.Duration {
+	if p.writeTimeout == 0 {
+		return defaultWriteTimeout
+	}
+	return p.writeTimeout
 }
 
 // snapshot returns every live Object under RLock, enriched for cache
@@ -871,7 +912,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	}
 
 	// Await confirmation or timeout.
-	timer := time.NewTimer(defaultWriteTimeout)
+	timer := time.NewTimer(p.effectiveWriteTimeout())
 	defer timer.Stop()
 
 	select {
@@ -1893,16 +1934,16 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	stringPath := p.pathForElement(numPath, param.Identifier, param.Number, parentPath)
 
 	obj := consumer.Object{
-		Slot:   0,
-		ID:     int(param.Number),
-		OID:    numericKey(numPath),
-		Label:  param.Identifier,
-		Path:   stringPath,
-		Min:    param.Minimum,
-		Max:    param.Maximum,
-		Step:   param.Step,
-		Def:    param.Default,
-		Meta:   parameterMeta(param),
+		Slot:  0,
+		ID:    int(param.Number),
+		OID:   numericKey(numPath),
+		Label: param.Identifier,
+		Path:  stringPath,
+		Min:   param.Minimum,
+		Max:   param.Maximum,
+		Step:  param.Step,
+		Def:   param.Default,
+		Meta:  parameterMeta(param),
 	}
 	if len(stringPath) > 1 {
 		obj.Group = stringPath[0]
