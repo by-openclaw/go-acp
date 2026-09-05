@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // Spec ceilings: ACP1 messages are at most ~141 bytes including the
@@ -91,7 +92,10 @@ func (s *server) ServeTCP(ctx context.Context, addr string) error {
 			s.logger.Warn("acp1 tcp accept failed", slog.String("err", err.Error()))
 			continue
 		}
-		_ = conn.SetNoDelay(true)
+		// NoDelay: ACP1 messages are <=141 bytes and latency-sensitive.
+		// Keepalive: the OS-level dead-peer probe, without which a half-open
+		// client session holds a goroutine and a socket here for ever.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{NoDelay: true})
 		ip := remoteIP(conn.RemoteAddr())
 		if !reg.tryAdd(ip) {
 			s.logger.Warn("acp1 tcp refusing session: per-ip cap exceeded",

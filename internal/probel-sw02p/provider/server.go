@@ -13,6 +13,7 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.
@@ -224,6 +225,11 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		if err != nil {
 			return err
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever. Applied in the accept loop rather than at
+		// bind time so ServeListener's injected listener gets it too.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}

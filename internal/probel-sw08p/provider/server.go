@@ -13,6 +13,7 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors
@@ -193,6 +194,12 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		if err != nil {
 			return err
 		}
+		// OS-level dead-peer probe, in addition to the app-layer cmd 08
+		// keepalive below: the two answer different questions, and a peer
+		// that never implements cmd 09 still needs a dead-socket detector.
+		// Applied in the accept loop rather than at bind time so an
+		// injected listener (listenHook) gets it too.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}
