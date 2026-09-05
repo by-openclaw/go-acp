@@ -11,7 +11,6 @@ package consumer
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	stdhttp "net/http"
 	"time"
@@ -61,9 +60,10 @@ func New(opts Options) *Client {
 	}.Client()
 	if err != nil {
 		// Unreachable: no CA or client-certificate file is configured, and
-		// those are Client's only failure modes. Falling back to a verifying
-		// config is the safe answer if that ever stops being true.
-		cfg = &tls.Config{MinVersion: transport.MinTLSVersion}
+		// those are Client's only failure modes. A nil config is the safe
+		// answer if that ever stops being true — net/http then applies its
+		// own defaults, which verify.
+		cfg = nil
 	}
 	return &Client{
 		base: "https://" + opts.Host + "/api/v1",

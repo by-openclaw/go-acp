@@ -3,7 +3,6 @@ package provider
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -652,8 +651,10 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 	cfg, err := transport.TLSOptions{Enable: true, RootCAs: roots}.Client()
 	if err != nil {
 		// Unreachable: no CA or client-certificate FILE is configured here,
-		// and those are Client's only failure modes.
-		cfg = &tls.Config{MinVersion: transport.MinTLSVersion, RootCAs: roots}
+		// and those are Client's only failure modes. Leaving the transport
+		// alone keeps the verifying stdlib default rather than installing a
+		// half-built config.
+		return
 	}
 	c.http.Transport = &stdhttp.Transport{TLSClientConfig: cfg}
 }
