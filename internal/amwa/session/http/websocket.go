@@ -1,329 +1,125 @@
-// Hand-rolled minimal RFC 6455 WebSocket server. Stdlib-only —
-// `crypto/sha1`, `encoding/base64`, `bufio`, `io`, `net`, `net/http`.
-// We implement only what IS-04 §5.2 needs:
+// WebSocket for the NMOS session layer.
 //
-//   - HTTP/1.1 Upgrade handshake (server side).
-//   - Send text frames (server emits unmasked).
-//   - Receive text frames (client masks per RFC 6455 §5.3).
-//   - Ping/Pong (server replies to ping).
-//   - Close frame.
+// This used to be a second, independent RFC 6455 implementation: its own
+// handshake, its own frame writer and reader, its own masking rules. It is now
+// a thin adapter over internal/transport/ws, which is the one WebSocket in the
+// tree.
 //
-// No fragmentation, no compression extensions. The Registry's
-// subscription stream sends one IS-04 grain envelope per text frame.
+// Why that matters beyond tidiness: NMOS uses WebSocket in BOTH directions —
+// a Node SERVES the IS-07 event stream and the IS-12 control channel, while a
+// Controller DIALS the Query API's subscription socket. With two
+// implementations, every transport-level fix had to be made twice and, in
+// practice, was not: the half-open-connection watchdog (a per-frame idle
+// deadline, re-armed on every frame so Pongs count as liveness) landed in one
+// of them first. Sharing the transport means a 24/7 fix lands once for every
+// connector that speaks WebSocket.
+//
+// The exported API here is unchanged, so the ~25 call sites across the
+// provider, registry and consumer keep working untouched.
 
 package http
 
 import (
-	"bufio"
-	"crypto/rand"
-	"crypto/sha1"
-	"encoding/base64"
-	"encoding/binary"
+	"context"
 	"errors"
-	"fmt"
 	"io"
-	"net"
 	stdhttp "net/http"
-	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"dhs/internal/transport/ws"
 )
 
-// websocketGUID is the magic constant from RFC 6455 §1.3.
-const websocketGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
-// WebSocket opcode constants (RFC 6455 §5.2).
-const (
-	wsOpcodeContinuation byte = 0x0
-	wsOpcodeText         byte = 0x1
-	wsOpcodeBinary       byte = 0x2
-	wsOpcodeClose        byte = 0x8
-	wsOpcodePing         byte = 0x9
-	wsOpcodePong         byte = 0xA
-)
-
-// WebSocket caps payload size (per-frame). Subscription envelopes are
+// wsMaxPayload caps a single inbound frame. IS-04 subscription envelopes are
 // in the kilobytes range; 1 MiB is comfortable.
 const wsMaxPayload = 1 << 20
 
-// ErrWebSocketClosed is returned by ReadText after the peer closes.
+// wsNormalClosure is RFC 6455 §7.4.1 status code 1000.
+const wsNormalClosure = 1000
+
+// ErrWebSocketClosed is returned by ReadText / SendText / SendPing once the
+// peer has closed or Close has been called.
 var ErrWebSocketClosed = errors.New("nmos/http: websocket closed")
 
-// WebSocket wraps a hijacked TCP connection and provides text-frame
-// I/O.
+// WebSocket is text-frame I/O over one RFC 6455 connection, in either role.
+// Accepted connections do not mask; dialled ones do — the transport handles
+// that distinction.
 type WebSocket struct {
-	conn net.Conn
-	bufr *bufio.Reader
-	mu   sync.Mutex
-	// closed is atomic so ReadText can poll it without holding `mu`
-	// (a long readFrame call would otherwise block Close behind it).
-	// Writes still happen under `mu` to serialise with the
-	// concurrent Close-frame write that races against in-flight
-	// writeFrame from Ping/Pong handlers.
-	closed     atomic.Bool
-	clientSide bool // when true, outgoing frames are masked (RFC 6455 §5.3 client requirement)
+	c *ws.Conn
 
-	// idleTimeout, when > 0, bounds how long the peer may be silent before a
-	// read fails. Re-armed before EVERY frame — including Ping/Pong handled
-	// inline — so it means "no bytes at all from the peer", not "no text
-	// frame". That distinction matters: a subscription answering our
-	// keep-alive pings is alive, and must not be torn down by the very
-	// watchdog it is satisfying.
-	//
-	// Without it a half-open connection (a NAT/firewall drop with no RST)
-	// blocks the reader forever and the watch goes silent without failing.
-	idleTimeout atomic.Int64 // time.Duration
+	// closed preserves this package's contract that operations after a close
+	// report ErrWebSocketClosed rather than a raw transport error.
+	closed atomic.Bool
+}
+
+// AcceptWebSocket completes the server-side handshake on r and returns a
+// WebSocket. Must be called from inside an http.Handler — the ResponseWriter
+// must implement http.Hijacker, which net/http does for HTTP/1.1.
+func AcceptWebSocket(w stdhttp.ResponseWriter, r *stdhttp.Request) (*WebSocket, error) {
+	c, err := ws.Accept(w, r, &ws.AcceptOptions{MaxPayload: wsMaxPayload})
+	if err != nil {
+		return nil, err
+	}
+	return &WebSocket{c: c}, nil
 }
 
 // SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
-// deadline. Applied immediately so a reader already blocked picks it up.
-func (w *WebSocket) SetIdleTimeout(d time.Duration) {
-	if d < 0 {
-		d = 0
-	}
-	w.idleTimeout.Store(int64(d))
-	if d > 0 {
-		_ = w.conn.SetReadDeadline(time.Now().Add(d))
-	} else {
-		_ = w.conn.SetReadDeadline(time.Time{})
-	}
-}
+// deadline that detects a half-open connection. Re-armed on every inbound
+// frame, so a peer answering our pings is never torn down by it.
+func (w *WebSocket) SetIdleTimeout(d time.Duration) { w.c.SetIdleTimeout(d) }
 
 // IdleTimeout reports the currently armed per-frame read deadline.
-func (w *WebSocket) IdleTimeout() time.Duration {
-	return time.Duration(w.idleTimeout.Load())
-}
+func (w *WebSocket) IdleTimeout() time.Duration { return w.c.IdleTimeout() }
 
-// AcceptWebSocket completes the RFC 6455 handshake on r and returns a
-// WebSocket. Must be called from inside an http.Handler — the
-// underlying http.ResponseWriter must implement http.Hijacker, which
-// the stdlib net/http does for HTTP/1.1.
-func AcceptWebSocket(w stdhttp.ResponseWriter, r *stdhttp.Request) (*WebSocket, error) {
-	if !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
-		return nil, errors.New("nmos/http: missing Upgrade: websocket header")
-	}
-	connHeader := strings.ToLower(r.Header.Get("Connection"))
-	if !strings.Contains(connHeader, "upgrade") {
-		return nil, errors.New("nmos/http: missing `Upgrade` token in Connection header")
-	}
-	key := r.Header.Get("Sec-WebSocket-Key")
-	if key == "" {
-		return nil, errors.New("nmos/http: missing Sec-WebSocket-Key")
-	}
-
-	hijacker, ok := w.(stdhttp.Hijacker)
-	if !ok {
-		return nil, errors.New("nmos/http: ResponseWriter does not support Hijack")
-	}
-	conn, brw, err := hijacker.Hijack()
-	if err != nil {
-		return nil, fmt.Errorf("nmos/http: hijack: %w", err)
-	}
-
-	accept := wsAcceptKey(key)
-	resp := "HTTP/1.1 101 Switching Protocols\r\n" +
-		"Upgrade: websocket\r\n" +
-		"Connection: Upgrade\r\n" +
-		"Sec-WebSocket-Accept: " + accept + "\r\n\r\n"
-	if _, err := conn.Write([]byte(resp)); err != nil {
-		_ = conn.Close()
-		return nil, fmt.Errorf("nmos/http: write upgrade: %w", err)
-	}
-	return &WebSocket{conn: conn, bufr: brw.Reader}, nil
-}
-
-// wsAcceptKey computes Sec-WebSocket-Accept per RFC 6455 §4.2.2.
-func wsAcceptKey(secKey string) string {
-	h := sha1.New()
-	h.Write([]byte(secKey + websocketGUID))
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
-}
-
-// SendText emits a single unfragmented text frame. Caller-side
-// concurrency is serialised via the WebSocket's mutex.
+// SendText emits a single unfragmented text frame.
 func (w *WebSocket) SendText(payload []byte) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
-	return writeFrame(w.conn, wsOpcodeText, payload, w.clientSide)
+	return w.c.WriteText(context.Background(), payload)
 }
 
-// SendPing emits a Ping frame; the peer should reply with Pong.
+// SendPing emits a Ping; a conformant peer answers with Pong. On a quiet
+// subscription this is the only thing that distinguishes idle from dead.
 func (w *WebSocket) SendPing(payload []byte) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	if w.closed.Load() {
 		return ErrWebSocketClosed
 	}
-	return writeFrame(w.conn, wsOpcodePing, payload, w.clientSide)
+	return w.c.Ping(context.Background(), payload)
 }
 
-// Close emits a Close frame and tears down the underlying connection.
-// Idempotent.
+// Close emits a Close frame and tears down the connection. Idempotent.
 func (w *WebSocket) Close() error {
-	w.mu.Lock()
-	if w.closed.Load() {
-		w.mu.Unlock()
+	if w.closed.Swap(true) {
 		return nil
 	}
-	w.closed.Store(true)
-	// Write Close frame (best-effort), then close TCP.
-	_ = writeFrame(w.conn, wsOpcodeClose, []byte{0x03, 0xE8}, w.clientSide) // 1000 = normal closure
-	w.mu.Unlock()
-	return w.conn.Close()
+	return w.c.Close(wsNormalClosure, "")
 }
 
-// ReadText blocks until a text frame arrives, returning its payload.
-// Ping frames trigger an automatic Pong reply and are not surfaced.
-// Close frames return ErrWebSocketClosed.
+// ReadText blocks until a text frame arrives, returning its payload. Ping
+// frames are answered with Pong by the transport and never surfaced; Binary
+// frames are skipped (IS-04/IS-07/IS-12 are text-only); a Close frame — or a
+// local Close — yields ErrWebSocketClosed.
 func (w *WebSocket) ReadText() ([]byte, error) {
 	for {
 		if w.closed.Load() {
 			return nil, ErrWebSocketClosed
 		}
-		if d := w.IdleTimeout(); d > 0 {
-			_ = w.conn.SetReadDeadline(time.Now().Add(d))
-		}
-		opcode, payload, err := readFrame(w.bufr)
+		opcode, payload, err := w.c.ReadMessage(context.Background())
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				w.closed.Store(true)
+				return nil, ErrWebSocketClosed
+			}
 			return nil, err
 		}
-		switch opcode {
-		case wsOpcodeText:
+		if opcode == ws.OpText {
 			return payload, nil
-		case wsOpcodeBinary:
-			// Spec allows binary; IS-04 only uses text. Loop, ignore.
-			continue
-		case wsOpcodePing:
-			w.mu.Lock()
-			_ = writeFrame(w.conn, wsOpcodePong, payload, w.clientSide)
-			w.mu.Unlock()
-		case wsOpcodePong:
-			// We don't track pongs; just drop.
-		case wsOpcodeClose:
-			_ = w.Close()
-			return nil, ErrWebSocketClosed
 		}
+		// Binary: allowed by the spec, unused by NMOS. Keep reading.
 	}
 }
 
-// SetReadDeadline applies a deadline to the underlying connection;
-// useful for a client-disconnect detection loop.
-func (w *WebSocket) SetReadDeadline(t time.Time) error {
-	return w.conn.SetReadDeadline(t)
-}
-
-// writeFrame emits a single unfragmented frame. Per RFC 6455 §5.3,
-// servers MUST NOT mask while clients MUST mask. The mask flag
-// matches the WebSocket's clientSide. Mask key is per-frame random.
-func writeFrame(w io.Writer, opcode byte, payload []byte, mask bool) error {
-	hdr := make([]byte, 0, 14)
-	hdr = append(hdr, 0x80|opcode) // FIN=1, RSV=0, opcode
-
-	plen := len(payload)
-	maskBit := byte(0)
-	if mask {
-		maskBit = 0x80
-	}
-	switch {
-	case plen <= 125:
-		hdr = append(hdr, maskBit|byte(plen))
-	case plen <= 65535:
-		hdr = append(hdr, maskBit|126)
-		var ext [2]byte
-		binary.BigEndian.PutUint16(ext[:], uint16(plen))
-		hdr = append(hdr, ext[:]...)
-	default:
-		hdr = append(hdr, maskBit|127)
-		var ext [8]byte
-		binary.BigEndian.PutUint64(ext[:], uint64(plen))
-		hdr = append(hdr, ext[:]...)
-	}
-
-	if mask {
-		var maskKey [4]byte
-		if _, err := io.ReadFull(rand.Reader, maskKey[:]); err != nil {
-			return fmt.Errorf("nmos/http: mask key: %w", err)
-		}
-		hdr = append(hdr, maskKey[:]...)
-		if _, err := w.Write(hdr); err != nil {
-			return err
-		}
-		// Mask payload in-place into a copy so we don't mutate caller's slice.
-		masked := make([]byte, plen)
-		for i, b := range payload {
-			masked[i] = b ^ maskKey[i%4]
-		}
-		if _, err := w.Write(masked); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if _, err := w.Write(hdr); err != nil {
-		return err
-	}
-	if _, err := w.Write(payload); err != nil {
-		return err
-	}
-	return nil
-}
-
-// readFrame reads one unfragmented frame from r, unmasking the
-// payload (clients always mask). Returns opcode + payload.
-func readFrame(r *bufio.Reader) (byte, []byte, error) {
-	hdr := make([]byte, 2)
-	if _, err := io.ReadFull(r, hdr); err != nil {
-		return 0, nil, err
-	}
-	fin := hdr[0]&0x80 != 0
-	opcode := hdr[0] & 0x0F
-	masked := hdr[1]&0x80 != 0
-	plen := int(hdr[1] & 0x7F)
-	switch plen {
-	case 126:
-		var ext [2]byte
-		if _, err := io.ReadFull(r, ext[:]); err != nil {
-			return 0, nil, err
-		}
-		plen = int(binary.BigEndian.Uint16(ext[:]))
-	case 127:
-		var ext [8]byte
-		if _, err := io.ReadFull(r, ext[:]); err != nil {
-			return 0, nil, err
-		}
-		plen = int(binary.BigEndian.Uint64(ext[:]))
-	}
-	if plen > wsMaxPayload {
-		return 0, nil, fmt.Errorf("nmos/http: frame payload %d exceeds %d", plen, wsMaxPayload)
-	}
-
-	var maskKey [4]byte
-	if masked {
-		if _, err := io.ReadFull(r, maskKey[:]); err != nil {
-			return 0, nil, err
-		}
-	}
-
-	payload := make([]byte, plen)
-	if plen > 0 {
-		if _, err := io.ReadFull(r, payload); err != nil {
-			return 0, nil, err
-		}
-	}
-	if masked {
-		for i := range payload {
-			payload[i] ^= maskKey[i%4]
-		}
-	}
-	if !fin {
-		// We don't support fragmented messages — IS-04 envelopes are
-		// small enough to fit in one frame, and pulling apart
-		// fragmentation handling here is scope-creep. Reject.
-		return 0, nil, errors.New("nmos/http: fragmented frames unsupported")
-	}
-	return opcode, payload, nil
-}
+// SetReadDeadline applies a one-shot deadline to the underlying connection.
+// Prefer SetIdleTimeout for a rolling liveness bound.
+func (w *WebSocket) SetReadDeadline(t time.Time) error { return w.c.SetReadDeadline(t) }

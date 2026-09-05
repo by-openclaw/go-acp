@@ -42,6 +42,11 @@ type Conn struct {
 	// don't interleave on the wire.
 	writeMu sync.Mutex
 
+	// clientSide selects RFC 6455 §5.3 masking: a client MUST mask every
+	// frame it sends, a server MUST NOT. Dial sets it true, Accept false.
+	// It is the only wire difference between the two ends.
+	clientSide bool
+
 	closeOnce sync.Once
 	closeErr  error
 }
@@ -77,7 +82,7 @@ func newConn(c net.Conn, br *bufio.Reader, maxPayload int64) *Conn {
 	if maxPayload <= 0 {
 		maxPayload = DefaultMaxPayload
 	}
-	return &Conn{c: c, br: br, maxPayload: maxPayload}
+	return &Conn{c: c, br: br, maxPayload: maxPayload, clientSide: true}
 }
 
 // LocalAddr / RemoteAddr expose the underlying transport.
@@ -170,7 +175,7 @@ func (c *Conn) writeData(ctx context.Context, op byte, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return writeFrame(c.c, true, op, payload, key, true)
+	return writeFrame(c.c, true, op, payload, key, c.clientSide)
 }
 
 // writeControl emits a control frame (Ping / Pong / Close). Body is
@@ -185,7 +190,7 @@ func (c *Conn) writeControl(op byte, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return writeFrame(c.c, true, op, payload, key, true)
+	return writeFrame(c.c, true, op, payload, key, c.clientSide)
 }
 
 // Ping sends a Ping with the given payload (≤125 bytes).
