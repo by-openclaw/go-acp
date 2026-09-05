@@ -2,14 +2,14 @@ package cerebrumnb
 
 // Keep-alive + liveness for the Cerebrum NB WebSocket session.
 //
-// There are TWO keep-alives here, in opposite directions. Confusing them
-// cost us a bug once already, so both are written down.
+// There are TWO keep-alives here, in opposite directions.
 //
-//  1. SERVER → US, and it is the one that keeps the session open. Cerebrum
-//     sends an RFC 6455 Ping and expects a Pong. ws.Conn answers it inline
-//     (see conn.go, OpPing). Early on we did NOT reply, and the server closed
-//     every session at ~30 s. Nothing in this file is responsible for that
-//     survival — do not "simplify" the inline Pong away.
+//  1. SERVER → US: an RFC 6455 Ping, answered by a Pong. This is ordinary
+//     WebSocket behaviour, not a Cerebrum peculiarity, and ws.Conn has
+//     answered it inline since the WS client was written (conn.go, OpPing;
+//     commit 09d5bf8b "auto-Pong on Ping"). It needs no help from this file
+//     — but do not "simplify" that inline Pong away: a client that ignores
+//     Pings is one any conformant server is entitled to drop.
 //
 //  2. US → SERVER, which is what this file does. It exists for OUR benefit:
 //     to notice a half-open socket, not to satisfy the server.
