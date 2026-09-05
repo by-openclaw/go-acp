@@ -2,7 +2,6 @@ package cerebrumnb
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -154,11 +153,16 @@ func (p *Profile) Counts() map[string]int {
 // newSession dials the Cerebrum WebSocket and starts the RX goroutine.
 // Login is performed by the caller via session.login. rec may be nil
 // (no capture).
-func newSession(ctx context.Context, logger *slog.Logger, urlStr string, useTLS, insecure bool, rec *transport.Recorder) (*Session, error) {
-	opts := &ws.DialOptions{}
-	if useTLS && insecure {
-		opts.TLSConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder) (*Session, error) {
+	// The POSTURE is injected; the *tls.Config is built once in the
+	// transport layer. This connector used to assemble its own, with no
+	// MinVersion — see internal/transport/tls.go for why that is now a
+	// transport-level decision rather than a per-protocol one.
+	tlsCfg, err := tlsOpts.Client()
+	if err != nil {
+		return nil, fmt.Errorf("cerebrum-nb: tls config: %w", err)
 	}
+	opts := &ws.DialOptions{TLSConfig: tlsCfg}
 	conn, err := ws.Dial(ctx, urlStr, opts)
 	if err != nil {
 		return nil, fmt.Errorf("cerebrum-nb: ws dial %s: %w", urlStr, err)

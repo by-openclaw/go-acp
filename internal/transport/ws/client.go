@@ -65,7 +65,14 @@ func Dial(ctx context.Context, urlStr string, opts *DialOptions) (*Conn, error) 
 	if u.Scheme == "wss" {
 		cfg := opts.TLSConfig
 		if cfg == nil {
-			cfg = &tls.Config{ServerName: u.Hostname()}
+			// The floor matches transport.MinTLSVersion. It is spelled out
+			// here rather than imported because this package stays
+			// stdlib-only (see doc.go) — a caller that wants the shared
+			// posture builds its config with transport.TLSOptions.
+			cfg = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				ServerName: u.Hostname(),
+			}
 		} else if cfg.ServerName == "" {
 			cfg = cfg.Clone()
 			cfg.ServerName = u.Hostname()

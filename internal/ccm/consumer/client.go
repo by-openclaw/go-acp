@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"dhs/internal/ccm/codec"
+	"dhs/internal/transport"
 )
 
 // Client talks to one Neuron REST API.
@@ -43,10 +44,22 @@ func New(opts Options) *Client {
 	if opts.Timeout == 0 {
 		opts.Timeout = 8 * time.Second
 	}
-	skip := !opts.VerifyTLS
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skip}, //nolint:gosec // lab media-plane device, self-signed by design; VerifyTLS opts in
+	// Posture only — the *tls.Config is built once in the transport layer,
+	// so this client picks up transport.MinTLSVersion instead of the
+	// version-floor-less config it used to assemble here. Skip-verify stays
+	// the default because the media-plane device is self-signed by design;
+	// VerifyTLS opts back in.
+	cfg, err := transport.TLSOptions{
+		Enable:   true,
+		Insecure: !opts.VerifyTLS,
+	}.Client()
+	if err != nil {
+		// Unreachable: no CA or client-certificate file is configured, and
+		// those are Client's only failure modes. Falling back to a verifying
+		// config is the safe answer if that ever stops being true.
+		cfg = &tls.Config{MinVersion: transport.MinTLSVersion}
 	}
+	tr := &http.Transport{TLSClientConfig: cfg}
 	return &Client{
 		base: "https://" + opts.Host + "/api/v1",
 		http: &http.Client{Timeout: opts.Timeout, Transport: tr},
