@@ -8,12 +8,15 @@ package probelsw08p
 // could not safely be armed and half-open links went undetected.
 
 import (
+	"context"
 	"io"
 	"log/slog"
+	"net"
 	"testing"
 	"time"
 
 	"dhs/internal/clock"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 func TestIdleWindowForPoll(t *testing.T) {
@@ -104,4 +107,101 @@ func TestKeepalivePollStopIdempotent(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	p.stopKeepalivePoll()
 	p.stopKeepalivePoll()
+}
+
+// A second start must be a no-op — Connect wires it once, and a double-arm
+// would leak a prober goroutine per call.
+func TestKeepalivePollDoubleStartIsNoop(t *testing.T) {
+	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cli, cleanup := dialSilentMatrix(t)
+	defer cleanup()
+	p.client = cli
+
+	fake := clock.NewFake(time.Time{})
+	p.startKeepalivePoll(time.Second, fake)
+	first := p.kaPoll
+	p.startKeepalivePoll(time.Second, fake)
+	if p.kaPoll != first {
+		t.Fatal("a second startKeepalivePoll replaced the running prober")
+	}
+	p.stopKeepalivePoll()
+}
+
+// A nil clock falls back to the system clock rather than panicking.
+func TestKeepalivePollNilClockDefaults(t *testing.T) {
+	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cli, cleanup := dialSilentMatrix(t)
+	defer cleanup()
+	p.client = cli
+
+	p.startKeepalivePoll(time.Hour, nil)
+	if p.kaPoll == nil {
+		t.Fatal("a nil clock must default to the system clock, not skip the prober")
+	}
+	p.stopKeepalivePoll()
+}
+
+// On each tick the prober writes one cmd 08 frame; when the socket dies the
+// loop exits instead of spinning on a dead link.
+func TestKeepalivePollWritesAndExitsOnWriteError(t *testing.T) {
+	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cli, cleanup := dialSilentMatrix(t)
+	p.client = cli
+
+	fake := clock.NewFake(time.Time{})
+	p.startKeepalivePoll(time.Second, fake)
+	ka := p.kaPoll
+	if ka == nil {
+		t.Fatal("prober did not start")
+	}
+	// Let the prober arm its ticker, then fire a tick: one cmd 08 goes out.
+	waitForTicker(t, fake)
+	fake.Advance(time.Second)
+
+	// Kill the socket: the next tick's write fails and the loop returns.
+	cleanup()
+	done := make(chan struct{})
+	go func() { ka.stopped.Wait(); close(done) }()
+	for i := 0; i < 50; i++ {
+		fake.Advance(time.Second)
+		select {
+		case <-done:
+			return
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	t.Fatal("prober did not exit after the socket died")
+}
+
+// dialSilentMatrix returns a codec.Client wired to a peer that accepts and
+// never speaks — enough to exercise the write side.
+func dialSilentMatrix(t *testing.T) (*codec.Client, func()) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	go func() {
+		c, aerr := ln.Accept()
+		if aerr == nil {
+			go func() { _, _ = io.Copy(io.Discard, c) }()
+		}
+	}()
+	cli, err := codec.Dial(context.Background(), ln.Addr().String(),
+		slog.New(slog.NewTextHandler(io.Discard, nil)), codec.ClientConfig{})
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	return cli, func() { _ = cli.Close(); _ = ln.Close() }
+}
+
+func waitForTicker(t *testing.T, f *clock.Fake) {
+	t.Helper()
+	for i := 0; i < 200; i++ {
+		if f.Waiters() > 0 {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("prober never armed its ticker")
 }

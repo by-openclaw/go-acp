@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/cerebrum-nb/codec/ws"
 	"dhs/internal/clock"
 	"dhs/internal/transport"
+	"dhs/internal/transport/ws"
 )
 
 // Session is the live WebSocket session against one Cerebrum host. It

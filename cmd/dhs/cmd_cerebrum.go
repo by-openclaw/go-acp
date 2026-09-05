@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/transport/ws"
 )
 
 // cerebrumValErr returns a client-side ValidationError — mapped to exit 2

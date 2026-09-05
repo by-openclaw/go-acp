@@ -105,3 +105,47 @@ func TestRedactMalformedIsSafe(t *testing.T) {
 		t.Errorf("bare attribute changed: %q", got)
 	}
 }
+
+// Malformed attribute shapes must be skipped safely rather than mangling the
+// document or running off the end — a redactor that panics on a weird frame
+// would take down the watcher it exists to protect.
+func TestRedactSkipsMalformedAttributes(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+	}{
+		{"attribute with no '='", `<LOGIN PASSWORD/>`},
+		{"'=' but no opening quote", `<LOGIN PASSWORD=abc/>`},
+		{"'=' then whitespace then no quote", `<LOGIN PASSWORD=  abc/>`},
+		{"unterminated value", `<LOGIN PASSWORD="never-closed`},
+		{"attribute name at the very end", `<LOGIN PASSWORD`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Must not panic; a shape we cannot parse is left alone.
+			_ = redactSecrets([]byte(tc.in))
+		})
+	}
+}
+
+// A malformed occurrence must not stop a later, well-formed one from being
+// redacted — otherwise one odd attribute leaks every secret after it.
+func TestRedactContinuesPastMalformedOccurrence(t *testing.T) {
+	in := `<A PASSWORD=nope/><B PASSWORD="s3cret"/>`
+	got := string(redactSecrets([]byte(in)))
+	if strings.Contains(got, "s3cret") {
+		t.Fatalf("a malformed earlier attribute stopped later redaction: %s", got)
+	}
+}
+
+func TestIndexFoldBytesEmptyNeedle(t *testing.T) {
+	if got := indexFoldBytes([]byte("anything"), nil); got != 0 {
+		t.Fatalf("empty needle = %d, want 0", got)
+	}
+	if got := indexFoldBytes([]byte("abc"), []byte("zz")); got != -1 {
+		t.Fatalf("absent needle = %d, want -1", got)
+	}
+	if got := indexFoldBytes([]byte("ab"), []byte("abcd")); got != -1 {
+		t.Fatalf("needle longer than haystack = %d, want -1", got)
+	}
+}
