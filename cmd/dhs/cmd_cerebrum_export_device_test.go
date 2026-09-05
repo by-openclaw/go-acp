@@ -45,7 +45,7 @@ func TestWriteCerebrumDeviceSnapshot(t *testing.T) {
 			Slot: 1, Status: consumer.SlotPresent.String(), WalkedAt: time.Unix(0, 0).UTC(),
 			Objects: []consumer.Object{{
 				ID: 0, Path: []string{"A", "Delay"}, Label: "A.Delay",
-				Kind:  consumer.KindFloat, Access: 3, Unit: "ms",
+				Kind: consumer.KindFloat, Access: 3, Unit: "ms",
 				Value: consumer.Value{Kind: consumer.KindFloat, Float: 2},
 			}},
 		}},

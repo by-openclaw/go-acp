@@ -29,8 +29,8 @@ import (
 	"strings"
 
 	"dhs/internal/consumer"
-	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/emberplus/codec/matrix"
+	emberplus "dhs/internal/emberplus/consumer"
 )
 
 // emberUsageRows flattens a matrix connection snapshot into

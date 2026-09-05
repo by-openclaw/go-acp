@@ -13,9 +13,9 @@ import (
 	"fmt"
 	"sort"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/acp2/consumer"
+	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
 	emberplus "dhs/internal/emberplus/consumer"
 )

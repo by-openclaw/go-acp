@@ -1,9 +1,10 @@
 // runMetrics implements `dhs metrics <verb> [flags]`.
 // Verbs:
-//   export   fetch a snapshot from a running producer (/snapshot.json)
-//            and render it as CSV or Markdown.
-//   show     fetch the snapshot and print a Task-Manager-style
-//            summary to stderr.
+//
+//	export   fetch a snapshot from a running producer (/snapshot.json)
+//	         and render it as CSV or Markdown.
+//	show     fetch the snapshot and print a Task-Manager-style
+//	         summary to stderr.
 //
 // Both verbs rely on the producer having been started with
 // --metrics-addr :PORT so there is an HTTP endpoint to hit.
