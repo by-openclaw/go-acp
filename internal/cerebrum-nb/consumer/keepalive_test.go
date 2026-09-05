@@ -14,7 +14,10 @@ package cerebrumnb
 
 import (
 	"errors"
+	"io"
+	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,10 +148,18 @@ func TestClassifyReadErr(t *testing.T) {
 	s := &Session{host: "10.6.250.5", conn: nil}
 	// classifyReadErr reads conn.IdleTimeout() only on the timeout arm, so
 	// give that arm a conn and leave the others nil-safe.
+	// Every arm is named here rather than reached through a live socket.
+	// The io.EOF and net.ErrClosed arms used to be covered only incidentally,
+	// by a test that closes a real connection — and what a closed peer
+	// produces is platform-dependent: Windows gives io.EOF, Linux gives
+	// ECONNRESET, which lands in the default arm instead. That made the
+	// package's coverage differ by OS and turned the 100% floor into a
+	// coin toss on the CI matrix.
 	tests := []struct {
 		name    string
 		err     error
 		wantIs  []error
+		wantMsg string
 		wantNil bool
 	}{
 		{
@@ -157,8 +168,20 @@ func TestClassifyReadErr(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name:   "EOF is a lost connection",
-			err:    os.ErrClosed, // net.ErrClosed arm below; EOF covered separately
+			name:    "EOF is the peer closing the WebSocket",
+			err:     io.EOF,
+			wantIs:  []error{transport.ErrConnectionLost},
+			wantMsg: "peer closed the WebSocket",
+		},
+		{
+			name:    "net.ErrClosed is an orderly local close",
+			err:     net.ErrClosed,
+			wantIs:  []error{transport.ErrConnectionLost},
+			wantMsg: "connection closed locally",
+		},
+		{
+			name:   "os.ErrClosed is not net.ErrClosed — falls through",
+			err:    os.ErrClosed,
 			wantIs: []error{transport.ErrConnectionLost},
 		},
 		{
@@ -180,6 +203,10 @@ func TestClassifyReadErr(t *testing.T) {
 				if !errors.Is(got, w) {
 					t.Errorf("classifyReadErr(%v) = %v; want errors.Is(..., %v)", tc.err, got, w)
 				}
+			}
+			if tc.wantMsg != "" && !strings.Contains(got.Error(), tc.wantMsg) {
+				t.Errorf("classifyReadErr(%v) = %v; want it to say %q",
+					tc.err, got, tc.wantMsg)
 			}
 		})
 	}
