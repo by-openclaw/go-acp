@@ -82,6 +82,13 @@ type Session struct {
 	// in NewSession for production.
 	closeWait time.Duration
 
+	// dialer opens the TCP connection Connect establishes. Injected rather
+	// than built inline so the pipe is substitutable — a test supplies a
+	// fake, and a supervisor driving reconnect has something to ASK for a
+	// new connection, which a package-local net.Dialer is not.
+	// NewSession installs the shared transport.TCPDialer for production.
+	dialer transport.Dialer
+
 	// Write serialisation.
 	writeMu sync.Mutex
 
@@ -146,6 +153,13 @@ func NewSession(logger *slog.Logger) *Session {
 		annSubs:   make(map[int]AnnounceFunc),
 		done:      make(chan struct{}),
 		closeWait: 2 * time.Second,
+		// ACP2 frames are small and latency-sensitive, so Nagle stays off —
+		// that part is unchanged. What the shared dialer adds is
+		// SO_KEEPALIVE, which this session never set: an outbound session to
+		// a device that goes half-open had no OS-level dead-peer probe.
+		dialer: transport.TCPDialer{
+			Options: transport.SocketOptions{NoDelay: true},
+		},
 	}
 	s.mtidCond = sync.NewCond(&s.mtidMu)
 	return s
@@ -166,13 +180,9 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 
 	s.logger.Debug("acp2: dialing", "host", ip, "port", port)
 
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
+	conn, err := s.dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
-	}
-	if tc, ok := conn.(*net.TCPConn); ok {
-		_ = tc.SetNoDelay(true)
 	}
 	s.conn = conn
 	s.host = ip

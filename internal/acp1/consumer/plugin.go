@@ -134,6 +134,10 @@ type Plugin struct {
 	// Optional traffic capture for unit test data generation.
 	recorder *transport.Recorder
 
+	// dialer opens the AN2 (Mode C) socket. Injected rather than built
+	// inline so the pipe is substitutable — see dial() for the default.
+	dialer transport.Dialer
+
 	// profile aggregates wire-tolerance events observed during this
 	// session. See compliance_events.go for the catalog. Nil until
 	// Connect fires; callers read via ComplianceProfile().
@@ -357,20 +361,33 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 // handles replies and announcements on the one socket — no separate
 // listener needed.
 func (p *Plugin) connectAN2(ctx context.Context, ip string, port int) error {
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp4", net.JoinHostPort(ip, strconv.Itoa(port)))
+	conn, err := p.dial().DialContext(ctx, "tcp4", net.JoinHostPort(ip, strconv.Itoa(port)))
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
-	// unreachable type-assert guard elided: net.Dialer.DialContext over
-	// "tcp4" always yields a *net.TCPConn on success.
-	tcpConn := conn.(*net.TCPConn)
-	_ = tcpConn.SetNoDelay(true)
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	p.client = NewAN2Client(tcpConn, p.logger, ClientConfig{OnRx: p.tsSink.recordRx})
+	p.client = NewAN2Client(conn, p.logger, ClientConfig{OnRx: p.tsSink.recordRx})
 	return nil
+}
+
+// dial returns the injected dialer, or the shared default.
+//
+// AN2 was the one acp1 transport that opened its own socket — UDP and TCP
+// direct already go through transport.DialUDP / transport.DialTCP — so it
+// also missed the socket policy those apply. The default here keeps Nagle
+// off (ACP1 messages are ≤141 bytes and latency-sensitive) and adds the
+// SO_KEEPALIVE this path never had.
+//
+// Plugin is built as a bare struct literal throughout the package, so the
+// nil case is the normal one; a caller that wants a different pipe sets the
+// field.
+func (p *Plugin) dial() transport.Dialer {
+	if p.dialer != nil {
+		return p.dialer
+	}
+	return transport.TCPDialer{Options: transport.SocketOptions{NoDelay: true}}
 }
 
 // Disconnect tears down whichever transport is active and clears all
