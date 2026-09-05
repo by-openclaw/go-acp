@@ -126,6 +126,11 @@ var (
 // Listener is a net.Listener whose Accept has already applied ListenOptions
 // to the connection it returns. Callers keep their own accept loop and their
 // own session handling; only the socket policy moves here.
+//
+// Use this where the connector OWNS its bind (tsl and osc consumers). Where a
+// listener can be handed in from outside — the ServeListener / listenHook
+// seams on the emberplus and probel providers — call ApplyListenOptions in
+// the accept loop instead, so an injected listener gets the same policy.
 type Listener struct {
 	net.Listener
 	opts ListenOptions

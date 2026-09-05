@@ -79,7 +79,11 @@ func (s *tcpSession) IdleTimeout() time.Duration {
 }
 
 func (s *tcpSession) listen(ctx context.Context, addr string) error {
-	l, err := net.Listen("tcp", addr)
+	// The listener applies SO_KEEPALIVE to every connection it accepts, so
+	// the accept loop below no longer carries its own copy of that policy.
+	l, err := transport.ListenTCP(ctx, "tcp", addr, transport.ListenOptions{
+		KeepalivePeriod: tcpKeepalivePeriod,
+	})
 	if err != nil {
 		return fmt.Errorf("osc tcp: listen %q: %w", addr, err)
 	}
@@ -109,10 +113,6 @@ func (s *tcpSession) acceptLoop(ctx context.Context) {
 				return
 			}
 			continue
-		}
-		if tc, ok := conn.(*net.TCPConn); ok {
-			_ = tc.SetKeepAlive(true)
-			_ = tc.SetKeepAlivePeriod(tcpKeepalivePeriod)
 		}
 		s.wg.Add(1)
 		go s.connLoop(ctx, conn)
