@@ -2,7 +2,22 @@
 
 package transport
 
-import "syscall"
+import (
+	"errors"
+	"syscall"
+)
+
+// isMessageTooLong reports whether a UDP read failed because the datagram
+// was larger than the buffer.
+//
+// A Unix recv TRUNCATES rather than failing, so this is rarely the path
+// taken here — transport detects the oversized case by reading into
+// maxSize+1 bytes and noticing n > maxSize. It exists so the contract is
+// stated identically on both platforms; Windows takes the other branch (see
+// sockopt_windows.go).
+func isMessageTooLong(err error) bool {
+	return errors.Is(err, syscall.EMSGSIZE)
+}
 
 // setReuseAddr enables SO_REUSEADDR on a bound UDP socket. On Linux /
 // macOS this alone does NOT allow multiple receivers to share a port
