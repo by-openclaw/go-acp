@@ -110,12 +110,20 @@ func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 		_ = c.conn.SetReadDeadline(time.Time{})
 	}
 
+	// A deadline covers a timeout; it does not cover a CANCEL, because the
+	// socket knows nothing about the context. See cancel.go.
+	stop := watchCancel(ctx, c.conn)
+	defer stop()
+
 	// Allocate one byte more than the protocol max: if the kernel delivers
 	// a longer datagram we detect truncation instead of silently accepting
 	// a malformed packet.
 	buf := make([]byte, maxSize+1)
 	n, err := c.conn.Read(buf)
 	if err != nil {
+		if cerr := cancelledReadErr(ctx, err); cerr != nil {
+			return nil, cerr
+		}
 		// Translate a deadline exceed into a context error so the retry
 		// loop can tell timeouts from hard socket failures.
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
@@ -240,9 +248,19 @@ func (l *UDPListener) Receive(ctx context.Context, maxSize int) ([]byte, net.Add
 		_ = l.conn.SetReadDeadline(time.Time{})
 	}
 
+	stop := watchCancel(ctx, l.conn)
+	defer stop()
+
 	buf := make([]byte, maxSize+1)
 	n, addr, err := l.conn.ReadFromUDP(buf)
 	if err != nil {
+		if cerr := cancelledReadErr(ctx, err); cerr != nil {
+			return nil, nil, cerr
+		}
+		if isMessageTooLong(err) {
+			return nil, nil, fmt.Errorf("%w: udp listener datagram larger than max %d",
+				ErrOversizedDatagram, maxSize)
+		}
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, nil, context.DeadlineExceeded
 		}
