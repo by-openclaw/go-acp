@@ -199,7 +199,7 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		// that never implements cmd 09 still needs a dead-socket detector.
 		// Applied in the accept loop rather than at bind time so an
 		// injected listener (listenHook) gets it too.
-		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}

@@ -139,7 +139,7 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		// (a NAT or firewall drop with no RST) holds a goroutine and a
 		// socket here for ever. Applied in the accept loop rather than at
 		// bind time so ServeListener's injected listener gets it too.
-		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go sess.run(ctx)

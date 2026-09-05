@@ -92,7 +92,7 @@ func TestApplyTCPKeepaliveOnClosedSocket(t *testing.T) {
 	}
 }
 
-func TestApplyListenOptionsOnClosedSocket(t *testing.T) {
+func TestApplySocketOptionsOnClosedSocket(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -105,7 +105,7 @@ func TestApplyListenOptionsOnClosedSocket(t *testing.T) {
 	_ = c.Close()
 
 	// Keepalive is the first option applied, so it is the arm that fails.
-	if err := ApplyListenOptions(c, ListenOptions{}); !errors.Is(err, ErrListenFailed) {
+	if err := ApplySocketOptions(c, SocketOptions{}); !errors.Is(err, ErrListenFailed) {
 		t.Errorf("err = %v, want ErrListenFailed", err)
 	}
 }
@@ -134,7 +134,7 @@ func TestApplyTCPKeepalivePeriodError(t *testing.T) {
 // The NoDelay failure arm, reached through the seam. On a real socket it is
 // unreachable: any fd state that fails SetNoDelay also fails SetKeepAlive,
 // and ApplyTCPKeepalive returns first.
-func TestApplyListenOptionsNoDelayError(t *testing.T) {
+func TestApplySocketOptionsNoDelayError(t *testing.T) {
 	orig := tcpSetNoDelay
 	defer func() { tcpSetNoDelay = orig }()
 	tcpSetNoDelay = func(*net.TCPConn, bool) error { return errors.New("boom") }
@@ -150,21 +150,21 @@ func TestApplyListenOptionsNoDelayError(t *testing.T) {
 	}
 	defer func() { _ = c.Close() }()
 
-	err = ApplyListenOptions(c, ListenOptions{NoDelay: true})
+	err = ApplySocketOptions(c, SocketOptions{NoDelay: true})
 	if err == nil {
-		t.Fatal("ApplyListenOptions returned nil with a failing SetNoDelay")
+		t.Fatal("ApplySocketOptions returned nil with a failing SetNoDelay")
 	}
 	if !errors.Is(err, ErrListenFailed) || !strings.Contains(err.Error(), "nodelay") {
 		t.Errorf("err = %v, want ErrListenFailed naming nodelay", err)
 	}
 }
 
-func TestApplyListenOptionsNoDelayOnPipe(t *testing.T) {
+func TestApplySocketOptionsNoDelayOnPipe(t *testing.T) {
 	c, other := net.Pipe()
 	defer func() { _ = c.Close(); _ = other.Close() }()
 
-	if err := ApplyListenOptions(c, ListenOptions{NoDelay: true}); err != nil {
-		t.Errorf("ApplyListenOptions(pipe) = %v, want nil", err)
+	if err := ApplySocketOptions(c, SocketOptions{NoDelay: true}); err != nil {
+		t.Errorf("ApplySocketOptions(pipe) = %v, want nil", err)
 	}
 }
 
@@ -172,7 +172,7 @@ func TestApplyListenOptionsNoDelayOnPipe(t *testing.T) {
 // the socket policy, without writing the setsockopt calls itself.
 func TestListenTCPAppliesOptionsOnAccept(t *testing.T) {
 	ln, err := ListenTCP(context.Background(), "tcp", "127.0.0.1:0",
-		ListenOptions{KeepalivePeriod: 5 * time.Second, NoDelay: true})
+		SocketOptions{KeepalivePeriod: 5 * time.Second, NoDelay: true})
 	if err != nil {
 		t.Fatalf("ListenTCP: %v", err)
 	}
@@ -198,13 +198,13 @@ func TestListenTCPAppliesOptionsOnAccept(t *testing.T) {
 // because the kernel declined a keepalive tweak would trade a detectable
 // problem for an outright outage.
 func TestListenTCPAcceptSurvivesOptionFailure(t *testing.T) {
-	orig := applyListenOptions
-	defer func() { applyListenOptions = orig }()
-	applyListenOptions = func(net.Conn, ListenOptions) error {
+	orig := applySocketOptions
+	defer func() { applySocketOptions = orig }()
+	applySocketOptions = func(net.Conn, SocketOptions) error {
 		return errors.New("boom")
 	}
 
-	ln, err := ListenTCP(context.Background(), "tcp", "127.0.0.1:0", ListenOptions{})
+	ln, err := ListenTCP(context.Background(), "tcp", "127.0.0.1:0", SocketOptions{})
 	if err != nil {
 		t.Fatalf("ListenTCP: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestListenTCPAcceptSurvivesOptionFailure(t *testing.T) {
 }
 
 func TestListenTCPAcceptPropagatesAcceptError(t *testing.T) {
-	ln, err := ListenTCP(context.Background(), "tcp", "127.0.0.1:0", ListenOptions{})
+	ln, err := ListenTCP(context.Background(), "tcp", "127.0.0.1:0", SocketOptions{})
 	if err != nil {
 		t.Fatalf("ListenTCP: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestListenTCPAcceptPropagatesAcceptError(t *testing.T) {
 
 func TestListenTCPBindError(t *testing.T) {
 	// Port 1 on a non-local address cannot be bound.
-	_, err := ListenTCP(context.Background(), "tcp", "198.51.100.1:1", ListenOptions{})
+	_, err := ListenTCP(context.Background(), "tcp", "198.51.100.1:1", SocketOptions{})
 	if err == nil {
 		t.Fatal("ListenTCP succeeded on an unbindable address")
 	}
