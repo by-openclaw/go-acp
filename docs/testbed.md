@@ -40,11 +40,33 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
 | IRD satellite receiver | (to connect) | SNMP + MIB | none yet — `internal/snmp` is unwritten |
+| **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
 services this one Neuron offers cannot yet be driven at a real device — see
 "Integration tiers" below.
+
+### Cerebrum is a multi-protocol peer, not only the NB API
+
+Cerebrum speaks syslog and SNMP as well as its Northbound API, which means
+SNMP work needs no additional hardware — it is BOTH directions of the loop.
+Read off Configuration → SNMP (2026-09-07):
+
+| Cerebrum role | Where | Settings | What it is for |
+| --- | --- | --- | --- |
+| **SNMP agent** (answers) | port **1161**, status Active | RO community `public`, RW `private` | the target our SNMP CONSUMER polls. Note 1161, not 161 — above 1024, so polling it needs no capability grant |
+| **SNMP manager** (polls) | port **161**, SNMPv1, community `public`, poll 3 s | — | the peer that will poll an agent WE expose |
+| **Trap receiver** | port **162**, status Active | "Enable SNMP Trap reception" on | receives traps we emit; sending to it needs no local privilege |
+| **Trap sender** | Notifications → SNMP Traps | SNMPv1, dest port 162, dest IP unset, "on startup" only | a trap SOURCE for a listener of ours. **"Test SNMP Trap"** triggers one on demand, so a test need not restart Cerebrum |
+
+A "V3 Settings" button exists beside the version dropdown (greyed while v1
+is selected), so v3 is supported by the product. SNMP sub-system logging is
+at level Emergency with "Show MIB value type mismatch" off — turn that on
+when debugging our MIB against it.
+
+Only a trap LISTENER of our own would need `CAP_NET_BIND_SERVICE` (port 162
+is privileged), and neither direction above requires one.
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
@@ -129,7 +151,7 @@ forward and show as transient extras. Only one mirror at a time.
 | AMWA NMOS Registry (Registration/Query) | HTTP + WS | `8235` |
 | AMWA NMOS IS-07 events | WS | `8090` |
 | AMWA NMOS IS-09 System | HTTP | `10641` |
-| Cerebrum NB | TCP | `40007` |
+| Cerebrum NB | TCP | `40007` (staging Cerebrum answers on `40009`) |
 | mDNS (Avahi / Bonjour) | UDP | `5353` |
 | metrics (`--metrics-addr`) | HTTP | `9100` |
 | SSH / WinRM (mgmt) | TCP | `22` / `5985` |
