@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 )
@@ -24,6 +25,10 @@ const DefaultTCPKeepalivePeriod = 30 * time.Second
 // lazily established on first send; a failed send closes the connection
 // and returns the error so the caller can retry.
 type tcpDialer struct {
+	// met counts what this dialer puts on the wire. Set by the Server at
+	// construction; nil-safe so a dialer built by a test still works.
+	met *metrics.Connector
+
 	mu    sync.Mutex
 	conns map[string]net.Conn // keyed by "host:port"
 
@@ -33,8 +38,9 @@ type tcpDialer struct {
 	dialer transport.Dialer
 }
 
-func newTCPDialer() *tcpDialer {
+func newTCPDialer(met *metrics.Connector) *tcpDialer {
 	return &tcpDialer{
+		met:   met,
 		conns: map[string]net.Conn{},
 		dialer: transport.TCPDialer{
 			Options: transport.SocketOptions{
@@ -79,7 +85,11 @@ func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
 	if err != nil {
 		return err
 	}
-	if _, werr := c.Write(wrapped); werr != nil {
+	if _, werr := c.Write(wrapped); werr == nil {
+		if d.met != nil {
+			d.met.ObserveTx(len(wrapped), 0)
+		}
+	} else {
 		// Close + forget on write failure.
 		d.mu.Lock()
 		_ = c.Close()

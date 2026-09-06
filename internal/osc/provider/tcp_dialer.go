@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
 	"dhs/internal/osc/codec"
 	"dhs/internal/transport"
 )
@@ -31,6 +32,10 @@ const (
 type tcpDialer struct {
 	framer framerKind
 
+	// met counts what this dialer puts on the wire. Set by the Server at
+	// construction; nil-safe so a dialer built by a test still works.
+	met *metrics.Connector
+
 	mu    sync.Mutex
 	conns map[string]net.Conn
 
@@ -40,9 +45,10 @@ type tcpDialer struct {
 	dialer transport.Dialer
 }
 
-func newTCPDialer(f framerKind) *tcpDialer {
+func newTCPDialer(f framerKind, met *metrics.Connector) *tcpDialer {
 	return &tcpDialer{
 		framer: f,
+		met:    met,
 		conns:  map[string]net.Conn{},
 		dialer: transport.TCPDialer{
 			Options: transport.SocketOptions{
@@ -83,7 +89,11 @@ func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
 	if err != nil {
 		return err
 	}
-	if _, werr := c.Write(wire); werr != nil {
+	if _, werr := c.Write(wire); werr == nil {
+		if d.met != nil {
+			d.met.ObserveTx(len(wire), 0)
+		}
+	} else {
 		d.mu.Lock()
 		_ = c.Close()
 		delete(d.conns, destKey(host, port))

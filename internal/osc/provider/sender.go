@@ -2,6 +2,7 @@ package osc
 
 import (
 	"context"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"errors"
 	"fmt"
@@ -16,6 +17,10 @@ import (
 // the destination list include broadcast addresses like 255.255.255.255
 // or subnet broadcasts (e.g. 192.168.1.255).
 type udpSender struct {
+	// met counts what this sender puts on the wire. Set by the Server at
+	// construction; nil-safe so a sender built by a test still works.
+	met *metrics.Connector
+
 	mu    sync.RWMutex
 	conn  *net.UDPConn
 	dests []*net.UDPAddr
@@ -23,8 +28,8 @@ type udpSender struct {
 	closeOnce sync.Once
 }
 
-func newUDPSender() *udpSender {
-	return &udpSender{}
+func newUDPSender(met *metrics.Connector) *udpSender {
+	return &udpSender{met: met}
 }
 
 // bind opens a UDP socket for outbound sends. addr may be ":0" or ""
@@ -97,8 +102,17 @@ func (s *udpSender) sendBytes(payload []byte) error {
 	}
 	var firstErr error
 	for _, d := range dests {
-		if _, err := conn.WriteToUDP(payload, d); err != nil && firstErr == nil {
-			firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
+		if _, err := conn.WriteToUDP(payload, d); err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
+			}
+			continue
+		}
+		// One count per destination actually written to: fanning one
+		// message to eight receivers really is eight datagrams on the
+		// wire, and a per-message count would understate the load by 8x.
+		if s.met != nil {
+			s.met.ObserveTx(len(payload), 0)
 		}
 	}
 	return firstErr

@@ -412,7 +412,7 @@ func TestSendV50_EncodeError(t *testing.T) {
 // --- sendBytes write-error fan-out (closed conn) --------------------------
 
 func TestSendBytes_WriteError(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestSendBytes_WriteError(t *testing.T) {
 // --- udpSender.bind: already-bound guard ----------------------------------
 
 func TestUDPSender_BindTwice(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -445,7 +445,7 @@ func TestUDPSender_BindTwice(t *testing.T) {
 // TestUDPSender_BoundAddr_Nil drives boundAddr's s.conn==nil arm on a
 // freshly-constructed (unbound) sender.
 func TestUDPSender_BoundAddr_Nil(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if got := s.boundAddr(); got != nil {
 		t.Fatalf("boundAddr on unbound sender=%v want nil", got)
 	}
@@ -454,7 +454,7 @@ func TestUDPSender_BoundAddr_Nil(t *testing.T) {
 // TestUDPSender_Bind_EmptyAddrDefault drives the addr=="" -> ":0"
 // default branch in bind.
 func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind(""); err != nil {
 		t.Fatalf("bind empty addr: %v", err)
 	}
@@ -474,7 +474,7 @@ func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
 // defensive error, then restore nil. The guards in bind are untouched.
 
 func TestUDPSender_SendBytes_NotBound(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.encodeAndSendV31(codec.V31Frame{Address: 1}); err == nil {
 		t.Fatalf("sendBytes unbound should error")
 	}
@@ -723,7 +723,7 @@ func TestSendV50TCP_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer()
+	d := newTCPDialer(nil)
 	defer func() { _ = d.close() }()
 	pkt := codec.V50Packet{DMSGs: []codec.DMSG{{Index: 1, Text: "A"}}}
 	if err := d.sendV50TCP(host, port, pkt); err != nil {
@@ -776,7 +776,7 @@ func TestTCPDialer_CloseError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer()
+	d := newTCPDialer(nil)
 	c, err := d.dial(host, port)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
