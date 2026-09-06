@@ -126,13 +126,13 @@ func TestValueAny_KindMismatch(t *testing.T) {
 
 func TestParsePath_Errors(t *testing.T) {
 	bad := []string{
-		"1.2.3",       // wrong component count
-		"2.1.2.0",     // first != 1
-		"1.x.2.0",     // bad slot
-		"1.0.2.0",     // slot 1-based < 1
-		"1.1.9.0",     // group > 6
-		"1.1.2.x",     // bad id
-		"1.1.2.999",   // id > 255
+		"1.2.3",     // wrong component count
+		"2.1.2.0",   // first != 1
+		"1.x.2.0",   // bad slot
+		"1.0.2.0",   // slot 1-based < 1
+		"1.1.9.0",   // group > 6
+		"1.1.2.x",   // bad id
+		"1.1.2.999", // id > 255
 	}
 	for _, p := range bad {
 		if _, err := parsePath(p); err == nil {

@@ -32,7 +32,7 @@ func TestNewTCPSessionRegistry_NilLogger(t *testing.T) {
 // TestEnqueue_DropsOnFull covers the channel-full drop arm.
 func TestEnqueue_DropsOnFull(t *testing.T) {
 	ch := make(chan []byte, 1)
-	ch <- []byte{0} // fill it
+	ch <- []byte{0}                                 // fill it
 	enqueue(ch, []byte{1}, "test", discardLogger()) // must not block; drops
 	if len(ch) != 1 {
 		t.Fatalf("channel len = %d, want 1 (second enqueue dropped)", len(ch))

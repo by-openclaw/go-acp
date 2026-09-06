@@ -35,10 +35,10 @@ func TestRunFuzz_NoTargets(t *testing.T) {
 	defer cancel()
 
 	cfg := FuzzConfig{
-		Seed:  42,
-		Rate:  10,
-		Slot:  99, // no such slot
-		ID:    -1,
+		Seed: 42,
+		Rate: 10,
+		Slot: 99, // no such slot
+		ID:   -1,
 	}
 	err := s.RunFuzz(ctx, cfg)
 	if err == nil {
@@ -139,12 +139,12 @@ func TestRunFuzz_ReadOnlyTargetsExcluded(t *testing.T) {
 	// Identity (group=1) in the test fixture is read-only. A fuzz
 	// scoped to identity should report "no eligible targets".
 	cfg := FuzzConfig{
-		Seed:  1,
-		Rate:  10,
-		Slot:  1,
-		Group: codec.GroupIdentity,
+		Seed:     1,
+		Rate:     10,
+		Slot:     1,
+		Group:    codec.GroupIdentity,
 		GroupSet: true,
-		ID:    -1,
+		ID:       -1,
 	}
 	err := s.RunFuzz(context.Background(), cfg)
 	if err == nil {

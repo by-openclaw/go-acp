@@ -79,10 +79,7 @@ var allowed = map[string]string{
 	// They already apply the shared socket policy via ApplySocketOptions;
 	// what remains is the bind itself moving to transport.ListenTCP, as the
 	// osc and tsl consumers have already done.
-	"internal/acp1/provider/tcp_server.go": "listener bind → transport.ListenTCP",
-	"internal/acp1/provider/an2_server.go": "listener bind → transport.ListenTCP",
-	"internal/acp1/provider/server.go":     "listener bind + UDP dial → transport",
-	"internal/acp1/provider/admin.go":      "admin listener + dial; already has an injectable dial seam",
+	"internal/acp1/provider/server.go": "broadcast dial pins a source address; transport has no model for that",
 
 	// DEBT — the HTTP server has not been extracted from amwa yet.
 	//

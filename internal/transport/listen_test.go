@@ -245,3 +245,40 @@ func TestListenTCPBindError(t *testing.T) {
 		t.Errorf("err = %v, want it to wrap ErrListenFailed", err)
 	}
 }
+
+func TestListenTCPRawGivesTheConcreteListener(t *testing.T) {
+	ln, err := ListenTCPRaw(context.Background(), "tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() { _ = ln.Close() }()
+	// The point of this function: AcceptTCP, which net.Listener does not have.
+	if ln.Addr() == nil {
+		t.Error("bound listener has no address")
+	}
+}
+
+func TestListenTCPRawRejectsBadAddress(t *testing.T) {
+	if _, err := ListenTCPRaw(context.Background(), "tcp4", "not-an-address"); err == nil {
+		t.Error("a malformed address must be reported")
+	} else if !errors.Is(err, ErrListenFailed) {
+		t.Errorf("err = %v, want it to wrap ErrListenFailed", err)
+	}
+}
+
+// A "tcp*" network always yields a *net.TCPListener, so this arm needs the
+// seam — and it is here, once, rather than in every caller that needs the
+// concrete type.
+func TestListenTCPRawUnexpectedListenerType(t *testing.T) {
+	orig := listenTCPRawAssert
+	listenTCPRawAssert = func(net.Listener) (*net.TCPListener, bool) { return nil, false }
+	defer func() { listenTCPRawAssert = orig }()
+
+	_, err := ListenTCPRaw(context.Background(), "tcp4", "127.0.0.1:0")
+	if err == nil {
+		t.Fatal("an unexpected listener type must fail the bind")
+	}
+	if !errors.Is(err, ErrListenFailed) {
+		t.Errorf("err = %v, want it to wrap ErrListenFailed", err)
+	}
+}

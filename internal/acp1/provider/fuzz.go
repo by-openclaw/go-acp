@@ -24,8 +24,8 @@ type FuzzConfig struct {
 
 // fuzzTarget is one writable object that the fuzzer can drive.
 type fuzzTarget struct {
-	key  objectKey
-	e    *entry
+	key objectKey
+	e   *entry
 }
 
 // RunFuzz drives random valid value-changes against the writable

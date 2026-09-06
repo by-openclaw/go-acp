@@ -340,8 +340,8 @@ func TestRunAnnounceDemo_IntervalDefaultAndApplyFail(t *testing.T) {
 		key: key, acpType: codec.TypeInteger,
 		access: codec.AccessRead | codec.AccessWrite,
 		param: &canonical.Parameter{
-			Header: canonical.Header{Identifier: "Bad"},
-			Value:  "not-an-int", // mutateInteger asInt16 fails every tick
+			Header:  canonical.Header{Identifier: "Bad"},
+			Value:   "not-an-int", // mutateInteger asInt16 fails every tick
 			Minimum: int64(-10), Maximum: int64(10),
 		},
 	}

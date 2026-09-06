@@ -34,7 +34,10 @@ func TestMutate_AllMethodsAndErrors(t *testing.T) {
 			t.Fatalf("long setValue: %v", err)
 		}
 	}
-	if e := mkLong(); func() bool { _, err := s.applyMutation(e, codec.MethodSetDefValue, nil); return err == nil && e.param.Value == int64(7) }() == false {
+	if e := mkLong(); func() bool {
+		_, err := s.applyMutation(e, codec.MethodSetDefValue, nil)
+		return err == nil && e.param.Value == int64(7)
+	}() == false {
 		t.Error("long setDef should store default 7")
 	}
 	for _, m := range []codec.Method{codec.MethodSetIncValue, codec.MethodSetDecValue} {
@@ -113,7 +116,10 @@ func TestMutate_AllMethodsAndErrors(t *testing.T) {
 			Value: int64(1), Enumeration: strp("Off,On,Auto"), Default: int64(2),
 		}}
 	}
-	if e := mkEnum(); func() bool { _, err := s.applyMutation(e, codec.MethodSetDefValue, nil); return err == nil && e.param.Value == int64(2) }() == false {
+	if e := mkEnum(); func() bool {
+		_, err := s.applyMutation(e, codec.MethodSetDefValue, nil)
+		return err == nil && e.param.Value == int64(2)
+	}() == false {
 		t.Error("enum setDef should store default 2")
 	}
 	if _, err := s.applyMutation(mkEnum(), codec.MethodSetIncValue, nil); err == nil {

@@ -85,7 +85,7 @@ func TestFanout_32Sessions_NoHeadOfLineBlocking(t *testing.T) {
 	for i := 0; i < triggers; i++ {
 		setReq := &codec.Message{
 			MTID: uint32(i + 1), MType: codec.MTypeRequest, MAddr: 1,
-			MCode: byte(codec.MethodSetValue),
+			MCode:    byte(codec.MethodSetValue),
 			ObjGroup: codec.GroupControl, ObjID: 0,
 			Value: []byte{0x00, byte(i % 12)},
 		}

@@ -1,8 +1,8 @@
 package acp1
 
 import (
-	"log/slog"
 	"dhs/internal/acp1/codec"
+	"log/slog"
 )
 
 // handleRequest dispatches a decoded request to the right handler and
@@ -134,15 +134,15 @@ func (s *server) handleRoot(msg *codec.Message) *codec.Message {
 // num_control, num_status, num_alarm, num_file.
 func encodeRootObject(c *slotCounts) []byte {
 	return []byte{
-		byte(codec.TypeRoot),        // object_type
-		9,                           // num_properties
-		codec.AccessRead,            // access — Root is always read-only
-		0,                           // boot_mode
-		c.numIdentity,               // num_identity
-		c.numControl,                // num_control
-		c.numStatus,                 // num_status
-		c.numAlarm,                  // num_alarm
-		c.numFile,                   // num_file
+		byte(codec.TypeRoot), // object_type
+		9,                    // num_properties
+		codec.AccessRead,     // access — Root is always read-only
+		0,                    // boot_mode
+		c.numIdentity,        // num_identity
+		c.numControl,         // num_control
+		c.numStatus,          // num_status
+		c.numAlarm,           // num_alarm
+		c.numFile,            // num_file
 	}
 }
 
@@ -305,4 +305,3 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 		s.broadcastAnnounce(ann)
 	}
 }
-
