@@ -59,9 +59,15 @@ build, not what a go.mod lists):
 `docs/testbed.md` ("Cerebrum is a multi-protocol peer") has the authoritative
 ports and communities. In short, Cerebrum closes the loop in both directions:
 its **agent** is what our consumer polls, and its **manager + trap receiver**
-is what our provider answers and emits to. The **IRD satellite receivers** are
-the vendor-device oracle ADR-0025 Tier 3 wants; their MIBs belong in
-`assets/mibs/`.
+is what our provider answers and emits to.
+
+The **IRD satellite receivers** are the vendor-device oracle ADR-0025 Tier 3
+wants, and they are **SNMP-only for our purposes**: they expose no REST API,
+and the raw vendor protocol they also speak is deliberately out of scope (the
+same call as Probel and ACP1/ACP2). Their HTTP management page is expected to
+work and is useful for cross-checking a value by eye and for setting the
+community and trap destination — it is not a connector target. Their MIBs
+belong in `assets/mibs/`.
 
 Do not restate ports here — read `docs/testbed.md`, per ADR-0015.
 

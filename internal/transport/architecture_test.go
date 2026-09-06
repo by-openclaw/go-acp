@@ -83,12 +83,14 @@ var allowed = map[string]string{
 	// closes the conformance gap where http has a client and no server.
 	"internal/amwa/registry/mirror_serve.go": "TLS listener → transport once the server moves",
 
-	// DEBT — certificate handling.
+	// PERMANENT — certificate handling.
 	//
-	// certmgr ISSUES and renews certificates (BCP-003-03 EST), which is a
-	// different job from choosing a TLS posture. It stays amwa-side, but the
-	// tls.Config it hands out should come from transport.TLSOptions.
-	"internal/amwa/session/certmgr/certmgr.go": "cert lifecycle is amwa's; the *tls.Config it emits should come from transport",
+	// certmgr ISSUES and renews certificates (BCP-003-03 EST), so
+	// tls.Certificate is one of its domain types and the crypto/tls import
+	// is not going away. The POSTURE half of this entry is now closed: it
+	// builds its *tls.Config through transport.TLSOptions like everything
+	// else, presenting its in-memory identity via TLSOptions.Certificates.
+	"internal/amwa/session/certmgr/certmgr.go": "holds tls.Certificate as a domain type; posture comes from transport",
 
 	// DEBT — DNS-SD runs its own multicast and unicast sockets.
 	//

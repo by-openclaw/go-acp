@@ -39,13 +39,31 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| IRD satellite receiver | (to connect) | SNMP + MIB | none yet — `internal/snmp` is unwritten |
+| IRD satellite receiver | (being addressed) | SNMP + MIB · HTTP management page | none yet — `internal/snmp` is unwritten |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
 services this one Neuron offers cannot yet be driven at a real device — see
 "Integration tiers" below.
+
+### IRD satellite receivers — SNMP only
+
+Installed 2026-09-07; the codeowner is assigning fabric addresses so they are
+reachable, and sourcing the MIBs (they belong in `internal/snmp/assets/mibs/`).
+
+Scope, per the codeowner:
+
+- **SNMP + MIB** — the whole reason these are in the testbed. This is what
+  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **HTTP management page** — expected to work. Useful for reading the device's
+  own view of a value while checking ours, and for setting the SNMP community
+  and trap destination. Not a connector target.
+- **No REST API.** There is none to consume; do not plan one.
+- **A raw vendor protocol exists but is OUT OF SCOPE** — the same call as
+  Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
+
+So one connector serves these devices, and it is the SNMP one.
 
 ### Cerebrum is a multi-protocol peer, not only the NB API
 

@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/est"
+	"dhs/internal/transport"
 )
 
 // Options configures the manager.
@@ -129,20 +130,32 @@ func (m *Manager) LoadManualRoots(caFile string) error {
 }
 
 // httpClient builds the transport for one phase. bootstrap toggles
-// the explicit-trust (no-verify) mode; withClientCert attaches the
-// enrollment identity.
+// the explicit-trust (no-verify) mode; clientCert attaches the enrollment
+// identity.
+//
+// The POSTURE is transport's, not ours. Issuing and renewing certificates is
+// this package's job (BCP-003-03 EST); deciding a minimum TLS version and
+// how a *tls.Config is assembled is not, and a config built here was one
+// more place to forget MinVersion. What stays ours is the two decisions that
+// are genuinely about enrolment: trusting nothing yet during bootstrap, and
+// presenting an identity that lives in memory rather than in a file —
+// TLSOptions.Certificates exists for exactly that.
 func (m *Manager) httpClient(bootstrap bool, clientCert *tls.Certificate) *stdhttp.Client {
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12}
+	opts := transport.TLSOptions{Enable: true}
 	if bootstrap && !m.opts.ExplicitTrustDisabled {
-		cfg.InsecureSkipVerify = true // spec bootstrap deviation, see package doc
+		opts.Insecure = true // spec bootstrap deviation, see package doc
 	} else {
 		m.mu.RLock()
-		cfg.RootCAs = m.rootPool
+		opts.RootCAs = m.rootPool
 		m.mu.RUnlock()
 	}
 	if clientCert != nil {
-		cfg.Certificates = []tls.Certificate{*clientCert}
+		opts.Certificates = []tls.Certificate{*clientCert}
 	}
+	// The error is unreachable here: Client only fails while reading a
+	// CAFile or a CertFile/KeyFile pair off disk, and this call passes
+	// neither — the trust pool and the identity are both already in memory.
+	cfg, _ := opts.Client()
 	return &stdhttp.Client{
 		Timeout:   15 * time.Second,
 		Transport: &stdhttp.Transport{TLSClientConfig: cfg},
