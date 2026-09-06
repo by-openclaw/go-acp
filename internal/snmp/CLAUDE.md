@@ -33,16 +33,42 @@ SNMP is **ASN.1 BER over UDP**, and this repo already owns a BER codec at
 ADR-0006 like every other codec, and there is no argument for a dependency to
 put bytes on the wire.
 
+## Where the MIBs live
+
+**`github.com/by-protocol/mib`** — its own repository, not this tree. Per
+device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
+six IETF base modules every vendor MIB imports and no vendor ships.
+
+The vendor is **Ericsson Television Limited** (formerly Tandberg Television),
+IANA enterprise **1773**. `ETV-Base-MIB` defines
+`mibEricssonTelevision ::= { enterprises 1773 }` and
+`elementManagementMIB ::= { mibEricssonTelevision 1 }`, which is exactly the
+branch the testbed devices answer on.
+
+The import graph is shallow and shared:
+
+    ird/<device>/*.mib
+      ├── ETV-Base-MIB   (Base.mib)    enterprises 1773
+      ├── ETV-Types-TC   (Types.mib)   Uint8 / Uint16 / Uint32 / PIDNumber
+      └── standard/      RFC1155-SMI · RFC-1212 · RFC-1215
+                         SNMPv2-SMI · SNMPv2-TC · RFC1213-MIB
+
+Note the SMIv1/SMIv2 mix: the product MIBs import RFC1155-SMI and RFC-1212
+(SMIv1) while the trap MIB imports SNMPv2-SMI and SNMPv2-TC (SMIv2). A
+compiler that only handles one of the two dialects will not get through this
+set.
+
 ## MIB parsing happens OFFLINE, never in the binary
 
 This is the load-bearing decision. Parsing MIB source is a compiler problem —
 lexer, grammar, IMPORTS resolution across files — and dragging that into the
 shipped binary is how a connector acquires a dependency tail.
 
-Instead: a tool under `tools/` compiles the MIBs in `assets/mibs/` into
-committed Go OID tables, and the connector reads the generated tables. The
-compile is a development step whose output is reviewed in a PR; the runtime
-knows only numbers and types.
+Instead: a tool under `tools/` compiles the MIBs from a checkout of
+`by-protocol/mib` into committed Go OID tables, and the connector reads the
+generated tables. The compile is a development step whose output is reviewed
+in a PR; the runtime knows only numbers and types, and this repo never
+vendors the MIB source.
 
 Measured for the fork set the codeowner already made under
 `github.com/by-protocol` (per ADR-0005's build-graph rule — what enters OUR
