@@ -1,0 +1,40 @@
+---
+# AF_PACKET needs CAP_NET_RAW. Granting it to the binary keeps dhs off root:
+# a producer that runs as root to read one Ethertype is a much larger blast
+# radius than the capability it actually needs.
+- name: libcap tooling present (provides setcap/getcap)
+  ansible.builtin.package:
+    name: "{{ 'libcap2-bin' if ansible_os_family == 'Debian' else 'libcap' }}"
+    state: present
+  when: dhs_capture_linux_setcap | bool
+
+- name: dhs binary present before granting a capability
+  ansible.builtin.stat:
+    path: "{{ dhs_bin }}"
+  register: dhs_capture_bin
+
+# Read first, write only on a mismatch — setcap is not itself idempotent in
+# its exit status, so the check is what makes run-twice = 0 changes.
+- name: Current file capabilities on the dhs binary
+  ansible.builtin.command:
+    argv: [getcap, "{{ dhs_bin }}"]
+  register: dhs_capture_getcap
+  changed_when: false
+  failed_when: false
+  when: dhs_capture_linux_setcap | bool and dhs_capture_bin.stat.exists
+
+- name: Grant cap_net_raw to the dhs binary
+  ansible.builtin.command:
+    argv: [setcap, "{{ dhs_capture_linux_capability }}", "{{ dhs_bin }}"]
+  when:
+    - dhs_capture_linux_setcap | bool
+    - dhs_capture_bin.stat.exists
+    - dhs_capture_linux_capability.split('+')[0] not in (dhs_capture_getcap.stdout | default(''))
+  changed_when: true
+
+- name: Report the capture posture
+  ansible.builtin.debug:
+    msg: >-
+      LLDP capture {{ 'ENABLED' if dhs_capture_bin.stat.exists and dhs_capture_linux_setcap | bool
+      else 'not configured' }} on {{ inventory_hostname }} —
+      AF_PACKET via stdlib syscall, no package required.

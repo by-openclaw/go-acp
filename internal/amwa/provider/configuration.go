@@ -61,12 +61,12 @@ type configProperty struct {
 
 // configObject is one Device Model object, addressed by role path.
 type configObject struct {
-	classID  ms05.NcClassId
-	oid      ms05.NcOid
-	role     string
-	path     []string // role path as array, ["root", ...]
-	class    ms05.NcClassDescriptor
-	props    []*configProperty // flattened-descriptor order (own first)
+	classID ms05.NcClassId
+	oid     ms05.NcOid
+	role    string
+	path    []string // role path as array, ["root", ...]
+	class   ms05.NcClassDescriptor
+	props   []*configProperty // flattened-descriptor order (own first)
 }
 
 // IS14ConfigurationServer serves the Configuration API for one Node.
