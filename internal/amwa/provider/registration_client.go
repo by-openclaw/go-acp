@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/transport"
 )
 
 // HeartbeatInterval is the IS-04 §6.1 default for POST
@@ -645,9 +646,16 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 	if roots == nil {
 		return
 	}
-	c.http.Transport = &stdhttp.Transport{
-		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots},
+	// Built by the transport layer so every dhs client shares one posture;
+	// this was already the strictest of the four hand-rolled configs, and
+	// it is now the only one.
+	cfg, err := transport.TLSOptions{Enable: true, RootCAs: roots}.Client()
+	if err != nil {
+		// Unreachable: no CA or client-certificate FILE is configured here,
+		// and those are Client's only failure modes.
+		cfg = &tls.Config{MinVersion: transport.MinTLSVersion, RootCAs: roots}
 	}
+	c.http.Transport = &stdhttp.Transport{TLSClientConfig: cfg}
 }
 
 // applyToken attaches the Bearer token when a source is installed.

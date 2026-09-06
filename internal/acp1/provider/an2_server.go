@@ -13,6 +13,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	an2 "dhs/internal/acp2/codec"
+	"dhs/internal/transport"
 )
 
 // AN2 codec re-exports — the transport framer is shared with ACP2 today.
@@ -63,7 +64,10 @@ func (s *server) ServeAN2(ctx context.Context, addr string) error {
 			s.logger.Warn("acp1 an2 accept failed", slog.String("err", err.Error()))
 			continue
 		}
-		_ = conn.SetNoDelay(true)
+		// NoDelay: ACP1 messages are <=141 bytes and latency-sensitive.
+		// Keepalive: the OS-level dead-peer probe, without which a half-open
+		// client session holds a goroutine and a socket here for ever.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{NoDelay: true})
 		ip := remoteIP(conn.RemoteAddr())
 		if !reg.tryAdd(ip) {
 			s.logger.Warn("acp1 an2 refusing session: per-ip cap exceeded",
@@ -302,8 +306,8 @@ type an2Session struct {
 	conn *net.TCPConn
 	send chan []byte
 
-	mu             sync.Mutex
-	eventsEnabled  map[an2.AN2Proto]bool
+	mu            sync.Mutex
+	eventsEnabled map[an2.AN2Proto]bool
 }
 
 func newAN2SessionRegistry(logger *slog.Logger) *an2SessionRegistry {

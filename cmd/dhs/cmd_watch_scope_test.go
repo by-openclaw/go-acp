@@ -7,12 +7,12 @@ import (
 
 func TestParseWalkScope(t *testing.T) {
 	cases := []struct {
-		name     string
-		slot     int
-		slots    string
-		noWalk   bool
-		want     walkScope
-		wantErr  bool
+		name    string
+		slot    int
+		slots   string
+		noWalk  bool
+		want    walkScope
+		wantErr bool
 	}{
 		{name: "default-no-flags-walks-nothing", slot: -1, want: walkScope{mode: walkNone}},
 		{name: "single-slot-legacy", slot: 1, want: walkScope{mode: walkList, slots: []int{1}}},

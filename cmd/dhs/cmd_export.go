@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // runExport walks every present slot on the device and writes the

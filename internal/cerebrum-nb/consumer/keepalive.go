@@ -2,11 +2,30 @@ package cerebrumnb
 
 // Keep-alive + liveness for the Cerebrum NB WebSocket session.
 //
-// The Cerebrum northbound API has no application-level heartbeat, so liveness
-// rides on RFC 6455 control frames: we send a Ping every Interval, the server
-// answers Pong, and the ws layer re-arms its per-frame read deadline on every
-// frame received (including that Pong). Two independent failures are therefore
-// detected rather than ignored:
+// There are TWO keep-alives here, in opposite directions.
+//
+//  1. SERVER → US: an RFC 6455 Ping, answered by a Pong. This is ordinary
+//     WebSocket behaviour, not a Cerebrum peculiarity, and ws.Conn has
+//     answered it inline since the WS client was written (conn.go, OpPing;
+//     commit 09d5bf8b "auto-Pong on Ping"). It needs no help from this file
+//     — but do not "simplify" that inline Pong away: a client that ignores
+//     Pings is one any conformant server is entitled to drop.
+//
+//  2. US → SERVER, which is what this file does. It exists for OUR benefit:
+//     to notice a half-open socket, not to satisfy the server.
+//
+// Note that POLL (spec §2.2, <POLL MTID="n"/> → <POLL_REPLY …>) is the
+// APPLICATION-level keep-alive and redundancy probe — docs/keys.md calls it
+// "Keep-alive + redundancy probe" — and an earlier version of this comment
+// wrongly claimed Cerebrum had no application heartbeat at all. We send it
+// once at connect, and deliberately do NOT use it as the liveness probe: it
+// is answered by the application layer, so a slow, busy or auth-gated POLL is
+// indistinguishable from a dead link, and treating it as fatal would kill a
+// session the server is still happily pinging. A WS Ping is answered by the
+// RFC 6455 layer of any conformant server, which is exactly the question this
+// probe asks: is the socket still carrying frames?
+//
+// Two independent failures are therefore detected:
 //
 //   - the Ping write fails            → the socket is gone, immediately
 //   - nothing arrives within Timeout  → the peer is silent (half-open flow, a
@@ -146,6 +165,19 @@ func (s *Session) keepAliveLoop(ka *keepAlive, interval time.Duration, clk clock
 		case <-s.done:
 			return
 		case <-t.C():
+			// A WS Ping, deliberately — NOT a POLL.
+			//
+			// POLL is the application keep-alive and a redundancy probe, but
+			// it is CLIENT-initiated and answered by the application layer.
+			// Treating an unanswered POLL as fatal would kill a session the
+			// server is still happily pinging — a slow or auth-gated POLL
+			// would look identical to a dead link. A Ping is answered by the
+			// RFC 6455 layer of any conformant server, so it tests exactly the
+			// thing we care about here: is the socket still carrying frames.
+			//
+			// Session SURVIVAL does not depend on this probe at all: Cerebrum
+			// pings US, and ws.Conn answers Pong inline (conn.go). Failing to
+			// do that is what closed sessions at 30s before it was fixed.
 			ctx, cancel := context.WithTimeout(context.Background(), interval)
 			err := s.conn.Ping(ctx, nil)
 			cancel()

@@ -186,6 +186,18 @@ type SubscriptionManager struct {
 	mu   sync.Mutex
 	subs map[string]*subscription
 
+	// wsPing / wsIdle keep subscriber sockets honest. Unlike every other
+	// reaper in the tree these default ON, because here we supply the
+	// traffic that makes silence meaningful: the Registry pings, the
+	// Controller pongs, and the transport re-arms the idle deadline on any
+	// inbound frame. Nothing about a quiet subscription is ambiguous once
+	// we are the ones asking.
+	//
+	// Zero means "use the defaults"; negative disables. Set via
+	// SetWSKeepAlive before the manager accepts traffic.
+	wsPing time.Duration
+	wsIdle time.Duration
+
 	// onWSOpen / onWSClose are optional subscriber-socket lifecycle
 	// hooks. The mirror's served Query face uses them to land one audit
 	// event per WS open/close in its JSONL trail; the plain Registry
@@ -556,7 +568,43 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 
 		// Hold the connection open until the peer closes or we evict.
 		// We delegate to ReadText which auto-replies to ping frames.
+		//
+		// A Query WS is one-way: the Registry pushes grains and a
+		// subscriber is never expected to say anything. So client silence
+		// carries NO liveness information on its own, and a Controller that
+		// vanishes without a close frame would otherwise hold this
+		// goroutine, its socket and its subscription entry forever — the
+		// Registry is the component most likely to run for a year and to
+		// serve the most peers, so that leak accumulates fastest here.
+		//
+		// We therefore make silence meaningful ourselves: ping on a timer
+		// (RFC 6455 §5.5.2 — either side may ping) and bound the read. The
+		// peer's Pong is an inbound frame, and the transport re-arms the
+		// idle deadline on every inbound frame, so a Controller that
+		// answers is never reaped no matter how quiet the subscription is.
+		ping, idle := m.wsKeepAlive()
+		ws.SetIdleTimeout(idle)
+
+		stopPing := make(chan struct{})
+		if ping > 0 {
+			go func() {
+				t := time.NewTicker(ping)
+				defer t.Stop()
+				for {
+					select {
+					case <-stopPing:
+						return
+					case <-t.C:
+						if err := ws.SendPing(nil); err != nil {
+							return // socket gone; the reader will finish up
+						}
+					}
+				}
+			}()
+		}
+
 		go func() {
+			defer close(stopPing)
 			defer m.removeSub(id)
 			for {
 				if _, err := ws.ReadText(); err != nil {
@@ -1083,4 +1131,51 @@ func newUUIDLike() (string, error) {
 		hex.EncodeToString(b[6:8]),
 		hex.EncodeToString(b[8:10]),
 		hex.EncodeToString(b[10:16])), nil
+}
+
+// Query WS keep-alive defaults. Three pings inside the window, so one lost
+// Pong never evicts a healthy Controller. Matches the cadence the rest of the
+// fleet uses (cerebrum-nb, the Query WS client, acp1/acp2 staleness).
+const (
+	DefaultWSPingInterval = 30 * time.Second
+	DefaultWSIdleTimeout  = 90 * time.Second
+)
+
+// SetWSKeepAlive tunes subscriber-socket liveness. ping <= 0 stops pinging;
+// idle <= 0 stops reaping. Passing 0 for either selects its default.
+//
+// Turning pinging off while leaving reaping on is a footgun: with no traffic
+// of our own, a one-way Query WS is silent by design and every healthy
+// subscriber would be evicted. Guard against it by disabling both.
+func (m *SubscriptionManager) SetWSKeepAlive(ping, idle time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.wsPing, m.wsIdle = ping, idle
+}
+
+// wsKeepAlive resolves the configured cadence, expanding 0 to the defaults
+// and clamping the ping-off-but-reap-on combination to fully off.
+func (m *SubscriptionManager) wsKeepAlive() (ping, idle time.Duration) {
+	m.mu.Lock()
+	ping, idle = m.wsPing, m.wsIdle
+	m.mu.Unlock()
+
+	if ping == 0 {
+		ping = DefaultWSPingInterval
+	}
+	if idle == 0 {
+		idle = DefaultWSIdleTimeout
+	}
+	if ping < 0 {
+		ping = 0
+	}
+	if idle < 0 {
+		idle = 0
+	}
+	// No pings means no inbound traffic to prove life on a one-way socket;
+	// reaping then would evict healthy subscribers. Disable both together.
+	if ping == 0 {
+		idle = 0
+	}
+	return ping, idle
 }

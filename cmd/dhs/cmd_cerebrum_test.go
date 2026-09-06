@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 	"os"
-	"time"
 	"strings"
 	"testing"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 )
@@ -419,6 +419,7 @@ func TestByNameHintNamesTheSuspect(t *testing.T) {
 		t.Error("nil error must stay nil")
 	}
 }
+
 // TestWatchObjectListGrammar: --object accepts one path, a
 // ';'-separated list (the same grammar --path already uses in
 // export/extract), or "GROUP.*" for every leaf under a group.
@@ -459,6 +460,7 @@ func TestWatchObjectListGrammar(t *testing.T) {
 		t.Error("an all-empty --object should be refused")
 	}
 }
+
 // TestCerebrumDMRowMatchesGenericWatch pins the Tree/DM layout so an
 // NB watch reads like `dhs watch` on acp1/acp2. One grammar everywhere
 // is the point of the Tree/DM template (docs/protocols/verbs.md 12b);
@@ -546,6 +548,7 @@ func TestTruncatePathKeepsBothEnds(t *testing.T) {
 		t.Errorf("short path was modified: %q", got)
 	}
 }
+
 // TestNBNodeClassification pins the NB group/leaf classifier that drives
 // the DM walk's descent. Availability is never the test (a valueless leaf
 // like Last_Error is available=0, but so is a group handle); the real
@@ -572,10 +575,10 @@ func TestNBNodeClassification(t *testing.T) {
 
 	// Non-scalar rows worth obtaining (could be nodes).
 	nodes := []codec.DeviceObjectValue{
-		{Object: "io.handle", DataType: ""},                                                  // typeless handle
-		{Object: "io.sdi", DataType: "STRING", Available: true, Value: "uuid-a,uuid-b,uuid"}, // CSV summary node
+		{Object: "io.handle", DataType: ""},                                                                    // typeless handle
+		{Object: "io.sdi", DataType: "STRING", Available: true, Value: "uuid-a,uuid-b,uuid"},                   // CSV summary node
 		{Object: "io.one", DataType: "STRING", Available: true, Value: "8fd150f9-883f-421c-b568-808e5fbf9712"}, // single-child list (bare UUID)
-		{Object: "io.empty", DataType: "STRING", Available: false, Value: ""},                // empty STRING handle
+		{Object: "io.empty", DataType: "STRING", Available: false, Value: ""},                                  // empty STRING handle
 	}
 	for _, ov := range nodes {
 		if nbScalarLeaf(ov) {
@@ -592,6 +595,7 @@ func TestNBNodeClassification(t *testing.T) {
 		t.Errorf("plain STRING leaf %q must not be re-obtained as a node", plain.Value)
 	}
 }
+
 // TestConstraintsSurviveToTheWatch: the wire carries MIN/MAX/STEP and
 // ENUM_LIST on the same row as the value, and the watch was dropping
 // them. They are the difference between reading a device and being
@@ -620,6 +624,7 @@ func TestConstraintsSurviveToTheWatch(t *testing.T) {
 		t.Errorf("enum should win over range, got %q", got)
 	}
 }
+
 // TestWatchReportsChangesNotState pins what a watch IS.
 //
 // A Cerebrum SUBSCRIBE answers with the object's CURRENT value, and
@@ -677,6 +682,7 @@ func TestWatchReportsChangesNotState(t *testing.T) {
 		t.Error("a value going unavailable is a change")
 	}
 }
+
 // TestOnlyIsAppliedDuringTheWalk: the filter has to narrow the
 // expansion as it happens, not afterwards. Applied after,
 // "Nodes.** --label SubID" builds the whole tree first and trips the

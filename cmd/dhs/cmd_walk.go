@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dhs/internal/export"
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/acp2/consumer"
+	"dhs/internal/consumer"
 	"dhs/internal/emberplus/consumer"
+	"dhs/internal/export"
 )
 
 func runWalk(ctx context.Context, args []string) error {
@@ -310,4 +310,3 @@ func writeJSONFile(path string, v any) error {
 	}
 	return nil
 }
-

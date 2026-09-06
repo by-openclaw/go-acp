@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export"
-	"dhs/internal/consumer"
 )
 
 // fakePlugin satisfies the subset of consumer.Protocol that the watch
@@ -29,7 +29,7 @@ type fakePlugin struct {
 }
 
 func (f *fakePlugin) Connect(ctx context.Context, ip string, port int) error { return nil }
-func (f *fakePlugin) Disconnect() error                                       { return f.disconnect }
+func (f *fakePlugin) Disconnect() error                                      { return f.disconnect }
 func (f *fakePlugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	return consumer.DeviceInfo{}, nil
 }

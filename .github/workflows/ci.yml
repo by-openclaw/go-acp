@@ -167,6 +167,7 @@ jobs:
           check internal/osc/provider 100
           check internal/cerebrum-nb/codec 100
           check internal/transport/ws 100
+          check internal/transport/http 100
           check internal/cerebrum-nb/consumer 100
           exit $fail
 

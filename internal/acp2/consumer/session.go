@@ -52,7 +52,7 @@ type Session struct {
 	// real socket break is detected by the read loop independently"; that
 	// assumption only holds once the read loop actually has a deadline.
 	// This is what makes the existing warm-restart reconnect fire.
-	idleTimeout atomic.Int64 // time.Duration
+	idle transport.Idle
 
 	// mtid pool: 1-255 available, 0 reserved for announces.
 	mtidMu   sync.Mutex
@@ -458,9 +458,9 @@ func (s *Session) readLoop(conn net.Conn) {
 	defer s.failWaiters() // LIFO: waiters are swept before done closes
 
 	for {
-		if d := s.IdleTimeout(); d > 0 {
-			_ = conn.SetReadDeadline(time.Now().Add(d))
-		}
+		// Arm via the shared bound: Arm and SetOn share a mutex there, so a
+		// concurrent tighten cannot be clobbered by a stale value read here.
+		_ = s.idle.Arm(conn)
 		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
 			// ReadAN2Frame wraps the underlying I/O error with %w, so a bare
@@ -890,24 +890,11 @@ func (s *Session) Done() <-chan struct{} {
 // the previous (or absent) deadline picks the new bound up at once, rather
 // than waiting out a deadline that may never expire.
 func (s *Session) SetIdleTimeout(d time.Duration) {
-	if d < 0 {
-		d = 0
-	}
-	s.idleTimeout.Store(int64(d))
 	s.mu.Lock()
 	conn := s.conn
 	s.mu.Unlock()
-	if conn == nil {
-		return
-	}
-	if d > 0 {
-		_ = conn.SetReadDeadline(time.Now().Add(d))
-	} else {
-		_ = conn.SetReadDeadline(time.Time{})
-	}
+	_ = s.idle.SetOn(conn, d)
 }
 
 // IdleTimeout reports the currently armed per-frame read deadline.
-func (s *Session) IdleTimeout() time.Duration {
-	return time.Duration(s.idleTimeout.Load())
-}
+func (s *Session) IdleTimeout() time.Duration { return s.idle.Get() }

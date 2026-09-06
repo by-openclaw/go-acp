@@ -13,17 +13,18 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
-	"net/http"
+	stdhttp "net/http"
 	"time"
 
 	"dhs/internal/ccm/codec"
+	"dhs/internal/transport"
+	transporthttp "dhs/internal/transport/http"
 )
 
 // Client talks to one Neuron REST API.
 type Client struct {
 	base string
-	http *http.Client
+	http *transporthttp.Client
 }
 
 // Options configures the client.
@@ -38,38 +39,54 @@ type Options struct {
 	VerifyTLS bool
 }
 
+// MaxBody caps a single Neuron response. The api.yml OpenAPI document is
+// the largest thing this client fetches — a few hundred KiB on BRIDGE
+// 6.7.4 — so 8 MiB leaves room for a much richer firmware while still
+// refusing a device that answers with something absurd.
+const MaxBody = 8 << 20
+
 // New builds a client.
 func New(opts Options) *Client {
 	if opts.Timeout == 0 {
 		opts.Timeout = 8 * time.Second
 	}
-	skip := !opts.VerifyTLS
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skip}, //nolint:gosec // lab media-plane device, self-signed by design; VerifyTLS opts in
+	// Posture only — the *tls.Config is built once in the transport layer,
+	// so this client picks up transport.MinTLSVersion instead of the
+	// version-floor-less config it used to assemble here. Skip-verify stays
+	// the default because the media-plane device is self-signed by design;
+	// VerifyTLS opts back in.
+	cfg, err := transport.TLSOptions{
+		Enable:   true,
+		Insecure: !opts.VerifyTLS,
+	}.Client()
+	if err != nil {
+		// Unreachable: no CA or client-certificate file is configured, and
+		// those are Client's only failure modes. Falling back to a verifying
+		// config is the safe answer if that ever stops being true.
+		cfg = &tls.Config{MinVersion: transport.MinTLSVersion}
 	}
 	return &Client{
 		base: "https://" + opts.Host + "/api/v1",
-		http: &http.Client{Timeout: opts.Timeout, Transport: tr},
+		http: &transporthttp.Client{
+			HTTP: &stdhttp.Client{
+				Timeout:   opts.Timeout,
+				Transport: &stdhttp.Transport{TLSClientConfig: cfg},
+			},
+			MaxBody: MaxBody,
+		},
 	}
 }
 
 // get fetches one API path (relative to /api/v1) as raw bytes.
+//
+// Raw rather than decoded because the paths this client walks are not all
+// JSON — /docs/api.yml is the device's own OpenAPI document — and the JSON
+// ones are decoded by the ccm codec, which absorbs deviations rather than
+// failing on them.
 func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.http.Do(req)
+	body, err := c.http.GetBytes(ctx, c.base+path)
 	if err != nil {
 		return nil, fmt.Errorf("neuron GET %s: %w", path, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("neuron GET %s: HTTP %d", path, resp.StatusCode)
 	}
 	return body, nil
 }

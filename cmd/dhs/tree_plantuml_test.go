@@ -61,10 +61,10 @@ func TestRenderPlantUML_DepthEncodedByStars(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"* device",                            // synthetic root
+		"* device",                             // synthetic root
 		"** dhs-emberplus-integration [oid=1]", // top-level node
-		"*** identity [oid=1.0]",              // child node
-		"**** product (string) = ",            // leaf with kind + value
+		"*** identity [oid=1.0]",               // child node
+		"**** product (string) = ",             // leaf with kind + value
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing line %q in:\n%s", want, out)

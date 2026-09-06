@@ -78,6 +78,9 @@ type Client struct {
 	// would tear down a perfectly good link on a quiet router.
 	idleTimeout atomic.Int64 // time.Duration
 
+	// armMu serialises arming the read deadline against SetIdleTimeout.
+	armMu sync.Mutex
+
 	// Observer callbacks — stdlib-only hooks for higher layers to plug
 	// in traffic capture, metrics, or compliance counters without
 	// coupling this package to any specific implementation.
@@ -345,9 +348,7 @@ func (c *Client) readLoop(bufSize int) {
 	tmp := make([]byte, bufSize)
 
 	for {
-		if d := c.IdleTimeout(); d > 0 {
-			_ = c.conn.SetReadDeadline(time.Now().Add(d))
-		}
+		c.armRead(c.conn)
 		n, err := c.conn.Read(tmp)
 		if err != nil {
 			c.logger.Debug("probel-sw02p reader exit", slog.String("err", err.Error()))
@@ -452,10 +453,25 @@ func (c *Client) SetIdleTimeout(d time.Duration) {
 	if d < 0 {
 		d = 0
 	}
-	c.idleTimeout.Store(int64(d))
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
+
+	// armMu makes "store the value" and "push it onto the socket" one step
+	// against the reader's own arming. Without it they interleave and the
+	// reader can win with a STALE value:
+	//
+	//	reader: d := IdleTimeout()          -> old, long value
+	//	here:   store short; SetReadDeadline(short)
+	//	reader: SetReadDeadline(old)        -> overwrites the short one
+	//
+	// The reader then blocks for the long window while the caller believes
+	// it tightened the bound. This mirrors transport.Idle, which the
+	// consumer packages use; codec/ is stdlib-only (ADR-0006) so it cannot
+	// import it and keeps its own copy of the discipline.
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	c.idleTimeout.Store(int64(d))
 	if conn == nil {
 		return
 	}
@@ -466,7 +482,28 @@ func (c *Client) SetIdleTimeout(d time.Duration) {
 	}
 }
 
+// armRead re-arms the per-read deadline before a read, under armMu so a
+// concurrent SetIdleTimeout cannot be clobbered by a stale value read here.
+// Disabled is a no-op: the socket deadline is not exclusively ours.
+func (c *Client) armRead(conn net.Conn) {
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	if d := time.Duration(c.idleTimeout.Load()); d > 0 && conn != nil {
+		_ = conn.SetReadDeadline(time.Now().Add(d))
+	}
+}
+
 // IdleTimeout reports the currently armed per-read deadline.
 func (c *Client) IdleTimeout() time.Duration {
 	return time.Duration(c.idleTimeout.Load())
 }
+
+// ReaderDone is closed when the reader goroutine exits — i.e. when this
+// client's session is over, whether from a peer close, an I/O error, or the
+// idle deadline firing.
+//
+// It is the signal a supervisor blocks on to drive reconnection, mirroring
+// the role Session.Done() plays in the acp2 consumer. Exposing it (rather
+// than polling IsOnline) means a lost link is acted on the moment it is
+// detected instead of at the next poll tick.
+func (c *Client) ReaderDone() <-chan struct{} { return c.readerDone }

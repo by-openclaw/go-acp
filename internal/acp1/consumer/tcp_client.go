@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"math/rand"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"dhs/internal/acp1/codec"
@@ -61,21 +60,14 @@ type TCPClient struct {
 	// connection (a NAT/firewall drop with no RST): closing the socket
 	// locally unblocks it, but a DEAD PEER never does, so the reader parks
 	// in the kernel and the watch goes quiet with no error to report.
-	idleTimeout atomic.Int64 // time.Duration
+	idle transport.Idle
 }
 
 // SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-read deadline.
-func (c *TCPClient) SetIdleTimeout(d time.Duration) {
-	if d < 0 {
-		d = 0
-	}
-	c.idleTimeout.Store(int64(d))
-}
+func (c *TCPClient) SetIdleTimeout(d time.Duration) { c.idle.Set(d) }
 
 // IdleTimeout reports the currently armed per-read deadline.
-func (c *TCPClient) IdleTimeout() time.Duration {
-	return time.Duration(c.idleTimeout.Load())
-}
+func (c *TCPClient) IdleTimeout() time.Duration { return c.idle.Get() }
 
 // NewTCPClient takes an already-connected TCPConn and starts the
 // multiplexing reader goroutine. The caller retains ownership of the
@@ -332,3 +324,9 @@ func (c *TCPClient) readerLoop() {
 		}
 	}
 }
+
+// ReaderDone is closed when the reader goroutine exits — the session is over,
+// whether from a peer close, an I/O error, or the idle deadline firing. A
+// supervisor blocks on it to drive reconnection (mirrors acp2's
+// Session.Done()).
+func (c *TCPClient) ReaderDone() <-chan struct{} { return c.readerDone }

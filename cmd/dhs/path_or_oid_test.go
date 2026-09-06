@@ -13,17 +13,17 @@ import (
 // orthogonal (plugin:object-not-found, surfaced by the resolver).
 func TestValidatePathOrOID_AcceptedForms(t *testing.T) {
 	cases := []string{
-		"1.6.1",                                  // OID
-		"1",                                      // root OID
-		"1.0.4",                                  // identity.dtdVersion
-		"1.6.10",                                 // stream parameter
-		"identity.types.vInteger",                // dotted label
-		"router.oneToN.matrix",                   // multi-segment label
-		"vInteger",                               // single-segment label
-		"label-with-hyphen",                      // label with hyphen
-		"dhs-emberplus-integration.types.vEnum",  // hyphen + dot
-		"label_with_underscore",                  // label with underscore
-		"1.label.2",                              // mixed digit/label/digit
+		"1.6.1",                                 // OID
+		"1",                                     // root OID
+		"1.0.4",                                 // identity.dtdVersion
+		"1.6.10",                                // stream parameter
+		"identity.types.vInteger",               // dotted label
+		"router.oneToN.matrix",                  // multi-segment label
+		"vInteger",                              // single-segment label
+		"label-with-hyphen",                     // label with hyphen
+		"dhs-emberplus-integration.types.vEnum", // hyphen + dot
+		"label_with_underscore",                 // label with underscore
+		"1.label.2",                             // mixed digit/label/digit
 	}
 	for _, in := range cases {
 		if err := validatePathOrOID(in); err != nil {

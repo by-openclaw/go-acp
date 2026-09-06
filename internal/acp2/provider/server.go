@@ -12,6 +12,7 @@ import (
 	"dhs/internal/acp2/codec"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete provider — lets
@@ -143,6 +144,12 @@ func (s *server) acceptLoop(ln net.Listener) error {
 			close(s.stopped)
 			return err
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever — the inbound twin of the consumer-side
+		// stall. Applied here rather than at bind time so an injected
+		// listener gets it too.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go func() {

@@ -131,7 +131,10 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 		rec.WriteMeta(p.CaptureMeta) // nil-safe; ADR-0028 line one
 	}
 
-	sess, err := newSession(ctx, p.logger, url, p.UseTLS, p.InsecureSkipVerify, rec)
+	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
+		Enable:   p.UseTLS,
+		Insecure: p.InsecureSkipVerify,
+	}, rec)
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err

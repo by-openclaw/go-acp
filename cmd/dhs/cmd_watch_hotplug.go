@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export"
-	"dhs/internal/consumer"
 )
 
 // hotPlugEnricher reacts to per-slot frame-status transitions in the
@@ -35,7 +35,7 @@ type hotPlugEnricher struct {
 	mu             sync.Mutex
 	prev           map[int]consumer.SlotStatus
 	prevFP         map[int]consumer.CardIdentity // last-seen fingerprint per slot
-	resolver       devicemodel.Resolver                // nil ⇒ no DM-library lookups
+	resolver       devicemodel.Resolver          // nil ⇒ no DM-library lookups
 	autoWalkOnPlug bool
 
 	// outMu serialises writes to out. Separate from mu so the

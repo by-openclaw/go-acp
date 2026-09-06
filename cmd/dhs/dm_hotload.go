@@ -17,7 +17,7 @@ import (
 // Return values:
 //   - (true, nil)  : cache hit + tree successfully seeded
 //   - (false, nil) : cache miss; caller falls back to wire walk
-//                    (unless noWalk, in which case error is returned)
+//     (unless noWalk, in which case error is returned)
 //   - (false, err) : configuration/IO error (caller aborts)
 //
 // dmIdentity empty → no-op (false, nil). Lets verbs pass their flag

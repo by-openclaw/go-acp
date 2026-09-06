@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/transport"
 )
 
 // server is the provider runtime. One listener, many sessions, a shared
@@ -134,6 +135,11 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 			s.logger.Debug("accept", slog.String("err", err.Error()))
 			continue
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever. Applied in the accept loop rather than at
+		// bind time so ServeListener's injected listener gets it too.
+		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go sess.run(ctx)

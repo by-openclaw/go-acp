@@ -176,9 +176,9 @@ func TestRenderCatalogueJSONIsValid(t *testing.T) {
 // TestParseProbelByte covers hex/decimal accept + reject.
 func TestParseProbelByte(t *testing.T) {
 	cases := []struct {
-		in       string
-		want     uint8
-		wantOk   bool
+		in     string
+		want   uint8
+		wantOk bool
 	}{
 		{"0", 0, true},
 		{"255", 255, true},

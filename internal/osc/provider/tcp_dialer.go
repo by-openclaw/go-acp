@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"dhs/internal/osc/codec"
+	"dhs/internal/transport"
 )
 
 // DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
@@ -52,10 +53,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("osc tcp dial %s: %w", key, err)
 	}
-	if tc, ok := c.(*net.TCPConn); ok {
-		_ = tc.SetKeepAlive(true)
-		_ = tc.SetKeepAlivePeriod(DefaultTCPKeepalivePeriod)
-	}
+	_ = transport.ApplyTCPKeepalive(c, DefaultTCPKeepalivePeriod)
 	d.conns[key] = c
 	return c, nil
 }
