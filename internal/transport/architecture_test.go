@@ -79,18 +79,14 @@ var allowed = map[string]string{
 	// They already apply the shared socket policy via ApplySocketOptions;
 	// what remains is the bind itself moving to transport.ListenTCP, as the
 	// osc and tsl consumers have already done.
-	"internal/acp1/provider/tcp_server.go":     "listener bind → transport.ListenTCP",
-	"internal/acp1/provider/an2_server.go":     "listener bind → transport.ListenTCP",
-	"internal/acp1/provider/server.go":         "listener bind + UDP dial → transport",
-	"internal/acp1/provider/admin.go":          "admin listener + dial; already has an injectable dial seam",
-	"internal/acp2/provider/server.go":         "listener bind → transport.ListenTCP",
-	"internal/emberplus/provider/server.go":    "listener bind → transport.ListenTCP",
-	"internal/probel-sw02p/provider/server.go": "listener bind → transport.ListenTCP",
-	"internal/probel-sw08p/provider/server.go": "listener bind → transport.ListenTCP",
-	"internal/osc/consumer/session.go":         "UDP listener bind → transport.ListenUDP",
-	"internal/osc/provider/sender.go":          "UDP sender socket → transport",
-	"internal/tsl/consumer/session.go":         "UDP listener bind → transport.ListenUDP",
-	"internal/tsl/provider/sender.go":          "UDP sender socket → transport",
+	"internal/acp1/provider/tcp_server.go": "listener bind → transport.ListenTCP",
+	"internal/acp1/provider/an2_server.go": "listener bind → transport.ListenTCP",
+	"internal/acp1/provider/server.go":     "listener bind + UDP dial → transport",
+	"internal/acp1/provider/admin.go":      "admin listener + dial; already has an injectable dial seam",
+	"internal/osc/consumer/session.go":     "UDP listener bind → transport.ListenUDP",
+	"internal/osc/provider/sender.go":      "UDP sender socket → transport",
+	"internal/tsl/consumer/session.go":     "UDP listener bind → transport.ListenUDP",
+	"internal/tsl/provider/sender.go":      "UDP sender socket → transport",
 
 	// DEBT — the HTTP server has not been extracted from amwa yet.
 	//

@@ -3,8 +3,8 @@ package acp2
 import (
 	"testing"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
@@ -23,28 +23,28 @@ func TestTree_FlattensAndIndexesBySlot(t *testing.T) {
 	board := &canonical.Node{
 		Header: canonical.Header{
 			Number: 2, Identifier: "BOARD", OID: "1.1.2",
-			Access: canonical.AccessRead,
+			Access:   canonical.AccessRead,
 			Children: []canonical.Element{label},
 		},
 	}
 	root := &canonical.Node{
 		Header: canonical.Header{
 			Number: 1, Identifier: "ROOT_NODE_V2", OID: "1.1.1",
-			Access: canonical.AccessRead,
+			Access:   canonical.AccessRead,
 			Children: []canonical.Element{board},
 		},
 	}
 	slot1 := &canonical.Node{
 		Header: canonical.Header{
 			Number: 1, Identifier: "slot-1", OID: "1.1",
-			Access: canonical.AccessRead,
+			Access:   canonical.AccessRead,
 			Children: []canonical.Element{root},
 		},
 	}
 	exp := &canonical.Export{Root: &canonical.Node{
 		Header: canonical.Header{
 			Number: 1, Identifier: "device", OID: "1",
-			Access: canonical.AccessRead,
+			Access:   canonical.AccessRead,
 			Children: []canonical.Element{slot1},
 		},
 	}}

@@ -183,16 +183,16 @@ func TestProvider_Loopback(t *testing.T) {
 	}
 
 	reqs := [][]byte{
-		glow.EncodeGetDirectory(),                       // bare root GetDirectory
-		glow.EncodeGetDirectoryFor([]int32{1}),          // GetDirectory on root node
-		glow.EncodeGetDirectoryFor([]int32{1, 7}),       // GetDirectory on matrix (implicit subscribe)
-		glow.EncodeSubscribe([]int32{1, 5}),             // subscribe stream param
-		glow.EncodeUnsubscribe([]int32{1, 5}),           // unsubscribe
-		glow.EncodeSetValue([]int32{1, 1}, int64(42)),   // set int param
+		glow.EncodeGetDirectory(),                                                  // bare root GetDirectory
+		glow.EncodeGetDirectoryFor([]int32{1}),                                     // GetDirectory on root node
+		glow.EncodeGetDirectoryFor([]int32{1, 7}),                                  // GetDirectory on matrix (implicit subscribe)
+		glow.EncodeSubscribe([]int32{1, 5}),                                        // subscribe stream param
+		glow.EncodeUnsubscribe([]int32{1, 5}),                                      // unsubscribe
+		glow.EncodeSetValue([]int32{1, 1}, int64(42)),                              // set int param
 		glow.EncodeMatrixConnect([]int32{1, 7}, 1, []int32{1}, glow.ConnOpConnect), // matrix connect
 		glow.EncodeInvoke([]int32{1, 8}, 99, []any{int64(3), int64(4)}),            // invoke sum
-		glow.EncodeGetDirectoryFor([]int32{4, 2}),       // unknown path → replyGetDirectory error
-		glow.EncodeSetValue([]int32{9, 9, 9}, int64(1)), // set on missing oid → error path
+		glow.EncodeGetDirectoryFor([]int32{4, 2}),                                  // unknown path → replyGetDirectory error
+		glow.EncodeSetValue([]int32{9, 9, 9}, int64(1)),                            // set on missing oid → error path
 	}
 	drive(t, srv, reqs)
 
@@ -380,8 +380,8 @@ func TestEncodeValue_AllTypes(t *testing.T) {
 		{canonical.ParamBoolean, 1, false},
 		{canonical.ParamOctets, []byte{1}, true},
 		{canonical.ParamOctets, "nope", false},
-		{canonical.ParamTrigger, nil, false},  // nil short-circuit
-		{"unknown-type", int64(1), false},     // unmapped type
+		{canonical.ParamTrigger, nil, false}, // nil short-circuit
+		{"unknown-type", int64(1), false},    // unmapped type
 	}
 	for _, c := range cases {
 		if _, ok := encodeValue(c.typ, c.v); ok != c.want {

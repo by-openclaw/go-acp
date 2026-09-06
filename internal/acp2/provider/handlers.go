@@ -1,9 +1,9 @@
 package acp2
 
 import (
+	"dhs/internal/acp2/codec"
 	"fmt"
 	"log/slog"
-	"dhs/internal/acp2/codec"
 )
 
 // Version constants advertised by this provider.
@@ -55,10 +55,10 @@ func (s *session) dispatch(f *codec.AN2Frame) {
 // handleAN2Internal implements the proto=0 handshake a consumer runs
 // before sending any ACP2 traffic. Reply byte layouts per spec:
 //
-//	1. GetVersion           §3.3.1 -> [0, ver_hi, ver_lo]      ver=u16BE
-//	2. GetDeviceInfo        §3.3.2 -> [1, slot_count]          dlen=2
-//	3. GetSlotInfo(slot)    §3.3.3 -> [2, status, num, protos] dlen=3+num
-//	4. EnableProtocolEvents §3.3.4 -> [3]                      dlen=1
+//  1. GetVersion           §3.3.1 -> [0, ver_hi, ver_lo]      ver=u16BE
+//  2. GetDeviceInfo        §3.3.2 -> [1, slot_count]          dlen=2
+//  3. GetSlotInfo(slot)    §3.3.3 -> [2, status, num, protos] dlen=3+num
+//  4. EnableProtocolEvents §3.3.4 -> [3]                      dlen=1
 //
 // All replies mirror the request's AN2 mtid + slot per spec §3.3 so
 // the consumer's waiter table correlates them cleanly.

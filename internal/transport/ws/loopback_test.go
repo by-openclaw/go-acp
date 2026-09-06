@@ -773,7 +773,10 @@ func bufioReader(b []byte) *bufio.Reader { return bufio.NewReader(bytes.NewReade
 
 type writeCollector struct{ buf []byte }
 
-func (w *writeCollector) Write(p []byte) (int, error) { w.buf = append(w.buf, p...); return len(p), nil }
+func (w *writeCollector) Write(p []byte) (int, error) {
+	w.buf = append(w.buf, p...)
+	return len(p), nil
+}
 
 func bufioWriterBytes(fn func(*writeCollector)) []byte {
 	w := &writeCollector{}

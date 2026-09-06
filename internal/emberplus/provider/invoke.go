@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/ber"
 	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
 )
 
 // FunctionImpl is a provider-side callback bound to a canonical Function.
@@ -17,7 +17,7 @@ type FunctionImpl func(args []any) ([]any, error)
 
 // functionRegistry maps function OID -> callback. Accessed under s.mu.
 type functionRegistry struct {
-	mu  sync.RWMutex
+	mu    sync.RWMutex
 	byOID map[string]FunctionImpl
 }
 

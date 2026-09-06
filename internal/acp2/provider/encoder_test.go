@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 // helper â€” round-trips a tree through buildProperties + EncodeProperties
@@ -52,7 +52,7 @@ func TestBuildProperties_Node(t *testing.T) {
 		codec.PIDObjectType: true, codec.PIDLabel: true, codec.PIDChildren: true,
 	}
 	notWant := map[uint8]bool{
-		codec.PIDAccess:        true, // pid 3 â€” Node row blank
+		codec.PIDAccess:     true, // pid 3 â€” Node row blank
 		codec.PIDEventDelay: true, // pid 4 â€” Node row blank
 	}
 	for _, p := range got {
@@ -83,7 +83,7 @@ func TestBuildProperties_NumberS32(t *testing.T) {
 		Header: canonical.Header{
 			Number: 5, Identifier: "Level", Access: canonical.AccessReadWrite,
 		},
-		Type: canonical.ParamInteger,
+		Type:  canonical.ParamInteger,
 		Value: int64(-6), Minimum: int64(-60), Maximum: int64(12),
 		Step: int64(1), Default: int64(0),
 		Unit: &unit,

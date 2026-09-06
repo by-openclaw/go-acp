@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 // entry is one object in the served tree. Holds the canonical source
@@ -17,13 +17,13 @@ import (
 type entry struct {
 	objID    uint32
 	slot     uint8
-	parent   uint32             // 0 for the slot root (ROOT_NODE_V2)
+	parent   uint32 // 0 for the slot root (ROOT_NODE_V2)
 	label    string
-	access   uint8              // bit 0 read, bit 1 write (spec pid=3)
-	objType  codec.ACP2ObjType  // node / number / enum / ipv4 / string / preset
-	numType  codec.NumberType   // meaningful for codec.ObjTypeNumber, codec.ObjTypeEnum (u32 index)
-	children []uint32           // pid=14 u32[] — direct child obj-ids
-	node     *canonical.Node    // set when objType=node
+	access   uint8                // bit 0 read, bit 1 write (spec pid=3)
+	objType  codec.ACP2ObjType    // node / number / enum / ipv4 / string / preset
+	numType  codec.NumberType     // meaningful for codec.ObjTypeNumber, codec.ObjTypeEnum (u32 index)
+	children []uint32             // pid=14 u32[] — direct child obj-ids
+	node     *canonical.Node      // set when objType=node
 	param    *canonical.Parameter // set for leaf types
 	// presetDepth is the N of a preset child's idx list (pid 7). Zero
 	// means "not a preset" — every other object type leaves this at 0.
@@ -202,14 +202,14 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			return fmt.Errorf("obj %d (%q): %w", id, x.Identifier, err)
 		}
 		e := &entry{
-			objID:       id,
-			slot:        slot,
-			parent:      parent,
-			label:       wireLabel(x.Identifier),
-			access:      deriveAccess(x.Access),
-			objType:     objType,
-			numType:     numType,
-			param:       x,
+			objID:         id,
+			slot:          slot,
+			parent:        parent,
+			label:         wireLabel(x.Identifier),
+			access:        deriveAccess(x.Access),
+			objType:       objType,
+			numType:       numType,
+			param:         x,
 			presetDepth:   presetDepthHint(x),
 			presetIdxList: presetIdxHint(x),
 		}

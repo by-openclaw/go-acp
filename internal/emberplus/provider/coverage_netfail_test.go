@@ -45,11 +45,11 @@ func (c *failConn) Close() error {
 	return nil
 }
 
-func (c *failConn) LocalAddr() net.Addr                { return fakeAddr{} }
-func (c *failConn) RemoteAddr() net.Addr               { return fakeAddr{} }
-func (c *failConn) SetDeadline(time.Time) error        { return nil }
-func (c *failConn) SetReadDeadline(time.Time) error    { return nil }
-func (c *failConn) SetWriteDeadline(time.Time) error   { return nil }
+func (c *failConn) LocalAddr() net.Addr              { return fakeAddr{} }
+func (c *failConn) RemoteAddr() net.Addr             { return fakeAddr{} }
+func (c *failConn) SetDeadline(time.Time) error      { return nil }
+func (c *failConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *failConn) SetWriteDeadline(time.Time) error { return nil }
 
 type fakeAddr struct{}
 
@@ -184,7 +184,7 @@ func TestFindCommandInElements_MatrixChildren(t *testing.T) {
 	cmd := &glow.Command{Number: glow.CmdGetDirectory}
 	els := []glow.Element{{
 		Matrix: &glow.Matrix{
-			Path: []int32{1, 2},
+			Path:     []int32{1, 2},
 			Children: []glow.Element{{Command: cmd}},
 		},
 	}}

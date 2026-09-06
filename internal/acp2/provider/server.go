@@ -100,10 +100,17 @@ func (s *server) Metrics() *metrics.Connector { return s.metrics }
 // Serve binds addr (e.g. "0.0.0.0:2072") and blocks until ctx is
 // cancelled or a fatal listen error occurs.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	ln, err := net.Listen("tcp4", addr)
+	// tcp4 preserved: acp2 binds IPv4-only.
+	//
+	// The bind goes through transport; the socket policy is applied by the
+	// accept loop below, which is why the embedded listener is used rather
+	// than the wrapper — the wrapper would apply it a second time, and the
+	// accept loop is the arm that also covers a listener injected by a test.
+	tln, err := transport.ListenTCP(ctx, "tcp4", addr, transport.SocketOptions{})
 	if err != nil {
 		return fmt.Errorf("acp2 provider: listen %q: %w", addr, err)
 	}
+	ln := tln.Listener
 
 	s.mu.Lock()
 	s.listener = ln

@@ -2,10 +2,10 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/acp2/codec"
 	"log/slog"
 	"math"
 	"time"
-	"dhs/internal/acp2/codec"
 )
 
 // RunAnnounceDemo mutates slot=1 / obj=18 (GainFloat) every `interval`

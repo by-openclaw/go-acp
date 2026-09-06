@@ -460,9 +460,11 @@ func TestServe_AcceptHardError(t *testing.T) {
 // non-net.ErrClosed error, driving acceptLoop's hard-error return arm.
 type hardErrListener struct{}
 
-func (*hardErrListener) Accept() (net.Conn, error) { return nil, errors.New("synthetic accept failure") }
-func (*hardErrListener) Close() error              { return nil }
-func (*hardErrListener) Addr() net.Addr            { return dummyAddr{} }
+func (*hardErrListener) Accept() (net.Conn, error) {
+	return nil, errors.New("synthetic accept failure")
+}
+func (*hardErrListener) Close() error   { return nil }
+func (*hardErrListener) Addr() net.Addr { return dummyAddr{} }
 
 type dummyAddr struct{}
 
