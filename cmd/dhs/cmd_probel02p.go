@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +20,10 @@ import (
 // connect, protect-*, dual-status, router-config) follow the
 // per-command file pattern from SW-P-08.
 func runProbelsw02p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip + stash before verb dispatch.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -352,7 +354,12 @@ func probelSW02Subcommand(args []string) string {
 // dialProbelSW02 mirrors dialProbel for sw08p — connect-or-die helper
 // returning a connected plugin + a deferred-close callback.
 func dialProbelSW02(ctx context.Context, addr string) (*probelsw02proto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelsw02proto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw02p", host, "session")
 	f := &probelsw02proto.Factory{}
 	p := f.New(logger).(*probelsw02proto.Plugin)
 	if rec, ok := ctx.Value(probelSW02RecorderKey{}).(*transport.Recorder); ok && rec != nil {
@@ -361,14 +368,11 @@ func dialProbelSW02(ctx context.Context, addr string) (*probelsw02proto.Plugin, 
 	if mc, ok := ctx.Value(probelSW02MatrixConfigKey{}).(probelsw02proto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelsw02proto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
 }
 
 // runProbelsw02pWatch keeps the session open and prints every async

@@ -37,6 +37,9 @@ import (
 
 // runOSCConsumer dispatches `dhs consumer osc-vXX <verb> [args]`.
 func runOSCConsumer(ctx context.Context, proto string, args []string) error {
+	var lf *logFlags // uniform logging flags (epic #987), stripped before dispatch
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
 	// the verb's own FlagSet (#462).
 	if len(args) == 0 || isHelpToken(args[0]) {
@@ -61,6 +64,9 @@ func runOSCConsumer(ctx context.Context, proto string, args []string) error {
 
 // runOSCProducer dispatches `dhs producer osc-vXX <verb> [args]`.
 func runOSCProducer(ctx context.Context, proto string, args []string) error {
+	var lf *logFlags // uniform logging flags (epic #987), stripped before dispatch
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	if len(args) == 0 || isHelpToken(args[0]) {
 		printOSCProducerHelp(proto)
 		return nil
@@ -91,7 +97,9 @@ func runOSCWatch(ctx context.Context, proto string, args []string) error {
 	if err != nil {
 		return err
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, proto, fmt.Sprintf("%s.%d", transport, port), "watch")
+	defer logClean()
 	plugin := newOSCConsumer(proto, logger)
 
 	switch transport {
@@ -310,7 +318,9 @@ func runOSCServe(ctx context.Context, proto string, args []string) error {
 	if err := requireVersion(proto, transport); err != nil {
 		return err
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, proto, fmt.Sprintf("%s.%d", transport, port), "serve")
+	defer logClean()
 	plugin := newOSCConsumer(proto, logger)
 
 	switch transport {

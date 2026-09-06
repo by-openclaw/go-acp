@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +23,11 @@ import (
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
 func runProbelsw08p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip them here so every verb's own
+	// FlagSet is unaffected; consumerLogger reads them back from ctx.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -185,7 +188,12 @@ space-separated lowercase-hex line for debugging:
 // the probel root dispatcher) it is attached before Connect so the
 // JSONL file captures the full TX/RX stream.
 func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw08p", host, "session")
 	f := &probelproto.Factory{}
 	p := f.New(logger).(*probelproto.Plugin)
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
@@ -194,14 +202,11 @@ func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), 
 	if mc, ok := ctx.Value(probelMatrixConfigKey{}).(probelproto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
 }
 
 // probelTarget resolves the wire (matrix, level) a read verb should query.
