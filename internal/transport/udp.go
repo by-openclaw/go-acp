@@ -121,6 +121,14 @@ func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}
+		// Windows reports an oversized datagram as a read FAILURE
+		// (WSAEMSGSIZE) where Unix truncates and lets the n > maxSize check
+		// below catch it. Translate, so the same malformed packet is the
+		// same typed error on every OS the fleet runs.
+		if isMessageTooLong(err) {
+			return nil, fmt.Errorf("%w: udp datagram larger than max %d",
+				ErrOversizedDatagram, maxSize)
+		}
 		return nil, fmt.Errorf("%w: udp read: %v", ErrReadFailed, err)
 	}
 	if n > maxSize {
