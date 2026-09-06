@@ -84,6 +84,9 @@ func (s *session) run(ctx context.Context) {
 		// read (including keepalive) keeps the session alive — only
 		// truly silent peers get swept.
 		s.lastActive.Store(time.Now().UnixNano())
+		if s.srv != nil && s.srv.metrics != nil {
+			s.srv.metrics.ObserveCmdRx(frame.Command, len(frame.Payload))
+		}
 		if err := s.handleFrame(frame); err != nil {
 			s.logger.Debug("handle frame", slog.String("err", err.Error()))
 			// non-fatal — keep reading.
@@ -125,6 +128,11 @@ func (s *session) writePump(ctx context.Context) {
 // FlagLast for larger). Fixes "frame too large" rejection observed
 // against the 1000×1000 dynamic-matrix walk reply.
 func (s *session) writeEmBERChunks(payload []byte) error {
+	// Counted once per logical message rather than per S101 chunk: the
+	// chunking is a transport detail, and a consumer sees one message.
+	if s.srv != nil && s.srv.metrics != nil {
+		s.srv.metrics.ObserveCmdTx(s101.CmdEmBER, len(payload), 0)
+	}
 	if len(payload) <= maxS101Payload {
 		return s.writer.WriteFrame(&s101.Frame{
 			Slot:    s101.SlotDefault,
@@ -201,7 +209,13 @@ func (s *session) handleFrame(f *s101.Frame) error {
 		// "Unexpected message: msg=1" and rejected.
 		// NewKeepAliveResponse sets MsgType=MsgEmBER(0x0E) like every
 		// shipping S101 stack expects (libember, EmberViewer, Lawo).
-		return s.writer.WriteFrame(s101.NewKeepAliveResponse())
+		if err := s.writer.WriteFrame(s101.NewKeepAliveResponse()); err != nil {
+			return err
+		}
+		if s.srv != nil && s.srv.metrics != nil {
+			s.srv.metrics.ObserveCmdTx(s101.CmdKeepAliveResp, 0, 0)
+		}
+		return nil
 	case s101.CmdKeepAliveResp:
 		return nil
 	case s101.CmdEmBER:

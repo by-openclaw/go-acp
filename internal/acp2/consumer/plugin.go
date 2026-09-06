@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 	"encoding/binary"
 	"fmt"
@@ -37,15 +38,27 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p.Configure(deps.Net, acp2StaleAfter)
+	return p
 }
 
 // Plugin is the ACP2 Protocol implementation. One instance handles one
 // device. Internally it holds an AN2 Session for transport, a Walker for
 // tree traversal, and per-slot caches of walked trees.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented:
+	// what is ACP2-specific is only the stale window and the time
+	// source, which Connect hands over.
+	consumer.Health
+
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected.
+	net transport.Net
+
+	// metrics is supplied rather than created.
+	metrics *metrics.Connector
 
 	mu      sync.Mutex
 	session *Session
@@ -250,6 +263,16 @@ func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
 	p.mu.Unlock()
 }
 
+// Metrics returns the connector's counter set — frames and bytes in and out
+// attributed by AN2 Type, plus errors and latency. Satisfies the optional
+// interface the CLI type-asserts for --metrics-addr. Always non-nil, because
+// plugin.Deps.WithDefaults fills it.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.metrics
+}
+
 // Connect establishes the AN2/TCP connection and runs the full handshake:
 // AN2 GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents, ACP2 GetVersion.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
@@ -260,7 +283,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("acp2: already connected")
 	}
 
-	s := NewSession(p.logger)
+	s := NewSession(p.net, p.logger)
+	s.SetMetrics(p.metrics)
 	if p.recorder != nil {
 		s.SetRecorder(p.recorder)
 	}
@@ -273,6 +297,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.OnProgress = p.walkProgress
 	p.host = ip
 	p.port = port
+	p.Opened("tcp", ip, port, s)
 	if p.trees == nil {
 		// TTL=0 → never expire. ACP2 schema is immutable for the
 		// session; the cache is the only label/type source after a
@@ -314,6 +339,13 @@ func (p *Plugin) Disconnect() error {
 	err := p.session.Disconnect()
 	p.session = nil
 	p.walker = nil
+	p.Closed()
+	// One-line session summary, the same shape probel has emitted since the
+	// metrics work landed. Most consumer verbs are one-shot, so this is
+	// where the counters become visible at all.
+	if p.metrics != nil {
+		p.logger.Info("acp2 session metrics", slog.String("summary", p.metrics.Summary()))
+	}
 	if p.trees != nil {
 		p.trees.Clear()
 	}

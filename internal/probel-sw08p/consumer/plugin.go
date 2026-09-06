@@ -60,8 +60,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the given logger.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p.Configure(deps.Net, DefaultOnlineStaleAfter)
+	return p
 }
 
 // MatrixConfig holds the externally-supplied matrix shape — mirrors
@@ -89,7 +90,20 @@ type MatrixConfig struct {
 // that individual commands populate (source/destination name caches,
 // tie-line tally cache, etc.) as their PRs land.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: the
+	// only protocol-specific parts are the stale window and the metrics
+	// Connector this consumer already counts every frame through.
+	consumer.Health
+
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected, so the
+	// process owns the transport posture and a test substitutes a fake.
+	net transport.Net
+
+	// metrics is supplied rather than created, so one place can scrape
+	// every connector.
+	metrics *metrics.Connector
 
 	mu       sync.Mutex
 	host     string
@@ -212,7 +226,13 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
-	met := metrics.NewConnector()
+	// Normally injected. A Plugin built directly still gets a counter set
+	// rather than a nil Metrics(), which is what this used to guarantee by
+	// constructing its own.
+	met := p.metrics
+	if met == nil {
+		met = metrics.NewConnector()
+	}
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids.
 	for _, id := range codec.CommandIDs() {
@@ -253,7 +273,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw08p", "rx", b)
 		}
 	}
-	cli, err := sw08session.Dial(ctx, addr, p.logger, cfg)
+	cli, err := sw08session.Dial(ctx, p.net, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
@@ -262,6 +282,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.port = port
 	p.profile = prof
 	p.metricsConn = met
+	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	// Start the spec-sanctioned cmd 08 poll (§5 "…to keep the connections
 	// open") and arm the reader's dead-man deadline alongside it. Our own
 	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
@@ -306,6 +327,7 @@ func (p *Plugin) Disconnect() error {
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.Closed()
 	p.mu.Unlock()
 	if cli == nil {
 		return nil

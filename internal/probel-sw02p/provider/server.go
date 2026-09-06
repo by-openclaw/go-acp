@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,6 +30,10 @@ type Server = server
 type server struct {
 	logger *slog.Logger
 	tree   *tree
+
+	// net is the only way this server binds a socket. Injected, so the
+	// process owns the transport posture and a test can hand in a fake.
+	net transport.Net
 
 	mu sync.Mutex
 
@@ -88,10 +93,9 @@ func (s *server) ComplianceProfile() *compliance.Profile {
 	return s.profile
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	t, err := newTree(exp)
 	if treeBuildErrHook != nil {
 		err = treeBuildErrHook()
@@ -100,12 +104,13 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger.Error("probel-sw02p provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := metrics.NewConnector()
+	met := deps.Metrics
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	return &server{
 		logger:           logger,
+		net:              deps.Net,
 		tree:             t,
 		sessions:         map[*session]struct{}{},
 		stopped:          make(chan struct{}),
@@ -118,14 +123,11 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
+	ln, err := s.net.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("probel-sw02p provider: listen %q: %w", addr, err)
 	}
-	// The embedded listener, not the wrapper: serveListener's accept loop
-	// applies the socket policy itself, so a listener handed to
-	// ServeListener gets it too. Passing the wrapper would apply it twice.
-	return s.serveListener(ctx, ln.Listener)
+	return s.serveListener(ctx, ln)
 }
 
 // ServeListener accepts client sessions on a pre-bound listener until

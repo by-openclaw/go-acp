@@ -104,6 +104,15 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		return runProbelSingleSourceAssocName(ctx, rest)
 	case "update-name":
 		return runProbelUpdateName(ctx, rest)
+	case "health":
+		// Cross-protocol verbs. The probel dispatcher owns its own verb
+		// table, which is why `health` used to answer "unknown probel
+		// subcommand" on a connector that implements HealthChecker like
+		// any other. Prepending --protocol is what dispatchConsumer does
+		// for every generic verb.
+		return runHealth(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
+	case "status":
+		return runStatus(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
 	case "bench":
 		return runProbelBench(ctx, rest)
 	case "export":
@@ -154,6 +163,8 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  health                    3-layer session health (reachable / connected / live)
+  status                    one-shot device status: session health + identity
   bench                     scale benchmark: interrogate-all + connect-all
                             on a persistent TCP connection
   export                    write router config of (matrix, level) as 3 CSVs:

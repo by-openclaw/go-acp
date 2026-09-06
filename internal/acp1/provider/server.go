@@ -11,6 +11,8 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -36,6 +38,13 @@ type Server = server
 type server struct {
 	logger *slog.Logger
 	tree   *tree
+
+	// metrics is the server-wide connector snapshot exposed via Metrics()
+	// so `producer acp1 serve --metrics-addr` scrapes it. Frames are
+	// attributed by ACP1 method (getValue / setValue / … / getObject) —
+	// the protocol's own command axis, and the one a decoded message
+	// hands us for free. Always non-nil.
+	metrics *metrics.Connector
 
 	mu      sync.Mutex
 	conn    *net.UDPConn // listener + unicast reply socket
@@ -123,12 +132,19 @@ func (s *server) SetInsertTiming(t InsertTiming) {
 	}
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
+	met := deps.Metrics
+	for _, m := range []codec.Method{
+		codec.MethodGetValue, codec.MethodSetValue, codec.MethodSetIncValue,
+		codec.MethodSetDecValue, codec.MethodSetDefValue, codec.MethodGetObject,
+	} {
+		met.RegisterCmd(uint8(m), methodName(m))
 	}
 	s := &server{
 		logger:      logger,
+		metrics:     met,
 		stopped:     make(chan struct{}),
 		slotMachine: newSlotStateMachine(InsertTimingReal),
 	}
@@ -381,3 +397,8 @@ func (s *server) readLoop(ctx context.Context, conn *net.UDPConn) error {
 		s.handleDatagram2(data, src.String(), send)
 	}
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// acp1 provider. Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }

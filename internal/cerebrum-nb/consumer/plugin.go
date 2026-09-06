@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -38,15 +40,28 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return NewPlugin(logger)
+	p := NewPlugin(deps.Logger)
+	if deps.Metrics != nil {
+		p.met = deps.Metrics
+	}
+	p.Configure(deps.Net, defaultKeepAliveTimeout)
+	return p
 }
 
 // Plugin is the consumer-side handle. It wraps a single WebSocket
 // session (one connection per Plugin) and routes RX events to
 // subscribers.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: what is
+	// Cerebrum's is the stale window — the keep-alive timeout it already
+	// judges a dead link by — and the Session as the time source.
+	consumer.Health
+
 	logger *slog.Logger
+
+	// met counts every XML document in and out. Supplied rather than
+	// created, so the process scrapes every connector from one place.
+	met *metrics.Connector
 
 	// Username / Password come from CLI flags or the
 	// DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS env vars. Optional —
@@ -90,7 +105,14 @@ func NewPlugin(logger *slog.Logger) *Plugin {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Plugin{logger: logger.With(slog.String("plugin", "cerebrum-nb"))}
+	// The connector is created here rather than only in the factory: the
+	// CLI builds this plugin directly with NewPlugin, so a nil default
+	// would leave every command-line session uncounted. Deps.Metrics
+	// overrides it in Factory.New when there is one to share.
+	return &Plugin{
+		logger: logger.With(slog.String("plugin", "cerebrum-nb")),
+		met:    metrics.NewConnector(),
+	}
 }
 
 // Connect dials the Cerebrum WebSocket endpoint. Cerebrum has no path
@@ -137,7 +159,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
 		Enable:   p.UseTLS,
 		Insecure: p.InsecureSkipVerify,
-	}, rec)
+	}, rec, p.met)
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err
@@ -154,6 +176,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 		)
 	}
 	p.session = sess
+	p.Opened("tcp", host, port, sessionTimes{sess})
 	return nil
 }
 
@@ -177,6 +200,10 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	sess := p.session
 	p.session = nil
+	p.Closed()
+	if p.met != nil {
+		p.logger.Info("cerebrum-nb session metrics", slog.String("summary", p.met.Summary()))
+	}
 	p.mu.Unlock()
 	if sess == nil {
 		return nil
@@ -277,3 +304,22 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 // canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
 // Routing/category/salvo subscriptions keep their precise §5 addressing
 // through Session.Subscribe<X> (the Matrix-template half).
+
+// Metrics returns the connector's counter set — XML documents and bytes in
+// and out, plus errors. Satisfies the optional interface the CLI
+// type-asserts for --metrics-addr.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.met
+}
+
+// sessionTimes adapts a Session to consumer.RxTxTimes.
+//
+// The session stamps rx only (noteRX, on every inbound frame), which is what
+// Live is derived from. There is no single write path to stamp for tx, so
+// LastTx is reported as unknown rather than invented.
+type sessionTimes struct{ s *Session }
+
+func (t sessionTimes) LastRx() time.Time { return t.s.LastRx() }
+func (t sessionTimes) LastTx() time.Time { return time.Time{} }

@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 )
 
 func init() {
@@ -78,9 +80,20 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{version: f.version, logger: logger}
+	p := &Plugin{version: f.version, logger: deps.Logger, met: deps.Metrics}
+	p.Configure(deps.Net, oscStaleAfter)
+	return p
 }
+
+// oscStaleAfter is the silence past which an OSC session stops being
+// reported Live.
+//
+// It is a weaker statement than the other connectors make. OSC 1.0/1.1
+// define no heartbeat, so a control surface that sends nothing until someone
+// moves a fader is perfectly healthy — the same reasoning that keeps the TCP
+// idle reaper off by default. Live here means "we have heard from it
+// recently", not "it is broken if we have not".
+const oscStaleAfter = 30 * time.Second
 
 // NewPluginV10 / NewPluginV11 construct version-bound Plugins directly
 // (used by tests and callers that want the concrete type).
@@ -95,6 +108,18 @@ func NewPluginV11(logger *slog.Logger) *Plugin {
 // opens a UDP listener on (ip, port); TCP transports (length-prefix for
 // v1.0, SLIP for v1.1) are wired via separate ConnectTCP* methods.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented.
+	//
+	// This connector LISTENS rather than dials, so Opened is given no host:
+	// there is no remote to probe, and probing our own bound port would
+	// report a reachability that means nothing. Liveness comes from packets
+	// actually arriving, stamped through RecordRx.
+	consumer.Health
+
+	// met counts every packet received. Supplied rather than created, so
+	// the process scrapes every connector from one place.
+	met *metrics.Connector
+
 	version Version
 	logger  *slog.Logger
 
@@ -111,10 +136,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	s := newUDPSession()
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
 	p.udp = s
+	p.Opened("udp", "", 0, nil)
 	return nil
 }
 
@@ -135,10 +164,14 @@ func (p *Plugin) ConnectTCP(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	s := newTCPSession(framer)
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
 	p.tcp = s
+	p.Opened("tcp", "", 0, nil)
 	return nil
 }
 
@@ -155,6 +188,7 @@ func (p *Plugin) Disconnect() error {
 		}
 		p.tcp = nil
 	}
+	p.Closed()
 	return err
 }
 
@@ -215,3 +249,21 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }
+
+// noteRx is the tap both session kinds fire on every packet received: it
+// stamps liveness for the inherited Health and counts the frame on the
+// metrics connector. One function so UDP and TCP report identically.
+func (p *Plugin) noteRx(n int) {
+	p.RecordRx()
+	if p.met != nil {
+		p.met.ObserveRx(n)
+	}
+}
+
+// Metrics returns the connector's counter set. Satisfies the optional
+// interface the CLI type-asserts for --metrics-addr.
+//
+// Only rx is counted: this connector LISTENS, and the consumer side never
+// writes to the wire. A tx series would be a permanent zero pretending to
+// mean something.
+func (p *Plugin) Metrics() *metrics.Connector { return p.met }

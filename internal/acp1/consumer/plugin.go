@@ -13,6 +13,7 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -36,8 +37,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	p := &Plugin{logger: deps.Logger, met: deps.Metrics}
+	p.Configure(deps.Net, acp1StaleAfter)
+	return p
 }
 
 // TransportKind selects how the ACP1 plugin talks to the device.
@@ -102,7 +104,17 @@ type announceFanout interface {
 // for transactions, and a per-slot cache of walked trees that GetValue
 // / SetValue consult to translate labels into (group, id).
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented:
+	// ACP1 contributes only the stale window, the time source and —
+	// the part that used to be wrong — which network it is actually
+	// talking over.
+	consumer.Health
+
 	logger *slog.Logger
+
+	// met counts every frame in and out. Supplied rather than created, so
+	// the process scrapes every connector from one place. Always non-nil.
+	met *metrics.Connector
 
 	mu        sync.Mutex
 	transport TransportKind
@@ -266,6 +278,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	p.host = ip
 	p.port = port
+	p.Opened(p.transport.network(), ip, port, p.tsSink)
 	cfg := defaultCacheConfig()
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
@@ -296,6 +309,43 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
+// Metrics returns the connector's counter set — frames and bytes in and
+// out, plus errors and latency. Satisfies the optional interface the CLI
+// type-asserts for --metrics-addr. Always non-nil.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.met
+}
+
+// clientHooks is the one place the rx/tx taps are built, so all three
+// transports (UDP, TCP direct, AN2) count and timestamp identically.
+//
+// Counting is aggregate rather than per-command: these hooks see a byte
+// count, not a decoded message, and ACP1's command axis (MCODE) is inside
+// the frame. Frames and bytes are what the scrape was missing entirely.
+func (p *Plugin) clientHooks() ClientConfig {
+	sink, met := p.tsSink, p.met
+	return ClientConfig{
+		OnRx: func(n int) {
+			if sink != nil {
+				sink.recordRx()
+			}
+			if met != nil {
+				met.ObserveRx(n)
+			}
+		},
+		OnTx: func(n int) {
+			if sink != nil {
+				sink.recordTx()
+			}
+			if met != nil {
+				met.ObserveTx(n, 0)
+			}
+		},
+	}
+}
+
 // connectUDP builds the UDP session: connected datagram socket +
 // request/reply Client + best-effort Listener on the same port for
 // announcements. Listener bind failure is non-fatal.
@@ -314,7 +364,7 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	tr = &timestampingTransport{inner: tr, sink: p.tsSink}
+	tr = &timestampingTransport{inner: tr, sink: p.tsSink, met: p.met}
 	p.client = NewClient(tr, p.logger, ClientConfig{})
 
 	mkListener := p.newListener
@@ -346,15 +396,11 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	cfg := ClientConfig{
-		// Keep-alive RX tap — TCP doesn't go through
-		// timestampingTransport (the UDP-only wrapper), so the
-		// TCPClient surfaces every received frame through OnRx
-		// instead. Without this the watchdog never sees rx and
-		// flips the session to dead after the first timeout window.
-		OnRx: p.tsSink.recordRx,
-	}
-	p.client = NewTCPClient(conn, p.logger, cfg)
+	// TCP doesn't go through timestampingTransport (the UDP-only wrapper),
+	// so the TCPClient surfaces every frame through OnRx/OnTx instead.
+	// Without the rx tap the watchdog never sees traffic and flips the
+	// session to dead after the first timeout window.
+	p.client = NewTCPClient(conn, p.logger, p.clientHooks())
 	return nil
 }
 
@@ -371,7 +417,7 @@ func (p *Plugin) connectAN2(ctx context.Context, ip string, port int) error {
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	p.client = NewAN2Client(conn, p.logger, ClientConfig{OnRx: p.tsSink.recordRx})
+	p.client = NewAN2Client(conn, p.logger, p.clientHooks())
 	return nil
 }
 
@@ -420,6 +466,13 @@ func (p *Plugin) Disconnect() error {
 	p.udpConn = nil
 	p.tcpConn = nil
 	p.client = nil
+	p.Closed()
+	// One-line session summary, the same shape probel has emitted since the
+	// metrics work landed. Most consumer verbs are one-shot, so this is
+	// where the counters become visible at all.
+	if p.met != nil {
+		p.logger.Info("acp1 session metrics", slog.String("summary", p.met.Summary()))
+	}
 	p.walker = nil
 	p.trees = nil
 	p.subHandles = nil
@@ -438,6 +491,18 @@ func (k TransportKind) String() string {
 		return "an2"
 	case TransportAuto:
 		return "auto"
+	default:
+		return "udp"
+	}
+}
+
+// network is the net package name for this transport, which is what
+// decides whether a connect attempt carries any information. TCP direct
+// and AN2 are both TCP streams; UDP is not.
+func (k TransportKind) network() string {
+	switch k {
+	case TransportTCPDirect, TransportAN2:
+		return "tcp"
 	default:
 		return "udp"
 	}

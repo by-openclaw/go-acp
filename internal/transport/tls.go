@@ -64,6 +64,15 @@ type TLSOptions struct {
 	// must be set together.
 	CertFile string
 	KeyFile  string
+
+	// Certificates presents an ALREADY-LOADED client certificate — the
+	// in-memory form of CertFile + KeyFile.
+	//
+	// It exists for a caller whose identity is not a file: the BCP-003-03
+	// certificate manager enrols over EST and holds the result in memory,
+	// renewing it on a timer, so there is no path to point CertFile at.
+	// Takes precedence over CertFile + KeyFile when both are given.
+	Certificates []tls.Certificate
 }
 
 // Client builds the *tls.Config for an outbound connection.
@@ -121,8 +130,12 @@ func (o TLSOptions) roots() (*x509.CertPool, error) {
 	return pool, nil
 }
 
-// clientCert loads the mutual-TLS keypair, if one is configured.
+// clientCert resolves the mutual-TLS identity: the in-memory certificates if
+// given, else the keypair at CertFile + KeyFile, else none.
 func (o TLSOptions) clientCert() ([]tls.Certificate, error) {
+	if len(o.Certificates) > 0 {
+		return o.Certificates, nil
+	}
 	if o.CertFile == "" && o.KeyFile == "" {
 		return nil, nil
 	}

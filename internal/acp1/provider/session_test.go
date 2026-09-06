@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -108,7 +109,7 @@ func newTestServer(t *testing.T) *server {
 	}}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return newServer(logger, exp)
+	return newServer(plugin.Deps{Logger: logger}, exp)
 }
 
 func TestSession_GetValue_ReadOnlyString(t *testing.T) {

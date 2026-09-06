@@ -373,7 +373,7 @@ func TestSendBundle_EncodeError(t *testing.T) {
 // --- sendBytes write-error fan-out (closed conn) --------------------------
 
 func TestSendBytes_WriteError(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -392,7 +392,7 @@ func TestSendBytes_WriteError(t *testing.T) {
 // --- udpSender.bind: already-bound guard + empty-addr default + nil addr ---
 
 func TestUDPSender_BindTwice(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -405,7 +405,7 @@ func TestUDPSender_BindTwice(t *testing.T) {
 // TestUDPSender_BoundAddr_Nil drives boundAddr's conn==nil arm on a
 // freshly-constructed (unbound) sender.
 func TestUDPSender_BoundAddr_Nil(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if got := s.boundAddr(); got != nil {
 		t.Fatalf("boundAddr on unbound sender=%v want nil", got)
 	}
@@ -414,7 +414,7 @@ func TestUDPSender_BoundAddr_Nil(t *testing.T) {
 // TestUDPSender_Bind_EmptyAddrDefault drives the addr=="" -> ":0" default
 // branch in bind.
 func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind(""); err != nil {
 		t.Fatalf("bind empty addr: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
 }
 
 func TestUDPSender_SendBytes_NotBound(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.sendMessage(codec.Message{Address: "/x"}); err == nil {
 		t.Fatalf("sendBytes unbound should error")
 	}
@@ -433,7 +433,7 @@ func TestUDPSender_SendBytes_NotBound(t *testing.T) {
 
 // TestUDPSender_BindError drives bind's ListenPacket-error arm.
 func TestUDPSender_BindError(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("256.256.256.256:99999"); err == nil {
 		t.Fatalf("want bind error for invalid addr")
 	}
@@ -785,7 +785,7 @@ func TestTCPDialer_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix)
+	d := newTCPDialer(framerLenPrefix, nil)
 	defer func() { _ = d.close() }()
 	m := codec.Message{Address: "/a", Args: []codec.Arg{codec.Int32(1)}}
 	if err := d.sendMessage(host, port, m); err != nil {
@@ -836,7 +836,7 @@ func TestTCPDialer_SendBundle_SLIP_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerSLIP)
+	d := newTCPDialer(framerSLIP, nil)
 	defer func() { _ = d.close() }()
 	b := codec.Bundle{Timetag: 1, Elements: []codec.Packet{codec.Message{Address: "/a"}}}
 	if err := d.sendBundle(host, port, b); err != nil {
@@ -875,7 +875,7 @@ func TestTCPDialer_CloseError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix)
+	d := newTCPDialer(framerLenPrefix, nil)
 	c, err := d.dial(host, port)
 	if err != nil {
 		t.Fatalf("dial: %v", err)

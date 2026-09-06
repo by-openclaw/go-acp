@@ -6,6 +6,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -15,7 +16,7 @@ import (
 
 func idleTestServer(t *testing.T) *server {
 	t.Helper()
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 }
 
 func TestServerSessionIdleTimeoutDefaultsOff(t *testing.T) {

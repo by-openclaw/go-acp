@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
@@ -45,7 +46,7 @@ func TestRoundTrip_NodeWithParameter(t *testing.T) {
 	}
 	exp := &canonical.Export{Root: root}
 
-	srv := newServer(nil, exp)
+	srv := newServer(plugin.Deps{}, exp)
 	if srv.tree == nil {
 		t.Fatal("tree failed to build")
 	}
@@ -118,7 +119,7 @@ func TestEncodeNode_DTD230Fields(t *testing.T) {
 			Children: []canonical.Element{child},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
@@ -172,7 +173,7 @@ func TestEncodeParameter_DTD230Fields(t *testing.T) {
 			Children: []canonical.Element{p},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
@@ -223,7 +224,7 @@ func TestSetValueBroadcast_UpdatesTree(t *testing.T) {
 			Children: []canonical.Element{p},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 
 	if _, err := srv.SetValue(context.Background(), "1.1", int64(99)); err != nil {
 		t.Fatalf("SetValue: %v", err)

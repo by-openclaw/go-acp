@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,6 +28,9 @@ type Server = server
 // own goroutine reading framed commands and dispatching them to per-CMD
 // handlers (added per-command PRs).
 type server struct {
+	// net is the only way this server binds a socket. Injected, so the
+	// process owns the transport posture.
+	net    transport.Net
 	logger *slog.Logger
 	tree   *tree
 
@@ -64,21 +68,21 @@ func (s *server) ComplianceProfile() *compliance.Profile {
 	return s.profile
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	t, err := newTree(exp)
 	if err != nil {
 		logger.Error("probel provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := metrics.NewConnector()
+	met := deps.Metrics
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	return &server{
 		logger:   logger,
+		net:      deps.Net,
 		tree:     t,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
@@ -102,11 +106,7 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	listen := func(ctx context.Context, addr string) (net.Listener, error) {
 		// The embedded listener, not the wrapper: acceptLoop applies the
 		// socket policy itself, so a listener from listenHook gets it too.
-		ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
-		if err != nil {
-			return nil, err
-		}
-		return ln.Listener, nil
+		return s.net.Listen(ctx, "tcp", addr)
 	}
 	if listenHook != nil {
 		listen = listenHook

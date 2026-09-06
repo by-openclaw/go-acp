@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 )
 
 func init() {
@@ -90,9 +91,19 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New instantiates a Plugin for this version.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{version: f.version, logger: logger}
+	p := &Plugin{version: f.version, logger: deps.Logger, met: deps.Metrics}
+	p.Configure(deps.Net, tslStaleAfter)
+	return p
 }
+
+// tslStaleAfter is the silence past which a TSL session stops being reported
+// Live. Short, because UMD producers that do emit are chatty.
+//
+// As with the idle reaper, it is a weaker statement than elsewhere: TSL UMD
+// defines no heartbeat in v3.1/v4.0/v5.0 and tallies are emitted on change,
+// so a quiet link is not a dead one. Live means "we have heard from it
+// recently", nothing more.
+const tslStaleAfter = 5 * time.Second
 
 // NewPluginV31 constructs a v3.1-bound Plugin directly (used by tests and
 // by callers that want the concrete type rather than the interface).
@@ -114,6 +125,18 @@ func NewPluginV50(logger *slog.Logger) *Plugin {
 // v4.0 it opens a UDP listener; v5.0 additionally supports TCP with
 // DLE/STX wrapper (wired alongside v5 codec).
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented.
+	//
+	// This connector LISTENS rather than dials, so Opened is given no host:
+	// there is no remote to probe, and probing our own bound port would
+	// report a reachability that means nothing. Liveness comes from packets
+	// actually arriving, stamped through RecordRx.
+	consumer.Health
+
+	// met counts every packet received. Supplied rather than created, so
+	// the process scrapes every connector from one place.
+	met *metrics.Connector
+
 	version Version
 	logger  *slog.Logger
 
@@ -146,10 +169,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	default:
 		return fmt.Errorf("tsl consumer: unknown version %v", p.version)
 	}
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr, decode); err != nil {
 		return err
 	}
 	p.session = s
+	p.Opened("udp", "", 0, nil)
 	return nil
 }
 
@@ -166,10 +193,14 @@ func (p *Plugin) ConnectV50TCP(ctx context.Context, ip string, port int) error {
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	ts := newTCPSession()
 	ts.SetIdleTimeout(p.tcpIdleTimeout)
+	// Set before listen: listen starts the accept goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	ts.onRx = p.noteRx
 	if err := ts.listen(ctx, addr); err != nil {
 		return err
 	}
 	p.tcpSession = ts
+	p.Opened("tcp", "", 0, nil)
 	return nil
 }
 
@@ -206,6 +237,7 @@ func (p *Plugin) Disconnect() error {
 		}
 		p.tcpSession = nil
 	}
+	p.Closed()
 	return err
 }
 
@@ -296,3 +328,21 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }
+
+// noteRx is the tap both session kinds fire on every packet received: it
+// stamps liveness for the inherited Health and counts the frame on the
+// metrics connector. One function so UDP and TCP report identically.
+func (p *Plugin) noteRx(n int) {
+	p.RecordRx()
+	if p.met != nil {
+		p.met.ObserveRx(n)
+	}
+}
+
+// Metrics returns the connector's counter set. Satisfies the optional
+// interface the CLI type-asserts for --metrics-addr.
+//
+// Only rx is counted: TSL is one-way by spec (§1.0, "for one way
+// communication only"), so a consumer never writes to the wire and a tx
+// series would be a permanent zero pretending to mean something.
+func (p *Plugin) Metrics() *metrics.Connector { return p.met }

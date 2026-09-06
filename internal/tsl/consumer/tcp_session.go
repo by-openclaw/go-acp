@@ -45,6 +45,13 @@ type tcpSession struct {
 	// connection) stays the always-on detector; this is the opt-in for
 	// deployments that would rather reap aggressively.
 	idle transport.Idle
+
+	// onRx, when set, is called on every packet received, with the byte
+	// count that arrived. It is how the plugin's inherited Health learns
+	// the peer is alive and how the metrics connector counts rx; fired on
+	// BYTES received rather than on a successful decode, because a peer
+	// sending malformed frames is still a peer that is there.
+	onRx func(n int)
 }
 
 func newTCPSession() *tcpSession {
@@ -140,6 +147,9 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 				},
 			})
 			return
+		}
+		if s.onRx != nil {
+			s.onRx(len(pkt))
 		}
 		frame, derr := codec.DecodeV50(pkt)
 		if derr != nil {

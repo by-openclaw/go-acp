@@ -1002,6 +1002,8 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  health                    3-layer session health (reachable / connected / live)
+  status                    one-shot device status: session health + identity
   bench                     scale benchmark: interrogate-all + connect-all
                             on a persistent TCP connection
   export                    write router config of (matrix, level) as 3 CSVs:
@@ -1068,6 +1070,7 @@ SUBCOMMANDS
   dual-status         read dual-controller redundancy state (rx 050)
   lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
   status              read controller status — 2 (rx 07)
+  health              3-layer session health (reachable / connected / live)
   router-config       read router configuration / level map (rx 075)
   usage               reverse tally: one interrogate per dst (rx 01/65 sweep;
                       size from --dsts or rx 075); --srce/--dest filter,
@@ -1129,6 +1132,7 @@ VERBS
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
+  health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 

@@ -55,7 +55,7 @@ func TestMaintenanceClearProtectsUnit(t *testing.T) {
 func TestDualControllerStatusLoopback(t *testing.T) {
 	exp := demoMatrixExport(4, 4)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

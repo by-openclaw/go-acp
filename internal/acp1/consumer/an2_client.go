@@ -95,7 +95,9 @@ func (c *AN2Client) enableProtocolEvents() {
 	// payload > MaxPayload (65536); this 2-byte control frame is neither.
 	b, _ := an2.EncodeAN2Frame(frame)
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
-	_, _ = c.conn.Write(b)
+	if _, err := c.conn.Write(b); err == nil && c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(b))
+	}
 }
 
 // Do sends one ACP1 request inside an AN2 data frame and returns the matching
@@ -141,6 +143,9 @@ func (c *AN2Client) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
 	if _, err := c.conn.Write(wire); err != nil {
 		return nil, fmt.Errorf("acp1 an2 send: %w", err)
+	}
+	if c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(wire))
 	}
 
 	select {
@@ -228,7 +233,8 @@ func (c *AN2Client) readerLoop() {
 			return
 		}
 		if c.cfg.OnRx != nil {
-			c.cfg.OnRx()
+			// 8-byte AN2 header + payload: the bytes that arrived.
+			c.cfg.OnRx(8 + len(frame.Payload))
 		}
 		// Only ACP1-proto data frames carry ACP1 PDUs. Internal frames
 		// (e.g. the EnableProtocolEvents reply) are control acks — ignore.

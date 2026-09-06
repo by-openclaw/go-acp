@@ -2,6 +2,7 @@ package tsl
 
 import (
 	"context"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"errors"
 	"fmt"
@@ -20,10 +21,14 @@ type udpSender struct {
 	dests []*net.UDPAddr
 
 	closeOnce sync.Once
+
+	// met counts what this sender puts on the wire. Set by the Server at
+	// construction; nil-safe so a sender built by a test still works.
+	met *metrics.Connector
 }
 
-func newUDPSender() *udpSender {
-	return &udpSender{}
+func newUDPSender(met *metrics.Connector) *udpSender {
+	return &udpSender{met: met}
 }
 
 // bind opens a UDP socket for outbound sends. addr may be empty (or
@@ -106,7 +111,13 @@ func (s *udpSender) sendBytes(payload []byte) error {
 	}
 	var firstErr error
 	for _, d := range dests {
-		if _, err := conn.WriteToUDP(payload, d); err != nil && firstErr == nil {
+		if _, err := conn.WriteToUDP(payload, d); err == nil {
+			// One count per destination actually written to: fanning one
+			// UMD packet to eight receivers really is eight datagrams.
+			if s.met != nil {
+				s.met.ObserveTx(len(payload), 0)
+			}
+		} else if firstErr == nil {
 			firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
 		}
 	}

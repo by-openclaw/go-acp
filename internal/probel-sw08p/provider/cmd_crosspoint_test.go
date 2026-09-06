@@ -22,7 +22,7 @@ func TestCrosspointInterrogateLoopback(t *testing.T) {
 	// 1. Build a demo tree and seed one crosspoint via the API path.
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	// Seed: matrix=0 level=0 dst=2 → src=7
 	if _, err := srv.SetValue(context.Background(), "0.0.2", 7); err != nil {
@@ -134,7 +134,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 func TestCrosspointTallyDumpLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = srv.Serve(ctx, "127.0.0.1:0") }()
@@ -184,7 +184,7 @@ func TestCrosspointTallyDumpLoopback(t *testing.T) {
 func TestCrosspointConnectLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -204,7 +204,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 	defer func() { _ = primary.Disconnect() }()
 
 	// Secondary consumer: subscribes to async tallies.
-	secondary, err := sw08session.Dial(dc, addr, logger, sw08session.ClientConfig{})
+	secondary, err := sw08session.Dial(dc, nil, addr, logger, sw08session.ClientConfig{})
 	if err != nil {
 		t.Fatalf("secondary dial: %v", err)
 	}

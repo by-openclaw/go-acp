@@ -39,12 +39,52 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| IRD satellite receiver | (to connect) | SNMP + MIB | none yet — `internal/snmp` is unwritten |
+| IRD satellite receiver | (being addressed) | SNMP + MIB · HTTP management page | none yet — `internal/snmp` is unwritten |
+| **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
 services this one Neuron offers cannot yet be driven at a real device — see
 "Integration tiers" below.
+
+### IRD satellite receivers — SNMP only
+
+Installed 2026-09-07; the codeowner is assigning fabric addresses so they are
+reachable, and sourcing the MIBs (they belong in `internal/snmp/assets/mibs/`).
+
+Scope, per the codeowner:
+
+- **SNMP + MIB** — the whole reason these are in the testbed. This is what
+  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **HTTP management page** — expected to work. Useful for reading the device's
+  own view of a value while checking ours, and for setting the SNMP community
+  and trap destination. Not a connector target.
+- **No REST API.** There is none to consume; do not plan one.
+- **A raw vendor protocol exists but is OUT OF SCOPE** — the same call as
+  Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
+
+So one connector serves these devices, and it is the SNMP one.
+
+### Cerebrum is a multi-protocol peer, not only the NB API
+
+Cerebrum speaks syslog and SNMP as well as its Northbound API, which means
+SNMP work needs no additional hardware — it is BOTH directions of the loop.
+Read off Configuration → SNMP (2026-09-07):
+
+| Cerebrum role | Where | Settings | What it is for |
+| --- | --- | --- | --- |
+| **SNMP agent** (answers) | port **1161**, status Active | RO community `public`, RW `private` | the target our SNMP CONSUMER polls. Note 1161, not 161 — above 1024, so polling it needs no capability grant |
+| **SNMP manager** (polls) | port **161**, SNMPv1, community `public`, poll 3 s | — | the peer that will poll an agent WE expose |
+| **Trap receiver** | port **162**, status Active | "Enable SNMP Trap reception" on | receives traps we emit; sending to it needs no local privilege |
+| **Trap sender** | Notifications → SNMP Traps | SNMPv1, dest port 162, dest IP unset, "on startup" only | a trap SOURCE for a listener of ours. **"Test SNMP Trap"** triggers one on demand, so a test need not restart Cerebrum |
+
+A "V3 Settings" button exists beside the version dropdown (greyed while v1
+is selected), so v3 is supported by the product. SNMP sub-system logging is
+at level Emergency with "Show MIB value type mismatch" off — turn that on
+when debugging our MIB against it.
+
+Only a trap LISTENER of our own would need `CAP_NET_BIND_SERVICE` (port 162
+is privileged), and neither direction above requires one.
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
@@ -129,7 +169,7 @@ forward and show as transient extras. Only one mirror at a time.
 | AMWA NMOS Registry (Registration/Query) | HTTP + WS | `8235` |
 | AMWA NMOS IS-07 events | WS | `8090` |
 | AMWA NMOS IS-09 System | HTTP | `10641` |
-| Cerebrum NB | TCP | `40007` |
+| Cerebrum NB | TCP | `40007` (staging Cerebrum answers on `40009`) |
 | mDNS (Avahi / Bonjour) | UDP | `5353` |
 | metrics (`--metrics-addr`) | HTTP | `9100` |
 | SSH / WinRM (mgmt) | TCP | `22` / `5985` |

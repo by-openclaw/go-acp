@@ -25,7 +25,7 @@ import (
 // delivered keeps the real reply (the sentinel send is skipped), and any
 // registration after the sweep is refused.
 func TestFailWaiters_SentinelAndPreservedReply(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 
 	chEmpty, err := s.addWaiter(1)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestFailWaiters_SentinelAndPreservedReply(t *testing.T) {
 // once the read loop has exited, the request is refused before any frame
 // is sent (no connection needed).
 func TestDoACP2_FailFastAfterDeath(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	s.failWaiters()
 
 	_, err := s.DoACP2(context.Background(), 0, &codec.ACP2Message{
@@ -70,7 +70,7 @@ func TestDoACP2_FailFastAfterDeath(t *testing.T) {
 // TestAN2Request_FailFastAfterDeath covers an2Request's addWaiter error
 // return on a session whose read loop has exited.
 func TestAN2Request_FailFastAfterDeath(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	s.failWaiters()
 
 	_, err := s.an2Request(context.Background(), codec.AN2FuncGetVersion, 0, nil)
@@ -141,7 +141,7 @@ func TestRunReconnectBackoff_FailureArm(t *testing.T) {
 // DoACP2 and an2Request (and sendFrame's conn==nil guard): the waiter table
 // is alive, but there is no connection to write to.
 func TestRequests_SendErrorNotConnected(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 
 	_, err := s.DoACP2(context.Background(), 0, &codec.ACP2Message{
 		Type: codec.ACP2TypeRequest,
@@ -160,7 +160,7 @@ func TestRequests_SendErrorNotConnected(t *testing.T) {
 // TestSendFrame_WriteError covers sendFrame's conn.Write error arm with a
 // deterministically dead pipe (no TCP race involved).
 func TestSendFrame_WriteError(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	c1, c2 := net.Pipe()
 	_ = c1.Close()
 	_ = c2.Close()
@@ -179,7 +179,7 @@ func TestSendFrame_WriteError(t *testing.T) {
 // waiter table is alive but the session has no connection, so the probe
 // reports the send failure verbatim.
 func TestDiagProbe_SendError(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	r := diagProbe(context.Background(), s, "probe", codec.AN2ProtoACP2, 1,
 		codec.AN2TypeData, []byte{0x00, 0x00, 0x01, 0x00}, 100*time.Millisecond)
 	if !strings.HasPrefix(r.Status, "error: send: ") {

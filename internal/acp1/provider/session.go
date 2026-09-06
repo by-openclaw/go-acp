@@ -3,6 +3,7 @@ package acp1
 import (
 	"dhs/internal/acp1/codec"
 	"log/slog"
+	"time"
 )
 
 // handleRequest dispatches a decoded request to the right handler and
@@ -264,6 +265,7 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 		slog.String("src", srcStr),
 		slog.Int("bytes", len(data)),
 	)
+	rxAt := time.Now()
 	msg, err := codec.Decode(data)
 	if err != nil {
 		s.logger.Warn("acp1 provider: decode failed",
@@ -271,7 +273,17 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 			slog.Int("bytes", len(data)),
 			slog.String("err", err.Error()),
 		)
+		if s.metrics != nil {
+			// Undecodable bytes still arrived, so they are counted — as an
+			// aggregate, since there is no method to attribute them to —
+			// and the decode error is counted alongside.
+			s.metrics.ObserveRx(len(data))
+			s.metrics.ObserveDecodeError()
+		}
 		return
+	}
+	if s.metrics != nil {
+		s.metrics.ObserveCmdRx(msg.MCode, len(data))
 	}
 	s.logger.Info("acp1 request",
 		slog.String("src", srcStr),
@@ -300,6 +312,11 @@ func (s *server) handleDatagram2(data []byte, srcStr string, send func([]byte) e
 			slog.String("err", err.Error()),
 			slog.String("src", srcStr),
 		)
+	} else if s.metrics != nil {
+		// Attributed to the REQUEST's method: a reply carries the same
+		// MCode, and the elapsed time is this handler's own latency, which
+		// is what a per-command latency bucket is for.
+		s.metrics.ObserveCmdTx(msg.MCode, len(out), time.Since(rxAt))
 	}
 	if ann != nil {
 		s.broadcastAnnounce(ann)

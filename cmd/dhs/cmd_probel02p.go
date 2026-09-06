@@ -86,6 +86,12 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		return runProbelsw02pLockStatus(ctx, rest)
 	case "status":
 		return runProbelsw02pStatus(ctx, rest)
+	case "health":
+		// Cross-protocol verb, routed the way dispatchConsumer routes every
+		// generic verb. `status` is NOT forwarded here: SW-P-02 already
+		// defines its own status (the rx 75 router status above), and that
+		// meaning wins inside this dispatcher.
+		return runHealth(ctx, append([]string{"--protocol", "probel-sw02p"}, rest...))
 	case "router-config":
 		return runProbelsw02pRouterConfig(ctx, rest)
 	case "watch":
@@ -139,6 +145,7 @@ SUBCOMMANDS
   dual-status         read dual-controller redundancy state (rx 050)
   lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
   status              read controller status — 2 (rx 07)
+  health              3-layer session health (reachable / connected / live)
   router-config       read router configuration / level map (rx 075)
   usage               reverse tally: one interrogate per dst (rx 01/65 sweep;
                       size from --dsts or rx 075); --srce/--dest filter,

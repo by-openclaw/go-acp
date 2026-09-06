@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -91,7 +92,7 @@ func TestServerLoopback(t *testing.T) {
 		},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -122,7 +123,7 @@ func TestServerLoopback(t *testing.T) {
 	disable := false
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDial()
-	cli, err := sw08session.Dial(dialCtx, addr, logger, sw08session.ClientConfig{WireHexLog: &disable})
+	cli, err := sw08session.Dial(dialCtx, nil, addr, logger, sw08session.ClientConfig{WireHexLog: &disable})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

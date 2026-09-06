@@ -1,6 +1,7 @@
 package emberplus
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
@@ -29,7 +30,7 @@ func buildMatrixTree(t *testing.T, m *canonical.Matrix) *server {
 			Children: []canonical.Element{m},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	if srv.tree == nil {
 		t.Fatal("tree failed to build")
 	}

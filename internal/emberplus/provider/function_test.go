@@ -1,6 +1,7 @@
 package emberplus
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
@@ -31,7 +32,7 @@ func TestRoundTrip_Function(t *testing.T) {
 			Children: []canonical.Element{f},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
@@ -62,7 +63,7 @@ func TestRoundTrip_Function(t *testing.T) {
 // TestInvocationResult checks that Root→InvocationResult decodes back with
 // the right id + tuple values (int, bool, string).
 func TestInvocationResult(t *testing.T) {
-	srv := newServer(nil, nil) // no tree — only encoder exercised
+	srv := newServer(plugin.Deps{}, nil) // no tree — only encoder exercised
 	payload := srv.encodeInvocationResult(42, true, []any{int64(7), true, "ok"})
 
 	els, err := glow.DecodeRoot(payload)

@@ -258,7 +258,12 @@ type ClientConfig struct {
 
 // Dial opens a TCP connection to addr (host:port) and starts the reader
 // goroutine. The returned Client is ready for Send / Subscribe.
-func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfig) (*Client, error) {
+// Dial opens a session over the supplied transport.
+//
+// The Net comes from the plugin's Deps rather than being built here: this
+// package decides what to say over a socket, not how one is made. A nil Net
+// falls back to a default transport so a direct caller still works.
+func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger, cfg ClientConfig) (*Client, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -271,11 +276,13 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 	// The shared dialler applies the same socket policy an accepted
 	// connection gets, so a dialled session and an accepted one are
 	// configured identically. A negative period disables keepalive.
-	d := transport.TCPDialer{
-		Timeout: cfg.DialTimeout,
-		Options: transport.SocketOptions{KeepalivePeriod: cfg.TCPKeepalivePeriod},
+	if n == nil {
+		n = transport.New(transport.Config{
+			Timeout:         cfg.DialTimeout,
+			KeepalivePeriod: cfg.TCPKeepalivePeriod,
+		})
 	}
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := n.Dial(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("probel dial %s: %w", addr, err)
 	}

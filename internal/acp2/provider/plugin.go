@@ -42,6 +42,5 @@ func (f *Factory) Meta() provider.Meta {
 // New constructs a fresh provider around the supplied tree.
 func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return newServer(logger, tree)
+	return newServer(deps, tree)
 }

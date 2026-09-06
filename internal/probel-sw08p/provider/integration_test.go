@@ -37,7 +37,7 @@ func emptyExport() *canonical.Export {
 // listener never comes up within 2 s.
 func startProvider(t *testing.T, exp *canonical.Export) (string, func()) {
 	t.Helper()
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(ctx, "127.0.0.1:0") }()

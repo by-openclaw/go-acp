@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
 	"dhs/internal/provider"
 	"dhs/internal/tsl/codec"
 )
@@ -83,8 +84,7 @@ func (f *Factory) Meta() provider.Meta {
 
 func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Server{version: f.version, logger: logger, tree: tree}
+	return &Server{version: f.version, logger: deps.Logger, met: deps.Metrics, tree: tree}
 }
 
 // NewServerV31 constructs a v3.1-bound Server directly (tests + direct callers).
@@ -108,7 +108,13 @@ func NewServerV50(logger *slog.Logger) *Server {
 type Server struct {
 	version Version
 	logger  *slog.Logger
-	tree    *canonical.Export
+
+	// met counts what this provider puts on the wire, exposed via
+	// Metrics() so --metrics-addr scrapes it. Aggregate rather than
+	// per-command: TSL UMD frames carry no command byte.
+	met *metrics.Connector
+
+	tree *canonical.Export
 
 	// mu guards the lazy-init pointers below. It is held only to read or
 	// create a pointer; it is NEVER held across a blocking call (serveBlock)
@@ -126,7 +132,7 @@ func (s *Server) ensureSender() *udpSender {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.sender == nil {
-		s.sender = newUDPSender()
+		s.sender = newUDPSender(s.met)
 	}
 	return s.sender
 }
@@ -146,7 +152,7 @@ func (s *Server) ensureTCPDialer() *tcpDialer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tcpDialer == nil {
-		s.tcpDialer = newTCPDialer()
+		s.tcpDialer = newTCPDialer(s.met)
 	}
 	return s.tcpDialer
 }
@@ -273,3 +279,8 @@ func (s *Server) SendV50TCP(host string, port int, pkt codec.V50Packet) error {
 	dialer := s.ensureTCPDialer()
 	return dialer.sendV50TCP(host, port, pkt)
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// tsl provider. Always non-nil.
+func (s *Server) Metrics() *metrics.Connector { return s.met }

@@ -182,6 +182,54 @@ func TestTLSOptionsClientCertificate(t *testing.T) {
 	}
 }
 
+// Not every identity is a file. The BCP-003-03 certificate manager enrols
+// over EST and holds the result in memory, renewing it on a timer, so there
+// is no path to point CertFile at — before this it built its own
+// *tls.Config, which is how it came to be on the transport allowlist.
+func TestTLSOptionsInMemoryCertificate(t *testing.T) {
+	dir := t.TempDir()
+	certPath, keyPath, _ := writeKeyPair(t, dir)
+	pair, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		t.Fatalf("LoadX509KeyPair: %v", err)
+	}
+
+	cfg, err := TLSOptions{Enable: true, Certificates: []tls.Certificate{pair}}.Client()
+	if err != nil {
+		t.Fatalf("Client: %v", err)
+	}
+	if len(cfg.Certificates) != 1 {
+		t.Fatalf("Certificates = %d, want 1", len(cfg.Certificates))
+	}
+	if cfg.MinVersion != MinTLSVersion {
+		t.Errorf("MinVersion = %d — the whole point is not having to remember it", cfg.MinVersion)
+	}
+}
+
+// An in-memory identity wins over a file pair, the same way RootCAs wins
+// over CAFile: the caller that went to the trouble of loading one means it.
+func TestTLSOptionsInMemoryCertificateWins(t *testing.T) {
+	dir := t.TempDir()
+	certPath, keyPath, _ := writeKeyPair(t, dir)
+	pair, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		t.Fatalf("LoadX509KeyPair: %v", err)
+	}
+
+	cfg, err := TLSOptions{
+		Enable:       true,
+		Certificates: []tls.Certificate{pair},
+		CertFile:     "does-not-exist",
+		KeyFile:      "does-not-exist",
+	}.Client()
+	if err != nil {
+		t.Fatalf("Client must not read the files it was told to ignore: %v", err)
+	}
+	if len(cfg.Certificates) != 1 {
+		t.Fatalf("Certificates = %d, want 1", len(cfg.Certificates))
+	}
+}
+
 func TestTLSOptionsClientCertificateErrors(t *testing.T) {
 	dir := t.TempDir()
 	certPath, keyPath, _ := writeKeyPair(t, dir)

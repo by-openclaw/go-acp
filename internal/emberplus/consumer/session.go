@@ -11,6 +11,7 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -41,8 +42,12 @@ type Session struct {
 	// traffic has been seen for deadManThreshold. onStateChange is
 	// the plugin-side notifier fired on true/false transitions;
 	// guarded against double-fire by the plugin, not by Session.
-	lastRX           time.Time
-	lastRXMu         sync.RWMutex
+	lastRX   time.Time
+	lastRXMu sync.RWMutex
+
+	// met counts every S101 frame in and out, attributed by command byte.
+	// Guarded by mu. Nil until SetMetrics.
+	met              *metrics.Connector
 	onStateChange    func(connected bool, reason string)
 	deadManThreshold time.Duration
 	deadManDone      chan struct{}
@@ -209,10 +214,44 @@ func (s *Session) SetOnStateChange(fn func(connected bool, reason string)) {
 	s.mu.Unlock()
 }
 
+// SetMetrics attaches the connector's counter set. Called by the Plugin
+// right after NewSession, before Connect. Frames are attributed by S101
+// command byte, which separates EmBER payloads from keep-alives — the
+// distinction that matters when reading a scrape, since a link can be busy
+// with keep-alives and carrying no data at all.
+func (s *Session) SetMetrics(m *metrics.Connector) {
+	if m == nil {
+		return
+	}
+	m.RegisterCmd(s101.CmdEmBER, "ember")
+	m.RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
+	m.RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
+	s.mu.Lock()
+	s.met = m
+	s.mu.Unlock()
+}
+
+// metrics returns the connector under the lock, or nil.
+func (s *Session) metricsConn() *metrics.Connector {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.met
+}
+
 func (s *Session) touchRX() {
 	s.lastRXMu.Lock()
 	s.lastRX = time.Now()
 	s.lastRXMu.Unlock()
+}
+
+// LastRx is the wall-clock time of the last frame received on this session,
+// or the zero time if nothing has arrived. rxAge answers a different
+// question — it collapses "nothing yet" to a zero duration, which reads as
+// "just now" — so liveness needs the instant itself.
+func (s *Session) LastRx() time.Time {
+	s.lastRXMu.RLock()
+	defer s.lastRXMu.RUnlock()
+	return s.lastRX
 }
 
 func (s *Session) rxAge() time.Duration {
@@ -497,7 +536,13 @@ func (s *Session) sendEmBER(payload []byte) error {
 		return fmt.Errorf("emberplus: not connected")
 	}
 	frame := s101.NewEmBERFrame(payload)
-	return w.WriteFrame(frame)
+	if err := w.WriteFrame(frame); err != nil {
+		return err
+	}
+	if met := s.metricsConn(); met != nil {
+		met.ObserveCmdTx(frame.Command, len(payload), 0)
+	}
+	return nil
 }
 
 func (s *Session) readLoop() {
@@ -529,6 +574,9 @@ func (s *Session) readLoop() {
 		// Any frame arrival — keep-alive response, EmBER payload,
 		// anything — counts as the provider being alive.
 		s.touchRX()
+		if met := s.metricsConn(); met != nil {
+			met.ObserveCmdRx(frame.Command, len(frame.Payload))
+		}
 
 		if frame.IsKeepAlive() {
 			s.logger.Debug("emberplus: keep-alive rx", "cmd", frame.Command)

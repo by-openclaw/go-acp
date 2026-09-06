@@ -187,7 +187,7 @@ func dialSilentMatrix(t *testing.T) (*sw08session.Client, func()) {
 			go func() { _, _ = io.Copy(io.Discard, c) }()
 		}
 	}()
-	cli, err := sw08session.Dial(context.Background(), ln.Addr().String(),
+	cli, err := sw08session.Dial(context.Background(), nil, ln.Addr().String(),
 		slog.New(slog.NewTextHandler(io.Discard, nil)), sw08session.ClientConfig{})
 	if err != nil {
 		t.Fatalf("dial: %v", err)

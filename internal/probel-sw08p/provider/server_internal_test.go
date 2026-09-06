@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -15,7 +16,7 @@ import (
 // TestNewServerNilLogger: passing a nil logger falls back to the default
 // without panicking, and the server is fully initialised.
 func TestNewServerNilLogger(t *testing.T) {
-	srv := newServer(nil, emptyExport())
+	srv := newServer(plugin.Deps{Logger: nil}, emptyExport())
 	if srv.logger == nil {
 		t.Fatal("logger not defaulted")
 	}
@@ -27,7 +28,7 @@ func TestNewServerNilLogger(t *testing.T) {
 // TestServeListenError: an invalid bind address makes Serve return a
 // wrapped listen error rather than nil.
 func TestServeListenError(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	err := srv.Serve(context.Background(), "256.256.256.256:99999")
 	if err == nil {
 		t.Fatal("Serve(bad addr): want error, got nil")
@@ -38,7 +39,7 @@ func TestServeListenError(t *testing.T) {
 // net.ErrClosed / context.Canceled into a nil return (the success arm of
 // Serve's final errors.Is check, line 116).
 func TestServeReturnsNilOnContextCancel(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(ctx, "127.0.0.1:0") }()
@@ -57,7 +58,7 @@ func TestServeReturnsNilOnContextCancel(t *testing.T) {
 // TestStopClosesListenerAndSessions: Stop closes the listener, drops
 // active sessions, and is idempotent on a second call.
 func TestStopClosesListenerAndSessions(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	serveDone := make(chan error, 1)
@@ -100,7 +101,7 @@ func TestStopClosesListenerAndSessions(t *testing.T) {
 // TestStopNoListener: Stop before Serve has bound (listener nil) returns
 // nil and still flips closed.
 func TestStopNoListener(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	if err := srv.Stop(); err != nil {
 		t.Errorf("Stop with no listener = %v; want nil", err)
 	}
@@ -110,7 +111,7 @@ func TestStopNoListener(t *testing.T) {
 // uncoercible value, and a tree-rejected connect.
 func TestSetValueErrors(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	ctx := context.Background()
 
 	if _, err := srv.SetValue(ctx, "not-a-path", 1); err == nil {
@@ -190,7 +191,7 @@ func TestCoerceSource(t *testing.T) {
 // conn) causes fanOutTally to log + note TallyBroadcastFailed and keep
 // going. Uses a fake session with a closed net.Pipe end.
 func TestFanOutTallyWriteFail(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 
 	c1, c2 := net.Pipe()
 	_ = c2.Close()
@@ -214,7 +215,7 @@ func TestFanOutTallyWriteFail(t *testing.T) {
 // TestFanOutTallySkipsOrigin: the originating session is excluded from
 // the fan-out (the `sess == origin` continue arm).
 func TestFanOutTallySkipsOrigin(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
@@ -242,7 +243,7 @@ func TestFanOutTallySkipsOrigin(t *testing.T) {
 // tally to the non-origin session (server.go ~228).
 func TestFanOutTallyDebugLog(t *testing.T) {
 	h := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
-	srv := newServer(slog.New(h), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(h)}, emptyExport())
 
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
@@ -284,7 +285,7 @@ func TestServeReturnsAcceptError(t *testing.T) {
 	}
 	defer func() { listenHook = nil }()
 
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // unblock Serve's ctx.Done watcher goroutine
 	err := srv.Serve(ctx, "127.0.0.1:0")
@@ -302,7 +303,7 @@ func TestServeListenHookError(t *testing.T) {
 	}
 	defer func() { listenHook = nil }()
 
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	if err := srv.Serve(context.Background(), "x"); !errors.Is(err, sentinel) {
 		t.Errorf("Serve = %v; want wrapped bind error", err)
 	}
@@ -311,7 +312,7 @@ func TestServeListenHookError(t *testing.T) {
 // TestAcceptLoopContextCancelled: acceptLoop returns ctx.Err immediately
 // when the context is already cancelled (the early ctx.Err arm).
 func TestAcceptLoopContextCancelled(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)

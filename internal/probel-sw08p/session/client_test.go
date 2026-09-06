@@ -156,7 +156,7 @@ func TestClientOnEventFiresBeforeSubscribe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	cli, err := Dial(ctx, ln.Addr().String(), logger, cfg)
+	cli, err := Dial(ctx, nil, ln.Addr().String(), logger, cfg)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}

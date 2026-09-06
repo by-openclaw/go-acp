@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -183,6 +185,22 @@ func isDirectoryCapture(path string) bool {
 func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protocol, func(), error) {
 	if host == "" {
 		return nil, nil, fmt.Errorf("host argument is required")
+	}
+
+	// A target may be written "host:port" — every operator does, and the
+	// help text for several verbs shows it that way. Split it here, once,
+	// rather than in each plugin: without this the port survives into the
+	// host string and the session appends the default on top, producing
+	// "10.6.250.105:9000:9000" and a "too many colons" dial error.
+	//
+	// An explicit --port wins, so a caller can override a pasted address.
+	if h, p, err := net.SplitHostPort(host); err == nil {
+		if n, cerr := strconv.Atoi(p); cerr == nil && n > 0 && n <= 65535 {
+			host = h
+			if cf.port == 0 {
+				cf.port = n
+			}
+		}
 	}
 
 	lvl := logging.ParseLevel(cf.logLevel)

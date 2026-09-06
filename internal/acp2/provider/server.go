@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,6 +34,8 @@ type Server = server
 // tree.mu's write lock; reads take RLock. Consistent with the emberplus
 // + acp1 providers.
 type server struct {
+	// net is the only way this server binds a socket. Injected.
+	net    transport.Net
 	logger *slog.Logger
 	tree   *tree
 
@@ -58,11 +61,10 @@ type server struct {
 	metrics *metrics.Connector
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
-	met := metrics.NewConnector()
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
+	met := deps.Metrics
 	for _, t := range []codec.AN2Type{
 		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
 		codec.AN2TypeError, codec.AN2TypeData,
@@ -71,6 +73,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	}
 	s := &server{
 		logger:   logger,
+		net:      deps.Net,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
 		metrics:  met,
@@ -100,17 +103,13 @@ func (s *server) Metrics() *metrics.Connector { return s.metrics }
 // Serve binds addr (e.g. "0.0.0.0:2072") and blocks until ctx is
 // cancelled or a fatal listen error occurs.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	// tcp4 preserved: acp2 binds IPv4-only.
-	//
-	// The bind goes through transport; the socket policy is applied by the
-	// accept loop below, which is why the embedded listener is used rather
-	// than the wrapper — the wrapper would apply it a second time, and the
-	// accept loop is the arm that also covers a listener injected by a test.
-	tln, err := transport.ListenTCP(ctx, "tcp4", addr, transport.SocketOptions{})
+	// tcp4 preserved: acp2 binds IPv4-only. The bind goes through the
+	// injected transport; the accept loop applies the socket policy per connection, which is also
+	// the arm that covers a listener injected by a test.
+	ln, err := s.net.Listen(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp2 provider: listen %q: %w", addr, err)
 	}
-	ln := tln.Listener
 
 	s.mu.Lock()
 	s.listener = ln

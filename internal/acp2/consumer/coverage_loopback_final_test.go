@@ -63,7 +63,7 @@ func TestConnect_ServerClosesImmediately(t *testing.T) {
 	})
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	err := s.Connect(ctx, host, port)
@@ -98,7 +98,7 @@ func TestConnect_ShortGetVersionReply(t *testing.T) {
 	})
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 	// Connect will fail at a later handshake step, but the short-reply
@@ -111,7 +111,7 @@ func TestConnect_ShortGetVersionReply(t *testing.T) {
 // Session.Connect. The dial will fail (nothing on DefaultPort) but the
 // branch executes first.
 func TestConnect_PortZeroDefault(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	_ = s.Connect(ctx, "127.0.0.1", 0) // 0 → codec.DefaultPort
@@ -142,7 +142,7 @@ func TestSendFrame_AfterDisconnect(t *testing.T) {
 	srv, host, port := newFakeServer(t)
 	defer srv.stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err != nil {

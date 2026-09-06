@@ -208,7 +208,7 @@ func TestConnect_GetDeviceInfoCloses(t *testing.T) {
 	host, port, stop := handshakeListener(t, 1, nil) // answer only GetVersion
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err == nil {
@@ -229,7 +229,7 @@ func TestConnect_ACP2GetVersionCloses(t *testing.T) {
 	})
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err == nil {

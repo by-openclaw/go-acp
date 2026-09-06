@@ -99,7 +99,18 @@ func TestAsConverters_EdgeCases(t *testing.T) {
 	if _, err := ipv4ToUint32(nil); err == nil {
 		t.Error("ipv4ToUint32(nil): want error")
 	}
-	if _, err := ipv4ToUint32(123); err == nil {
+	// A u32 IS a valid address: the wire carries one, and Canonicalize
+	// writes default/min/max as plain numbers.
+	if got, err := ipv4ToUint32(int64(3232235777)); err != nil || got != 3232235777 {
+		t.Errorf("ipv4ToUint32(u32) = %d, %v; want the number back", got, err)
+	}
+	if _, err := ipv4ToUint32([]string{"1.2.3.4"}); err == nil {
 		t.Error("ipv4ToUint32 wrong type: want error")
+	}
+	if _, err := ipv4ToUint32(int64(-1)); err == nil {
+		t.Error("ipv4ToUint32 below u32 range: want error")
+	}
+	if _, err := ipv4ToUint32(int64(math.MaxUint32) + 1); err == nil {
+		t.Error("ipv4ToUint32 above u32 range: want error")
 	}
 }
