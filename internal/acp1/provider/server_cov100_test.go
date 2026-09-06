@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 // tree-build-failure branch (newServer falls back to an empty tree).
 func TestNewServer_NilLoggerAndBadExport(t *testing.T) {
 	// nil logger + nil export → tree build fails → empty-tree fallback.
-	s := newServer(nil, nil)
+	s := newServer(plugin.Deps{}, nil)
 	if s.logger == nil {
 		t.Error("nil logger should default")
 	}
@@ -24,7 +25,7 @@ func TestNewServer_NilLoggerAndBadExport(t *testing.T) {
 
 	// A valid (non-nil) export builds a real tree.
 	root := &canonical.Node{Header: canonical.Header{Identifier: "device", Access: canonical.AccessRead}}
-	s2 := newServer(nil, &canonical.Export{Root: root})
+	s2 := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	if s2.tree == nil {
 		t.Error("valid export should build a tree")
 	}

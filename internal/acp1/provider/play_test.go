@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"bytes"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"math/rand"
@@ -81,7 +82,7 @@ func playTreeServer(t *testing.T) *server {
 		Number: 1, Identifier: "device", Access: r,
 		Children: []canonical.Element{slot0, slot1},
 	}}}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 func TestOscillatable(t *testing.T) {
