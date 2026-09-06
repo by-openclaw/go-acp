@@ -39,7 +39,8 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| IRD satellite receiver | (being addressed) | SNMP + MIB · HTTP management page | none yet — `internal/snmp` is unwritten |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
@@ -49,8 +50,45 @@ services this one Neuron offers cannot yet be driven at a real device — see
 
 ### IRD satellite receivers — SNMP only
 
-Installed 2026-09-07; the codeowner is assigning fabric addresses so they are
-reachable, and sourcing the MIBs (they belong in `internal/snmp/assets/mibs/`).
+Installed and addressed 2026-09-07. Both answer on the management fabric;
+the MIBs belong in `internal/snmp/assets/mibs/`.
+
+| | TT1260 | RX1290 |
+| --- | --- | --- |
+| Address | `10.6.255.110` | `10.6.255.111` |
+| `sysDescr` | "Tandberg TV TT1260 Professional MPEG Receiver" | "Tandberg Television RX1290 Professional AVC Receiver" |
+| `sysObjectID` | `1.3.6.1.4.1.1773.1.3.200` | `1.3.6.1.4.1.1773.1.3.200` |
+| Objects under 1773 | 577 | 842 |
+
+**The MIB to find is Tandberg Television, IANA enterprise 1773.** Both units
+report the SAME sysObjectID, so one product-family MIB covers both — which
+matches their identical web UI and their shared alarm-ID namespace
+(1 = Signal Lock lost, 2 = BER too high, 4 = Video stopped, 5/6 = Audio
+stopped, 8 = CN margin too low, 9 = PreBER too high). Ericsson acquired
+Tandberg Television in 2007, so vendor material may be filed under either
+name.
+
+Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
+
+- **SNMPv1 ONLY.** v2c gets no response at all, on either unit, for either
+  community. Community `public` reads. This happens to match Cerebrum's own
+  manager default (v1, `public`), so Cerebrum can poll them as they stand.
+- Tree shape: `1773.1.1.x` is the common chassis branch (network config at
+  `.1.1.1.1-4`, trap destinations at `.1.1.2.1`, a card/module table at
+  `.1.1.3.1` carrying per-slot type, firmware and card names), and
+  `1773.1.3.200.x` is the product branch — 299 of the TT1260's objects.
+
+Two things to fix on the devices before trap work starts:
+
+1. **The trap destination is stale.** `.1.1.2.1.2.1` still reads
+   `192.168.0.229`, an address from a previous network, so traps currently
+   go nowhere. Point it at Cerebrum (`10.6.250.5`, receiver Active on 162)
+   for an independent confirmation the devices emit at all.
+2. **The clock is unset** — both report `0000-00-00 00:00:00`, and every
+   alarm row carries that timestamp. Trap and alarm times are meaningless
+   until NTP is configured.
+
+Scope, per the codeowner:
 
 Scope, per the codeowner:
 
