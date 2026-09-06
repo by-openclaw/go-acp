@@ -226,7 +226,13 @@ Implementation:
 
 - ❌ No auto-retry on Send timeout (§3.1 has no framing ACK, so
   retry has to be app-layer / per-command).
-- ❌ No auto-reconnect on TCP drop.
+- ✅ Auto-reconnect on TCP drop: `Plugin.SessionDone()` exposes the
+  codec client's reader-exit channel, and the `watch` verb supervises
+  it — reconnect with backoff, then re-`Subscribe`, since the
+  subscription dies with the socket. The cycle itself is the shared
+  `consumer.Supervisor`, not a copy in this package. The codec client
+  itself still does NOT redial on its own; recovery is a session-layer
+  concern, deliberately.
 - ✅ Keepalive: `consumer/keepalive.go` polls rx 01 on a rotating dst
   cursor (SW-P-02 has no APP_KEEPALIVE pair, so the rx 01 / tx 03
   round-trip IS the keep-alive). Armed only when a matrix size is
@@ -241,7 +247,9 @@ Implementation:
 - ❌ Server-side idle-session cleanup / graceful-drain / per-session
   write timeout.
 
-Next-session priority: app-layer retry policy + reconnect.
+Next-session priority: app-layer retry policy. Reconnect is done (above);
+what it still needs is a live run against a severed link, the way
+cerebrum-nb's was proven with a killproxy — implemented is not verified.
 
 ## Testbed
 

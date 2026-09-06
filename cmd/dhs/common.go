@@ -294,6 +294,42 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	return plug, cleanup, nil
 }
 
+// reconnectPlugin re-establishes an existing plugin's session IN PLACE, for
+// a long-running verb whose link died mid-run.
+//
+// It reuses the plugin rather than building a new one through connect(),
+// which matters for three reasons. The caller's `plug` variable never
+// changes, so nothing racing the reconnect can observe a half-swapped
+// plugin. The loggers and the --capture recorder stay open, instead of a
+// reconnect silently rotating the operator's log or truncating the capture.
+// And the per-plugin configuration applied at connect time — transport kind,
+// keep-alive cadence, recorder — persists, because it lives on the plugin.
+//
+// Protocol.Connect is documented as callable more than once for exactly
+// this. Disconnect first so a half-open session is released rather than
+// leaked.
+func reconnectPlugin(ctx context.Context, plug consumer.Protocol, host string, cf *commonFlags) error {
+	port := cf.port
+	if port == 0 {
+		factory, err := consumer.Get(cf.protocol)
+		if err != nil {
+			return err
+		}
+		port = factory.Meta().DefaultPort
+	}
+	_ = plug.Disconnect()
+
+	// Same floor as connect(): a tight --timeout must not kill a reconnect
+	// that legitimately needs several round trips.
+	dialTimeout := cf.timeout
+	if dialTimeout < 5*time.Second {
+		dialTimeout = 5 * time.Second
+	}
+	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+	defer cancel()
+	return plug.Connect(dialCtx, host, port)
+}
+
 // connectWithRetry wraps connect() with the same exponential backoff
 // the per-plugin warm-restart watcher uses (1s → 2s → 4s → 8s → 16s →
 // 30s cap). Used by long-running verbs like `watch` so the operator can
