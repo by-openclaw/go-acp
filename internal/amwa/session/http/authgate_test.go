@@ -18,13 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/amwa/codec/is10"
+	jwt "dhs/internal/auth"
 )
 
 var gateKey, _ = rsa.GenerateKey(rand.Reader, 2048)
 
-func gateJWK() is10.JWK {
-	return is10.JWK{
+func gateJWK() jwt.JWK {
+	return jwt.JWK{
 		Kty: "RSA", Kid: "g1",
 		N: base64.RawURLEncoding.EncodeToString(gateKey.N.Bytes()),
 		E: base64.RawURLEncoding.EncodeToString([]byte{0x01, 0x00, 0x01}),

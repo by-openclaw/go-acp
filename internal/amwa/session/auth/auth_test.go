@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"dhs/internal/amwa/codec/is10"
+	jwt "dhs/internal/auth"
 )
 
 // mockAS serves metadata + jwks + token endpoints.
@@ -33,7 +34,7 @@ func mockAS(t *testing.T, tokenHits *atomic.Int32, expiresIn int) *httptest.Serv
 		})
 	})
 	mux.HandleFunc("/jwks", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-		_ = json.NewEncoder(w).Encode(is10.JWKS{Keys: []is10.JWK{{Kty: "RSA", Kid: "m1", N: "AQAB", E: "AQAB"}}})
+		_ = json.NewEncoder(w).Encode(jwt.JWKS{Keys: []jwt.JWK{{Kty: "RSA", Kid: "m1", N: "AQAB", E: "AQAB"}}})
 	})
 	mux.HandleFunc("/token", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		tokenHits.Add(1)

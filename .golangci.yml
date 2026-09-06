@@ -37,6 +37,15 @@ linters:
               desc: "codec must not depend on provider/ (Layer 1 cannot import Layer 3)"
             - pkg: dhs/internal/amwa/registry
               desc: "codec must not depend on registry/ (Layer 1 cannot import Layer 3)"
+            # Neutral shared libraries are still dhs/* — a codec that
+            # imports one stops being liftable, which is the whole
+            # point of the rule. This is what forced the IS-10 JWT
+            # machinery out to internal/auth rather than letting the
+            # codec import it.
+            - pkg: dhs/internal/auth
+              desc: "codec must not depend on internal/auth (stdlib-only, lift-to-own-repo ready)"
+            - pkg: dhs/internal/transport
+              desc: "codec must not depend on internal/transport (codec is bytes, not I/O)"
 
         # Layer 2 — session may import Layer 1 codec + neutral
         # infrastructure, but never Layer 3 plugins or cmd/.

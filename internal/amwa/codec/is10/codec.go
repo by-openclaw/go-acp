@@ -18,12 +18,17 @@ const WellKnownPath = "/.well-known/oauth-authorization-server"
 
 // Codec is the IS-10 wire codec contract — one implementation per
 // supported wire minor (v1.0, the only published one).
+//
+// Only the Authorization Server metadata document is versioned wire.
+// Key sets and token verification are RFC 7515/7517/7519, which IS-10
+// references rather than redefines, so they carry no NMOS minor and
+// live in internal/auth; the NMOS claim policy that DOES belong to the
+// spec lives in internal/amwa/session/auth, which — unlike a codec —
+// is allowed to import it.
 type Codec interface {
 	spec.Versioned
 
 	DecodeMetadata([]byte) (Metadata, error)
-	DecodeJWKS([]byte) (JWKS, error)
-	VerifyWithKeys(string, []JWK) (Claims, error)
 }
 
 // versions is the per-process Registry of IS-10 codec implementations.
