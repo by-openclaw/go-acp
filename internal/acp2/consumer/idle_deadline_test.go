@@ -39,7 +39,7 @@ func TestSessionIdleDeadlineClosesSilentPeer(t *testing.T) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	s.mu.Lock()
 	s.conn = conn
 	s.mu.Unlock()
@@ -64,7 +64,7 @@ func TestSessionIdleDeadlineClosesSilentPeer(t *testing.T) {
 
 // A zero/negative timeout disables the deadline (opt-out must really opt out).
 func TestSetIdleTimeoutDisable(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	s.SetIdleTimeout(5 * time.Second)
 	if got := s.IdleTimeout(); got != 5*time.Second {
 		t.Fatalf("IdleTimeout = %v, want 5s", got)
@@ -82,6 +82,6 @@ func TestSetIdleTimeoutDisable(t *testing.T) {
 // SetIdleTimeout on a session with no connection must not panic — it is
 // called from startKeepAlive, which can run before/after a socket exists.
 func TestSetIdleTimeoutNilConnSafe(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	s.SetIdleTimeout(time.Second)
 }

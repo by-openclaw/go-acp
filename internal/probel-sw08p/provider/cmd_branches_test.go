@@ -1,6 +1,7 @@
 package probelsw08p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -35,7 +36,7 @@ func labelledServer(t *testing.T) *server {
 			},
 		},
 	}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 // TestCrosspointConnectReject: a connect to an out-of-range dst is
@@ -171,7 +172,7 @@ func TestCrosspointTallyDumpWordForm(t *testing.T) {
 			},
 		},
 	}
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	if err := srv.tree.applyConnect(0, 0, 260, 42); err != nil {
 		t.Fatalf("seed route: %v", err)
 	}

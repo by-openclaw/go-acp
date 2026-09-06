@@ -23,7 +23,7 @@ func dialRaw(ctx context.Context, host string, port int) (net.Conn, error) {
 // TestDoACP2_AllocMTIDCanceled covers DoACP2's allocMTID error arm: a
 // pre-cancelled context makes allocMTID return ctx.Err before any send.
 func TestDoACP2_AllocMTIDCanceled(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, err := s.DoACP2(ctx, 0, &codec.ACP2Message{
@@ -36,7 +36,7 @@ func TestDoACP2_AllocMTIDCanceled(t *testing.T) {
 // TestDoACP2_EncodeError covers DoACP2's EncodeACP2Message error arm: a
 // set_property request with no properties makes the codec reject the encode.
 func TestDoACP2_EncodeError(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	_, err := s.DoACP2(context.Background(), 0, &codec.ACP2Message{
 		Type: codec.ACP2TypeRequest, Func: codec.ACP2FuncSetProperty,
 		ObjID: 1, Properties: nil}) // set with no properties → encode error
@@ -48,7 +48,7 @@ func TestDoACP2_EncodeError(t *testing.T) {
 // TestSendFrame_EncodeError covers sendFrame's EncodeAN2Frame error arm via
 // an oversize payload the AN2 encoder rejects.
 func TestSendFrame_EncodeError(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	big := make([]byte, 0x1_0001) // > AN2 MaxPayload
 	err := s.sendFrame(context.Background(), &codec.AN2Frame{
 		Proto: codec.AN2ProtoACP2, Slot: 1, Type: codec.AN2TypeData, Payload: big})
@@ -63,7 +63,7 @@ func TestSendFrame_EncodeError(t *testing.T) {
 // the decode-error arm we feed a payload that is >=4 bytes yet still makes
 // the decoder error: a reply/announce body that DecodeProperties rejects.
 func TestHandleACP2Frame_DecodeError(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	// type=reply, mtid=1, func=get_object, then a truncated obj-id/idx +
 	// a malformed property header so the reply-body parse path errors.
 	// DecodeACP2Message parses properties for reply funcs 1-3; a property
@@ -99,7 +99,7 @@ func TestAN2Request_CtxDone(t *testing.T) {
 	})
 	defer stop()
 
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	// Connect would hang in the handshake (no replies); dial the socket
 	// directly and start the read loop, then call an2Request with a short
 	// ctx so its ctx.Done arm fires deterministically.

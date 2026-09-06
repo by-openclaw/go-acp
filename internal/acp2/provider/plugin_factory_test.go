@@ -44,7 +44,7 @@ func TestFactory_New(t *testing.T) {
 //   - nil/invalid export → newTree fails, server falls back to emptyTree.
 func TestNewServer_NilLoggerAndBadExport(t *testing.T) {
 	// nil export → tree build fails → emptyTree fallback.
-	srv := newServer(nil, nil)
+	srv := newServer(plugin.Deps{Logger: nil}, nil)
 	if srv == nil {
 		t.Fatal("newServer(nil,nil) returned nil")
 	}
@@ -57,7 +57,7 @@ func TestNewServer_NilLoggerAndBadExport(t *testing.T) {
 		Header: canonical.Header{Number: 1, Identifier: "leaf-root"},
 		Type:   canonical.ParamInteger,
 	}}
-	srv2 := newServer(quietLogger(), bad)
+	srv2 := newServer(plugin.Deps{Logger: quietLogger()}, bad)
 	if srv2.tree == nil || srv2.tree.count() != 0 {
 		t.Errorf("non-node root should fall back to empty tree, count=%d", srv2.tree.count())
 	}

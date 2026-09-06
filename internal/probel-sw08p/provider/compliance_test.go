@@ -1,6 +1,7 @@
 package probelsw08p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -29,7 +30,7 @@ func newComplianceServer(t *testing.T) *server {
 			},
 		},
 	}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 // TestProfileUnsupportedCommand: dispatching a frame with a CMD byte

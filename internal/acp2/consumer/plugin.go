@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 	"encoding/binary"
 	"fmt"
@@ -37,8 +38,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
 }
 
 // Plugin is the ACP2 Protocol implementation. One instance handles one
@@ -46,6 +46,12 @@ func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 // tree traversal, and per-slot caches of walked trees.
 type Plugin struct {
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected.
+	net transport.Net
+
+	// metrics is supplied rather than created.
+	metrics *metrics.Connector
 
 	mu      sync.Mutex
 	session *Session
@@ -260,7 +266,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("acp2: already connected")
 	}
 
-	s := NewSession(p.logger)
+	s := NewSession(p.net, p.logger)
 	if p.recorder != nil {
 		s.SetRecorder(p.recorder)
 	}

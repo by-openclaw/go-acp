@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -35,7 +36,7 @@ func TestKeepaliveSchedulerSendsPings(t *testing.T) {
 		},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	srv.SetKeepaliveInterval(80 * time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -131,7 +132,7 @@ func TestKeepaliveSchedulerSendsPings(t *testing.T) {
 func TestKeepaliveDisabledByDefault(t *testing.T) {
 	exp := &canonical.Export{Root: &canonical.Node{Header: canonical.Header{Number: 1, Identifier: "router", OID: "1"}}}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

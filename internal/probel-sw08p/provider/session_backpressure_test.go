@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -74,7 +75,7 @@ func (fakeAddr) String() string  { return "fake:0" }
 // next send blocks; cancelling the ctx then drives the read loop's
 // `case <-ctx.Done(): return` arm in run().
 func TestReadLoopDispatchBackpressureCancel(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), demoMatrixExport(16, 16))
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, demoMatrixExport(16, 16))
 
 	// Build a stream of many interrogate frames (each yields a >2-byte
 	// reply). dispatchChanCap + a comfortable margin guarantees the read

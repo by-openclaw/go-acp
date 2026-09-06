@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -14,7 +15,7 @@ import (
 // spinning. Drives the write-error arm in startKeepalive.
 func TestStartKeepaliveWriteFailStops(t *testing.T) {
 	h := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
-	srv := newServer(slog.New(h), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(h)}, emptyExport())
 
 	c1, c2 := net.Pipe()
 	_ = c2.Close() // peer gone → writes fail
@@ -34,7 +35,7 @@ func TestStartKeepaliveWriteFailStops(t *testing.T) {
 // TestStartKeepaliveClosedSessionStops: a session already closed when
 // the tick fires takes the isClosed() early-return arm.
 func TestStartKeepaliveClosedSessionStops(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
@@ -50,7 +51,7 @@ func TestStartKeepaliveClosedSessionStops(t *testing.T) {
 // TestStartKeepaliveZeroIntervalNoop: interval <= 0 is a no-op (no
 // goroutine spawned).
 func TestStartKeepaliveZeroIntervalNoop(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, _ := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	sess := newSession(srv, c1)

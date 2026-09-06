@@ -102,7 +102,7 @@ func TestSessionConnect_AlreadyConnected(t *testing.T) {
 	srv, host, port := newFakeServer(t)
 	defer srv.stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err != nil {
@@ -119,7 +119,7 @@ func TestSessionConnect_DialRefused(t *testing.T) {
 	srv, host, port := newFakeServer(t)
 	srv.stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	err := s.Connect(ctx, host, port)
@@ -193,7 +193,7 @@ func TestSessionConnect_HandshakeAN2Error(t *testing.T) {
 	srv.an2ErrOnFunc = int(codec.AN2FuncGetVersion) // fail at step 1
 	defer srv.stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	// GetVersion error is non-fatal in the decode path (AN2 error frame

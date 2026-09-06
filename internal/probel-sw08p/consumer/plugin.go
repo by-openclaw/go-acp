@@ -60,8 +60,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the given logger.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
 }
 
 // MatrixConfig holds the externally-supplied matrix shape — mirrors
@@ -90,6 +89,14 @@ type MatrixConfig struct {
 // tie-line tally cache, etc.) as their PRs land.
 type Plugin struct {
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected, so the
+	// process owns the transport posture and a test substitutes a fake.
+	net transport.Net
+
+	// metrics is supplied rather than created, so one place can scrape
+	// every connector.
+	metrics *metrics.Connector
 
 	mu       sync.Mutex
 	host     string
@@ -212,7 +219,13 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
-	met := metrics.NewConnector()
+	// Normally injected. A Plugin built directly still gets a counter set
+	// rather than a nil Metrics(), which is what this used to guarantee by
+	// constructing its own.
+	met := p.metrics
+	if met == nil {
+		met = metrics.NewConnector()
+	}
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids.
 	for _, id := range codec.CommandIDs() {
@@ -253,7 +266,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw08p", "rx", b)
 		}
 	}
-	cli, err := sw08session.Dial(ctx, addr, p.logger, cfg)
+	cli, err := sw08session.Dial(ctx, p.net, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}

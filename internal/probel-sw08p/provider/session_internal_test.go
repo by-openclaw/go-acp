@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -17,7 +18,7 @@ import (
 func debugServer(t *testing.T) *server {
 	t.Helper()
 	h := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
-	srv := newServer(slog.New(h), demoMatrixExport(16, 16))
+	srv := newServer(plugin.Deps{Logger: slog.New(h)}, demoMatrixExport(16, 16))
 	return srv
 }
 
@@ -301,7 +302,7 @@ func TestSessionDispatchReplyAndStream(t *testing.T) {
 // returns at the read-loop's top-of-loop ctx.Err() guard (session.go ~85)
 // before ever blocking in Read.
 func TestSessionRunCtxCancelledAtTop(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
@@ -323,7 +324,7 @@ func TestSessionRunCtxCancelledAtTop(t *testing.T) {
 // after its ctx is cancelled, hits the ctx.Err() guard inside the range
 // loop and returns without dispatching (session.go ~180).
 func TestDispatcherCtxCancelledDrops(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), demoMatrixExport(16, 16))
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, demoMatrixExport(16, 16))
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
@@ -356,7 +357,7 @@ func TestDispatcherCtxCancelledDrops(t *testing.T) {
 // branch (session.go ~90). Requires a Debug-level logger.
 func TestSessionReadErrorNonEOF(t *testing.T) {
 	h := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
-	srv := newServer(slog.New(h), demoMatrixExport(16, 16))
+	srv := newServer(plugin.Deps{Logger: slog.New(h)}, demoMatrixExport(16, 16))
 
 	cConn, sConn := net.Pipe()
 	defer func() { _ = cConn.Close() }()
@@ -380,7 +381,7 @@ func TestSessionReadErrorNonEOF(t *testing.T) {
 // TestSessionWriteClosed: write() on a closed session returns
 // net.ErrClosed.
 func TestSessionWriteClosed(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, c2 := net.Pipe()
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
@@ -394,7 +395,7 @@ func TestSessionWriteClosed(t *testing.T) {
 // TestSessionCloseIdempotent: close() twice is safe (the closed-guard
 // early return).
 func TestSessionCloseIdempotent(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	c1, c2 := net.Pipe()
 	defer func() { _ = c2.Close() }()
 	sess := newSession(srv, c1)
@@ -432,7 +433,7 @@ func TestSessionDispatchReplyWriteFail(t *testing.T) {
 func TestDispatcherPanicRecovered(t *testing.T) {
 	// Build the server via newServer so all metrics/profile wiring is
 	// intact, then null its tree so the handler nil-derefs and panics.
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	srv.tree = nil
 
 	c1, c2 := net.Pipe()
@@ -463,7 +464,7 @@ func TestDispatcherPanicRecovered(t *testing.T) {
 
 // TestSessionRemoteAddrNilConn: remoteAddr handles a nil conn gracefully.
 func TestSessionRemoteAddrNilConn(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), emptyExport())
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
 	sess := &session{srv: srv} // conn nil
 	if got := sess.remoteAddr(); got != "" {
 		t.Errorf("remoteAddr(nil conn) = %q; want empty", got)

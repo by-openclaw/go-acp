@@ -19,7 +19,7 @@ import (
 func TestProtectRoundTripLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	srv.tree.setDeviceName(42, "PANEL01")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -101,7 +101,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 func TestMasterProtectOverrideLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = srv.Serve(ctx, "127.0.0.1:0") }()

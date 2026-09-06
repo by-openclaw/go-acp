@@ -105,7 +105,7 @@ func runDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 		logger = slog.Default()
 	}
 
-	sess := NewSession(logger)
+	sess := NewSession(nil, logger)
 	if err := sess.Connect(ctx, host, port); err != nil {
 		return nil, err
 	}

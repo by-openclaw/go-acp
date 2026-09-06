@@ -87,7 +87,8 @@ type Session struct {
 	// fake, and a supervisor driving reconnect has something to ASK for a
 	// new connection, which a package-local net.Dialer is not.
 	// NewSession installs the shared transport.TCPDialer for production.
-	dialer transport.Dialer
+	// net is the ONLY way this session reaches a socket.
+	net transport.Net
 
 	// Write serialisation.
 	writeMu sync.Mutex
@@ -146,7 +147,16 @@ func (s *Session) note(event string) {
 
 // NewSession creates an uninitialised Session. Call Connect to establish
 // the TCP connection and run the AN2 handshake.
-func NewSession(logger *slog.Logger) *Session {
+// NewSession builds a session that dials through n.
+//
+// The Net is injected rather than constructed here: the process owns the
+// transport posture, and a test hands in a fake without a real socket. A nil
+// Net falls back to the shared dialler with ACP2's own posture — Nagle off,
+// because ACP2 frames are small and latency-sensitive.
+func NewSession(n transport.Net, logger *slog.Logger) *Session {
+	if n == nil {
+		n = transport.New(transport.Config{NoDelay: true})
+	}
 	s := &Session{
 		logger:    logger,
 		waiters:   make(map[uint8]chan *codec.ACP2Message),
@@ -157,9 +167,7 @@ func NewSession(logger *slog.Logger) *Session {
 		// that part is unchanged. What the shared dialer adds is
 		// SO_KEEPALIVE, which this session never set: an outbound session to
 		// a device that goes half-open had no OS-level dead-peer probe.
-		dialer: transport.TCPDialer{
-			Options: transport.SocketOptions{NoDelay: true},
-		},
+		net: n,
 	}
 	s.mtidCond = sync.NewCond(&s.mtidMu)
 	return s
@@ -180,7 +188,7 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 
 	s.logger.Debug("acp2: dialing", "host", ip, "port", port)
 
-	conn, err := s.dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
+	conn, err := s.net.Dial(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}

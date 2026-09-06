@@ -26,7 +26,7 @@ func TestDialError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	// 127.0.0.1:1 is reserved and refuses; nil logger forces the default.
-	_, err := Dial(ctx, "127.0.0.1:1", nil, ClientConfig{DialTimeout: 300 * time.Millisecond})
+	_, err := Dial(ctx, nil, "127.0.0.1:1", nil, ClientConfig{DialTimeout: 300 * time.Millisecond})
 	if err == nil {
 		t.Fatal("Dial to closed port returned nil error")
 	}

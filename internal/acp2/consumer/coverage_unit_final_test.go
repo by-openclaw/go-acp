@@ -473,14 +473,14 @@ func TestValidateValueAgainstType_NumericAndEnum(t *testing.T) {
 
 // TestSession_ReleaseMTIDZero covers releaseMTID's mtid==0 early return.
 func TestSession_ReleaseMTIDZero(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.releaseMTID(0) // must not panic / touch the pool
 }
 
 // TestSession_CloseLockedNilConn covers closeLocked's conn==nil early return
 // via Disconnect on a never-connected session.
 func TestSession_CloseLockedNilConn(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	if err := s.Disconnect(); err != nil {
 		t.Errorf("Disconnect on fresh session = %v, want nil", err)
 	}
@@ -492,7 +492,7 @@ func TestSession_CloseLockedNilConn(t *testing.T) {
 // forever. Uses a tiny closeWait so the test is fast and a net.Pipe conn so
 // Close() is a real call.
 func TestSession_CloseLockedTimeoutArm(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	clientConn, serverConn := net.Pipe()
 	defer func() { _ = serverConn.Close() }()
 	s.conn = clientConn
@@ -519,7 +519,7 @@ func TestSession_CloseLockedTimeoutArm(t *testing.T) {
 // reader goroutine has already exited (done closed), close returns promptly
 // without waiting on the closeWait timer.
 func TestSession_CloseLockedDoneArm(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	clientConn, serverConn := net.Pipe()
 	defer func() { _ = serverConn.Close() }()
 	s.conn = clientConn
@@ -538,7 +538,7 @@ func TestSession_CloseLockedDoneArm(t *testing.T) {
 
 // TestSession_MarkSlotProbedNegative covers the slot<0 guard.
 func TestSession_MarkSlotProbedNegative(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.MarkSlotProbed(-1, nil) // no-op, must not panic
 	if len(s.slotStatus) != 0 {
 		t.Errorf("negative slot probe grew tables to %d", len(s.slotStatus))
@@ -574,14 +574,14 @@ func TestIsClosedErr(t *testing.T) {
 
 // TestRouteReply_NoWaiter covers routeReply's no-waiter (orphan) arm.
 func TestRouteReply_NoWaiter(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	// No waiter registered for mtid 7 → orphan path (note + debug log).
 	s.routeReply(7, &codec.ACP2Message{Type: codec.ACP2TypeReply, MTID: 7})
 }
 
 // TestRouteReply_ChannelFull covers routeReply's full-channel default arm.
 func TestRouteReply_ChannelFull(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	ch := make(chan *codec.ACP2Message, 1)
 	ch <- &codec.ACP2Message{} // pre-fill so the next send hits default
 	s.waitMu.Lock()
@@ -593,7 +593,7 @@ func TestRouteReply_ChannelFull(t *testing.T) {
 // TestHandleAN2Internal_EventAndDefault covers the AN2 slot-event arm
 // (updates slotStatus) and the unhandled-type default arm.
 func TestHandleAN2Internal_EventAndDefault(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.slotStatus = make([]consumer.SlotStatus, 3)
 	// Slot event updates status.
 	s.handleAN2Internal(&codec.AN2Frame{
@@ -610,7 +610,7 @@ func TestHandleAN2Internal_EventAndDefault(t *testing.T) {
 // TestHandleACP2Frame_Guards covers the non-data, short-payload, decode-error,
 // and announce-fanout arms of handleACP2Frame.
 func TestHandleACP2Frame_Guards(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 
 	// Non-data frame → debug + return.
 	s.handleACP2Frame(&codec.AN2Frame{Proto: codec.AN2ProtoACP2, Type: codec.AN2TypeReply})

@@ -398,7 +398,7 @@ func TestAccessors_RecorderProfileWalkProgress(t *testing.T) {
 }
 
 func TestSession_SlotStatusAndSetRecorder(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	rec, err := transport.NewRecorder(t.TempDir() + "/cap.jsonl")
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
