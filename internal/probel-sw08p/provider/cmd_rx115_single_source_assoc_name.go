@@ -20,11 +20,11 @@ func (s *server) handleSingleSourceAssocName(f codec.Frame) (handlerResult, erro
 		name = positionalName("SRC ", int(p.SourceAssociationID)+1)
 	}
 	reply := codec.EncodeSourceAssocNamesResponse(codec.SourceAssocNamesResponseParams{
-		MatrixID:                p.MatrixID,
-		LevelID:                 0,
-		NameLength:              p.NameLength,
+		MatrixID:                 p.MatrixID,
+		LevelID:                  0,
+		NameLength:               p.NameLength,
 		FirstSourceAssociationID: p.SourceAssociationID,
-		Names:                   []string{name},
+		Names:                    []string{name},
 	})
 	return handlerResult{reply: &reply}, nil
 }

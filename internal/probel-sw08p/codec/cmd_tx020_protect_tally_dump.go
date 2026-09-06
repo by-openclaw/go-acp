@@ -38,7 +38,7 @@ func packProtectItem(it ProtectTallyItem) (byte, byte) {
 func unpackProtectItem(hi, lo byte) ProtectTallyItem {
 	return ProtectTallyItem{
 		State:    ProtectState((hi >> 4) & 0x07),
-		DeviceID: (uint16(hi) & 0x03) * 256 + uint16(lo),
+		DeviceID: (uint16(hi)&0x03)*256 + uint16(lo),
 	}
 }
 

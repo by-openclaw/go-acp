@@ -69,7 +69,7 @@ func DecodeProtectInterrogate(f Frame) (ProtectInterrogateParams, error) {
 		return ProtectInterrogateParams{
 			MatrixID:      f.Payload[0] >> 4,
 			LevelID:       f.Payload[0] & 0x0F,
-			DestinationID: (uint16(f.Payload[1]>>4) & 0x07) * 128 + uint16(f.Payload[2]),
+			DestinationID: (uint16(f.Payload[1]>>4)&0x07)*128 + uint16(f.Payload[2]),
 			DeviceID:      (uint16(f.Payload[1]) & 0x07) * 128,
 		}, nil
 	case RxProtectInterrogateExt:

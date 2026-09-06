@@ -37,6 +37,7 @@ import (
 
 	"dhs/internal/clock"
 	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // DefaultKeepalivePollSpacing is how often the client polls cmd 08. The spec
@@ -112,7 +113,7 @@ func (p *Plugin) stopKeepalivePoll() {
 // Client.Write (raw, bypassing the single-flight Send path) so the probe never
 // competes with a caller-driven request for the in-flight slot — the same
 // trick the sw02p rotating poll uses.
-func (p *Plugin) keepalivePollLoop(ka *keepalivePollState, cli *codec.Client, spacing time.Duration, clk clock.Clock) {
+func (p *Plugin) keepalivePollLoop(ka *keepalivePollState, cli *sw08session.Client, spacing time.Duration, clk clock.Clock) {
 	defer ka.stopped.Done()
 
 	t := clk.NewTicker(spacing)

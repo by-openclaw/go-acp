@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
 	"io"
 	"log/slog"
 	"net"
@@ -21,8 +22,8 @@ func sendCollectPeers(t *testing.T, n int, gap time.Duration) (*Client, func()) 
 	clientA := NewClientFromConn(a, logger, cfg)
 	clientB := NewClientFromConn(b, logger, cfg)
 
-	clientB.Subscribe(func(f Frame) {
-		if f.ID != RxCrosspointTallyDumpRequest {
+	clientB.Subscribe(func(f codec.Frame) {
+		if f.ID != codec.RxCrosspointTallyDumpRequest {
 			return
 		}
 		// Reply from a goroutine so the dispatch callback never blocks.
@@ -32,7 +33,7 @@ func sendCollectPeers(t *testing.T, n int, gap time.Duration) (*Client, func()) 
 					time.Sleep(gap)
 				}
 				_, _ = clientB.Send(context.Background(),
-					Frame{ID: TxCrosspointTallyDumpWord, Payload: []byte{byte(i)}}, nil)
+					codec.Frame{ID: codec.TxCrosspointTallyDumpWord, Payload: []byte{byte(i)}}, nil)
 			}
 		}()
 	})
@@ -50,8 +51,8 @@ func TestSendCollect_CollectsAllFrames(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
 
 	frames, err := clientA.SendCollect(ctx, req, match, match, 200*time.Millisecond, nil)
 	if err != nil {
@@ -61,7 +62,7 @@ func TestSendCollect_CollectsAllFrames(t *testing.T) {
 		t.Fatalf("collected %d frames; want 3", len(frames))
 	}
 	for _, f := range frames {
-		if f.ID != TxCrosspointTallyDumpWord {
+		if f.ID != codec.TxCrosspointTallyDumpWord {
 			t.Errorf("unexpected frame id %#x", f.ID)
 		}
 	}
@@ -76,9 +77,9 @@ func TestSendCollect_DoneStopsEarly(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
-	done := func(fs []Frame) bool { return len(fs) >= 2 }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
+	done := func(fs []codec.Frame) bool { return len(fs) >= 2 }
 
 	frames, err := clientA.SendCollect(ctx, req, match, match, 2*time.Second, done)
 	if err != nil {

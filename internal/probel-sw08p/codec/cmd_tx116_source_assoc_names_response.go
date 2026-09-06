@@ -8,11 +8,11 @@ import "fmt"
 //
 // Reference: SW-P-08 §3.3.22.
 type SourceAssocNamesResponseParams struct {
-	MatrixID                uint8
-	LevelID                 uint8
-	NameLength              NameLength
+	MatrixID                 uint8
+	LevelID                  uint8
+	NameLength               NameLength
 	FirstSourceAssociationID uint16
-	Names                   []string
+	Names                    []string
 }
 
 // EncodeSourceAssocNamesResponse packs tx 116.
@@ -72,10 +72,10 @@ func DecodeSourceAssocNamesResponse(f Frame) (SourceAssocNamesResponseParams, er
 		names[i] = unpackName(f.Payload[off : off+width])
 	}
 	return SourceAssocNamesResponseParams{
-		MatrixID:                m,
-		LevelID:                 l,
-		NameLength:              n,
+		MatrixID:                 m,
+		LevelID:                  l,
+		NameLength:               n,
 		FirstSourceAssociationID: first,
-		Names:                   names,
+		Names:                    names,
 	}, nil
 }

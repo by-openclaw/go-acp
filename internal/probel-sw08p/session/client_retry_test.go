@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
 	"errors"
 	"io"
 	"log/slog"
@@ -17,16 +18,16 @@ func discardLogger() *slog.Logger {
 }
 
 // fakePeer runs a read loop on conn, decodes full SW-P-08 frames, and
-// invokes onFrame for each one. Replies (ACK / NAK / data frames) are
+// invokes onFrame for each one. Replies (ACK / codec.NAK / data frames) are
 // written back to conn under the test's control via the returned Peer.
 // Caller closes with Peer.Close.
 type fakePeer struct {
 	conn    net.Conn
 	done    chan struct{}
-	onFrame func(*fakePeer, Frame)
+	onFrame func(*fakePeer, codec.Frame)
 }
 
-func newFakePeer(conn net.Conn, onFrame func(*fakePeer, Frame)) *fakePeer {
+func newFakePeer(conn net.Conn, onFrame func(*fakePeer, codec.Frame)) *fakePeer {
 	p := &fakePeer{
 		conn:    conn,
 		done:    make(chan struct{}),
@@ -47,20 +48,20 @@ func (p *fakePeer) loop() {
 		}
 		buf = append(buf, tmp[:n]...)
 		for len(buf) >= 2 {
-			if IsACK(buf) || IsNAK(buf) {
+			if codec.IsACK(buf) || codec.IsNAK(buf) {
 				buf = buf[2:]
 				continue
 			}
-			if buf[0] != DLE {
+			if buf[0] != codec.DLE {
 				buf = buf[1:]
 				continue
 			}
-			f, consumed, perr := Unpack(buf)
+			f, consumed, perr := codec.Unpack(buf)
 			if errors.Is(perr, io.ErrUnexpectedEOF) {
 				break
 			}
 			if perr != nil {
-				_, _ = p.conn.Write(PackNAK())
+				_, _ = p.conn.Write(codec.PackNAK())
 				buf = buf[2:]
 				continue
 			}
@@ -72,10 +73,10 @@ func (p *fakePeer) loop() {
 	}
 }
 
-func (p *fakePeer) writeACK() { _, _ = p.conn.Write(PackACK()) }
-func (p *fakePeer) writeNAK() { _, _ = p.conn.Write(PackNAK()) }
-func (p *fakePeer) writeFrame(f Frame) {
-	_, _ = p.conn.Write(Pack(f))
+func (p *fakePeer) writeACK() { _, _ = p.conn.Write(codec.PackACK()) }
+func (p *fakePeer) writeNAK() { _, _ = p.conn.Write(codec.PackNAK()) }
+func (p *fakePeer) writeFrame(f codec.Frame) {
+	_, _ = p.conn.Write(codec.Pack(f))
 }
 func (p *fakePeer) Close() error { return p.conn.Close() }
 
@@ -87,22 +88,22 @@ func TestSendACKThenReply(t *testing.T) {
 	client := NewClientFromConn(a, discardLogger(), ClientConfig{WireHexLog: &disable})
 	defer func() { _ = client.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		p.writeACK()
-		p.writeFrame(Frame{ID: TxCrosspointTally, Payload: []byte{0x00, 0x00, 0x07}})
+		p.writeFrame(codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0x00, 0x00, 0x07}})
 	})
 	defer func() { _ = peer.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	req := Frame{ID: RxCrosspointInterrogate, Payload: []byte{0x00, 0x00, 0x00, 0x00}}
-	reply, err := client.Send(ctx, req, func(f Frame) bool { return f.ID == TxCrosspointTally })
+	req := codec.Frame{ID: codec.RxCrosspointInterrogate, Payload: []byte{0x00, 0x00, 0x00, 0x00}}
+	reply, err := client.Send(ctx, req, func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTally })
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if reply.ID != TxCrosspointTally {
-		t.Errorf("reply.ID = %#x; want %#x", reply.ID, TxCrosspointTally)
+	if reply.ID != codec.TxCrosspointTally {
+		t.Errorf("reply.ID = %#x; want %#x", reply.ID, codec.TxCrosspointTally)
 	}
 }
 
@@ -123,26 +124,26 @@ func TestSendNAKRetriesThenACK(t *testing.T) {
 	defer func() { _ = client.Close() }()
 
 	var attempts atomic.Int32
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		n := attempts.Add(1)
 		if n < 3 {
 			p.writeNAK()
 			return
 		}
 		p.writeACK()
-		p.writeFrame(Frame{ID: TxDualControllerStatusResponse, Payload: []byte{0x01}})
+		p.writeFrame(codec.Frame{ID: codec.TxDualControllerStatusResponse, Payload: []byte{0x01}})
 	})
 	defer func() { _ = peer.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	req := Frame{ID: RxDualControllerStatusRequest}
-	reply, err := client.Send(ctx, req, func(f Frame) bool { return f.ID == TxDualControllerStatusResponse })
+	req := codec.Frame{ID: codec.RxDualControllerStatusRequest}
+	reply, err := client.Send(ctx, req, func(f codec.Frame) bool { return f.ID == codec.TxDualControllerStatusResponse })
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if reply.ID != TxDualControllerStatusResponse {
+	if reply.ID != codec.TxDualControllerStatusResponse {
 		t.Errorf("reply.ID = %#x", reply.ID)
 	}
 	if attempts.Load() != 3 {
@@ -169,7 +170,7 @@ func TestSendNAKExhausts(t *testing.T) {
 	})
 	defer func() { _ = client.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		p.writeNAK()
 	})
 	defer func() { _ = peer.Close() }()
@@ -177,7 +178,7 @@ func TestSendNAKExhausts(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err := client.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0x00}}, nil)
+	_, err := client.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x00}}, nil)
 	if !errors.Is(err, ErrMaxAttempts) {
 		t.Fatalf("Send err = %v; want ErrMaxAttempts", err)
 	}
@@ -199,7 +200,7 @@ func TestSendTimeoutRetries(t *testing.T) {
 	defer func() { _ = client.Close() }()
 
 	var attempts atomic.Int32
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		n := attempts.Add(1)
 		if n < 3 {
 			return // silence — force ack-timeout
@@ -211,7 +212,7 @@ func TestSendTimeoutRetries(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err := client.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0x00}}, nil)
+	_, err := client.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x00}}, nil)
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -230,7 +231,7 @@ func TestSendDataTooLarge(t *testing.T) {
 	defer func() { _ = b.Close() }()
 
 	big := make([]byte, 260) // ID + 260 > DataCapHard
-	_, err := client.Send(context.Background(), Frame{ID: RxMaintenance, Payload: big}, nil)
+	_, err := client.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: big}, nil)
 	if !errors.Is(err, ErrDataFieldTooLarge) {
 		t.Fatalf("err = %v; want ErrDataFieldTooLarge", err)
 	}
@@ -253,13 +254,13 @@ func TestSendCapSoftFires(t *testing.T) {
 	})
 	defer func() { _ = client.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) { p.writeACK() })
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) { p.writeACK() })
 	defer func() { _ = peer.Close() }()
 
 	payload := make([]byte, 150) // ID (1) + 150 = 151 bytes, between soft (128) and hard (255)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if _, err := client.Send(ctx, Frame{ID: RxMaintenance, Payload: payload}, nil); err != nil {
+	if _, err := client.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: payload}, nil); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if capCount.Load() != 1 {
@@ -294,13 +295,13 @@ func TestSendSendInFlight(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, _ = client.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0x00}}, nil)
+		_, _ = client.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x00}}, nil)
 		close(firstDone)
 	}()
 	// Give the first Send time to register.
 	time.Sleep(50 * time.Millisecond)
 
-	_, err := client.Send(context.Background(), Frame{ID: RxMaintenance, Payload: []byte{0x01}}, nil)
+	_, err := client.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x01}}, nil)
 	if !errors.Is(err, ErrSendInFlight) {
 		t.Fatalf("second Send err = %v; want ErrSendInFlight", err)
 	}

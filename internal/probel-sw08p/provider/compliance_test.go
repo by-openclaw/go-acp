@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // newComplianceServer builds a minimal provider against a 4×4 single-level

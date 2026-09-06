@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
 	"io"
 	"log/slog"
 	"net"
@@ -20,8 +21,8 @@ func collectPeer(t *testing.T, reply func(b *Client)) (*Client, func()) {
 	cfg := ClientConfig{WireHexLog: &disable}
 	ca := NewClientFromConn(a, logger, cfg)
 	cb := NewClientFromConn(b, logger, cfg)
-	cb.Subscribe(func(f Frame) {
-		if f.ID != RxCrosspointTallyDumpRequest {
+	cb.Subscribe(func(f codec.Frame) {
+		if f.ID != codec.RxCrosspointTallyDumpRequest {
 			return
 		}
 		go reply(cb)
@@ -29,8 +30,8 @@ func collectPeer(t *testing.T, reply func(b *Client)) (*Client, func()) {
 	return ca, func() { _ = ca.Close(); _ = cb.Close() }
 }
 
-func wordFrame(i int) Frame {
-	return Frame{ID: TxCrosspointTallyDumpWord, Payload: []byte{byte(i)}}
+func wordFrame(i int) codec.Frame {
+	return codec.Frame{ID: codec.TxCrosspointTallyDumpWord, Payload: []byte{byte(i)}}
 }
 
 // TestSendCollect_NilCollectZeroGap covers the two default-application
@@ -42,8 +43,8 @@ func TestSendCollect_NilCollectZeroGap(t *testing.T) {
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
 	frames, err := ca.SendCollect(ctx, req, match, nil, 0, nil)
 	if err != nil {
 		t.Fatalf("SendCollect: %v", err)
@@ -58,20 +59,20 @@ func TestSendCollect_NilCollectZeroGap(t *testing.T) {
 func TestSendCollect_DropsRejectedFrame(t *testing.T) {
 	ca, cleanup := collectPeer(t, func(b *Client) {
 		_, _ = b.Send(context.Background(), wordFrame(1), nil)
-		_, _ = b.Send(context.Background(), Frame{ID: TxCrosspointTallyDumpByte, Payload: []byte{2}}, nil)
+		_, _ = b.Send(context.Background(), codec.Frame{ID: codec.TxCrosspointTallyDumpByte, Payload: []byte{2}}, nil)
 	})
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
-	collect := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
+	collect := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
 	frames, err := ca.SendCollect(ctx, req, match, collect, 150*time.Millisecond, nil)
 	if err != nil {
 		t.Fatalf("SendCollect: %v", err)
 	}
 	for _, f := range frames {
-		if f.ID != TxCrosspointTallyDumpWord {
+		if f.ID != codec.TxCrosspointTallyDumpWord {
 			t.Errorf("rejected frame leaked into result: %#x", f.ID)
 		}
 	}
@@ -89,8 +90,8 @@ func TestSendCollect_SendError(t *testing.T) {
 	_ = ca.Close()
 	_ = cb.Close()
 
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return true }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return true }
 	if _, err := ca.SendCollect(context.Background(), req, match, match, 100*time.Millisecond, nil); err == nil {
 		t.Fatal("SendCollect on closed client returned nil; want send error")
 	}
@@ -106,9 +107,9 @@ func TestSendCollect_DoneTrueOnFirstFrame(t *testing.T) {
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
-	done := func(fs []Frame) bool { return len(fs) >= 1 }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
+	done := func(fs []codec.Frame) bool { return len(fs) >= 1 }
 	frames, err := ca.SendCollect(ctx, req, match, match, 2*time.Second, done)
 	if err != nil {
 		t.Fatalf("SendCollect: %v", err)
@@ -128,8 +129,8 @@ func TestSendCollect_CtxCancel(t *testing.T) {
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Millisecond)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
 	if _, err := ca.SendCollect(ctx, req, match, match, 10*time.Second, nil); err == nil {
 		t.Fatal("expected ctx deadline error from SendCollect")
 	}
@@ -149,8 +150,8 @@ func TestSendCollect_TimerResetOnBump(t *testing.T) {
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req := Frame{ID: RxCrosspointTallyDumpRequest, Payload: []byte{0}}
-	match := func(f Frame) bool { return f.ID == TxCrosspointTallyDumpWord }
+	req := codec.Frame{ID: codec.RxCrosspointTallyDumpRequest, Payload: []byte{0}}
+	match := func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTallyDumpWord }
 	frames, err := ca.SendCollect(ctx, req, match, match, 50*time.Millisecond, nil)
 	if err != nil {
 		t.Fatalf("SendCollect: %v", err)

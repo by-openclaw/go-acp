@@ -283,11 +283,11 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 	// sides. Payloads captured so the test asserts dst/src correctness,
 	// not just the count.
 	var (
-		aMu            sync.Mutex
-		aConnected     []codec.CrosspointConnectedParams
-		aGoDoneStatus  []codec.SalvoGoDoneStatus
-		bMu            sync.Mutex
-		bConnected     []codec.CrosspointConnectedParams
+		aMu           sync.Mutex
+		aConnected    []codec.CrosspointConnectedParams
+		aGoDoneStatus []codec.SalvoGoDoneStatus
+		bMu           sync.Mutex
+		bConnected    []codec.CrosspointConnectedParams
 	)
 	cliA, err := pA.ExposeClient()
 	if err != nil {

@@ -20,11 +20,11 @@ func (s *server) handleSingleDestAssocName(f codec.Frame) (handlerResult, error)
 		name = positionalName("DST ", int(p.DestAssociationID)+1)
 	}
 	reply := codec.EncodeDestAssocNamesResponse(codec.DestAssocNamesResponseParams{
-		MatrixID:              p.MatrixID,
-		LevelID:               0,
-		NameLength:            p.NameLength,
+		MatrixID:               p.MatrixID,
+		LevelID:                0,
+		NameLength:             p.NameLength,
 		FirstDestAssociationID: p.DestAssociationID,
-		Names:                 []string{name},
+		Names:                  []string{name},
 	})
 	return handlerResult{reply: &reply}, nil
 }

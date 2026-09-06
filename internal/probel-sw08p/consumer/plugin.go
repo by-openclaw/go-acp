@@ -28,6 +28,7 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 	"dhs/internal/transport"
 )
 
@@ -90,7 +91,7 @@ type Plugin struct {
 	mu       sync.Mutex
 	host     string
 	port     int
-	client   *codec.Client
+	client   *sw08session.Client
 	recorder *transport.Recorder
 
 	// kaPoll owns the spec-sanctioned cmd 08 keep-alive prober (§5
@@ -180,7 +181,7 @@ func (p *Plugin) ComplianceProfile() *compliance.Profile {
 }
 
 // SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect — the recorder is wired into the codec.Client at
+// before Connect — the recorder is wired into the sw08session.Client at
 // Dial time and captures every TX and RX frame (including DLE ACK /
 // DLE NAK control sequences) in the same format the ACP1/ACP2/Ember+
 // plugins produce.
@@ -214,7 +215,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
-	cfg := codec.ClientConfig{
+	cfg := sw08session.ClientConfig{
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
 		OnNAK:     func() { prof.Note(NAKReceived); met.ObserveNAK() },
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
@@ -249,7 +250,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw08p", "rx", b)
 		}
 	}
-	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
+	cli, err := sw08session.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
@@ -316,7 +317,7 @@ func (p *Plugin) Disconnect() error {
 
 // client returns the in-flight TCP client, or ErrNotConnected. Helper
 // for per-command methods added by follow-up PRs.
-func (p *Plugin) getClient() (*codec.Client, error) {
+func (p *Plugin) getClient() (*sw08session.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
@@ -325,11 +326,11 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	return p.client, nil
 }
 
-// ExposeClient returns the underlying codec.Client for callers that
+// ExposeClient returns the underlying sw08session.Client for callers that
 // need direct Subscribe / raw frame access (e.g. the CLI's watch
 // subcommand, which just prints every async tally it sees). Returns
 // ErrNotConnected before Connect fires.
-func (p *Plugin) ExposeClient() (*codec.Client, error) {
+func (p *Plugin) ExposeClient() (*sw08session.Client, error) {
 	return p.getClient()
 }
 
@@ -368,7 +369,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 }
 
 // Subscribe attaches a callback for async tallies. The wiring of
-// codec.Client.Subscribe into consumer.Event lands in the
+// sw08session.Client.Subscribe into consumer.Event lands in the
 // CrosspointTally per-command PR.
 func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	return consumer.ErrNotImplemented

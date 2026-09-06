@@ -466,4 +466,3 @@ func (t *tree) applyConnect(m, l uint8, dst uint16, src uint16) error {
 	st.sources[dst] = src
 	return nil
 }
-

@@ -74,19 +74,6 @@ var allowed = map[string]string{
 	// SetSocketBroadcast helper.
 	"internal/acp1/consumer/discover.go": "SO_BROADCAST discovery socket; uses transport.SetSocketBroadcast",
 
-	// DEBT — forced by ADR-0006, resolved by moving the code, not the rule.
-	//
-	// codec/ is stdlib-only and must never import dhs/*, so this could not
-	// reach internal/transport and reimplemented a TCP client instead.
-	//
-	// sw02p is DONE: its client moved to internal/probel-sw02p/session, a
-	// layer that mirrors amwa's codec -> session -> plugin and that BOTH
-	// consumer and provider may import. consumer/ was the obvious
-	// destination and the wrong one — the provider's loopback tests dial a
-	// client too, and putting it there would have created the cross-import
-	// between roles that CLAUDE.md forbids. sw08p follows the same shape.
-	"internal/probel-sw08p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to session/, as sw02p did",
-
 	// DEBT — provider accept paths still own their listener.
 	//
 	// They already apply the shared socket policy via ApplySocketOptions;

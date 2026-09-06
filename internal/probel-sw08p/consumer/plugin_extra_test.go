@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/transport"
 )
 

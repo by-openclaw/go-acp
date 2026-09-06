@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
 	"io"
 	"log/slog"
 	"net"
@@ -21,16 +22,16 @@ func TestHexDump(t *testing.T) {
 		{[]byte{0xAB, 0xCD, 0xEF, 0x00, 0xFF}, "ab cd ef 00 ff"},
 	}
 	for _, tc := range cases {
-		got := HexDump(tc.in)
+		got := codec.HexDump(tc.in)
 		if got != tc.want {
-			t.Errorf("HexDump(%v) = %q; want %q", tc.in, got, tc.want)
+			t.Errorf("codec.HexDump(%v) = %q; want %q", tc.in, got, tc.want)
 		}
 	}
 }
 
 // TestClientLoopback wires both ends of a net.Pipe into a Client each
 // and verifies:
-//   - a framed Send round-trips through Pack/Unpack on both sides
+//   - a framed Send round-trips through codec.Pack/codec.Unpack on both sides
 //   - an unmatched frame is delivered to Subscribe listeners
 //   - Close unblocks a pending Send with io.EOF
 func TestClientLoopback(t *testing.T) {
@@ -46,10 +47,10 @@ func TestClientLoopback(t *testing.T) {
 	// A subscribes to events so B's unsolicited frame is captured.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	clientA.Subscribe(func(f Frame) {
+	clientA.Subscribe(func(f codec.Frame) {
 		defer wg.Done()
-		if f.ID != TxCrosspointTally {
-			t.Errorf("listener got cmd %02x; want %02x", f.ID, TxCrosspointTally)
+		if f.ID != codec.TxCrosspointTally {
+			t.Errorf("listener got cmd %02x; want %02x", f.ID, codec.TxCrosspointTally)
 		}
 		if len(f.Payload) != 3 {
 			t.Errorf("listener got payload len %d; want 3", len(f.Payload))
@@ -59,7 +60,7 @@ func TestClientLoopback(t *testing.T) {
 	// B sends an unsolicited tally to A.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	tally := Frame{ID: TxCrosspointTally, Payload: []byte{0x00, 0x01, 0x05}}
+	tally := codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0x00, 0x01, 0x05}}
 	if _, err := clientB.Send(ctx, tally, nil); err != nil {
 		t.Fatalf("B.Send: %v", err)
 	}
@@ -95,8 +96,8 @@ func TestClientCloseWakesPending(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, err := client.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0x00}},
-			func(Frame) bool { return true })
+		_, err := client.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x00}},
+			func(codec.Frame) bool { return true })
 		done <- err
 	}()
 
@@ -135,16 +136,16 @@ func TestClientOnEventFiresBeforeSubscribe(t *testing.T) {
 			return
 		}
 		defer func() { _ = c.Close() }()
-		_, _ = c.Write(Pack(EncodeKeepaliveRequest()))
+		_, _ = c.Write(codec.Pack(codec.EncodeKeepaliveRequest()))
 		// Hold the socket open so the client's reader can drain it.
 		time.Sleep(2 * time.Second)
 	}()
 
-	got := make(chan Frame, 1)
+	got := make(chan codec.Frame, 1)
 	disable := false
 	cfg := ClientConfig{
 		WireHexLog: &disable,
-		OnEvent: func(c *Client, f Frame) {
+		OnEvent: func(c *Client, f codec.Frame) {
 			select {
 			case got <- f:
 			default:
@@ -163,8 +164,8 @@ func TestClientOnEventFiresBeforeSubscribe(t *testing.T) {
 
 	select {
 	case f := <-got:
-		if f.ID != TxAppKeepaliveRequest {
-			t.Fatalf("OnEvent got cmd %02x; want %02x", f.ID, TxAppKeepaliveRequest)
+		if f.ID != codec.TxAppKeepaliveRequest {
+			t.Fatalf("OnEvent got cmd %02x; want %02x", f.ID, codec.TxAppKeepaliveRequest)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("OnEvent never fired for pre-Dial wire frame")

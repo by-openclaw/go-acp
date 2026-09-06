@@ -7,7 +7,7 @@ import (
 	"dhs/internal/probel-sw08p/codec"
 )
 
-// closedClientPlugin returns a Plugin whose codec.Client has been closed,
+// closedClientPlugin returns a Plugin whose sw08session.Client has been closed,
 // so any Send fails on the write path — exercising every command method's
 // "cli.Send returned err" wrapping branch.
 func closedClientPlugin(t *testing.T) *Plugin {

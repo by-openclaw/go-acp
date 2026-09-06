@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"dhs/internal/clock"
-	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 func TestIdleWindowForPoll(t *testing.T) {
@@ -173,9 +173,9 @@ func TestKeepalivePollWritesAndExitsOnWriteError(t *testing.T) {
 	t.Fatal("prober did not exit after the socket died")
 }
 
-// dialSilentMatrix returns a codec.Client wired to a peer that accepts and
+// dialSilentMatrix returns a sw08session.Client wired to a peer that accepts and
 // never speaks — enough to exercise the write side.
-func dialSilentMatrix(t *testing.T) (*codec.Client, func()) {
+func dialSilentMatrix(t *testing.T) (*sw08session.Client, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -187,8 +187,8 @@ func dialSilentMatrix(t *testing.T) (*codec.Client, func()) {
 			go func() { _, _ = io.Copy(io.Discard, c) }()
 		}
 	}()
-	cli, err := codec.Dial(context.Background(), ln.Addr().String(),
-		slog.New(slog.NewTextHandler(io.Discard, nil)), codec.ClientConfig{})
+	cli, err := sw08session.Dial(context.Background(), ln.Addr().String(),
+		slog.New(slog.NewTextHandler(io.Discard, nil)), sw08session.ClientConfig{})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

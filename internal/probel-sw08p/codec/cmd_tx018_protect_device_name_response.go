@@ -48,7 +48,7 @@ func DecodeProtectDeviceNameResponse(f Frame) (ProtectDeviceNameResponseParams, 
 		return ProtectDeviceNameResponseParams{}, ErrShortPayload
 	}
 	return ProtectDeviceNameResponseParams{
-		DeviceID:   (uint16(f.Payload[0]) & 0x07) * 128 + uint16(f.Payload[1]),
+		DeviceID:   (uint16(f.Payload[0])&0x07)*128 + uint16(f.Payload[1]),
 		DeviceName: strings.TrimLeft(string(f.Payload[2:10]), " "),
 	}, nil
 }

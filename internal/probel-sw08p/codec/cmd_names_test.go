@@ -126,11 +126,11 @@ func TestSingleDestAssocNameRequestRoundtrip(t *testing.T) {
 
 func TestDestAssocNamesResponseRoundtrip(t *testing.T) {
 	in := DestAssocNamesResponseParams{
-		MatrixID:              1,
-		LevelID:               0,
-		NameLength:            NameLen4,
+		MatrixID:               1,
+		LevelID:                0,
+		NameLength:             NameLen4,
 		FirstDestAssociationID: 0,
-		Names:                 []string{"OUT1", "OUT2"},
+		Names:                  []string{"OUT1", "OUT2"},
 	}
 	f := EncodeDestAssocNamesResponse(in)
 	back, err := DecodeDestAssocNamesResponse(f)

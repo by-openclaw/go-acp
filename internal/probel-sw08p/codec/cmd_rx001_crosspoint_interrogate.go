@@ -76,7 +76,7 @@ func DecodeCrosspointInterrogate(f Frame) (CrosspointInterrogateParams, error) {
 		return CrosspointInterrogateParams{
 			MatrixID:      f.Payload[0] >> 4,
 			LevelID:       f.Payload[0] & 0x0F,
-			DestinationID: (uint16(f.Payload[1]>>4) & 0x07) * 128 + uint16(f.Payload[2]),
+			DestinationID: (uint16(f.Payload[1]>>4)&0x07)*128 + uint16(f.Payload[2]),
 		}, nil
 	case RxCrosspointInterrogateExt:
 		if len(f.Payload) < 4 {

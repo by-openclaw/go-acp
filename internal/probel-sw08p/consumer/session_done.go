@@ -3,7 +3,7 @@ package probelsw08p
 // SessionDone — the death signal, exposed at the Plugin so a supervisor can
 // wait on it without reaching into the codec client.
 //
-// codec.Client closes readerDone when its reader goroutine exits: a peer
+// sw08session.Client closes readerDone when its reader goroutine exits: a peer
 // close, an I/O error, or the keep-alive poll's idle deadline firing. Until
 // now nothing acted on it — the watch verb detected death and kept running,
 // connected to nothing.
