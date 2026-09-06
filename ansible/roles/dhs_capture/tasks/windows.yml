@@ -1,0 +1,96 @@
+---
+# Unlike Bonjour, Npcap is NOT staged from internal/amwa/assets/. Its free
+# licence forbids redistribution, so committing the installer to this repo
+# would breach it. The role therefore VERIFIES by default and only installs
+# when the operator points it at an OEM installer they hold themselves.
+
+- name: Npcap DLL present?
+  ansible.windows.win_stat:
+    path: "{{ dhs_capture_npcap_dll }}"
+  register: dhs_capture_npcap_dll_stat
+
+- name: Npcap driver service present?
+  ansible.windows.win_service_info:
+    name: "{{ dhs_capture_npcap_service }}"
+  register: dhs_capture_npcap_svc
+  failed_when: false
+
+- name: Resolve whether Npcap is installed
+  ansible.builtin.set_fact:
+    dhs_capture_npcap_present: >-
+      {{ dhs_capture_npcap_dll_stat.stat.exists
+         or (dhs_capture_npcap_svc.services | default([]) | length > 0) }}
+
+# ---- optional install, OEM only --------------------------------------------
+# /S exists in Npcap OEM and nowhere else; the free installer has no silent
+# mode, so there is no unattended path for it and none is attempted here.
+- name: Install Npcap from the operator-supplied OEM installer
+  when:
+    - not (dhs_capture_npcap_present | bool)
+    - dhs_capture_npcap_oem_installer_src | length > 0
+  block:
+    - name: Installer drop directory
+      ansible.windows.win_file:
+        path: "{{ dhs_capture_npcap_installer_dst | win_dirname }}"
+        state: directory
+
+    - name: Stage the OEM installer
+      ansible.windows.win_copy:
+        src: "{{ dhs_capture_npcap_oem_installer_src }}"
+        dest: "{{ dhs_capture_npcap_installer_dst }}"
+
+    # The installer backgrounds itself even in silent mode, so it must be
+    # waited on or the exit code read back is the launcher's, not the
+    # install's.
+    - name: Install Npcap silently (OEM /S)
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $p = Start-Process -FilePath '{{ dhs_capture_npcap_installer_dst }}' `
+                           -ArgumentList '/S' -Wait -PassThru
+        if ($p.ExitCode -ne 0) { throw "npcap installer exit $($p.ExitCode)" }
+        'CHANGED'
+      register: dhs_capture_npcap_install
+      changed_when: "'CHANGED' in dhs_capture_npcap_install.stdout"
+
+    - name: Re-check the DLL after install
+      ansible.windows.win_stat:
+        path: "{{ dhs_capture_npcap_dll }}"
+      register: dhs_capture_npcap_dll_stat
+
+    - name: Refresh the resolved state
+      ansible.builtin.set_fact:
+        dhs_capture_npcap_present: "{{ dhs_capture_npcap_dll_stat.stat.exists }}"
+
+# ---- verdict ---------------------------------------------------------------
+# Failing is opt-in. ADR-0016's stdlib floor: a missing host dependency
+# degrades one capability, it does not break the connector.
+- name: Npcap is required on this host but absent
+  ansible.builtin.fail:
+    msg: >-
+      Npcap is not installed on {{ inventory_hostname }} and
+      dhs_capture_npcap_required is true.
+      Windows cannot capture LLDP without it — raw sockets there are
+      IP-level and never see Ethertype 0x88CC.
+      There is no unattended install for the FREE edition (/S is Npcap OEM
+      only), and its licence caps free use at five systems with no
+      redistribution, so this repo cannot stage it the way it stages Bonjour.
+      Three lawful routes, cheapest first:
+        1. install Wireshark on this host — it bundles Npcap under the
+           exception that makes the bundle unlimited, and the fleet already
+           wants tshark for the dissectors;
+        2. install Npcap by hand from https://npcap.com/ (within the
+           five-system cap);
+        3. buy an OEM licence and set dhs_capture_npcap_oem_installer_src
+           to the installer, which this role will then install silently.
+      Or take LLDP from the device's own API instead of capturing locally,
+      which needs none of the above.
+  when:
+    - not (dhs_capture_npcap_present | bool)
+    - dhs_capture_npcap_required | bool
+
+- name: Report the capture posture
+  ansible.builtin.debug:
+    msg: >-
+      LLDP capture {{ 'ENABLED (Npcap present)' if dhs_capture_npcap_present | bool
+      else 'UNAVAILABLE (no Npcap) — device-reported LLDP still works' }}
+      on {{ inventory_hostname }}.
