@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
@@ -38,14 +39,20 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return NewPlugin(logger)
+	p := NewPlugin(deps.Logger)
+	p.Configure(deps.Net, defaultKeepAliveTimeout)
+	return p
 }
 
 // Plugin is the consumer-side handle. It wraps a single WebSocket
 // session (one connection per Plugin) and routes RX events to
 // subscribers.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: what is
+	// Cerebrum's is the stale window — the keep-alive timeout it already
+	// judges a dead link by — and the Session as the time source.
+	consumer.Health
+
 	logger *slog.Logger
 
 	// Username / Password come from CLI flags or the
@@ -154,6 +161,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 		)
 	}
 	p.session = sess
+	p.Opened("tcp", host, port, sessionTimes{sess})
 	return nil
 }
 
@@ -177,6 +185,7 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	sess := p.session
 	p.session = nil
+	p.Closed()
 	p.mu.Unlock()
 	if sess == nil {
 		return nil
@@ -277,3 +286,13 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 // canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
 // Routing/category/salvo subscriptions keep their precise §5 addressing
 // through Session.Subscribe<X> (the Matrix-template half).
+
+// sessionTimes adapts a Session to consumer.RxTxTimes.
+//
+// The session stamps rx only (noteRX, on every inbound frame), which is what
+// Live is derived from. There is no single write path to stamp for tx, so
+// LastTx is reported as unknown rather than invented.
+type sessionTimes struct{ s *Session }
+
+func (t sessionTimes) LastRx() time.Time { return t.s.LastRx() }
+func (t sessionTimes) LastTx() time.Time { return time.Time{} }

@@ -61,6 +61,12 @@ type tcpSession struct {
 	// accepted connection) stays the always-on detector; this is the opt-in
 	// for deployments that would rather reap aggressively.
 	idle transport.Idle
+
+	// onRx, when set, is called on every packet received. It is how the
+	// plugin's inherited Health learns the peer is alive; stamped on
+	// BYTES received rather than on a successful decode, because a peer
+	// sending malformed frames is still a peer that is there.
+	onRx func()
 }
 
 func newTCPSession(f framerKind) *tcpSession {
@@ -147,6 +153,9 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 			// (malformed stream can't be recovered).
 			s.fireDecodeError(conn.RemoteAddr(), err)
 			return
+		}
+		if s.onRx != nil {
+			s.onRx()
 		}
 		s.dispatchPacket(conn.RemoteAddr(), pkt)
 	}

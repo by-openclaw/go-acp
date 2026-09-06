@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/metrics"
@@ -43,6 +44,21 @@ func (m MetricsTimes) LastTx() time.Time {
 	return m.C.Snapshot().LastTxAt
 }
 
+// sink is the built-in RxTxTimes, for a connector that has neither a
+// metrics Connector nor a session tracking instants of its own. Stores are
+// atomic so a read or write loop can stamp it without taking Health's lock.
+type sink struct{ rx, tx atomic.Int64 }
+
+func (s *sink) LastRx() time.Time { return fromUnixNano(s.rx.Load()) }
+func (s *sink) LastTx() time.Time { return fromUnixNano(s.tx.Load()) }
+
+func fromUnixNano(ns int64) time.Time {
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
 // Health is the one HealthChecker implementation, embedded by every
 // connector instead of reimplemented per protocol.
 //
@@ -70,6 +86,9 @@ type Health struct {
 	net   transport.Net
 	stale time.Duration
 
+	// own is the built-in sink, used when Opened is given no time source.
+	own sink
+
 	mu      sync.Mutex
 	times   RxTxTimes
 	network string
@@ -77,6 +96,14 @@ type Health struct {
 	port    int
 	open    bool
 }
+
+// RecordRx stamps the built-in sink. A connector with no metrics Connector
+// calls it from its read loop; one that passed its own RxTxTimes to Opened
+// has no reason to.
+func (h *Health) RecordRx() { h.own.rx.Store(time.Now().UnixNano()) }
+
+// RecordTx is the write-side twin of RecordRx.
+func (h *Health) RecordTx() { h.own.tx.Store(time.Now().UnixNano()) }
 
 // probeTimeout caps the fallback dial. Health is called from a CLI verb and
 // from the UI's per-device poll; neither may block on an unreachable host.
@@ -123,7 +150,13 @@ func (h *Health) dialer() transport.Net {
 
 // Opened records that a session is up on network ("tcp", "udp", ...) to
 // host:port, taking its timestamps from times. Called from Connect.
+//
+// A nil times selects the built-in sink, so a connector that stamps through
+// RecordRx / RecordTx passes nothing here.
 func (h *Health) Opened(network, host string, port int, times RxTxTimes) {
+	if times == nil {
+		times = &h.own
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.network, h.host, h.port, h.times, h.open = network, host, port, times, true

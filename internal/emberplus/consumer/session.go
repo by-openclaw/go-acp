@@ -215,6 +215,16 @@ func (s *Session) touchRX() {
 	s.lastRXMu.Unlock()
 }
 
+// LastRx is the wall-clock time of the last frame received on this session,
+// or the zero time if nothing has arrived. rxAge answers a different
+// question — it collapses "nothing yet" to a zero duration, which reads as
+// "just now" — so liveness needs the instant itself.
+func (s *Session) LastRx() time.Time {
+	s.lastRXMu.RLock()
+	defer s.lastRXMu.RUnlock()
+	return s.lastRX
+}
+
 func (s *Session) rxAge() time.Duration {
 	s.lastRXMu.RLock()
 	defer s.lastRXMu.RUnlock()

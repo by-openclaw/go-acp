@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -200,7 +201,8 @@ func TestSessionHealthReportsBothInstants(t *testing.T) {
 	}
 }
 
-// A session may be open before anything is known about its timestamps.
+// Passing no time source selects the built-in sink, which starts empty: the
+// session is open, and nothing has been seen on it yet.
 func TestOpenedWithNoTimeSource(t *testing.T) {
 	h := newTestHealth(&countingNet{}, testStale)
 	h.Opened("tcp", "10.0.0.1", 2072, nil)
@@ -210,7 +212,61 @@ func TestOpenedWithNoTimeSource(t *testing.T) {
 		t.Errorf("connected but with nothing received yet, got %+v", got)
 	}
 	if !got.LastRx.IsZero() || !got.LastTx.IsZero() {
-		t.Error("no time source means zero instants")
+		t.Error("an unstamped sink reports zero instants")
+	}
+}
+
+// The built-in sink is what a connector with no metrics Connector stamps
+// from its read and write loops. Stores are atomic so neither loop has to
+// take Health's lock to report liveness.
+func TestRecordRxAndTxDriveTheBuiltInSink(t *testing.T) {
+	h := newTestHealth(&countingNet{}, testStale)
+	h.Opened("tcp", "10.0.0.1", 9000, nil)
+
+	h.RecordTx()
+	if got := h.SessionHealth(context.Background()); got.Live || got.LastTx.IsZero() {
+		t.Errorf("sending is not being answered: LastTx set, still not live, got %+v", got)
+	}
+
+	h.RecordRx()
+	got := h.SessionHealth(context.Background())
+	if !got.Live || !got.Reachable {
+		t.Errorf("a recorded frame makes the session live and reachable, got %+v", got)
+	}
+	if got.LastRx.IsZero() {
+		t.Error("LastRx must be stamped")
+	}
+}
+
+// Recording is safe from many goroutines at once — a read loop and a write
+// loop stamp it concurrently by construction.
+func TestRecordIsConcurrencySafe(t *testing.T) {
+	h := newTestHealth(&countingNet{}, testStale)
+	h.Opened("tcp", "10.0.0.1", 9000, nil)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(2)
+		go func() { defer wg.Done(); h.RecordRx() }()
+		go func() { defer wg.Done(); h.RecordTx() }()
+	}
+	wg.Wait()
+
+	if got := h.SessionHealth(context.Background()); !got.Live {
+		t.Errorf("concurrent records must still produce a live session, got %+v", got)
+	}
+}
+
+// An explicit time source wins: a connector that already tracks instants
+// does not also have to stamp the sink.
+func TestExplicitTimeSourceBeatsTheSink(t *testing.T) {
+	rx := time.Now().Add(-3 * time.Second)
+	h := newTestHealth(&countingNet{}, testStale)
+	h.Opened("tcp", "10.0.0.1", 9000, fixedTimes{rx: rx})
+
+	h.RecordRx() // stamps the sink, which nothing is reading
+	if got := h.SessionHealth(context.Background()); !got.LastRx.Equal(rx) {
+		t.Errorf("LastRx = %v, want the supplied source's %v", got.LastRx, rx)
 	}
 }
 

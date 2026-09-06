@@ -54,9 +54,16 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // separate Plugin so cached tree state cannot cross devices.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	p := &Plugin{logger: deps.Logger}
+	p.Configure(deps.Net, emberStaleAfter)
+	return p
 }
+
+// emberStaleAfter is the silence past which an Ember+ session is judged not
+// Live. It is the session's own dead-man threshold (3x the keep-alive
+// interval), so health and the reconnect watcher agree on when a provider
+// has gone quiet.
+const emberStaleAfter = 30 * time.Second
 
 // Freshness marks how current a treeEntry's value is believed to be.
 // Documented in CLAUDE.md (Value freshness states) and
@@ -78,6 +85,10 @@ const (
 
 // Plugin implements consumer.Protocol for Ember+ providers.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: Ember+
+	// contributes the dead-man window and the Session as the time source.
+	consumer.Health
+
 	logger  *slog.Logger
 	session *Session
 	mu      sync.Mutex
@@ -332,6 +343,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	s := NewSession(p.logger)
 	p.mu.Lock()
 	p.session = s
+	p.Opened("tcp", ip, port, sessionTimes{s})
 	p.treeMu.Lock()
 	p.numIndex = make(map[string]*treeEntry)
 	p.pathIndex = make(map[string]*treeEntry)
@@ -508,6 +520,7 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	s := p.session
 	p.session = nil
+	p.Closed()
 	p.mu.Unlock()
 	if s != nil {
 		return s.Disconnect()
@@ -2653,3 +2666,11 @@ func valueToGlow(val consumer.Value) any {
 	}
 	return val.Int
 }
+
+// sessionTimes adapts a Session to consumer.RxTxTimes. The session stamps rx
+// on every decoded frame (touchRX); there is no single tx point to stamp, so
+// LastTx is reported as unknown rather than invented.
+type sessionTimes struct{ s *Session }
+
+func (t sessionTimes) LastRx() time.Time { return t.s.LastRx() }
+func (t sessionTimes) LastTx() time.Time { return time.Time{} }

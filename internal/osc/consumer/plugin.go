@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"dhs/internal/consumer"
 )
@@ -78,9 +79,20 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{version: f.version, logger: logger}
+	p := &Plugin{version: f.version, logger: deps.Logger}
+	p.Configure(deps.Net, oscStaleAfter)
+	return p
 }
+
+// oscStaleAfter is the silence past which an OSC session stops being
+// reported Live.
+//
+// It is a weaker statement than the other connectors make. OSC 1.0/1.1
+// define no heartbeat, so a control surface that sends nothing until someone
+// moves a fader is perfectly healthy — the same reasoning that keeps the TCP
+// idle reaper off by default. Live here means "we have heard from it
+// recently", not "it is broken if we have not".
+const oscStaleAfter = 30 * time.Second
 
 // NewPluginV10 / NewPluginV11 construct version-bound Plugins directly
 // (used by tests and callers that want the concrete type).
@@ -95,6 +107,14 @@ func NewPluginV11(logger *slog.Logger) *Plugin {
 // opens a UDP listener on (ip, port); TCP transports (length-prefix for
 // v1.0, SLIP for v1.1) are wired via separate ConnectTCP* methods.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented.
+	//
+	// This connector LISTENS rather than dials, so Opened is given no host:
+	// there is no remote to probe, and probing our own bound port would
+	// report a reachability that means nothing. Liveness comes from packets
+	// actually arriving, stamped through RecordRx.
+	consumer.Health
+
 	version Version
 	logger  *slog.Logger
 
@@ -114,7 +134,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
+	s.onRx = p.RecordRx
 	p.udp = s
+	p.Opened("udp", "", 0, nil)
 	return nil
 }
 
@@ -138,7 +160,9 @@ func (p *Plugin) ConnectTCP(ctx context.Context, ip string, port int) error {
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
+	s.onRx = p.RecordRx
 	p.tcp = s
+	p.Opened("tcp", "", 0, nil)
 	return nil
 }
 
@@ -155,6 +179,7 @@ func (p *Plugin) Disconnect() error {
 		}
 		p.tcp = nil
 	}
+	p.Closed()
 	return err
 }
 
