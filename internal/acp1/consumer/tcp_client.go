@@ -167,6 +167,9 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 	if err := c.conn.Send(sendCtx, payload); err != nil {
 		return nil, fmt.Errorf("acp1 tcp send: %w", err)
 	}
+	if c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(payload))
+	}
 
 	// Wait for the reader goroutine to route the matching reply.
 	select {
@@ -257,7 +260,7 @@ func (c *TCPClient) readerLoop() {
 		// still counts as wire activity — the dead-man cares about
 		// "anything received from this peer", not "anything decoded".
 		if c.cfg.OnRx != nil {
-			c.cfg.OnRx()
+			c.cfg.OnRx(len(raw))
 		}
 
 		msg, derr := codec.Decode(raw)

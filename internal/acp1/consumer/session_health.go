@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 	"time"
+
+	"dhs/internal/metrics"
 )
 
 // acp1StaleAfter is the rolling-window threshold past which the device
@@ -41,8 +43,13 @@ func (t *timestampSink) lastTx() time.Time {
 	return time.Unix(0, ns)
 }
 
-// timestampingTransport wraps a Transport and updates a timestampSink on
-// every Send/Receive. Cheap (one atomic store per wire event).
+// timestampingTransport wraps a Transport and taps every Send/Receive: it
+// stamps the timestampSink for liveness and counts the frame on the metrics
+// connector. Cheap — one atomic store and two counter adds per wire event.
+//
+// This is the UDP path's equivalent of the TCP and AN2 clients' OnRx/OnTx
+// hooks; all three end up feeding the same connector, so the counters mean
+// the same thing whichever transport a session resolved to.
 type timestampingTransport struct {
 	inner interface {
 		Send(ctx context.Context, payload []byte) error
@@ -50,17 +57,27 @@ type timestampingTransport struct {
 		Close() error
 	}
 	sink *timestampSink
+	met  *metrics.Connector
 }
 
 func (t *timestampingTransport) Send(ctx context.Context, payload []byte) error {
+	if err := t.inner.Send(ctx, payload); err != nil {
+		return err
+	}
 	t.sink.recordTx()
-	return t.inner.Send(ctx, payload)
+	if t.met != nil {
+		t.met.ObserveTx(len(payload), 0)
+	}
+	return nil
 }
 
 func (t *timestampingTransport) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 	data, err := t.inner.Receive(ctx, maxSize)
 	if err == nil && len(data) > 0 {
 		t.sink.recordRx()
+		if t.met != nil {
+			t.met.ObserveRx(len(data))
+		}
 	}
 	return data, err
 }

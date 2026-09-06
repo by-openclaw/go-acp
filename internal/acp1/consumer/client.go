@@ -37,10 +37,19 @@ type ClientConfig struct {
 	MaxBackoff     time.Duration // default 2s — cap per-retry delay
 
 	// OnRx fires after every successfully-received frame (reply or
-	// announcement). Used by the Plugin's keep-alive watchdog to
-	// touch lastRx on the TCP path, where there's no socket-level
-	// timestampingTransport tap. Optional — nil ⇒ no-op.
-	OnRx func()
+	// announcement), with the byte count that arrived. Used by the
+	// Plugin's keep-alive watchdog to touch lastRx on the TCP and AN2
+	// paths, where there's no socket-level timestampingTransport tap, and
+	// by the metrics connector to count rx frames and bytes. Optional —
+	// nil ⇒ no-op.
+	//
+	// It carries the length because the alternative is counting bytes
+	// nowhere: these two paths hand the Plugin no other view of the wire.
+	OnRx func(n int)
+
+	// OnTx is the write-side twin, fired after a frame is successfully
+	// written. Optional — nil ⇒ no-op.
+	OnTx func(n int)
 }
 
 // defaultConfig returns a ClientConfig with all fields populated.
