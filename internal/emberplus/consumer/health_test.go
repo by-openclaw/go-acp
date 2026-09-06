@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/emberplus/codec/s101"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 )
 
@@ -83,5 +85,59 @@ func TestSessionHealthAfterDisconnect(t *testing.T) {
 	p.Closed()
 	if got := p.SessionHealth(context.Background()); got.Connected {
 		t.Errorf("Connected must be false once the session is closed, got %+v", got)
+	}
+}
+
+// Every connector is supposed to expose live frame and byte counters; this
+// one exposed none, so `--metrics-addr` served a scrape with no emberplus
+// series in it at all.
+func TestPluginExposesMetrics(t *testing.T) {
+	if newHealthPlugin().Metrics() == nil {
+		t.Fatal("Metrics must be non-nil — WithDefaults always fills it")
+	}
+}
+
+// Frames are attributed by S101 command byte, which separates EmBER payloads
+// from keep-alives — the distinction that matters when reading a scrape,
+// since a link can be busy with keep-alives and carrying no data at all.
+func TestSetMetricsRegistersTheS101Commands(t *testing.T) {
+	met := metrics.NewConnector()
+	s := NewSession(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s.SetMetrics(met)
+
+	names := met.Snapshot().CmdNames
+	for cmd, want := range map[byte]string{
+		s101.CmdEmBER:         "ember",
+		s101.CmdKeepAliveReq:  "keepalive-req",
+		s101.CmdKeepAliveResp: "keepalive-resp",
+	} {
+		if got := names[cmd]; got != want {
+			t.Errorf("S101 command 0x%02x registered as %q, want %q", cmd, got, want)
+		}
+	}
+}
+
+// A Session built directly by a test has no connector, and counting must
+// stay a no-op rather than a nil dereference.
+func TestSetMetricsIgnoresNil(t *testing.T) {
+	s := NewSession(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s.SetMetrics(nil)
+	if s.metricsConn() != nil {
+		t.Error("a nil connector must not be stored")
+	}
+}
+
+// Nothing is counted for a frame that never went out: sendEmBER on a session
+// with no writer fails before the wire.
+func TestSendEmBERCountsNothingWhenNotConnected(t *testing.T) {
+	met := metrics.NewConnector()
+	s := NewSession(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s.SetMetrics(met)
+
+	if err := s.sendEmBER([]byte{0x01}); err == nil {
+		t.Fatal("sendEmBER must fail with no writer")
+	}
+	if snap := met.Snapshot(); snap.TxFrames != 0 {
+		t.Errorf("counted %d frames for a send that never happened", snap.TxFrames)
 	}
 }

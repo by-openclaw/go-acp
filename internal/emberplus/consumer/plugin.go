@@ -30,6 +30,7 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -54,7 +55,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // separate Plugin so cached tree state cannot cross devices.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger}
+	p := &Plugin{logger: deps.Logger, met: deps.Metrics}
 	p.Configure(deps.Net, emberStaleAfter)
 	return p
 }
@@ -88,6 +89,10 @@ type Plugin struct {
 	// Health supplies SessionHealth. Inherited, not reimplemented: Ember+
 	// contributes the dead-man window and the Session as the time source.
 	consumer.Health
+
+	// met counts every frame in and out. Supplied rather than created, so
+	// the process scrapes every connector from one place. Always non-nil.
+	met *metrics.Connector
 
 	logger  *slog.Logger
 	session *Session
@@ -341,6 +346,7 @@ type treeEntry struct {
 // keep-alive reply is received first.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	s := NewSession(p.logger)
+	s.SetMetrics(p.met)
 	p.mu.Lock()
 	p.session = s
 	p.Opened("tcp", ip, port, sessionTimes{s})
@@ -2665,6 +2671,16 @@ func valueToGlow(val consumer.Value) any {
 		return val.Str
 	}
 	return val.Int
+}
+
+// Metrics returns the connector's counter set — S101 frames and bytes in
+// and out attributed by command byte, plus errors and latency. Satisfies the
+// optional interface the CLI type-asserts for --metrics-addr. Always
+// non-nil.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.met
 }
 
 // sessionTimes adapts a Session to consumer.RxTxTimes. The session stamps rx

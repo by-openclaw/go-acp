@@ -50,11 +50,12 @@ type udpSession struct {
 	conn   *net.UDPConn
 	cancel context.CancelFunc
 
-	// onRx, when set, is called on every packet received. It is how the
-	// plugin's inherited Health learns the peer is alive; stamped on
+	// onRx, when set, is called on every packet received, with the byte
+	// count that arrived. It is how the plugin's inherited Health learns
+	// the peer is alive and how the metrics connector counts rx; fired on
 	// BYTES received rather than on a successful decode, because a peer
 	// sending malformed frames is still a peer that is there.
-	onRx func()
+	onRx func(n int)
 
 	mu        sync.RWMutex
 	v31Subs   []V31Handler
@@ -114,7 +115,7 @@ func (s *udpSession) readLoop(ctx context.Context, decode func(*net.UDPAddr, []b
 			continue
 		}
 		if s.onRx != nil {
-			s.onRx()
+			s.onRx(n)
 		}
 		pkt := make([]byte, n)
 		copy(pkt, buf[:n])

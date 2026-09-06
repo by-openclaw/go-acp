@@ -16,6 +16,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/clock"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"dhs/internal/transport/ws"
 )
@@ -39,6 +40,11 @@ type Session struct {
 	rec *transport.Recorder
 
 	mtidNext atomic.Uint32
+
+	// met counts every XML document in and out — the ws text payload, the
+	// same wire truth --capture records, not the RFC 6455 framing around
+	// it. Nil until SetMetrics.
+	met *metrics.Connector
 
 	mu       sync.Mutex
 	pending  map[string]chan *codec.Frame
@@ -153,7 +159,11 @@ func (p *Profile) Counts() map[string]int {
 // newSession dials the Cerebrum WebSocket and starts the RX goroutine.
 // Login is performed by the caller via session.login. rec may be nil
 // (no capture).
-func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder) (*Session, error) {
+// newSession dials and starts the read loop. met is taken here rather than
+// through a setter because the read loop is running before this returns —
+// a connector assigned afterwards would be a data race, and would miss the
+// LOGIN exchange besides.
+func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder, met *metrics.Connector) (*Session, error) {
 	// The POSTURE is injected; the *tls.Config is built once in the
 	// transport layer. This connector used to assemble its own, with no
 	// MinVersion — see internal/transport/tls.go for why that is now a
@@ -177,6 +187,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 		rec:        rec,
 		pending:    map[string]chan *codec.Frame{},
 		stopRX:     make(chan struct{}),
+		met:        met,
 		done:       make(chan struct{}),
 	}
 	s.mtidNext.Store(1)
@@ -269,6 +280,9 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 	s.rec.Record("cerebrum-nb", "tx", safe)
 	if err := s.conn.WriteText(ctx, payload); err != nil {
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
+	}
+	if s.met != nil {
+		s.met.ObserveTx(len(payload), 0)
 	}
 
 	select {
@@ -454,6 +468,9 @@ func (s *Session) readLoop() {
 			return
 		}
 		s.noteRX()
+		if s.met != nil {
+			s.met.ObserveRx(len(payload))
+		}
 		if op != ws.OpText {
 			// Cerebrum doesn't speak Binary; log and drop.
 			s.logger.Debug("dropping non-text frame", slog.Int("opcode", int(op)))

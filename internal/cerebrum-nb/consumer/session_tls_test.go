@@ -18,7 +18,7 @@ func TestNewSessionRejectsUnbuildableTLSOptions(t *testing.T) {
 	// A host that would fail to dial anyway, to prove the error comes from
 	// the config and not from the network.
 	_, err := newSession(context.Background(), nil, "wss://198.51.100.1:1/",
-		transport.TLSOptions{Enable: true, CAFile: "no-such-ca.pem"}, nil)
+		transport.TLSOptions{Enable: true, CAFile: "no-such-ca.pem"}, nil, nil)
 	if err == nil {
 		t.Fatal("newSession succeeded with an unreadable CA file")
 	}

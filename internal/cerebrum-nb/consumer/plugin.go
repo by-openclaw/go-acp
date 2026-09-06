@@ -15,6 +15,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -40,6 +41,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
 	p := NewPlugin(deps.Logger)
+	p.met = deps.Metrics
 	p.Configure(deps.Net, defaultKeepAliveTimeout)
 	return p
 }
@@ -54,6 +56,10 @@ type Plugin struct {
 	consumer.Health
 
 	logger *slog.Logger
+
+	// met counts every XML document in and out. Supplied rather than
+	// created, so the process scrapes every connector from one place.
+	met *metrics.Connector
 
 	// Username / Password come from CLI flags or the
 	// DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS env vars. Optional —
@@ -144,7 +150,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
 		Enable:   p.UseTLS,
 		Insecure: p.InsecureSkipVerify,
-	}, rec)
+	}, rec, p.met)
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err
@@ -286,6 +292,15 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 // canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
 // Routing/category/salvo subscriptions keep their precise §5 addressing
 // through Session.Subscribe<X> (the Matrix-template half).
+
+// Metrics returns the connector's counter set — XML documents and bytes in
+// and out, plus errors. Satisfies the optional interface the CLI
+// type-asserts for --metrics-addr.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.met
+}
 
 // sessionTimes adapts a Session to consumer.RxTxTimes.
 //

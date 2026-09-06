@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 )
 
 func init() {
@@ -79,7 +80,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{version: f.version, logger: deps.Logger}
+	p := &Plugin{version: f.version, logger: deps.Logger, met: deps.Metrics}
 	p.Configure(deps.Net, oscStaleAfter)
 	return p
 }
@@ -115,6 +116,10 @@ type Plugin struct {
 	// actually arriving, stamped through RecordRx.
 	consumer.Health
 
+	// met counts every packet received. Supplied rather than created, so
+	// the process scrapes every connector from one place.
+	met *metrics.Connector
+
 	version Version
 	logger  *slog.Logger
 
@@ -133,7 +138,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	s := newUDPSession()
 	// Set before listen: listen starts the read goroutine, so assigning
 	// the hook afterwards races with it and can miss the first packets.
-	s.onRx = p.RecordRx
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
@@ -161,7 +166,7 @@ func (p *Plugin) ConnectTCP(ctx context.Context, ip string, port int) error {
 	s := newTCPSession(framer)
 	// Set before listen: listen starts the read goroutine, so assigning
 	// the hook afterwards races with it and can miss the first packets.
-	s.onRx = p.RecordRx
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
@@ -244,3 +249,21 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }
+
+// noteRx is the tap both session kinds fire on every packet received: it
+// stamps liveness for the inherited Health and counts the frame on the
+// metrics connector. One function so UDP and TCP report identically.
+func (p *Plugin) noteRx(n int) {
+	p.RecordRx()
+	if p.met != nil {
+		p.met.ObserveRx(n)
+	}
+}
+
+// Metrics returns the connector's counter set. Satisfies the optional
+// interface the CLI type-asserts for --metrics-addr.
+//
+// Only rx is counted: this connector LISTENS, and the consumer side never
+// writes to the wire. A tx series would be a permanent zero pretending to
+// mean something.
+func (p *Plugin) Metrics() *metrics.Connector { return p.met }
