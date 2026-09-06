@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export/canonical"
 )
 
 // applyMutation dispatches the four mutating methods (setValue,

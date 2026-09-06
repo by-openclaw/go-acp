@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 	"sync"
-	"syscall"
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/devicemodel"
@@ -159,24 +158,15 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if err != nil {
 		return fmt.Errorf("acp1 provider: resolve %q: %w", addr, err)
 	}
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			// c.Control only errors on an invalid RawConn (impossible during
-			// listen setup); the real failure flows through opErr.
-			_ = c.Control(func(fd uintptr) {
-				opErr = transport.SetSocketReuseAddr(fd)
-			})
-			return opErr
-		},
-	}
-	pc, err := lc.ListenPacket(ctx, "udp4", udpAddr.String())
+	// SO_REUSEADDR is set before bind — the only window in which it takes
+	// effect — so an emulator or dev rig can share the port with a
+	// controller already listening on it. The type assertion that used to
+	// sit here now lives in transport, tested once.
+	conn, err := transport.ListenUDPAddr(ctx, "udp4", udpAddr.String(),
+		transport.UDPBindOptions{ReuseAddr: true})
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
 	}
-	// unreachable type-assert guard elided: ListenConfig.ListenPacket over
-	// "udp4" always yields a *net.UDPConn on success.
-	conn := pc.(*net.UDPConn)
 
 	// Dial a second socket to the limited broadcast address. Go stdlib
 	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,

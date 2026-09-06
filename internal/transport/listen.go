@@ -161,3 +161,37 @@ func (l *Listener) Accept() (net.Conn, error) {
 	_ = applySocketOptions(c, l.opts)
 	return c, nil
 }
+
+// listenTCPRawAssert is the seam for the arm a real bind cannot reach: a
+// "tcp*" network always yields a *net.TCPListener.
+var listenTCPRawAssert = func(ln net.Listener) (*net.TCPListener, bool) {
+	tl, ok := ln.(*net.TCPListener)
+	return tl, ok
+}
+
+// ListenTCPRaw binds addr and returns the CONCRETE *net.TCPListener.
+//
+// For the callers that need AcceptTCP's *net.TCPConn rather than a net.Conn —
+// acp1's TCP and AN2 servers thread the concrete type through their session,
+// registry, writer and frame-reader signatures, so handing them a net.Conn
+// would mean rewriting eighteen signatures to clear one bind.
+//
+// Unlike [ListenTCP] this applies NO socket policy: a caller that wants the
+// concrete listener is accepting connections itself and applies
+// [ApplySocketOptions] there, which is also the only place an injected
+// listener would be covered. Use [ListenTCP] unless AcceptTCP is genuinely
+// needed.
+func ListenTCPRaw(ctx context.Context, network, addr string) (*net.TCPListener, error) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(ctx, network, addr)
+	if err != nil {
+		return nil, fmt.Errorf("%w: listen %s %s: %v", ErrListenFailed, network, addr, err)
+	}
+	tl, ok := listenTCPRawAssert(ln)
+	if !ok {
+		_ = ln.Close()
+		return nil, fmt.Errorf("%w: listen %s %s: unexpected listener type %T",
+			ErrListenFailed, network, addr, ln)
+	}
+	return tl, nil
+}

@@ -31,11 +31,12 @@ const (
 // EnableProtocolEvents([1]) before receiving announces — the per-
 // session flag is honoured during fan-out.
 func (s *server) ServeAN2(ctx context.Context, addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	if err != nil {
-		return fmt.Errorf("acp1 provider an2: resolve %q: %w", addr, err)
-	}
-	ln, err := net.ListenTCP("tcp4", tcpAddr)
+	// tcp4 preserved: ACP1 is IPv4-only. ListenTCPRaw rather than ListenTCP
+	// because the session, registry, writer and frame-reader signatures below
+	// all take *net.TCPConn, which only AcceptTCP provides. The socket policy
+	// is applied per accepted connection further down, where an injected
+	// listener is covered too.
+	ln, err := transport.ListenTCPRaw(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp1 provider an2: listen %q: %w", addr, err)
 	}

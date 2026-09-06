@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export"
-	"dhs/internal/consumer"
 )
 
 func TestParseCardPath(t *testing.T) {
@@ -37,9 +37,9 @@ func TestParseCardPath(t *testing.T) {
 		{in: "too/few/parts", err: true},
 		{in: "too/many/parts/here/now", err: true},
 		{in: "axon//RRS18-1601/acp1", err: true},
-		{in: "axon/synapse/RRS18/acp1", err: true},   // no rev separator
-		{in: "axon/synapse/-1601/acp1", err: true},   // empty model
-		{in: "axon/synapse/RRS18-/acp1", err: true},  // empty rev
+		{in: "axon/synapse/RRS18/acp1", err: true},  // no rev separator
+		{in: "axon/synapse/-1601/acp1", err: true},  // empty model
+		{in: "axon/synapse/RRS18-/acp1", err: true}, // empty rev
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -92,7 +92,7 @@ func (r *fakeDMResolver) Resolve(fp devicemodel.Fingerprint) (*devicemodel.Schem
 func (r *fakeDMResolver) LookupAlternate(fp devicemodel.Fingerprint) ([]devicemodel.Fingerprint, error) {
 	return nil, nil
 }
-func (r *fakeDMResolver) Persist(s *devicemodel.Schema) error      { return nil }
+func (r *fakeDMResolver) Persist(s *devicemodel.Schema) error            { return nil }
 func (r *fakeDMResolver) Diff(p, c *devicemodel.Schema) devicemodel.Diff { return devicemodel.Diff{} }
 
 func TestSlotLoad_NoResolverConfigured(t *testing.T) {

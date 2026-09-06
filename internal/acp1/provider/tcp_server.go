@@ -54,11 +54,12 @@ const (
 // Stops cleanly when ctx is cancelled. ErrClosed is treated as a
 // successful shutdown.
 func (s *server) ServeTCP(ctx context.Context, addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	if err != nil {
-		return fmt.Errorf("acp1 provider tcp: resolve %q: %w", addr, err)
-	}
-	ln, err := net.ListenTCP("tcp4", tcpAddr)
+	// tcp4 preserved: ACP1 is IPv4-only. ListenTCPRaw rather than ListenTCP
+	// because the session, registry, writer and frame-reader signatures below
+	// all take *net.TCPConn, which only AcceptTCP provides. The socket policy
+	// is applied per accepted connection further down, where an injected
+	// listener is covered too.
+	ln, err := transport.ListenTCPRaw(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp1 provider tcp: listen %q: %w", addr, err)
 	}
