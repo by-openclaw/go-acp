@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // DiscoverResult is one device seen during a discovery run.

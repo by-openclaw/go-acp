@@ -9,6 +9,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"sync"
@@ -89,7 +90,7 @@ func portOf(addr string) int {
 // the integration tests use the same construction path as production.
 func newConsumer() *cons.Plugin {
 	f := &cons.Factory{}
-	return f.New(slog.New(slog.NewTextHandler(io.Discard, nil))).(*cons.Plugin)
+	return f.New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*cons.Plugin)
 }
 
 // TestIntegrationMaintenanceRoundTrip (S-Int-A): consumer issues a

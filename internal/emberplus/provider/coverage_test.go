@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"testing"
 	"time"
@@ -350,7 +351,7 @@ func TestRunStreamerAndSweeper_CtxCancel(t *testing.T) {
 // TestFactory_New covers the plugin Factory.New constructor.
 func TestFactory_New(t *testing.T) {
 	f := &Factory{}
-	p := f.New(nil, buildRichExport())
+	p := f.New(plugin.Deps{}, buildRichExport())
 	if p == nil {
 		t.Fatal("Factory.New returned nil")
 	}

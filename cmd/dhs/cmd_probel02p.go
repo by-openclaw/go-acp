@@ -361,7 +361,7 @@ func dialProbelSW02(ctx context.Context, addr string) (*probelsw02proto.Plugin, 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
 	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw02p", host, "session")
 	f := &probelsw02proto.Factory{}
-	p := f.New(logger).(*probelsw02proto.Plugin)
+	p := f.New(pluginDeps(logger)).(*probelsw02proto.Plugin)
 	if rec, ok := ctx.Value(probelSW02RecorderKey{}).(*transport.Recorder); ok && rec != nil {
 		p.SetRecorder(rec)
 	}

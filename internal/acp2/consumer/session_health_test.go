@@ -88,11 +88,11 @@ func TestProbeReachable_NotListening(t *testing.T) {
 func TestGetSlotInfo_IsOnlineTruthTable(t *testing.T) {
 	now := time.Now()
 	cases := []struct {
-		name        string
-		status      consumer.SlotStatus
-		lastRxAgo   time.Duration
-		wantOnline  bool
-		wantState   consumer.SlotState
+		name       string
+		status     consumer.SlotStatus
+		lastRxAgo  time.Duration
+		wantOnline bool
+		wantState  consumer.SlotState
 	}{
 		{"present-and-live", consumer.SlotPresent, 1 * time.Second, true, consumer.SlotStatePresent},
 		{"present-but-silent", consumer.SlotPresent, 2 * time.Hour, false, consumer.SlotStatePresent},

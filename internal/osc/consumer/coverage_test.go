@@ -2,6 +2,7 @@ package osc
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"log/slog"
 	"net"
@@ -97,7 +98,7 @@ func TestFactory_New_Meta(t *testing.T) {
 		{V11, "osc-v11"},
 	} {
 		f := &Factory{version: tc.v}
-		p := f.New(slog.Default())
+		p := f.New(plugin.Deps{Logger: slog.Default()})
 		plug, ok := p.(*Plugin)
 		if !ok {
 			t.Fatalf("New returned %T, want *Plugin", p)

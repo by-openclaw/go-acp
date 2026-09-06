@@ -102,10 +102,10 @@ const (
 
 // AN2 internal protocol (proto=0) request function IDs.
 const (
-	AN2FuncGetVersion            uint8 = 0
-	AN2FuncGetDeviceInfo         uint8 = 1
-	AN2FuncGetSlotInfo           uint8 = 2
-	AN2FuncEnableProtocolEvents  uint8 = 3
+	AN2FuncGetVersion           uint8 = 0
+	AN2FuncGetDeviceInfo        uint8 = 1
+	AN2FuncGetSlotInfo          uint8 = 2
+	AN2FuncEnableProtocolEvents uint8 = 3
 )
 
 // ---- ACP2 message types ----
@@ -278,12 +278,12 @@ func (n NumberType) String() string {
 type ACP2ErrStatus uint8
 
 const (
-	ErrProtocol       ACP2ErrStatus = 0
-	ErrInvalidObjID   ACP2ErrStatus = 1
-	ErrInvalidIdx     ACP2ErrStatus = 2
-	ErrInvalidPID     ACP2ErrStatus = 3
-	ErrNoAccess       ACP2ErrStatus = 4
-	ErrInvalidValue   ACP2ErrStatus = 5
+	ErrProtocol     ACP2ErrStatus = 0
+	ErrInvalidObjID ACP2ErrStatus = 1
+	ErrInvalidIdx   ACP2ErrStatus = 2
+	ErrInvalidPID   ACP2ErrStatus = 3
+	ErrNoAccess     ACP2ErrStatus = 4
+	ErrInvalidValue ACP2ErrStatus = 5
 )
 
 // ---- Error types ----

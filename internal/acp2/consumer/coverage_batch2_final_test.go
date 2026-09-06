@@ -66,7 +66,7 @@ func TestCanonicalize_RichParameterAndLeafNode(t *testing.T) {
 				Kind: consumer.KindInt, Access: 3,
 				Value: consumer.Value{Kind: consumer.KindInt, Int: 0},
 				Min:   int64(-10), Max: int64(10), Step: int64(1), Def: int64(0),
-				Unit:  unit},
+				Unit: unit},
 			// A Node object whose path == GRP — GRP was already materialised
 			// as a placeholder by the leaf above → exercises the
 			// existing-node upgrade arm.

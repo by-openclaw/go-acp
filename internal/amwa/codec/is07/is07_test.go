@@ -15,17 +15,17 @@ func validTiming() Timing     { return Timing{CreationTimestamp: "100:200"} }
 
 func TestCategoryOf(t *testing.T) {
 	cases := map[string]EventCategory{
-		"boolean":             EventCategoryBoolean,
-		"boolean/tally":       EventCategoryBoolean,
-		"boolean/tally/red":   EventCategoryBoolean,
-		"number":              EventCategoryNumber,
-		"number/temperature":  EventCategoryNumber,
-		"string":              EventCategoryString,
-		"object":              EventCategoryObject,
-		"unknown":             "",
-		"":                    "",
-		"boolean//double":     "",
-		"number/space here":   "",
+		"boolean":            EventCategoryBoolean,
+		"boolean/tally":      EventCategoryBoolean,
+		"boolean/tally/red":  EventCategoryBoolean,
+		"number":             EventCategoryNumber,
+		"number/temperature": EventCategoryNumber,
+		"string":             EventCategoryString,
+		"object":             EventCategoryObject,
+		"unknown":            "",
+		"":                   "",
+		"boolean//double":    "",
+		"number/space here":  "",
 	}
 	for ev, want := range cases {
 		if got := CategoryOf(ev); got != want {

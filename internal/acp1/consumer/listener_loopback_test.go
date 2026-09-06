@@ -22,7 +22,7 @@ func TestListener_Loopback(t *testing.T) {
 	l.Start(context.Background())
 
 	got := make(chan int, 8)
-	hWild := l.Subscribe(-1, "", -1, func(*codec.Message) { got <- 1 })  // wildcard → match
+	hWild := l.Subscribe(-1, "", -1, func(*codec.Message) { got <- 1 }) // wildcard → match
 	l.Subscribe(0, "frame", 0, func(*codec.Message) { got <- 2 })       // exact → match
 	l.Subscribe(5, "frame", 0, func(*codec.Message) { got <- 99 })      // slot mismatch
 	l.Subscribe(0, "control", 0, func(*codec.Message) { got <- 99 })    // group mismatch

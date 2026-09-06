@@ -75,7 +75,7 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
-	srv, ok := factory.New(logger, tree).(*acp1provider.Server)
+	srv, ok := factory.New(pluginDeps(logger), tree).(*acp1provider.Server)
 	if !ok {
 		return fmt.Errorf("acp1 fuzz: unexpected server type")
 	}

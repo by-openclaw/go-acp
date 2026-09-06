@@ -16,6 +16,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"math"
@@ -51,7 +52,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 // New constructs a fresh Plugin instance. Each device connection uses a
 // separate Plugin so cached tree state cannot cross devices.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &Plugin{logger: logger}
 }
 

@@ -23,10 +23,10 @@ type NcEnumItemDescriptor struct {
 // NcFieldDescriptor describes one field of a struct datatype.
 type NcFieldDescriptor struct {
 	NcDescriptor
-	Name        string  `json:"name"`
-	TypeName    *string `json:"typeName"`
-	IsNullable  bool    `json:"isNullable"`
-	IsSequence  bool    `json:"isSequence"`
+	Name       string  `json:"name"`
+	TypeName   *string `json:"typeName"`
+	IsNullable bool    `json:"isNullable"`
+	IsSequence bool    `json:"isSequence"`
 	// Constraints is the schema's polymorphic union — nil, or one of
 	// the NcParameterConstraints variants (Number / String / base).
 	Constraints any `json:"constraints"`

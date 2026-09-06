@@ -7,6 +7,7 @@ package cerebrumnb
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -35,7 +36,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return NewPlugin(logger)
 }
 

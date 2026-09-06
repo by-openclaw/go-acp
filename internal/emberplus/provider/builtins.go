@@ -356,11 +356,11 @@ func filterConnectionsByTargets(conns []canonical.MatrixConnection, list string)
 //   - args[0] string matrixPath — OID or dotted identifier path
 //   - args[1] int64  salvoID
 //   - args[2] string targets    — CSV of target numbers (e.g. "0,2,5")
-//                                  to snapshot. Empty/missing = snapshot
-//                                  every current connection. Strict per
-//                                  spec p.91 Tuple semantics — each arg
-//                                  is one Value, lists encode as
-//                                  delimited strings.
+//     to snapshot. Empty/missing = snapshot
+//     every current connection. Strict per
+//     spec p.91 Tuple semantics — each arg
+//     is one Value, lists encode as
+//     delimited strings.
 //
 // Returns true if at least one connection was stored. False when the
 // matrix resolves but no listed target has any current sources.

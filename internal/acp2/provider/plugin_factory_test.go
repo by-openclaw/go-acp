@@ -1,6 +1,7 @@
 package acp2
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/export/canonical"
@@ -25,7 +26,7 @@ func TestFactory_Meta(t *testing.T) {
 
 func TestFactory_New(t *testing.T) {
 	f := &Factory{}
-	p := f.New(quietLogger(), buildServeExport())
+	p := f.New(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	if p == nil {
 		t.Fatal("Factory.New returned nil provider")
 	}

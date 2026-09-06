@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // dryRunMock is the minimal plugin stub Apply needs to reach its

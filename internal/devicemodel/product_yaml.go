@@ -34,16 +34,16 @@ type IdentityProbe struct {
 // IdentityProbeACP1 documents the deterministic ACP1 identity probe.
 // The fields are fixed by spec p.20; this section is informational.
 type IdentityProbeACP1 struct {
-	Group int           `json:"group"`
-	Pids  IdentityPids  `json:"pids"`
+	Group int          `json:"group"`
+	Pids  IdentityPids `json:"pids"`
 }
 
 // IdentityProbeACP2 caches the runtime-resolved ACP2 identity PIDs and
 // the labels the alias-scan saw at first encounter. Empty on first
 // encounter; populated after the alias-scan completes.
 type IdentityProbeACP2 struct {
-	Pids         IdentityPids    `json:"pids"`
-	AliasesSeen  IdentityAliases `json:"aliases_seen"`
+	Pids        IdentityPids    `json:"pids"`
+	AliasesSeen IdentityAliases `json:"aliases_seen"`
 }
 
 // IdentityPids is the (Model, SwRev, HwRev) PID triple a plugin uses to

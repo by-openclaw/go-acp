@@ -21,8 +21,8 @@ const (
 	KindReceiver Kind = "receiver"
 
 	// IS-05 staged / activations
-	KindIS05Staged       Kind = "is05.staged"
-	KindIS05Activations  Kind = "is05.activations"
+	KindIS05Staged      Kind = "is05.staged"
+	KindIS05Activations Kind = "is05.activations"
 
 	// MS-05-02 / IS-12 class fingerprints
 	KindMS05Class Kind = "ms05.class"

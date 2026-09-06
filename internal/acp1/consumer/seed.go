@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // SeedFromDM pre-populates the in-memory slot-tree cache from a DM-library

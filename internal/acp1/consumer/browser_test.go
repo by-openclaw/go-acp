@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
 )
 
 // TestWalker_HappyPath runs a full slot walk against a canned sequence of
@@ -44,9 +44,9 @@ func TestWalker_HappyPath(t *testing.T) {
 	}
 	// Reply 2: identity[0] — String object "Card Label"
 	idValue := []byte{
-		0x05, // type = string
-		0x06, // num_props = 6
-		0x01, // access = read
+		0x05,                     // type = string
+		0x06,                     // num_props = 6
+		0x01,                     // access = read
 		'D', 'E', 'M', 'O', 0x00, // value
 		0x10,                     // max_len
 		'C', 'a', 'r', 'd', 0x00, // label

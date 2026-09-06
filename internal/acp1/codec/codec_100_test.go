@@ -39,8 +39,8 @@ func TestDecode_StringFrameAlarmFile_Truncation(t *testing.T) {
 		{
 			name: "string",
 			bufs: [][]byte{
-				{0x05, 0x06, 0x03},                   // access ok, value cstr EOF (required)
-				{0x05, 0x06, 0x03, 'h', 'i', 0x00},   // value ok, max_len u8 EOF
+				{0x05, 0x06, 0x03},                 // access ok, value cstr EOF (required)
+				{0x05, 0x06, 0x03, 'h', 'i', 0x00}, // value ok, max_len u8 EOF
 			},
 			valid: []byte{0x05, 0x06, 0x03, 'h', 'i', 0x00, 0x10, 'L', 0x00},
 		},

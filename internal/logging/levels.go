@@ -23,12 +23,12 @@ import (
 // slog levels: Debug=-4, Info=0, Warn=4, Error=8.
 // We add Trace below Debug and Critical above Error.
 const (
-	LevelTrace    slog.Level = -8 // raw wire data, hex dumps, full property details
+	LevelTrace    slog.Level = -8              // raw wire data, hex dumps, full property details
 	LevelDebug               = slog.LevelDebug // -4: object metadata, codec internals
-	LevelInfo                = slog.LevelInfo   //  0: connected, walk complete, id/label/value
-	LevelWarn                = slog.LevelWarn    //  4: child walk failed, retry, timeout
-	LevelError               = slog.LevelError  //  8: request failed, decode error
-	LevelCritical slog.Level = 12               // connection lost, panic recovery
+	LevelInfo                = slog.LevelInfo  //  0: connected, walk complete, id/label/value
+	LevelWarn                = slog.LevelWarn  //  4: child walk failed, retry, timeout
+	LevelError               = slog.LevelError //  8: request failed, decode error
+	LevelCritical slog.Level = 12              // connection lost, panic recovery
 )
 
 // Direction constants for protocol I/O logging.

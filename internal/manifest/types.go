@@ -8,7 +8,7 @@ package manifest
 
 // Manifest is the top-level shape parsed from .cache/manifest/<device>.json.
 type Manifest struct {
-	Device Device `json:"device"`
+	Device Device  `json:"device"`
 	Frames []Frame `json:"frames"`
 }
 

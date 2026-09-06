@@ -6,6 +6,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"strconv"
 	"testing"
@@ -32,7 +33,7 @@ func TestWalkCancelDuringInitialDelay(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := (&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin)
 	// Long enough that only the cancellation can end the delay.
 	p.walkInitialDelay = 10 * time.Second
 

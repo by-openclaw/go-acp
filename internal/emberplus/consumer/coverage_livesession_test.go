@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -115,7 +116,7 @@ func TestConsumerReconnect(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(proxy.addr())
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Fast, bounded reconnect so the test is deterministic and quick.
 	p.reconnectPolicyOverride = &reconnectPolicy{
 		InitialBackoff: 5 * time.Millisecond,
@@ -212,7 +213,7 @@ func TestConsumerReconnect_StopOnDisconnect(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(proxy.addr())
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.reconnectPolicyOverride = &reconnectPolicy{
 		InitialBackoff: time.Second, // long, so the loop is mid-backoff when we stop it
 		MaxBackoff:     time.Second,
@@ -288,7 +289,7 @@ func startStreamMatrixProvider(t *testing.T) (string, func()) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{meter, mtx},
 	}}
-	srv := (&provider.Factory{}).New(nil, &canonical.Export{Root: root})
+	srv := (&provider.Factory{}).New(plugin.Deps{}, &canonical.Export{Root: root})
 	// Pre-bound listener: no close-then-rebind port-steal window and no
 	// dial-poll (#694 flake class).
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -318,7 +319,7 @@ func TestLoopbackStreamMatrix(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	ctx := context.Background()
 	if err := p.Connect(ctx, host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
@@ -354,7 +355,7 @@ func TestLoopbackVerbsFull(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	ctx := context.Background()
 	if err := p.Connect(ctx, host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
@@ -429,7 +430,7 @@ func TestLoopbackVerbsFull(t *testing.T) {
 // address with a bounded attempt count so the MaxAttempts give-up
 // branch (and the backoff-doubling cap) are exercised deterministically.
 func TestReconnectLoop_GiveUp(t *testing.T) {
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1 // nothing listens here → every dial fails fast
 	p.reconnectPolicyOverride = &reconnectPolicy{
@@ -450,7 +451,7 @@ func TestReconnectLoop_GiveUp(t *testing.T) {
 // TestReconnectLoop_CtxCancelled covers the ctx.Err() early return at the
 // top of the loop.
 func TestReconnectLoop_CtxCancelled(t *testing.T) {
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1
 	ctx, cancel := context.WithCancel(context.Background())
@@ -468,7 +469,7 @@ func TestReconnectLoop_CtxCancelled(t *testing.T) {
 // and the Walk-failure branch (no session → ErrNotConnected) of
 // refreshAfterReconnect.
 func TestRefreshAfterReconnect_EdgeBranches(t *testing.T) {
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Initialise the index maps clearTree expects.
 	p.numIndex = map[string]*treeEntry{}
 	p.pathIndex = map[string]*treeEntry{}
@@ -499,7 +500,7 @@ func TestWildcardSubscribeBatch(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	if err := p.Connect(context.Background(), host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}

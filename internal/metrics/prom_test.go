@@ -52,8 +52,8 @@ func TestPromRegistryScrapes(t *testing.T) {
 		`cmd_id="2"`,
 		`dhs_connector_handler_latency_us_bucket_total{`,
 		`dhs_process_goroutines`,
-		`go_memstats_heap_alloc_bytes`,  // from GoCollector
-		`process_cpu_seconds_total`,     // from ProcessCollector (may be 0 on Windows in some flows)
+		`go_memstats_heap_alloc_bytes`, // from GoCollector
+		`process_cpu_seconds_total`,    // from ProcessCollector (may be 0 on Windows in some flows)
 	}
 	for _, s := range wantSubstrings {
 		// process_cpu_seconds_total may be absent on Windows under some

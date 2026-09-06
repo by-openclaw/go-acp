@@ -27,10 +27,10 @@ import (
 // future ACP2 plugin produce identical Snapshot shapes. Downstream
 // consumers (CLI, REST API, UI) treat them the same.
 type Snapshot struct {
-	Device    DeviceInfo   `json:"device"`
-	Slots     []SlotDump   `json:"slots"`
-	Generator string       `json:"generator,omitempty"`
-	CreatedAt time.Time    `json:"created_at"`
+	Device    DeviceInfo `json:"device"`
+	Slots     []SlotDump `json:"slots"`
+	Generator string     `json:"generator,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 // DeviceInfo is the per-snapshot device header. Mirrors the subset of
@@ -46,10 +46,10 @@ type DeviceInfo struct {
 // SlotDump is one walked slot with its object tree. Objects is a copy
 // of the walker's output; callers should not mutate it post-snapshot.
 type SlotDump struct {
-	Slot    int               `json:"slot"`
-	Status  string            `json:"status,omitempty"`
-	WalkedAt time.Time        `json:"walked_at"`
-	Objects []consumer.Object `json:"objects"`
+	Slot     int               `json:"slot"`
+	Status   string            `json:"status,omitempty"`
+	WalkedAt time.Time         `json:"walked_at"`
+	Objects  []consumer.Object `json:"objects"`
 }
 
 // Format is the enum of supported serialization formats.

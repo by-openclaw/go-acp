@@ -149,7 +149,7 @@ func TestValidate_AN2InternalMTIDZero(t *testing.T) {
 func TestValidate_DecodeErrors(t *testing.T) {
 	p := &Plugin{}
 	trames := []wiretrace.Trame{
-		{Direction: wiretrace.DirectionRx, Hex: "zznothex"},  // hex decode fails
+		{Direction: wiretrace.DirectionRx, Hex: "zznothex"},         // hex decode fails
 		{Direction: wiretrace.DirectionRx, Hex: "0000000000000000"}, // bad AN2 magic
 	}
 	rep, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{})

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
 )
 
 // ValueCodec encodes and decodes the "value bytes" that ACP1 getValue and

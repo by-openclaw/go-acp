@@ -150,17 +150,17 @@ type RoutingAction struct {
 	EmptyMnemonic bool
 
 	// ASSOC actions
-	LogicalSrceID    string
-	LogicalDestID    string
-	LogicalLevelID   string
-	TargetDeviceName string
-	TargetDeviceType DeviceType
-	TargetLevelID    string
-	TargetSrceID     string
-	TargetDestID     string
-	TargetSenderName string
+	LogicalSrceID      string
+	LogicalDestID      string
+	LogicalLevelID     string
+	TargetDeviceName   string
+	TargetDeviceType   DeviceType
+	TargetLevelID      string
+	TargetSrceID       string
+	TargetDestID       string
+	TargetSenderName   string
 	TargetReceiverName string
-	SubDevice        string
+	SubDevice          string
 
 	// RM_TAGS actions
 	Tags string
@@ -352,10 +352,10 @@ const (
 type ConnectionType string
 
 const (
-	ConnAsyncHTTP        ConnectionType = "ASYNC_HTTP"
-	ConnUDP              ConnectionType = "UDP"
-	ConnTCP              ConnectionType = "TCP"
-	ConnWebsocketServer  ConnectionType = "WEBSOCKET_SERVER"
+	ConnAsyncHTTP       ConnectionType = "ASYNC_HTTP"
+	ConnUDP             ConnectionType = "UDP"
+	ConnTCP             ConnectionType = "TCP"
+	ConnWebsocketServer ConnectionType = "WEBSOCKET_SERVER"
 )
 
 // DeviceConfiguration is one §4.5 device CRUD command. Type selects the

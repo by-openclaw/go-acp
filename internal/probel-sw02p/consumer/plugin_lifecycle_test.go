@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -27,7 +28,7 @@ func quietLogger() *slog.Logger {
 func TestNewFactoryBuildsPlugin(t *testing.T) {
 	f := &Factory{}
 	logger := quietLogger()
-	plug := f.New(logger)
+	plug := f.New(plugin.Deps{Logger: logger})
 	if plug == nil {
 		t.Fatal("Factory.New returned nil")
 	}

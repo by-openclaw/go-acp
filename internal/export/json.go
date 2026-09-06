@@ -332,18 +332,18 @@ func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, o
 			}
 			// Re-unmarshal the leaf into a temporary struct to get all fields.
 			var lf struct {
-				ID        int              `json:"id"`
-				Kind      string           `json:"kind"`
-				Access    string           `json:"access"`
-				Unit      string           `json:"unit"`
-				Min       any              `json:"min"`
-				Max       any              `json:"max"`
-				Step      any              `json:"step"`
-				Default   any              `json:"default"`
-				EnumItems []string         `json:"enum_items"`
-				MaxLen    int              `json:"max_len"`
-				Value     json.RawMessage  `json:"value"`
-				ValueName string           `json:"value_name"`
+				ID        int             `json:"id"`
+				Kind      string          `json:"kind"`
+				Access    string          `json:"access"`
+				Unit      string          `json:"unit"`
+				Min       any             `json:"min"`
+				Max       any             `json:"max"`
+				Step      any             `json:"step"`
+				Default   any             `json:"default"`
+				EnumItems []string        `json:"enum_items"`
+				MaxLen    int             `json:"max_len"`
+				Value     json.RawMessage `json:"value"`
+				ValueName string          `json:"value_name"`
 			}
 			_ = json.Unmarshal(raw, &lf)
 			obj.ID = lf.ID

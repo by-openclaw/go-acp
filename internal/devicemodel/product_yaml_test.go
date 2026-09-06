@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 func TestProductYAML_Roundtrip(t *testing.T) {

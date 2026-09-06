@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"math"
 	"testing"
 	"time"
@@ -354,7 +355,7 @@ func TestFactory_NewAndMeta(t *testing.T) {
 	if meta.DefaultPort != codec.DefaultPort {
 		t.Errorf("meta.DefaultPort = %d, want %d", meta.DefaultPort, codec.DefaultPort)
 	}
-	pl := f.New(testLogger())
+	pl := f.New(plugin.Deps{Logger: testLogger()})
 	if pl == nil {
 		t.Fatal("New returned nil")
 	}

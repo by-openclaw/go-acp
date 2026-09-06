@@ -58,8 +58,8 @@ func TestLookupCatalogue_KnownEntries(t *testing.T) {
 		wantKind CommandKind
 		wantName string
 	}{
-		{"pid:4", KindPid, "event_delay"},          // ADR-pinned spec name §5.4 row 4
-		{"acp2-type:2", KindACP2Type, "announce"},  // not "event"
+		{"pid:4", KindPid, "event_delay"},         // ADR-pinned spec name §5.4 row 4
+		{"acp2-type:2", KindACP2Type, "announce"}, // not "event"
 		{"obj-type:0", KindObjType, "node"},
 		{"number-type:8", KindNumberType, "float"},
 		{"err-stat:5", KindErrStat, "invalid-value"},
@@ -83,15 +83,15 @@ func TestLookupCatalogue_KnownEntries(t *testing.T) {
 // address, unknown kind, and out-of-catalogue id.
 func TestLookupCatalogue_Misses(t *testing.T) {
 	misses := []string{
-		"",            // no colon
-		"pid",         // no colon
-		"pid:",        // empty id
-		"pid:999",     // id overflows uint8 → splitAddress fails
-		"pid:4x",      // non-digit
-		"pid:7777",    // > 3 chars
-		"bogus:1",     // unknown kind
-		"pid:200",     // valid uint8 but no such pid in catalogue
-		":4",          // empty kind
+		"",         // no colon
+		"pid",      // no colon
+		"pid:",     // empty id
+		"pid:999",  // id overflows uint8 → splitAddress fails
+		"pid:4x",   // non-digit
+		"pid:7777", // > 3 chars
+		"bogus:1",  // unknown kind
+		"pid:200",  // valid uint8 but no such pid in catalogue
+		":4",       // empty kind
 	}
 	for _, m := range misses {
 		if e, ok := LookupCatalogue(m); ok {

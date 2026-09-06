@@ -18,9 +18,9 @@ import (
 //
 //  2. GetDirectory on a specific path P (Command nested in QualifiedNode(P))
 //     → return each direct child of P as a FLAT QualifiedElement with
-//       absolute path at the RootElementCollection level (NOT nested
-//       inside a wrapper). Minimal contents — strict viewers reject
-//       anything beyond identifier (+description where set).
+//     absolute path at the RootElementCollection level (NOT nested
+//     inside a wrapper). Minimal contents — strict viewers reject
+//     anything beyond identifier (+description where set).
 //
 // isRoot and isOnline are intentionally omitted: TinyEmber+ does not
 // emit them, and EmberViewer treats extra content as schema deviation.

@@ -6,6 +6,7 @@ package emberplus_test
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"log/slog"
 	"os"
@@ -43,7 +44,7 @@ func loadTrames(t *testing.T, scenario string) []wiretrace.Trame {
 func newValidator(t *testing.T) consumer.Validator {
 	t.Helper()
 	f := &emberplus.Factory{}
-	plug := f.New(slog.Default())
+	plug := f.New(plugin.Deps{Logger: slog.Default()})
 	v, ok := plug.(consumer.Validator)
 	if !ok {
 		t.Fatal("emberplus.Plugin does not implement consumer.Validator")

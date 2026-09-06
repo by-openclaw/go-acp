@@ -18,6 +18,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -68,7 +69,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 }
 
 // New constructs a fresh consumer plugin bound to the given logger.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &Plugin{logger: logger}
 }
 

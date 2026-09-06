@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"fmt"
 	"log/slog"
@@ -34,7 +35,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &Plugin{logger: logger}
 }
 

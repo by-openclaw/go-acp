@@ -24,8 +24,8 @@ type NcObject struct {
 // Spec: classes/1.1.json.
 type NcBlock struct {
 	NcObject
-	Enabled bool      `json:"enabled"`
-	Members []NcOid   `json:"members,omitempty"`
+	Enabled bool    `json:"enabled"`
+	Members []NcOid `json:"members,omitempty"`
 }
 
 // NcWorker is the abstract base of "worker" classes (sound
