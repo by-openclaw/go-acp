@@ -56,6 +56,12 @@ type Session struct {
 	// before Connect via SetRecorder.
 	recorder *transport.Recorder
 
+	// dialer opens the TCP connection Connect establishes. Injected rather
+	// than built inline so the pipe is substitutable — a test supplies a
+	// fake, and a supervisor driving reconnect has something to ASK for a
+	// new connection. NewSession installs the shared transport.TCPDialer.
+	dialer transport.Dialer
+
 	// useLegacyGlow is set by the walker when the provider emits
 	// non-qualified Glow elements (DTD <2.10). Subscribe / Unsubscribe
 	// / SetValue must then emit the nested Node/Parameter chain form
@@ -184,6 +190,11 @@ func NewSession(logger *slog.Logger) *Session {
 		deadManThreshold:  30 * time.Second, // 3× keep-alive interval
 		invocations:       make(map[int32]chan *glow.InvocationResult),
 		dtdReady:          make(chan struct{}),
+		// Same 10 s connect bound as before. What the shared dialer adds is
+		// SO_KEEPALIVE: S101 has its own keep-alive at the framing layer,
+		// but that only covers a peer that is still speaking S101 — a
+		// half-open socket needs the OS probe underneath it.
+		dialer: transport.TCPDialer{Timeout: 10 * time.Second},
 	}
 }
 
@@ -305,8 +316,7 @@ func (s *Session) deliverInvocationResult(result *glow.InvocationResult) {
 // Connect dials the Ember+ provider and starts the read loop.
 func (s *Session) Connect(ctx context.Context, host string, port int) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
-	d := net.Dialer{Timeout: 10 * time.Second}
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := s.dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return WrapS101(fmt.Sprintf("connect %s", addr), err)
 	}

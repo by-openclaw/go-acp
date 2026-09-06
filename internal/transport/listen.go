@@ -44,12 +44,12 @@ const DefaultTCPKeepalivePeriod = 30 * time.Second
 // from 0, which means "use the default". Mirrors consumer.DisableInterval.
 const DisableKeepalive = -1 * time.Nanosecond
 
-// ListenOptions are the socket options applied to every connection a
+// SocketOptions are the socket options applied to every connection a
 // Listener accepts. The zero value is the sensible default: keepalive on at
 // DefaultTCPKeepalivePeriod, Nagle left alone.
 //
 // Named to sit beside ws.DialOptions / ws.AcceptOptions and TLSOptions.
-type ListenOptions struct {
+type SocketOptions struct {
 	// KeepalivePeriod sets SO_KEEPALIVE. 0 ⇒ DefaultTCPKeepalivePeriod;
 	// DisableKeepalive (or any negative value) ⇒ off.
 	KeepalivePeriod time.Duration
@@ -89,7 +89,7 @@ func ApplyTCPKeepalive(c net.Conn, period time.Duration) error {
 	return nil
 }
 
-// ApplyListenOptions applies opts to one accepted or dialled connection.
+// ApplySocketOptions applies opts to one accepted or dialled connection.
 // Exported so a connector that already owns its listener — acp1's servers
 // need *net.TCPConn from AcceptTCP — can still share the socket policy
 // without giving up its accept loop.
@@ -97,7 +97,7 @@ func ApplyTCPKeepalive(c net.Conn, period time.Duration) error {
 // Errors are returned, not logged: setting an option on a socket the peer
 // has already reset is not worth failing a session over, and only the
 // caller knows whether it cares.
-func ApplyListenOptions(c net.Conn, opts ListenOptions) error {
+func ApplySocketOptions(c net.Conn, opts SocketOptions) error {
 	if err := ApplyTCPKeepalive(c, opts.KeepalivePeriod); err != nil {
 		return err
 	}
@@ -120,26 +120,26 @@ var (
 	tcpSetKeepAlive       = func(tc *net.TCPConn, on bool) error { return tc.SetKeepAlive(on) }
 	tcpSetKeepAlivePeriod = func(tc *net.TCPConn, d time.Duration) error { return tc.SetKeepAlivePeriod(d) }
 	tcpSetNoDelay         = func(tc *net.TCPConn, on bool) error { return tc.SetNoDelay(on) }
-	applyListenOptions    = ApplyListenOptions
+	applySocketOptions    = ApplySocketOptions
 )
 
-// Listener is a net.Listener whose Accept has already applied ListenOptions
+// Listener is a net.Listener whose Accept has already applied SocketOptions
 // to the connection it returns. Callers keep their own accept loop and their
 // own session handling; only the socket policy moves here.
 //
 // Use this where the connector OWNS its bind (tsl and osc consumers). Where a
 // listener can be handed in from outside — the ServeListener / listenHook
-// seams on the emberplus and probel providers — call ApplyListenOptions in
+// seams on the emberplus and probel providers — call ApplySocketOptions in
 // the accept loop instead, so an injected listener gets the same policy.
 type Listener struct {
 	net.Listener
-	opts ListenOptions
+	opts SocketOptions
 }
 
 // ListenTCP binds addr and returns a Listener that applies opts to every
 // accepted connection. network is "tcp", "tcp4" or "tcp6" — connectors that
 // bind IPv4-only (acp1, acp2) pass "tcp4" and keep that behaviour.
-func ListenTCP(ctx context.Context, network, addr string, opts ListenOptions) (*Listener, error) {
+func ListenTCP(ctx context.Context, network, addr string, opts SocketOptions) (*Listener, error) {
 	var lc net.ListenConfig
 	ln, err := lc.Listen(ctx, network, addr)
 	if err != nil {
@@ -158,6 +158,6 @@ func (l *Listener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = applyListenOptions(c, l.opts)
+	_ = applySocketOptions(c, l.opts)
 	return c, nil
 }

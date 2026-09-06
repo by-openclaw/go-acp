@@ -1,13 +1,14 @@
 package tsl
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	"dhs/internal/tsl/codec"
 	"dhs/internal/transport"
+	"dhs/internal/tsl/codec"
 )
 
 // DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
@@ -25,10 +26,22 @@ const DefaultTCPKeepalivePeriod = 30 * time.Second
 type tcpDialer struct {
 	mu    sync.Mutex
 	conns map[string]net.Conn // keyed by "host:port"
+
+	// dialer opens each outbound connection. Injected rather than calling
+	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
+	// applied by the shared dialer instead of by a separate call here.
+	dialer transport.Dialer
 }
 
 func newTCPDialer() *tcpDialer {
-	return &tcpDialer{conns: map[string]net.Conn{}}
+	return &tcpDialer{
+		conns: map[string]net.Conn{},
+		dialer: transport.TCPDialer{
+			Options: transport.SocketOptions{
+				KeepalivePeriod: DefaultTCPKeepalivePeriod,
+			},
+		},
+	}
 }
 
 // destKey formats a dest into the conns map key.
@@ -44,11 +57,10 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := net.Dial("tcp", key)
+	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("tsl v5.0 TCP dial %s: %w", key, err)
 	}
-	_ = transport.ApplyTCPKeepalive(c, DefaultTCPKeepalivePeriod)
 	d.conns[key] = c
 	return c, nil
 }

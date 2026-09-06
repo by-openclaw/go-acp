@@ -67,7 +67,7 @@ func (s *tcpSession) IdleTimeout() time.Duration {
 func (s *tcpSession) listen(ctx context.Context, addr string) error {
 	// The listener applies SO_KEEPALIVE to every connection it accepts, so
 	// the accept loop below no longer carries its own copy of that policy.
-	l, err := transport.ListenTCP(ctx, "tcp", addr, transport.ListenOptions{
+	l, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{
 		KeepalivePeriod: tcpKeepalivePeriod,
 	})
 	if err != nil {

@@ -149,7 +149,7 @@ func (s *server) acceptLoop(ln net.Listener) error {
 		// socket here for ever — the inbound twin of the consumer-side
 		// stall. Applied here rather than at bind time so an injected
 		// listener gets it too.
-		_ = transport.ApplyListenOptions(conn, transport.ListenOptions{})
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go func() {

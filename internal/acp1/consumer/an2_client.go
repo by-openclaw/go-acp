@@ -30,7 +30,11 @@ const AN2DefaultPort = 2072
 // clientIface for the Plugin, with the same AddListener/RemoveListener
 // announce fan-out shape as TCPClient.
 type AN2Client struct {
-	conn   *net.TCPConn
+	// conn is a net.Conn, not a *net.TCPConn: this client only ever calls
+	// Read / Write / Close / SetWriteDeadline on it, and narrowing to the
+	// concrete type forced the caller to type-assert a dialer's result —
+	// which is exactly what stopped the dialer being injectable.
+	conn   net.Conn
 	logger *slog.Logger
 	cfg    ClientConfig
 
@@ -47,7 +51,7 @@ type AN2Client struct {
 
 // NewAN2Client wraps an already-connected raw TCP socket, starts the reader
 // goroutine, and sends EnableProtocolEvents([ACP1]) so announces flow.
-func NewAN2Client(conn *net.TCPConn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
+func NewAN2Client(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
 	if logger == nil {
 		logger = slog.Default()
 	}

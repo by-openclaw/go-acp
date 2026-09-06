@@ -25,8 +25,23 @@ type DialOptions struct {
 	// MaxPayload caps incoming frame size. 0 means DefaultMaxPayload.
 	MaxPayload int64
 
-	// Dialer overrides the underlying net.Dialer (useful for tests).
-	Dialer *net.Dialer
+	// Dialer opens the TCP connection the upgrade runs over. nil means a
+	// plain net.Dialer.
+	Dialer Dialer
+}
+
+// Dialer opens one connection. *net.Dialer satisfies it, and so does
+// transport.TCPDialer — the interface is declared here rather than imported
+// because this package stays stdlib-only so it remains lift-ready (doc.go).
+// Go interfaces are structural, so the two are interchangeable at the call
+// site without either package knowing about the other.
+//
+// It was *net.Dialer, which meant the only substitution possible was another
+// real dialer: you could change the timeout but you could not hand the
+// upgrade a pipe. The handshake was therefore only testable against a live
+// listener.
+type Dialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
 // Dial connects to urlStr (ws:// or wss://), performs the RFC 6455

@@ -34,37 +34,9 @@ func newTestSession() *Session {
 // killTestSession simulates the link dying with a typed reason.
 func killTestSession(s *Session, reason error) { s.markLost(reason) }
 
-func TestBackoffNextDoublesAndClamps(t *testing.T) {
-	bo := Backoff{Initial: time.Second, Max: 30 * time.Second}.withDefaults()
-	got := []time.Duration{}
-	d := bo.Initial
-	for i := 0; i < 8; i++ {
-		got = append(got, d)
-		d = bo.next(d)
-	}
-	want := []time.Duration{
-		1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second,
-		16 * time.Second, 30 * time.Second, 30 * time.Second, 30 * time.Second,
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("attempt %d delay = %v, want %v", i+1, got[i], want[i])
-		}
-	}
-}
-
-func TestBackoffDefaults(t *testing.T) {
-	bo := Backoff{}.withDefaults()
-	if bo.Initial != defaultBackoffInitial || bo.Max != defaultBackoffMax {
-		t.Fatalf("defaults = %v/%v, want %v/%v",
-			bo.Initial, bo.Max, defaultBackoffInitial, defaultBackoffMax)
-	}
-	// A Max below Initial is nonsense; it must not produce a shrinking schedule.
-	bo2 := Backoff{Initial: 10 * time.Second, Max: time.Second}.withDefaults()
-	if bo2.Max < bo2.Initial {
-		t.Fatalf("Max %v < Initial %v", bo2.Max, bo2.Initial)
-	}
-}
+// The Backoff schedule itself is tested where it now lives, in
+// internal/consumer. What stays here is the Cerebrum-shaped behaviour: that
+// the wrapper reconnects, re-subscribes, and reports the way the CLI expects.
 
 // The headline: when the link dies, the supervisor reconnects AND re-runs
 // Setup, so subscriptions are re-established on the new session.
