@@ -192,6 +192,9 @@ func (p *Plugin) Disconnect() error {
 	sess := p.session
 	p.session = nil
 	p.Closed()
+	if p.met != nil {
+		p.logger.Info("cerebrum-nb session metrics", slog.String("summary", p.met.Summary()))
+	}
 	p.mu.Unlock()
 	if sess == nil {
 		return nil

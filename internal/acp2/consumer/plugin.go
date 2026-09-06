@@ -339,6 +339,12 @@ func (p *Plugin) Disconnect() error {
 	p.session = nil
 	p.walker = nil
 	p.Closed()
+	// One-line session summary, the same shape probel has emitted since the
+	// metrics work landed. Most consumer verbs are one-shot, so this is
+	// where the counters become visible at all.
+	if p.metrics != nil {
+		p.logger.Info("acp2 session metrics", slog.String("summary", p.metrics.Summary()))
+	}
 	if p.trees != nil {
 		p.trees.Clear()
 	}

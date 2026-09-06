@@ -527,6 +527,9 @@ func (p *Plugin) Disconnect() error {
 	s := p.session
 	p.session = nil
 	p.Closed()
+	if p.met != nil {
+		p.logger.Info("emberplus session metrics", slog.String("summary", p.met.Summary()))
+	}
 	p.mu.Unlock()
 	if s != nil {
 		return s.Disconnect()

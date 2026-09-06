@@ -1,8 +1,11 @@
 package acp1
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"dhs/internal/metrics"
@@ -132,5 +135,23 @@ func TestTimestampingTransportWithoutAConnector(t *testing.T) {
 	}
 	if tr.sink.lastRx().IsZero() || tr.sink.lastTx().IsZero() {
 		t.Error("the sink must be stamped even with no connector")
+	}
+}
+
+// Most consumer verbs are one-shot, so the summary logged on Disconnect is
+// where a session's counters become visible at all.
+func TestDisconnectLogsTheSessionSummary(t *testing.T) {
+	var buf bytes.Buffer
+	p := (&Factory{}).New(plugin.Deps{
+		Logger: slog.New(slog.NewTextHandler(&buf, nil)),
+	}).(*Plugin)
+
+	if err := p.Disconnect(); err != nil {
+		t.Fatalf("Disconnect: %v", err)
+	}
+
+	got := buf.String()
+	if !strings.Contains(got, "acp1 session metrics") || !strings.Contains(got, "rx=") {
+		t.Errorf("Disconnect logged no session summary: %s", got)
 	}
 }

@@ -1,10 +1,12 @@
 package acp2
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,5 +135,24 @@ func TestSessionCountsBothDirections(t *testing.T) {
 	}
 	if snap.RxFrames == 0 || snap.RxBytes == 0 {
 		t.Errorf("nothing counted on the read path: rx=%d/%d", snap.RxFrames, snap.RxBytes)
+	}
+}
+
+// Most consumer verbs are one-shot, so the summary logged on Disconnect is
+// where a session's counters become visible at all.
+func TestDisconnectLogsTheSessionSummary(t *testing.T) {
+	var buf bytes.Buffer
+	p := (&Factory{}).New(plugin.Deps{
+		Logger: slog.New(slog.NewTextHandler(&buf, nil)),
+	}).(*Plugin)
+
+	p.session = NewSession(nil, discard())
+	if err := p.Disconnect(); err != nil {
+		t.Fatalf("Disconnect: %v", err)
+	}
+
+	if got := buf.String(); !strings.Contains(got, "acp2 session metrics") ||
+		!strings.Contains(got, "rx=") {
+		t.Errorf("Disconnect logged no session summary: %s", got)
 	}
 }
