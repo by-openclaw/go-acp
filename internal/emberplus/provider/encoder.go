@@ -3,9 +3,9 @@ package emberplus
 import (
 	"fmt"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/ber"
 	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
 )
 
 // encodeGetDirReply walks the tree entry e and produces the BER payload

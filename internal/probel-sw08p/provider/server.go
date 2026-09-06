@@ -100,8 +100,13 @@ var listenHook func(ctx context.Context, addr string) (net.Listener, error)
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
 	listen := func(ctx context.Context, addr string) (net.Listener, error) {
-		lc := &net.ListenConfig{}
-		return lc.Listen(ctx, "tcp", addr)
+		// The embedded listener, not the wrapper: acceptLoop applies the
+		// socket policy itself, so a listener from listenHook gets it too.
+		ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return ln.Listener, nil
 	}
 	if listenHook != nil {
 		listen = listenHook

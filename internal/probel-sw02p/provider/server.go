@@ -118,12 +118,14 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	lc := &net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp", addr)
+	ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
 	if err != nil {
 		return fmt.Errorf("probel-sw02p provider: listen %q: %w", addr, err)
 	}
-	return s.serveListener(ctx, ln)
+	// The embedded listener, not the wrapper: serveListener's accept loop
+	// applies the socket policy itself, so a listener handed to
+	// ServeListener gets it too. Passing the wrapper would apply it twice.
+	return s.serveListener(ctx, ln.Listener)
 }
 
 // ServeListener accepts client sessions on a pre-bound listener until

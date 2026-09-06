@@ -62,12 +62,14 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if s.tree == nil {
 		return fmt.Errorf("emberplus-provider: tree not loaded")
 	}
-	lc := net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp", addr)
+	ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
-	return s.serveListener(ctx, ln)
+	// The embedded listener, not the wrapper: serveListener's accept loop
+	// applies the socket policy itself, so an injected listener from
+	// ServeListener gets it too. Passing the wrapper would apply it twice.
+	return s.serveListener(ctx, ln.Listener)
 }
 
 // ServeListener serves on a pre-bound listener. Exported on the concrete

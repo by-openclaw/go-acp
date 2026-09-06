@@ -707,7 +707,7 @@ func TestWritePump_WriteError(t *testing.T) {
 // encodeTemplateElement (the "kind not supported" guards).
 type customElement struct{ hdr canonical.Header }
 
-func (c *customElement) Kind() string             { return "custom" }
+func (c *customElement) Kind() string              { return "custom" }
 func (c *customElement) Common() *canonical.Header { return &c.hdr }
 
 // TestEncoders_UnsupportedKind covers the default error arms of

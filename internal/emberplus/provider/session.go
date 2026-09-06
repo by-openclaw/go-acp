@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
+	"dhs/internal/export/canonical"
 )
 
 // session is one live consumer connection. Single read loop; a send

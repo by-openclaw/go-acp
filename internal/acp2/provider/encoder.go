@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 // buildProperties assembles the ACP2 property list a get_object reply

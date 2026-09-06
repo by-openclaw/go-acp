@@ -137,10 +137,10 @@ func TestIsControl(t *testing.T) {
 // fakeAddr / closedConn drive Conn.Close's underlying-close error arm.
 type closedConn struct{ net.Conn }
 
-func (closedConn) Write(b []byte) (int, error) { return len(b), nil }
-func (closedConn) Close() error                { return errors.New("close boom") }
-func (closedConn) LocalAddr() net.Addr         { return nil }
-func (closedConn) RemoteAddr() net.Addr        { return nil }
+func (closedConn) Write(b []byte) (int, error)      { return len(b), nil }
+func (closedConn) Close() error                     { return errors.New("close boom") }
+func (closedConn) LocalAddr() net.Addr              { return nil }
+func (closedConn) RemoteAddr() net.Addr             { return nil }
 func (closedConn) SetWriteDeadline(time.Time) error { return nil }
 func (closedConn) SetReadDeadline(time.Time) error  { return nil }
 func (closedConn) SetDeadline(time.Time) error      { return nil }
