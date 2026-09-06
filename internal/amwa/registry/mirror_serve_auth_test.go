@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/amwa/codec/is10"
+	jwt "dhs/internal/auth"
 )
 
 var serveAuthKey, _ = rsa.GenerateKey(rand.Reader, 2048)
@@ -47,7 +47,7 @@ func mockServeAS(t *testing.T) *httptest.Server {
 		})
 	})
 	mux.HandleFunc("/jwks", func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
-		_ = json.NewEncoder(w).Encode(is10.JWKS{Keys: []is10.JWK{{
+		_ = json.NewEncoder(w).Encode(jwt.JWKS{Keys: []jwt.JWK{{
 			Kty: "RSA", Kid: "mirror-as-1",
 			N: base64.RawURLEncoding.EncodeToString(serveAuthKey.N.Bytes()),
 			E: base64.RawURLEncoding.EncodeToString([]byte{0x01, 0x00, 0x01}),

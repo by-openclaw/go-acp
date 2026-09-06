@@ -1,226 +1,26 @@
 package is10_test
 
-// Tests for the IS-10 token machinery. Expected behaviour comes from
-// the AMWA v1.0.0 schemas + the Behaviour documents (Access Tokens,
-// Resource Servers), not from working code: RS512-only, required
-// claims, audience wildcards, and the path-authorization table.
+// Tests for the IS-10 wire documents. Expected behaviour comes from the
+// AMWA v1.0.0 schemas + the Behaviour documents (Token Requests), not
+// from working code.
+//
+// The token machinery these tests used to cover moved out: the RFC
+// 7515/7517/7519 half to internal/auth, the NMOS claim policy to
+// internal/amwa/session/auth. Their tests moved with them.
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"encoding/base64"
 	"encoding/json"
-	"strings"
 	"testing"
-	"time"
 
 	"dhs/internal/amwa/codec/is10"
 	v10 "dhs/internal/amwa/codec/is10/v10"
 )
 
-var testKey, _ = rsa.GenerateKey(rand.Reader, 2048)
-
-// mint builds a compact JWS over claims with the given alg label.
-// Signing lives in the test only — dhs never issues tokens.
-func mint(t *testing.T, claims map[string]any, alg, kid string) string {
-	t.Helper()
-	hdr := map[string]string{"typ": "JWT", "alg": alg}
-	if kid != "" {
-		hdr["kid"] = kid
-	}
-	enc := func(v any) string {
-		b, err := json.Marshal(v)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		return base64.RawURLEncoding.EncodeToString(b)
-	}
-	input := enc(hdr) + "." + enc(claims)
-	sum := sha512.Sum512([]byte(input))
-	sig, err := rsa.SignPKCS1v15(rand.Reader, testKey, crypto.SHA512, sum[:])
-	if err != nil {
-		t.Fatalf("sign: %v", err)
-	}
-	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
-}
-
-func testJWK(kid string) is10.JWK {
-	pub := &testKey.PublicKey
-	return is10.JWK{
-		Kty: "RSA", Use: "sig", Alg: "RS512", Kid: kid,
-		N: base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
-		E: base64.RawURLEncoding.EncodeToString([]byte{0x01, 0x00, 0x01}),
-	}
-}
-
-func baseClaims() map[string]any {
-	return map[string]any{
-		"iss":       "https://auth.example.com",
-		"sub":       "user@example.com",
-		"aud":       []string{"https://node-*.example.com"},
-		"exp":       float64(time.Now().Add(30 * time.Minute).Unix()),
-		"iat":       float64(time.Now().Unix()),
-		"client_id": "client-1",
-		"scope":     "registration query",
-		"x-nmos-query": map[string]any{
-			"read":  []string{"*"},
-			"write": []string{"subscriptions/*"},
-		},
-		"x-nmos-connection": map[string]any{
-			"read":  []string{"*"},
-			"write": []string{"single/*"},
-		},
-	}
-}
-
-func TestVerifyRoundTrip(t *testing.T) {
-	tok := mint(t, baseClaims(), "RS512", "k1")
-	c, err := is10.VerifyWithKeys(tok, []is10.JWK{testJWK("k1")})
-	if err != nil {
-		t.Fatalf("verify: %v", err)
-	}
-	if c.Iss != "https://auth.example.com" || c.ClientID != "client-1" {
-		t.Errorf("claims lost: %+v", c)
-	}
-	if p, ok := c.APIs["query"]; !ok || len(p.Write) != 1 || p.Write[0] != "subscriptions/*" {
-		t.Errorf("x-nmos-query claim lost: %+v", c.APIs)
-	}
-	if err := is10.ValidateClaims(c, []string{"node-1.example.com"}, time.Now(), 30*time.Second); err != nil {
-		t.Errorf("valid claims rejected: %v", err)
-	}
-}
-
-func TestAlgorithmPinning(t *testing.T) {
-	// RS256, or the classic alg=none downgrade, must be rejected at
-	// PARSE time regardless of the signature bytes.
-	for _, alg := range []string{"RS256", "HS512", "none"} {
-		tok := mint(t, baseClaims(), alg, "")
-		if _, err := is10.VerifyWithKeys(tok, []is10.JWK{testJWK("")}); err == nil {
-			t.Errorf("alg %s must be rejected", alg)
-		}
-	}
-	// Tampered payload fails the signature.
-	tok := mint(t, baseClaims(), "RS512", "")
-	parts := strings.Split(tok, ".")
-	forged := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"x","sub":"y","aud":"z","exp":9e9,"client_id":"c"}`))
-	if _, err := is10.VerifyWithKeys(parts[0]+"."+forged+"."+parts[2], []is10.JWK{testJWK("")}); err == nil {
-		t.Error("tampered payload must fail verification")
-	}
-}
-
-func TestClaimValidation(t *testing.T) {
-	now := time.Now()
-	leeway := 30 * time.Second
-	verify := func(mutate func(map[string]any)) error {
-		m := baseClaims()
-		mutate(m)
-		tok := mint(t, m, "RS512", "")
-		c, err := is10.VerifyWithKeys(tok, []is10.JWK{testJWK("")})
-		if err != nil {
-			t.Fatalf("verify: %v", err)
-		}
-		return is10.ValidateClaims(c, []string{"10.0.0.5", "node-1.example.com"}, now, leeway)
-	}
-	if err := verify(func(m map[string]any) {}); err != nil {
-		t.Fatalf("base claims rejected: %v", err)
-	}
-	cases := map[string]func(map[string]any){
-		"missing iss":         func(m map[string]any) { delete(m, "iss") },
-		"missing sub":         func(m map[string]any) { delete(m, "sub") },
-		"missing aud":         func(m map[string]any) { delete(m, "aud") },
-		"missing exp":         func(m map[string]any) { delete(m, "exp") },
-		"expired":             func(m map[string]any) { m["exp"] = float64(now.Add(-2 * time.Minute).Unix()) },
-		"iat in future":       func(m map[string]any) { m["iat"] = float64(now.Add(5 * time.Minute).Unix()) },
-		"nbf in future":       func(m map[string]any) { m["nbf"] = float64(now.Add(5 * time.Minute).Unix()) },
-		"no client_id or azp": func(m map[string]any) { delete(m, "client_id") },
-		"aud mismatch":        func(m map[string]any) { m["aud"] = []string{"other.example.net"} },
-	}
-	for name, mutate := range cases {
-		if err := verify(mutate); err == nil {
-			t.Errorf("%s: must be rejected", name)
-		}
-	}
-	// Within-leeway expiry passes; azp substitutes for client_id;
-	// string-form aud decodes.
-	if err := verify(func(m map[string]any) { m["exp"] = float64(now.Add(-10 * time.Second).Unix()) }); err != nil {
-		t.Errorf("expiry within leeway must pass: %v", err)
-	}
-	if err := verify(func(m map[string]any) { delete(m, "client_id"); m["azp"] = "client-1" }); err != nil {
-		t.Errorf("azp must substitute for client_id: %v", err)
-	}
-	if err := verify(func(m map[string]any) { m["aud"] = "node-1.example.com" }); err != nil {
-		t.Errorf("string-form aud must decode and match: %v", err)
-	}
-}
-
-func TestAudienceMatching(t *testing.T) {
-	cases := []struct {
-		aud  string
-		host string
-		want bool
-	}{
-		{"node-1.example.com", "node-1.example.com", true},
-		{"https://node-1.example.com", "node-1.example.com", true},
-		{"node-*.example.com", "node-42.example.com", true},
-		{"*.example.com", "a.b.example.com", true},
-		{"NODE-1.EXAMPLE.COM", "node-1.example.com", true},
-		{"node-1.example.com", "node-2.example.com", false},
-		{"*.example.com", "example.org", false},
-	}
-	for _, tc := range cases {
-		if got := is10.AudienceMatches(is10.Audience{tc.aud}, tc.host); got != tc.want {
-			t.Errorf("aud %q vs %q = %v, want %v", tc.aud, tc.host, got, tc.want)
-		}
-	}
-}
-
-func TestPathAuthorization(t *testing.T) {
-	tok := mint(t, baseClaims(), "RS512", "")
-	c, err := is10.VerifyWithKeys(tok, []is10.JWK{testJWK("")})
-	if err != nil {
-		t.Fatalf("verify: %v", err)
-	}
-	cases := []struct {
-		method, path string
-		allow        bool
-	}{
-		// Always-readable base paths.
-		{"GET", "/", true},
-		{"GET", "/x-nmos", true},
-		{"GET", "/x-nmos/", true},
-		// API base: scope OR claim grants read. `registration` is
-		// scope-only in the base claims; `query` has a claim too.
-		{"GET", "/x-nmos/registration", true},
-		{"GET", "/x-nmos/registration/v1.3", true},
-		{"GET", "/x-nmos/query/v1.3/", true},
-		// events: neither scope nor claim.
-		{"GET", "/x-nmos/events", false},
-		// Deep paths need the x-nmos claim — scope alone (registration)
-		// is NOT enough (path table row 5).
-		{"GET", "/x-nmos/registration/v1.3/resource", false},
-		{"GET", "/x-nmos/query/v1.3/senders", true},
-		{"POST", "/x-nmos/query/v1.3/subscriptions", true},
-		{"DELETE", "/x-nmos/query/v1.3/senders/abc", false},
-		{"PATCH", "/x-nmos/connection/v1.1/single/senders/abc/staged", true},
-		{"PATCH", "/x-nmos/connection/v1.1/bulk/senders", false},
-		// URL normalization: ../ must not escape a narrow specifier.
-		{"PATCH", "/x-nmos/connection/v1.1/single/../bulk/senders", false},
-		// Write verbs never ride the implicit read paths.
-		{"POST", "/x-nmos", false},
-		{"POST", "/", false},
-	}
-	for _, tc := range cases {
-		err := is10.Authorize(c, tc.method, tc.path)
-		if (err == nil) != tc.allow {
-			t.Errorf("%s %s: allow=%v, want %v (%v)", tc.method, tc.path, err == nil, tc.allow, err)
-		}
-	}
-}
-
-func TestMetadataAndJWKSAndTokenResponse(t *testing.T) {
-	meta := `{"issuer":"https://auth.example.com","authorization_endpoint":"https://a/authorize","token_endpoint":"https://a/token","jwks_uri":"https://a/jwks","registration_endpoint":"https://a/register","response_types_supported":["code"],"code_challenge_methods_supported":["S256","plain"],"extra":"tolerated"}`
+func TestDecodeMetadata(t *testing.T) {
+	const meta = `{"issuer":"https://auth.example.com","authorization_endpoint":"https://a/authorize",` +
+		`"token_endpoint":"https://a/token","jwks_uri":"https://a/jwks",` +
+		`"registration_endpoint":"https://a/register","response_types_supported":["code"],` +
+		`"code_challenge_methods_supported":["S256","plain"],"extra":"tolerated"}`
 	m, err := is10.DecodeMetadata([]byte(meta))
 	if err != nil {
 		t.Fatalf("metadata: %v", err)
@@ -228,26 +28,81 @@ func TestMetadataAndJWKSAndTokenResponse(t *testing.T) {
 	if m.JwksURI != "https://a/jwks" {
 		t.Errorf("metadata lost: %+v", m)
 	}
-	if _, err := is10.DecodeMetadata([]byte(`{"issuer":"x"}`)); err == nil {
-		t.Error("incomplete metadata must be rejected")
+	if m.Issuer != "https://auth.example.com" {
+		t.Errorf("issuer lost: %+v", m)
 	}
+}
 
-	raw, _ := json.Marshal(is10.JWKS{Keys: []is10.JWK{testJWK("k1")}})
-	s, err := is10.DecodeJWKS(raw)
-	if err != nil || len(s.Keys) != 1 {
-		t.Fatalf("jwks: %v %d", err, len(s.Keys))
+// Every required member of auth_metadata.json gets its own case: a
+// missing endpoint that decoded to "" would send the client to an empty
+// URL, which fails far from the cause.
+func TestMetadataRequiredMembers(t *testing.T) {
+	full := is10.Metadata{
+		Issuer:                        "https://a",
+		AuthorizationEndpoint:         "https://a/authorize",
+		TokenEndpoint:                 "https://a/token",
+		JwksURI:                       "https://a/jwks",
+		RegistrationEndpoint:          "https://a/register",
+		ResponseTypesSupported:        []string{"code"},
+		CodeChallengeMethodsSupported: []string{"S256"},
 	}
-	if _, err := is10.DecodeJWKS([]byte(`{}`)); err == nil {
-		t.Error("jwks without keys must be rejected")
+	if err := full.Validate(); err != nil {
+		t.Fatalf("complete metadata rejected: %v", err)
 	}
+	for _, tc := range []struct {
+		name string
+		drop func(*is10.Metadata)
+	}{
+		{"issuer", func(m *is10.Metadata) { m.Issuer = "" }},
+		{"authorization_endpoint", func(m *is10.Metadata) { m.AuthorizationEndpoint = "" }},
+		{"token_endpoint", func(m *is10.Metadata) { m.TokenEndpoint = "" }},
+		{"jwks_uri", func(m *is10.Metadata) { m.JwksURI = "" }},
+		{"registration_endpoint", func(m *is10.Metadata) { m.RegistrationEndpoint = "" }},
+		{"response_types_supported", func(m *is10.Metadata) { m.ResponseTypesSupported = nil }},
+		{"code_challenge_methods_supported", func(m *is10.Metadata) { m.CodeChallengeMethodsSupported = nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := full
+			tc.drop(&m)
+			if err := m.Validate(); err == nil {
+				t.Errorf("metadata without %s must be rejected", tc.name)
+			}
+		})
+	}
+	if _, err := is10.DecodeMetadata([]byte(`{"issuer":`)); err == nil {
+		t.Error("malformed JSON must be rejected")
+	}
+}
 
+func TestTokenResponse(t *testing.T) {
 	tr := is10.TokenResponse{AccessToken: "t", ExpiresIn: 60, TokenType: "bearer"}
 	if err := tr.Validate(); err != nil {
 		t.Errorf("Bearer must be case-insensitive: %v", err)
 	}
-	tr.TokenType = "mac"
-	if err := tr.Validate(); err == nil {
-		t.Error("non-Bearer token_type must be rejected")
+	for _, tc := range []struct {
+		name string
+		tr   is10.TokenResponse
+	}{
+		{"no access_token", is10.TokenResponse{ExpiresIn: 60, TokenType: "Bearer"}},
+		{"no expires_in", is10.TokenResponse{AccessToken: "t", TokenType: "Bearer"}},
+		{"negative expires_in", is10.TokenResponse{AccessToken: "t", ExpiresIn: -1, TokenType: "Bearer"}},
+		{"non-Bearer type", is10.TokenResponse{AccessToken: "t", ExpiresIn: 60, TokenType: "mac"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.tr.Validate(); err == nil {
+				t.Errorf("%s must be rejected", tc.name)
+			}
+		})
+	}
+}
+
+func TestTokenErrorDecodes(t *testing.T) {
+	var te is10.TokenError
+	if err := json.Unmarshal([]byte(`{"error":"invalid_client","error_description":"bad secret"}`), &te); err != nil {
+		t.Fatalf("token error: %v", err)
+	}
+	if te.Error != "invalid_client" || te.ErrorDescription != "bad secret" {
+		t.Errorf("token error lost: %+v", te)
 	}
 }
 
@@ -262,4 +117,48 @@ func TestRegistryWiring(t *testing.T) {
 	if got := is10.SupportedVersions(); len(got) != 1 || got[0] != "v1.0" {
 		t.Errorf("supported = %v", got)
 	}
+	if is10.Default().APIVer() != "v1.0" {
+		t.Errorf("default = %s", is10.Default().APIVer())
+	}
+	// The codec is metadata-only now; verification is not a codec concern.
+	if _, err := c.DecodeMetadata([]byte(`{}`)); err == nil {
+		t.Error("codec must validate the metadata it decodes")
+	}
 }
+
+// The registry helpers the plugin layer selects versions through.
+func TestVersionSelection(t *testing.T) {
+	if got := is10.AllCodecs(); len(got) != 1 {
+		t.Fatalf("AllCodecs = %d codecs, want 1", len(got))
+	}
+	c, err := is10.SelectHighest([]string{"v0.9", "v1.0"})
+	if err != nil {
+		t.Fatalf("SelectHighest: %v", err)
+	}
+	if c.APIVer() != "v1.0" {
+		t.Errorf("selected %s", c.APIVer())
+	}
+	// No intersection is a typed error, never a silent downgrade.
+	if _, err := is10.SelectHighest([]string{"v2.0"}); err == nil {
+		t.Error("a peer with no common version must be an error")
+	}
+}
+
+// Registering a codec that claims another spec is an init-time bug, and
+// a panic is the only place it can be caught before the wrong codec
+// starts answering IS-10 traffic.
+func TestRegisterRejectsForeignSpecID(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("Register must panic on a foreign SpecID")
+		}
+	}()
+	is10.Register(foreignCodec{})
+}
+
+type foreignCodec struct{}
+
+func (foreignCodec) SpecID() string                               { return "is-04" }
+func (foreignCodec) APIVer() string                               { return "v1.0" }
+func (foreignCodec) SpecPatch() string                            { return "v1.0.0" }
+func (foreignCodec) DecodeMetadata([]byte) (is10.Metadata, error) { return is10.Metadata{}, nil }

@@ -16,7 +16,13 @@ import (
 	"testing"
 )
 
-const moduleRoot = "acp"
+// moduleRoot is the Go module path from go.mod. Every rule below
+// compares real import paths against it, so a stale value silently
+// disables the whole file: prefix tests stop matching and every check
+// passes vacuously. It read "acp" — the module's former name — while
+// the module had been "dhs", which is why the codec rule below did not
+// notice the JWT machinery importing across layers.
+const moduleRoot = "dhs"
 
 // TestCodecHasNoAcpImports asserts internal/amwa/codec/** stays
 // stdlib-only (sibling codec packages allowed).
@@ -172,14 +178,18 @@ func isCrossProtocol(importPath string) bool {
 		return false
 	}
 	rest := strings.TrimPrefix(importPath, moduleRoot+"/internal/")
-	// Allowed neutral infrastructure prefixes.
+	// Allowed neutral infrastructure prefixes — the shared packages
+	// every protocol is meant to sit on top of, as opposed to another
+	// protocol's tree.
 	for _, neutral := range []string{
 		"protocol",
+		"consumer",
 		"provider",
 		"registry",
 		"storage",
 		"metrics",
 		"transport",
+		"auth",
 		"export",
 		"scenario",
 		"amwa",

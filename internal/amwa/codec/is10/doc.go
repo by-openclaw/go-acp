@@ -1,21 +1,27 @@
-// Package is10 — canonical types + token machinery for AMWA IS-10
-// Authorization v1.0 (https://specs.amwa.tv/is-10/releases/v1.0.0/),
-// the specification BCP-003-02 mandates for NMOS API authorization.
+// Package is10 — canonical wire types for AMWA IS-10 Authorization
+// v1.0 (https://specs.amwa.tv/is-10/releases/v1.0.0/), the
+// specification BCP-003-02 mandates for NMOS API authorization.
 //
-// dhs acts as OAuth 2.0 CLIENT (obtaining tokens for its consumer
-// verbs) and RESOURCE SERVER (every API we serve validating Bearer
-// tokens). This package carries the wire shapes both roles share:
+// What lives here is what IS-10 actually DEFINES on the wire:
 //
-//   - the JWT access-token claim set (token_schema.json) with the
-//     x-nmos-* private claims and their read/write path specifiers;
-//   - RS512 JWS parsing + verification (the ONLY algorithm IS-10
-//     permits) against JWKS public keys;
-//   - claim validation (iss/sub/aud/exp required, UTC epoch, audience
-//     matching incl. RFC 4592-style wildcards);
-//   - the path-authorization rules of Behaviour - Resource Servers.md
-//     (base paths implicitly readable, deep paths matched against the
-//     x-nmos-* claim's wildcarded specifiers after URL normalization);
-//   - Authorization Server metadata (RFC 8414) + token responses.
+//   - Authorization Server metadata (RFC 8414 document, auth_metadata.json);
+//   - the token-endpoint success and error bodies;
+//   - the DNS-SD service type + well-known metadata path;
+//   - the per-minor codec registry.
+//
+// What does NOT live here is everything IS-10 merely REFERENCES.
+// JWS parsing, RS512 verification and JWKS decoding are RFC
+// 7515/7517/7519 — the same bytes for every protocol that carries a
+// bearer token — so they are in internal/auth. The NMOS-specific
+// reading of those claims (audience matching against this server's
+// identities, the x-nmos-* permission grammar, the path table from
+// Behaviour - Resource Servers.md) is in internal/amwa/session/auth.
+//
+// The split is forced as well as correct. A codec is stdlib-only and
+// never imports dhs/* (ADR-0006), so a codec cannot reach the shared
+// JWT package; keeping the NMOS policy here would have meant keeping a
+// private second copy of RFC 7519 here too, and a security fix would
+// then have to be made twice. Signature verification is not bytes.
 //
 // Validation doctrine is the repo-wide one: AMWA's own JSON Schemas
 // (schemas/v1.0.0/, verbatim) are the authority; Go code carries the
