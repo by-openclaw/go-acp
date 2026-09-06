@@ -227,12 +227,21 @@ Implementation:
 - ❌ No auto-retry on Send timeout (§3.1 has no framing ACK, so
   retry has to be app-layer / per-command).
 - ❌ No auto-reconnect on TCP drop.
-- ❌ No keepalive / heartbeat.
+- ✅ Keepalive: `consumer/keepalive.go` polls rx 01 on a rotating dst
+  cursor (SW-P-02 has no APP_KEEPALIVE pair, so the rx 01 / tx 03
+  round-trip IS the keep-alive). Armed only when a matrix size is
+  configured (`MatrixConfig.Dsts`).
+- ✅ Half-open detection: `codec.Client.SetIdleTimeout` gives the reader
+  a dead-man deadline, armed by `runKeepalive` for exactly as long as
+  the poll is running and disarmed when it stops. The coupling is
+  required, not incidental — with no unsolicited heartbeat from the
+  matrix, our poll is the only thing that makes silence meaningful; a
+  deadline without it would tear down a quiet but healthy link.
 - ❌ No `IsOnline` / `IsOnlineWithin` on Plugin.
 - ❌ Server-side idle-session cleanup / graceful-drain / per-session
   write timeout.
 
-Next-session priority: app-layer retry policy + reconnect + keepalive.
+Next-session priority: app-layer retry policy + reconnect.
 
 ## Testbed
 

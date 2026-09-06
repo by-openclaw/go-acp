@@ -46,6 +46,7 @@ type commonFlags struct {
 	logFormat        string
 	logPath          string
 	syslogAddr       string
+	logRetention     int
 	capture          string
 
 	// eventLogger + logHasSink are set by connect(): the uniform-logging
@@ -99,6 +100,7 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
 	fs.StringVar(&cf.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/<proto>/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
 	fs.StringVar(&cf.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (remote server sink; non-blocking, drops counted)")
+	fs.IntVar(&cf.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
@@ -182,7 +184,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	// default). With no sink this is exactly the old stderr text logger.
 	op, event, logCleanup, hasSink, lerr := buildConsumerLoggers(
 		lvl, cf.logFormat, cf.logPath, cf.syslogAddr,
-		defaultLogPath(cf.protocol, hostOnly(host), cf.verb))
+		defaultLogPath(cf.protocol, hostOnly(host), cf.verb), cf.logRetention)
 	if lerr != nil {
 		return nil, nil, lerr
 	}

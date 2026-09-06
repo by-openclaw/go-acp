@@ -1057,7 +1057,7 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	}
 
 	var grains, changes int
-	err = query.Watch(ctx, sub.WSHref, func(g *is04.Grain) error {
+	onGrain := func(g *is04.Grain) error {
 		grains++
 		for _, row := range g.Grain.Data {
 			changes++
@@ -1069,7 +1069,49 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 				row.Kind(), strings.Trim(g.Grain.Topic, "/"), row.Path, label)
 		}
 		return nil
-	}, query.WatchOptions{})
+	}
+
+	// A Query WS watch runs 24/7, so a dropped subscription must be
+	// re-established rather than ending the verb. Two things can go: the
+	// socket (reconnect to the same wsHref) and the subscription itself,
+	// which the Registry garbage-collects — so a failed re-dial re-POSTs
+	// the subscription before trying again.
+	//
+	// Liveness comes from query.WatchOptions defaults (30s client ping /
+	// 90s idle deadline): a quiet plant is normal, so silence alone proves
+	// nothing and only our own pings distinguish idle from dead.
+	backoff := time.Second
+	const backoffMax = 30 * time.Second
+	for {
+		err = query.Watch(ctx, sub.WSHref, onGrain, query.WatchOptions{})
+		if err == nil || ctx.Err() != nil {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "nmos watch: stream lost (%v) — reconnecting in %s…\n",
+			err, backoff)
+		select {
+		case <-ctx.Done():
+		case <-time.After(backoff):
+		}
+		if ctx.Err() != nil {
+			err = nil
+			break
+		}
+		if backoff *= 2; backoff > backoffMax {
+			backoff = backoffMax
+		}
+		// Re-POST the subscription: after a Registry restart or a GC the old
+		// wsHref is gone, and re-dialling it forever would never recover.
+		if newSub, serr := qc.Subscribe(ctx, query.SubscribeRequest{
+			ResourcePath:  *resource,
+			Params:        filter,
+			Persist:       *persist,
+			MaxUpdateRate: *rate,
+		}); serr == nil {
+			sub = newSub
+			fmt.Fprintf(os.Stderr, "nmos watch: re-subscribed -> %s (id=%s)\n", sub.WSHref, sub.ID)
+		}
+	}
 
 	fmt.Fprintf(os.Stderr, "\n%d grain(s), %d change row(s)\n", grains, changes)
 	if events := rep.Snapshot(); len(events) > 0 {

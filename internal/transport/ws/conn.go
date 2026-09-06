@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,12 +26,83 @@ type Conn struct {
 	br         *bufio.Reader
 	maxPayload int64
 
+	// idleTimeout, when > 0, is the maximum time the peer may be silent
+	// before a read fails. It is re-armed before EVERY frame read —
+	// including control frames handled inline — so it means "no bytes at
+	// all from the peer", not "no application message". That distinction
+	// matters: a connection carrying only Pongs is alive, and must not be
+	// declared dead by the watchdog it is answering.
+	//
+	// Without this, a read blocks forever on a half-open connection (a NAT
+	// or firewall that dropped the flow without sending an RST), which is
+	// exactly how a 24/7 watcher goes silent without crashing.
+	idleTimeout atomic.Int64 // time.Duration
+
 	// writeMu serialises all outbound frames so control + data frames
 	// don't interleave on the wire.
 	writeMu sync.Mutex
 
+	// clientSide selects RFC 6455 §5.3 masking: a client MUST mask every
+	// frame it sends, a server MUST NOT. Dial sets it true, Accept false.
+	// It is the only wire difference between the two ends.
+	clientSide bool
+
+	// armMu serialises arming the read deadline against SetIdleTimeout.
+	armMu sync.Mutex
+
 	closeOnce sync.Once
 	closeErr  error
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
+// deadline. Safe to call concurrently with an in-flight ReadMessage.
+func (c *Conn) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	// armMu makes "store the value" and "push it onto the socket" one step
+	// with respect to the reader's own arming. Without it the two race, and
+	// the reader can win with a STALE value:
+	//
+	//	reader: d := IdleTimeout()          -> reads the old 90s
+	//	here:   store 150ms; SetReadDeadline(now+150ms)
+	//	reader: SetReadDeadline(now+90s)    -> overwrites the 150ms
+	//
+	// The reader then blocks for 90s holding a window the caller believes is
+	// 150ms. That is not theoretical: it is why a tightened-deadline test
+	// passed on three CI runners and hung on a fourth.
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	c.idleTimeout.Store(int64(d))
+	// Apply immediately: a reader is normally already blocked in the kernel
+	// on the PREVIOUS deadline, and storing alone would not reach it until
+	// that old (possibly infinite) deadline expired.
+	c.armLocked()
+}
+
+// armLocked pushes the current bound onto the socket. Caller holds armMu.
+func (c *Conn) armLocked() {
+	if d := time.Duration(c.idleTimeout.Load()); d > 0 {
+		_ = c.c.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = c.c.SetReadDeadline(time.Time{})
+	}
+}
+
+// armRead re-arms the per-frame deadline before a read. It takes armMu so a
+// concurrent SetIdleTimeout cannot be clobbered by a stale value read here.
+func (c *Conn) armRead() error {
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	if d := time.Duration(c.idleTimeout.Load()); d > 0 {
+		return c.c.SetReadDeadline(time.Now().Add(d))
+	}
+	return nil
+}
+
+// IdleTimeout reports the currently armed per-frame read deadline.
+func (c *Conn) IdleTimeout() time.Duration {
+	return time.Duration(c.idleTimeout.Load())
 }
 
 // newConn wraps a post-handshake net.Conn into a *Conn. br carries any
@@ -39,7 +111,7 @@ func newConn(c net.Conn, br *bufio.Reader, maxPayload int64) *Conn {
 	if maxPayload <= 0 {
 		maxPayload = DefaultMaxPayload
 	}
-	return &Conn{c: c, br: br, maxPayload: maxPayload}
+	return &Conn{c: c, br: br, maxPayload: maxPayload, clientSide: true}
 }
 
 // LocalAddr / RemoteAddr expose the underlying transport.
@@ -64,7 +136,16 @@ func (c *Conn) ReadMessage(ctx context.Context) (opcode byte, payload []byte, er
 		dataOpcode byte
 		buf        []byte
 	)
+	// An explicit ctx deadline (a bounded request) wins over the rolling
+	// idle timeout (an unbounded watch); only arm the idle deadline when the
+	// caller did not set one of its own.
+	_, ctxHasDeadline := ctx.Deadline()
 	for {
+		if !ctxHasDeadline {
+			if err := c.armRead(); err != nil {
+				return 0, nil, err
+			}
+		}
 		f, err := readFrame(c.br, c.maxPayload)
 		if err != nil {
 			return 0, nil, err
@@ -121,7 +202,7 @@ func (c *Conn) writeData(ctx context.Context, op byte, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return writeFrame(c.c, true, op, payload, key, true)
+	return writeFrame(c.c, true, op, payload, key, c.clientSide)
 }
 
 // writeControl emits a control frame (Ping / Pong / Close). Body is
@@ -136,7 +217,7 @@ func (c *Conn) writeControl(op byte, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return writeFrame(c.c, true, op, payload, key, true)
+	return writeFrame(c.c, true, op, payload, key, c.clientSide)
 }
 
 // Ping sends a Ping with the given payload (≤125 bytes).

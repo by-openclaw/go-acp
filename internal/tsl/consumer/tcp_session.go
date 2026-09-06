@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/tsl/codec"
@@ -27,10 +28,40 @@ type tcpSession struct {
 	v50Subs   []V50Handler
 	wg        sync.WaitGroup
 	closeOnce sync.Once
+
+	// idleTimeout, when > 0, closes an accepted connection that has sent
+	// nothing for that long, reaping half-open producer links (a NAT or
+	// firewall drop with no RST) that would otherwise hold a goroutine and
+	// a socket forever.
+	//
+	// It defaults to 0 (OFF), and that default is deliberate. Unlike every
+	// other connector we fixed, this is a PASSIVE receiver and TSL UMD
+	// defines no heartbeat in any of v3.1/v4.0/v5.0 — a tally link that
+	// sends nothing for hours is perfectly healthy, because tallies are
+	// emitted on change. With no heartbeat there is nothing to distinguish
+	// quiet from dead, so an on-by-default deadline would disconnect
+	// working producers. OS-level SO_KEEPALIVE (set on every accepted
+	// connection) stays the always-on detector; this is the opt-in for
+	// deployments that would rather reap aggressively.
+	idleTimeout atomic.Int64 // time.Duration
 }
 
 func newTCPSession() *tcpSession {
 	return &tcpSession{}
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-connection idle
+// reaper. See the field comment for why this is off by default.
+func (s *tcpSession) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	s.idleTimeout.Store(int64(d))
+}
+
+// IdleTimeout reports the currently armed idle reaper window.
+func (s *tcpSession) IdleTimeout() time.Duration {
+	return time.Duration(s.idleTimeout.Load())
 }
 
 // listen binds a TCP listener on addr and accepts connections until ctx
@@ -89,6 +120,9 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 	for {
 		if ctx.Err() != nil {
 			return
+		}
+		if d := s.IdleTimeout(); d > 0 {
+			_ = conn.SetReadDeadline(time.Now().Add(d))
 		}
 		pkt, err := dec.ReadFrame()
 		if err != nil {

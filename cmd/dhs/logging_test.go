@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestNewLoggerToJSON: --log-format json emits one parseable JSON object
@@ -54,7 +55,7 @@ func TestBuildConsumerLoggers(t *testing.T) {
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "run.log")
 
-	op, event, cleanup, hasSink, err := buildConsumerLoggers(slog.LevelInfo, "syslog", logPath, "", "")
+	op, event, cleanup, hasSink, err := buildConsumerLoggers(slog.LevelInfo, "syslog", logPath, "", "", 0)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -65,9 +66,15 @@ func TestBuildConsumerLoggers(t *testing.T) {
 	op.Warn("something")
 	cleanup()
 
-	b, rerr := os.ReadFile(logPath)
+	// The local sink rotates daily (logrotate.go): the logical path
+	// ".../run.log" is written as ".../run-YYYY-MM-DD.log".
+	rotated := filepath.Join(dir, "run-"+time.Now().Format(dayLayout)+".log")
+	b, rerr := os.ReadFile(rotated)
 	if rerr != nil {
-		t.Fatalf("log file not written: %v", rerr)
+		t.Fatalf("rotated log file not written at %s: %v", rotated, rerr)
+	}
+	if _, serr := os.Stat(logPath); serr == nil {
+		t.Fatalf("the unrotated path %s must not be written once rotation is on", logPath)
 	}
 	body := string(b)
 	if !strings.Contains(body, "value_change") || !strings.Contains(body, "something") {
@@ -80,7 +87,7 @@ func TestBuildConsumerLoggers(t *testing.T) {
 	}
 
 	// No sink → no event logger, no hasSink.
-	_, event2, cleanup2, hasSink2, err2 := buildConsumerLoggers(slog.LevelInfo, "syslog", "off", "", "")
+	_, event2, cleanup2, hasSink2, err2 := buildConsumerLoggers(slog.LevelInfo, "syslog", "off", "", "", 0)
 	if err2 != nil {
 		t.Fatalf("build off: %v", err2)
 	}

@@ -18,9 +18,10 @@ import (
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/transport/ws"
 )
 
 // cerebrumValErr returns a client-side ValidationError — mapped to exit 2
@@ -61,18 +62,19 @@ func printCerebrumJSON(v any) error {
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
 type cerebrumFlags struct {
-	port       int
-	user       string
-	pass       string
-	tls        bool
-	insecure   bool
-	debug      bool
-	logPath    string
-	logFormat  string
-	logLevel   string
-	syslogAddr string
-	capture    string
-	timeout    time.Duration
+	port         int
+	user         string
+	pass         string
+	tls          bool
+	insecure     bool
+	debug        bool
+	logPath      string
+	logFormat    string
+	logLevel     string
+	syslogAddr   string
+	logRetention int
+	capture      string
+	timeout      time.Duration
 
 	// logger + logCleanup are built once by newLogger and cached so a verb
 	// (e.g. watch) can route its own event stream through the SAME logger
@@ -94,6 +96,7 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
 	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
 	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal \"auto\" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
@@ -155,12 +158,10 @@ func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
 		c.logPath = ""
 	}
 	if c.logPath != "" {
-		if dir := filepath.Dir(c.logPath); dir != "." {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
-			}
-		}
-		f, err := os.Create(c.logPath)
+		// One file per calendar day (logrotate.go). cerebrum-nb watch is the
+		// canonical 24/7/365 verb, so it must never write a single unbounded
+		// file that a restart truncates.
+		f, err := newDailyWriter(c.logPath, c.logRetention, clock.System())
 		if err != nil {
 			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
 		}
@@ -1722,20 +1723,48 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
-	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "watch")
-	if err != nil {
-		return err
+	// A watch runs 24/7/365, so it is supervised: the session is re-dialled
+	// and re-subscribed whenever the link dies. Every (re)connect builds a
+	// fresh Plugin, so the live one is kept in a guarded slot and the old one
+	// is disconnected as it is replaced — otherwise a week of reconnects
+	// leaks a week of sockets.
+	var (
+		plugMu sync.Mutex
+		plug   *cerebrum.Plugin
+	)
+	swapPlugin := func(p *cerebrum.Plugin) {
+		plugMu.Lock()
+		old := plug
+		plug = p
+		plugMu.Unlock()
+		if old != nil && old != p {
+			_ = old.Disconnect()
+		}
 	}
-	defer func() { _ = p.Disconnect() }()
-	if cf.logCleanup != nil {
-		defer cf.logCleanup()
+	defer func() {
+		plugMu.Lock()
+		p := plug
+		plugMu.Unlock()
+		if p != nil {
+			_ = p.Disconnect()
+		}
+	}()
+	// The logger is built by the first dial, so the cleanup is resolved at
+	// exit rather than captured now (when it is still nil).
+	defer func() {
+		if cf.logCleanup != nil {
+			cf.logCleanup()
+		}
+	}()
+
+	dialWatch := func(context.Context) (*cerebrum.Session, error) {
+		p, sess, _, derr := dialCerebrumAuth(cf, fs.Args(), "watch")
+		if derr != nil {
+			return nil, derr
+		}
+		swapPlugin(p)
+		return sess, nil
 	}
-	// Model B (epic #987): the terminal ALWAYS gets the human table; when a
-	// structured sink (--log file / --syslog-addr server) is configured, each
-	// change is ALSO emitted as a structured record to that sink — so you
-	// read the table live AND ship syslog/json to file/Loki at the same time.
-	logToSink := cf.hasLogSink()
-	evLogger := cf.logger
 
 	newRow := func(obj string) *codec.DeviceChange {
 		dc := &codec.DeviceChange{}
@@ -1762,24 +1791,44 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return dc
 	}
 
-	// Resolve the object list BEFORE subscribing, so an expansion that
-	// finds nothing fails loudly instead of quietly watching one row.
-	objectRows := []codec.DeviceObjectValue{{Object: object}}
-	if subDev != "" {
-		objectRows, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
-		if err != nil {
-			return err
-		}
-	}
 	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
 	// the wire (no type/access/units), so the resolve step's descriptors are
 	// remembered here and merged into every rendered row — giving the watch
 	// the same detail (type, R/W, units, enum/range) as acp1/acp2/ember+.
-	objects := make([]string, 0, len(objectRows))
-	desc := make(map[string]codec.DeviceObjectValue, len(objectRows))
-	for _, r := range objectRows {
-		objects = append(objects, r.Object)
-		desc[r.Object] = r
+	//
+	// Guarded, because a reconnect re-resolves it on the supervisor's
+	// goroutine while the event handler is reading it on the session's.
+	var (
+		descMu sync.RWMutex
+		desc   = map[string]codec.DeviceObjectValue{}
+	)
+	lookupDesc := func(obj string) (codec.DeviceObjectValue, bool) {
+		descMu.RLock()
+		defer descMu.RUnlock()
+		d, ok := desc[obj]
+		return d, ok
+	}
+
+	// resolveObjects re-reads the object list and its descriptors on a given
+	// session. Run BEFORE subscribing, so an expansion that finds nothing
+	// fails loudly instead of quietly watching one row.
+	resolveObjects := func(sess *cerebrum.Session) ([]string, error) {
+		objectRows := []codec.DeviceObjectValue{{Object: object}}
+		if subDev != "" {
+			var rerr error
+			objectRows, rerr = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
+			if rerr != nil {
+				return nil, rerr
+			}
+		}
+		objects := make([]string, 0, len(objectRows))
+		descMu.Lock()
+		for _, r := range objectRows {
+			objects = append(objects, r.Object)
+			desc[r.Object] = r
+		}
+		descMu.Unlock()
+		return objects, nil
 	}
 
 	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
@@ -1823,96 +1872,137 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return prev != v
 	}
 
-	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
-		switch {
-		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
-			return // spurious §1.6 deviation
-		case f.Kind == codec.KindAck:
-			return // transaction plumbing, not an event
+	// attach re-establishes everything that lives on the SERVER or in the
+	// render state: the object list, the descriptor cache, the event handler
+	// and the subscriptions. The supervisor calls it after every successful
+	// dial, including the first — a Cerebrum subscription does not survive
+	// the socket, so a reconnect that skipped this would come back connected
+	// and silent, which is the very bug being fixed.
+	attach := func(ctx context.Context, sess *cerebrum.Session) error {
+		// Model B (epic #987): the terminal ALWAYS gets the human table; when
+		// a structured sink (--log file / --syslog-addr server) is configured,
+		// each change is ALSO emitted as a structured record to that sink — so
+		// you read the table live AND ship syslog/json to file/Loki at once.
+		logToSink := cf.hasLogSink()
+		evLogger := cf.logger
+
+		objects, rerr := resolveObjects(sess)
+		if rerr != nil {
+			return rerr
 		}
-		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
-			now := time.Now()
-			for _, ov := range f.Device.ObjectValues {
-				// --only filters what is PRINTED as well as what is
-				// subscribed. It has to: a group subscription is
-				// indivisible — "Nodes.*" registers 68 node groups and
-				// each one reports every field of its node — so the
-				// subscription list cannot express "SubID only", and
-				// filtering the rows is the only place that can.
-				if !wantLeaf(onlyLeaves, ov.Object) {
-					continue
-				}
-				if !changed(ov) {
-					continue
-				}
-				// Enrich the value-only change event with the cached
-				// descriptor so type/access/units/enum render on every row.
-				if ov.DataType == "" {
-					if d, ok := desc[ov.Object]; ok {
-						live := ov
-						ov = d
-						ov.Value = live.Value
-						ov.Available = live.Available
+
+		sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
+			switch {
+			case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
+				return // spurious §1.6 deviation
+			case f.Kind == codec.KindAck:
+				return // transaction plumbing, not an event
+			}
+			if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+				now := time.Now()
+				for _, ov := range f.Device.ObjectValues {
+					// --only filters what is PRINTED as well as what is
+					// subscribed. It has to: a group subscription is
+					// indivisible — "Nodes.*" registers 68 node groups and
+					// each one reports every field of its node — so the
+					// subscription list cannot express "SubID only", and
+					// filtering the rows is the only place that can.
+					if !wantLeaf(onlyLeaves, ov.Object) {
+						continue
 					}
-				}
-				// Terminal: the human table, always.
-				header.Do(cerebrumDMHeader)
-				cerebrumDMRow(now, ov)
-				// Sinks: the same change as a structured record (file/server),
-				// only when a sink exists (stderr is human, never the events).
-				if logToSink && evLogger != nil {
-					label := ov.Label
-					if label == "" {
-						if i := strings.LastIndex(ov.Object, "."); i >= 0 {
-							label = ov.Object[i+1:]
-						} else {
-							label = ov.Object
+					if !changed(ov) {
+						continue
+					}
+					// Enrich the value-only change event with the cached
+					// descriptor so type/access/units/enum render on every row.
+					if ov.DataType == "" {
+						if d, ok := lookupDesc(ov.Object); ok {
+							live := ov
+							ov = d
+							ov.Value = live.Value
+							ov.Available = live.Available
 						}
 					}
-					evLogger.Info("cerebrum_value_change",
-						slog.String("device", device),
-						slog.String("sub_device", subDev),
-						slog.String("object", ov.Object),
-						slog.String("label", label),
-						slog.String("value", ov.Value),
-						slog.String("type", strings.ToLower(ov.DataType)),
-						slog.String("access", cerebrumAccess(ov)),
-						slog.String("units", ov.Units),
-						slog.Bool("available", ov.Available),
-					)
+					// Terminal: the human table, always.
+					header.Do(cerebrumDMHeader)
+					cerebrumDMRow(now, ov)
+					// Sinks: the same change as a structured record (file/server),
+					// only when a sink exists (stderr is human, never the events).
+					if logToSink && evLogger != nil {
+						label := ov.Label
+						if label == "" {
+							if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+								label = ov.Object[i+1:]
+							} else {
+								label = ov.Object
+							}
+						}
+						evLogger.Info("cerebrum_value_change",
+							slog.String("device", device),
+							slog.String("sub_device", subDev),
+							slog.String("object", ov.Object),
+							slog.String("label", label),
+							slog.String("value", ov.Value),
+							slog.String("type", strings.ToLower(ov.DataType)),
+							slog.String("access", cerebrumAccess(ov)),
+							slog.String("units", ov.Units),
+							slog.Bool("available", ov.Available),
+						)
+					}
 				}
+				return
 			}
-			return
-		}
-		printEventLabeled(f, nil)
-	})
+			printEventLabeled(f, nil)
+		})
 
-	// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
-	// batch fails WHOLESALE if any row is bad, and then names none of
-	// them. So a failed batch is retried row by row: the cost falls on
-	// the run that already has a problem, and the operator learns which
-	// path was refused instead of being told the batch was.
-	rows := make([]codec.SubItem, 0, len(objects))
-	for _, o := range objects {
-		rows = append(rows, newRow(o))
+		// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
+		// batch fails WHOLESALE if any row is bad, and then names none of
+		// them. So a failed batch is retried row by row: the cost falls on
+		// the run that already has a problem, and the operator learns which
+		// path was refused instead of being told the batch was.
+		rows := make([]codec.SubItem, 0, len(objects))
+		for _, o := range objects {
+			rows = append(rows, newRow(o))
+		}
+		okRows, bad, serr := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
+		if serr != nil {
+			return serr
+		}
+		if okRows == 0 {
+			return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
+		}
+		for _, b := range bad {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
+		}
+
+		what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
+		if okRows > 1 {
+			what = fmt.Sprintf("%s on %d object(s)", what, okRows)
+		}
+		fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
+		return nil
 	}
-	okRows, bad, err := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
-	if err != nil {
+
+	// The supervisor owns the connection for the life of the watch: it dials,
+	// attaches, and on loss reconnects with backoff and re-attaches. Both
+	// transitions are announced on stderr so a gap in the table is explained
+	// rather than mysterious — the operator's original complaint was silence.
+	sup := &cerebrum.Supervisor{
+		Dial:  dialWatch,
+		Setup: attach,
+		OnLost: func(err error) {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: connection lost (%v) — reconnecting…\n", err)
+		},
+		OnReconnected: func(attempt int, downtime time.Duration) {
+			fmt.Fprintf(os.Stderr,
+				"cerebrum-nb watch: reconnected after %s (attempt %d) — subscriptions restored\n",
+				downtime.Round(time.Second), attempt)
+		},
+	}
+	sup.LoggerFn = func() *slog.Logger { return cf.logger }
+	if err := sup.Run(ctx); err != nil {
 		return err
 	}
-	if okRows == 0 {
-		return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
-	}
-	for _, b := range bad {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
-	}
-
-	what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
-	if okRows > 1 {
-		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
-	}
-	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
-	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
 }

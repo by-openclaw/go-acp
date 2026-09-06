@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"dhs/internal/consumer"
 )
@@ -115,6 +116,10 @@ type Plugin struct {
 
 	session    *udpSession // set for v3.1, v4.0, or v5.0-UDP
 	tcpSession *tcpSession // set for v5.0-TCP
+
+	// tcpIdleTimeout is applied to the v5.0-TCP session on Connect. 0 = off
+	// (the default) — see SetTCPIdleTimeout for why.
+	tcpIdleTimeout time.Duration
 }
 
 // Connect binds a UDP listener on (ip, port). ip may be empty for
@@ -157,11 +162,32 @@ func (p *Plugin) ConnectV50TCP(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	ts := newTCPSession()
+	ts.SetIdleTimeout(p.tcpIdleTimeout)
 	if err := ts.listen(ctx, addr); err != nil {
 		return err
 	}
 	p.tcpSession = ts
 	return nil
+}
+
+// SetTCPIdleTimeout arms the v5.0-TCP idle reaper for connections accepted
+// after this call. Must be set before ConnectV50TCP.
+//
+// Off (0) by default: TSL is one-way (spec §1.0 "for one way communication
+// only"), so a receiver can never ask a producer for state — whether a TCP
+// producer keeps sending after its initial burst is entirely the producer's
+// choice, and the spec's TCP section defines only the DLE/STX wrapper, not
+// any cadence. A default-on reaper would therefore disconnect a healthy
+// dump-then-deltas producer. Enable it when you know your producer refreshes
+// (Lawo VSM loops per-UMD on a configurable period).
+func (p *Plugin) SetTCPIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	p.tcpIdleTimeout = d
+	if p.tcpSession != nil {
+		p.tcpSession.SetIdleTimeout(d)
+	}
 }
 
 // Disconnect closes the active listener and stops the read loop.

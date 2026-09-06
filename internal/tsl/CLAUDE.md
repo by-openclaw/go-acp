@@ -17,13 +17,31 @@ internal/tsl/
 ├── consumer/        package tsl — implements consumer.Protocol
 ├── provider/        package tsl — implements provider.Provider
 ├── wireshark/       dhs_tsl.lua (covers all three versions)
-└── assets/          tsl-umd-protocol.pdf + extracted .txt + Miranda JARs
+└── assets/          tsl-umd-protocol.pdf + Miranda JARs
 ```
 
 ## Authoritative spec
 
-- `internal/tsl/assets/tsl-umd-protocol.txt` — `pdftotext` extract of the
-  TSL UMD spec PDF.
+- `internal/tsl/assets/tsl-umd-protocol.pdf` — the TSL UMD spec (v3.1 + v4.0
+  + v5.0 in one document). This PDF is the ONLY copy in the tree; the
+  `pdftotext` extract these notes used to point at (`tsl-umd-protocol.txt`)
+  does not exist.
+
+  Two clauses matter for session handling and are easy to miss:
+
+  - **§1.0 (v3.1 Scope):** *"The protocol described is for one way
+    communication only."* A receiver can never request state — it only ever
+    waits for the producer to send.
+  - **v5.0 Physical Layer:** TCP is defined purely as a byte-stream wrapper
+    (DLE/STX + byte stuffing). The spec specifies **no** connect-time dump,
+    **no** refresh cadence and **no** heartbeat.
+
+  Together those mean silence on a TSL link carries no liveness information:
+  whether a producer keeps sending after its first burst is producer-specific
+  (Lawo VSM loops per-UMD on a configurable period; a dump-then-deltas
+  producer is equally legal). That is why the consumer's TCP idle reaper is
+  opt-in via `--idle-timeout` and OS-level SO_KEEPALIVE stays the default
+  detector.
 - `internal/tsl/assets/tools/TSL IP Emulator_1.02.jar` — **GVG Kaleido
   production test harness** for v5; reference for port 8901 + Miranda-
   style producer behaviour.

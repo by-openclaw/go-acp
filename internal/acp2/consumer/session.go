@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
-	"dhs/internal/acp2/codec"
 )
 
 // Session manages an AN2/TCP connection to an ACP2 device. It handles:
@@ -39,6 +39,20 @@ type Session struct {
 	numSlots        int
 	slotStatus      []consumer.SlotStatus
 	acp2Version     uint8
+
+	// idleTimeout, when > 0, bounds how long the peer may be silent before
+	// a read fails. Re-armed before EVERY frame, so it means "no bytes at
+	// all", and the keep-alive prober's replies keep a healthy but quiet
+	// session alive.
+	//
+	// Without it, ReadAN2Frame blocks forever on a half-open connection —
+	// a NAT/firewall drop with no RST — and the reader parks in the kernel
+	// with no error to bubble up. The keepAliveWatchdog deliberately does
+	// not close the socket (see keepalive.go) on the assumption that "a
+	// real socket break is detected by the read loop independently"; that
+	// assumption only holds once the read loop actually has a deadline.
+	// This is what makes the existing warm-restart reconnect fire.
+	idleTimeout atomic.Int64 // time.Duration
 
 	// mtid pool: 1-255 available, 0 reserved for announces.
 	mtidMu   sync.Mutex
@@ -444,6 +458,9 @@ func (s *Session) readLoop(conn net.Conn) {
 	defer s.failWaiters() // LIFO: waiters are swept before done closes
 
 	for {
+		if d := s.IdleTimeout(); d > 0 {
+			_ = conn.SetReadDeadline(time.Now().Add(d))
+		}
 		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
 			// ReadAN2Frame wraps the underlying I/O error with %w, so a bare
@@ -866,4 +883,31 @@ func (s *Session) Port() int {
 // Done returns a channel that is closed when the session is disconnected.
 func (s *Session) Done() <-chan struct{} {
 	return s.done
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
+// deadline. Applied to the socket immediately so a reader already blocked on
+// the previous (or absent) deadline picks the new bound up at once, rather
+// than waiting out a deadline that may never expire.
+func (s *Session) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	s.idleTimeout.Store(int64(d))
+	s.mu.Lock()
+	conn := s.conn
+	s.mu.Unlock()
+	if conn == nil {
+		return
+	}
+	if d > 0 {
+		_ = conn.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = conn.SetReadDeadline(time.Time{})
+	}
+}
+
+// IdleTimeout reports the currently armed per-frame read deadline.
+func (s *Session) IdleTimeout() time.Duration {
+	return time.Duration(s.idleTimeout.Load())
 }

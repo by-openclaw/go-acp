@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -63,6 +64,19 @@ type Client struct {
 	// wireHexLog, when true, logs every TX/RX frame as space-separated
 	// lowercase hex at INFO level.
 	wireHexLog bool
+
+	// idleTimeout, when > 0, bounds how long the matrix may be silent
+	// before a read fails, so a half-open link (a NAT/firewall drop with
+	// no RST) surfaces as an error instead of parking the reader in the
+	// kernel forever.
+	//
+	// It is armed ONLY while the application keep-alive prober is running
+	// (see consumer/keepalive.go, which polls rx01 and only starts when a
+	// matrix size is configured). That condition is the whole point:
+	// SW-P-02 has no unsolicited heartbeat from the matrix, so without our
+	// own polling, silence is indistinguishable from health and a deadline
+	// would tear down a perfectly good link on a quiet router.
+	idleTimeout atomic.Int64 // time.Duration
 
 	// Observer callbacks — stdlib-only hooks for higher layers to plug
 	// in traffic capture, metrics, or compliance counters without
@@ -331,6 +345,9 @@ func (c *Client) readLoop(bufSize int) {
 	tmp := make([]byte, bufSize)
 
 	for {
+		if d := c.IdleTimeout(); d > 0 {
+			_ = c.conn.SetReadDeadline(time.Now().Add(d))
+		}
 		n, err := c.conn.Read(tmp)
 		if err != nil {
 			c.logger.Debug("probel-sw02p reader exit", slog.String("err", err.Error()))
@@ -422,4 +439,34 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-read deadline that
+// detects a silent matrix. Applied to the socket immediately so a reader
+// already blocked picks up the new bound instead of waiting out the old one.
+//
+// Only arm this while the application keep-alive prober is running: SW-P-02
+// gives us no unsolicited heartbeat, so without polling there is nothing to
+// distinguish a quiet matrix from a dead one.
+func (c *Client) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	c.idleTimeout.Store(int64(d))
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn == nil {
+		return
+	}
+	if d > 0 {
+		_ = conn.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = conn.SetReadDeadline(time.Time{})
+	}
+}
+
+// IdleTimeout reports the currently armed per-read deadline.
+func (c *Client) IdleTimeout() time.Duration {
+	return time.Duration(c.idleTimeout.Load())
 }

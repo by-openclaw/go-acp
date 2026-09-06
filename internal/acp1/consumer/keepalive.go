@@ -115,6 +115,15 @@ func (p *Plugin) startKeepAlive(ctx context.Context) {
 	}
 	p.ka = &keepAliveState{cfg: p.kaCfg, done: make(chan struct{})}
 
+	// Arm the reader's dead-man deadline on the TCP path. The watchdog below
+	// reports silence but does not close the socket; the read deadline is
+	// what turns a half-open connection into an error the reader can
+	// actually surface, instead of blocking in the kernel forever.
+	// (UDP has no session to lose, so there is nothing to arm there.)
+	if tc, ok := p.client.(*TCPClient); ok && tc != nil {
+		tc.SetIdleTimeout(timeout)
+	}
+
 	if interval > 0 {
 		p.ka.stopped.Add(1)
 		go p.keepAliveProber(ctx, interval)

@@ -58,7 +58,11 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet(proto+"-listen", flag.ContinueOnError)
 	bind := fs.String("bind", "", "bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)")
 	tcp := fs.Bool("tcp", false, "v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP")
-	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — SO_KEEPALIVE period (default 30s; ignored on UDP)")
+	// NOTE: --keepalive was previously parsed and thrown away (`_ = ...`), so
+	// setting it did nothing. It now documents the fixed OS-level period
+	// honestly rather than pretending to be adjustable.
+	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP)")
+	idleTimeout := fs.Duration("idle-timeout", 0, "v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -80,6 +84,7 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	plugin := newTSLPlugin(version, logger)
 
 	if *tcp {
+		plugin.SetTCPIdleTimeout(*idleTimeout)
 		if err := plugin.ConnectV50TCP(ctx, host, port); err != nil {
 			return fmt.Errorf("listen tcp %s:%d: %w", host, port, err)
 		}

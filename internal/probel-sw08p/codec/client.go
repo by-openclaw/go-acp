@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -105,6 +106,17 @@ type Client struct {
 	// Retry + timeout knobs — read under Client.mu at Send time.
 	ackTimeout  time.Duration
 	maxAttempts int
+
+	// idleTimeout, when > 0, bounds how long the matrix may be silent
+	// before a read fails. SW-P-08 keep-alive is PASSIVE on our side — we
+	// answer the matrix's 0x11 with 0x22 but never probe — so a matrix that
+	// stops talking produces no error at all: the reader blocks forever on
+	// a half-open link and the watch goes silent without failing. The
+	// deadline is what makes that detectable.
+	//
+	// Set it comfortably above the matrix's own keep-alive cadence, or a
+	// quiet-but-healthy matrix would be torn down between its own pings.
+	idleTimeout atomic.Int64 // time.Duration
 
 	// Observer callbacks — stdlib-only hooks for higher layers to plug
 	// in traffic capture, metrics, or compliance counters without
@@ -686,6 +698,9 @@ func (c *Client) readLoop(bufSize int) {
 	tmp := make([]byte, bufSize)
 
 	for {
+		if d := c.IdleTimeout(); d > 0 {
+			_ = c.conn.SetReadDeadline(time.Now().Add(d))
+		}
 		n, err := c.conn.Read(tmp)
 		if err != nil {
 			c.logger.Debug("probel reader exit", slog.String("err", err.Error()))
@@ -853,4 +868,30 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-read deadline that
+// detects a silent matrix. Applied to the socket immediately so a reader
+// already blocked picks up the new bound instead of waiting out the old one.
+func (c *Client) SetIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	c.idleTimeout.Store(int64(d))
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn == nil {
+		return
+	}
+	if d > 0 {
+		_ = conn.SetReadDeadline(time.Now().Add(d))
+	} else {
+		_ = conn.SetReadDeadline(time.Time{})
+	}
+}
+
+// IdleTimeout reports the currently armed per-read deadline.
+func (c *Client) IdleTimeout() time.Duration {
+	return time.Duration(c.idleTimeout.Load())
 }
