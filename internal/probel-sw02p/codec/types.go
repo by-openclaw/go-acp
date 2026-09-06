@@ -10,13 +10,13 @@
 //
 // Section §3.1 of that document defines the framing:
 //
-//	SOM  COMMAND  MESSAGE  CHECKSUM
+//		SOM  COMMAND  MESSAGE  CHECKSUM
 //
-//   - SOM = 0xFF (single-byte start of message; no DLE escaping).
-//   - COMMAND = 1 byte.
-//   - MESSAGE = 0 or more bytes depending on command.
-//   - CHECKSUM = 7-bit two's-complement sum of COMMAND + MESSAGE bytes,
-//     MSB forced to 0.
+//	  - SOM = 0xFF (single-byte start of message; no DLE escaping).
+//	  - COMMAND = 1 byte.
+//	  - MESSAGE = 0 or more bytes depending on command.
+//	  - CHECKSUM = 7-bit two's-complement sum of COMMAND + MESSAGE bytes,
+//	    MSB forced to 0.
 //
 // Unlike SW-P-08, SW-P-02 does not use DLE stuffing — bytes inside the
 // frame are transparent. The protocol normally rides RS-485/422 but

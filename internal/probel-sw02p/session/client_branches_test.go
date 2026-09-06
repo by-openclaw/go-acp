@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw02p/codec"
 	"io"
 	"net"
 	"sync"
@@ -10,13 +11,13 @@ import (
 )
 
 // TestMinHelper pins both arms of the min() helper used by readLoop's
-// decode-error HexDump clamp: a < b returns a, a >= b returns b
+// decode-error codec.HexDump clamp: a < b returns a, a >= b returns b
 // (including the equal case).
 func TestMinHelper(t *testing.T) {
 	cases := []struct{ a, b, want int }{
-		{1, 2, 1},  // a < b
-		{5, 3, 3},  // a > b
-		{4, 4, 4},  // a == b
+		{1, 2, 1}, // a < b
+		{5, 3, 3}, // a > b
+		{4, 4, 4}, // a == b
 		{64, 64, 64},
 		{100, 64, 64},
 	}
@@ -40,15 +41,15 @@ func TestSendMatchedReply(t *testing.T) {
 	defer func() { _ = clientA.Close() }()
 	defer func() { _ = clientB.Close() }()
 
-	// A sends a request and waits for a TxConnectOnGoAck reply.
-	replyCh := make(chan Frame, 1)
+	// A sends a request and waits for a codec.TxConnectOnGoAck reply.
+	replyCh := make(chan codec.Frame, 1)
 	errCh := make(chan error, 1)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		f, err := clientA.Send(ctx,
-			Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}},
-			func(f Frame) bool { return f.ID == TxConnectOnGoAck })
+			codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}},
+			func(f codec.Frame) bool { return f.ID == codec.TxConnectOnGoAck })
 		if err != nil {
 			errCh <- err
 			return
@@ -59,21 +60,21 @@ func TestSendMatchedReply(t *testing.T) {
 	// B reads A's request, then sends the matching ack back.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	clientB.Subscribe(func(req Frame) {
+	clientB.Subscribe(func(req codec.Frame) {
 		defer wg.Done()
-		if req.ID != RxConnectOnGo {
+		if req.ID != codec.RxConnectOnGo {
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		ack := EncodeConnectOnGoAck(ConnectOnGoAckParams{Destination: 1, Source: 2})
+		ack := codec.EncodeConnectOnGoAck(codec.ConnectOnGoAckParams{Destination: 1, Source: 2})
 		_, _ = clientB.Send(ctx, ack, nil)
 	})
 
 	select {
 	case f := <-replyCh:
-		if f.ID != TxConnectOnGoAck {
-			t.Errorf("matched reply ID = %#x; want TxConnectOnGoAck", f.ID)
+		if f.ID != codec.TxConnectOnGoAck {
+			t.Errorf("matched reply ID = %#x; want codec.TxConnectOnGoAck", f.ID)
 		}
 	case err := <-errCh:
 		t.Fatalf("Send returned error: %v", err)
@@ -95,15 +96,15 @@ func TestReadLoopPartialFrameAccumulates(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cli.Subscribe(func(f Frame) {
-		if f.ID == RxConnectOnGo {
+	cli.Subscribe(func(f codec.Frame) {
+		if f.ID == codec.RxConnectOnGo {
 			wg.Done()
 		}
 	})
 
-	frame := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
-	// Split so the first write delivers SOM+cmd+1 byte (>=3, so the
-	// scan loop runs) but the full frame has not arrived → Unpack
+	frame := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
+	// Split so the first write delivers codec.SOM+cmd+1 byte (>=3, so the
+	// scan loop runs) but the full frame has not arrived → codec.Unpack
 	// returns io.ErrUnexpectedEOF and readLoop breaks to read more.
 	go func() {
 		_, _ = b.Write(frame[:3])
@@ -121,7 +122,7 @@ func TestReadLoopPartialFrameAccumulates(t *testing.T) {
 }
 
 // TestReadLoopDecodeErrorShortBuffer feeds a corrupted-checksum frame
-// SHORTER than 64 bytes so readLoop's decode-error HexDump clamp calls
+// SHORTER than 64 bytes so readLoop's decode-error codec.HexDump clamp calls
 // min() on the (len < 64) side, complementing
 // TestReadLoopDecodeErrorResync which exercises the (len > 64) side.
 func TestReadLoopDecodeErrorShortBuffer(t *testing.T) {
@@ -133,15 +134,15 @@ func TestReadLoopDecodeErrorShortBuffer(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cli.Subscribe(func(f Frame) {
-		if f.ID == RxConnectOnGo && len(f.Payload) == 3 && f.Payload[0] == 0x07 {
+	cli.Subscribe(func(f codec.Frame) {
+		if f.ID == codec.RxConnectOnGo && len(f.Payload) == 3 && f.Payload[0] == 0x07 {
 			wg.Done()
 		}
 	})
 
-	bad := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
+	bad := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
 	bad[len(bad)-1] ^= 0x7F // corrupt checksum (< 64-byte buffer)
-	good := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x07, 0x08, 0x09}})
+	good := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x07, 0x08, 0x09}})
 	go func() {
 		_, _ = b.Write(bad)
 		_, _ = b.Write(good)
@@ -168,7 +169,7 @@ func TestFailPendingReplySlotFull(t *testing.T) {
 	defer func() { _ = cli.Close() }()
 
 	waiter := &pendingWaiter{
-		match: func(Frame) bool { return true },
+		match: func(codec.Frame) bool { return true },
 		reply: make(chan replyResult, 1),
 	}
 	waiter.reply <- replyResult{} // pre-fill so failPending hits default

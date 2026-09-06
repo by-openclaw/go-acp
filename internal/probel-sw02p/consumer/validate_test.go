@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/wiretrace"
 )
 

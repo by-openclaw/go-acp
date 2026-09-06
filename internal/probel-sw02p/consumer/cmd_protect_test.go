@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSubscribeExtendedProtectTally confirms a matrix-side tx 96 is
@@ -20,7 +21,7 @@ func TestSubscribeExtendedProtectTally(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	p := &Plugin{logger: logger}
 	p.client = client
@@ -60,7 +61,7 @@ func TestSubscribeExtendedProtectConnected(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 	p := &Plugin{logger: logger}
 	p.client = client
 

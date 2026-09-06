@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw02p/codec"
 	"io"
 	"log/slog"
 	"net"
@@ -21,9 +22,9 @@ func TestHexDump(t *testing.T) {
 		{[]byte{0xAB, 0xCD, 0xEF, 0x00, 0xFF}, "ab cd ef 00 ff"},
 	}
 	for _, tc := range cases {
-		got := HexDump(tc.in)
+		got := codec.HexDump(tc.in)
 		if got != tc.want {
-			t.Errorf("HexDump(%v) = %q; want %q", tc.in, got, tc.want)
+			t.Errorf("codec.HexDump(%v) = %q; want %q", tc.in, got, tc.want)
 		}
 	}
 }
@@ -43,14 +44,14 @@ func TestClientLoopback(t *testing.T) {
 	defer func() { _ = clientB.Close() }()
 
 	// A subscribes to events so B's unsolicited frame is captured.
-	// Use a registered command (RxConnectOnGo, 3-byte payload) so the
-	// length-aware Unpack scanner can peel the frame. Using an
+	// Use a registered command (codec.RxConnectOnGo, 3-byte payload) so the
+	// length-aware codec.Unpack scanner can peel the frame. Using an
 	// unregistered id here would trip ErrUnknownCommand on A's read
 	// loop and the listener would never fire.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	const sampleCmd = RxConnectOnGo
-	clientA.Subscribe(func(f Frame) {
+	const sampleCmd = codec.RxConnectOnGo
+	clientA.Subscribe(func(f codec.Frame) {
 		defer wg.Done()
 		if f.ID != sampleCmd {
 			t.Errorf("listener got cmd %02x; want %02x", f.ID, sampleCmd)
@@ -63,7 +64,7 @@ func TestClientLoopback(t *testing.T) {
 	// B sends an unsolicited frame to A.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	unsolicited := Frame{ID: sampleCmd, Payload: []byte{0x00, 0x01, 0x05}}
+	unsolicited := codec.Frame{ID: sampleCmd, Payload: []byte{0x00, 0x01, 0x05}}
 	if _, err := clientB.Send(ctx, unsolicited, nil); err != nil {
 		t.Fatalf("B.Send: %v", err)
 	}
@@ -100,8 +101,8 @@ func TestClientCloseWakesPending(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, err := client.Send(ctx, Frame{ID: CommandID(0x07), Payload: []byte{0x00}},
-			func(Frame) bool { return true })
+		_, err := client.Send(ctx, codec.Frame{ID: codec.CommandID(0x07), Payload: []byte{0x00}},
+			func(codec.Frame) bool { return true })
 		done <- err
 	}()
 

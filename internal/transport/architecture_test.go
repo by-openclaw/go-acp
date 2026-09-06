@@ -74,15 +74,18 @@ var allowed = map[string]string{
 	// SetSocketBroadcast helper.
 	"internal/acp1/consumer/discover.go": "SO_BROADCAST discovery socket; uses transport.SetSocketBroadcast",
 
-	// PERMANENT — forced by ADR-0006, resolved by moving the code, not the rule.
+	// DEBT — forced by ADR-0006, resolved by moving the code, not the rule.
 	//
-	// codec/ is stdlib-only and must never import dhs/*, so these cannot
-	// reach internal/transport and reimplemented a TCP client instead. The
-	// fix is to move the SESSION half to consumer/ (which may import
-	// transport) and leave codec/ as pure bytes — the same layering fix that
-	// moved ws out of cerebrum-nb/codec. Tracked as the probel client move.
-	"internal/probel-sw02p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to consumer/",
-	"internal/probel-sw08p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to consumer/",
+	// codec/ is stdlib-only and must never import dhs/*, so this could not
+	// reach internal/transport and reimplemented a TCP client instead.
+	//
+	// sw02p is DONE: its client moved to internal/probel-sw02p/session, a
+	// layer that mirrors amwa's codec -> session -> plugin and that BOTH
+	// consumer and provider may import. consumer/ was the obvious
+	// destination and the wrong one — the provider's loopback tests dial a
+	// client too, and putting it there would have created the cross-import
+	// between roles that CLAUDE.md forbids. sw08p follows the same shape.
+	"internal/probel-sw08p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to session/, as sw02p did",
 
 	// DEBT — provider accept paths still own their listener.
 	//

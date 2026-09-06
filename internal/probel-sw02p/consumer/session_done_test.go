@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // Not connected: nil, which blocks forever in a select — the correct
@@ -21,7 +21,7 @@ func TestSessionDoneClosesWhenTheReaderExits(t *testing.T) {
 	ours, theirs := net.Pipe()
 	t.Cleanup(func() { _ = theirs.Close() })
 
-	cli := codec.NewClientFromConn(ours, nil, codec.ClientConfig{})
+	cli := session.NewClientFromConn(ours, nil, session.ClientConfig{})
 	p := &Plugin{client: cli}
 
 	done := p.SessionDone()

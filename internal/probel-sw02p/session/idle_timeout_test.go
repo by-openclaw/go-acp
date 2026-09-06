@@ -1,10 +1,11 @@
-package codec
+package session
 
 // Coverage for the per-read deadline that detects a silent matrix. Without it
 // the reader blocks forever on a half-open link (a NAT/firewall drop with no
 // RST) and the session goes quiet without ever failing.
 
 import (
+	"dhs/internal/probel-sw02p/codec"
 	"io"
 	"log/slog"
 	"net"
@@ -82,7 +83,7 @@ func TestReadLoopIdleDeadlineFires(t *testing.T) {
 		readerDone: make(chan struct{}),
 	}
 	c.SetIdleTimeout(100 * time.Millisecond)
-	go c.readLoop(DefaultReadBufferSize)
+	go c.readLoop(codec.DefaultReadBufferSize)
 
 	select {
 	case <-c.readerDone:

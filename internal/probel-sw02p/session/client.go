@@ -1,7 +1,9 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/transport"
 	"errors"
 	"fmt"
 	"io"
@@ -15,17 +17,13 @@ import (
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
 const DefaultDialTimeout = 5 * time.Second
 
-// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
-// to dialed TCP connections by Dial. Zero in ClientConfig means use this
-// default; pass a negative value to disable explicitly. SW-P-02 has no
-// in-protocol keep-alive command, so the OS-layer probe is the only
-// dead-socket detector we get for free.
-const DefaultTCPKeepalivePeriod = 30 * time.Second
-
-// DefaultReadBufferSize is the capacity of the accumulating read buffer.
-// SW-P-02 frames are small (§3.1 command table tops out under 256 bytes
-// per frame); 4 KiB comfortably holds one or two in-flight frames.
-const DefaultReadBufferSize = 4096
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied to
+// dialled connections. SW-P-02 has no in-protocol keep-alive command, so the
+// OS-layer probe is the only dead-socket detector this protocol gets for free.
+//
+// It is transport's value, not a second opinion: one keepalive policy for
+// every protocol is the point of having a transport package.
+const DefaultTCPKeepalivePeriod = transport.DefaultTCPKeepalivePeriod
 
 // Send errors surfaced to callers.
 var (
@@ -90,16 +88,16 @@ type Client struct {
 
 // eventFunc is an async-event callback. Listeners receive every frame
 // that isn't claimed by a pending Send matcher.
-type eventFunc func(Frame)
+type eventFunc func(codec.Frame)
 
 // pendingWaiter captures a single in-flight Send.
 type pendingWaiter struct {
-	match func(Frame) bool
+	match func(codec.Frame) bool
 	reply chan replyResult
 }
 
 type replyResult struct {
-	frame Frame
+	frame codec.Frame
 	err   error
 }
 
@@ -108,7 +106,7 @@ type ClientConfig struct {
 	// DialTimeout bounds the TCP connect. Defaults to DefaultDialTimeout.
 	DialTimeout time.Duration
 	// ReadBufferSize is the accumulating read-loop buffer. Defaults to
-	// DefaultReadBufferSize.
+	// codec.DefaultReadBufferSize.
 	ReadBufferSize int
 	// WireHexLog enables "probel-sw02p TX/RX: <hex>" INFO logs of every
 	// framed exchange. Defaults to true; useful during development.
@@ -135,14 +133,19 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 		cfg.DialTimeout = DefaultDialTimeout
 	}
 	if cfg.ReadBufferSize <= 0 {
-		cfg.ReadBufferSize = DefaultReadBufferSize
+		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}
-	d := net.Dialer{Timeout: cfg.DialTimeout}
+	// The shared dialler applies the same socket policy an accepted
+	// connection gets, so a dialled session and an accepted one are
+	// configured identically. A negative period disables keepalive.
+	d := transport.TCPDialer{
+		Timeout: cfg.DialTimeout,
+		Options: transport.SocketOptions{KeepalivePeriod: cfg.TCPKeepalivePeriod},
+	}
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("probel-sw02p dial %s: %w", addr, err)
 	}
-	applyTCPKeepalive(conn, cfg.TCPKeepalivePeriod, logger)
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	c.logger.Info("probel-sw02p client connected",
@@ -158,44 +161,11 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 		logger = slog.Default()
 	}
 	if cfg.ReadBufferSize <= 0 {
-		cfg.ReadBufferSize = DefaultReadBufferSize
+		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	return c
-}
-
-// applyTCPKeepalive enables SO_KEEPALIVE on a dialed TCP connection.
-// period == 0 → DefaultTCPKeepalivePeriod; period < 0 → disable.
-// Logs at Debug if the conn isn't a *net.TCPConn (e.g. test pipe).
-// Test seams for the two keep-alive setsockopt calls. On a live *net.TCPConn
-// the SetKeepAlivePeriod failure arm can't be provoked in isolation (any fd
-// state that fails the second call also fails the first, which returns early),
-// so tests override these to exercise that branch. Production behaviour is the
-// default (cf. the bcastDialErrHook idiom in the acp1 provider).
-var (
-	tcpSetKeepAlive       = func(tc *net.TCPConn, on bool) error { return tc.SetKeepAlive(on) }
-	tcpSetKeepAlivePeriod = func(tc *net.TCPConn, d time.Duration) error { return tc.SetKeepAlivePeriod(d) }
-)
-
-func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger) {
-	if period < 0 {
-		return
-	}
-	if period == 0 {
-		period = DefaultTCPKeepalivePeriod
-	}
-	tc, ok := conn.(*net.TCPConn)
-	if !ok {
-		return
-	}
-	if err := tcpSetKeepAlive(tc, true); err != nil {
-		logger.Debug("probel-sw02p SetKeepAlive failed", slog.String("err", err.Error()))
-		return
-	}
-	if err := tcpSetKeepAlivePeriod(tc, period); err != nil {
-		logger.Debug("probel-sw02p SetKeepAlivePeriod failed", slog.String("err", err.Error()))
-	}
 }
 
 func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
@@ -254,14 +224,14 @@ func (c *Client) Subscribe(fn eventFunc) {
 // Send writes one framed command and optionally waits for a matching
 // reply. If match is nil, Send returns as soon as the frame is written.
 //
-// The returned Frame is the zero value when match is nil.
+// The returned codec.Frame is the zero value when match is nil.
 //
 // Errors:
 //   - ErrSendInFlight if another Send is already waiting on this Client.
 //   - ctx.Err() if ctx expires before the peer replies.
 //   - any net I/O error from the underlying conn.
-func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Frame, error) {
-	raw := Pack(f)
+func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame) bool) (codec.Frame, error) {
+	raw := codec.Pack(f)
 
 	waiter := &pendingWaiter{
 		match: match,
@@ -270,11 +240,11 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 	c.mu.Lock()
 	if c.closed || c.conn == nil {
 		c.mu.Unlock()
-		return Frame{}, net.ErrClosed
+		return codec.Frame{}, net.ErrClosed
 	}
 	if c.pending != nil {
 		c.mu.Unlock()
-		return Frame{}, ErrSendInFlight
+		return codec.Frame{}, ErrSendInFlight
 	}
 	c.pending = waiter
 	conn := c.conn
@@ -294,28 +264,28 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 			slog.Int("cmd", int(f.ID)),
 			slog.Int("payload_len", len(f.Payload)),
 			slog.Int("wire_len", len(raw)),
-			slog.String("hex", HexDump(raw)),
+			slog.String("hex", codec.HexDump(raw)),
 		)
 	}
 	if c.onTx != nil {
 		c.onTx(raw)
 	}
 	if _, err := conn.Write(raw); err != nil {
-		return Frame{}, fmt.Errorf("probel-sw02p write: %w", err)
+		return codec.Frame{}, fmt.Errorf("probel-sw02p write: %w", err)
 	}
 
 	if match == nil {
-		return Frame{}, nil
+		return codec.Frame{}, nil
 	}
 	select {
 	case r := <-waiter.reply:
 		return r.frame, r.err
 	case <-ctx.Done():
-		return Frame{}, ctx.Err()
+		return codec.Frame{}, ctx.Err()
 	}
 }
 
-// Write sends a pre-built raw byte sequence. Bypasses Pack. Used by
+// Write sends a pre-built raw byte sequence. Bypasses codec.Pack. Used by
 // higher layers that need to emit a specific wire sequence verbatim.
 func (c *Client) Write(raw []byte) error {
 	c.mu.Lock()
@@ -337,7 +307,7 @@ func (c *Client) Write(raw []byte) error {
 // length-unaware primitive scan, and routes them. Because SW-P-02 has
 // no in-frame length field, the scaffold implementation relies on
 // per-command decoders to know how many bytes to consume — the reader
-// therefore only matches SOM-prefixed runs and feeds decoded frames
+// therefore only matches codec.SOM-prefixed runs and feeds decoded frames
 // through when a whole one has arrived.
 //
 // Follow-up per-command commits will wire a per-CMD length table so
@@ -358,7 +328,7 @@ func (c *Client) readLoop(bufSize int) {
 		buf = append(buf, tmp[:n]...)
 
 		for len(buf) >= 3 {
-			if buf[0] != SOM {
+			if buf[0] != codec.SOM {
 				c.logger.Warn("probel-sw02p rx desync: dropping byte",
 					slog.String("byte", fmt.Sprintf("%02x", buf[0])))
 				buf = buf[1:]
@@ -370,14 +340,14 @@ func (c *Client) readLoop(bufSize int) {
 			// and a single command's MESSAGE length is known by the
 			// peer — the scaffold matches this minimal case; per-
 			// command commits add streaming decode.
-			f, consumed, perr := Unpack(buf)
+			f, consumed, perr := codec.Unpack(buf)
 			if errors.Is(perr, io.ErrUnexpectedEOF) {
 				break
 			}
 			if perr != nil {
 				c.logger.Warn("probel-sw02p rx decode error",
 					slog.String("err", perr.Error()),
-					slog.String("hex", HexDump(buf[:min(len(buf), 64)])))
+					slog.String("hex", codec.HexDump(buf[:min(len(buf), 64)])))
 				// Without per-command length we cannot resync
 				// precisely; drop one byte and retry.
 				buf = buf[1:]
@@ -388,7 +358,7 @@ func (c *Client) readLoop(bufSize int) {
 					slog.Int("cmd", int(f.ID)),
 					slog.Int("payload_len", len(f.Payload)),
 					slog.Int("wire_len", consumed),
-					slog.String("hex", HexDump(buf[:consumed])),
+					slog.String("hex", codec.HexDump(buf[:consumed])),
 				)
 			}
 			if c.onRx != nil {
@@ -402,7 +372,7 @@ func (c *Client) readLoop(bufSize int) {
 
 // dispatch routes a decoded frame: a pending Send's matcher gets first
 // look; unclaimed frames fan out to async listeners.
-func (c *Client) dispatch(f Frame) {
+func (c *Client) dispatch(f codec.Frame) {
 	c.mu.Lock()
 	waiter := c.pending
 	listeners := append([]eventFunc(nil), c.readers...)

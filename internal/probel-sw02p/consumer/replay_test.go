@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/probel-sw02p/consumer"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw02p/consumer"
 	"dhs/internal/wiretrace"
 )
 

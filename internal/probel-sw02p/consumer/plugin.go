@@ -23,10 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/metrics"
-	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/metrics"
+	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 	"dhs/internal/transport"
 )
 
@@ -114,7 +115,7 @@ type Plugin struct {
 	mu       sync.Mutex
 	host     string
 	port     int
-	client   *codec.Client
+	client   *session.Client
 	recorder *transport.Recorder
 
 	// matrixCfg holds caller-supplied matrix shape + bootstrap/keep-
@@ -229,7 +230,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
-	cfg := codec.ClientConfig{
+	cfg := session.ClientConfig{
 		OnTx: func(b []byte) { observeTxBytes(met, b) },
 		OnRx: func(b []byte) { observeRxBytes(met, b) },
 	}
@@ -246,7 +247,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw02p", "rx", b)
 		}
 	}
-	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
+	cli, err := session.Dial(ctx, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
@@ -297,7 +298,7 @@ func (p *Plugin) Disconnect() error {
 
 // getClient returns the in-flight TCP client, or ErrNotConnected.
 // Helper for per-command methods added by follow-up commits.
-func (p *Plugin) getClient() (*codec.Client, error) {
+func (p *Plugin) getClient() (*session.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
@@ -306,9 +307,9 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	return p.client, nil
 }
 
-// ExposeClient returns the underlying codec.Client for callers that
+// ExposeClient returns the underlying session.Client for callers that
 // need direct Subscribe / raw frame access.
-func (p *Plugin) ExposeClient() (*codec.Client, error) {
+func (p *Plugin) ExposeClient() (*session.Client, error) {
 	return p.getClient()
 }
 

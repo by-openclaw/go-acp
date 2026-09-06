@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
-// pipeClient builds a codec.Client wrapping one end of a net.Pipe and
+// pipeClient builds a session.Client wrapping one end of a net.Pipe and
 // returns it together with the peer end so a test can read what the
 // keepalive goroutine actually wrote on the wire.
-func pipeClient(t *testing.T) (*codec.Client, net.Conn) {
+func pipeClient(t *testing.T) (*session.Client, net.Conn) {
 	t.Helper()
 	a, b := net.Pipe()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	cli := codec.NewClientFromConn(a, logger, codec.ClientConfig{})
+	cli := session.NewClientFromConn(a, logger, session.ClientConfig{})
 	t.Cleanup(func() {
 		_ = cli.Close()
 		_ = b.Close()

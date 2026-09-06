@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendSourceLockStatusRequestRoundTrip drives SendSourceLockStatus
@@ -22,7 +23,7 @@ func TestSendSourceLockStatusRequestRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	matrixDone := make(chan struct{})
 	go func() {
