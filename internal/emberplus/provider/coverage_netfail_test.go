@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"net"
 	"sync"
@@ -59,7 +60,7 @@ func (fakeAddr) String() string  { return "fake:0" }
 // TestWriteEMBERChunks_MultiChunkError covers the WriteFrame-error return
 // inside the multi-packet loop (a chunk after the first fails to write).
 func TestWriteEMBERChunks_MultiChunkError(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	// Fail after the first frame so the SECOND chunk's WriteFrame errors.
 	fc := newFailConn(1)
 	sess := newSession(srv, fc)
@@ -73,7 +74,7 @@ func TestWriteEMBERChunks_MultiChunkError(t *testing.T) {
 
 // TestWritePump_ClosedSession covers writePump's <-s.closed exit branch.
 func TestWritePump_ClosedSession(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	fc := newFailConn(1000)
 	sess := newSession(srv, fc)
 
@@ -91,7 +92,7 @@ func TestWritePump_ClosedSession(t *testing.T) {
 // TestWritePump_ChannelClosed covers the `payload, ok := <-s.out; !ok`
 // branch by closing s.out directly while the pump is parked on it.
 func TestWritePump_ChannelClosed(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	fc := newFailConn(1000)
 	sess := newSession(srv, fc)
 	defer sess.close()
@@ -111,7 +112,7 @@ func TestWritePump_ChannelClosed(t *testing.T) {
 // TestRun_CtxDone covers run's <-ctx.Done() early-return branch: a
 // cancelled context makes the read loop return before reading a frame.
 func TestRun_CtxDone(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	fc := newFailConn(1000)
 	sess := newSession(srv, fc)
 
@@ -148,7 +149,7 @@ func (l *scriptedListener) Addr() net.Addr { return fakeAddr{} }
 // path in acceptLoop: a transient error (ctx live, not ErrClosed) is
 // logged and the loop continues; a subsequent ErrClosed ends it.
 func TestAcceptLoop_TransientErrorContinue(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ln := &scriptedListener{}
 	done := make(chan error, 1)
 	go func() { done <- srv.acceptLoop(context.Background(), ln) }()
@@ -169,7 +170,7 @@ func TestAcceptLoop_TransientErrorContinue(t *testing.T) {
 // transient accept error while the context is already cancelled returns
 // nil immediately.
 func TestAcceptLoop_CtxCancelledError(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ln := &scriptedListener{}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -201,7 +202,7 @@ func TestFindCommandInElements_MatrixChildren(t *testing.T) {
 // fallthrough `return nil` for a command number outside
 // {GetDirectory, Subscribe, Unsubscribe, Invoke}.
 func TestHandleEmber_UnknownCommand(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	fc := newFailConn(1000)
 	sess := newSession(srv, fc)
 	defer sess.close()

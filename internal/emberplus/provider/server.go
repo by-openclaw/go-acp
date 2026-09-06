@@ -9,14 +9,24 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/emberplus/codec/s101"
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
 type server struct {
-	logger    *slog.Logger
+	logger *slog.Logger
+
+	// metrics is the server-wide connector snapshot exposed via Metrics()
+	// so `producer emberplus serve --metrics-addr` scrapes it. Frames are
+	// attributed by S101 command byte, which separates EmBER payloads from
+	// keep-alives. Always non-nil.
+	metrics *metrics.Connector
+
 	tree      *tree
 	templates []*canonical.TemplateEntry
 	funcs     *functionRegistry
@@ -33,13 +43,16 @@ type server struct {
 	stopped  chan struct{}
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	met := deps.Metrics
+	met.RegisterCmd(s101.CmdEmBER, "ember")
+	met.RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
+	met.RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
 	t, err := newTree(exp)
 	s := &server{
-		logger:   logger.With(slog.String("plugin", "emberplus-provider")),
+		metrics:  met,
+		logger:   deps.Logger.With(slog.String("plugin", "emberplus-provider")),
 		funcs:    newFunctionRegistry(),
 		sessions: map[*session]struct{}{},
 		subs:     map[string]map[*session]struct{}{},
@@ -324,3 +337,8 @@ func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
 		sess.send(payload)
 	}
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// emberplus provider. Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }

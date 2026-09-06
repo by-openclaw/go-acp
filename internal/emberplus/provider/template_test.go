@@ -1,6 +1,7 @@
 package emberplus
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/emberplus/codec/glow"
@@ -41,7 +42,7 @@ func TestEncodeQualifiedTemplate_ParameterPrototype(t *testing.T) {
 			Children: canonical.EmptyChildren(),
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
 	if srv.tree == nil {
 		t.Fatal("tree failed to build")
 	}
@@ -108,7 +109,7 @@ func TestEncodeQualifiedTemplate_NodePrototype(t *testing.T) {
 			Children: canonical.EmptyChildren(),
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
 
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
@@ -162,7 +163,7 @@ func TestRootReply_MixesChildrenAndTemplates(t *testing.T) {
 			Type: canonical.ParamReal, Value: float64(0),
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root, Templates: []*canonical.TemplateEntry{te}})
 
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {

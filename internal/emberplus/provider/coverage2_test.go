@@ -3,6 +3,7 @@ package emberplus
 import (
 	"bytes"
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"testing"
 	"time"
@@ -39,7 +40,7 @@ func TestStreamTick_AllKinds(t *testing.T) {
 // is subscribed to a stream parameter, covering the want-list build and
 // per-session send.
 func TestFanoutStreams_Subscribed(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	srv.registerSession(sess)
@@ -58,7 +59,7 @@ func TestFanoutStreams_Subscribed(t *testing.T) {
 // TestCollectStreams_MinMaxFallback covers collectStreams' explicit
 // min/max capture from a parameter that declares them.
 func TestCollectStreams_MinMaxFallback(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	streams := srv.collectStreams()
 	if len(streams) != 1 {
 		t.Fatalf("expected 1 stream, got %d", len(streams))
@@ -71,7 +72,7 @@ func TestCollectStreams_MinMaxFallback(t *testing.T) {
 
 // TestCollectStreams_NilTree covers the nil-tree guard.
 func TestCollectStreams_NilTree(t *testing.T) {
-	srv := newServer(nil, &canonical.Export{})
+	srv := newServer(plugin.Deps{}, &canonical.Export{})
 	if srv.collectStreams() != nil {
 		t.Error("collectStreams on nil tree should be nil")
 	}
@@ -80,7 +81,7 @@ func TestCollectStreams_NilTree(t *testing.T) {
 // TestWriteEmBERChunks_Multi covers the multi-packet split path
 // (FlagFirst / middle / FlagLast) for payloads > maxS101Payload.
 func TestWriteEmBERChunks_Multi(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	cliConn, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 
@@ -108,7 +109,7 @@ func TestWriteEmBERChunks_Multi(t *testing.T) {
 
 // TestSend_QueueFull covers the drop-on-full branch of session.send.
 func TestSend_QueueFull(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	// Fill the 32-deep queue without draining, then one more → dropped.
@@ -357,14 +358,14 @@ func TestStores_ListSort(t *testing.T) {
 // TestBroadcastParam_MissingOID covers the early-return when the oid is
 // not in the tree index.
 func TestBroadcastParam_MissingOID(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	srv.broadcastParam("9.9.9", &canonical.Parameter{}) // no panic, returns early
 }
 
 // TestBroadcastMatrixConnections_OriginSend covers the origin-send branch
 // when the origin session is not already in the broadcast set.
 func TestBroadcastMatrixConnections_OriginSend(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	origin := newSession(srv, srvConn)
 	// origin NOT registered → not in s.sessions, so the origin-send
@@ -391,7 +392,7 @@ func TestCollectStreams_DeclaredMinMax(t *testing.T) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{p},
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	streams := srv.collectStreams()
 	if len(streams) != 1 || streams[0].min != -20 || streams[0].max != 20 {
 		t.Errorf("declared min/max: %+v", streams)
@@ -542,7 +543,7 @@ func TestFindMatrixConnections_MatrixChildren(t *testing.T) {
 // (unhandled element kinds) + the decode-error and matrix-fail paths via a
 // session, exercising those branches directly.
 func TestHandleEmber_TraceAndErrors(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	go func() {
@@ -587,7 +588,7 @@ func TestHandleEmber_TraceAndErrors(t *testing.T) {
 // on a valid oid returns nil; the encode-error branch is defensive (the
 // tree is always consistent) so we just confirm the happy path here.
 func TestReplyGetDirectory_Happy(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	go func() {
@@ -606,7 +607,7 @@ func TestReplyGetDirectory_Happy(t *testing.T) {
 // TestWalkFunctions_NonFunctionRoot covers walkFunctions descending past
 // non-Function nodes (the recursion-only branch).
 func TestWalkFunctions_NonFunctionRoot(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	var count int
 	srv.walkFunctions(srv.tree.root, func(e *entry, f *canonical.Function) { count++ })
 	if count != 1 { // buildRichExport has exactly one Function
@@ -641,7 +642,7 @@ func TestRejectIfExceedsCap_ExistingTarget(t *testing.T) {
 // Root carrying only a StreamCollection (decodes to an element with all
 // concrete kind pointers nil).
 func TestHandleEmber_UnknownElementKind(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	go func() {
@@ -680,7 +681,7 @@ func TestEncodeGetDirReply_ChildEncodeError(t *testing.T) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{badMtx},
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	if _, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false); err == nil {
 		t.Error("encodeGetDirReply should propagate child encode error")
 	}
@@ -689,7 +690,7 @@ func TestEncodeGetDirReply_ChildEncodeError(t *testing.T) {
 // TestWritePump_WriteError covers the writePump write-error exit: closing
 // the peer end of the pipe makes WriteFrame fail.
 func TestWritePump_WriteError(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	cliConn, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	_ = cliConn.Close() // peer gone → writes fail
@@ -714,7 +715,7 @@ func (c *customElement) Common() *canonical.Header { return &c.hdr }
 // encodeQualifiedElement and encodeTemplateElement via a custom Element
 // kind the type switches don't recognise.
 func TestEncoders_UnsupportedKind(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ce := &customElement{hdr: canonical.Header{Number: 1, Identifier: "c", OID: "1", IsOnline: true, Children: canonical.EmptyChildren()}}
 	if _, err := srv.encodeQualifiedElement(&entry{el: ce, oidParts: []uint32{1}}); err == nil {
 		t.Error("encodeQualifiedElement on custom kind should error")
@@ -749,7 +750,7 @@ func TestMergeSources_Dedup(t *testing.T) {
 // TestHandleFrame_UnknownCommand covers handleFrame's default arm (a
 // frame whose Command byte is none of keepalive/EmBER).
 func TestHandleFrame_UnknownCommand(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	if err := sess.handleFrame(&s101.Frame{Command: 0x7F}); err != nil {
@@ -765,7 +766,7 @@ func TestHandleFrame_UnknownCommand(t *testing.T) {
 // TestSweepIdleSessions_Closes covers the sweep collect + close loop with
 // a registered session whose lastActive is older than the cutoff.
 func TestSweepIdleSessions_Closes(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	srv.registerSession(sess)
@@ -783,7 +784,7 @@ func TestSweepIdleSessions_Closes(t *testing.T) {
 
 // TestStop_WithSessions covers Stop's session-collection + close loop.
 func TestStop_WithSessions(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	srv.registerSession(sess)
@@ -813,7 +814,7 @@ func TestReplyGetDirectory_EncodeError(t *testing.T) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{sub},
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
 	go func() {
@@ -829,7 +830,7 @@ func TestReplyGetDirectory_EncodeError(t *testing.T) {
 // TestServe_AcceptAfterCancel exercises the accept loop's ctx-cancel and
 // listener-closed exit by cancelling immediately after the listener is up.
 func TestServe_AcceptAfterCancel(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ctx, "127.0.0.1:0") }()

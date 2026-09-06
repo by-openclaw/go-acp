@@ -178,7 +178,7 @@ func drive(t *testing.T, srv *server, requests [][]byte) {
 
 // TestProvider_Loopback drives the full inbound dispatch surface.
 func TestProvider_Loopback(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	if srv.tree == nil {
 		t.Fatal("tree build failed")
 	}
@@ -206,7 +206,7 @@ func TestProvider_Loopback(t *testing.T) {
 // TestProvider_ServeStop covers Serve (real listener), Stop, and a live
 // client round-trip over TCP, plus the idle sweeper and streamer goroutines.
 func TestProvider_ServeStop(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -266,7 +266,7 @@ func TestProvider_ServeStop(t *testing.T) {
 // TestServe_TreeNotLoaded covers the guard when the tree failed to build.
 func TestServe_TreeNotLoaded(t *testing.T) {
 	// nil export → newTree errors → s.tree stays nil.
-	srv := newServer(nil, &canonical.Export{})
+	srv := newServer(plugin.Deps{}, &canonical.Export{})
 	if srv.tree != nil {
 		t.Fatal("expected nil tree")
 	}
@@ -279,7 +279,7 @@ func TestServe_TreeNotLoaded(t *testing.T) {
 // the happy path serves on the handed-over listener, and the nil-tree
 // guard closes it before erroring.
 func TestServeListener(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -302,7 +302,7 @@ func TestServeListener(t *testing.T) {
 	}
 
 	// Nil-tree guard: the listener must be closed on refusal.
-	bad := newServer(nil, &canonical.Export{})
+	bad := newServer(plugin.Deps{}, &canonical.Export{})
 	ln2, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -317,7 +317,7 @@ func TestServeListener(t *testing.T) {
 
 // TestServe_BadAddr covers the listen error path.
 func TestServe_BadAddr(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	if err := srv.Serve(context.Background(), "256.256.256.256:99999"); err == nil {
 		t.Error("Serve on bad addr should error")
 	}
@@ -330,7 +330,7 @@ func TestRunStreamer_NoStreams(t *testing.T) {
 		Number: 1, Identifier: "n", OID: "1", IsOnline: true,
 		Children: canonical.EmptyChildren(),
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	srv.runStreamer(ctx, time.Millisecond) // returns immediately (no streams)
@@ -339,7 +339,7 @@ func TestRunStreamer_NoStreams(t *testing.T) {
 // TestRunStreamerAndSweeper_CtxCancel covers the ticker loops' ctx-cancel
 // exit in runStreamer and runIdleSweeper.
 func TestRunStreamerAndSweeper_CtxCancel(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	go srv.runStreamer(ctx, time.Millisecond)
 	go srv.runIdleSweeper(ctx, time.Millisecond, time.Hour)
@@ -499,7 +499,7 @@ func TestEncodeBase128_MultiByte(t *testing.T) {
 // every non-qualified element encoder (Node/Parameter/Matrix/Function),
 // driving encodeTemplateElement + encodeNonQual* through the root reply.
 func TestEncodeNonQual_ViaTemplates(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	reply, err := srv.encodeGetDirReply(srv.tree.rootEntry(), false)
 	if err != nil {
 		t.Fatalf("encode root reply: %v", err)
@@ -523,7 +523,7 @@ func TestEncodeNonQual_ViaTemplates(t *testing.T) {
 // element kind so encodeElementMinimal's Parameter/Matrix/Function/Node
 // arms all run.
 func TestEncodeElementMinimal_AllKinds(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	for _, oid := range []string{"1", "1.1", "1.7", "1.8"} {
 		e, ok := srv.tree.lookupOID(oid)
 		if !ok {
@@ -542,7 +542,7 @@ func TestEncodeElementMinimal_AllKinds(t *testing.T) {
 // TestEncodeTupleValue_AllTypes covers every encodeTupleValue arm plus
 // the unsupported-type fallback, via encodeInvocationResult.
 func TestEncodeTupleValue_AllTypes(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	result := []any{nil, true, int(1), int32(2), int64(3), float32(1.5), float64(2.5), "s", []byte{1}, struct{}{}}
 	payload := srv.encodeInvocationResult(1, true, result)
 	if _, err := glow.DecodeRoot(payload); err != nil {
@@ -688,7 +688,7 @@ func TestSetupBuiltins_RegistersAndSeeds(t *testing.T) {
 			mkFn(7, "listLocks", "1.7"), mtx,
 		},
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	// Each builtin should now be registered.
 	for _, oid := range []string{"1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7"} {
 		if _, ok := srv.funcs.lookup(oid); !ok {
@@ -805,7 +805,7 @@ func TestFilterConnectionsByTargets(t *testing.T) {
 // TestSetValue_Errors covers tree.setParamValue + server.SetValue error
 // branches: missing oid, non-parameter oid, bad oid segment.
 func TestSetValue_Errors(t *testing.T) {
-	srv := newServer(nil, buildRichExport())
+	srv := newServer(plugin.Deps{}, buildRichExport())
 	if _, err := srv.SetValue(context.Background(), "9.9.9", int64(1)); err == nil {
 		t.Error("SetValue on missing oid should error")
 	}
