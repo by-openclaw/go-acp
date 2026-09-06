@@ -284,6 +284,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	s := NewSession(p.net, p.logger)
+	s.SetMetrics(p.metrics)
 	if p.recorder != nil {
 		s.SetRecorder(p.recorder)
 	}

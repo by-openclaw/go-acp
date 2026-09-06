@@ -41,7 +41,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
 	p := NewPlugin(deps.Logger)
-	p.met = deps.Metrics
+	if deps.Metrics != nil {
+		p.met = deps.Metrics
+	}
 	p.Configure(deps.Net, defaultKeepAliveTimeout)
 	return p
 }
@@ -103,7 +105,14 @@ func NewPlugin(logger *slog.Logger) *Plugin {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Plugin{logger: logger.With(slog.String("plugin", "cerebrum-nb"))}
+	// The connector is created here rather than only in the factory: the
+	// CLI builds this plugin directly with NewPlugin, so a nil default
+	// would leave every command-line session uncounted. Deps.Metrics
+	// overrides it in Factory.New when there is one to share.
+	return &Plugin{
+		logger: logger.With(slog.String("plugin", "cerebrum-nb")),
+		met:    metrics.NewConnector(),
+	}
 }
 
 // Connect dials the Cerebrum WebSocket endpoint. Cerebrum has no path

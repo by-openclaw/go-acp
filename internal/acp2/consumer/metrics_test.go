@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 )
@@ -154,5 +155,37 @@ func TestDisconnectLogsTheSessionSummary(t *testing.T) {
 	if got := buf.String(); !strings.Contains(got, "acp2 session metrics") ||
 		!strings.Contains(got, "rx=") {
 		t.Errorf("Disconnect logged no session summary: %s", got)
+	}
+}
+
+// The handshake alone is several frames, so a plugin that has merely
+// CONNECTED already has something to count.
+//
+// This goes through Plugin.Connect rather than calling SetMetrics directly,
+// which is the whole point: the earlier tests drove the session by hand and
+// stayed green while Connect never handed it the connector at all, so every
+// real session on the CLI counted nothing.
+func TestConnectHandsTheSessionItsConnector(t *testing.T) {
+	srv, host, port := newFakeServer(t)
+	defer srv.stop()
+
+	p := (&Factory{}).New(plugin.Deps{Logger: testLogger()}).(*Plugin)
+	p.SetKeepAlive(consumer.KeepAliveConfig{
+		Interval: consumer.DisableInterval,
+		Timeout:  consumer.DisableTimeout,
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := p.Connect(ctx, host, port); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = p.Disconnect() })
+
+	snap := p.Metrics().Snapshot()
+	if snap.TxFrames == 0 || snap.TxBytes == 0 {
+		t.Errorf("the AN2 handshake wrote nothing countable: tx=%d/%d", snap.TxFrames, snap.TxBytes)
+	}
+	if snap.RxFrames == 0 || snap.RxBytes == 0 {
+		t.Errorf("the AN2 handshake read nothing countable: rx=%d/%d", snap.RxFrames, snap.RxBytes)
 	}
 }
