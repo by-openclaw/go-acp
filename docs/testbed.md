@@ -26,7 +26,25 @@ same PR — and the inventory wins on any disagreement.
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
 | `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
 | `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` (guest static unconfirmed post-migration) |
-| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | (VLAN600 IP — confirm) | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+
+## Physical devices under test
+
+Real hardware on the same `10.6.240.0/20` management fabric as the fleet, so
+the Ansible control node reaches them directly. These are the Tier 3 oracles
+ADR-0025 requires — a connector is not DONE against our own provider.
+
+| Device | Address | Serves | Connector |
+| --- | --- | --- | --- |
+| **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
+| **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
+| ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
+| IRD satellite receiver | (to connect) | SNMP + MIB | none yet — `internal/snmp` is unwritten |
+
+Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
+NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
+services this one Neuron offers cannot yet be driven at a real device — see
+"Integration tiers" below.
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
