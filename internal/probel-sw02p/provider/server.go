@@ -7,11 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/consumer/compliance"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.
@@ -28,11 +29,15 @@ type server struct {
 	logger *slog.Logger
 	tree   *tree
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
-	closed   bool
-	stopped  chan struct{}
+	mu sync.Mutex
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
+	listener    net.Listener
+	sessions    map[*session]struct{}
+	closed      bool
+	stopped     chan struct{}
 
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started.
@@ -265,4 +270,24 @@ func coerceSource(val any) (uint16, error) {
 		return uint16(v), nil
 	}
 	return 0, fmt.Errorf("probel-sw02p: cannot coerce %T to source index", val)
+}
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Off by default. SW-P-02 defines no keep-alive command, so an idle link is
+// indistinguishable from a dead one; enable this only where something
+// guarantees inbound traffic (a controller that polls, as VSM does with a
+// rotating rx 01).
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
 }

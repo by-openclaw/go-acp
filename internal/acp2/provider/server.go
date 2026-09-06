@@ -7,9 +7,10 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 )
 
@@ -39,11 +40,15 @@ type server struct {
 	// slotInfo reads it under the same lock as perSlot.
 	slotProtos map[uint8][]uint8
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
-	closed   bool
-	stopped  chan struct{}
+	mu sync.Mutex
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
+	listener    net.Listener
+	sessions    map[*session]struct{}
+	closed      bool
+	stopped     chan struct{}
 
 	// metrics is the server-wide connector snapshot exposed via
 	// Metrics() so `producer acp2 serve --metrics-addr` scrapes it
@@ -246,4 +251,24 @@ func (s *server) unregisterSession(sess *session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, sess)
+}
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Off by default. ACP2 announces are event-driven, so a consumer that has
+// subscribed and is simply waiting for something to change is healthy and
+// silent; enable this only where the consumer keeps the link warm (the acp2
+// consumer's own keep-alive prober does, at 5s).
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
 }

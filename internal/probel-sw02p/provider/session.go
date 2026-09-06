@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/transport"
 )
 
 // session is one connected SW-P-02 client. It owns the TCP socket,
@@ -26,10 +27,22 @@ type session struct {
 
 	closeMu sync.Mutex
 	closed  bool
+
+	// idle reaps a client that has gone silent. Without it the provider
+	// keeps a goroutine and a socket for every controller that vanished
+	// without an RST — the consumer-side half-open bug, pointed the other
+	// way, and it accumulates one leak per lost client.
+	//
+	// Off unless configured: SW-P-02 defines no keep-alive command at all,
+	// so silence proves nothing and reaping by default would disconnect a
+	// healthy idle router.
+	idle transport.Idle
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{srv: srv, conn: conn}
+	s := &session{srv: srv, conn: conn}
+	s.idle.Set(srv.idleTimeout())
+	return s
 }
 
 // write serialises an outbound Pack(frame) onto the session's socket.
@@ -60,6 +73,11 @@ func (s *session) run(ctx context.Context) {
 	tmp := make([]byte, codec.DefaultReadBufferSize)
 	for {
 		if err := ctx.Err(); err != nil {
+			return
+		}
+		// Re-arm before every read: any inbound byte refreshes the window,
+		// so a client that is talking at all is never reaped.
+		if err := s.idle.Arm(s.conn); err != nil {
 			return
 		}
 		n, err := s.conn.Read(tmp)

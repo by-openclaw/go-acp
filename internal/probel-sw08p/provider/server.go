@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/consumer/compliance"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors
@@ -34,6 +34,10 @@ type server struct {
 	sessions map[*session]struct{}
 	closed   bool
 	stopped  chan struct{}
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
 
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started. See compliance_events.go.
@@ -279,3 +283,31 @@ func coerceSource(val any) (uint16, error) {
 	return 0, fmt.Errorf("probel: cannot coerce %T to source index", val)
 }
 
+// DefaultSessionIdleTimeout is the reaper window a caller gets by asking for
+// the default. It is 3x the provider's own keep-alive cadence, so a client
+// that answers our pings is never reaped on a single missed round.
+//
+// It is NOT applied unless SetSessionIdleTimeout is called: SW-P-08 mandates
+// no keep-alive (§2), so on a link with no heartbeat silence carries no
+// liveness information and reaping by default would disconnect healthy,
+// idle controllers.
+const DefaultSessionIdleTimeout = 3 * DefaultKeepaliveInterval
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Enable it when something guarantees inbound traffic — the provider's own
+// keep-alive is on, or the controller polls (VSM interrogates on a timer).
+// Without such a guarantee, leave it off.
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
+}
