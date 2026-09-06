@@ -71,7 +71,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the injected dependencies.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p.Configure(deps.Net, DefaultOnlineStaleAfter)
+	return p
 }
 
 // MatrixConfig holds the externally-supplied matrix shape. SW-P-02
@@ -112,6 +114,11 @@ type MatrixConfig struct {
 // one matrix (host:port). Per-command state (name caches, tally cache,
 // etc.) is added as subsequent commits land their PRs.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: the
+	// only protocol-specific parts are the stale window and the metrics
+	// Connector this consumer already counts every frame through.
+	consumer.Health
+
 	logger *slog.Logger
 
 	// net is the only way this plugin reaches a socket. Injected, so the
@@ -274,6 +281,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.port = port
 	p.profile = prof
 	p.metricsConn = met
+	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	p.logger.Info("probel-sw02p connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
@@ -298,6 +306,7 @@ func (p *Plugin) Disconnect() error {
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.Closed()
 	p.keepaliveCancel = nil
 	p.mu.Unlock()
 	if cancel != nil {

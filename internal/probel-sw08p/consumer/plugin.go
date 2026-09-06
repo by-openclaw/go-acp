@@ -60,7 +60,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the given logger.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p.Configure(deps.Net, DefaultOnlineStaleAfter)
+	return p
 }
 
 // MatrixConfig holds the externally-supplied matrix shape — mirrors
@@ -88,6 +90,11 @@ type MatrixConfig struct {
 // that individual commands populate (source/destination name caches,
 // tie-line tally cache, etc.) as their PRs land.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: the
+	// only protocol-specific parts are the stale window and the metrics
+	// Connector this consumer already counts every frame through.
+	consumer.Health
+
 	logger *slog.Logger
 
 	// net is the only way this plugin reaches a socket. Injected, so the
@@ -275,6 +282,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.port = port
 	p.profile = prof
 	p.metricsConn = met
+	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	// Start the spec-sanctioned cmd 08 poll (§5 "…to keep the connections
 	// open") and arm the reader's dead-man deadline alongside it. Our own
 	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
@@ -319,6 +327,7 @@ func (p *Plugin) Disconnect() error {
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.Closed()
 	p.mu.Unlock()
 	if cli == nil {
 		return nil
