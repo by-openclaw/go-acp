@@ -8,9 +8,30 @@ positions as the acp2 successor on Neuron (#706). Read the root
 device's own OpenAPI (`/api/v1/docs/api.yml`) is captured. Unit 1
 shipped: stdlib UUID-keyed codec + `dhs consumer ccm walk` + `ccm
 export` (stores api.yml schema + walked tree DM + extract, keyed by
-productName@productVersion for firmware diff). The acp2 connector
-stays regardless: this bridge runs acp2 + REST/CCM + NMOS at once
+productName@productVersion for firmware diff). Unit 2 shipped:
+**recursive full-DM walk** — `codec.ClassifyBody` (branch = JSON array
+of child names; resource = object / array-of-objects) + consumer
+`WalkTree` follows the device's own shape (no wildcard; GET each node,
+recurse only listed children) seeded from the API root OR explicit node
+paths (`--start`, for the "root doesn't exist / know the path" case).
+`ccm walk --tree` and `ccm export` (dm-tree.json) now capture the WHOLE
+model (live BRIDGE@7.0.2: 41 resources / 13 nodes — io/ip, io/madi,
+io/sdi, all of matrix, misc, processing, self), not just the six io/ip
+stream paths the old Walk hardcoded. The acp2 connector stays
+regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 (mixed-firmware, multi-protocol box).
+
+**CCM WebSocket (notifications) — NOT served on 7.0.2 (EVS gap, verified
+2026-09-03 by packet capture).** 443 negotiates http/1.1 only; the WS is
+plain HTTP/1.1-Upgrade-over-TLS on 443 (no separate port; nmap-clean).
+Every candidate path 404s (`/api/v1/ws`, `/ws`, ~25 more) via the
+confirmed-correct handshake, and **EVS's own Cerebrum 2.9.0 CCM driver
+(Prefix `/api/v1`, WS enabled) also fails** — the 1 MB persistent 443
+conn in a Cerebrum-side capture is the REST poll, not a live WS. So
+`ccm watch` is blocked on an EVS firmware that actually serves the WS;
+the message protocol is fully known (PDF §13) and the client is a
+ready-to-build unit (h1 Upgrade over TLS, CreateSubscription/relativeUrl/
+initial `replace ""`/RFC 6902), live-verifiable only once EVS serves it.
 
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**
 this build serves the CCM resource MODEL (UUID-addressed REST, `/self`,

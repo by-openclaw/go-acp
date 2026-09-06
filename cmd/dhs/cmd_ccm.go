@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	ccmc "dhs/internal/ccm/consumer"
 )
@@ -22,8 +23,10 @@ import (
 func runCCM(ctx context.Context, args []string) error {
 	if len(args) == 0 || isHelpToken(args[0]) {
 		fmt.Println("usage: dhs consumer ccm <verb> <host> [flags]")
-		fmt.Println("  walk <host>    connect to the CCM (Neuron REST) API and list its streams by UUID")
-		fmt.Println("  export <host>  store api.yml (schema) + tree (DM) + extract, versioned for firmware diff")
+		fmt.Println("  walk <host>            list io/ip streams by UUID")
+		fmt.Println("  walk <host> --tree     walk the FULL recursive DM (every node/resource)")
+		fmt.Println("       [--start p1,p2]   seed --tree from explicit node paths (default: from the API root)")
+		fmt.Println("  export <host>  store api.yml (schema) + tree (DM) + dm-tree.json (full DM) + extract, versioned for firmware diff")
 		fmt.Println("  flags: --json  emit the whole device as JSON")
 		fmt.Println("         --verify-tls  verify the device certificate (default: skip, lab self-signed)")
 		fmt.Println("         --timeout D   per-request timeout (default 8s)")
@@ -43,8 +46,10 @@ func runCCM(ctx context.Context, args []string) error {
 func runCCMWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("consumer ccm walk", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "emit the whole device as JSON")
+	tree := fs.Bool("tree", false, "walk the FULL recursive DM (every node/resource), not just io/ip streams")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
+	start := fs.String("start", "", "with --tree: comma-separated node paths to seed the walk (default: discover from the API root)")
 
 	host := ""
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
@@ -58,6 +63,11 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	}
 
 	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout})
+
+	if *tree {
+		return runCCMWalkTree(ctx, c, *asJSON, *start)
+	}
+
 	dev, deviations, err := c.Walk(ctx)
 	if err != nil {
 		return fmt.Errorf("consumer ccm walk: %w", err)
@@ -82,6 +92,49 @@ func runCCMWalk(ctx context.Context, args []string) error {
 			on = "yes"
 		}
 		fmt.Printf("%-38s %-9s %-6s %-6s %s\n", s.UUID, s.Kind, s.Essence, on, s.Name)
+	}
+	for _, d := range deviations {
+		fmt.Fprintf(os.Stderr, "  deviation: %s\n", d)
+	}
+	return nil
+}
+
+// runCCMWalkTree drives the full recursive DM walk (dhs consumer ccm walk
+// <host> --tree). It follows the device's own node/resource shape instead
+// of the hardcoded io/ip slice, so it captures the whole model — the fix
+// for "we forgot to get the DM": no root is assumed (seed with --start),
+// and no wildcard is used (each node is GET and only its listed children
+// are recursed).
+func runCCMWalkTree(ctx context.Context, c *ccmc.Client, asJSON bool, start string) error {
+	var starts []string
+	if s := strings.TrimSpace(start); s != "" {
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				starts = append(starts, p)
+			}
+		}
+	}
+
+	tree, deviations, err := c.WalkTree(ctx, starts...)
+	if err != nil {
+		return fmt.Errorf("consumer ccm walk --tree: %w", err)
+	}
+
+	if asJSON {
+		out := make(map[string]json.RawMessage, tree.Len())
+		for p, raw := range tree.Resources {
+			out[p] = raw
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(out); err != nil {
+			return err
+		}
+	} else {
+		fmt.Printf("CCM DM: %d resource(s) across %d node(s)\n", tree.Len(), len(tree.Branches))
+		for _, p := range tree.SortedPaths() {
+			fmt.Println("  " + p)
+		}
 	}
 	for _, d := range deviations {
 		fmt.Fprintf(os.Stderr, "  deviation: %s\n", d)
