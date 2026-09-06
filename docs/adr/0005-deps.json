@@ -1,11 +1,13 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": {
     "default": "stdlib-only",
     "exception_process_adr": "0014",
     "codec_layer_rule_adr": "0006",
     "multi_os_rule_adr": "0016",
-    "ci_gate": "tools/check-deps.sh"
+    "ci_gate": "tools/check-deps.sh",
+    "host_dep_rule_adr": "0016",
+    "host_dep_note": "host_deps are NOT Go modules and never enter go.mod. They are software the OPERATOR installs on the host to upgrade a capability. Every one of them is optional by ADR-0016's stdlib-floor rule: without it the connector runs degraded, never broken. tools/check-deps.sh does not gate them — it matches on \"module\", which host entries deliberately do not carry."
   },
   "deps": [
     {
@@ -31,10 +33,20 @@
       "transitive_deps": null,
       "cve_last_check": null,
       "cve_status": null,
-      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
-      "scope": ["linux", "darwin", "windows"],
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "linux",
+        "darwin",
+        "windows"
+      ],
       "reason": "no stdlib WebSocket; ws+wss native via stdlib TLS",
-      "adr_refs": ["0003"],
+      "adr_refs": [
+        "0003"
+      ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
     },
@@ -61,10 +73,19 @@
       "transitive_deps": null,
       "cve_last_check": null,
       "cve_status": null,
-      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
-      "scope": ["linux"],
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "linux"
+      ],
       "reason": "Linux Avahi via DBus; no stdlib DBus",
-      "adr_refs": ["0012", "0016"],
+      "adr_refs": [
+        "0012",
+        "0016"
+      ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
     },
@@ -91,10 +112,22 @@
       "transitive_deps": null,
       "cve_last_check": null,
       "cve_status": null,
-      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
-      "scope": ["linux", "darwin", "windows"],
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "linux",
+        "darwin",
+        "windows"
+      ],
       "reason": "secrets manager client SDK; signs licenses via Transit engine (ADR-0003), reads runtime secrets via KV",
-      "adr_refs": ["0003", "0010", "0011"],
+      "adr_refs": [
+        "0003",
+        "0010",
+        "0011"
+      ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
     },
@@ -121,10 +154,20 @@
       "transitive_deps": null,
       "cve_last_check": null,
       "cve_status": null,
-      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
-      "scope": ["linux", "darwin", "windows"],
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "linux",
+        "darwin",
+        "windows"
+      ],
       "reason": "plugin hot un-register supervisor (ADR-0009)",
-      "adr_refs": ["0009"],
+      "adr_refs": [
+        "0009"
+      ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
     },
@@ -151,12 +194,194 @@
       "transitive_deps": null,
       "cve_last_check": null,
       "cve_status": null,
-      "tooling": ["govulncheck", "osv-scanner", "go-licenses"],
-      "scope": ["linux", "darwin", "windows"],
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "linux",
+        "darwin",
+        "windows"
+      ],
       "reason": "license format JWT-EdDSA (ADR-0003); native Ed25519 support per RFC 8037",
-      "adr_refs": ["0003"],
+      "adr_refs": [
+        "0003"
+      ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
+    }
+  ],
+  "host_deps": [
+    {
+      "id": "avahi-daemon",
+      "name": "Avahi mDNS/DNS-SD daemon",
+      "os": [
+        "linux"
+      ],
+      "version": null,
+      "url": "https://avahi.org/",
+      "license": {
+        "spdx": "LGPL-2.1-or-later",
+        "file_url": "https://github.com/avahi/avahi/blob/master/LICENSE"
+      },
+      "redistributable_by_us": false,
+      "redistribution_note": "System package. Installed by the operator's package manager; dhs never ships it.",
+      "capability": "DNS-SD browse + advertise delegated to the system daemon",
+      "needed_for": [
+        "internal/amwa/session/dnssd"
+      ],
+      "talks_via": "github.com/godbus/dbus/v5 on the system bus (pure Go, no CGo)",
+      "cgo": false,
+      "fallback": "internal/amwa/session/dnssd stdlib mDNS on 224.0.0.251:5353",
+      "without_it": "Works, degraded: 500ms read-deadline jitter makes AMWA cascade-timing tests (test_05/15/16) unreliable.",
+      "install": {
+        "debian": "apt-get install -y avahi-daemon libnss-mdns",
+        "rhel": "dnf install -y avahi avahi-tools"
+      },
+      "cve_last_check": null,
+      "cve_status": null,
+      "adr_refs": [
+        "0016"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "bonjour-windows",
+      "name": "Bonjour Service for Windows (dnssd.dll)",
+      "os": [
+        "windows"
+      ],
+      "version": null,
+      "url": "https://developer.apple.com/bonjour/",
+      "license": {
+        "spdx": "Apache-2.0",
+        "file_url": "https://github.com/apple-oss-distributions/mDNSResponder",
+        "note": "mDNSResponder SOURCE is Apache-2.0. Apple's Windows SDK/installer is a separate distribution; bundling it in a product needs an agreement with Apple. Operator-installed here, so we redistribute nothing."
+      },
+      "redistributable_by_us": false,
+      "redistribution_note": "Operator downloads from Apple (registration required). Matches how Cerebrum and nmos-cpp behave on Windows.",
+      "capability": "DNS-SD browse + advertise delegated to the Bonjour service",
+      "needed_for": [
+        "internal/amwa/session/dnssd"
+      ],
+      "talks_via": "dnssd.dll",
+      "cgo": true,
+      "fallback": "internal/amwa/session/dnssd stdlib mDNS on 224.0.0.251:5353",
+      "without_it": "Works, degraded: same cascade-timing jitter as a Linux host with no Avahi.",
+      "install": {
+        "windows": "Install \"Bonjour Print Services for Windows\" or the Bonjour SDK for Windows from Apple (manual download)."
+      },
+      "cve_last_check": null,
+      "cve_status": null,
+      "adr_refs": [
+        "0016"
+      ],
+      "status": "planned",
+      "tracking": "#195",
+      "blocked_on": "ADR-0016 CGo wrapper conflict (Path A vs Path B) is unresolved; CGo also breaks CGO_ENABLED=0 cross-compile."
+    },
+    {
+      "id": "bonjour-macos",
+      "name": "Bonjour (built into macOS)",
+      "os": [
+        "darwin"
+      ],
+      "version": null,
+      "url": "https://developer.apple.com/bonjour/",
+      "license": {
+        "spdx": "Apache-2.0",
+        "note": "Part of the OS. Nothing to install, nothing to redistribute."
+      },
+      "redistributable_by_us": false,
+      "redistribution_note": "Present on every macOS host; no install step.",
+      "capability": "DNS-SD browse + advertise delegated to the system daemon",
+      "needed_for": [
+        "internal/amwa/session/dnssd"
+      ],
+      "talks_via": "libSystem / CoreServices",
+      "cgo": true,
+      "fallback": "internal/amwa/session/dnssd stdlib mDNS on 224.0.0.251:5353",
+      "without_it": "N/A — the daemon is always present; only our CGo binding is unwritten.",
+      "install": {
+        "darwin": "none — shipped with the OS"
+      },
+      "cve_last_check": null,
+      "cve_status": null,
+      "adr_refs": [
+        "0016"
+      ],
+      "status": "planned",
+      "tracking": "#196",
+      "blocked_on": "Same CGo wrapper conflict as bonjour-windows."
+    },
+    {
+      "id": "npcap",
+      "name": "Npcap packet capture driver",
+      "os": [
+        "windows"
+      ],
+      "version": null,
+      "url": "https://npcap.com/",
+      "license": {
+        "spdx": "LicenseRef-Npcap",
+        "file_url": "https://npcap.com/oem/",
+        "note": "NOT open source and NOT unrestricted. Free edition: use on at most 5 systems and NO external redistribution. Unlimited only when deployed exclusively alongside Wireshark, Nmap or Microsoft Defender for Identity. Any other fleet-wide or bundled use needs a paid OEM licence from Nmap Software LLC."
+      },
+      "redistributable_by_us": false,
+      "redistribution_note": "Hard blocker for bundling. We never ship it; the operator installs it, and on any host that already has Wireshark it is present under the unlimited exception.",
+      "capability": "Capture raw LLDP frames (Ethertype 0x88CC) on a local interface",
+      "needed_for": [
+        "internal/lldp (planned)"
+      ],
+      "talks_via": "Npcap driver + wpcap.dll",
+      "cgo": true,
+      "fallback": "Device-reported LLDP over the device's own API; no local capture.",
+      "without_it": "Windows cannot capture LLDP locally at all: Windows raw sockets are IP-level and cannot see non-IP Ethertypes. IS-04 attached_network_device stays unset unless another source supplies it.",
+      "install": {
+        "windows": "Install Npcap from https://npcap.com/ (manual), or note that Wireshark already bundles it."
+      },
+      "cve_last_check": null,
+      "cve_status": null,
+      "adr_refs": [
+        "0016"
+      ],
+      "status": "not-adopted",
+      "decision_pending": "Licence terms conflict with fleet-wide deployment. Preferred answer is to avoid it entirely: take LLDP from the device's own API rather than capturing on the host."
+    },
+    {
+      "id": "raw-capture-privilege",
+      "name": "Raw-capture privilege (no package)",
+      "os": [
+        "linux",
+        "darwin"
+      ],
+      "version": null,
+      "url": null,
+      "license": {
+        "spdx": null,
+        "note": "Kernel interface, not a library. Nothing to install or licence."
+      },
+      "redistributable_by_us": null,
+      "redistribution_note": "N/A.",
+      "capability": "Capture raw LLDP frames (Ethertype 0x88CC) via AF_PACKET (Linux) or BPF (macOS)",
+      "needed_for": [
+        "internal/lldp (planned)"
+      ],
+      "talks_via": "syscall (stdlib) — AF_PACKET socket on Linux, /dev/bpf* on macOS",
+      "cgo": false,
+      "fallback": "Device-reported LLDP; no local capture.",
+      "without_it": "Capture returns a typed permission error; everything else runs.",
+      "install": {
+        "linux": "setcap cap_net_raw+ep /usr/local/bin/dhs   (or run as root)",
+        "darwin": "run as root, or grant access to /dev/bpf*"
+      },
+      "cve_last_check": null,
+      "cve_status": null,
+      "adr_refs": [
+        "0016"
+      ],
+      "status": "planned"
     }
   ]
 }
