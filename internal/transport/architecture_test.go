@@ -107,7 +107,6 @@ var allowed = map[string]string{
 	// Its Serve/TLS/CORS/preflight/mux half is generic; what is NMOS is the
 	// IS-04 §4.4 error body and the BCP-003-02 gate. Extracting it also
 	// closes the conformance gap where http has a client and no server.
-	"internal/amwa/session/http/server.go":   "generic HTTP server → transport/http",
 	"internal/amwa/registry/mirror_serve.go": "TLS listener → transport once the server moves",
 
 	// DEBT — certificate handling.
