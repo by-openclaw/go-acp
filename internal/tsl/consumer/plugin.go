@@ -164,10 +164,12 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	default:
 		return fmt.Errorf("tsl consumer: unknown version %v", p.version)
 	}
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.RecordRx
 	if err := s.listen(ctx, addr, decode); err != nil {
 		return err
 	}
-	s.onRx = p.RecordRx
 	p.session = s
 	p.Opened("udp", "", 0, nil)
 	return nil
@@ -186,10 +188,12 @@ func (p *Plugin) ConnectV50TCP(ctx context.Context, ip string, port int) error {
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	ts := newTCPSession()
 	ts.SetIdleTimeout(p.tcpIdleTimeout)
+	// Set before listen: listen starts the accept goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	ts.onRx = p.RecordRx
 	if err := ts.listen(ctx, addr); err != nil {
 		return err
 	}
-	ts.onRx = p.RecordRx
 	p.tcpSession = ts
 	p.Opened("tcp", "", 0, nil)
 	return nil

@@ -131,10 +131,12 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	s := newUDPSession()
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.RecordRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
-	s.onRx = p.RecordRx
 	p.udp = s
 	p.Opened("udp", "", 0, nil)
 	return nil
@@ -157,10 +159,12 @@ func (p *Plugin) ConnectTCP(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	s := newTCPSession(framer)
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.RecordRx
 	if err := s.listen(ctx, addr); err != nil {
 		return err
 	}
-	s.onRx = p.RecordRx
 	p.tcp = s
 	p.Opened("tcp", "", 0, nil)
 	return nil
