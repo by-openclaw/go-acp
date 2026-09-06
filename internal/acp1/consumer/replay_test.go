@@ -5,6 +5,7 @@ package acp1_test
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/hex"
 	"errors"
 	"log/slog"
@@ -12,10 +13,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"dhs/internal/acp1/codec"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
-	"dhs/internal/acp1/codec"
 )
 
 // loadTrames reads a captured wire trace from
@@ -44,7 +45,7 @@ func loadTrames(t *testing.T, scenario string) []wiretrace.Trame {
 func newPlugin(t *testing.T) consumer.Validator {
 	t.Helper()
 	f := &acp1.Factory{}
-	plug := f.New(slog.Default())
+	plug := f.New(plugin.Deps{Logger: slog.Default()})
 	v, ok := plug.(consumer.Validator)
 	if !ok {
 		t.Fatal("acp1.Plugin does not implement consumer.Validator")

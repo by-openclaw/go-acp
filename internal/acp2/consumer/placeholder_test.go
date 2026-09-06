@@ -9,8 +9,8 @@ import (
 	"math"
 	"testing"
 
-	"dhs/internal/acp2/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/acp2/consumer"
 )
 
 // TestAN2FrameRoundTrip verifies that an AN2 frame survives encode → decode.
@@ -66,10 +66,10 @@ func TestAN2MagicValidation(t *testing.T) {
 // TestACP2MessageHeader verifies the 4-byte ACP2 header layout.
 func TestACP2MessageHeader(t *testing.T) {
 	msg := &codec.ACP2Message{
-		Type: codec.ACP2TypeRequest,
-		MTID: 7,
-		Func: codec.ACP2FuncGetObject,
-		PID:  0,
+		Type:  codec.ACP2TypeRequest,
+		MTID:  7,
+		Func:  codec.ACP2FuncGetObject,
+		PID:   0,
 		ObjID: 1,
 		Idx:   0,
 	}

@@ -260,7 +260,13 @@ func TestTCPClient_Reader_LoopPanicRecovered(t *testing.T) {
 	panicked := make(chan struct{}, 1)
 	c := NewTCPClient(conn, discardLogger(), ClientConfig{
 		ReceiveTimeout: time.Second,
-		OnRx:           func() { select { case panicked <- struct{}{}: default: }; panic("onrx boom") },
+		OnRx: func() {
+			select {
+			case panicked <- struct{}{}:
+			default:
+			}
+			panic("onrx boom")
+		},
 	})
 	defer func() { _ = c.Close() }()
 	srv := <-accepted
@@ -517,7 +523,13 @@ func TestAN2Client_Reader_LoopPanicRecovered(t *testing.T) {
 	panicked := make(chan struct{}, 1)
 	c := NewAN2Client(dialAN2(t, h, pn), discardLogger(), ClientConfig{
 		ReceiveTimeout: time.Second,
-		OnRx:           func() { select { case panicked <- struct{}{}: default: }; panic("onrx boom") },
+		OnRx: func() {
+			select {
+			case panicked <- struct{}{}:
+			default:
+			}
+			panic("onrx boom")
+		},
 	})
 	defer func() { _ = c.Close() }()
 	srv := <-accepted

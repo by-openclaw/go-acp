@@ -375,12 +375,12 @@ func TestBuildAnnounceClosure_Filtering(t *testing.T) {
 
 	// Seed a tree so the closure resolves label/path + decodes via tree.
 	tree := &WalkedTree{
-		Slot:     1,
-		Objects:  []consumer.Object{{ID: 5, Label: "Gain", Unit: "dB", Group: "BOARD", Path: []string{"ROOT", "BOARD", "Gain"}}},
-		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNumber},
-		NumTypes: []codec.NumberType{codec.NumTypeU32},
+		Slot:        1,
+		Objects:     []consumer.Object{{ID: 5, Label: "Gain", Unit: "dB", Group: "BOARD", Path: []string{"ROOT", "BOARD", "Gain"}}},
+		ObjTypes:    []codec.ACP2ObjType{codec.ObjTypeNumber},
+		NumTypes:    []codec.NumberType{codec.NumTypeU32},
 		OptionsMaps: []map[uint32]string{nil},
-		Labels:   map[string]int{"Gain": 0},
+		Labels:      map[string]int{"Gain": 0},
 	}
 	p.trees.Put(1, tree)
 

@@ -128,9 +128,9 @@ func TestSlotProtos(t *testing.T) {
 		Name: "chassis",
 		Slots: []Slot{
 			{Addr: map[string]any{"slot": 0}, DM: "A@1", Protos: []uint8{2, 3, 4}},
-			{Addr: map[string]any{"slot": 1}, DM: "B@1"},                             // no override
-			{Addr: map[string]any{"oid": "1.4"}, DM: "C@1", Protos: []uint8{2}},      // non-numeric addr
-			{Addr: map[string]any{"slot": 999}, DM: "D@1", Protos: []uint8{2}},       // out of range
+			{Addr: map[string]any{"slot": 1}, DM: "B@1"},                        // no override
+			{Addr: map[string]any{"oid": "1.4"}, DM: "C@1", Protos: []uint8{2}}, // non-numeric addr
+			{Addr: map[string]any{"slot": 999}, DM: "D@1", Protos: []uint8{2}},  // out of range
 			{Addr: map[string]any{"slot": float64(2)}, DM: "E@1", Protos: []uint8{2, 3}},
 		},
 	}}}
@@ -154,10 +154,10 @@ func TestParamTypeAndFormat_ACP2Meta(t *testing.T) {
 		objType, numType float64
 		wantType, wantF  string
 	}{
-		{3, 4, "integer", "u8"},   // number u8 (the live failure)
+		{3, 4, "integer", "u8"}, // number u8 (the live failure)
 		{3, 2, "integer", "s32"},
 		{3, 7, "integer", "u64"},
-		{3, 8, "real", ""},        // float
+		{3, 8, "real", ""}, // float
 		{2, 0, "enum", ""},
 		{4, 10, "string", "ipv4"},
 		{5, 11, "string", ""},

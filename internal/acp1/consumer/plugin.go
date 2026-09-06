@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
@@ -9,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
-	"dhs/internal/acp1/codec"
 )
 
 // init registers the ACP1 plugin with the global protocol registry.
@@ -33,7 +34,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &Plugin{logger: logger}
 }
 

@@ -8,6 +8,7 @@ package osc
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -68,7 +69,9 @@ func (f *Factory) Meta() provider.Meta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger, tree *canonical.Export) provider.Provider {
+func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &Server{version: f.version, logger: logger, tree: tree}
 }
 

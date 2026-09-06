@@ -28,9 +28,9 @@ type Subscriber struct {
 	logger  *slog.Logger
 	hbEvery time.Duration
 
-	mu      sync.Mutex
-	ws      *httpsession.WebSocket
-	closed  bool
+	mu     sync.Mutex
+	ws     *httpsession.WebSocket
+	closed bool
 }
 
 // SubscriberOptions configures Subscriber creation.

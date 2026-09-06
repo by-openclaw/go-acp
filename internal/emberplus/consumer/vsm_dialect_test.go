@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/hex"
 	"net"
 	"testing"
@@ -76,7 +77,7 @@ func TestWalk_VSMGadgetserverDialect(t *testing.T) {
 		port = port*10 + int(portStr[i]-'0')
 	}
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := (&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin)
 	// Short settle timings so the test finishes fast.
 	p.walkSettleInitial = 2 * time.Second
 	p.walkSettleInterval = 500 * time.Millisecond

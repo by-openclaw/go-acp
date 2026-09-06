@@ -74,10 +74,10 @@ func TestEncodeDecodeACP2Message_GetObject(t *testing.T) {
 func TestDecodeACP2Message_Reply(t *testing.T) {
 	// Simulate a get_version reply: type=1, mtid=1, func=0, pid=3 (version=3)
 	data := []byte{
-		byte(ACP2TypeReply), // type
-		1,                    // mtid
+		byte(ACP2TypeReply),      // type
+		1,                        // mtid
 		byte(ACP2FuncGetVersion), // func
-		3,                    // pid (version number)
+		3,                        // pid (version number)
 	}
 
 	msg, err := DecodeACP2Message(data)
@@ -97,10 +97,10 @@ func TestDecodeACP2Message_Error(t *testing.T) {
 	// 4-byte ACP2 header. No body. Decoder must NOT synthesise ObjID
 	// from any trailing bytes.
 	data := []byte{
-		byte(ACP2TypeError),    // type
-		2,                       // mtid
-		byte(ErrInvalidObjID),   // stat (in func slot)
-		0,                       // pid
+		byte(ACP2TypeError),   // type
+		2,                     // mtid
+		byte(ErrInvalidObjID), // stat (in func slot)
+		0,                     // pid
 	}
 
 	msg, err := DecodeACP2Message(data)

@@ -10,7 +10,7 @@ package provider
 
 import (
 	"context"
-	"log/slog"
+	"dhs/internal/plugin"
 
 	"dhs/internal/export/canonical"
 )
@@ -41,5 +41,9 @@ type Meta struct {
 // Factory creates Provider instances from a loaded canonical tree.
 type Factory interface {
 	Meta() Meta
-	New(logger *slog.Logger, tree *canonical.Export) Provider
+	// New takes the whole dependency set rather than a logger, for the same
+	// reason the consumer registry does: a provider handed its transport
+	// cannot bind a socket any other way. The tree stays a separate
+	// parameter — it is the data this provider serves, not a dependency.
+	New(deps plugin.Deps, tree *canonical.Export) Provider
 }

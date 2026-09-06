@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"log/slog"
 	"net"
 	"strconv"
@@ -52,7 +53,7 @@ func startLoopbackProvider(t *testing.T) (string, func()) {
 		Access: canonical.AccessRead, Children: []canonical.Element{gain, mtx, fn},
 	}}
 
-	srv := (&provider.Factory{}).New(nil, &canonical.Export{Root: root})
+	srv := (&provider.Factory{}).New(plugin.Deps{}, &canonical.Export{Root: root})
 
 	// Pre-bind the listener and hand it to the provider: no
 	// close-then-rebind window (port-steal race, #694 flake class) and
@@ -88,7 +89,7 @@ func TestConsumerLoopback(t *testing.T) {
 		t.Fatalf("parse port: %v", err)
 	}
 
-	p := fastWalk((&Factory{}).New(slog.Default()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: slog.Default()}).(*Plugin))
 	ctx := context.Background()
 
 	if err := p.Connect(ctx, host, port); err != nil {

@@ -54,8 +54,8 @@ type Identity struct {
 // mandatory; `origin_timestamp` and `action_timestamp` are optional.
 type Timing struct {
 	CreationTimestamp string `json:"creation_timestamp"`
-	OriginTimestamp  string `json:"origin_timestamp,omitempty"`
-	ActionTimestamp  string `json:"action_timestamp,omitempty"`
+	OriginTimestamp   string `json:"origin_timestamp,omitempty"`
+	ActionTimestamp   string `json:"action_timestamp,omitempty"`
 }
 
 // Number is the rational-number payload used by event_number and

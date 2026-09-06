@@ -20,9 +20,9 @@ func stringObject(value, label string) []byte {
 	v = append(v, 0x00) // NUL-terminate value
 	l = append(l, 0x00) // NUL-terminate label
 	out := []byte{
-		0x05,                  // type = String
-		0x06,                  // num_props
-		0x01,                  // access (read)
+		0x05, // type = String
+		0x06, // num_props
+		0x01, // access (read)
 	}
 	out = append(out, v...)
 	out = append(out, byte(len(value))) // max_len
@@ -105,7 +105,7 @@ func TestGetIdentity_CardLabelNAK_FiresComplianceEvent(t *testing.T) {
 
 	// First reply (id=0) is an error; the probe should bail with
 	// ErrIdentityUnresolved and fire the IdentityNAK compliance event.
-	errReply := buildReply(t, mtid+1, codec.MTypeError, 17 /* object instance not exist */,
+	errReply := buildReply(t, mtid+1, codec.MTypeError, 17, /* object instance not exist */
 		codec.GroupIdentity, 0, nil)
 	ft.recv = [][]byte{errReply}
 

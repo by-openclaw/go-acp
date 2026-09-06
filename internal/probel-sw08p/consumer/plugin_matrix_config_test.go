@@ -1,6 +1,7 @@
 package probelsw08p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestSetMatrixConfigRoundTrip(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	f := &Factory{}
-	p := f.New(logger).(*Plugin)
+	p := f.New(plugin.Deps{Logger: logger}).(*Plugin)
 
 	if got := p.MatrixConfig(); got != (MatrixConfig{}) {
 		t.Errorf("default MatrixConfig = %+v; want zero value", got)

@@ -37,29 +37,29 @@ type Node struct {
 // ParameterContents covers all 18 optional fields from the spec; every field
 // is OPTIONAL on the wire and left at its Go zero value when absent.
 type Parameter struct {
-	Number            int32             // Parameter [0]
-	Path              []int32           // QualifiedParameter [0]
-	Identifier        string            // Contents [0]
-	Description       string            // Contents [1]
-	Value             any               // Contents [2] Value CHOICE — int64/float64/string/bool/[]byte/nil
-	Minimum           any               // Contents [3]
-	Maximum           any               // Contents [4]
-	Access            int64             // Contents [5] ParameterAccess
-	Format            string            // Contents [6] printf-style; '°' introduces unit
-	Enumeration       string            // Contents [7] newline-separated (legacy)
-	Factor            int64             // Contents [8]
-	IsOnline          bool              // Contents [9]
-	Formula           string            // Contents [10] provider|consumer split
-	Step              any               // Contents [11]
-	Default           any               // Contents [12]
-	Type              int64             // Contents [13] ParameterType enum
-	StreamIdentifier  int64             // Contents [14] globally-unique stream id (use HasStreamIdentifier to distinguish absent from 0)
-	HasStreamIdentifier bool            // true iff the wire carried the [14] tag — required because integer 0 is a valid streamIdentifier value
-	EnumMap           map[int64]string  // Contents [15] StringIntegerCollection
-	StreamDescriptor  *StreamDescription // Contents [16]
-	SchemaIdentifiers string            // Contents [17]
-	TemplateReference []int32           // Contents [18] RelOID
-	Children          []Element
+	Number              int32              // Parameter [0]
+	Path                []int32            // QualifiedParameter [0]
+	Identifier          string             // Contents [0]
+	Description         string             // Contents [1]
+	Value               any                // Contents [2] Value CHOICE — int64/float64/string/bool/[]byte/nil
+	Minimum             any                // Contents [3]
+	Maximum             any                // Contents [4]
+	Access              int64              // Contents [5] ParameterAccess
+	Format              string             // Contents [6] printf-style; '°' introduces unit
+	Enumeration         string             // Contents [7] newline-separated (legacy)
+	Factor              int64              // Contents [8]
+	IsOnline            bool               // Contents [9]
+	Formula             string             // Contents [10] provider|consumer split
+	Step                any                // Contents [11]
+	Default             any                // Contents [12]
+	Type                int64              // Contents [13] ParameterType enum
+	StreamIdentifier    int64              // Contents [14] globally-unique stream id (use HasStreamIdentifier to distinguish absent from 0)
+	HasStreamIdentifier bool               // true iff the wire carried the [14] tag — required because integer 0 is a valid streamIdentifier value
+	EnumMap             map[int64]string   // Contents [15] StringIntegerCollection
+	StreamDescriptor    *StreamDescription // Contents [16]
+	SchemaIdentifiers   string             // Contents [17]
+	TemplateReference   []int32            // Contents [18] RelOID
+	Children            []Element
 
 	// UnknownContents — see Node.UnknownContents.
 	UnknownContents []int32
@@ -75,23 +75,23 @@ type StreamDescription struct {
 // Matrix mirrors Matrix APPLICATION[13] (p.88) and QualifiedMatrix APPLICATION[17] (p.89).
 // A signal-routing object. targets/sources/connections live outside the contents SET.
 type Matrix struct {
-	Number               int32     // Matrix [0]
-	Path                 []int32   // QualifiedMatrix [0]
-	Identifier           string    // Contents [0]
-	Description          string    // Contents [1]
-	MatrixType           int64     // Contents [2] 0=oneToN, 1=oneToOne, 2=nToN
-	AddressingMode       int64     // Contents [3] 0=linear, 1=nonLinear
-	TargetCount          int32     // Contents [4]
-	SourceCount          int32     // Contents [5]
-	MaxTotalConnects     int32     // Contents [6] nToN global cap
-	MaxConnectsPerTarget int32     // Contents [7] nToN per-target cap
-	ParametersLocation   any       // Contents [8] ParametersLocation CHOICE — []int32 (basePath) or int32 (inline)
-	GainParameterNumber  int32     // Contents [9] sub-identifier of gain parameter under parametersLocation/connections/<t>/<s>
-	Labels               []Label   // Contents [10] LabelCollection
-	SchemaIdentifiers    string    // Contents [11]
-	TemplateReference    []int32   // Contents [12]
-	Targets              []int32   // [3] TargetCollection — signal numbers (nonLinear) or implicit (linear)
-	Sources              []int32   // [4] SourceCollection
+	Number               int32        // Matrix [0]
+	Path                 []int32      // QualifiedMatrix [0]
+	Identifier           string       // Contents [0]
+	Description          string       // Contents [1]
+	MatrixType           int64        // Contents [2] 0=oneToN, 1=oneToOne, 2=nToN
+	AddressingMode       int64        // Contents [3] 0=linear, 1=nonLinear
+	TargetCount          int32        // Contents [4]
+	SourceCount          int32        // Contents [5]
+	MaxTotalConnects     int32        // Contents [6] nToN global cap
+	MaxConnectsPerTarget int32        // Contents [7] nToN per-target cap
+	ParametersLocation   any          // Contents [8] ParametersLocation CHOICE — []int32 (basePath) or int32 (inline)
+	GainParameterNumber  int32        // Contents [9] sub-identifier of gain parameter under parametersLocation/connections/<t>/<s>
+	Labels               []Label      // Contents [10] LabelCollection
+	SchemaIdentifiers    string       // Contents [11]
+	TemplateReference    []int32      // Contents [12]
+	Targets              []int32      // [3] TargetCollection — signal numbers (nonLinear) or implicit (linear)
+	Sources              []int32      // [4] SourceCollection
 	Connections          []Connection // [5] ConnectionCollection
 	Children             []Element
 
@@ -162,11 +162,11 @@ type InvocationResult struct {
 // Template mirrors Template APPLICATION[24] (p.84).
 // Acts as a prototype for Node/Parameter/Matrix/Function references.
 type Template struct {
-	Number      int32           // [0] (Template only)
-	Path        []int32         // [0] (QualifiedTemplate only)
+	Number      int32            // [0] (Template only)
+	Path        []int32          // [0] (QualifiedTemplate only)
 	Element     *TemplateElement // [1] CHOICE — exactly one of {Parameter, Node, Matrix, Function}
-	Description string          // [2]
-	Qualified   bool            // true when wire tag was APPLICATION[25]
+	Description string           // [2]
+	Qualified   bool             // true when wire tag was APPLICATION[25]
 }
 
 // TemplateElement is the CHOICE from spec p.84: Parameter | Node | Matrix | Function.

@@ -10,17 +10,17 @@ import (
 // Spec-strict ranges from
 // https://specs.amwa.tv/is-09/releases/v1.0.0/APIs/schemas/with-refs/global.html.
 const (
-	HeartbeatIntervalMin       = 1
-	HeartbeatIntervalMax       = 1000
-	HeartbeatIntervalDefault   = 5
-	AnnounceReceiptTimeoutMin  = 2
-	AnnounceReceiptTimeoutMax  = 10
-	PTPDomainMin               = 0
-	PTPDomainMax               = 127
-	SyslogV1DefaultPort        = 514
-	SyslogV2DefaultPort        = 6514
-	SyslogPortMin              = 1
-	SyslogPortMax              = 65535
+	HeartbeatIntervalMin      = 1
+	HeartbeatIntervalMax      = 1000
+	HeartbeatIntervalDefault  = 5
+	AnnounceReceiptTimeoutMin = 2
+	AnnounceReceiptTimeoutMax = 10
+	PTPDomainMin              = 0
+	PTPDomainMax              = 127
+	SyslogV1DefaultPort       = 514
+	SyslogV2DefaultPort       = 6514
+	SyslogPortMin             = 1
+	SyslogPortMax             = 65535
 )
 
 // uuidRE enforces RFC 4122 v1-v5 form per resource_core.json.

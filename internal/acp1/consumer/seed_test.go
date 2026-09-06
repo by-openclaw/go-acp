@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 func makeSeedSnapshot(slot int, objs []consumer.Object) *export.Snapshot {

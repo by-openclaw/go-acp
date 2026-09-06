@@ -3,6 +3,7 @@ package tsl
 import (
 	"bytes"
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -77,7 +78,7 @@ func TestFactory_MetaAndNew(t *testing.T) {
 	}
 
 	tree := &canonical.Export{}
-	p := f.New(discardLogger(), tree)
+	p := f.New(plugin.Deps{Logger: discardLogger()}, tree)
 	srv, ok := p.(*Server)
 	if !ok {
 		t.Fatalf("New returned %T, want *Server", p)

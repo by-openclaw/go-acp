@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -63,7 +64,7 @@ func TestDualControllerStatusLoopback(t *testing.T) {
 	host, port := splitAddr(t, addr)
 
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := plugin.Connect(dc, host, port); err != nil {

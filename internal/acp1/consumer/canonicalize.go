@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/export/canonical"
 )
 
 // Canonicalize walks every cached SlotTree on this plugin and emits

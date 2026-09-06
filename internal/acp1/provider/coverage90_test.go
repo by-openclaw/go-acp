@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"math/rand"
@@ -383,7 +384,7 @@ func TestFactory_New(t *testing.T) {
 		Number: 1, Identifier: "device", Access: canonical.AccessRead,
 		Children: canonical.EmptyChildren(),
 	}}}
-	p := (&Factory{}).New(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	if p == nil {
 		t.Fatal("Factory.New returned nil")
 	}

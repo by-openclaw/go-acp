@@ -22,7 +22,8 @@ const (
 // NcSenderMonitor feature-set class.
 //
 // Inheritance: NcObject(1) -> NcWorker(1.2) -> NcStatusMonitor(1.2.2)
-//             -> NcSenderMonitor(1.2.2.2).
+//
+//	-> NcSenderMonitor(1.2.2.2).
 var NcSenderMonitorClassID = ms05.NcClassId{1, 2, 2, 2}
 
 // Validator implements [bcp.Validator] for an MS-05-02 class

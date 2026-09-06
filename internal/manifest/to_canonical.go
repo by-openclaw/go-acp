@@ -17,7 +17,7 @@ import (
 // Two shapes are supported on disk:
 //   - flat / legacy : Objects populated (ACP1, ACP2)
 //   - canonical     : Root populated (Ember+ — per ADR-0022 chunk
-//                     e0d585a); Templates may also be present
+//     e0d585a); Templates may also be present
 type dmFile struct {
 	Model     string                     `json:"model"`
 	SwRev     string                     `json:"sw_rev"`
@@ -29,23 +29,23 @@ type dmFile struct {
 
 // dmObject mirrors consumer.Object — only the fields we use.
 type dmObject struct {
-	Slot   int            `json:"slot"`
-	Group  string         `json:"group,omitempty"`
-	Path   []string       `json:"path,omitempty"`
-	ID     int            `json:"id"`
-	OID    string         `json:"oid,omitempty"`
-	Meta   map[string]any `json:"meta,omitempty"`
-	Label  string         `json:"label"`
-	Unit   string         `json:"unit,omitempty"`
-	Kind   string         `json:"kind"`
-	Access uint8          `json:"access"`
-	Min    any            `json:"min,omitempty"`
-	Max    any            `json:"max,omitempty"`
-	Step   any            `json:"step,omitempty"`
-	Def       any      `json:"default,omitempty"`
-	EnumItems []string `json:"enum_items,omitempty"`
-	MaxLen    int      `json:"max_len,omitempty"`
-	Value  json.RawMessage `json:"value,omitempty"`
+	Slot      int             `json:"slot"`
+	Group     string          `json:"group,omitempty"`
+	Path      []string        `json:"path,omitempty"`
+	ID        int             `json:"id"`
+	OID       string          `json:"oid,omitempty"`
+	Meta      map[string]any  `json:"meta,omitempty"`
+	Label     string          `json:"label"`
+	Unit      string          `json:"unit,omitempty"`
+	Kind      string          `json:"kind"`
+	Access    uint8           `json:"access"`
+	Min       any             `json:"min,omitempty"`
+	Max       any             `json:"max,omitempty"`
+	Step      any             `json:"step,omitempty"`
+	Def       any             `json:"default,omitempty"`
+	EnumItems []string        `json:"enum_items,omitempty"`
+	MaxLen    int             `json:"max_len,omitempty"`
+	Value     json.RawMessage `json:"value,omitempty"`
 }
 
 // loadDM reads `.cache/dm/<proto>/<Model@SwRev>.json`.
@@ -680,15 +680,15 @@ func unwrapValue(raw []byte) (any, bool) {
 		return nil, false
 	}
 	var env struct {
-		Kind  string  `json:"kind"`
-		Bool  *bool   `json:"bool"`
-		Int   *int64  `json:"int"`
-		Uint  *uint64 `json:"uint"`
+		Kind  string   `json:"kind"`
+		Bool  *bool    `json:"bool"`
+		Int   *int64   `json:"int"`
+		Uint  *uint64  `json:"uint"`
 		Float *float64 `json:"float"`
-		Str   *string `json:"str"`
-		IP    string  `json:"ip"`
-		Enum  *uint8  `json:"enum"`
-		Raw   []byte  `json:"raw"` // base64 wire bytes (acp2 walks)
+		Str   *string  `json:"str"`
+		IP    string   `json:"ip"`
+		Enum  *uint8   `json:"enum"`
+		Raw   []byte   `json:"raw"` // base64 wire bytes (acp2 walks)
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return nil, false

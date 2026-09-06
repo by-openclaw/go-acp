@@ -2,6 +2,7 @@ package tsl
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/hex"
 	"log/slog"
 	"net"
@@ -95,7 +96,7 @@ func TestVersion_KnownStringers(t *testing.T) {
 
 func TestFactory_New(t *testing.T) {
 	f := &Factory{version: V50}
-	p := f.New(slog.Default())
+	p := f.New(plugin.Deps{Logger: slog.Default()})
 	plug, ok := p.(*Plugin)
 	if !ok {
 		t.Fatalf("New returned %T, want *Plugin", p)

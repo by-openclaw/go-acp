@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -16,6 +17,15 @@ import (
 	"dhs/internal/logging"
 	"dhs/internal/transport"
 )
+
+// pluginDeps builds the dependency set every connector is constructed with.
+//
+// One place, so that arming TLS, a keepalive policy or a peer allow-list
+// later is a change here rather than in ten connectors. WithDefaults fills
+// whatever this does not set, so a connector always receives a usable set.
+func pluginDeps(logger *slog.Logger) plugin.Deps {
+	return plugin.Deps{Logger: logger}
+}
 
 // treeStore is the global file-backed tree store, initialized once.
 // Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json
@@ -227,7 +237,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 		return nil, nil, err
 	}
-	plug := factory.New(logger)
+	plug := factory.New(pluginDeps(logger))
 
 	// Attach recorder if --capture was given.
 	if recorder != nil {

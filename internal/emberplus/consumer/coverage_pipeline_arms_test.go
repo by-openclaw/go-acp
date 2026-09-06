@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -255,7 +256,7 @@ func TestSession_ConnectWithRecorder(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Attach a recorder so Plugin.Connect's recorder!=nil arm + the
 	// session writer/reader SetTap arms execute.
 	rec, err := transport.NewRecorder(filepath.Join(t.TempDir(), "cap.jsonl"))

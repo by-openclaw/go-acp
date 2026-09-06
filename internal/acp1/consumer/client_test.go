@@ -2,11 +2,11 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/acp1/codec"
 	"errors"
 	"io"
 	"testing"
 	"time"
-	"dhs/internal/acp1/codec"
 )
 
 // fakeTransport is an in-memory Transport for deterministic client tests.
@@ -275,10 +275,10 @@ func TestClient_Do_ErrorReplyPropagates(t *testing.T) {
 	// be just the MCODE byte (spec p. 9) — no ObjGrp/ObjId.
 	errReply := []byte{
 		0x00, 0x00, 0x00, 0x0B, // MTID = 11
-		0x01,       // codec.PVER
-		0x03,       // codec.MType = error
-		0x00,       // MAddr
-		0x13,       // MCODE = 19 (no write access)
+		0x01, // codec.PVER
+		0x03, // codec.MType = error
+		0x00, // MAddr
+		0x13, // MCODE = 19 (no write access)
 	}
 	ft.recv = [][]byte{errReply}
 

@@ -86,7 +86,7 @@ func TestCerebrumValidate_CountsInvariantsAndTree(t *testing.T) {
 
 func TestCerebrumValidate_ErrorArmsStopAtCancel(t *testing.T) {
 	trames := []wiretrace.Trame{
-		{Direction: wiretrace.DirectionRx, Hex: "zz"},           // hex error
+		{Direction: wiretrace.DirectionRx, Hex: "zz"},                                        // hex error
 		trame(wiretrace.DirectionRx, "not xml at all - long enough to clamp the hex prefix"), // decode error, >16 bytes
 		{Direction: wiretrace.DirectionRx, Hex: hexDoc(`<ACK MTID="1"/>`), Note: "here"},
 		trame(wiretrace.DirectionRx, `<ACK MTID="2"/>`), // never reached with stop-at

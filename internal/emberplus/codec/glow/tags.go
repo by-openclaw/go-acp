@@ -70,14 +70,14 @@ const (
 
 // Context tags inside the NodeContents SET. Spec p.87.
 //
-// NodeContents ::= SET {
-//   identifier         [0] EmberString OPTIONAL,
-//   description        [1] EmberString OPTIONAL,
-//   isRoot             [2] BOOLEAN     OPTIONAL,  -- spec CTX 2 is isRoot, not isOnline
-//   isOnline           [3] BOOLEAN     OPTIONAL,  -- default true
-//   schemaIdentifiers  [4] EmberString OPTIONAL,
-//   templateReference  [5] RELATIVE-OID OPTIONAL
-// }
+//	NodeContents ::= SET {
+//	  identifier         [0] EmberString OPTIONAL,
+//	  description        [1] EmberString OPTIONAL,
+//	  isRoot             [2] BOOLEAN     OPTIONAL,  -- spec CTX 2 is isRoot, not isOnline
+//	  isOnline           [3] BOOLEAN     OPTIONAL,  -- default true
+//	  schemaIdentifiers  [4] EmberString OPTIONAL,
+//	  templateReference  [5] RELATIVE-OID OPTIONAL
+//	}
 const (
 	NodeContentIdentifier        uint32 = 0
 	NodeContentDescription       uint32 = 1
@@ -89,27 +89,27 @@ const (
 
 // Context tags inside the ParameterContents SET. Spec p.85 (the full 0..18 list).
 //
-// ParameterContents ::= SET {
-//   identifier         [ 0] EmberString,
-//   description        [ 1] EmberString,
-//   value              [ 2] Value,              -- CHOICE int/real/string/bool/octets/null
-//   minimum            [ 3] MinMax,
-//   maximum            [ 4] MinMax,
-//   access             [ 5] ParameterAccess,
-//   format             [ 6] EmberString,        -- printf-style; '°' introduces unit
-//   enumeration        [ 7] EmberString,        -- newline-separated (legacy)
-//   factor             [ 8] Integer32,
-//   isOnline           [ 9] BOOLEAN,
-//   formula            [10] EmberString,        -- provider|consumer split
-//   step               [11] Integer32,
-//   default            [12] Value,
-//   type               [13] ParameterType,
-//   streamIdentifier   [14] Integer32,
-//   enumMap            [15] StringIntegerCollection,
-//   streamDescriptor   [16] StreamDescription,
-//   schemaIdentifiers  [17] EmberString,
-//   templateReference  [18] RELATIVE-OID
-// }
+//	ParameterContents ::= SET {
+//	  identifier         [ 0] EmberString,
+//	  description        [ 1] EmberString,
+//	  value              [ 2] Value,              -- CHOICE int/real/string/bool/octets/null
+//	  minimum            [ 3] MinMax,
+//	  maximum            [ 4] MinMax,
+//	  access             [ 5] ParameterAccess,
+//	  format             [ 6] EmberString,        -- printf-style; '°' introduces unit
+//	  enumeration        [ 7] EmberString,        -- newline-separated (legacy)
+//	  factor             [ 8] Integer32,
+//	  isOnline           [ 9] BOOLEAN,
+//	  formula            [10] EmberString,        -- provider|consumer split
+//	  step               [11] Integer32,
+//	  default            [12] Value,
+//	  type               [13] ParameterType,
+//	  streamIdentifier   [14] Integer32,
+//	  enumMap            [15] StringIntegerCollection,
+//	  streamDescriptor   [16] StreamDescription,
+//	  schemaIdentifiers  [17] EmberString,
+//	  templateReference  [18] RELATIVE-OID
+//	}
 const (
 	ParamContentIdentifier        uint32 = 0
 	ParamContentDescription       uint32 = 1
@@ -134,10 +134,10 @@ const (
 
 // Context tags inside a Command wrapper (APPLICATION[2]). Spec p.86.
 //
-// Command ::= SEQUENCE {
-//   number   [0] CommandType,
-//   options  CHOICE { dirFieldMask [1] FieldFlags | invocation [2] Invocation } OPTIONAL
-// }
+//	Command ::= SEQUENCE {
+//	  number   [0] CommandType,
+//	  options  CHOICE { dirFieldMask [1] FieldFlags | invocation [2] Invocation } OPTIONAL
+//	}
 const (
 	CmdCtxNumber     uint32 = 0
 	CmdCtxDirMask    uint32 = 1
@@ -174,14 +174,14 @@ const (
 
 // Context tags on the Matrix SEQUENCE wrapper (APPLICATION[13]). Spec p.88.
 //
-// Matrix ::= SEQUENCE {
-//   number       [0] Integer32,
-//   contents     [1] MatrixContents         OPTIONAL,
-//   children     [2] ElementCollection      OPTIONAL,
-//   targets      [3] TargetCollection       OPTIONAL,
-//   sources      [4] SourceCollection       OPTIONAL,
-//   connections  [5] ConnectionCollection   OPTIONAL
-// }
+//	Matrix ::= SEQUENCE {
+//	  number       [0] Integer32,
+//	  contents     [1] MatrixContents         OPTIONAL,
+//	  children     [2] ElementCollection      OPTIONAL,
+//	  targets      [3] TargetCollection       OPTIONAL,
+//	  sources      [4] SourceCollection       OPTIONAL,
+//	  connections  [5] ConnectionCollection   OPTIONAL
+//	}
 const (
 	MatrixNumber      uint32 = 0
 	MatrixContents    uint32 = 1
@@ -193,21 +193,21 @@ const (
 
 // Context tags inside the MatrixContents SET. Spec p.88.
 //
-// MatrixContents ::= SET {
-//   identifier              [ 0] EmberString,
-//   description             [ 1] EmberString            OPTIONAL,
-//   type                    [ 2] MatrixType             OPTIONAL,
-//   addressingMode          [ 3] MatrixAddressingMode   OPTIONAL,
-//   targetCount             [ 4] Integer32,
-//   sourceCount             [ 5] Integer32,
-//   maximumTotalConnects    [ 6] Integer32              OPTIONAL, -- nToN
-//   maximumConnectsPerTarget[ 7] Integer32              OPTIONAL, -- nToN
-//   parametersLocation      [ 8] ParametersLocation     OPTIONAL, -- basePath RelOID OR inline Int32
-//   gainParameterNumber     [ 9] Integer32              OPTIONAL,
-//   labels                  [10] LabelCollection        OPTIONAL,
-//   schemaIdentifiers       [11] EmberString            OPTIONAL,
-//   templateReference       [12] RELATIVE-OID           OPTIONAL
-// }
+//	MatrixContents ::= SET {
+//	  identifier              [ 0] EmberString,
+//	  description             [ 1] EmberString            OPTIONAL,
+//	  type                    [ 2] MatrixType             OPTIONAL,
+//	  addressingMode          [ 3] MatrixAddressingMode   OPTIONAL,
+//	  targetCount             [ 4] Integer32,
+//	  sourceCount             [ 5] Integer32,
+//	  maximumTotalConnects    [ 6] Integer32              OPTIONAL, -- nToN
+//	  maximumConnectsPerTarget[ 7] Integer32              OPTIONAL, -- nToN
+//	  parametersLocation      [ 8] ParametersLocation     OPTIONAL, -- basePath RelOID OR inline Int32
+//	  gainParameterNumber     [ 9] Integer32              OPTIONAL,
+//	  labels                  [10] LabelCollection        OPTIONAL,
+//	  schemaIdentifiers       [11] EmberString            OPTIONAL,
+//	  templateReference       [12] RELATIVE-OID           OPTIONAL
+//	}
 const (
 	MatContentIdentifier          uint32 = 0
 	MatContentDescription         uint32 = 1
@@ -239,12 +239,12 @@ const (
 
 // Context tags on the Connection SEQUENCE (APPLICATION[16]). Spec p.89.
 //
-// Connection ::= SEQUENCE {
-//   target       [0] Integer32,
-//   sources      [1] PackedNumbers        OPTIONAL, -- RELATIVE-OID of source numbers
-//   operation    [2] ConnectionOperation  OPTIONAL,
-//   disposition  [3] ConnectionDisposition OPTIONAL
-// }
+//	Connection ::= SEQUENCE {
+//	  target       [0] Integer32,
+//	  sources      [1] PackedNumbers        OPTIONAL, -- RELATIVE-OID of source numbers
+//	  operation    [2] ConnectionOperation  OPTIONAL,
+//	  disposition  [3] ConnectionDisposition OPTIONAL
+//	}
 const (
 	ConnTarget      uint32 = 0
 	ConnSources     uint32 = 1
@@ -302,13 +302,13 @@ const (
 
 // Context tags inside FunctionContents SET. Spec p.91.
 //
-// FunctionContents ::= SET {
-//   identifier        [0] EmberString       OPTIONAL,
-//   description       [1] EmberString       OPTIONAL,
-//   arguments         [2] TupleDescription  OPTIONAL,
-//   result            [3] TupleDescription  OPTIONAL,
-//   templateReference [4] RELATIVE-OID      OPTIONAL
-// }
+//	FunctionContents ::= SET {
+//	  identifier        [0] EmberString       OPTIONAL,
+//	  description       [1] EmberString       OPTIONAL,
+//	  arguments         [2] TupleDescription  OPTIONAL,
+//	  result            [3] TupleDescription  OPTIONAL,
+//	  templateReference [4] RELATIVE-OID      OPTIONAL
+//	}
 const (
 	FuncContentIdentifier        uint32 = 0
 	FuncContentDescription       uint32 = 1

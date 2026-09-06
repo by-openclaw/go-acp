@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/export"
 	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 )
 
 // TreeStore manages cached tree files on disk.
@@ -103,7 +103,6 @@ func (s *TreeStore) IdentityPath(proto, identity string) string {
 func (s *TreeStore) slotPath(ip string, slot int) string {
 	return filepath.Join(s.baseDir, "devices", ip, fmt.Sprintf("slot_%d.json", slot))
 }
-
 
 // Save writes a walked tree to disk using the same hierarchical JSON
 // format as `dhs export --format json`. Values are stripped before
@@ -435,8 +434,8 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, objs []consumer.Objec
 //     ...}. Accepted for one release cycle, then dropped.
 //
 // Path resolution order:
-//   1. .cache/dm/<proto>/<identity>.json (new per-proto path, #425)
-//   2. .cache/dm/<identity>.json         (legacy flat path)
+//  1. .cache/dm/<proto>/<identity>.json (new per-proto path, #425)
+//  2. .cache/dm/<identity>.json         (legacy flat path)
 //
 // Both paths can carry either DM or legacy Snapshot content — the
 // shape detection is content-based, not path-based.

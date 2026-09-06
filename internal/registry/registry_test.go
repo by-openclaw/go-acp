@@ -20,8 +20,8 @@ type stubFactory struct {
 	meta registry.Meta
 }
 
-func (f *stubFactory) Meta() registry.Meta                       { return f.meta }
-func (f *stubFactory) New(_ *slog.Logger) registry.Registry      { return &stubRegistry{} }
+func (f *stubFactory) Meta() registry.Meta                  { return f.meta }
+func (f *stubFactory) New(_ *slog.Logger) registry.Registry { return &stubRegistry{} }
 
 type stubRegistry struct{}
 
@@ -29,8 +29,8 @@ func (*stubRegistry) Serve(ctx context.Context, _ registry.ServeOptions) error {
 	<-ctx.Done()
 	return nil
 }
-func (*stubRegistry) Stop() error            { return nil }
-func (*stubRegistry) Stats() registry.Stats  { return registry.Stats{} }
+func (*stubRegistry) Stop() error           { return nil }
+func (*stubRegistry) Stats() registry.Stats { return registry.Stats{} }
 
 func TestRegisterLookupList(t *testing.T) {
 	n := regSeq.Add(1)

@@ -2,18 +2,18 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/acp2/codec"
 	"fmt"
 	"log/slog"
 	"time"
-	"dhs/internal/acp2/codec"
 )
 
 // DiagResult is one diagnostic probe result.
 type DiagResult struct {
-	Name    string
-	Sent    string // hex of sent ACP2 payload
-	Status  string // "ok", "error: ...", "timeout"
-	Reply   string // hex of reply payload (if any)
+	Name   string
+	Sent   string // hex of sent ACP2 payload
+	Status string // "ok", "error: ...", "timeout"
+	Reply  string // hex of reply payload (if any)
 }
 
 // diagTimings bounds the per-probe reply wait and the announce-listen

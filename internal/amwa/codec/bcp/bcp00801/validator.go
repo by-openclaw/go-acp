@@ -30,7 +30,8 @@ const (
 // MS-05-02 framework registry by the BCP-008-01 spec text §4.
 //
 // Inheritance: NcObject(1) -> NcWorker(1.2) -> NcStatusMonitor(1.2.2)
-//             -> NcReceiverMonitor(1.2.2.1).
+//
+//	-> NcReceiverMonitor(1.2.2.1).
 var NcReceiverMonitorClassID = ms05.NcClassId{1, 2, 2, 1}
 
 // Validator implements [bcp.Validator] for an MS-05-02 class

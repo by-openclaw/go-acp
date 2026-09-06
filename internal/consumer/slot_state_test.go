@@ -33,10 +33,10 @@ func TestSlotInfo_IsOnline_TruthTable(t *testing.T) {
 	now := time.Now()
 
 	cases := []struct {
-		name   string
-		state  SlotState
-		live   bool
-		want   bool
+		name  string
+		state SlotState
+		live  bool
+		want  bool
 	}{
 		{"present-and-live", SlotStatePresent, true, true},
 		{"present-but-not-live", SlotStatePresent, false, false},

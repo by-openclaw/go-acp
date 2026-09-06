@@ -191,6 +191,7 @@ func isCrossProtocol(importPath string) bool {
 		"transport",
 		"auth",
 		"lldp",
+		"plugin",
 		"export",
 		"scenario",
 		"amwa",

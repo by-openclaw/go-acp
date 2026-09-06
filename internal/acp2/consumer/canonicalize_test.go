@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/export/canonical"
 )
 
 // TestCanonicalize_Empty verifies a fresh plugin emits a root device
@@ -40,13 +40,13 @@ func TestCanonicalize_SingleSlot(t *testing.T) {
 		Objects: []consumer.Object{
 			{
 				Slot: 0, ID: 1, Label: "ROOT_NODE_V2",
-				Path:  []string{"ROOT_NODE_V2"},
-				Kind:  consumer.KindRaw, Access: 1,
+				Path: []string{"ROOT_NODE_V2"},
+				Kind: consumer.KindRaw, Access: 1,
 			},
 			{
 				Slot: 0, ID: 100, Label: "BOARD",
-				Path:  []string{"ROOT_NODE_V2", "BOARD"},
-				Kind:  consumer.KindRaw, Access: 1,
+				Path: []string{"ROOT_NODE_V2", "BOARD"},
+				Kind: consumer.KindRaw, Access: 1,
 			},
 			{
 				Slot: 0, ID: 47431, Label: "ACP Trace",
@@ -58,10 +58,10 @@ func TestCanonicalize_SingleSlot(t *testing.T) {
 			},
 			{
 				Slot: 0, ID: 3, Label: "User Label 1",
-				Path:   []string{"ROOT_NODE_V2", "IDENTITY", "User Label 1"},
-				Group:  "IDENTITY",
-				Kind:   consumer.KindString, Access: 3, MaxLen: 17,
-				Value:  consumer.Value{Kind: consumer.KindString, Str: "ACP2-OK"},
+				Path:  []string{"ROOT_NODE_V2", "IDENTITY", "User Label 1"},
+				Group: "IDENTITY",
+				Kind:  consumer.KindString, Access: 3, MaxLen: 17,
+				Value: consumer.Value{Kind: consumer.KindString, Str: "ACP2-OK"},
 			},
 		},
 		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNode, codec.ObjTypeNode, codec.ObjTypeEnum, codec.ObjTypeString},

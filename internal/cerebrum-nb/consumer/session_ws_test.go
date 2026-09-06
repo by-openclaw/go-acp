@@ -2,6 +2,7 @@ package cerebrumnb
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"strings"
@@ -16,7 +17,7 @@ import (
 
 func conValReq(path string) consumer.ValueRequest { return consumer.ValueRequest{Path: path} }
 func conStrVal(s string) consumer.Value           { return consumer.Value{Kind: consumer.KindString, Str: s} }
-func conIntVal() consumer.Value                    { return consumer.Value{Kind: consumer.KindInt, Int: 1} }
+func conIntVal() consumer.Value                   { return consumer.Value{Kind: consumer.KindInt, Int: 1} }
 
 func ctx2s(t *testing.T) (context.Context, context.CancelFunc) {
 	t.Helper()
@@ -663,7 +664,7 @@ func TestFactory(t *testing.T) {
 	if m.Name != "cerebrum-nb" || m.DefaultPort != DefaultPort {
 		t.Fatalf("meta = %+v", m)
 	}
-	if f.New(nil) == nil {
+	if f.New(plugin.Deps{}) == nil {
 		t.Fatal("New returned nil")
 	}
 	if NewPlugin(nil) == nil {

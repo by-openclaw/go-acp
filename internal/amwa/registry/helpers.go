@@ -59,7 +59,6 @@ func singularFromPlural(p string) (is04.ResourceType, bool) {
 	return "", false
 }
 
-
 // getResource fetches one resource by (type, id). Returns the typed
 // value and a boolean ok.
 func getResource(s *Store, t is04.ResourceType, id string) (any, bool) {
@@ -85,4 +84,3 @@ func getResource(s *Store, t is04.ResourceType, id string) (any, bool) {
 	}
 	return nil, false
 }
-

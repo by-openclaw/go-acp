@@ -29,15 +29,15 @@ type VideoMode struct {
 
 // capability URNs used by the mapping.
 const (
-	capFrameWidth    = "urn:x-nmos:cap:format:frame_width"
-	capFrameHeight   = "urn:x-nmos:cap:format:frame_height"
-	capGrainRate     = "urn:x-nmos:cap:format:grain_rate"
-	capInterlace     = "urn:x-nmos:cap:format:interlace_mode"
-	capColorSampling = "urn:x-nmos:cap:format:color_sampling"
-	capComponent     = "urn:x-nmos:cap:format:component_depth"
-	capMediaType     = "urn:x-nmos:cap:format:media_type"
-	capChannelCount  = "urn:x-nmos:cap:format:channel_count"
-	capSampleRate    = "urn:x-nmos:cap:format:sample_rate"
+	capFrameWidth     = "urn:x-nmos:cap:format:frame_width"
+	capFrameHeight    = "urn:x-nmos:cap:format:frame_height"
+	capGrainRate      = "urn:x-nmos:cap:format:grain_rate"
+	capInterlace      = "urn:x-nmos:cap:format:interlace_mode"
+	capColorSampling  = "urn:x-nmos:cap:format:color_sampling"
+	capComponent      = "urn:x-nmos:cap:format:component_depth"
+	capMediaType      = "urn:x-nmos:cap:format:media_type"
+	capChannelCount   = "urn:x-nmos:cap:format:channel_count"
+	capSampleRate     = "urn:x-nmos:cap:format:sample_rate"
 	capMetaPreference = "urn:x-nmos:cap:meta:preference"
 )
 

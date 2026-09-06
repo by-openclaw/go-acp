@@ -2,6 +2,7 @@ package probelsw02p_test
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -58,7 +59,7 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	}
 
 	srv := &provider.Factory{}
-	prov := srv.New(logger, exp)
+	prov := srv.New(plugin.Deps{Logger: logger}, exp)
 
 	// Pre-bind the listener and hand it to the provider: no
 	// close-then-rebind window (another process in a parallel test
@@ -87,8 +88,8 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	// Two consumer plugins connect to the same provider.
 	fA := &consumer.Factory{}
 	fB := &consumer.Factory{}
-	plA, _ := fA.New(logger).(*consumer.Plugin)
-	plB, _ := fB.New(logger).(*consumer.Plugin)
+	plA, _ := fA.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
+	plB, _ := fB.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
 
 	host, port := splitHostPort(t, addr)
 	if err := plA.Connect(ctx, host, port); err != nil {

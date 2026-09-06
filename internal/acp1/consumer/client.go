@@ -3,13 +3,13 @@ package acp1
 import (
 	"bytes"
 	"context"
+	"dhs/internal/acp1/codec"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
-	"dhs/internal/acp1/codec"
 )
 
 // Transport is the minimal send/receive contract the ACP1 client needs.

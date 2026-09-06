@@ -21,8 +21,8 @@ func TestObjTypeFromVType(t *testing.T) {
 		{codec.NumTypeS32, codec.ObjTypeNumber},
 		{codec.NumTypeU32, codec.ObjTypeNumber},
 		{codec.NumTypeFloat, codec.ObjTypeNumber},
-		{codec.NumTypePreset, codec.ObjTypeEnum},  // 9 → Enum
-		{codec.NumTypeIPv4, codec.ObjTypeIPv4},    // 10 → IPv4
+		{codec.NumTypePreset, codec.ObjTypeEnum},   // 9 → Enum
+		{codec.NumTypeIPv4, codec.ObjTypeIPv4},     // 10 → IPv4
 		{codec.NumTypeString, codec.ObjTypeString}, // 11 → String
 	}
 	for _, c := range cases {

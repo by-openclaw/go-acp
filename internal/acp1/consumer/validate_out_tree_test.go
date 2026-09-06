@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/hex"
 	"log/slog"
 	"os"
@@ -9,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"dhs/internal/export"
-	"dhs/internal/consumer"
-	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/export"
+	"dhs/internal/wiretrace"
 )
 
 // buildGetObjectTrame constructs one Trame holding a getObject reply.
@@ -41,7 +42,7 @@ func buildGetObjectTrame(t *testing.T, mtid uint32, slot uint8, group codec.ObjG
 func newPluginForOutTree(t *testing.T) *Plugin {
 	t.Helper()
 	f := &Factory{}
-	plug := f.New(slog.Default()).(*Plugin)
+	plug := f.New(plugin.Deps{Logger: slog.Default()}).(*Plugin)
 	return plug
 }
 

@@ -35,4 +35,3 @@ var (
 	// value outside int64 range.
 	ErrOverflow = errcode.New(errcode.LayerBER, "integer-overflow", errcode.ClassRuntime)
 )
-

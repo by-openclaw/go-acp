@@ -5,8 +5,9 @@ import "encoding/json"
 // Node is a container element. See docs/protocols/elements/node.md.
 //
 // JSON field order (locked by the doc):
-//   number, identifier, path, oid, description, isOnline, access,
-//   children, templateReference, schemaIdentifiers
+//
+//	number, identifier, path, oid, description, isOnline, access,
+//	children, templateReference, schemaIdentifiers
 type Node struct {
 	Header
 	TemplateReference *string `json:"templateReference,omitempty"`

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
-	"dhs/internal/acp1/codec"
 )
 
 // walkerClient is the minimum contract the Walker needs from whatever

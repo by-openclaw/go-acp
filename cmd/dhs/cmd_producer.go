@@ -145,7 +145,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
-	srv := factory.New(logger, tree)
+	srv := factory.New(pluginDeps(logger), tree)
 	// Manifest slots may declare per-slot GetSlotInfo proto lists
 	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]
 	// and Cerebrum's driver gates on it). Providers that support the

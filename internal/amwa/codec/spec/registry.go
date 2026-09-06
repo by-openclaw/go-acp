@@ -22,9 +22,9 @@ import (
 // mutating op; everything else is read-only and lock-cheap (RWMutex).
 type Registry[T Versioned] struct {
 	mu       sync.RWMutex
-	specID   string         // captured from first Register call; subsequent calls must match
-	byVer    map[string]T   // APIVer → codec
-	versions []string       // APIVer list, sorted ascending semver
+	specID   string       // captured from first Register call; subsequent calls must match
+	byVer    map[string]T // APIVer → codec
+	versions []string     // APIVer list, sorted ascending semver
 }
 
 // NewRegistry constructs an empty per-spec Registry. The plugin's spec

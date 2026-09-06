@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	SpecID         = "bcp-006-04"
-	APIVer         = "v1.0"
-	SpecPatch      = "v1.0.0"
+	SpecID          = "bcp-006-04"
+	APIVer          = "v1.0"
+	SpecPatch       = "v1.0.0"
 	MPEGTSMediaType = "video/MP2T"
-	MuxFormatURN   = "urn:x-nmos:format:mux"
+	MuxFormatURN    = "urn:x-nmos:format:mux"
 )
 
 // Validator implements [bcp.Validator] for IS-04 Flow.

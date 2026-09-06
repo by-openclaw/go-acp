@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"io"
 	"log/slog"
@@ -38,7 +39,7 @@ func TestCrosspointInterrogateLoopback(t *testing.T) {
 	// 3. Connect via the consumer plugin.
 	host, port := splitAddr(t, addr)
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDial()
 	if err := plugin.Connect(dialCtx, host, port); err != nil {
@@ -149,7 +150,7 @@ func TestCrosspointTallyDumpLoopback(t *testing.T) {
 	}
 
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := plugin.Connect(dc, host, port); err != nil {
@@ -194,7 +195,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 
 	// Primary consumer: sends the Connect.
 	f := &probelproto.Factory{}
-	primary := f.New(logger).(*probelproto.Plugin)
+	primary := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := primary.Connect(dc, host, port); err != nil {
