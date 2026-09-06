@@ -1,7 +1,9 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/transport"
 	"errors"
 	"fmt"
 	"io"
@@ -15,18 +17,14 @@ import (
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
 const DefaultDialTimeout = 5 * time.Second
 
-// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
-// to dialed TCP connections by Dial. Zero in ClientConfig means use this
-// default; pass a negative value to disable explicitly. Belt-and-braces
-// dead-socket detector alongside the §2 framing-level ACK / NAK retries.
-const DefaultTCPKeepalivePeriod = 30 * time.Second
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied to
+// dialled connections.
+//
+// It is transport's value, not a second opinion: one keepalive policy for
+// every protocol is the point of having a transport package.
+const DefaultTCPKeepalivePeriod = transport.DefaultTCPKeepalivePeriod
 
-// DefaultReadBufferSize is the capacity of the accumulating read buffer.
-// SW-P-08 frames are small (<300 bytes in the largest tally dump); 4 KiB
-// is plenty for one or two in-flight frames.
-const DefaultReadBufferSize = 4096
-
-// DefaultACKTimeout is the per-attempt wait for a peer's DLE ACK / DLE NAK
+// DefaultACKTimeout is the per-attempt wait for a peer's codec.DLE ACK / codec.DLE codec.NAK
 // response. SW-P-08 §2 specifies a "notional 1 second timeout" for the
 // low-level acknowledgement, noted as ideally <=10 ms in practice but
 // 1 s being the contract.
@@ -39,7 +37,7 @@ const DefaultACKTimeout = 1 * time.Second
 const DefaultMaxAttempts = 5
 
 // DataCapSoft is the guaranteed-portable DATA-field size per SW-P-08 §2:
-// "The maximum size of the DATA field (before DLE padding) that is
+// "The maximum size of the DATA field (before codec.DLE padding) that is
 // guaranteed to work with all systems is 128 bytes". Frames with a
 // DATA field between 129 and 255 bytes are "custom applications" and
 // fire the OnCapSoft compliance callback — they are allowed but may
@@ -47,7 +45,7 @@ const DefaultMaxAttempts = 5
 const DataCapSoft = 128
 
 // DataCapHard is the absolute ceiling on DATA (ID + Payload): BTC is a
-// single byte (u8) so 255 is the physical limit. Pack refuses anything
+// single byte (u8) so 255 is the physical limit. codec.Pack refuses anything
 // larger because it would overflow the byte count.
 const DataCapHard = 255
 
@@ -69,7 +67,7 @@ var (
 
 // Client is the TCP transport around the Probel SW-P-08 codec. It owns
 // the connection, runs a single reader goroutine that demultiplexes
-// incoming bytes into (a) DLE ACK / DLE NAK signals for the current
+// incoming bytes into (a) codec.DLE ACK / codec.DLE codec.NAK signals for the current
 // in-flight Send, (b) replies correlated with an outstanding Send's
 // matcher, and (c) asynchronous events broadcast to Subscribe listeners.
 //
@@ -80,8 +78,8 @@ var (
 //
 // Retry + timeout policy (SW-P-08 §2):
 //   - After writing a frame, wait up to ACKTimeout (1 s default) for
-//     DLE ACK.
-//   - On DLE NAK: retry, up to MaxAttempts (5 default).
+//     codec.DLE ACK.
+//   - On codec.DLE codec.NAK: retry, up to MaxAttempts (5 default).
 //   - On ack-timeout: retry, up to MaxAttempts (5 default).
 //   - Once ACK is observed, wait for the matching reply bounded only
 //     by the caller's context.
@@ -127,15 +125,15 @@ type Client struct {
 	onTx      func([]byte)
 	onRx      func([]byte)
 	onCapSoft func(dataLen int) // DATA > 128 bytes but <= 255
-	onNAK     func()            // peer sent DLE NAK for our frame
+	onNAK     func()            // peer sent codec.DLE codec.NAK for our frame
 	onTimeout func()            // ACK not seen within ackTimeout
-	onRetry   func(attempt int) // retrying after NAK or ack-timeout
+	onRetry   func(attempt int) // retrying after codec.NAK or ack-timeout
 	onNoACK   func()            // reply arrived before ACK (spec deviation)
 }
 
 // eventFunc is an async-event callback. Listeners receive every frame
 // that isn't claimed by a pending Send matcher (typically tallies).
-type eventFunc func(Frame)
+type eventFunc func(codec.Frame)
 
 // subscription pairs an async listener with the id Unsubscribe removes it by.
 type subscription struct {
@@ -146,7 +144,7 @@ type subscription struct {
 // pendingWaiter captures a single in-flight Send. SW-P-08 is half-duplex
 // per logical transaction: only one outstanding request at a time.
 type pendingWaiter struct {
-	match func(Frame) bool
+	match func(codec.Frame) bool
 
 	// reply carries the decoded frame (or an I/O error from failPending).
 	// Lives for the whole Send (all retry attempts).
@@ -161,7 +159,7 @@ type pendingWaiter struct {
 	nak   chan struct{}
 }
 
-// installSignals resets the ACK/NAK channels before an attempt. Returns
+// installSignals resets the ACK/codec.NAK channels before an attempt. Returns
 // the freshly-installed channels so the caller can select on them.
 func (w *pendingWaiter) installSignals() (chan struct{}, chan struct{}) {
 	ack := make(chan struct{})
@@ -173,7 +171,7 @@ func (w *pendingWaiter) installSignals() (chan struct{}, chan struct{}) {
 	return ack, nak
 }
 
-// closeACK is called by the reader on DLE ACK. No-op when no Send is
+// closeACK is called by the reader on codec.DLE ACK. No-op when no Send is
 // awaiting ACK. Idempotent within one attempt (the reader claims the
 // channel under sigMu).
 func (w *pendingWaiter) closeACK() {
@@ -186,7 +184,7 @@ func (w *pendingWaiter) closeACK() {
 	}
 }
 
-// closeNAK mirrors closeACK for DLE NAK.
+// closeNAK mirrors closeACK for codec.DLE codec.NAK.
 func (w *pendingWaiter) closeNAK() {
 	w.sigMu.Lock()
 	ch := w.nak
@@ -198,7 +196,7 @@ func (w *pendingWaiter) closeNAK() {
 }
 
 type replyResult struct {
-	frame Frame
+	frame codec.Frame
 	err   error
 }
 
@@ -207,7 +205,7 @@ type ClientConfig struct {
 	// DialTimeout bounds the TCP connect. Defaults to DefaultDialTimeout.
 	DialTimeout time.Duration
 	// ReadBufferSize is the accumulating read-loop buffer. Defaults to
-	// DefaultReadBufferSize.
+	// codec.DefaultReadBufferSize.
 	ReadBufferSize int
 	// WireHexLog enables "probel TX/RX: <hex>" INFO logs of every
 	// framed exchange. Defaults to true; useful during development.
@@ -232,9 +230,9 @@ type ClientConfig struct {
 
 	// OnCapSoft fires when an outbound frame's DATA field exceeds
 	// DataCapSoft (128) but is within DataCapHard (255). Argument is
-	// the DATA byte count (ID + Payload). Frame is still sent.
+	// the DATA byte count (ID + Payload). codec.Frame is still sent.
 	OnCapSoft func(dataLen int)
-	// OnNAK fires when an inbound DLE NAK is observed for a frame we
+	// OnNAK fires when an inbound codec.DLE codec.NAK is observed for a frame we
 	// sent. The Send retries internally up to MaxAttempts.
 	OnNAK func()
 	// OnTimeout fires when ACK isn't observed within ACKTimeout. The
@@ -255,7 +253,7 @@ type ClientConfig struct {
 	// through a captured-by-closure variable that may still be unset
 	// when the reader fires. Subscribe remains the right surface for
 	// listeners attached after the session is established.
-	OnEvent func(c *Client, f Frame)
+	OnEvent func(c *Client, f codec.Frame)
 }
 
 // Dial opens a TCP connection to addr (host:port) and starts the reader
@@ -268,14 +266,19 @@ func Dial(ctx context.Context, addr string, logger *slog.Logger, cfg ClientConfi
 		cfg.DialTimeout = DefaultDialTimeout
 	}
 	if cfg.ReadBufferSize <= 0 {
-		cfg.ReadBufferSize = DefaultReadBufferSize
+		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}
-	d := net.Dialer{Timeout: cfg.DialTimeout}
+	// The shared dialler applies the same socket policy an accepted
+	// connection gets, so a dialled session and an accepted one are
+	// configured identically. A negative period disables keepalive.
+	d := transport.TCPDialer{
+		Timeout: cfg.DialTimeout,
+		Options: transport.SocketOptions{KeepalivePeriod: cfg.TCPKeepalivePeriod},
+	}
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("probel dial %s: %w", addr, err)
 	}
-	applyTCPKeepalive(conn, cfg.TCPKeepalivePeriod, logger)
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	c.logger.Info("probel client connected",
@@ -291,55 +294,11 @@ func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Cl
 		logger = slog.Default()
 	}
 	if cfg.ReadBufferSize <= 0 {
-		cfg.ReadBufferSize = DefaultReadBufferSize
+		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}
 	c := newClient(conn, logger, cfg)
 	go c.readLoop(cfg.ReadBufferSize)
 	return c
-}
-
-// setKeepAlive / setKeepAlivePeriod are indirection seams over the
-// *net.TCPConn setsockopt calls. In production they are nil and the
-// real methods run (see applyTCPKeepalive). Tests override them to
-// exercise the OS-level error arms, which cannot be provoked on a
-// live, open *net.TCPConn (SetKeepAlive succeeds whenever the socket
-// is healthy, and once it errors applyTCPKeepalive returns before
-// SetKeepAlivePeriod is ever reached). Mirrors the transparent-seam
-// idiom used by sibling probel codecs. Guard logic is unchanged.
-var (
-	setKeepAlive       func(*net.TCPConn, bool) error          = nil
-	setKeepAlivePeriod func(*net.TCPConn, time.Duration) error = nil
-)
-
-// applyTCPKeepalive enables SO_KEEPALIVE on a dialed TCP connection.
-// period == 0 → DefaultTCPKeepalivePeriod; period < 0 → disable.
-// No-op when conn isn't a *net.TCPConn (e.g. test pipe).
-func applyTCPKeepalive(conn net.Conn, period time.Duration, logger *slog.Logger) {
-	if period < 0 {
-		return
-	}
-	if period == 0 {
-		period = DefaultTCPKeepalivePeriod
-	}
-	tc, ok := conn.(*net.TCPConn)
-	if !ok {
-		return
-	}
-	enable := tc.SetKeepAlive
-	if setKeepAlive != nil {
-		enable = func(v bool) error { return setKeepAlive(tc, v) }
-	}
-	setPeriod := tc.SetKeepAlivePeriod
-	if setKeepAlivePeriod != nil {
-		setPeriod = func(d time.Duration) error { return setKeepAlivePeriod(tc, d) }
-	}
-	if err := enable(true); err != nil {
-		logger.Debug("probel SetKeepAlive failed", slog.String("err", err.Error()))
-		return
-	}
-	if err := setPeriod(period); err != nil {
-		logger.Debug("probel SetKeepAlivePeriod failed", slog.String("err", err.Error()))
-	}
 }
 
 func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
@@ -375,7 +334,7 @@ func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
 	// Subscribe (refs #234).
 	if cfg.OnEvent != nil {
 		onEv := cfg.OnEvent
-		c.readers = append(c.readers, subscription{id: c.nextSubID, fn: func(f Frame) { onEv(c, f) }})
+		c.readers = append(c.readers, subscription{id: c.nextSubID, fn: func(f codec.Frame) { onEv(c, f) }})
 		c.nextSubID++
 	}
 	return c
@@ -436,12 +395,12 @@ func (c *Client) Unsubscribe(id int) {
 	c.mu.Unlock()
 }
 
-// Send writes one framed command, waits for the peer's DLE ACK (retrying
-// on NAK or ack-timeout up to MaxAttempts per SW-P-08 §2), and optionally
+// Send writes one framed command, waits for the peer's codec.DLE ACK (retrying
+// on codec.NAK or ack-timeout up to MaxAttempts per SW-P-08 §2), and optionally
 // waits for a matching reply. If match is nil, Send returns as soon as
 // the peer ACKs the frame (or immediately if no ack within MaxAttempts).
 //
-// The returned Frame is the zero value when match is nil.
+// The returned codec.Frame is the zero value when match is nil.
 //
 // Errors:
 //   - ErrDataFieldTooLarge if the frame exceeds DataCapHard bytes.
@@ -449,16 +408,16 @@ func (c *Client) Unsubscribe(id int) {
 //   - ErrMaxAttempts after NAKs or ack-timeouts exhaust MaxAttempts.
 //   - ctx.Err() if ctx expires before the peer ACKs or replies.
 //   - any net I/O error from the underlying conn.
-func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Frame, error) {
+func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame) bool) (codec.Frame, error) {
 	total := 1 + len(f.Payload)
 	if total > DataCapHard {
-		return Frame{}, fmt.Errorf("%w: got %d bytes", ErrDataFieldTooLarge, total)
+		return codec.Frame{}, fmt.Errorf("%w: got %d bytes", ErrDataFieldTooLarge, total)
 	}
 	if total > DataCapSoft && c.onCapSoft != nil {
 		c.onCapSoft(total)
 	}
 
-	raw := Pack(f)
+	raw := codec.Pack(f)
 
 	waiter := &pendingWaiter{
 		match: match,
@@ -467,11 +426,11 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 	c.mu.Lock()
 	if c.closed || c.conn == nil {
 		c.mu.Unlock()
-		return Frame{}, net.ErrClosed
+		return codec.Frame{}, net.ErrClosed
 	}
 	if c.pending != nil {
 		c.mu.Unlock()
-		return Frame{}, ErrSendInFlight
+		return codec.Frame{}, ErrSendInFlight
 	}
 	c.pending = waiter
 	conn := c.conn
@@ -497,14 +456,14 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 				slog.Int("cmd", int(f.ID)),
 				slog.Int("payload_len", len(f.Payload)),
 				slog.Int("wire_len", len(raw)),
-				slog.String("hex", HexDump(raw)),
+				slog.String("hex", codec.HexDump(raw)),
 			)
 		}
 		if c.onTx != nil {
 			c.onTx(raw)
 		}
 		if _, err := conn.Write(raw); err != nil {
-			return Frame{}, fmt.Errorf("probel write: %w", err)
+			return codec.Frame{}, fmt.Errorf("probel write: %w", err)
 		}
 
 		timer := time.NewTimer(ackTimeout)
@@ -518,7 +477,7 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 				c.onNAK()
 			}
 			if attempt == maxAttempts {
-				return Frame{}, fmt.Errorf("probel: peer NAKed all %d attempts: %w",
+				return codec.Frame{}, fmt.Errorf("probel: peer NAKed all %d attempts: %w",
 					maxAttempts, ErrMaxAttempts)
 			}
 			if c.onRetry != nil {
@@ -530,7 +489,7 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 				c.onTimeout()
 			}
 			if attempt == maxAttempts {
-				return Frame{}, fmt.Errorf("probel: no ACK after %d attempts: %w",
+				return codec.Frame{}, fmt.Errorf("probel: no ACK after %d attempts: %w",
 					maxAttempts, ErrMaxAttempts)
 			}
 			if c.onRetry != nil {
@@ -547,20 +506,20 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 			return r.frame, r.err
 		case <-ctx.Done():
 			timer.Stop()
-			return Frame{}, ctx.Err()
+			return codec.Frame{}, ctx.Err()
 		}
 
 		if match == nil {
-			return Frame{}, nil
+			return codec.Frame{}, nil
 		}
 		select {
 		case r := <-waiter.reply:
 			return r.frame, r.err
 		case <-ctx.Done():
-			return Frame{}, ctx.Err()
+			return codec.Frame{}, ctx.Err()
 		}
 	}
-	return Frame{}, ErrMaxAttempts
+	return codec.Frame{}, ErrMaxAttempts
 }
 
 // SendCollect sends f and gathers a multi-frame streamed reply: the first frame
@@ -587,12 +546,12 @@ func (c *Client) Send(ctx context.Context, f Frame, match func(Frame) bool) (Fra
 // matrix-size primitive on the wire, so done is the only deterministic option.
 func (c *Client) SendCollect(
 	ctx context.Context,
-	f Frame,
-	match func(Frame) bool,
-	collect func(Frame) bool,
+	f codec.Frame,
+	match func(codec.Frame) bool,
+	collect func(codec.Frame) bool,
 	idleGap time.Duration,
-	done func([]Frame) bool,
-) ([]Frame, error) {
+	done func([]codec.Frame) bool,
+) ([]codec.Frame, error) {
 	if collect == nil {
 		collect = match
 	}
@@ -601,10 +560,10 @@ func (c *Client) SendCollect(
 	}
 
 	var mu sync.Mutex
-	frames := make([]Frame, 0, 16)
+	frames := make([]codec.Frame, 0, 16)
 	bump := make(chan struct{}, 1)
 
-	id := c.Subscribe(func(fr Frame) {
+	id := c.Subscribe(func(fr codec.Frame) {
 		if collect != nil && !collect(fr) {
 			return
 		}
@@ -626,8 +585,8 @@ func (c *Client) SendCollect(
 	// After this one-time prepend the slice is append-only, so a done() closure
 	// can safely track how many frames it has already examined across calls.
 	mu.Lock()
-	frames = append([]Frame{first}, frames...)
-	snap := append([]Frame(nil), frames...)
+	frames = append([]codec.Frame{first}, frames...)
+	snap := append([]codec.Frame(nil), frames...)
 	mu.Unlock()
 	if done != nil && done(snap) {
 		return snap, nil
@@ -640,7 +599,7 @@ func (c *Client) SendCollect(
 		case <-bump:
 			if done != nil {
 				mu.Lock()
-				snap := append([]Frame(nil), frames...)
+				snap := append([]codec.Frame(nil), frames...)
 				mu.Unlock()
 				if done(snap) {
 					return snap, nil
@@ -655,21 +614,21 @@ func (c *Client) SendCollect(
 			timer.Reset(idleGap)
 		case <-timer.C:
 			mu.Lock()
-			out := append([]Frame(nil), frames...)
+			out := append([]codec.Frame(nil), frames...)
 			mu.Unlock()
 			return out, nil
 		case <-ctx.Done():
 			mu.Lock()
-			out := append([]Frame(nil), frames...)
+			out := append([]codec.Frame(nil), frames...)
 			mu.Unlock()
 			return out, ctx.Err()
 		}
 	}
 }
 
-// Write sends a pre-built raw byte sequence (typically a DLE ACK / DLE
-// NAK). Bypasses Pack and the retry loop. Used by the reader itself to
-// emit ACK/NAK for received frames — these control sequences don't
+// Write sends a pre-built raw byte sequence (typically a codec.DLE ACK / codec.DLE
+// codec.NAK). Bypasses codec.Pack and the retry loop. Used by the reader itself to
+// emit ACK/codec.NAK for received frames — these control sequences don't
 // carry a DATA field and don't themselves expect confirmation.
 func (c *Client) Write(raw []byte) error {
 	c.mu.Lock()
@@ -688,10 +647,10 @@ func (c *Client) Write(raw []byte) error {
 }
 
 // readLoop accumulates bytes from the connection, decodes frames via
-// Unpack, and routes them. Per SW-P-08 §2 (Transmission Protocol):
-//   - well-framed inbound frame   -> emit DLE ACK back to peer
-//   - bad checksum / framing      -> emit DLE NAK back to peer
-//   - inbound DLE ACK / DLE NAK   -> signal the in-flight Send (if any)
+// codec.Unpack, and routes them. Per SW-P-08 §2 (Transmission Protocol):
+//   - well-framed inbound frame   -> emit codec.DLE ACK back to peer
+//   - bad checksum / framing      -> emit codec.DLE codec.NAK back to peer
+//   - inbound codec.DLE ACK / codec.DLE codec.NAK   -> signal the in-flight Send (if any)
 //
 // Both sides must ACK every valid frame — a matrix emitting a
 // Crosspoint Tally expects the controller to ACK it, and vice-versa.
@@ -711,7 +670,7 @@ func (c *Client) readLoop(bufSize int) {
 		buf = append(buf, tmp[:n]...)
 
 		for len(buf) >= 2 {
-			if IsACK(buf) {
+			if codec.IsACK(buf) {
 				c.logger.Debug("probel rx ACK")
 				if c.onRx != nil {
 					c.onRx(buf[:2])
@@ -720,8 +679,8 @@ func (c *Client) readLoop(bufSize int) {
 				buf = buf[2:]
 				continue
 			}
-			if IsNAK(buf) {
-				c.logger.Warn("probel rx NAK")
+			if codec.IsNAK(buf) {
+				c.logger.Warn("probel rx codec.NAK")
 				if c.onRx != nil {
 					c.onRx(buf[:2])
 				}
@@ -729,22 +688,22 @@ func (c *Client) readLoop(bufSize int) {
 				buf = buf[2:]
 				continue
 			}
-			if buf[0] != DLE {
+			if buf[0] != codec.DLE {
 				c.logger.Warn("probel rx desync: dropping byte",
 					slog.String("byte", fmt.Sprintf("%02x", buf[0])))
 				buf = buf[1:]
 				continue
 			}
 
-			f, consumed, perr := Unpack(buf)
+			f, consumed, perr := codec.Unpack(buf)
 			if errors.Is(perr, io.ErrUnexpectedEOF) {
 				break
 			}
 			if perr != nil {
-				c.logger.Warn("probel rx decode — emitting DLE NAK",
+				c.logger.Warn("probel rx decode — emitting codec.DLE codec.NAK",
 					slog.String("err", perr.Error()),
-					slog.String("hex", HexDump(buf[:min(len(buf), 64)])))
-				_ = c.Write(PackNAK())
+					slog.String("hex", codec.HexDump(buf[:min(len(buf), 64)])))
+				_ = c.Write(codec.PackNAK())
 				buf = buf[2:]
 				continue
 			}
@@ -753,20 +712,20 @@ func (c *Client) readLoop(bufSize int) {
 					slog.Int("cmd", int(f.ID)),
 					slog.Int("payload_len", len(f.Payload)),
 					slog.Int("wire_len", consumed),
-					slog.String("hex", HexDump(buf[:consumed])),
+					slog.String("hex", codec.HexDump(buf[:consumed])),
 				)
 			}
 			if c.onRx != nil {
 				c.onRx(buf[:consumed])
 			}
-			_ = c.Write(PackACK())
+			_ = c.Write(codec.PackACK())
 			buf = buf[consumed:]
 			c.dispatch(f)
 		}
 	}
 }
 
-// signalACK routes an inbound DLE ACK to the current in-flight Send,
+// signalACK routes an inbound codec.DLE ACK to the current in-flight Send,
 // if any. No-op when no Send is pending.
 func (c *Client) signalACK() {
 	c.mu.Lock()
@@ -777,7 +736,7 @@ func (c *Client) signalACK() {
 	}
 }
 
-// signalNAK mirrors signalACK for DLE NAK.
+// signalNAK mirrors signalACK for codec.DLE codec.NAK.
 func (c *Client) signalNAK() {
 	c.mu.Lock()
 	waiter := c.pending
@@ -789,7 +748,7 @@ func (c *Client) signalNAK() {
 
 // dispatch routes a decoded frame: a pending Send's matcher gets first
 // look; unclaimed frames fan out to async listeners.
-func (c *Client) dispatch(f Frame) {
+func (c *Client) dispatch(f codec.Frame) {
 	c.mu.Lock()
 	waiter := c.pending
 	listeners := append([]subscription(nil), c.readers...)
@@ -842,26 +801,6 @@ func (c *Client) failPending(err error) {
 		default:
 		}
 	}
-}
-
-// HexDump formats bytes as space-separated 2-digit lowercase hex — the
-// format SW-P-08 spec examples use and the convention most byte-view
-// tools recognise.
-//
-// Example: [0x10 0x02 0x01 …] → "10 02 01 02 00 05 0c 03 1f 10 03".
-func HexDump(b []byte) string {
-	if len(b) == 0 {
-		return ""
-	}
-	const hex = "0123456789abcdef"
-	out := make([]byte, 0, len(b)*3-1)
-	for i, x := range b {
-		if i > 0 {
-			out = append(out, ' ')
-		}
-		out = append(out, hex[x>>4], hex[x&0x0F])
-	}
-	return string(out)
 }
 
 func min(a, b int) int {

@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw02p/codec"
 	"errors"
 	"io"
 	"log/slog"
@@ -80,22 +81,6 @@ func TestNewClientFromConnNilLoggerDefaultBuffer(t *testing.T) {
 	_ = cli.Close()
 }
 
-// TestApplyTCPKeepaliveDisabled covers the period < 0 early return
-// (keep-alive explicitly disabled) and the non-*net.TCPConn early
-// return (a net.Pipe end is not a TCPConn). Neither should panic or
-// mutate the conn.
-func TestApplyTCPKeepaliveDisabled(t *testing.T) {
-	a, b := net.Pipe()
-	defer func() { _ = a.Close() }()
-	defer func() { _ = b.Close() }()
-
-	// period < 0 → disabled, returns before the type assertion.
-	applyTCPKeepalive(a, -1, quietLogger())
-	// period == 0 with a non-TCPConn → default period, then the
-	// type-assertion early return (ok == false).
-	applyTCPKeepalive(a, 0, quietLogger())
-}
-
 // TestSendInFlight covers the ErrSendInFlight guard: a second Send
 // while the first is still awaiting a reply must be rejected. The first
 // Send uses a matcher (so it parks on waiter.reply) and never gets a
@@ -123,8 +108,8 @@ func TestSendInFlight(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		close(started)
-		_, _ = cli.Send(ctx, Frame{ID: RxConnectOnGo, Payload: []byte{0, 1, 2}},
-			func(Frame) bool { return false })
+		_, _ = cli.Send(ctx, codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0, 1, 2}},
+			func(codec.Frame) bool { return false })
 	}()
 	<-started
 	// Give the first Send time to install c.pending.
@@ -136,7 +121,7 @@ func TestSendInFlight(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := cli.Send(ctx, Frame{ID: RxGo, Payload: []byte{0}}, func(Frame) bool { return true })
+	_, err := cli.Send(ctx, codec.Frame{ID: codec.RxGo, Payload: []byte{0}}, func(codec.Frame) bool { return true })
 	if !errors.Is(err, ErrSendInFlight) {
 		t.Errorf("second Send: got %v; want ErrSendInFlight", err)
 	}
@@ -152,7 +137,7 @@ func TestSendOnClosedClient(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := cli.Send(ctx, Frame{ID: RxGo, Payload: []byte{0}}, nil)
+	_, err := cli.Send(ctx, codec.Frame{ID: codec.RxGo, Payload: []byte{0}}, nil)
 	if !errors.Is(err, net.ErrClosed) {
 		t.Errorf("Send on closed client: got %v; want net.ErrClosed", err)
 	}
@@ -169,7 +154,7 @@ func TestSendWriteError(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := cli.Send(ctx, Frame{ID: RxGo, Payload: []byte{0}}, nil)
+	_, err := cli.Send(ctx, codec.Frame{ID: codec.RxGo, Payload: []byte{0}}, nil)
 	if err == nil {
 		t.Fatal("Send with dead peer: got nil; want write error")
 	}
@@ -195,8 +180,8 @@ func TestSendCtxCancel(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	_, err := cli.Send(ctx, Frame{ID: RxConnectOnGo, Payload: []byte{0, 1, 2}},
-		func(Frame) bool { return false })
+	_, err := cli.Send(ctx, codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0, 1, 2}},
+		func(codec.Frame) bool { return false })
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("Send ctx cancel: got %v; want context.DeadlineExceeded", err)
 	}
@@ -227,7 +212,7 @@ func TestSendWireHexLogObserver(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if _, err := cli.Send(ctx, Frame{ID: RxGo, Payload: []byte{0}}, nil); err != nil {
+	if _, err := cli.Send(ctx, codec.Frame{ID: codec.RxGo, Payload: []byte{0}}, nil); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	mu.Lock()
@@ -258,7 +243,7 @@ func TestWrite(t *testing.T) {
 		OnTx:       func(raw []byte) { observed = append(observed, raw...) },
 	})
 
-	raw := []byte{SOM, 0x07, 0x79}
+	raw := []byte{codec.SOM, 0x07, 0x79}
 	if err := cli.Write(raw); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -311,8 +296,8 @@ func TestCloseIdempotentAndWakesPending(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, err := cli.Send(ctx, Frame{ID: RxConnectOnGo, Payload: []byte{0, 1, 2}},
-			func(Frame) bool { return false })
+		_, err := cli.Send(ctx, codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0, 1, 2}},
+			func(codec.Frame) bool { return false })
 		done <- err
 	}()
 	waitFor(t, func() bool {
@@ -363,15 +348,15 @@ func TestReadLoopDispatchAndHexLog(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cli.Subscribe(func(f Frame) {
-		if f.ID == RxConnectOnGo {
+	cli.Subscribe(func(f codec.Frame) {
+		if f.ID == codec.RxConnectOnGo {
 			wg.Done()
 		}
 	})
 
-	// Write a stray non-SOM byte (desync → dropped) followed by a valid
+	// Write a stray non-codec.SOM byte (desync → dropped) followed by a valid
 	// frame so the reader resyncs and dispatches it.
-	frame := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
+	frame := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
 	go func() {
 		_, _ = b.Write([]byte{0x00}) // desync byte
 		_, _ = b.Write(frame)
@@ -392,10 +377,10 @@ func TestReadLoopDispatchAndHexLog(t *testing.T) {
 }
 
 // TestReadLoopDecodeErrorResync feeds a frame with a bad checksum so
-// Unpack returns ErrBadChecksum; the reader logs a decode error, drops
+// codec.Unpack returns ErrBadChecksum; the reader logs a decode error, drops
 // one byte, and keeps scanning. A following valid frame must still be
 // dispatched. The bad frame is padded > 64 bytes so the min() helper in
-// the decode-error HexDump path is exercised.
+// the decode-error codec.HexDump path is exercised.
 func TestReadLoopDecodeErrorResync(t *testing.T) {
 	a, b := net.Pipe()
 	defer func() { _ = a.Close() }()
@@ -406,20 +391,20 @@ func TestReadLoopDecodeErrorResync(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cli.Subscribe(func(f Frame) {
-		if f.ID == RxConnectOnGo {
+	cli.Subscribe(func(f codec.Frame) {
+		if f.ID == codec.RxConnectOnGo {
 			wg.Done()
 		}
 	})
 
-	// Build a long SOM-led buffer that decodes as an unknown/short
-	// command so Unpack errors and the reader drops bytes one at a
+	// Build a long codec.SOM-led buffer that decodes as an unknown/short
+	// command so codec.Unpack errors and the reader drops bytes one at a
 	// time. Use a known-command frame with a corrupted checksum, padded
-	// with trailing junk > 64 bytes so HexDump's min(len,64) clamp runs.
-	bad := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
-	bad[len(bad)-1] ^= 0x7F // corrupt checksum → ErrBadChecksum
+	// with trailing junk > 64 bytes so codec.HexDump's min(len,64) clamp runs.
+	bad := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x00, 0x01, 0x02}})
+	bad[len(bad)-1] ^= 0x7F  // corrupt checksum → ErrBadChecksum
 	junk := make([]byte, 80) // > 64 so min() picks 64
-	good := Pack(Frame{ID: RxConnectOnGo, Payload: []byte{0x03, 0x04, 0x05}})
+	good := codec.Pack(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0x03, 0x04, 0x05}})
 
 	go func() {
 		_, _ = b.Write(bad)
@@ -451,7 +436,7 @@ func TestDispatchReplySlotFilled(t *testing.T) {
 	// Install a pending waiter whose reply channel is already full, with
 	// a matcher that matches everything.
 	waiter := &pendingWaiter{
-		match: func(Frame) bool { return true },
+		match: func(codec.Frame) bool { return true },
 		reply: make(chan replyResult, 1),
 	}
 	waiter.reply <- replyResult{} // pre-fill so the select hits default
@@ -459,14 +444,14 @@ func TestDispatchReplySlotFilled(t *testing.T) {
 	cli.pending = waiter
 	cli.mu.Unlock()
 
-	got := make(chan Frame, 1)
-	cli.Subscribe(func(f Frame) { got <- f })
+	got := make(chan codec.Frame, 1)
+	cli.Subscribe(func(f codec.Frame) { got <- f })
 
-	cli.dispatch(Frame{ID: RxConnectOnGo, Payload: []byte{0, 1, 2}})
+	cli.dispatch(codec.Frame{ID: codec.RxConnectOnGo, Payload: []byte{0, 1, 2}})
 	select {
 	case f := <-got:
-		if f.ID != RxConnectOnGo {
-			t.Errorf("listener got %#x; want RxConnectOnGo", f.ID)
+		if f.ID != codec.RxConnectOnGo {
+			t.Errorf("listener got %#x; want codec.RxConnectOnGo", f.ID)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("matched-but-full frame did not fall through to listeners")

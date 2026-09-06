@@ -18,8 +18,8 @@ package probelsw08p
 import (
 	"log/slog"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/provider"
 )
 

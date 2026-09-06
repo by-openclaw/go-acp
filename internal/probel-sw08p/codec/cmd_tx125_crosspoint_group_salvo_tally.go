@@ -118,8 +118,8 @@ func DecodeSalvoGroupTally(f Frame) (SalvoGroupTallyParams, error) {
 		return SalvoGroupTallyParams{
 			MatrixID:      m,
 			LevelID:       l,
-			DestinationID: (uint16(f.Payload[1]>>4) & 0x07) * 128 + uint16(f.Payload[2]),
-			SourceID:      (uint16(f.Payload[1]) & 0x07) * 128 + uint16(f.Payload[3]),
+			DestinationID: (uint16(f.Payload[1]>>4)&0x07)*128 + uint16(f.Payload[2]),
+			SourceID:      (uint16(f.Payload[1])&0x07)*128 + uint16(f.Payload[3]),
 			SalvoID:       f.Payload[4] & 0x7F,
 			ConnectIndex:  uint16(f.Payload[5]),
 			Validity:      v,

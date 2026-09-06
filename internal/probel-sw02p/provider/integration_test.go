@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	consumer "dhs/internal/probel-sw02p/consumer"
-	"dhs/internal/probel-sw02p/codec"
-	provider "dhs/internal/probel-sw02p/provider"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw02p/codec"
+	consumer "dhs/internal/probel-sw02p/consumer"
+	provider "dhs/internal/probel-sw02p/provider"
 )
 
 var _ = os.Getenv

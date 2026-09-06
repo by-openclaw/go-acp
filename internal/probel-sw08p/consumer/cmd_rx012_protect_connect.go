@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // ProtectConnect requests protection on (matrix, level, dst) owned by

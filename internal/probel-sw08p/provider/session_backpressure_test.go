@@ -58,11 +58,11 @@ func (g *gatedConn) Close() error {
 	return nil
 }
 
-func (g *gatedConn) LocalAddr() net.Addr                { return fakeAddr{} }
-func (g *gatedConn) RemoteAddr() net.Addr               { return fakeAddr{} }
-func (g *gatedConn) SetDeadline(time.Time) error        { return nil }
-func (g *gatedConn) SetReadDeadline(time.Time) error    { return nil }
-func (g *gatedConn) SetWriteDeadline(time.Time) error   { return nil }
+func (g *gatedConn) LocalAddr() net.Addr              { return fakeAddr{} }
+func (g *gatedConn) RemoteAddr() net.Addr             { return fakeAddr{} }
+func (g *gatedConn) SetDeadline(time.Time) error      { return nil }
+func (g *gatedConn) SetReadDeadline(time.Time) error  { return nil }
+func (g *gatedConn) SetWriteDeadline(time.Time) error { return nil }
 
 type fakeAddr struct{}
 

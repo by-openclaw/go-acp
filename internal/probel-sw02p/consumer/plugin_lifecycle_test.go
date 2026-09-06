@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 	"dhs/internal/transport"
 )
 
@@ -128,7 +129,7 @@ func TestConnectIdempotentAndMismatch(t *testing.T) {
 		_ = b.Close()
 	}()
 	p := &Plugin{logger: quietLogger()}
-	p.client = codec.NewClientFromConn(a, p.logger, codec.ClientConfig{})
+	p.client = session.NewClientFromConn(a, p.logger, session.ClientConfig{})
 	p.host = "10.0.0.5"
 	p.port = 2002
 	t.Cleanup(func() { _ = p.client.Close() })

@@ -46,6 +46,6 @@ func DecodeProtectDeviceNameRequest(f Frame) (ProtectDeviceNameRequestParams, er
 		return ProtectDeviceNameRequestParams{}, ErrShortPayload
 	}
 	return ProtectDeviceNameRequestParams{
-		DeviceID: (uint16(f.Payload[0]) & 0x07) * 128 + uint16(f.Payload[1]),
+		DeviceID: (uint16(f.Payload[0])&0x07)*128 + uint16(f.Payload[1]),
 	}, nil
 }

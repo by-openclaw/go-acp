@@ -9,13 +9,13 @@ import (
 // handleUpdateNameRequest: rx 117 — fire-and-forget label push.
 // Applies the names to the server tree by type:
 //
-//   UpdateNameSource       → update sourceLabels on (matrix, level)
-//                            starting at FirstID
-//   UpdateNameSourceAssoc  → update sourceLabels on (matrix, 0)
-//                            (our tree doesn't model assocs separately)
-//   UpdateNameDestAssoc    → update targetLabels on (matrix, 0)
-//   UpdateNameUMDLabel     → logged + ignored (no UMD table in the
-//                            demo tree; future scope)
+//	UpdateNameSource       → update sourceLabels on (matrix, level)
+//	                         starting at FirstID
+//	UpdateNameSourceAssoc  → update sourceLabels on (matrix, 0)
+//	                         (our tree doesn't model assocs separately)
+//	UpdateNameDestAssoc    → update targetLabels on (matrix, 0)
+//	UpdateNameUMDLabel     → logged + ignored (no UMD table in the
+//	                         demo tree; future scope)
 //
 // SW-P-08 §3.2.26 specifies NO RESPONSE, so handlerResult is empty —
 // the session has already ACKed at the framer layer.

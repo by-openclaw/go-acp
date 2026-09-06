@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendRouterConfigRequestRoundTripResponse1 drives SendRouter
@@ -22,7 +23,7 @@ func TestSendRouterConfigRequestRoundTripResponse1(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// rx 075 = 3 bytes (zero-length MESSAGE).
 	matrixDone := make(chan struct{})
@@ -83,7 +84,7 @@ func TestSendRouterConfigRequestRoundTripResponse2(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	matrixDone := make(chan struct{})
 	go func() {

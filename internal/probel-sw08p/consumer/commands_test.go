@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // freshPlugin is an unconnected Plugin for the not-connected error paths.

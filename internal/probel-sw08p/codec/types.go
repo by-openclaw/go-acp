@@ -41,27 +41,27 @@ type CommandID byte
 
 // RX general command IDs (controller → matrix). Source: SW-P-88 §5.
 const (
-	RxCrosspointInterrogate          CommandID = 0x01 // 001 dest status request
-	RxCrosspointConnect              CommandID = 0x02 // 002 connect (route)
-	RxMaintenance                    CommandID = 0x07 // 007 keepalive
-	RxDualControllerStatusRequest    CommandID = 0x08 // 008 dual-ctl status req
-	RxProtectInterrogate             CommandID = 0x0A // 010 protect status req
-	RxProtectConnect                 CommandID = 0x0C // 012 protect on
-	RxProtectDisconnect              CommandID = 0x0E // 014 protect off
-	RxProtectDeviceNameRequest       CommandID = 0x11 // 017 owner name req
-	RxProtectTallyDumpRequest        CommandID = 0x13 // 019 protect dump req
-	RxCrosspointTallyDumpRequest     CommandID = 0x15 // 021 tally dump req
-	RxMasterProtectConnect           CommandID = 0x1D // 029 master protect
-	RxAllSourceNamesRequest          CommandID = 0x64 // 100 names all srcs
-	RxSingleSourceNameRequest        CommandID = 0x65 // 101 name single src
-	RxAllDestNamesRequest            CommandID = 0x66 // 102 names all dsts
-	RxSingleDestNameRequest          CommandID = 0x67 // 103 name single dst
-	RxCrosspointTieLineInterrogate   CommandID = 0x70 // 112 tie-line status
-	RxAllSourceAssocNamesRequest     CommandID = 0x72 // 114 assoc all srcs
-	RxSingleSourceAssocNameRequest   CommandID = 0x73 // 115 assoc single src
-	RxUpdateNameRequest              CommandID = 0x75 // 117 rename notify
-	RxCrosspointConnectOnGoSalvo     CommandID = 0x78 // 120 salvo build
-	RxCrosspointGoSalvo              CommandID = 0x79 // 121 salvo fire
+	RxCrosspointInterrogate           CommandID = 0x01 // 001 dest status request
+	RxCrosspointConnect               CommandID = 0x02 // 002 connect (route)
+	RxMaintenance                     CommandID = 0x07 // 007 keepalive
+	RxDualControllerStatusRequest     CommandID = 0x08 // 008 dual-ctl status req
+	RxProtectInterrogate              CommandID = 0x0A // 010 protect status req
+	RxProtectConnect                  CommandID = 0x0C // 012 protect on
+	RxProtectDisconnect               CommandID = 0x0E // 014 protect off
+	RxProtectDeviceNameRequest        CommandID = 0x11 // 017 owner name req
+	RxProtectTallyDumpRequest         CommandID = 0x13 // 019 protect dump req
+	RxCrosspointTallyDumpRequest      CommandID = 0x15 // 021 tally dump req
+	RxMasterProtectConnect            CommandID = 0x1D // 029 master protect
+	RxAllSourceNamesRequest           CommandID = 0x64 // 100 names all srcs
+	RxSingleSourceNameRequest         CommandID = 0x65 // 101 name single src
+	RxAllDestNamesRequest             CommandID = 0x66 // 102 names all dsts
+	RxSingleDestNameRequest           CommandID = 0x67 // 103 name single dst
+	RxCrosspointTieLineInterrogate    CommandID = 0x70 // 112 tie-line status
+	RxAllSourceAssocNamesRequest      CommandID = 0x72 // 114 assoc all srcs
+	RxSingleSourceAssocNameRequest    CommandID = 0x73 // 115 assoc single src
+	RxUpdateNameRequest               CommandID = 0x75 // 117 rename notify
+	RxCrosspointConnectOnGoSalvo      CommandID = 0x78 // 120 salvo build
+	RxCrosspointGoSalvo               CommandID = 0x79 // 121 salvo fire
 	RxCrosspointSalvoGroupInterrogate CommandID = 0x7C // 124 salvo query
 )
 
@@ -82,18 +82,18 @@ const (
 // RX extended command IDs (controller → matrix, wide addressing). Addresses above
 // the general-command range flip the MSB: general ID | 0x80 = extended ID.
 const (
-	RxCrosspointInterrogateExt       CommandID = 0x81
-	RxCrosspointConnectExt           CommandID = 0x82
-	RxProtectInterrogateExt          CommandID = 0x8A
-	RxProtectConnectExt              CommandID = 0x8C
-	RxProtectDisconnectExt           CommandID = 0x8E
-	RxProtectTallyDumpRequestExt     CommandID = 0x93
-	RxCrosspointTallyDumpRequestExt  CommandID = 0x95
-	RxAllSourceNamesRequestExt       CommandID = 0xE4
-	RxSingleSourceNameRequestExt     CommandID = 0xE5
-	RxAllDestNamesRequestExt         CommandID = 0xE6
-	RxSingleDestNameRequestExt       CommandID = 0xE7
-	RxCrosspointConnectOnGoSalvoExt  CommandID = 0xF8
+	RxCrosspointInterrogateExt           CommandID = 0x81
+	RxCrosspointConnectExt               CommandID = 0x82
+	RxProtectInterrogateExt              CommandID = 0x8A
+	RxProtectConnectExt                  CommandID = 0x8C
+	RxProtectDisconnectExt               CommandID = 0x8E
+	RxProtectTallyDumpRequestExt         CommandID = 0x93
+	RxCrosspointTallyDumpRequestExt      CommandID = 0x95
+	RxAllSourceNamesRequestExt           CommandID = 0xE4
+	RxSingleSourceNameRequestExt         CommandID = 0xE5
+	RxAllDestNamesRequestExt             CommandID = 0xE6
+	RxSingleDestNameRequestExt           CommandID = 0xE7
+	RxCrosspointConnectOnGoSalvoExt      CommandID = 0xF8
 	RxCrosspointSalvoGroupInterrogateExt CommandID = 0xFC
 )
 

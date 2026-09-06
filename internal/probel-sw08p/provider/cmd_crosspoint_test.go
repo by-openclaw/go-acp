@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 	probelproto "dhs/internal/probel-sw08p/consumer"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // TestCrosspointInterrogateLoopback exercises the full rx 001 → tx 003
@@ -202,7 +203,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 	defer func() { _ = primary.Disconnect() }()
 
 	// Secondary consumer: subscribes to async tallies.
-	secondary, err := codec.Dial(dc, addr, logger, codec.ClientConfig{})
+	secondary, err := sw08session.Dial(dc, addr, logger, sw08session.ClientConfig{})
 	if err != nil {
 		t.Fatalf("secondary dial: %v", err)
 	}

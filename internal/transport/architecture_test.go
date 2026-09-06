@@ -74,16 +74,6 @@ var allowed = map[string]string{
 	// SetSocketBroadcast helper.
 	"internal/acp1/consumer/discover.go": "SO_BROADCAST discovery socket; uses transport.SetSocketBroadcast",
 
-	// PERMANENT — forced by ADR-0006, resolved by moving the code, not the rule.
-	//
-	// codec/ is stdlib-only and must never import dhs/*, so these cannot
-	// reach internal/transport and reimplemented a TCP client instead. The
-	// fix is to move the SESSION half to consumer/ (which may import
-	// transport) and leave codec/ as pure bytes — the same layering fix that
-	// moved ws out of cerebrum-nb/codec. Tracked as the probel client move.
-	"internal/probel-sw02p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to consumer/",
-	"internal/probel-sw08p/codec/client.go": "ADR-0006 stdlib-only codec; session half moves to consumer/",
-
 	// DEBT — provider accept paths still own their listener.
 	//
 	// They already apply the shared socket policy via ApplySocketOptions;

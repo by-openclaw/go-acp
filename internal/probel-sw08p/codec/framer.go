@@ -5,6 +5,36 @@ import (
 	"io"
 )
 
+// DefaultReadBufferSize is the capacity of the accumulating read buffer.
+// SW-P-08 frames are small (<300 bytes in the largest tally dump); 4 KiB
+// is plenty for one or two in-flight frames.
+const DefaultReadBufferSize = 4096
+
+// It lives with the framer rather than with the session that allocates the
+// buffer: how big a frame can get is what the WIRE says, and both the
+// consumer's client and the provider's accept loop size their buffers from
+// the same fact.
+
+// HexDump formats bytes as space-separated 2-digit lowercase hex — the
+// format SW-P-08 spec examples use and the convention most byte-view
+// tools recognise.
+//
+// Example: [0x10 0x02 0x01 …] → "10 02 01 02 00 05 0c 03 1f 10 03".
+func HexDump(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	const hex = "0123456789abcdef"
+	out := make([]byte, 0, len(b)*3-1)
+	for i, x := range b {
+		if i > 0 {
+			out = append(out, ' ')
+		}
+		out = append(out, hex[x>>4], hex[x&0x0F])
+	}
+	return string(out)
+}
+
 // Frame is one logical SW-P-08 command as it rides the wire, post-decode
 // (i.e. after DLE-unstuffing). ID is DATA[0]; Payload is DATA[1:].
 type Frame struct {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // startKeepalive spawns the background goroutine that handles two
@@ -20,10 +21,10 @@ import (
 //
 // The goroutine exits cleanly when ctx is cancelled (Disconnect).
 //
-// Holds no Plugin lock — it reads the codec.Client pointer once and
+// Holds no Plugin lock — it reads the session.Client pointer once and
 // fires through it. If the client is closed mid-sweep, the underlying
 // Send returns net.ErrClosed and the goroutine exits.
-func (p *Plugin) startKeepalive(ctx context.Context, cli *codec.Client) {
+func (p *Plugin) startKeepalive(ctx context.Context, cli *session.Client) {
 	cfg := p.matrixCfg
 	if cfg.Dsts == 0 {
 		// Nothing to poll — caller didn't set a matrix size. Leaving
@@ -48,7 +49,7 @@ func (p *Plugin) startKeepalive(ctx context.Context, cli *codec.Client) {
 // callers can drive it with a stub client + cancellable ctx.
 func (p *Plugin) runKeepalive(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	bootstrapSpacing time.Duration,
 	keepaliveSpacing time.Duration,
@@ -81,7 +82,7 @@ func (p *Plugin) runKeepalive(
 // across 0..Dsts-1. Cancels promptly on ctx.Done.
 func (p *Plugin) bootstrapSweep(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	spacing time.Duration,
 ) {
@@ -119,7 +120,7 @@ func (p *Plugin) bootstrapSweep(
 // cursor. Mirrors VSM's continuous-poll keep-alive trick.
 func (p *Plugin) keepalivePingLoop(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	spacing time.Duration,
 ) {
@@ -149,7 +150,7 @@ func (p *Plugin) keepalivePingLoop(
 // alive ping doesn't compete with caller-driven Sends. Replies (tx 03)
 // flow through the Subscribe path to whoever owns the tally cache.
 // ctx is honoured at the outer goroutine; this call is sync.
-func sendInterrogate(ctx context.Context, cli *codec.Client, dst uint16) error {
+func sendInterrogate(ctx context.Context, cli *session.Client, dst uint16) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

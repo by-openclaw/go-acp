@@ -25,7 +25,7 @@ func TestRouterConfigResponse1EntriesTruncated(t *testing.T) {
 // ErrShortPayload guard in DecodeRouterConfigResponse2 (10-byte
 // entries per §3.2.59).
 func TestRouterConfigResponse2EntriesTruncated(t *testing.T) {
-	hdr := packLevelMap(1 << 0) // one level → 10 entry bytes expected
+	hdr := packLevelMap(1 << 0)                       // one level → 10 entry bytes expected
 	payload := append(hdr[:], 0x00, 0x01, 0x00, 0x01) // only 4 of 10
 	f := Frame{ID: TxRouterConfigResponse2, Payload: payload}
 	if _, err := DecodeRouterConfigResponse2(f); !errors.Is(err, ErrShortPayload) {

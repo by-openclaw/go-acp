@@ -63,8 +63,8 @@ func TestExtendedProtectEmitFanout(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		emit func()
+		name    string
+		emit    func()
 		wantCmd codec.CommandID
 	}{
 		{

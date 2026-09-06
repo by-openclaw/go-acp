@@ -15,13 +15,13 @@ const (
 // CommandSpec is the structured metadata used by the CLI catalogue
 // helpers. Stdlib-only so the codec stays lift-ready.
 type CommandSpec struct {
-	ID         CommandID
-	Name       string           // matches CommandName output verbatim
-	Direction  CommandDirection // rx / tx / both (0x11 is rx 17 OR tx 17)
-	SpecRef    string           // SW-P-08 Issue 30 section reference
-	Payload    string           // "fixed N bytes" / "variable" / "zero"
-	Notes      string
-	Supported  bool
+	ID        CommandID
+	Name      string           // matches CommandName output verbatim
+	Direction CommandDirection // rx / tx / both (0x11 is rx 17 OR tx 17)
+	SpecRef   string           // SW-P-08 Issue 30 section reference
+	Payload   string           // "fixed N bytes" / "variable" / "zero"
+	Notes     string
+	Supported bool
 }
 
 // Commands returns the full SW-P-08 command catalogue this codec

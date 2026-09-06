@@ -5,8 +5,8 @@ package codec
 //
 // Reference: SW-P-08 §3.2.25.
 type SingleSourceAssocNameRequestParams struct {
-	MatrixID           uint8
-	NameLength         NameLength
+	MatrixID            uint8
+	NameLength          NameLength
 	SourceAssociationID uint16
 }
 
@@ -45,8 +45,8 @@ func DecodeSingleSourceAssocNameRequest(f Frame) (SingleSourceAssocNameRequestPa
 		return SingleSourceAssocNameRequestParams{}, err
 	}
 	return SingleSourceAssocNameRequestParams{
-		MatrixID:           f.Payload[0] & 0x0F,
-		NameLength:         n,
+		MatrixID:            f.Payload[0] & 0x0F,
+		NameLength:          n,
 		SourceAssociationID: uint16(f.Payload[2])*256 + uint16(f.Payload[3]),
 	}, nil
 }

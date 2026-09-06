@@ -1,7 +1,8 @@
-package codec
+package session
 
 import (
 	"context"
+	"dhs/internal/probel-sw08p/codec"
 	"errors"
 	"net"
 	"sync"
@@ -14,7 +15,7 @@ import (
 // and retry tests: dial failure, nil-logger defaulting, the keepalive
 // helper's disable / default / setsockopt-error branches, the wire-hex
 // log path, the observer callbacks (onTx / onRx), write-after-close,
-// reply-phase context cancellation, the reader's ACK/NAK/desync/decode
+// reply-phase context cancellation, the reader's ACK/codec.NAK/desync/decode
 // routing, and the min helper.
 
 // --- Dial error + nil logger -----------------------------------------------
@@ -43,72 +44,6 @@ func TestNewClientFromConnNilLogger(t *testing.T) {
 	_ = c.Close()
 }
 
-// --- applyTCPKeepalive branches --------------------------------------------
-
-// TestApplyTCPKeepaliveDisabled covers the period<0 early return.
-func TestApplyTCPKeepaliveDisabled(t *testing.T) {
-	// Negative period returns before any conn type assertion — a non-TCP
-	// conn proves the early return ran (it would otherwise be a no-op too,
-	// but the period<0 arm is what we target).
-	a, b := net.Pipe()
-	defer func() { _ = a.Close(); _ = b.Close() }()
-	applyTCPKeepalive(a, -1, discardLogger()) // must not panic
-}
-
-// TestApplyTCPKeepaliveNonTCP covers the non-*net.TCPConn early return
-// with a zero (defaulting) period.
-func TestApplyTCPKeepaliveNonTCP(t *testing.T) {
-	a, b := net.Pipe()
-	defer func() { _ = a.Close(); _ = b.Close() }()
-	applyTCPKeepalive(a, 0, discardLogger()) // net.Pipe is not *net.TCPConn
-}
-
-// TestApplyTCPKeepaliveSetKeepAliveError forces the SetKeepAlive error
-// arm using a closed *net.TCPConn (setsockopt on a closed socket fails).
-func TestApplyTCPKeepaliveSetKeepAliveError(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
-	conn, err := net.Dial("tcp", ln.Addr().String())
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	tc := conn.(*net.TCPConn)
-	_ = tc.Close() // close so SetKeepAlive returns an error
-	applyTCPKeepalive(tc, 5*time.Second, discardLogger())
-}
-
-// TestApplyTCPKeepaliveSetPeriodError forces the SetKeepAlivePeriod
-// error arm via the transparent seam: SetKeepAlive succeeds, but
-// SetKeepAlivePeriod returns an error. This arm is unreachable on a
-// live, open *net.TCPConn (whenever the socket is healthy both calls
-// succeed; once SetKeepAlive errors the helper returns early), so the
-// seam is the only way to exercise it. Logic is unchanged — both seam
-// vars are nil in production.
-func TestApplyTCPKeepaliveSetPeriodError(t *testing.T) {
-	origEnable, origPeriod := setKeepAlive, setKeepAlivePeriod
-	setKeepAlive = func(*net.TCPConn, bool) error { return nil }
-	setKeepAlivePeriod = func(*net.TCPConn, time.Duration) error {
-		return errors.New("forced setsockopt failure")
-	}
-	defer func() { setKeepAlive, setKeepAlivePeriod = origEnable, origPeriod }()
-
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
-	conn, err := net.Dial("tcp", ln.Addr().String())
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	tc := conn.(*net.TCPConn)
-	defer func() { _ = tc.Close() }()
-	applyTCPKeepalive(tc, 5*time.Second, discardLogger())
-}
-
 // --- Close double-call -----------------------------------------------------
 
 // TestCloseIdempotent covers the already-closed early return in Close.
@@ -132,7 +67,7 @@ func TestSendAfterClose(t *testing.T) {
 	defer func() { _ = b.Close() }()
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{})
 	_ = c.Close()
-	_, err := c.Send(context.Background(), Frame{ID: RxMaintenance, Payload: []byte{0}}, nil)
+	_, err := c.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil)
 	if !errors.Is(err, net.ErrClosed) {
 		t.Errorf("Send after Close = %v; want net.ErrClosed", err)
 	}
@@ -147,7 +82,7 @@ func TestSendWriteError(t *testing.T) {
 	_ = b.Close() // peer closed → write on a fails
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{})
 	defer func() { _ = c.Close() }()
-	_, err := c.Send(context.Background(), Frame{ID: RxMaintenance, Payload: []byte{0}}, nil)
+	_, err := c.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil)
 	if err == nil {
 		t.Error("Send with closed peer returned nil; want write error")
 	}
@@ -167,12 +102,12 @@ func TestSendWireHexLogAndOnTx(t *testing.T) {
 	})
 	defer func() { _ = c.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) { p.writeACK() })
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) { p.writeACK() })
 	defer func() { _ = peer.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if _, err := c.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0x00}}, nil); err != nil {
+	if _, err := c.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0x00}}, nil); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if txCount.Load() == 0 {
@@ -190,15 +125,15 @@ func TestSendCtxCancelInReplyPhase(t *testing.T) {
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{})
 	defer func() { _ = c.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		p.writeACK() // ACK only; no matching reply ever sent
 	})
 	defer func() { _ = peer.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
-	_, err := c.Send(ctx, Frame{ID: RxCrosspointInterrogate, Payload: []byte{0, 0, 0, 0}},
-		func(f Frame) bool { return f.ID == TxCrosspointTally })
+	_, err := c.Send(ctx, codec.Frame{ID: codec.RxCrosspointInterrogate, Payload: []byte{0, 0, 0, 0}},
+		func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTally })
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("Send reply-phase = %v; want context.DeadlineExceeded", err)
 	}
@@ -229,7 +164,7 @@ func TestSendAckTimeoutSingleAttempt(t *testing.T) {
 	}()
 	defer func() { _ = b.Close() }()
 
-	_, err := c.Send(context.Background(), Frame{ID: RxMaintenance, Payload: []byte{0}}, nil)
+	_, err := c.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil)
 	if !errors.Is(err, ErrMaxAttempts) {
 		t.Errorf("Send = %v; want ErrMaxAttempts", err)
 	}
@@ -254,7 +189,7 @@ func TestSendTimeoutFiresOnRetry(t *testing.T) {
 	defer func() { _ = c.Close() }()
 
 	var attempts atomic.Int32
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		if attempts.Add(1) < 2 {
 			return // silence → ack-timeout → retry
 		}
@@ -264,7 +199,7 @@ func TestSendTimeoutFiresOnRetry(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if _, err := c.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0}}, nil); err != nil {
+	if _, err := c.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if retryCount.Load() == 0 {
@@ -298,7 +233,7 @@ func TestSendCtxCancelInAckPhase(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
-	_, err := c.Send(ctx, Frame{ID: RxMaintenance, Payload: []byte{0}}, nil)
+	_, err := c.Send(ctx, codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("Send ack-phase = %v; want context.DeadlineExceeded", err)
 	}
@@ -322,7 +257,7 @@ func TestSendZeroMaxAttempts(t *testing.T) {
 	c.maxAttempts = 0
 	c.mu.Unlock()
 
-	_, err := c.Send(context.Background(), Frame{ID: RxMaintenance, Payload: []byte{0}}, nil)
+	_, err := c.Send(context.Background(), codec.Frame{ID: codec.RxMaintenance, Payload: []byte{0}}, nil)
 	if !errors.Is(err, ErrMaxAttempts) {
 		t.Errorf("Send with maxAttempts=0 = %v; want ErrMaxAttempts", err)
 	}
@@ -331,15 +266,15 @@ func TestSendZeroMaxAttempts(t *testing.T) {
 // --- readLoop: partial frame waits for more bytes --------------------------
 
 // TestReadLoopPartialFrame feeds the reader a truncated frame prefix
-// (valid SOM but no EOM yet) so Unpack returns io.ErrUnexpectedEOF and
+// (valid codec.SOM but no EOM yet) so codec.Unpack returns io.ErrUnexpectedEOF and
 // the reader breaks to wait for more bytes; the rest of the frame is
 // then delivered and dispatched.
 func TestReadLoopPartialFrame(t *testing.T) {
 	a, b := net.Pipe()
 	var got atomic.Bool
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{
-		OnEvent: func(_ *Client, f Frame) {
-			if f.ID == TxCrosspointTally {
+		OnEvent: func(_ *Client, f codec.Frame) {
+			if f.ID == codec.TxCrosspointTally {
 				got.Store(true)
 			}
 		},
@@ -356,7 +291,7 @@ func TestReadLoopPartialFrame(t *testing.T) {
 		}
 	}()
 
-	full := Pack(Frame{ID: TxCrosspointTally, Payload: []byte{0, 0, 7}})
+	full := codec.Pack(codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0, 0, 7}})
 	// Write the frame in two halves so the reader sees a partial frame
 	// first (io.ErrUnexpectedEOF → break → accumulate).
 	if _, err := b.Write(full[:3]); err != nil {
@@ -381,7 +316,7 @@ func TestReadLoopPartialFrame(t *testing.T) {
 // --- Send: reply-before-ACK (OnNoACK) --------------------------------------
 
 // TestSendReplyBeforeACK covers the spec-deviation arm where a matching
-// reply arrives before the peer's DLE ACK.
+// reply arrives before the peer's codec.DLE ACK.
 func TestSendReplyBeforeACK(t *testing.T) {
 	a, b := net.Pipe()
 	var noackCount atomic.Int32
@@ -390,21 +325,21 @@ func TestSendReplyBeforeACK(t *testing.T) {
 	})
 	defer func() { _ = c.Close() }()
 
-	peer := newFakePeer(b, func(p *fakePeer, f Frame) {
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
 		// Reply directly, no ACK first.
-		p.writeFrame(Frame{ID: TxCrosspointTally, Payload: []byte{0, 0, 7}})
+		p.writeFrame(codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0, 0, 7}})
 	})
 	defer func() { _ = peer.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	reply, err := c.Send(ctx, Frame{ID: RxCrosspointInterrogate, Payload: []byte{0, 0, 0, 0}},
-		func(f Frame) bool { return f.ID == TxCrosspointTally })
+	reply, err := c.Send(ctx, codec.Frame{ID: codec.RxCrosspointInterrogate, Payload: []byte{0, 0, 0, 0}},
+		func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTally })
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if reply.ID != TxCrosspointTally {
-		t.Errorf("reply.ID = %#x; want TxCrosspointTally", byte(reply.ID))
+	if reply.ID != codec.TxCrosspointTally {
+		t.Errorf("reply.ID = %#x; want codec.TxCrosspointTally", byte(reply.ID))
 	}
 	if noackCount.Load() != 1 {
 		t.Errorf("OnNoACK fired %d; want 1", noackCount.Load())
@@ -419,7 +354,7 @@ func TestWriteAfterClose(t *testing.T) {
 	defer func() { _ = b.Close() }()
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{})
 	_ = c.Close()
-	if err := c.Write(PackACK()); !errors.Is(err, net.ErrClosed) {
+	if err := c.Write(codec.PackACK()); !errors.Is(err, net.ErrClosed) {
 		t.Errorf("Write after Close = %v; want net.ErrClosed", err)
 	}
 }
@@ -444,7 +379,7 @@ func TestWriteFiresOnTx(t *testing.T) {
 	}()
 	defer func() { _ = b.Close() }()
 
-	if err := c.Write(PackACK()); err != nil {
+	if err := c.Write(codec.PackACK()); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	if seen.Load() != 1 {
@@ -452,12 +387,12 @@ func TestWriteFiresOnTx(t *testing.T) {
 	}
 }
 
-// --- readLoop: ACK/NAK onRx, hex RX log, onRx, desync, decode-error NAK -----
+// --- readLoop: ACK/codec.NAK onRx, hex RX log, onRx, desync, decode-error codec.NAK -----
 
 // TestReadLoopRoutesACKNAKAndFrames feeds the client's reader a stream
-// containing: a desync junk byte, a DLE ACK, a DLE NAK, a well-framed
+// containing: a desync junk byte, a codec.DLE ACK, a codec.DLE codec.NAK, a well-framed
 // data frame (→ onRx + hex log + dispatch + auto-ACK), and a malformed
-// frame (→ DLE NAK emission). All inbound observer + routing arms run.
+// frame (→ codec.DLE codec.NAK emission). All inbound observer + routing arms run.
 func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 	a, b := net.Pipe()
 	var rxCount atomic.Int32
@@ -466,15 +401,15 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 	// WireHexLog nil → defaults true → hex RX log path runs.
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{
 		OnRx: func([]byte) { rxCount.Add(1) },
-		OnEvent: func(_ *Client, f Frame) {
-			if f.ID == TxCrosspointTally {
+		OnEvent: func(_ *Client, f codec.Frame) {
+			if f.ID == codec.TxCrosspointTally {
 				gotFrame.Store(true)
 			}
 		},
 	})
 	defer func() { _ = c.Close() }()
 
-	// Collect bytes the client writes back (auto-ACK + DLE NAK).
+	// Collect bytes the client writes back (auto-ACK + codec.DLE codec.NAK).
 	var mu sync.Mutex
 	var back []byte
 	readerDone := make(chan struct{})
@@ -495,11 +430,11 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 	}()
 
 	// Build the inbound stream.
-	stream := []byte{0xAA} // desync junk byte (not DLE)
-	stream = append(stream, PackACK()...)
-	stream = append(stream, PackNAK()...)
-	stream = append(stream, Pack(Frame{ID: TxCrosspointTally, Payload: []byte{0, 0, 7}})...)
-	// Malformed frame: valid SOM/EOM framing but bad checksum → reader NAKs.
+	stream := []byte{0xAA} // desync junk byte (not codec.DLE)
+	stream = append(stream, codec.PackACK()...)
+	stream = append(stream, codec.PackNAK()...)
+	stream = append(stream, codec.Pack(codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0, 0, 7}})...)
+	// Malformed frame: valid codec.SOM/EOM framing but bad checksum → reader NAKs.
 	bad := []byte{0x10, 0x02, 0x07, 0x01, 0x00, 0x10, 0x03} // wrong CHK
 	stream = append(stream, bad...)
 
@@ -516,14 +451,14 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	if rxCount.Load() < 3 { // ACK + NAK + data frame all call onRx
+	if rxCount.Load() < 3 { // ACK + codec.NAK + data frame all call onRx
 		t.Errorf("onRx fired %d; want >= 3", rxCount.Load())
 	}
 
-	// The malformed frame is the LAST element of the stream and its DLE NAK
+	// The malformed frame is the LAST element of the stream and its codec.DLE codec.NAK
 	// is emitted by the reader after the data-frame dispatch above. Wait for
 	// that terminal observable before tearing down — closing right after
-	// gotFrame raced the reader's NAK write against Close (ADR-0029: wait on
+	// gotFrame raced the reader's codec.NAK write against Close (ADR-0029: wait on
 	// the monotonic observable, never on "the frame before it").
 	sawNAK := false
 	nakDeadline := time.After(2 * time.Second)
@@ -536,7 +471,7 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 		}
 		select {
 		case <-nakDeadline:
-			t.Fatal("reader never emitted DLE NAK for the malformed frame")
+			t.Fatal("reader never emitted codec.DLE codec.NAK for the malformed frame")
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
@@ -546,10 +481,10 @@ func TestReadLoopRoutesACKNAKAndFrames(t *testing.T) {
 	<-readerDone
 }
 
-// containsNAK reports whether buf contains a DLE NAK sequence.
+// containsNAK reports whether buf contains a codec.DLE codec.NAK sequence.
 func containsNAK(buf []byte) bool {
 	for i := 0; i+1 < len(buf); i++ {
-		if buf[i] == DLE && buf[i+1] == NAK {
+		if buf[i] == codec.DLE && buf[i+1] == codec.NAK {
 			return true
 		}
 	}
@@ -569,13 +504,13 @@ func TestDispatchDuplicateReplyFallsThrough(t *testing.T) {
 	defer func() { _ = c.Close() }()
 
 	var listenerHits atomic.Int32
-	c.Subscribe(func(Frame) { listenerHits.Add(1) })
+	c.Subscribe(func(codec.Frame) { listenerHits.Add(1) })
 
 	// Install a pending waiter whose reply slot we pre-fill, then dispatch
 	// a matching frame so the select default arm (slot full) runs and the
 	// frame fans out to the listener.
 	waiter := &pendingWaiter{
-		match: func(f Frame) bool { return f.ID == TxCrosspointTally },
+		match: func(f codec.Frame) bool { return f.ID == codec.TxCrosspointTally },
 		reply: make(chan replyResult, 1),
 	}
 	waiter.reply <- replyResult{} // pre-fill the slot
@@ -583,7 +518,7 @@ func TestDispatchDuplicateReplyFallsThrough(t *testing.T) {
 	c.pending = waiter
 	c.mu.Unlock()
 
-	c.dispatch(Frame{ID: TxCrosspointTally, Payload: []byte{0, 0, 1}})
+	c.dispatch(codec.Frame{ID: codec.TxCrosspointTally, Payload: []byte{0, 0, 1}})
 
 	if listenerHits.Load() != 1 {
 		t.Errorf("listener fired %d; want 1 (fall-through)", listenerHits.Load())

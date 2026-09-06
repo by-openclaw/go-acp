@@ -13,13 +13,13 @@ const (
 // CommandSpec is the structured metadata used by the CLI catalogue
 // helpers. Stdlib-only so the codec stays lift-ready.
 type CommandSpec struct {
-	ID         CommandID        // wire byte
-	Name       string           // snake_case identifier (matches CommandName)
-	Direction  CommandDirection // rx (controller → matrix) or tx (matrix → controller)
-	SpecRef    string           // SW-P-02 Issue 26 section, e.g. "§3.2.4"
-	Payload    string           // "fixed N bytes" / "variable" / "zero" — hint, not a schema
-	Notes      string           // free-form (extended-form, owner-only auth, etc.)
-	Supported  bool             // true if this codec implements the command
+	ID        CommandID        // wire byte
+	Name      string           // snake_case identifier (matches CommandName)
+	Direction CommandDirection // rx (controller → matrix) or tx (matrix → controller)
+	SpecRef   string           // SW-P-02 Issue 26 section, e.g. "§3.2.4"
+	Payload   string           // "fixed N bytes" / "variable" / "zero" — hint, not a schema
+	Notes     string           // free-form (extended-form, owner-only auth, etc.)
+	Supported bool             // true if this codec implements the command
 }
 
 // Commands returns the full SW-P-02 command catalogue this codec

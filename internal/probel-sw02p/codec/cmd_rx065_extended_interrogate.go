@@ -39,6 +39,6 @@ func DecodeExtendedInterrogate(f Frame) (ExtendedInterrogateParams, error) {
 		return ExtendedInterrogateParams{}, ErrShortPayload
 	}
 	return ExtendedInterrogateParams{
-		Destination: (uint16(f.Payload[0]) & 0x7F) * 128 + uint16(f.Payload[1]),
+		Destination: (uint16(f.Payload[0])&0x7F)*128 + uint16(f.Payload[1]),
 	}, nil
 }

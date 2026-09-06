@@ -9,6 +9,7 @@ import (
 //     after the 3-byte header. 128 is the conventional cap.
 //   - Word form (tx 023) carries 2 bytes per source + 2 bytes per dst
 //     header → 64 tallies per frame. 64 is the conventional cap.
+//
 // Keeping them tight means controllers that honour only the soft limit
 // still parse our output cleanly.
 const (

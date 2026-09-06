@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/wiretrace"
 )
 
@@ -34,8 +34,8 @@ func TestValidateHappyPath(t *testing.T) {
 		{Direction: wiretrace.DirectionRx, Hex: hex.EncodeToString(codec.PackNAK())},
 		{Direction: wiretrace.DirectionTx, Hex: hexFrame(good)},
 		{Direction: wiretrace.DirectionTx, Hex: hexFrame(unknown)},
-		{Direction: wiretrace.DirectionRx, Hex: "zzzz"},  // bad hex
-		{Direction: wiretrace.DirectionRx, Hex: badHex},  // Unpack error
+		{Direction: wiretrace.DirectionRx, Hex: "zzzz"}, // bad hex
+		{Direction: wiretrace.DirectionRx, Hex: badHex}, // Unpack error
 	}
 
 	p := freshPlugin()

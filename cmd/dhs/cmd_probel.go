@@ -16,7 +16,7 @@ import (
 // runProbel dispatches `dhs consumer probel-sw08p <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr (hex goes via the slog
-// INFO handler inside codec.Client).
+// INFO handler inside session.Client).
 //
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL

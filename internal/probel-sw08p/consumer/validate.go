@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/wiretrace"
 )
 

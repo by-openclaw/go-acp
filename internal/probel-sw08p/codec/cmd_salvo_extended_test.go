@@ -260,9 +260,9 @@ func TestSalvoGroupTally_ExtendedMaxAllAxes(t *testing.T) {
 // audit.
 func TestMixedFormSalvo(t *testing.T) {
 	slots := []SalvoConnectOnGoParams{
-		{MatrixID: 0, LevelID: 0, DestinationID: 100, SourceID: 50, SalvoID: 3},   // narrow
+		{MatrixID: 0, LevelID: 0, DestinationID: 100, SourceID: 50, SalvoID: 3},     // narrow
 		{MatrixID: 16, LevelID: 2, DestinationID: 1000, SourceID: 2000, SalvoID: 3}, // extended (mtx > 15)
-		{MatrixID: 0, LevelID: 0, DestinationID: 200, SourceID: 75, SalvoID: 3},   // narrow
+		{MatrixID: 0, LevelID: 0, DestinationID: 200, SourceID: 75, SalvoID: 3},     // narrow
 	}
 	wantIDs := []CommandID{
 		RxCrosspointConnectOnGoSalvo,

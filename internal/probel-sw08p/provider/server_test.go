@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // TestTreeParsesDemoMatrix loads the demo fixture and verifies both
@@ -121,7 +122,7 @@ func TestServerLoopback(t *testing.T) {
 	disable := false
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDial()
-	cli, err := codec.Dial(dialCtx, addr, logger, codec.ClientConfig{WireHexLog: &disable})
+	cli, err := sw08session.Dial(dialCtx, addr, logger, sw08session.ClientConfig{WireHexLog: &disable})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

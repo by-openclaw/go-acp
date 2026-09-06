@@ -154,9 +154,11 @@ jobs:
           check internal/emberplus/consumer 100
           check internal/emberplus/provider 100
           check internal/probel-sw02p/codec 100
+          check internal/probel-sw02p/session 100
           check internal/probel-sw02p/consumer 100
           check internal/probel-sw02p/provider 100
           check internal/probel-sw08p/codec 100
+          check internal/probel-sw08p/session 100
           check internal/probel-sw08p/consumer 100
           check internal/probel-sw08p/provider 100
           check internal/tsl/codec 100

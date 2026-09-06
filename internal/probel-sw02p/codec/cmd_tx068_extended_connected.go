@@ -57,8 +57,8 @@ func DecodeExtendedConnected(f Frame) (ExtendedConnectedParams, error) {
 	}
 	s := f.Payload[4]
 	return ExtendedConnectedParams{
-		Destination: (uint16(f.Payload[0]) & 0x7F) * 128 + uint16(f.Payload[1]),
-		Source:      (uint16(f.Payload[2]) & 0x7F) * 128 + uint16(f.Payload[3]),
+		Destination: (uint16(f.Payload[0])&0x7F)*128 + uint16(f.Payload[1]),
+		Source:      (uint16(f.Payload[2])&0x7F)*128 + uint16(f.Payload[3]),
 		UpdateOff:   s&(1<<0) != 0,
 		BadSource:   s&(1<<1) != 0,
 	}, nil
