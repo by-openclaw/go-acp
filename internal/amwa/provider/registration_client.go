@@ -633,6 +633,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 //     Node MUST DELETE the stale entry and re-POST as
 //     fresh — AMWA test_21 enforces this.
 //   - other        → error.
+//
 // SetTokenSource installs the access-token supplier (BCP-003-02).
 func (c *RegistrationClient) SetTokenSource(fn func(context.Context) (string, error)) {
 	c.tokenSource = fn
