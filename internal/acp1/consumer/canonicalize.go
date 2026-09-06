@@ -193,6 +193,16 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 			}
 			children = append(children, current)
 			curOID, curPath = mOID, mPath
+			// The marker is an object on the wire with an id of its own, so
+			// it is also carried as this section's first leaf. Without it the
+			// group's ids have a hole where every marker sits, and a walk of
+			// a served copy stops there with "object instance does not
+			// exist". Its own canonical type (enum or string, per
+			// codec.IsSubGroupMarker) is what a provider rebuilds it from,
+			// so nothing about the marker has to be guessed downstream.
+			if p := buildParameter(it.obj, it.acp, mOID, mPath); p != nil {
+				current.Children = append(current.Children, p)
+			}
 			continue
 		}
 		if current != nil {
@@ -203,14 +213,6 @@ func buildGroupNode(slot int, slotOID, slotPath string, groupNumber int, groupNa
 		}
 		if p := buildParameter(it.obj, it.acp, groupOID, groupPath); p != nil {
 			children = append(children, p)
-		}
-	}
-
-	// A marker with no following children still needs a non-nil Children
-	// slice so the JSON shows `"children": []` not `null`.
-	for _, el := range children {
-		if n, ok := el.(*canonical.Node); ok && len(n.Children) == 0 {
-			n.Children = canonical.EmptyChildren()
 		}
 	}
 

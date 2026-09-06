@@ -50,7 +50,10 @@ func TestBuildParameter_AlarmAndEmptyLabel(t *testing.T) {
 				sawHashID = true
 			}
 		case *canonical.Node:
-			if e.Identifier == "SECTION" && len(e.Children) == 0 {
+			// A trailing marker opens a section that nothing follows, so its
+			// only child is the marker's own leaf — the one that carries the
+			// wire id. It is never childless.
+			if e.Identifier == "SECTION" && len(e.Children) == 1 {
 				sawEmptyMarker = true
 			}
 		}
@@ -62,7 +65,7 @@ func TestBuildParameter_AlarmAndEmptyLabel(t *testing.T) {
 		t.Error("empty-label parameter should get #id identifier")
 	}
 	if !sawEmptyMarker {
-		t.Error("trailing marker should normalise to empty children")
+		t.Error("a trailing marker should still carry its own leaf")
 	}
 }
 

@@ -60,15 +60,20 @@ func TestBuildGroupNode_NestsSubGroups(t *testing.T) {
 		t.Fatal("TRANSPARENT should be a parent Node under control")
 	}
 
-	// DOWN CONV nests exactly its two following objects.
+	// DOWN CONV nests its own marker leaf followed by its two objects. The
+	// marker is carried twice on purpose: as the Node that groups the
+	// section for display, and as the leaf that holds its wire id. Drop the
+	// leaf and the group's ids have a hole wherever a marker sits, which is
+	// what made a walk of a served copy stop at "object instance does not
+	// exist".
 	got := childIdentifiers(downConv)
-	if len(got) != 2 || got[0] != "Dn_CtrlA" || got[1] != "Dn_ArcA" {
-		t.Errorf("DOWN CONV children = %v, want [Dn_CtrlA Dn_ArcA]", got)
+	if len(got) != 3 || got[0] != "  DOWN CONV" || got[1] != "Dn_CtrlA" || got[2] != "Dn_ArcA" {
+		t.Errorf("DOWN CONV children = %v, want [\"  DOWN CONV\" Dn_CtrlA Dn_ArcA]", got)
 	}
 	// The next marker opens a fresh section — Tr_CtrlA nests under TRANSPARENT,
 	// not DOWN CONV.
-	if tr := childIdentifiers(transparent); len(tr) != 1 || tr[0] != "Tr_CtrlA" {
-		t.Errorf("TRANSPARENT children = %v, want [Tr_CtrlA]", tr)
+	if tr := childIdentifiers(transparent); len(tr) != 2 || tr[0] != "  TRANSPARENT" || tr[1] != "Tr_CtrlA" {
+		t.Errorf("TRANSPARENT children = %v, want [\"  TRANSPARENT\" Tr_CtrlA]", tr)
 	}
 	// Nested child path reflects the hierarchy.
 	for _, el := range downConv.Children {
