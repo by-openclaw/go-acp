@@ -1,6 +1,7 @@
 package probelsw02p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -33,7 +34,7 @@ func TestRouterConfigRequestDerivedFromTree(t *testing.T) {
 			},
 		},
 	}
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 
 	res, err := srv.dispatch(codec.EncodeRouterConfigRequest(codec.RouterConfigRequestParams{}))
 	if err != nil {
@@ -64,7 +65,7 @@ func TestRouterConfigRequestDerivedFromTree(t *testing.T) {
 // TestRouterConfigRequestEmptyTree verifies the bare-tree case — no
 // matrices declared means bitmap=0 and no per-level entries.
 func TestRouterConfigRequestEmptyTree(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 	res, err := srv.dispatch(codec.EncodeRouterConfigRequest(codec.RouterConfigRequestParams{}))
 	if err != nil {
 		t.Fatalf("dispatch rx 075: %v", err)

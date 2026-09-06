@@ -68,11 +68,10 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-// New constructs a fresh consumer plugin bound to the given logger.
+// New constructs a fresh consumer plugin bound to the injected dependencies.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
 }
 
 // MatrixConfig holds the externally-supplied matrix shape. SW-P-02
@@ -114,6 +113,15 @@ type MatrixConfig struct {
 // etc.) is added as subsequent commits land their PRs.
 type Plugin struct {
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected, so the
+	// process decides the transport posture (TLS, keepalive, source
+	// address) and a test substitutes a fake without a real port.
+	net transport.Net
+
+	// metrics is supplied rather than created, so the process can scrape
+	// every connector from one place.
+	metrics *metrics.Connector
 
 	mu       sync.Mutex
 	host     string
@@ -226,7 +234,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	prof := &compliance.Profile{}
-	met := metrics.NewConnector()
+	// Normally injected by the factory. A Plugin built directly — tests, and
+	// any caller that predates Deps — still gets a working counter set rather
+	// than a nil Metrics(), which is what this used to guarantee by
+	// constructing its own.
+	met := p.metrics
+	if met == nil {
+		met = metrics.NewConnector()
+	}
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids. Empty in the scaffold;
 	// per-command commits populate the catalogue.
@@ -250,7 +265,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw02p", "rx", b)
 		}
 	}
-	cli, err := session.Dial(ctx, addr, p.logger, cfg)
+	cli, err := session.Dial(ctx, p.net, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}

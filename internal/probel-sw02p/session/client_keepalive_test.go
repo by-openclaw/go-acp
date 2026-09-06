@@ -39,7 +39,7 @@ func TestDialAppliesTCPKeepalive(t *testing.T) {
 	cfg := ClientConfig{TCPKeepalivePeriod: 17 * time.Second}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	cli, err := Dial(ctx, addr, logger, cfg)
+	cli, err := Dial(ctx, nil, addr, logger, cfg)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}

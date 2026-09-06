@@ -1,6 +1,7 @@
 package probelsw02p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -33,7 +34,7 @@ func newTestServer(t *testing.T) *server {
 			},
 		},
 	}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 // TestConnectOnGoAppendsPendingAndAcks locks in the rx 05 / tx 12
