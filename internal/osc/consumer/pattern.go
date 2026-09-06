@@ -8,7 +8,7 @@ import "strings"
 //   - '?'        matches any single character within one path segment
 //   - '*'        matches any sequence (including zero) of characters within one segment
 //   - '[chars]'  matches any single char in chars; supports ranges via '-'
-//                and negation via leading '!'
+//     and negation via leading '!'
 //   - '{a,b,c}'  matches any of the comma-separated alternatives (segment-bounded)
 //   - '/'        is a path separator and is NEVER crossed by *, ?, [, or {
 //

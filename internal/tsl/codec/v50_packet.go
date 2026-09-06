@@ -28,15 +28,15 @@ const (
 	V50MinorVersion = 0
 	V50BroadcastIdx = 0xFFFF // special SCREEN / INDEX value
 
-	v50FlagsUTF16LE   = 1 << 0
-	v50FlagsSCONTROL  = 1 << 1
-	v50FlagsReserved  = 0xFC // bits 2-7 must be 0
+	v50FlagsUTF16LE  = 1 << 0
+	v50FlagsSCONTROL = 1 << 1
+	v50FlagsReserved = 0xFC // bits 2-7 must be 0
 
 	// DMSG offsets (relative to start of DMSG block)
-	v50DMSGIndexIdx    = 0
-	v50DMSGControlIdx  = 2
-	v50DMSGLengthIdx   = 4 // present when CONTROL bit 15 == 0
-	v50DMSGHeaderSize  = 4 // INDEX + CONTROL
+	v50DMSGIndexIdx   = 0
+	v50DMSGControlIdx = 2
+	v50DMSGLengthIdx  = 4 // present when CONTROL bit 15 == 0
+	v50DMSGHeaderSize = 4 // INDEX + CONTROL
 
 	// CONTROL bit layout
 	v50CtrlRHMask         = 0x3
@@ -55,13 +55,13 @@ const (
 
 // Errors returned by the v5.0 codec.
 var (
-	ErrV50PacketTooSmall  = errors.New("tsl v5.0: packet < header size (6 bytes)")
-	ErrV50PBCMismatch     = errors.New("tsl v5.0: PBC byte count doesn't match available payload")
-	ErrV50VersionUnknown  = errors.New("tsl v5.0: unknown VER (non-zero minor)")
-	ErrV50FlagsReserved   = errors.New("tsl v5.0: reserved FLAGS bits set")
-	ErrV50DMSGTruncated   = errors.New("tsl v5.0: DMSG truncated")
-	ErrV50TextDecode      = errors.New("tsl v5.0: TEXT decode failure")
-	ErrV50PacketTooLarge  = errors.New("tsl v5.0: packet exceeds 2048-byte maximum")
+	ErrV50PacketTooSmall = errors.New("tsl v5.0: packet < header size (6 bytes)")
+	ErrV50PBCMismatch    = errors.New("tsl v5.0: PBC byte count doesn't match available payload")
+	ErrV50VersionUnknown = errors.New("tsl v5.0: unknown VER (non-zero minor)")
+	ErrV50FlagsReserved  = errors.New("tsl v5.0: reserved FLAGS bits set")
+	ErrV50DMSGTruncated  = errors.New("tsl v5.0: DMSG truncated")
+	ErrV50TextDecode     = errors.New("tsl v5.0: TEXT decode failure")
+	ErrV50PacketTooLarge = errors.New("tsl v5.0: packet exceeds 2048-byte maximum")
 )
 
 // DMSG is one display message inside a v5.0 packet.
@@ -89,11 +89,11 @@ type DMSG struct {
 
 // V50Packet is the decoded v5.0 envelope + body.
 type V50Packet struct {
-	Version    uint8 // VER byte (0 for v5.0)
-	UTF16LE    bool  // FLAGS bit 0
-	SControl   bool  // FLAGS bit 1
-	Screen     uint16
-	DMSGs      []DMSG
+	Version     uint8 // VER byte (0 for v5.0)
+	UTF16LE     bool  // FLAGS bit 0
+	SControl    bool  // FLAGS bit 1
+	Screen      uint16
+	DMSGs       []DMSG
 	SControlRaw []byte // when SControl == true, the body after the envelope
 
 	Notes []ComplianceNote

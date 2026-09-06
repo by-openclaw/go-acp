@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"syscall"
 
 	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
@@ -71,28 +70,10 @@ func newUDPSession() *udpSession {
 // On Linux SO_REUSEPORT is also set best-effort (see
 // internal/transport/sockopt_unix.go).
 func (s *udpSession) listen(ctx context.Context, addr string, decode func(*net.UDPAddr, []byte, *udpSession)) error {
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			// rawControl is c.Control in production; a test swaps it to
-			// force the (otherwise unreachable) error return arm — the OS
-			// never makes c.Control fail for a freshly-bound UDP socket.
-			if err := rawControl(c, func(fd uintptr) {
-				opErr = transport.SetSocketReuseAddr(fd)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
-	pc, err := lc.ListenPacket(ctx, "udp", addr)
+	conn, err := transport.ListenUDPAddr(ctx, "udp", addr,
+		transport.UDPBindOptions{ReuseAddr: true})
 	if err != nil {
 		return fmt.Errorf("tsl: listen %q: %w", addr, err)
-	}
-	conn, ok := listenConnAssert(pc)
-	if !ok {
-		_ = pc.Close()
-		return fmt.Errorf("tsl: listen %q: unexpected conn type %T", addr, pc)
 	}
 	s.conn = conn
 

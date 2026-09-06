@@ -18,9 +18,9 @@ const (
 )
 
 var (
-	ErrDLEStreamTruncated  = errors.New("tsl v5.0 TCP: stream ended mid-frame")
-	ErrDLEMissingStart     = errors.New("tsl v5.0 TCP: expected DLE/STX start delimiter")
-	ErrDLEMalformedEscape  = errors.New("tsl v5.0 TCP: malformed DLE escape (expected DLE/DLE or DLE/STX start)")
+	ErrDLEStreamTruncated = errors.New("tsl v5.0 TCP: stream ended mid-frame")
+	ErrDLEMissingStart    = errors.New("tsl v5.0 TCP: expected DLE/STX start delimiter")
+	ErrDLEMalformedEscape = errors.New("tsl v5.0 TCP: malformed DLE escape (expected DLE/DLE or DLE/STX start)")
 )
 
 // EncodeDLEFrame wraps an already-encoded v5.0 packet with the DLE/STX

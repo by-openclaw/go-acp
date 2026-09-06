@@ -2,6 +2,7 @@ package tsl
 
 import (
 	"context"
+	"dhs/internal/transport"
 	"errors"
 	"fmt"
 	"net"
@@ -45,15 +46,10 @@ func (s *udpSender) bind(addr string) error {
 	if addr == "" {
 		addr = ":0"
 	}
-	lc := net.ListenConfig{Control: rawControlSeam()}
-	pc, err := lc.ListenPacket(context.Background(), "udp", addr)
+	conn, err := transport.ListenUDPAddr(context.Background(), "udp", addr,
+		transport.UDPBindOptions{ReuseAddr: true, Broadcast: true})
 	if err != nil {
 		return fmt.Errorf("tsl provider: bind %q: %w", addr, err)
-	}
-	conn, ok := assertUDPConn(pc)
-	if !ok {
-		_ = pc.Close()
-		return fmt.Errorf("tsl provider: bind %q: unexpected conn type %T", addr, pc)
 	}
 	s.conn = conn
 	return nil
@@ -178,4 +174,3 @@ func (s *udpSender) encodeAndSendV50UDP(p codec.V50Packet) error {
 	}
 	return s.sendBytes(payload)
 }
-

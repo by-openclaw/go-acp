@@ -7,11 +7,15 @@
 //
 //   - Client (Dial) AND server (Accept) — one framing layer, one idle
 //     bound, one Ping/Pong path for both.
+//
 //   - Text + Close + Ping + Pong opcodes — Binary accepted but never
 //     produced.
+//
 //   - Single frame on TX; fragmentation accepted on RX.
+//
 //   - Sub-protocol echoed on Accept via AcceptOptions.Subprotocol; never
 //     offered on Dial.
+//
 //   - No permessage-deflate (RFC 7692), deliberately. Extensions are
 //     negotiated, so declining is spec-correct: Dial never offers it and
 //     Accept never echoes it, and a peer that compresses anyway is
