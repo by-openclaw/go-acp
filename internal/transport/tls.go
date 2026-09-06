@@ -136,3 +136,43 @@ func (o TLSOptions) clientCert() ([]tls.Certificate, error) {
 	}
 	return []tls.Certificate{cert}, nil
 }
+
+// Server builds the *tls.Config for an inbound listener.
+//
+// Returns (nil, nil) when Enable is false, matching Client, so a caller can
+// hand the result straight to a listener whose nil case is plain TCP.
+//
+// CertFile + KeyFile are this side's identity and are REQUIRED when Enable is
+// set — a TLS server with no certificate is not a degraded server, it cannot
+// complete a handshake at all, so this fails loudly rather than at the first
+// connection.
+//
+// RootCAs / CAFile mean something different on this side than on Client's:
+// they become the trust anchors for CLIENT certificates, and setting either
+// turns mutual TLS on. That coupling is deliberate. A server that pins client
+// CAs but still accepts anonymous clients has pinned nothing, so asking for
+// the anchors is taken as asking for them to be enforced.
+func (o TLSOptions) Server() (*tls.Config, error) {
+	if !o.Enable {
+		return nil, nil
+	}
+	certs, err := o.clientCert()
+	if err != nil {
+		return nil, err
+	}
+	if len(certs) == 0 {
+		return nil, fmt.Errorf(
+			"transport: TLS server needs CertFile and KeyFile")
+	}
+	cfg := &tls.Config{MinVersion: MinTLSVersion, Certificates: certs}
+
+	clientCAs, err := o.roots()
+	if err != nil {
+		return nil, err
+	}
+	if clientCAs != nil {
+		cfg.ClientCAs = clientCAs
+		cfg.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+	return cfg, nil
+}
