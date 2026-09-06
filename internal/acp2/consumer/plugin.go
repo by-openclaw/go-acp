@@ -263,6 +263,16 @@ func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
 	p.mu.Unlock()
 }
 
+// Metrics returns the connector's counter set — frames and bytes in and out
+// attributed by AN2 Type, plus errors and latency. Satisfies the optional
+// interface the CLI type-asserts for --metrics-addr. Always non-nil, because
+// plugin.Deps.WithDefaults fills it.
+func (p *Plugin) Metrics() *metrics.Connector {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.metrics
+}
+
 // Connect establishes the AN2/TCP connection and runs the full handshake:
 // AN2 GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents, ACP2 GetVersion.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {

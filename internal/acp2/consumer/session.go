@@ -14,6 +14,7 @@ import (
 	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -114,6 +115,12 @@ type Session struct {
 	// sendFrame after a successful write. Health reports both, so a
 	// silent link can be told apart from one we stopped talking on.
 	lastTxNS atomic.Int64
+
+	// met counts every frame in and out, attributed by AN2 Type — the
+	// natural command axis for AN2, and the same one the acp2 provider
+	// registers. Never nil after SetMetrics; nil-checked so a Session built
+	// directly by a test still works.
+	met *metrics.Connector
 
 	// slotLastSeen records the wall-clock time we last had wire evidence
 	// of a particular slot's status (handshake AN2 GetSlotInfo or a
@@ -466,6 +473,9 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 		return &consumer.TransportError{Op: "send", Err: err}
 	}
 	s.lastTxNS.Store(time.Now().UnixNano())
+	if s.met != nil {
+		s.met.ObserveCmdTx(uint8(f.Type), len(data), 0)
+	}
 	return nil
 }
 
@@ -502,6 +512,9 @@ func (s *Session) readLoop(conn net.Conn) {
 		// Touch lastRx on every frame so SessionLive / dead-man see
 		// announces, replies, AND keep-alive probe answers (#365).
 		s.lastRxNS.Store(time.Now().UnixNano())
+		if s.met != nil {
+			s.met.ObserveCmdRx(uint8(frame.Type), an2FrameLen(frame))
+		}
 
 		// Record raw frame for capture (includes announces — tests need them).
 		if s.recorder != nil {
@@ -852,6 +865,21 @@ func (s *Session) SlotInfoFromAN2(slot int) consumer.SlotInfo {
 	return si
 }
 
+// SetMetrics attaches the connector's counter set. Called by the Plugin
+// right after NewSession, before Connect.
+func (s *Session) SetMetrics(m *metrics.Connector) {
+	if m == nil {
+		return
+	}
+	for _, t := range []codec.AN2Type{
+		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
+		codec.AN2TypeError, codec.AN2TypeData,
+	} {
+		m.RegisterCmd(uint8(t), t.String())
+	}
+	s.met = m
+}
+
 // LastRx is the wall-clock time of the last frame received on this
 // session. Lock-free atomic load; zero when nothing has been received
 // yet.
@@ -932,3 +960,10 @@ func (s *Session) SetIdleTimeout(d time.Duration) {
 
 // IdleTimeout reports the currently armed per-frame read deadline.
 func (s *Session) IdleTimeout() time.Duration { return s.idle.Get() }
+
+// an2FrameLen is the byte count a frame occupied on the wire: the fixed
+// 8-byte AN2 header plus its payload. Taken from the decoded frame rather
+// than re-encoding it, so counting costs nothing on the read path.
+func an2FrameLen(f *codec.AN2Frame) int {
+	return 8 + len(f.Payload)
+}
