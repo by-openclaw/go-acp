@@ -1013,13 +1013,31 @@ func asBool(v any, field string) (bool, error) {
 // ipv4ToUint32 parses canonical IP storage ("a.b.c.d" dotted-quad
 // string) into a uint32 network value per spec p.22. Matches the
 // consumer's canonicalize.go output ("1.2.3.4").
+// ipv4ToUint32 accepts either representation an ACP1 IPAddr takes in a
+// canonical tree, because the exporter emits both: an address is a u32 on
+// the wire (spec p.21, "same as INTEGER but u32 numerics"), and
+// Canonicalize renders the VALUE as a readable dotted quad while leaving
+// default, step, min and max as the plain numbers they are. Serving an
+// extracted Synapse rack failed on exactly that split —
+//
+//	getObject encode oid=1.2.2.124.126 err="ipv4: expected dotted-quad
+//	string, got float64"
+//
+// — with value "0.0.0.0" accepted and maximum 4294967295 refused.
 func ipv4ToUint32(v any) (uint32, error) {
 	if v == nil {
 		return 0, fmt.Errorf("ipv4: missing value")
 	}
 	s, ok := v.(string)
 	if !ok {
-		return 0, fmt.Errorf("ipv4: expected dotted-quad string, got %T", v)
+		n, err := anyToInt(v, "ipv4")
+		if err != nil {
+			return 0, fmt.Errorf("ipv4: expected a dotted-quad string or a u32, got %T", v)
+		}
+		if n < 0 || n > math.MaxUint32 {
+			return 0, fmt.Errorf("ipv4: %d out of u32 range", n)
+		}
+		return uint32(n), nil
 	}
 	parts := strings.Split(s, ".")
 	if len(parts) != 4 {
