@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -15,7 +16,7 @@ import (
 // the Extended PROTECT tally / connected / disconnected broadcasts
 // out to every connected session.
 func TestExtendedProtectEmitFanout(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 	defer func() { _ = srv.Stop() }()
 
 	// Pre-bound listener handed straight to serveListener — the old

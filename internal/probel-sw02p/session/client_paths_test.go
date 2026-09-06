@@ -25,7 +25,7 @@ func quietLogger() *slog.Logger {
 func TestDialError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	cli, err := Dial(ctx, "127.0.0.1:1", quietLogger(), ClientConfig{
+	cli, err := Dial(ctx, nil, "127.0.0.1:1", quietLogger(), ClientConfig{
 		DialTimeout: 200 * time.Millisecond,
 	})
 	if err == nil {
@@ -57,7 +57,7 @@ func TestDialDefaultsAndNilLogger(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	// nil logger + zero cfg → default timeout / buffer branches.
-	cli, err := Dial(ctx, l.Addr().String(), nil, ClientConfig{})
+	cli, err := Dial(ctx, nil, l.Addr().String(), nil, ClientConfig{})
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}

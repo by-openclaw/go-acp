@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -50,7 +51,7 @@ func TestSessionRunHandlerDecodeErrorSeam(t *testing.T) {
 	defer func() { decodeErrHook = nil }()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, nil)
+	srv := newServer(plugin.Deps{Logger: logger}, nil)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -135,7 +136,7 @@ func TestNewServerTreeBuildFailureSeam(t *testing.T) {
 	defer func() { treeBuildErrHook = nil }()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, &canonical.Export{Root: &canonical.Node{
+	srv := newServer(plugin.Deps{Logger: logger}, &canonical.Export{Root: &canonical.Node{
 		Header: canonical.Header{Number: 1, Identifier: "root", OID: "1"},
 	}})
 	if srv.tree == nil {

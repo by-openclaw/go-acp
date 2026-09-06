@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -16,7 +17,7 @@ import (
 // TallyDump through a live TCP session and confirms the wire bytes
 // arrive on the client side with the expected shape.
 func TestEmitExtendedProtectTallyDumpFanout(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 	defer func() { _ = srv.Stop() }()
 
 	// Pre-bind the listener so the server picks the same address with
@@ -97,7 +98,7 @@ func TestEmitExtendedProtectTallyDumpFanout(t *testing.T) {
 // 132-byte cap is enforced: callers passing more than the per-message
 // maximum get a descriptive error and no broadcast fires.
 func TestEmitExtendedProtectTallyDumpRejectsOverflow(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 	too := make([]codec.ExtendedProtectTallyDumpEntry, codec.ExtendedProtectTallyDumpMaxCount+1)
 	err := srv.EmitExtendedProtectTallyDump(codec.ExtendedProtectTallyDumpParams{Entries: too})
 	if err == nil {
