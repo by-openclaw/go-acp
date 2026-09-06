@@ -16,12 +16,12 @@ import (
 
 // Session manages a single TCP connection to an Ember+ provider.
 type Session struct {
-	conn     net.Conn
-	reader   *s101.Reader
-	writer   *s101.Writer
-	logger   *slog.Logger
-	mu       sync.Mutex
-	closed   bool
+	conn   net.Conn
+	reader *s101.Reader
+	writer *s101.Writer
+	logger *slog.Logger
+	mu     sync.Mutex
+	closed bool
 
 	// Callbacks for received elements.
 	onElement func([]glow.Element)
@@ -41,11 +41,11 @@ type Session struct {
 	// traffic has been seen for deadManThreshold. onStateChange is
 	// the plugin-side notifier fired on true/false transitions;
 	// guarded against double-fire by the plugin, not by Session.
-	lastRX            time.Time
-	lastRXMu          sync.RWMutex
-	onStateChange     func(connected bool, reason string)
-	deadManThreshold  time.Duration
-	deadManDone       chan struct{}
+	lastRX           time.Time
+	lastRXMu         sync.RWMutex
+	onStateChange    func(connected bool, reason string)
+	deadManThreshold time.Duration
+	deadManDone      chan struct{}
 
 	// profile records tolerance events (spec deviations absorbed on
 	// the fly) per connection. Set by the Plugin via SetProfile.
@@ -69,8 +69,8 @@ type Session struct {
 	// index their tree by the nested form and reject QualifiedParameter
 	// paths with "parameter not found". Both forms are spec; we pick
 	// to match the provider.
-	glowFormMu     sync.RWMutex
-	useLegacyGlow  bool
+	glowFormMu    sync.RWMutex
+	useLegacyGlow bool
 
 	// dtdSeen latches the first DTD version advertised by the provider
 	// via S101 app-bytes (header offsets 7+8 = minor/major). Captured

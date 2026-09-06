@@ -15,17 +15,20 @@ import (
 // error guards of the verb surface.
 func freshPlugin() *Plugin {
 	return &Plugin{
-		logger:      discardLogger(),
-		numIndex:    map[string]*treeEntry{},
-		pathIndex:   map[string]*treeEntry{},
-		labelIndex:  map[string][]*treeEntry{},
-		numPath:     map[string]string{},
-		subs:        map[string]consumer.EventFunc{},
-		streamSubs:  map[string][]int32{},
-		streamIndex: map[int64][]string{},
-		templates:   map[string]*glow.Template{},
-		profile:     &compliance.Profile{},
-		pendingSets: newPendingSetRegistry(),
+		// Production timings exist for real devices; a unit test must not
+		// sit out a 3 s write timeout to prove the timeout arm.
+		writeTimeout: 50 * time.Millisecond,
+		logger:       discardLogger(),
+		numIndex:     map[string]*treeEntry{},
+		pathIndex:    map[string]*treeEntry{},
+		labelIndex:   map[string][]*treeEntry{},
+		numPath:      map[string]string{},
+		subs:         map[string]consumer.EventFunc{},
+		streamSubs:   map[string][]int32{},
+		streamIndex:  map[int64][]string{},
+		templates:    map[string]*glow.Template{},
+		profile:      &compliance.Profile{},
+		pendingSets:  newPendingSetRegistry(),
 	}
 }
 
@@ -301,8 +304,8 @@ func TestMarkTreeStale(t *testing.T) {
 func TestSubscribeOnDiscovery(t *testing.T) {
 	p := freshPlugin()
 
-	p.subscribeOnDiscovery(nil)                                  // nil entry
-	p.subscribeOnDiscovery(&treeEntry{})                         // nil glowParam
+	p.subscribeOnDiscovery(nil)                                      // nil entry
+	p.subscribeOnDiscovery(&treeEntry{})                             // nil glowParam
 	p.subscribeOnDiscovery(&treeEntry{glowParam: &glow.Parameter{}}) // empty numericPath
 
 	// glowParam + numericPath but no wildcard active → returns early.

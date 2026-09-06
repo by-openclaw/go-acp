@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
 )
 
 // CanonicalOptions controls which form the exporter emits for

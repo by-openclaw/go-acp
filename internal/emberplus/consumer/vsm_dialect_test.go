@@ -105,4 +105,3 @@ func TestWalk_VSMGadgetserverDialect(t *testing.T) {
 		t.Fatalf("'Device' node not in snapshot: %+v", objs)
 	}
 }
-

@@ -31,7 +31,7 @@ func newTempRecorder(t *testing.T) (*transport.Recorder, error) {
 // *Header), so this branch is otherwise unreachable.
 type nilCommonElement struct{}
 
-func (nilCommonElement) Kind() string             { return "test" }
+func (nilCommonElement) Kind() string              { return "test" }
 func (nilCommonElement) Common() *canonical.Header { return nil }
 
 // TestRootOID covers rootOID across all three arms: nil element, an
@@ -518,7 +518,7 @@ func TestReadLoop_KeepAliveRespWriteError(t *testing.T) {
 // reconnectLoop: a plugin with a recorder set, dialing a dead port so the
 // loop builds a fresh session (installing the recorder) then gives up.
 func TestReconnectLoop_WithRecorder(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(discardLogger()).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1 // nothing listens → dial fails, loop builds the session first
 	rec, err := newTempRecorder(t)

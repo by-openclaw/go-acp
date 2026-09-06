@@ -276,6 +276,22 @@ jobs:
         with:
           version: v2.1.6
 
+      # ADR-0005 rule 2. docs/adr/0005-deps.json has named this gate in its
+      # own policy block since it was written; the script did not exist, so
+      # rule 1 — "go.mod direct deps must match exactly" — was never checked
+      # and the two drifted.
+      #
+      # NON-BLOCKING on purpose, and temporarily. It currently reports one
+      # real, pre-existing violation (prometheus/client_golang is a direct
+      # dependency that is in no manifest), and that is an owner decision
+      # under ADR-0014's exception process, not something a new gate should
+      # decide by turning main red. Flip continue-on-error off the moment
+      # that dependency is either recorded as an exception or removed —
+      # a gate nobody can fail is not a gate.
+      - name: deps match the ADR-0005 manifest
+        continue-on-error: true
+        run: bash tools/check-deps.sh
+
       # docs/cli.md is GENERATED from the binary's own -h output
       # (tools/gencli); a verb or flag changed without regenerating it
       # fails here rather than rotting silently.

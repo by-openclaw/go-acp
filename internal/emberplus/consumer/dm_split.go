@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/datastore"
+	"dhs/internal/export/canonical"
 )
 
 // SplitAndPersistDM walks the canonical tree, identifies every "slot"
@@ -26,10 +26,10 @@ import (
 //   - sw_rev   = <providerSwRev>   (e.g. "1.6.2")
 //   - protocol = "emberplus"
 //   - root     = the canonical Node at that slot, with its matrix +
-//                labels + parameters subtrees intact, including the
-//                inline targetLabels/sourceLabels/targetParams/
-//                sourceParams/connectionParams written by chunks 3c +
-//                7-fix earlier on this branch.
+//     labels + parameters subtrees intact, including the
+//     inline targetLabels/sourceLabels/targetParams/
+//     sourceParams/connectionParams written by chunks 3c +
+//     7-fix earlier on this branch.
 //
 // Slot detection is recursive — a matrix nested deeper than direct
 // child still pins the topmost containing root-child as the slot

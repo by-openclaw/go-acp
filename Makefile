@@ -201,10 +201,19 @@ fixtures-acp2:
 
 # ---------------------------------------------------------------- Lint / vet / fmt
 
-.PHONY: lint vet fmt fmt-check tidy
+.PHONY: lint vet fmt fmt-check tidy deps
 
 lint:
 	golangci-lint run $(PKG)
+
+# ADR-0005 rule 2: go.mod's direct requires must match docs/adr/0005-deps.json.
+# The manifest's own policy block has named this gate since it was written;
+# the script did not exist until now, which is how the two drifted apart.
+#
+# Not yet wired into CI: it currently fails on one real, pre-existing
+# violation, and turning CI red is the owner's call, not the gate's.
+deps:
+	bash tools/check-deps.sh
 
 vet:
 	$(GO) vet $(PKG)

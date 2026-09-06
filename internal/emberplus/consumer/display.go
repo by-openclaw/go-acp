@@ -78,4 +78,3 @@ func displayValueAndUnit(entry *treeEntry) (consumer.Value, string) {
 	}
 	return val, unit
 }
-

@@ -238,7 +238,7 @@ func TestRootOIDSubtreeWorthy(t *testing.T) {
 	if subtreeIsSlotWorthy(nil) {
 		t.Error("nil node not slot-worthy")
 	}
-	leafy := &canonical.Node{Header: canonical.Header{OID: "1"}, }
+	leafy := &canonical.Node{Header: canonical.Header{OID: "1"}}
 	leafy.Children = []canonical.Element{&canonical.Parameter{}}
 	if !subtreeIsSlotWorthy(leafy) {
 		t.Error("node with a Parameter is slot-worthy")

@@ -97,6 +97,7 @@ func Run(t *testing.T, tr Transport) {
 	t.Run("echo round trip", func(t *testing.T) { testEcho(t, tr) })
 	t.Run("empty payload rejected", func(t *testing.T) { testEmptyPayload(t, tr) })
 	t.Run("receive honours the deadline", func(t *testing.T) { testReceiveTimeout(t, tr) })
+	t.Run("receive honours cancellation", func(t *testing.T) { testReceiveCancel(t, tr) })
 	t.Run("receive rejects a non-positive max", func(t *testing.T) { testInvalidMax(t, tr) })
 	t.Run("close is idempotent", func(t *testing.T) { testCloseIdempotent(t, tr) })
 	t.Run("use after close fails", func(t *testing.T) { testUseAfterClose(t, tr) })
@@ -179,6 +180,36 @@ func testReceiveTimeout(t *testing.T, tr Transport) {
 	}
 	if elapsed := time.Since(start); elapsed > 3*time.Second {
 		t.Errorf("Receive took %s to honour a 150ms deadline", elapsed)
+	}
+}
+
+// A deadline is not a cancel, and the difference is operator-visible.
+//
+// A socket knows nothing about a context: arming a read deadline handles a
+// timeout and leaves a cancelled read blocked until that deadline arrives.
+// For a watcher with a 90 s idle window that means Ctrl-C taking 90 seconds.
+// The case is separate from the deadline case precisely because passing one
+// says nothing about the other — acp1's Discover honoured its deadline
+// perfectly and ignored cancellation for as long as it existed.
+func testReceiveCancel(t *testing.T, tr Transport) {
+	c, done := dialEcho(t, tr)
+	defer done()
+
+	// A long deadline, so only the cancel can end this read.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	if _, err := c.Receive(ctx, 4096); err == nil {
+		t.Fatal("Receive returned with no data and a cancelled context")
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("Receive took %s to notice a cancel at 50ms — it waited out the deadline", elapsed)
 	}
 }
 

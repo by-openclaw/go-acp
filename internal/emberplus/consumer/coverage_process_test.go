@@ -25,7 +25,7 @@ func TestProcessElements_AllMetaFields(t *testing.T) {
 		Value: int64(5), Description: "param", Format: "%d°dB", Formula: "x*2",
 		Factor: 10, Enumeration: "a\nb", EnumMap: map[int64]string{0: "a", 1: "b"},
 		HasStreamIdentifier: true, StreamIdentifier: 3,
-		StreamDescriptor: &glow.StreamDescription{Format: glow.StreamFmtFloat32BigEndian, Offset: 1},
+		StreamDescriptor:  &glow.StreamDescription{Format: glow.StreamFmtFloat32BigEndian, Offset: 1},
 		SchemaIdentifiers: "p-sch", TemplateReference: []int32{9, 2},
 		Access: glow.AccessReadWrite, IsOnline: true,
 	}
@@ -49,8 +49,8 @@ func TestProcessElements_AllMetaFields(t *testing.T) {
 	}
 	fn := &glow.Function{
 		Path: []int32{1, 4}, Number: 4, Identifier: "f", Description: "fn",
-		Arguments: []glow.TupleItem{{Name: "a", Type: glow.ParamTypeInteger}},
-		Result:    []glow.TupleItem{{Name: "r", Type: glow.ParamTypeInteger}},
+		Arguments:         []glow.TupleItem{{Name: "a", Type: glow.ParamTypeInteger}},
+		Result:            []glow.TupleItem{{Name: "r", Type: glow.ParamTypeInteger}},
 		TemplateReference: []int32{9, 4},
 	}
 

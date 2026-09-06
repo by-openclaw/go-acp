@@ -11,7 +11,7 @@ import (
 func TestUnknownCTXAudit_DedupesByKindAndTag(t *testing.T) {
 	a := newUnknownCTXAudit()
 	a.record("node", []int32{1, 2}, []int32{6})
-	a.record("node", []int32{1, 5}, []int32{6})       // same key, different OID → sample
+	a.record("node", []int32{1, 5}, []int32{6}) // same key, different OID → sample
 	a.record("parameter", []int32{1, 2, 3}, []int32{19, 20})
 	a.record("parameter", []int32{1, 2, 4}, []int32{19}) // dup tag
 

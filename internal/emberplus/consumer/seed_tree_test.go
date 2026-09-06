@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/consumer"
+	"dhs/internal/emberplus/codec/glow"
 )
 
 func newSeedTestPlugin() *Plugin {
