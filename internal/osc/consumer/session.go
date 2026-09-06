@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"syscall"
 
 	"dhs/internal/osc/codec"
 	"dhs/internal/transport"
@@ -18,7 +17,7 @@ type PacketEvent struct {
 	Remote  net.Addr
 	Packet  codec.Packet // codec.Message or codec.Bundle
 	Raw     []byte
-	Matched string // address that matched the subscriber's pattern
+	Matched string        // address that matched the subscriber's pattern
 	Msg     codec.Message // convenience: the matching Message (bundle-flattened)
 }
 
@@ -47,25 +46,10 @@ func newUDPSession() *udpSession {
 }
 
 func (s *udpSession) listen(ctx context.Context, addr string) error {
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			if err := rawControl(c, func(fd uintptr) {
-				opErr = transport.SetSocketReuseAddr(fd)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
-	pc, err := lc.ListenPacket(ctx, "udp", addr)
+	conn, err := transport.ListenUDPAddr(ctx, "udp", addr,
+		transport.UDPBindOptions{ReuseAddr: true})
 	if err != nil {
 		return fmt.Errorf("osc: listen %q: %w", addr, err)
-	}
-	conn, ok := listenConnAssert(pc)
-	if !ok {
-		_ = pc.Close()
-		return fmt.Errorf("osc: listen %q: unexpected conn type %T", addr, pc)
 	}
 	s.conn = conn
 	ctx, s.cancel = context.WithCancel(ctx)

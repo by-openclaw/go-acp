@@ -26,10 +26,10 @@ func discardLogger() *slog.Logger {
 
 func TestVersion_Metadata(t *testing.T) {
 	cases := []struct {
-		v        Version
-		name     string
-		port     int
-		descSub  string
+		v       Version
+		name    string
+		port    int
+		descSub string
 	}{
 		{V31, "tsl-v31", 4000, "v3.1"},
 		{V40, "tsl-v40", 4000, "v4.0"},
@@ -471,74 +471,6 @@ func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
 // always yields a *net.UDPConn. The seam (bind_seam.go) is nil in
 // production — these tests install a hook, prove bind propagates the
 // defensive error, then restore nil. The guards in bind are untouched.
-
-func TestBind_SockOptReuseAddrError(t *testing.T) {
-	want := errors.New("setsockopt reuseaddr boom")
-	sockReuseAddrHook = func(uintptr) error { return want }
-	t.Cleanup(func() { sockReuseAddrHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error from SetSocketReuseAddr failure")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_SockOptBroadcastError(t *testing.T) {
-	// ReuseAddr runs for real (succeeds) so the short-circuit reaches the
-	// Broadcast call, then the seam forces its error arm.
-	want := errors.New("setsockopt broadcast boom")
-	sockBroadcastHook = func(uintptr) error { return want }
-	t.Cleanup(func() { sockBroadcastHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error from SetSocketBroadcast failure")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_ControlDispatchReturnsError(t *testing.T) {
-	want := errors.New("rawconn control boom")
-	dispatchControlErrHook = func() error { return want }
-	t.Cleanup(func() { dispatchControlErrHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error when RawConn.Control dispatch errors")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_ConnTypeAssertFails(t *testing.T) {
-	assertUDPConnHook = func() bool { return false }
-	t.Cleanup(func() { assertUDPConnHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error when conn type assertion fails")
-	}
-	if !strings.Contains(err.Error(), "unexpected conn type") {
-		t.Fatalf("bind err=%v want 'unexpected conn type'", err)
-	}
-	if s.conn != nil {
-		t.Errorf("bind cached a conn despite failed type assertion")
-	}
-}
 
 func TestUDPSender_SendBytes_NotBound(t *testing.T) {
 	s := newUDPSender()

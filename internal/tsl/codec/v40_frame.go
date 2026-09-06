@@ -32,26 +32,26 @@ const (
 	V40FrameSize = V31FrameSize + 1 + 1 + V40XDataCountV40 // 22
 
 	// XDATA byte bit layout (per spec §4.0 XDATA table)
-	v40XDataBit7Mask   = 1 << 7
-	v40XDataBit6Mask   = 1 << 6
-	v40XDataLHMask     = 0x3 << 4
-	v40XDataTextMask   = 0x3 << 2
-	v40XDataRHMask     = 0x3 << 0
-	v40XDataLHShift    = 4
-	v40XDataTextShift  = 2
-	v40XDataRHShift    = 0
-	v40VBCMinorMask    = 0x7 << 4
-	v40VBCMinorShift   = 4
-	v40VBCXDataMask    = 0x0F
-	v40VBCBit7Mask     = 1 << 7
+	v40XDataBit7Mask  = 1 << 7
+	v40XDataBit6Mask  = 1 << 6
+	v40XDataLHMask    = 0x3 << 4
+	v40XDataTextMask  = 0x3 << 2
+	v40XDataRHMask    = 0x3 << 0
+	v40XDataLHShift   = 4
+	v40XDataTextShift = 2
+	v40XDataRHShift   = 0
+	v40VBCMinorMask   = 0x7 << 4
+	v40VBCMinorShift  = 4
+	v40VBCXDataMask   = 0x0F
+	v40VBCBit7Mask    = 1 << 7
 )
 
 // Errors returned by the v4.0 codec.
 var (
-	ErrV40FrameSize      = errors.New("tsl v4.0: frame too small (need >= 20 bytes)")
-	ErrV40ChecksumFail   = errors.New("tsl v4.0: CHKSUM mismatch")
-	ErrV40VBCBit7Set     = errors.New("tsl v4.0: VBC bit 7 not cleared")
-	ErrV40XDataCountBad  = errors.New("tsl v4.0: VBC XDATA count does not match available payload")
+	ErrV40FrameSize     = errors.New("tsl v4.0: frame too small (need >= 20 bytes)")
+	ErrV40ChecksumFail  = errors.New("tsl v4.0: CHKSUM mismatch")
+	ErrV40VBCBit7Set    = errors.New("tsl v4.0: VBC bit 7 not cleared")
+	ErrV40XDataCountBad = errors.New("tsl v4.0: VBC XDATA count does not match available payload")
 )
 
 // XByte is one Display-L or Display-R 6-bit tally triple plus reserved bits.

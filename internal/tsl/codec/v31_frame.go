@@ -23,10 +23,10 @@ const (
 
 // Errors returned by the v3.1 codec.
 var (
-	ErrV31FrameSize   = errors.New("tsl v3.1: frame size != 18 bytes")
-	ErrV31HeaderMSB   = errors.New("tsl v3.1: header bit 7 is not set (0x80)")
-	ErrV31AddressRng  = errors.New("tsl v3.1: address out of range 0..126")
-	ErrV31NonPrintTx  = errors.New("tsl v3.1: non-printable ASCII in text on encode")
+	ErrV31FrameSize  = errors.New("tsl v3.1: frame size != 18 bytes")
+	ErrV31HeaderMSB  = errors.New("tsl v3.1: header bit 7 is not set (0x80)")
+	ErrV31AddressRng = errors.New("tsl v3.1: address out of range 0..126")
+	ErrV31NonPrintTx = errors.New("tsl v3.1: non-printable ASCII in text on encode")
 )
 
 // V31Frame is the decoded v3.1 display message.
