@@ -38,13 +38,20 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	return &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
+	p.Configure(deps.Net, acp2StaleAfter)
+	return p
 }
 
 // Plugin is the ACP2 Protocol implementation. One instance handles one
 // device. Internally it holds an AN2 Session for transport, a Walker for
 // tree traversal, and per-slot caches of walked trees.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented:
+	// what is ACP2-specific is only the stale window and the time
+	// source, which Connect hands over.
+	consumer.Health
+
 	logger *slog.Logger
 
 	// net is the only way this plugin reaches a socket. Injected.
@@ -279,6 +286,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.OnProgress = p.walkProgress
 	p.host = ip
 	p.port = port
+	p.Opened("tcp", ip, port, s)
 	if p.trees == nil {
 		// TTL=0 → never expire. ACP2 schema is immutable for the
 		// session; the cache is the only label/type source after a
@@ -320,6 +328,7 @@ func (p *Plugin) Disconnect() error {
 	err := p.session.Disconnect()
 	p.session = nil
 	p.walker = nil
+	p.Closed()
 	if p.trees != nil {
 		p.trees.Clear()
 	}

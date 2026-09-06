@@ -7,58 +7,59 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 )
 
-func TestSessionHealth_NoSession(t *testing.T) {
-	p := &Plugin{logger: slog.Default()}
-	h := p.SessionHealth(context.Background())
-	if h.Connected || h.Live || h.Reachable {
-		t.Fatalf("SessionHealth with nil session must be all-false, got %+v", h)
+// The health LOGIC is specified once, in internal/consumer. What these
+// tests cover is the only part that is ACP2's: that the plugin satisfies the
+// interface, and that Connect hands the shared tracker the right stale
+// window, the right network and the Session as its time source.
+
+func TestPluginSatisfiesHealthChecker(t *testing.T) {
+	var _ consumer.HealthChecker = (*Plugin)(nil)
+}
+
+func newHealthPlugin() *Plugin {
+	return (&Factory{}).New(plugin.Deps{Logger: slog.Default()}).(*Plugin)
+}
+
+func TestSessionHealthBeforeConnect(t *testing.T) {
+	got := newHealthPlugin().SessionHealth(context.Background())
+	if got.Connected || got.Live || got.Reachable {
+		t.Fatalf("nothing is open before Connect, got %+v", got)
 	}
-	if h.StaleAfter != acp2StaleAfter {
-		t.Fatalf("StaleAfter = %v, want %v", h.StaleAfter, acp2StaleAfter)
+	if got.StaleAfter != acp2StaleAfter {
+		t.Fatalf("StaleAfter = %v, want the ACP2 window %v", got.StaleAfter, acp2StaleAfter)
 	}
 }
 
-func TestSessionHealth_ConnectedButNoRx(t *testing.T) {
-	p := &Plugin{logger: slog.Default()}
-	p.session = &Session{logger: slog.Default()}
-	h := p.SessionHealth(context.Background())
-	if !h.Connected {
-		t.Fatal("Connected = false with non-nil session, want true")
-	}
-	if h.Live {
-		t.Fatal("Live = true with no rx, want false")
-	}
-	if !h.LastRx.IsZero() {
-		t.Fatalf("LastRx = %v, want zero", h.LastRx)
-	}
-}
-
-func TestSessionHealth_ConnectedRecentRx(t *testing.T) {
-	p := &Plugin{logger: slog.Default()}
+func TestSessionHealthReadsTheSession(t *testing.T) {
+	p := newHealthPlugin()
 	s := &Session{logger: slog.Default()}
+	p.Opened("tcp", "10.0.0.1", 2072, s)
+
+	if got := p.SessionHealth(context.Background()); !got.Connected || got.Live {
+		t.Fatalf("open with nothing received yet, got %+v", got)
+	}
+
 	now := time.Now()
 	s.lastRxNS.Store(now.UnixNano())
-	p.session = s
-	h := p.SessionHealth(context.Background())
-	if !h.Connected || !h.Live {
-		t.Fatalf("Connected/Live = (%v,%v) with fresh rx, want (true,true)", h.Connected, h.Live)
+	s.lastTxNS.Store(now.UnixNano())
+	got := p.SessionHealth(context.Background())
+	if !got.Live || !got.Reachable {
+		t.Fatalf("a fresh frame makes the session live and reachable, got %+v", got)
+	}
+	if !got.LastRx.Equal(now) || !got.LastTx.Equal(now) {
+		t.Fatalf("instants must come from the Session, got %v / %v", got.LastRx, got.LastTx)
 	}
 }
 
-func TestSessionHealth_ConnectedStaleRx(t *testing.T) {
-	p := &Plugin{logger: slog.Default()}
-	s := &Session{logger: slog.Default()}
-	// 2 hours ago — well past acp2StaleAfter (90 s).
-	s.lastRxNS.Store(time.Now().Add(-2 * time.Hour).UnixNano())
-	p.session = s
-	h := p.SessionHealth(context.Background())
-	if !h.Connected {
-		t.Fatal("Connected = false with non-nil session, want true")
-	}
-	if h.Live {
-		t.Fatal("Live = true with 2h-old LastRx, want false")
+func TestSessionHealthAfterDisconnect(t *testing.T) {
+	p := newHealthPlugin()
+	p.Opened("tcp", "10.0.0.1", 2072, &Session{logger: slog.Default()})
+	p.Closed()
+	if got := p.SessionHealth(context.Background()); got.Connected {
+		t.Fatalf("Connected must be false once the session is closed, got %+v", got)
 	}
 }
 
@@ -73,15 +74,6 @@ func TestSessionHealth_IsLiveAt_HelperPure(t *testing.T) {
 	}
 	if h.IsLiveAt(now.Add(2 * time.Minute)) {
 		t.Fatal("IsLiveAt = true at +2m with 90s window, want false")
-	}
-}
-
-func TestProbeReachable_NotListening(t *testing.T) {
-	// Pick a definitely-closed port. 127.0.0.1:1 isn't open under any
-	// reasonable test environment.
-	ok := probeReachable(context.Background(), "127.0.0.1", 1)
-	if ok {
-		t.Fatal("probeReachable to 127.0.0.1:1 = true, want false")
 	}
 }
 

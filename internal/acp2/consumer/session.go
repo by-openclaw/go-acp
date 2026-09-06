@@ -110,6 +110,11 @@ type Session struct {
 	// refresh liveness.
 	lastRxNS atomic.Int64
 
+	// lastTxNS is the same instant for the write side, stored by
+	// sendFrame after a successful write. Health reports both, so a
+	// silent link can be told apart from one we stopped talking on.
+	lastTxNS atomic.Int64
+
 	// slotLastSeen records the wall-clock time we last had wire evidence
 	// of a particular slot's status (handshake AN2 GetSlotInfo or a
 	// keep-alive probe of that slot). Used to populate
@@ -460,6 +465,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	if _, err := s.conn.Write(data); err != nil {
 		return &consumer.TransportError{Op: "send", Err: err}
 	}
+	s.lastTxNS.Store(time.Now().UnixNano())
 	return nil
 }
 
@@ -851,6 +857,16 @@ func (s *Session) SlotInfoFromAN2(slot int) consumer.SlotInfo {
 // yet.
 func (s *Session) LastRx() time.Time {
 	ns := s.lastRxNS.Load()
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
+// LastTx is the wall-clock time of the last frame written on this
+// session. Zero when nothing has been sent yet.
+func (s *Session) LastTx() time.Time {
+	ns := s.lastTxNS.Load()
 	if ns == 0 {
 		return time.Time{}
 	}

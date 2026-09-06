@@ -64,11 +64,6 @@ var socketTypes = map[string]bool{
 var allowed = map[string]string{
 	// PERMANENT — not a session pipe.
 	//
-	// A one-shot SYN reachability probe that connects and immediately
-	// closes. Routing it through the shared dialer would apply keepalive to
-	// a socket discarded microseconds later, and give the seam no user.
-	"internal/acp1/consumer/session_health.go": "probeReachable: one-shot SYN test, not a session",
-	"internal/acp2/consumer/session_health.go": "probeReachable: one-shot SYN test, not a session",
 	// A broadcast socket built with a Control hook so SO_BROADCAST is set
 	// before bind — a different kind of socket, using transport's own
 	// SetSocketBroadcast helper.

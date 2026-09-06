@@ -631,27 +631,6 @@ func TestHandleACP2Frame_Guards(t *testing.T) {
 	}
 }
 
-// ----------------------------------------------------------------------
-// session_health.go — probeReachable ctx-deadline arms
-
-func TestProbeReachable_TightDeadline(t *testing.T) {
-	// Deadline tighter than 500ms but still positive → shrinks d.Timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", 1) {
-		t.Error("probe to closed port should be false")
-	}
-}
-
-func TestProbeReachable_ExpiredDeadline(t *testing.T) {
-	// Already-expired deadline → d.Timeout <= 0 → immediate false.
-	ctx, cancel := context.WithTimeout(context.Background(), -time.Second)
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", 80) {
-		t.Error("probe with expired deadline should be false")
-	}
-}
-
 // ---- helpers ----
 
 // errString is a trivial error whose Error() returns the literal string,

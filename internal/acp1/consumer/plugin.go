@@ -36,8 +36,9 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	logger := deps.Logger
-	return &Plugin{logger: logger}
+	p := &Plugin{logger: deps.Logger}
+	p.Configure(deps.Net, acp1StaleAfter)
+	return p
 }
 
 // TransportKind selects how the ACP1 plugin talks to the device.
@@ -102,6 +103,12 @@ type announceFanout interface {
 // for transactions, and a per-slot cache of walked trees that GetValue
 // / SetValue consult to translate labels into (group, id).
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented:
+	// ACP1 contributes only the stale window, the time source and —
+	// the part that used to be wrong — which network it is actually
+	// talking over.
+	consumer.Health
+
 	logger *slog.Logger
 
 	mu        sync.Mutex
@@ -266,6 +273,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	p.host = ip
 	p.port = port
+	p.Opened(p.transport.network(), ip, port, p.tsSink)
 	cfg := defaultCacheConfig()
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
@@ -420,6 +428,7 @@ func (p *Plugin) Disconnect() error {
 	p.udpConn = nil
 	p.tcpConn = nil
 	p.client = nil
+	p.Closed()
 	p.walker = nil
 	p.trees = nil
 	p.subHandles = nil
@@ -438,6 +447,18 @@ func (k TransportKind) String() string {
 		return "an2"
 	case TransportAuto:
 		return "auto"
+	default:
+		return "udp"
+	}
+}
+
+// network is the net package name for this transport, which is what
+// decides whether a connect attempt carries any information. TCP direct
+// and AN2 are both TCP streams; UDP is not.
+func (k TransportKind) network() string {
+	switch k {
+	case TransportTCPDirect, TransportAN2:
+		return "tcp"
 	default:
 		return "udp"
 	}
