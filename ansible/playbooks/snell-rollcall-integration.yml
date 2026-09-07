@@ -37,6 +37,10 @@
 #   # plus a live device, read-only:
 #   ROLLCALL_TEST_HOST=10.6.250.105 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+#
+# Every verb opens its own connection and a RollCall gateway wedges under that
+# churn, so the play settles between connections to a device it did not start.
+# ROLLCALL_SETTLE_SECONDS tunes it; 0 disables it.
 
 - name: Snell RollCall integration (emulator + live device + loopback)
   hosts: localhost
@@ -60,6 +64,18 @@
     # A destination to route on the emulator, as matrix:level:dest:source.
     # Unset means read-only even there.
     sim_route: "{{ lookup('env', 'ROLLCALL_SIM_ROUTE') | default('', true) }}"
+
+    # Every verb opens its own connection, and a RollCall gateway does not
+    # enjoy that. Measured on the vendor Centra emulator: roughly the third
+    # connection in quick succession is accepted at TCP and then never
+    # answered, repeatable, and cleared only by restarting the controller. A
+    # real unit is no better placed — the vendor's own note is that units
+    # "don't time them out very well (at all), and then run out of available
+    # sessions".
+    #
+    # So the play settles between connections to a device it did not start.
+    # Set ROLLCALL_SETTLE_SECONDS=0 to drive a gateway that does not need it.
+    settle_seconds: "{{ lookup('env', 'ROLLCALL_SETTLE_SECONDS') | default('5', true) }}"
 
     # Tier 2: a live device, read-only.
     live_host: "{{ lookup('env', 'ROLLCALL_TEST_HOST') | default('', true) }}"
@@ -97,6 +113,11 @@
               empty enumeration means the map service is not answering.
             success_msg: "{{ sim_info.stdout_lines | select('search', 'slots') | first }}"
 
+        - name: Settle before the next connection — finding the routing interface
+          ansible.builtin.pause:
+            seconds: "{{ settle_seconds | int }}"
+          when: settle_seconds | int > 0
+
         - name: Find the routing interface
           ansible.builtin.command:
             cmd: "{{ dhs_bin }} consumer rollcall router {{ sim_host }}:{{ sim_port }}"
@@ -113,6 +134,11 @@
               No routing interface. It lives on the panel node, not on the
               matrices, and it answers command 100 with a version number — see
               internal/snell-rollcall/docs/oracle-centra.md §2.
+
+        - name: Settle before the next connection — reading a crosspoint
+          ansible.builtin.pause:
+            seconds: "{{ settle_seconds | int }}"
+          when: settle_seconds | int > 0
 
         - name: Read a crosspoint
           ansible.builtin.command:
@@ -132,6 +158,11 @@
         - name: Make a route, when the operator nominated one
           when: sim_route | length > 0
           block:
+            - name: Settle before the take
+              ansible.builtin.pause:
+                seconds: "{{ settle_seconds | int }}"
+              when: settle_seconds | int > 0
+
             - name: Route {{ sim_route }}
               ansible.builtin.command:
                 cmd: >-
@@ -181,6 +212,11 @@
               - "'protocol' in live_info.stdout"
               - "'slots' in live_info.stdout"
 
+        - name: Settle before the next connection — walking a slot
+          ansible.builtin.pause:
+            seconds: "{{ settle_seconds | int }}"
+          when: settle_seconds | int > 0
+
         - name: Walk one slot
           ansible.builtin.command:
             cmd: "{{ dhs_bin }} consumer rollcall walk {{ live_host }}:{{ live_port }} --slot {{ live_slot }}"
@@ -193,6 +229,11 @@
             that:
               - live_walk.rc == 0 or live_walk.stderr | length > 0
             fail_msg: "The walk produced neither objects nor an explanation."
+
+        - name: Settle before the next connection — probing for a routing interface
+          ansible.builtin.pause:
+            seconds: "{{ settle_seconds | int }}"
+          when: settle_seconds | int > 0
 
         - name: Look for a routing interface
           ansible.builtin.command:
