@@ -7,6 +7,38 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.22.0](https://github.com/by-openclaw/go-acp/compare/v0.21.0...v0.22.0) (2026-09-07)
+
+
+### Features
+
+* **acp2:** provider Metrics() + restore deploy /metrics probe ([#969](https://github.com/by-openclaw/go-acp/issues/969)) ([#973](https://github.com/by-openclaw/go-acp/issues/973)) ([952798e](https://github.com/by-openclaw/go-acp/commit/952798e24c78411387928ce2f7b3724585eacc25))
+* **amwa/sdp:** stdlib-only SDP parser for ST 2110 transport files ([#827](https://github.com/by-openclaw/go-acp/issues/827)) ([#965](https://github.com/by-openclaw/go-acp/issues/965)) ([e940b21](https://github.com/by-openclaw/go-acp/commit/e940b21a9d50cb78eca8be95bc15754ee30b48c7))
+* **ansible:** acp2 provider fixed-config deploy - closes the not-well-discovered gap ([#969](https://github.com/by-openclaw/go-acp/issues/969)) ([#972](https://github.com/by-openclaw/go-acp/issues/972)) ([350aa33](https://github.com/by-openclaw/go-acp/commit/350aa33107ce489855d618e86f971c20bf022703))
+* **ansible:** acp2 real-Neuron read-verb oracle - all verbs timed and green ([#969](https://github.com/by-openclaw/go-acp/issues/969)) ([#971](https://github.com/by-openclaw/go-acp/issues/971)) ([00d7b24](https://github.com/by-openclaw/go-acp/commit/00d7b245704e6de9dde331baadee7685e96535f0))
+* **ccm:** realign neuron connector to internal/ccm + ccm export (api.yml schema + tree DM + extract, versioned for firmware diff) ([#975](https://github.com/by-openclaw/go-acp/issues/975) [#706](https://github.com/by-openclaw/go-acp/issues/706)) ([#982](https://github.com/by-openclaw/go-acp/issues/982)) ([0e7a923](https://github.com/by-openclaw/go-acp/commit/0e7a9237fb577a4c8258146970a2ac394e0ab4a5))
+* **lldp:** the LLDP concern as its own package — fills IS-04 attached_network_device, with the host posture to match ([#997](https://github.com/by-openclaw/go-acp/issues/997)) ([486922c](https://github.com/by-openclaw/go-acp/commit/486922cdea1d5b2e82f6504650a3f5d7ac3e0306))
+* **logging:** uniform syslog-by-default (cerebrum-nb consumer + producer) — [#987](https://github.com/by-openclaw/go-acp/issues/987) step 1–2 ([#988](https://github.com/by-openclaw/go-acp/issues/988)) ([05d56f2](https://github.com/by-openclaw/go-acp/commit/05d56f284561efccb81736bec8d15f485c37a1e3))
+* **neuron:** authoritative OpenAPI DM (api.yml) + spec-pin tests + CLAUDE.md ([#975](https://github.com/by-openclaw/go-acp/issues/975)) ([#981](https://github.com/by-openclaw/go-acp/issues/981)) ([4f1447c](https://github.com/by-openclaw/go-acp/commit/4f1447c70ca631cf3212598c9811543dcb1d7fc1))
+* **neuron:** EVS Neuron REST connector unit 1 - UUID-keyed codec + consumer walk, live-proven 416 streams ([#975](https://github.com/by-openclaw/go-acp/issues/975)) ([#980](https://github.com/by-openclaw/go-acp/issues/980)) ([33617ff](https://github.com/by-openclaw/go-acp/commit/33617ff96e655e791841de5c503b8660e423a4f5))
+* **nmos/audit:** network-plane validation - multicast class, unicast, MAC, PTP GM + site policy ([#852](https://github.com/by-openclaw/go-acp/issues/852)) ([#977](https://github.com/by-openclaw/go-acp/issues/977)) ([0578744](https://github.com/by-openclaw/go-acp/commit/0578744d7eae96ba9ca52d659e0cf6a1be8d6fc2))
+* **nmos:** AMWA parameter registers - typed catalogue, bcp00401 rewired + invoked in walk, registers verbs ([#851](https://github.com/by-openclaw/go-acp/issues/851)) ([#978](https://github.com/by-openclaw/go-acp/issues/978)) ([82800e5](https://github.com/by-openclaw/go-acp/commit/82800e5a431853259a5680ae705194c11f1a7530))
+* **nmos:** BCP-002 group pivot + live probe verb + stuck-cursor fix ([#845](https://github.com/by-openclaw/go-acp/issues/845) [#839](https://github.com/by-openclaw/go-acp/issues/839)) ([#968](https://github.com/by-openclaw/go-acp/issues/968)) ([076d13d](https://github.com/by-openclaw/go-acp/commit/076d13daabf8409bdc20a6b864755f8e58f90ab1))
+* **nmos:** plant export + offline compliance audit, live-proven on the fleet ([#837](https://github.com/by-openclaw/go-acp/issues/837) [#835](https://github.com/by-openclaw/go-acp/issues/835) [#857](https://github.com/by-openclaw/go-acp/issues/857)) ([#967](https://github.com/by-openclaw/go-acp/issues/967)) ([3dd7d1f](https://github.com/by-openclaw/go-acp/commit/3dd7d1f0e4db34880c060b32c1782b696931ff85))
+* **nmos:** SDP conformance in audit + probe via codec/sdp ([#850](https://github.com/by-openclaw/go-acp/issues/850)) ([#976](https://github.com/by-openclaw/go-acp/issues/976)) ([23bf277](https://github.com/by-openclaw/go-acp/commit/23bf27736cad2a5804f8c41d729cf7125879227c))
+* **nmos:** version-mismatch matrix test + minimal reference node bundle ([#849](https://github.com/by-openclaw/go-acp/issues/849)) ([#979](https://github.com/by-openclaw/go-acp/issues/979)) ([68e71f3](https://github.com/by-openclaw/go-acp/commit/68e71f348a7797b89e97949fcd0d1291746ebe74))
+* **transport:** Net — one transport contract, properties instead of functions ([#1003](https://github.com/by-openclaw/go-acp/issues/1003)) ([561f352](https://github.com/by-openclaw/go-acp/commit/561f3524d70246be020271d94dd37a5857e2f736))
+* **watch:** recover the session for every protocol that can report death ([#993](https://github.com/by-openclaw/go-acp/issues/993)) ([ecd2d5b](https://github.com/by-openclaw/go-acp/commit/ecd2d5bb9fb094a71c49d98bbcb2c688bb0cc63a))
+
+
+### Bug Fixes
+
+* **cli:** validate reports 'frames' not French 'trames' in user-facing output ([#969](https://github.com/by-openclaw/go-acp/issues/969) nit) ([#974](https://github.com/by-openclaw/go-acp/issues/974)) ([f15997e](https://github.com/by-openclaw/go-acp/commit/f15997e9125363469c270b22fb3b687523e18286))
+* **provider:** reap silent client sessions — transport.Idle, shared by both roles ([#990](https://github.com/by-openclaw/go-acp/issues/990)) ([358a2db](https://github.com/by-openclaw/go-acp/commit/358a2dbf380063f01ae47659683ee282d0624fe8)), closes [#987](https://github.com/by-openclaw/go-acp/issues/987)
+* **registry:** reap dead Query WS subscribers + migrate consumers to transport.Idle ([#991](https://github.com/by-openclaw/go-acp/issues/991)) ([9bc84c8](https://github.com/by-openclaw/go-acp/commit/9bc84c8894816666be44c8afee5246c5e2f48ebc))
+* **transport:** honour context cancellation; cut CI time 56s -&gt; 20s on the two slowest suites ([#995](https://github.com/by-openclaw/go-acp/issues/995)) ([a850a02](https://github.com/by-openclaw/go-acp/commit/a850a02050840d3af0e4b2e41874726adc5d6ae1))
+* **watch:** 24/7 silent stall — detection, recovery, daily rotation + one transport WebSocket ([#989](https://github.com/by-openclaw/go-acp/issues/989)) ([f23da78](https://github.com/by-openclaw/go-acp/commit/f23da784b7d0f6e22389459ff1965e66e4b34aba)), closes [#987](https://github.com/by-openclaw/go-acp/issues/987)
+
 ## [0.21.0](https://github.com/by-openclaw/go-acp/compare/v0.20.0...v0.21.0) (2026-09-03)
 
 
