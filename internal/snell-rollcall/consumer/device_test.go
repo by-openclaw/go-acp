@@ -245,6 +245,21 @@ func (d *device) reply(req codec.Frame, typ codec.PacketType, payload []byte) {
 	})
 }
 
+// fail reports a fault in the fake device.
+//
+// It goes through the done channel because the device answers on its own
+// goroutine, which outlives the test by however long the last request takes:
+// calling t.Errorf after a test has finished panics the whole run, and a
+// device shutting down is not a finding.
+func (d *device) fail(format string, args ...any) {
+	select {
+	case <-d.done:
+		return
+	default:
+	}
+	d.t.Errorf(format, args...)
+}
+
 func (d *device) send(f codec.Frame) {
 	b, err := f.Encode()
 	if err != nil {

@@ -609,3 +609,39 @@ func TestATallyThatCannotBeAcknowledged(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 	}
 }
+
+func TestANodeThatAnswersCommand100WithSomethingElse(t *testing.T) {
+	// A card is not obliged to refuse command 100. On the vendor Centra the
+	// input cards answer it with their own model number as a string, because
+	// their menus use those command numbers for something else. Believing that
+	// answer builds a router model out of a card's menu.
+	for _, tc := range []struct {
+		name  string
+		place func(*fakeRouter)
+	}{
+		{"a string", func(f *fakeRouter) {
+			f.str(uint32(router.CmdInterfaceVersion), "05915")
+		}},
+		{"data", func(f *fakeRouter) {
+			f.data(uint32(router.CmdInterfaceVersion), []byte{0x01})
+		}},
+		{"nothing", func(f *fakeRouter) {
+			f.values[uint32(router.CmdInterfaceVersion)] = codec.Value{
+				Command: uint32(router.CmdInterfaceVersion),
+			}
+		}},
+		{"zero", func(f *fakeRouter) {
+			f.num(uint32(router.CmdInterfaceVersion), 0)
+		}},
+		{"a number far too large to be a revision", func(f *fakeRouter) {
+			f.num(uint32(router.CmdInterfaceVersion), 70000)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := tryRouter(t, tc.place)
+			if err == nil {
+				t.Error("that is not an interface version and should not be taken for one")
+			}
+		})
+	}
+}

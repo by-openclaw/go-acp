@@ -145,11 +145,22 @@ func (p *Plugin) RouterAt(ctx context.Context, slot int) (*RouterInterface, erro
 
 	r := &RouterInterface{Slot: slot, Addr: s.Peer()}
 
-	version, err := p.readUint(ctx, slot, uint32(router.CmdInterfaceVersion))
+	// The interface version is the whole of the test for "is this a router",
+	// so it has to be a strict one. A card is not obliged to refuse command
+	// 100: on the vendor Centra the input cards answer it with a string —
+	// "05915", their own model number — because their menus happen to use
+	// those command numbers for something else. A client that accepts any
+	// answer builds a router model out of a card's menu.
+	v, err := p.readValue(ctx, slot, uint32(router.CmdInterfaceVersion))
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: slot %d has no routing interface: %w", slot, err)
 	}
-	r.Version = version
+	if !v.Mode.Has(codec.ModeValue) || v.Val < 1 || v.Val > maxInterfaceVersion {
+		return nil, fmt.Errorf(
+			"rollcall: slot %d answered command %d with %s, which is not an interface version",
+			slot, router.CmdInterfaceVersion, describeValue(v))
+	}
+	r.Version = uint32(v.Val)
 
 	if r.Name, err = p.readString(ctx, slot, uint32(router.CmdRouterName)); err != nil {
 		return nil, err
@@ -198,6 +209,28 @@ func (p *Plugin) RouterAt(ctx context.Context, slot int) (*RouterInterface, erro
 		r.Matrices = append(r.Matrices, mx)
 	}
 	return r, nil
+}
+
+// maxInterfaceVersion bounds what can be believed as a version.
+//
+// Revisions are document revisions and there have been thirteen. A node
+// answering with a large number is answering about something else, and
+// following it would mean reading a command space that does not exist.
+const maxInterfaceVersion = 1000
+
+// describeValue renders what a node answered with, for the message that says
+// why it was not taken for a router.
+func describeValue(v codec.Value) string {
+	switch {
+	case v.Mode.Has(codec.ModeString):
+		return fmt.Sprintf("the string %q", v.Text)
+	case v.Mode.Has(codec.ModeData):
+		return fmt.Sprintf("%d bytes of data", len(v.Data))
+	case v.Mode.Has(codec.ModeValue):
+		return fmt.Sprintf("the number %d", v.Val)
+	default:
+		return "nothing at all"
+	}
 }
 
 // FindRouter looks for a routing interface on any node the device enumerated.

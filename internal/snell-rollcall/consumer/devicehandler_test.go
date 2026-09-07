@@ -143,7 +143,7 @@ func (d *device) handshake(f codec.Frame) {
 	}
 	payload, err := info.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode device info: %v", err)
+		d.fail("device: encode device info: %v", err)
 		return
 	}
 
@@ -238,7 +238,7 @@ func (d *device) getID(f codec.Frame) {
 	}
 	payload, err := id.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode id: %v", err)
+		d.fail("device: encode id: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetID, payload)
@@ -375,7 +375,7 @@ func (d *device) menuBlock(f codec.Frame) {
 		if err != nil {
 			// A menu that cannot be narrowed is a menu this device should
 			// not have been asked for in this generation.
-			d.t.Errorf("device: line %d does not fit the 16-bit generation: %v", i, err)
+			d.fail("device: line %d does not fit the 16-bit generation: %v", i, err)
 			return codec.MsgNack, nil
 		}
 		payload, _ := fn.AppendTo(nil)
@@ -418,7 +418,7 @@ func (d *device) menuItem(f codec.Frame) {
 	}
 	payload, err := items[req.MenuIndex].AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode menu item: %v", err)
+		d.fail("device: encode menu item: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetMenuItem, payload)
@@ -452,7 +452,7 @@ func (d *device) getValue(f codec.Frame) {
 		}
 		payload, err := v.AppendTo(nil)
 		if err != nil {
-			d.t.Errorf("device: encode router value: %v", err)
+			d.fail("device: encode router value: %v", err)
 			return
 		}
 		d.reply(f, codec.MsgRetValue, payload)
@@ -469,7 +469,7 @@ func (d *device) getValue(f codec.Frame) {
 	}
 	payload, err := v.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode value: %v", err)
+		d.fail("device: encode value: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetValue, payload)
@@ -502,7 +502,7 @@ func (d *device) setValueMsg(f codec.Frame) {
 		}
 		payload, err := reply.AppendTo(nil)
 		if err != nil {
-			d.t.Errorf("device: encode router reply: %v", err)
+			d.fail("device: encode router reply: %v", err)
 			return
 		}
 		d.reply(f, codec.MsgRetValue, payload)
@@ -512,7 +512,7 @@ func (d *device) setValueMsg(f codec.Frame) {
 		if pushed != nil {
 			body, err := pushed.AppendTo(nil)
 			if err != nil {
-				d.t.Errorf("device: encode router push: %v", err)
+				d.fail("device: encode router push: %v", err)
 				return
 			}
 			d.push(port, codec.MsgRetValue, body)
@@ -523,7 +523,7 @@ func (d *device) setValueMsg(f codec.Frame) {
 	stored := d.store(port, v)
 	payload, err := stored.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode value: %v", err)
+		d.fail("device: encode value: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetValue, payload)
@@ -594,7 +594,7 @@ func (d *device) getFStat(f codec.Frame) {
 	}
 	payload, err := fs.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode func status: %v", err)
+		d.fail("device: encode func status: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetFStat, payload)
@@ -617,7 +617,7 @@ func (d *device) setParam(f codec.Frame) {
 	}
 	payload, err := back.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode func status: %v", err)
+		d.fail("device: encode func status: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgRetFStat, payload)
@@ -637,7 +637,7 @@ func (d *device) dispData(f codec.Frame) {
 	disp := codec.Disp{Line: line, Text: "line " + string(rune('0'+line))}
 	payload, err := disp.AppendTo(nil)
 	if err != nil {
-		d.t.Errorf("device: encode display: %v", err)
+		d.fail("device: encode display: %v", err)
 		return
 	}
 	d.reply(f, codec.MsgDispData, payload)
@@ -665,7 +665,7 @@ func (d *device) fileOpen(f codec.Frame) {
 	// get line endings translated. Catching it here is what makes the
 	// consumer's insistence on the flag testable.
 	if req.OpenFlags()&codec.OpenBinary == 0 {
-		d.t.Errorf("device: %q was opened without the binary flag (%04X)", path, req.OpenFlags())
+		d.fail("device: %q was opened without the binary flag (%04X)", path, req.OpenFlags())
 	}
 
 	d.mu.Lock()
@@ -722,7 +722,7 @@ func (d *device) fileDir(f codec.Frame) {
 		}
 		payload, err := entry.AppendTo(nil)
 		if err != nil {
-			d.t.Errorf("device: encode directory entry: %v", err)
+			d.fail("device: encode directory entry: %v", err)
 			return codec.MsgNack, nil
 		}
 		return codec.MsgRetFileDir, payload
@@ -765,7 +765,7 @@ func (d *device) fileRead(f codec.Frame) {
 	// says so rather than looping.
 	count := int(req.Extra)
 	if count <= 0 {
-		d.t.Errorf("device: a read asked for %d bytes; the count belongs in the extra field", count)
+		d.fail("device: a read asked for %d bytes; the count belongs in the extra field", count)
 		count = 0
 	}
 
