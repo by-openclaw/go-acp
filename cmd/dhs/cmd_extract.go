@@ -102,6 +102,10 @@ func runExtract(ctx context.Context, args []string) error {
 		return fmt.Errorf("canonical capture: %w", err)
 	}
 
+	// Everything that writes to the capture directory is finished with, so the
+	// recorder can be closed before anything is renamed.
+	cleanup()
+
 	// Rename raw.<transport>.jsonl → wire.jsonl so the fixture layout
 	// matches docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) exactly (the protocol is still
 	// identifiable via meta.json). Best-effort: a missing raw file
