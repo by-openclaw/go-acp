@@ -57,11 +57,16 @@ func appendFixedString(dst []byte, s string, width int) ([]byte, error) {
 	return append(dst, buf...), nil
 }
 
-// truncateFixed shortens s so it fits a fixed field with its terminator,
+// TruncateFixed shortens s so it fits a fixed field with its terminator,
 // cutting on a UTF-8 boundary. Used where the protocol mandates truncation
 // rather than an error, such as projecting a long label into the 16-bit
-// generation.
-func truncateFixed(s string, width int) string {
+// generation, or naming ourselves in an identity a peer will display.
+//
+// It is exported because the session layer builds identities from
+// caller-supplied names, and a name too long for the field must be shortened
+// rather than refused: a client that cannot connect because its own name is
+// long is a worse outcome than one that appears under a shortened name.
+func TruncateFixed(s string, width int) string {
 	if len(s) <= width-1 {
 		return s
 	}
@@ -72,12 +77,16 @@ func truncateFixed(s string, width int) string {
 	return s[:cut]
 }
 
-// cString reads a NUL-terminated string and returns it with the number of
+// CString reads a NUL-terminated string and returns it with the number of
 // bytes consumed including the terminator.
+//
+// It is exported because several messages end with an optional string that is
+// not part of any structure: the text a Nack may carry, the reason on a Wait.
+// The session layer reads those directly.
 //
 // A field that runs to the end of the payload without a terminator is
 // accepted: the vendor emits this when a value exactly fills its buffer.
-func cString(b []byte) (string, int) {
+func CString(b []byte) (string, int) {
 	i := bytes.IndexByte(b, 0)
 	if i < 0 {
 		return string(b), len(b)

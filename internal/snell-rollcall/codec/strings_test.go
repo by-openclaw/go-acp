@@ -92,7 +92,7 @@ func TestAppendFixedString(t *testing.T) {
 
 // TestAppendFixedString_TooLong pins that overlong text is an error rather than
 // a silent truncation. A truncated label is data loss the caller must decide
-// about; only truncateFixed does it, and only where the protocol says to.
+// about; only TruncateFixed does it, and only where the protocol says to.
 func TestAppendFixedString_TooLong(t *testing.T) {
 	for _, tc := range []struct {
 		in    string
@@ -147,7 +147,7 @@ func TestTruncateFixed(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := truncateFixed(tc.in, tc.width)
+			got := TruncateFixed(tc.in, tc.width)
 			if got != tc.want {
 				t.Errorf("= %q, want %q", got, tc.want)
 			}
@@ -181,7 +181,7 @@ func TestCString(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, n := cString(tc.in)
+			got, n := CString(tc.in)
 			if got != tc.want || n != tc.n {
 				t.Errorf("= %q,%d want %q,%d", got, n, tc.want, tc.n)
 			}
@@ -214,7 +214,7 @@ func TestCString_RoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("append %q: %v", s, err)
 		}
-		got, n := cString(b)
+		got, n := CString(b)
 		if got != s || n != len(b) {
 			t.Errorf("round trip %q -> %q (consumed %d of %d)", s, got, n, len(b))
 		}

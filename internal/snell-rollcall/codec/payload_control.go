@@ -139,7 +139,7 @@ func DecodeFuncStatus(b []byte) (FuncStatus, error) {
 			f.Text = fixedString(b[off : off+MaxTextSize])
 			off += MaxTextSize
 		} else {
-			s, n := cString(b[off:])
+			s, n := CString(b[off:])
 			f.Text = s
 			off += n
 		}

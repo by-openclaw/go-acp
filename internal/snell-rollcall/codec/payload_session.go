@@ -173,7 +173,7 @@ func DecodeWait(b []byte) (Wait, error) {
 		Mode:    Mode(binary.BigEndian.Uint16(b[2:4])),
 	}
 	if w.Mode.Has(ModeString) && len(b) > WaitSize {
-		w.Reason, _ = cString(b[WaitSize:])
+		w.Reason, _ = CString(b[WaitSize:])
 	}
 	return w, nil
 }

@@ -171,6 +171,7 @@ jobs:
           check internal/snell-rollcall/codec 100
           check internal/snell-rollcall/codec/dtp 100
           check internal/snell-rollcall/codec/router 100
+          check internal/snell-rollcall/session 100
           check internal/transport/ws 100
           check internal/transport/http 100
           check internal/auth 100

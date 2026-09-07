@@ -168,12 +168,12 @@ func DecodeMenuItem(b []byte) (MenuItem, error) {
 
 	rest := b[MenuItemSize:]
 	if len(rest) > 0 {
-		s, n := cString(rest)
+		s, n := CString(rest)
 		m.Text = s
 		rest = rest[n:]
 	}
 	if len(rest) > 0 {
-		m.Param, _ = cString(rest)
+		m.Param, _ = CString(rest)
 	}
 	return m, nil
 }
@@ -207,8 +207,8 @@ func (m MenuItem) ToFunc() (Func, error) {
 		MaxRange:  m.MaxRange,
 		Step:      uint16(m.Step),
 		DivScale:  m.DivScale,
-		Text:      truncateFixed(m.Text, MaxTextSize),
-		Param:     truncateFixed(m.Param, MaxTextSize),
+		Text:      TruncateFixed(m.Text, MaxTextSize),
+		Param:     TruncateFixed(m.Param, MaxTextSize),
 	}, nil
 }
 

@@ -109,7 +109,7 @@ func DecodeValue(b []byte) (Value, error) {
 
 	off := ValueSize
 	if v.Mode.Has(ModeString) {
-		s, n := cString(b[off:])
+		s, n := CString(b[off:])
 		v.Text = s
 		off += n
 	}
@@ -142,7 +142,7 @@ func (v Value) ToFuncStatus() (FuncStatus, error) {
 		Command: uint16(v.Command),
 		Mode:    v.Mode,
 		Value:   v.Val,
-		Text:    truncateFixed(v.Text, MaxTextSize),
+		Text:    TruncateFixed(v.Text, MaxTextSize),
 		Data:    v.Data,
 		MatchID: v.MatchID,
 	}, nil
