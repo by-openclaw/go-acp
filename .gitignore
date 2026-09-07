@@ -121,3 +121,8 @@ internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
 
 # raw infra configs (public repo - never commit running-configs)
 /network/
+
+# snell-rollcall: vendor C SDK extracted from the tracked zips under
+# assets/Protocol/Source/*.zip — keep the zips, not the expansion.
+internal/snell-rollcall/assets/Protocol/Source/RollCallV2/
+internal/snell-rollcall/assets/Protocol/Source/ManagedWrapper/
