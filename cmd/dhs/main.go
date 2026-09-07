@@ -187,6 +187,9 @@ var commands = []command{
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
 	{"status", "one-shot device status: session health + identity (--output json)", helpStatus, runStatus},
 	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
+	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
+	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
+	{"tally", "print a level's crosspoints and follow them live (RollCall only)", helpRollcallTally, runRollcallTally},
 }
 
 func helpBench() {

@@ -878,6 +878,61 @@ Example — 1000 connects on the integration demo's nToN matrix:
     --path dhs-emberplus-integration.nToN.matrix \
     --n 1000 --op connect
 
+========== consumer/acp1/router ==========
+$ dhs consumer acp1 router --help
+dhs consumer rollcall router <host> [--slot N] [--output text|json]
+
+Find the routing interface and print what it publishes: the matrices, their
+levels, and how many sources and destinations each level has.
+
+The interface lives on one node of a controller and nothing in a device list
+says which — on a Centra the matrices are their own nodes and neither serves
+it — so without --slot every node is probed. A node that is not a router
+refuses, which is how they are told apart.
+
+Examples:
+  dhs consumer rollcall router 10.6.250.105
+  dhs consumer rollcall router 10.6.250.105 --slot 14 --output json
+
+========== consumer/acp1/route ==========
+$ dhs consumer acp1 route --help
+dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
+                                   [--slot N] [--protect-id ID] [--output text|json]
+
+Read a crosspoint, or make one when --source is given.
+
+Two things about this protocol are worth knowing before reading the output:
+
+  * The reply to a route carries the crosspoint from BEFORE the change. What
+    was actually routed arrives afterwards on the back channel, so this verb
+    reads the destination again and prints that.
+
+  * The tally follows tielines. Routing source 7 can read back as matrix 2
+    source 1, because the number reported is the final upstream source rather
+    than the one asked for. That is the router working.
+
+Examples:
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
+
+========== consumer/acp1/tally ==========
+$ dhs consumer acp1 tally --help
+dhs consumer rollcall tally <host> [--matrix M --level L] [--slot N] [--names]
+
+Print the crosspoints of a level and then follow them live; Ctrl+C to stop.
+
+The reading comes first because it has to: enabling the back channel does not
+replay the current state on a real controller, so a panel that only subscribes
+sees nothing until something moves.
+
+With --matrix and --level it reads that level first. Without them it subscribes
+to everything and prints only what changes.
+
+Examples:
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1 --names
+
 ========== consumer/emberplus/matrix ==========
 $ dhs consumer emberplus matrix --help
 acp matrix — set matrix crosspoint connections (Ember+ only)
@@ -1063,6 +1118,61 @@ DESCRIPTION
 EXAMPLES
   acp diag 10.41.40.195 --slot 0
   acp diag 10.41.40.195 --slot 1
+
+========== consumer/rollcall/router ==========
+$ dhs consumer rollcall router --help
+dhs consumer rollcall router <host> [--slot N] [--output text|json]
+
+Find the routing interface and print what it publishes: the matrices, their
+levels, and how many sources and destinations each level has.
+
+The interface lives on one node of a controller and nothing in a device list
+says which — on a Centra the matrices are their own nodes and neither serves
+it — so without --slot every node is probed. A node that is not a router
+refuses, which is how they are told apart.
+
+Examples:
+  dhs consumer rollcall router 10.6.250.105
+  dhs consumer rollcall router 10.6.250.105 --slot 14 --output json
+
+========== consumer/rollcall/route ==========
+$ dhs consumer rollcall route --help
+dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
+                                   [--slot N] [--protect-id ID] [--output text|json]
+
+Read a crosspoint, or make one when --source is given.
+
+Two things about this protocol are worth knowing before reading the output:
+
+  * The reply to a route carries the crosspoint from BEFORE the change. What
+    was actually routed arrives afterwards on the back channel, so this verb
+    reads the destination again and prints that.
+
+  * The tally follows tielines. Routing source 7 can read back as matrix 2
+    source 1, because the number reported is the final upstream source rather
+    than the one asked for. That is the router working.
+
+Examples:
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
+
+========== consumer/rollcall/tally ==========
+$ dhs consumer rollcall tally --help
+dhs consumer rollcall tally <host> [--matrix M --level L] [--slot N] [--names]
+
+Print the crosspoints of a level and then follow them live; Ctrl+C to stop.
+
+The reading comes first because it has to: enabling the back channel does not
+replay the current state on a real controller, so a panel that only subscribes
+sees nothing until something moves.
+
+With --matrix and --level it reads that level first. Without them it subscribes
+to everything and prints only what changes.
+
+Examples:
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1 --names
 
 ========== consumer/ccm/<dispatcher-help> ==========
 $ dhs consumer ccm --help
