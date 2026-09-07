@@ -93,7 +93,7 @@ concerns here.
 
 | Folder | State |
 |---|---|
-| `internal/snell-rollcall/` | **in progress** (epic #1009, gate lifted by the owner 2026-09-07). The ADR-0025 step-1 audit is done and the wire is validated against a live oracle on `10.6.250.105` — consumer read/write/subscribe proven against the real stack, and a throwaway producer spike rendered and driven by RollCall Control Panel 4.12.48. Landed so far: `CLAUDE.md` (wire context) + `docs/` (audit, DM/UI analysis, 1 623 captured frames, 560 menu lines). Still to come, one PR each: `codec/` · `session/` · `consumer/` · `provider/` · `wireshark/` · `integration/` · `testdata/`. No Go code and no registry entry yet. |
+| `internal/snell-rollcall/` | **shipping the connector** (epic #1009). Consumer, provider, session layer and codec are all at 100% statement coverage with CI floors, registered in both registries, and driven from the CLI. Both wire generations are served from one model. Router control implements the Full Control command set — discovery, matrices, levels, names in bulk, crosspoints, protects, salvos, tally — and every offset in it is measured against the vendor Centra controller running as a Sirius 800 (`docs/oracle-centra.md`). Ships `wireshark/dhs_snell_rollcall.lua` with a replay test over 90 KB of captured live traffic, and an Ansible integration play with an emulator tier, a read-only live-device tier and a loopback tier. Outstanding: a DM/manifest generator and the per-product fixture set. |
 | `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped; no `provider/` folder exists yet on disk. Intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
 
 ---
