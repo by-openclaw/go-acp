@@ -46,6 +46,7 @@ import (
 	_ "dhs/internal/osc/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
+	_ "dhs/internal/snell-rollcall/consumer"
 	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.

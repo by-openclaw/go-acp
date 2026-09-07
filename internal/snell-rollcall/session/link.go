@@ -279,6 +279,14 @@ func (l *Link) readLoop() {
 		l.rxFrames.Add(1)
 		l.resyncs.Store(r.Resyncs())
 		l.met.ObserveRx(f.Size())
+
+		// The payload aliases the reader's buffer, which the next read
+		// overwrites. Everything downstream may outlive that: a push waits in
+		// a queue until the application takes it, an announcement waits until
+		// somebody drains it, and even a reply sits in a buffered channel
+		// until its caller wakes. Copying here is what makes all of them safe
+		// at the cost of one short-lived allocation per frame.
+		f.Payload = append([]byte(nil), f.Payload...)
 		l.dispatch(f)
 	}
 }

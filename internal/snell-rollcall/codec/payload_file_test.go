@@ -37,9 +37,11 @@ func TestFile_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestFile_Err covers the error the Extra field carries on a reply. Only the
-// documented errno values are failures; zero is success and a negative value
-// is a seek origin echoed back, not an error.
+// TestFile_Err covers the error the Extra field carries on a reply.
+//
+// Only a positive value is an error. Zero is success, and a negative one is
+// the field being used for something else: on a request it carries a byte
+// count or the open flags, and the binary flag sets the sign bit.
 func TestFile_Err(t *testing.T) {
 	if err := (File{}).Err(); err != nil {
 		t.Errorf("a zero extra is success, got %v", err)
@@ -88,7 +90,9 @@ func TestFileOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AppendFileOpen: %v", err)
 	}
-	want := mustHex(t, "0007 0000 00008000 0000"+"54454d504c4154452e5a495000")
+	// The flags sit in the last field, not the offset: the vendor server
+	// reads them from there.
+	want := mustHex(t, "0007 0000 00000000 8000"+"54454d504c4154452e5a495000")
 	if !bytes.Equal(got, want) {
 		t.Errorf("encoded\n got %x\nwant %x", got, want)
 	}
@@ -103,10 +107,8 @@ func TestFileOpen(t *testing.T) {
 	if f.SrcHandle != 7 {
 		t.Errorf("source handle = %d, want 7", f.SrcHandle)
 	}
-	// The flags travel in the offset field, which is the awkward part of this
-	// structure and the reason there is a helper.
-	if uint16(f.Offset) != OpenReadOnly|OpenBinary {
-		t.Errorf("flags = %04X, want %04X", uint16(f.Offset), OpenReadOnly|OpenBinary)
+	if f.OpenFlags() != OpenReadOnly|OpenBinary {
+		t.Errorf("flags = %04X, want %04X", f.OpenFlags(), OpenReadOnly|OpenBinary)
 	}
 
 	if _, _, err := DecodeFileOpen(make([]byte, 4)); !errors.Is(err, ErrShortBuffer) {
@@ -341,9 +343,127 @@ func TestDirEntry_String(t *testing.T) {
 	}
 }
 
-// TestSeekOrigins pins the values the Extra field carries on a read or write.
-func TestSeekOrigins(t *testing.T) {
-	if SeekStart != 0 || SeekCurrent != 1 || SeekEnd != 2 {
-		t.Errorf("seek origins are %d/%d/%d, want 0/1/2", SeekStart, SeekCurrent, SeekEnd)
+// TestFile_FieldsChangeMeaningBetweenRequestAndReply is the correction the
+// vendor server forced.
+//
+// Offset and Extra do not merely differ between operations. They change
+// meaning between a request and its own reply, which FileServer.c states
+// outright: "NOTE that meaning of rOffset and rExtra differs between
+// SP_FILEREAD and SP_RETFILEREAD". A client that reads them the same way in
+// both directions asks for zero bytes every time and sees an empty file
+// rather than an error.
+func TestFile_FieldsChangeMeaningBetweenRequestAndReply(t *testing.T) {
+	// A read asks from an offset for a count.
+	req := FileReadRequest(1, 9, 4096, 400)
+	if req.Offset != 4096 {
+		t.Errorf("read offset = %d, want where to read from", req.Offset)
+	}
+	if req.Extra != 400 {
+		t.Errorf("read extra = %d, want how many bytes to read", req.Extra)
+	}
+
+	// The same two fields in the reply are the count read and the error.
+	reply := File{SrcHandle: 1, FileHandle: 9, Offset: 400, Extra: 0}
+	if reply.Err() != nil {
+		t.Errorf("a zero extra on a reply is success, got %v", reply.Err())
+	}
+	if reply.Offset != 400 {
+		t.Errorf("reply offset = %d, want how many bytes were read", reply.Offset)
+	}
+
+	// A read is never asked for more than a frame can carry, whatever the
+	// caller passes.
+	big := FileReadRequest(1, 9, 0, 100000)
+	if int(big.Extra) > MaxPayload {
+		t.Errorf("read asked for %d bytes, more than a frame holds", big.Extra)
+	}
+}
+
+// TestFileOpen_FlagsTravelInExtra pins the field the vendor server actually
+// reads them from: "OpenModeFlags = FileSpecIn->rExtra". Putting them in the
+// offset instead opens every file read-only in text mode, which succeeds and
+// returns corrupted bytes.
+func TestFileOpen_FlagsTravelInExtra(t *testing.T) {
+	got, err := AppendFileOpen(nil, 7, OpenReadOnly|OpenBinary, "A.TXT")
+	if err != nil {
+		t.Fatalf("AppendFileOpen: %v", err)
+	}
+
+	f, path, err := DecodeFileOpen(got)
+	if err != nil {
+		t.Fatalf("DecodeFileOpen: %v", err)
+	}
+	if path != "A.TXT" {
+		t.Errorf("path = %q", path)
+	}
+	if f.Offset != 0 {
+		t.Errorf("offset = %d, want it unused on an open", f.Offset)
+	}
+	if f.OpenFlags() != OpenReadOnly|OpenBinary {
+		t.Errorf("flags = %04X, want %04X", f.OpenFlags(), OpenReadOnly|OpenBinary)
+	}
+
+	// The binary flag is bit 15, so it arrives as a negative number in the
+	// signed field. Reading it as signed would make the most important flag
+	// in the service look like a malformed request.
+	if f.Extra >= 0 {
+		t.Errorf("extra = %d; the binary flag should have set the sign bit", f.Extra)
+	}
+	if f.OpenFlags()&OpenBinary == 0 {
+		t.Error("the binary flag was lost in the signed field")
+	}
+}
+
+// TestFileOpen_ReplyCarriesTheBlockSize pins what an open reply says. Both
+// numeric fields are overwritten: the offset becomes the peer's maximum read
+// size and the extra becomes the error.
+func TestFileOpen_ReplyCarriesTheBlockSize(t *testing.T) {
+	reply := File{SrcHandle: 7, FileHandle: 3, Offset: 410}
+	if reply.BlockSize() != 410 {
+		t.Errorf("block size = %d, want 410", reply.BlockSize())
+	}
+	if reply.Err() != nil {
+		t.Errorf("err = %v, want success", reply.Err())
+	}
+
+	// A peer that says nothing leaves the caller to choose.
+	if got := (File{}).BlockSize(); got != 0 {
+		t.Errorf("block size = %d, want 0 when the peer did not say", got)
+	}
+	if got := (File{Offset: -1}).BlockSize(); got != 0 {
+		t.Errorf("block size = %d, want 0 for a negative figure", got)
+	}
+
+	failed := File{Extra: FileErrNoEntry}
+	if failed.Err() == nil {
+		t.Error("an open that failed must report it")
+	}
+}
+
+func TestFileWrite(t *testing.T) {
+	data := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+
+	got, err := AppendFileWrite(nil, 1, 9, 1024, data)
+	if err != nil {
+		t.Fatalf("AppendFileWrite: %v", err)
+	}
+
+	f, err := DecodeFile(got)
+	if err != nil {
+		t.Fatalf("DecodeFile: %v", err)
+	}
+	if f.Offset != 1024 {
+		t.Errorf("offset = %d, want where to write", f.Offset)
+	}
+	if int(f.Extra) != len(data) {
+		t.Errorf("extra = %d, want the byte count %d", f.Extra, len(data))
+	}
+	if !bytes.Equal(got[FileSize:], data) {
+		t.Errorf("data = %x, want %x", got[FileSize:], data)
+	}
+
+	// More data than a frame can carry is refused rather than truncated.
+	if _, err := AppendFileWrite(nil, 1, 9, 0, make([]byte, MaxPayload)); !errors.Is(err, ErrPayloadTooLong) {
+		t.Errorf("err = %v, want ErrPayloadTooLong", err)
 	}
 }

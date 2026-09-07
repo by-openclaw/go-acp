@@ -104,13 +104,6 @@ func FileErrorName(v int16) string {
 	}
 }
 
-// Seek origins for the Extra field of a read or write.
-const (
-	SeekStart   int16 = 0
-	SeekCurrent int16 = 1
-	SeekEnd     int16 = 2
-)
-
 // File is FILE_STR, the structure every file operation carries.
 //
 // The two handles are what make the service work across a network where both
@@ -118,13 +111,24 @@ const (
 // echoed back untouched so a reply can be matched, and FileHandle is the
 // server's, valid only on that server.
 //
-// Offset and Extra are overloaded by operation, which is the awkward part of
-// this structure and the reason the helpers below exist:
+// Offset and Extra are overloaded by operation, and they do not merely differ
+// between operations: they change meaning between a request and its own reply.
+// The vendor server says so in as many words (FileServer.c, HandleSpFILEREAD:
+// "NOTE that meaning of rOffset and rExtra differs between SP_FILEREAD and
+// SP_RETFILEREAD"), and getting it wrong reads a file as a stream of empty
+// blocks rather than failing.
 //
-//	Open    Offset holds the open flags, Extra is unused
-//	Read    Offset is where to read from, Extra is the seek origin
-//	Write   Offset is where to write to, Extra is the seek origin
-//	replies Offset is the length or position reached, Extra is the error
+//	message         Offset                  Extra
+//	FileOpen        unused                  the open flags
+//	RetFileOpen     the peer's block size   the error
+//	FileRead        where to read from      how many bytes to read
+//	RetFileRead     how many were read      the error
+//	FileWrite       where to write to       how many bytes to write
+//	FileRet         how many were written   the error
+//
+// The block size a peer returns from an open is its own maximum, and it caps
+// what a read may ask for: the server clamps a larger request rather than
+// refusing it, so a client that ignores the figure simply wastes the excess.
 type File struct {
 	SrcHandle  int16
 	FileHandle int16
@@ -170,7 +174,11 @@ func DecodeFile(b []byte) (File, error) {
 }
 
 // AppendFileOpen builds the payload of a file open: the structure with the
-// flags in Offset, then the path as a NUL-terminated string.
+// flags in Extra, then the path as a NUL-terminated string.
+//
+// The flags go in Extra, not Offset. The vendor server reads them from there
+// (FileServer.c, HandleSpFILEOPEN: "OpenModeFlags = FileSpecIn->rExtra") and
+// overwrites both fields in its reply with the block size and the error.
 //
 // Set OpenBinary for anything that is not line-oriented text. Without it the
 // peer translates line endings, which corrupts a names file or a template
@@ -180,9 +188,54 @@ func AppendFileOpen(dst []byte, srcHandle int16, flags uint16, path string) ([]b
 		return nil, fmt.Errorf("%w: path %d bytes, limit %d",
 			ErrStringTooLong, len(path), MaxFileName-1)
 	}
-	dst = File{SrcHandle: srcHandle, Offset: int32(flags)}.AppendTo(dst)
+	dst = File{SrcHandle: srcHandle, Extra: int16(flags)}.AppendTo(dst)
 	dst = append(dst, path...)
 	return append(dst, 0), nil
+}
+
+// OpenFlags reads the open flags from a file-open request.
+//
+// They are a 16-bit set carried in a signed field, so the binary flag arrives
+// as a negative number. Reading it as signed would make the most important
+// flag in the service look like a malformed request.
+func (f File) OpenFlags() uint16 { return uint16(f.Extra) }
+
+// BlockSize reads the maximum read size from an open reply. Zero means the
+// peer did not say, and a caller should use its own default.
+func (f File) BlockSize() int {
+	if f.Offset <= 0 {
+		return 0
+	}
+	return int(f.Offset)
+}
+
+// FileReadRequest builds a read: where to start, and how many bytes.
+func FileReadRequest(srcHandle, fileHandle int16, offset int32, count int) File {
+	if count > MaxPayload {
+		count = MaxPayload
+	}
+	return File{
+		SrcHandle:  srcHandle,
+		FileHandle: fileHandle,
+		Offset:     offset,
+		Extra:      int16(count),
+	}
+}
+
+// AppendFileWrite builds a write: where to put the data, how much there is,
+// and then the data.
+func AppendFileWrite(dst []byte, srcHandle, fileHandle int16, offset int32, data []byte) ([]byte, error) {
+	if len(data) > MaxPayload-FileSize {
+		return nil, fmt.Errorf("%w: %d bytes of file data in one write",
+			ErrPayloadTooLong, len(data))
+	}
+	dst = File{
+		SrcHandle:  srcHandle,
+		FileHandle: fileHandle,
+		Offset:     offset,
+		Extra:      int16(len(data)),
+	}.AppendTo(dst)
+	return append(dst, data...), nil
 }
 
 // DecodeFileOpen reads a file open request: the structure and the path.

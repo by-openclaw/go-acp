@@ -76,6 +76,7 @@ osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core typ
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)
 probel-sw08p port=2008  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+rollcall port=2050  Snell RollCall over IPShare, 16-bit and 32-bit generations
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
 tsl-v50  port=8901  TSL UMD v5.0 — UDP (≤2048 B) or TCP with DLE/STX wrapper; multi-DMSG; UTF-16LE

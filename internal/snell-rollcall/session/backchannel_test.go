@@ -320,3 +320,91 @@ func TestFrontChannelChatterIsSurfaced(t *testing.T) {
 		t.Fatal("front-channel chatter was dropped instead of surfaced")
 	}
 }
+
+// TestPushPayloadSurvivesLaterFrames is the regression for a real defect.
+//
+// A decoded payload aliases the reader's buffer, which the next read
+// overwrites. Pushes are queued until the application takes them, so by the
+// time a listener ran, every queued push carried the bytes of whichever frame
+// arrived last. Three different values delivered as three copies of the third
+// is exactly what that looks like, and nothing about it fails loudly.
+func TestPushPayloadSurvivesLaterFrames(t *testing.T) {
+	h := newHarness(t, Config{PushQueue: 8})
+	s := h.callSession(t, codec.SvcControl)
+
+	const count = 3
+	for i := range count {
+		payload, err := codec.FuncStatus{
+			Command: 0x0113,
+			Mode:    codec.ModeValue,
+			Value:   int32(i),
+		}.AppendTo(nil)
+		if err != nil {
+			t.Fatalf("AppendTo: %v", err)
+		}
+		h.peer.push(s, codec.MsgRetFStat, payload)
+	}
+
+	// Every push is taken only after all of them have arrived, which is what
+	// the queue is for and what exposed the bug.
+	var got []int32
+	for range count {
+		select {
+		case p := <-s.Pushes():
+			fs, err := codec.DecodeFuncStatus(p.Frame.Payload)
+			if err != nil {
+				t.Fatalf("DecodeFuncStatus: %v", err)
+			}
+			got = append(got, fs.Value)
+		case <-time.After(2 * time.Second):
+			t.Fatalf("only %d of %d pushes arrived", len(got), count)
+		}
+	}
+
+	for i, v := range got {
+		if v != int32(i) {
+			t.Errorf("push %d carries %d; the payloads were overwritten by later frames", i, v)
+		}
+	}
+}
+
+// TestUnsolicitedPayloadSurvives covers the same hazard on the other queue.
+// An announcement waits until somebody drains it, which may be long after the
+// buffer it was decoded from has been reused.
+func TestUnsolicitedPayloadSurvives(t *testing.T) {
+	h := newHarness(t, Config{})
+
+	names := []string{"Alpha", "Bravo", "Charlie"}
+	for _, name := range names {
+		payload, err := codec.DeviceInfo{ID: codec.ID{Name: name}}.AppendTo(nil)
+		if err != nil {
+			t.Fatalf("AppendTo: %v", err)
+		}
+		h.peer.write(codec.Frame{
+			Dst:     codec.Broadcast(),
+			Src:     peerAddr,
+			Type:    codec.MsgIam,
+			Payload: payload,
+		})
+	}
+
+	var got []string
+	for range names {
+		select {
+		case f := <-h.link.Unsolicited():
+			info, err := codec.DecodeDeviceInfo(f.Payload)
+			if err != nil {
+				t.Fatalf("DecodeDeviceInfo: %v", err)
+			}
+			got = append(got, info.ID.Name)
+		case <-time.After(2 * time.Second):
+			t.Fatalf("only %d of %d announcements arrived", len(got), len(names))
+		}
+	}
+
+	for i, name := range got {
+		if name != names[i] {
+			t.Errorf("announcement %d names %q, want %q", i, name, names[i])
+		}
+	}
+}

@@ -1,0 +1,205 @@
+// Package rollcall is the outbound Snell RollCall connector.
+//
+// It implements consumer.Protocol on top of the session layer, which supplies
+// the link, the sessions and the back channel, and the codec, which supplies
+// the wire format for both generations.
+//
+// # How RollCall maps onto the neutral model
+//
+// A RollCall network is units, and a unit has ports. A gateway is a unit whose
+// ports are the cards in its frame, so the mapping in ADR-0022 falls out
+// naturally: the unit is the device, a port is a slot, and the type id and
+// version a port reports are the card's identity.
+//
+// An object is a menu line. Its command number is its id, its style says what
+// kind of value it holds and whether it may be written, and its position in the
+// menu gives its path.
+//
+// # Which generation
+//
+// A device may serve both, and which one a session speaks is decided when the
+// session opens, not by the device. The peer advertises long strings in its
+// service mask; a client that wants the 32-bit generation asks for the bit in
+// its Call. Services are all-or-nothing, so a peer that cannot supply it
+// refuses the whole call and the client retries without it.
+//
+// This connector asks for the 32-bit generation whenever the peer advertises
+// it, because it is the only one that can express a router's command space,
+// and falls back automatically otherwise.
+package rollcall
+
+import (
+	"log/slog"
+	"sync"
+
+	"dhs/internal/clock"
+	"dhs/internal/consumer"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
+	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/session"
+	"dhs/internal/transport"
+)
+
+// DefaultPort is the IPShare port. The vendor dissector decodes 2050 to 2060,
+// and a gateway listens on the first of those.
+const DefaultPort = 2050
+
+// Register this plugin on import.
+func init() {
+	consumer.Register(&Factory{})
+}
+
+// Factory builds Plugin instances.
+type Factory struct{}
+
+// Meta describes the connector to the registry.
+func (f *Factory) Meta() consumer.ProtocolMeta {
+	return consumer.ProtocolMeta{
+		Name:        "rollcall",
+		DefaultPort: DefaultPort,
+		Description: "Snell RollCall over IPShare, 16-bit and 32-bit generations",
+	}
+}
+
+// New builds a connector from the dependency set.
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	return New(deps)
+}
+
+// New builds a connector. It opens nothing: Connect does that, through the
+// injected transport.
+func New(deps plugin.Deps) *Plugin {
+	deps = deps.WithDefaults()
+	return &Plugin{
+		log:    deps.Logger,
+		net:    deps.Net,
+		clk:    deps.Clock,
+		met:    deps.Metrics,
+		deps:   deps,
+		trees:  make(map[int]*slotTree),
+		subs:   make(map[subKey]consumer.EventFunc),
+		events: make(chan struct{}),
+	}
+}
+
+// Plugin is one connection to one RollCall gateway.
+type Plugin struct {
+	log  *slog.Logger
+	net  transport.Net
+	clk  clock.Clock
+	met  *metrics.Connector
+	deps plugin.Deps
+
+	mu sync.RWMutex
+
+	// link and its sessions are replaced wholesale on reconnect, so a caller
+	// holding a stale one cannot use it by accident.
+	link *link
+
+	// trees holds one walked menu per slot, which is what makes a label or a
+	// path resolvable without walking again.
+	trees map[int]*slotTree
+
+	subs map[subKey]consumer.EventFunc
+
+	// comp collects spec deviations. The connector absorbs each one and keeps
+	// running; the catalogue is what stops that being silent.
+	comp compliance
+
+	// events is closed to stop the back-channel pump.
+	events chan struct{}
+
+	// addr is what we were asked to connect to, kept for DeviceInfo.
+	addr string
+	port int
+}
+
+// subKey identifies a subscription. A zero command means every command on the
+// slot, which is what an empty label or id in the request asks for.
+type subKey struct {
+	slot    int
+	command uint32
+}
+
+// compile-time proof that the plugin satisfies the neutral contract.
+var _ consumer.Protocol = (*Plugin)(nil)
+
+// styleKind maps a menu line's style to the neutral value kind.
+//
+// The mapping is what makes a RollCall menu legible to a caller that has never
+// heard of RollCall, so it is worth being exact about the two that are not
+// obvious. A checkbox is a boolean rather than a small number, because that is
+// what a caller wants to set. A button carries no value at all: writing to it
+// is the action, and the value it writes is in its own range field.
+func styleKind(style codec.Style) consumer.ValueKind {
+	switch style.Kind() {
+	case codec.StyleCheckbox:
+		return consumer.KindBool
+
+	case codec.StyleNumber, codec.StyleVGraph, codec.StyleHGraph,
+		codec.StyleVLevel, codec.StyleHLevel, codec.StyleButton:
+		return consumer.KindInt
+
+	case codec.StyleEditString, codec.StyleDisplay:
+		return consumer.KindString
+
+	case codec.StyleList, codec.StyleTiled, codec.StylePartial:
+		// A container holds no value of its own; it is a node.
+		return consumer.KindUnknown
+
+	case codec.StyleData:
+		return consumer.KindRaw
+
+	case codec.StyleLink:
+		// A link names another unit rather than holding a value.
+		return consumer.KindString
+
+	default:
+		return consumer.KindUnknown
+	}
+}
+
+// Access bits, matching the neutral model's byte.
+const (
+	accessRead   uint8 = 0x01
+	accessWrite  uint8 = 0x02
+	accessSetDef uint8 = 0x04
+)
+
+// styleAccess maps a menu line's style to the neutral access bits.
+//
+// Everything readable is read; a disabled line is not writable; a container
+// and a display line are never writable. The preset bit is carried separately
+// on the value, so it is added by the walker when a line reports it.
+func styleAccess(style codec.Style) uint8 {
+	access := accessRead
+	if style.Disabled() {
+		return access
+	}
+	switch style.Kind() {
+	case codec.StyleTiled, codec.StyleList, codec.StylePartial, codec.StyleDisplay:
+		return access
+	default:
+		return access | accessWrite
+	}
+}
+
+// sessionServices is what a control-and-menu session asks for.
+//
+// Display is included because a unit's status lines are pushed on the same
+// session, and asking for it later would mean a second call. File is not:
+// it is opened on demand, so a unit without a file service is still usable.
+func sessionServices(longStrings bool) codec.Service {
+	s := codec.SvcMenus | codec.SvcControl | codec.SvcDisplay
+	if longStrings {
+		s |= codec.SvcLongStr
+	}
+	return s
+}
+
+// identity is what we present to a peer. The name is what appears in the
+// vendor's own session list, so it says what we are.
+func (p *Plugin) identity() codec.DeviceInfo {
+	return session.ClientIdentity("dhs rollcall", sessionServices(true))
+}
