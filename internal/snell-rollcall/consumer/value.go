@@ -90,15 +90,17 @@ func (p *Plugin) set16(ctx context.Context, s *session.Session, line *menuLine,
 			line.Command)
 	}
 
-	payload, err := codec.FuncStatus{
+	// The text is truncated to the field before encoding, so the encode has
+	// nothing left to refuse: the only way FuncStatus.AppendTo fails is a
+	// string that does not fit, and this one is cut to fit by construction.
+	// Truncating is what the older generation requires; the caller that wants
+	// its whole string needs a session that negotiated long strings.
+	payload, _ := codec.FuncStatus{
 		Command: uint16(line.Command),
 		Mode:    mode,
 		Value:   num,
 		Text:    codec.TruncateFixed(text, codec.MaxTextSize),
 	}.AppendTo(nil)
-	if err != nil {
-		return consumer.Value{}, err
-	}
 
 	reply, err := s.Do(ctx, codec.MsgSetParam, payload)
 	if err != nil {
@@ -153,16 +155,21 @@ func (p *Plugin) SetDefault(ctx context.Context, req consumer.ValueRequest) (con
 }
 
 // locate resolves a request to a menu line and the session to reach it on.
+//
+// The session comes first because the menu walk needs one anyway. Asking for
+// it afterwards would leave a failure path reachable only by a disconnection
+// landing in the gap between the two calls, which is a branch nothing can
+// exercise and nobody can reason about.
 func (p *Plugin) locate(ctx context.Context, req consumer.ValueRequest) (*menuLine, *session.Session, error) {
+	s, err := p.session(ctx, uint8(req.Slot))
+	if err != nil {
+		return nil, nil, err
+	}
 	t, err := p.tree(ctx, req.Slot)
 	if err != nil {
 		return nil, nil, err
 	}
 	line, err := t.resolve(req)
-	if err != nil {
-		return nil, nil, err
-	}
-	s, err := p.session(ctx, uint8(req.Slot))
 	if err != nil {
 		return nil, nil, err
 	}

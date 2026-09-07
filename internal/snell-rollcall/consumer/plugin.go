@@ -110,6 +110,9 @@ type Plugin struct {
 	// events is closed to stop the back-channel pump.
 	events chan struct{}
 
+	// fileCeiling bounds one file read. Zero takes DefaultMaxFileBytes.
+	fileCeiling int
+
 	// addr is what we were asked to connect to, kept for DeviceInfo.
 	addr string
 	port int

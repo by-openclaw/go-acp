@@ -103,6 +103,26 @@ type device struct {
 	// itself, which is what a freshly started one does.
 	emptyDeviceMap bool
 
+	// badMapEntry makes the device map answer with a device record too short
+	// to decode.
+	badMapEntry bool
+
+	// oddDirItem makes one entry of a directory listing come back as
+	// something other than a directory record.
+	oddDirItem int
+
+	// failReadAfter makes a file read report an error once that many chunks
+	// have been handed over. Negative disables it.
+	failReadAfter int
+
+	// shortReadCount makes a read reply claim fewer bytes than it actually
+	// carries, which a client must believe over the payload it can see.
+	shortReadCount bool
+
+	// endlessFile makes every read return data and never end, which is what a
+	// device stuck in a loop looks like.
+	endlessFile bool
+
 	// garbleDirEntry truncates the entries of a directory listing. It is
 	// separate from garble because the items of a multi-packet transfer all
 	// arrive as answers to the same request type, so the type alone cannot
@@ -117,23 +137,25 @@ type device struct {
 
 func newDevice(t *testing.T, conn net.Conn) *device {
 	d := &device{
-		t:           t,
-		services:    codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcFile | codec.SvcLongStr,
-		menus:       make(map[uint8][]codec.MenuItem),
-		values:      make(map[uint8]map[uint32]codec.Value),
-		files:       make(map[string][]byte),
-		identity:    make(map[uint8]codec.ID),
-		ports:       2,
-		blockSize:   0,
-		sessions:    make(map[int16]uint8),
-		nextIdx:     0x30,
-		backChannel: make(map[int16]bool),
-		oddMenuItem: -1,
-		oddListItem: -1,
-		refuse:      make(map[codec.PacketType]bool),
-		garble:      make(map[codec.PacketType]bool),
-		conn:        conn,
-		done:        make(chan struct{}),
+		t:             t,
+		services:      codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcFile | codec.SvcLongStr,
+		menus:         make(map[uint8][]codec.MenuItem),
+		values:        make(map[uint8]map[uint32]codec.Value),
+		files:         make(map[string][]byte),
+		identity:      make(map[uint8]codec.ID),
+		ports:         2,
+		blockSize:     0,
+		sessions:      make(map[int16]uint8),
+		nextIdx:       0x30,
+		backChannel:   make(map[int16]bool),
+		oddMenuItem:   -1,
+		oddListItem:   -1,
+		oddDirItem:    -1,
+		failReadAfter: -1,
+		refuse:        make(map[codec.PacketType]bool),
+		garble:        make(map[codec.PacketType]bool),
+		conn:          conn,
+		done:          make(chan struct{}),
 	}
 	go d.serve()
 	return d

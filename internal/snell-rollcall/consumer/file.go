@@ -29,6 +29,21 @@ import (
 // asking for more than it allows simply wastes the excess on every block.
 const defaultReadChunk = codec.MaxPayload - codec.FileSize
 
+// DefaultMaxFileBytes bounds a single read.
+//
+// A device that keeps returning data never ends the loop, and a template
+// archive or a names file for the largest matrix is orders of magnitude below
+// this, so the ceiling only ever catches a peer that is misbehaving.
+const DefaultMaxFileBytes = 64 << 20
+
+// maxFileBytes is the ceiling in force, which a caller may lower.
+func (p *Plugin) maxFileBytes() int {
+	if p.fileCeiling > 0 {
+		return p.fileCeiling
+	}
+	return DefaultMaxFileBytes
+}
+
 // ReadFile reads a whole file from a slot.
 //
 // The file is opened in binary mode, always. Text mode makes the peer translate
@@ -62,8 +77,10 @@ func (p *Plugin) ReadFile(ctx context.Context, slot int, path string) ([]byte, e
 		}
 		out = append(out, chunk...)
 
-		if len(out) > codec.MaxPayload*100000 {
-			return nil, fmt.Errorf("rollcall: %q is longer than any file this protocol carries", path)
+		if len(out) > p.maxFileBytes() {
+			return nil, fmt.Errorf(
+				"rollcall: %q passed %d bytes without ending; the device is not stopping",
+				path, p.maxFileBytes())
 		}
 	}
 }

@@ -280,9 +280,13 @@ func (d *device) deviceMap(f codec.Frame) {
 		count = 0
 	}
 	odd := d.oddListItem
+	bad := d.badMapEntry
 	d.block(f, codec.MsgGetLocDevMap, count, func(i int) (codec.PacketType, []byte) {
 		if i == odd {
 			return codec.MsgAck, nil
+		}
+		if bad {
+			return codec.MsgRetDevInfo, []byte{0x01}
 		}
 		info := codec.DeviceInfo{
 			ProtocolVersion: codec.ProtocolVersion,
@@ -621,10 +625,14 @@ func (d *device) fileDir(f codec.Frame) {
 		sizes[name] = len(body)
 	}
 	garble := d.garbleDirEntry
+	odd := d.oddDirItem
 	d.mu.Unlock()
 	sort.Strings(names)
 
 	d.block(f, codec.MsgFileDir, len(names), func(i int) (codec.PacketType, []byte) {
+		if i == odd {
+			return codec.MsgAck, nil
+		}
 		if garble {
 			return codec.MsgRetFileDir, []byte{0x01}
 		}
@@ -650,7 +658,21 @@ func (d *device) fileRead(f codec.Frame) {
 
 	d.mu.Lock()
 	body, ok := d.openFiles[req.FileHandle]
+	failAfter := d.failReadAfter
+	short := d.shortReadCount
+	endless := d.endlessFile
+	if failAfter >= 0 {
+		d.failReadAfter--
+	}
 	d.mu.Unlock()
+
+	if failAfter == 0 {
+		// The device gives up part way through, which is what a card being
+		// pulled during a template download looks like.
+		fail := codec.File{SrcHandle: req.SrcHandle, Extra: codec.FileErrAccess}
+		d.reply(f, codec.MsgRetFileRead, fail.AppendTo(nil))
+		return
+	}
 
 	if !ok {
 		fail := codec.File{SrcHandle: req.SrcHandle, Extra: codec.FileErrInvalid}
@@ -677,8 +699,24 @@ func (d *device) fileRead(f codec.Frame) {
 	}
 	chunk := body[off:end]
 
+	if endless {
+		// Never reaches the end, so a client with no ceiling would read for
+		// ever.
+		chunk = body
+		if len(chunk) == 0 {
+			chunk = []byte{0}
+		}
+	}
+
 	// In the reply the offset is how many bytes were read and the extra is
 	// the error, which is the opposite of the request.
-	hdr := codec.File{SrcHandle: req.SrcHandle, FileHandle: req.FileHandle, Offset: int32(len(chunk))}
+	count = len(chunk)
+	if short && count > 1 {
+		// The reply understates what it carries. The count is what a client
+		// must believe: reading past it would take bytes the device did not
+		// mean to send.
+		count--
+	}
+	hdr := codec.File{SrcHandle: req.SrcHandle, FileHandle: req.FileHandle, Offset: int32(count)}
 	d.reply(f, codec.MsgRetFileRead, append(hdr.AppendTo(nil), chunk...))
 }

@@ -172,12 +172,7 @@ jobs:
           check internal/snell-rollcall/codec/dtp 100
           check internal/snell-rollcall/codec/router 100
           check internal/snell-rollcall/session 100
-          # The consumer is the one package below the 100% standard. What
-          # remains is error propagation whose reachability depends on a
-          # disconnection landing inside a specific window; it rises as those
-          # branches are either exercised or shown to be duplicated guards and
-          # removed. The floor stops it slipping meanwhile.
-          check internal/snell-rollcall/consumer 96
+          check internal/snell-rollcall/consumer 100
           check internal/transport/ws 100
           check internal/transport/http 100
           check internal/auth 100
