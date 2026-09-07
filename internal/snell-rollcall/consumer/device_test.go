@@ -99,6 +99,10 @@ type device struct {
 	// something other than a device record, which a walker should skip.
 	oddListItem int
 
+	// emptySlots are the ports that report nothing fitted, which is what a
+	// frame with a slot left out looks like.
+	emptySlots map[uint8]bool
+
 	// emptyDeviceMap makes the gateway report having heard nothing announce
 	// itself, which is what a freshly started one does.
 	emptyDeviceMap bool
@@ -151,6 +155,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		oddMenuItem:   -1,
 		oddListItem:   -1,
 		oddDirItem:    -1,
+		emptySlots:    map[uint8]bool{},
 		failReadAfter: -1,
 		refuse:        make(map[codec.PacketType]bool),
 		garble:        make(map[codec.PacketType]bool),

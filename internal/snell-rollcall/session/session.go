@@ -39,10 +39,30 @@ type Session struct {
 	// error.
 	pushes chan Push
 
+	// server marks a session this side accepted rather than opened, which
+	// decides where an unmatched request on it goes.
+	server bool
+
+	// local is the address a server session answers as.
+	//
+	// It is the address the client called, which on a gateway is the card's
+	// slot rather than the gateway's own address, so a push from a card
+	// carries that card's port. A client session leaves this zero and uses
+	// the link's address instead, because a gateway may reassign that after
+	// the session is open and the session has to follow it.
+	local codec.Address
+
 	mu     sync.Mutex
 	closed bool
 
-	closeOnce sync.Once
+	// closing is claimed by whichever call closes the session first.
+	//
+	// It is a flag rather than a sync.Once because closing can re-enter: Term
+	// sends a message, that send can fail, a failed send closes the link, and
+	// closing a link closes its sessions. A Once would deadlock on itself
+	// there — the second entry waits for the first to finish, and the first is
+	// waiting for the second.
+	closing bool
 }
 
 // Push is one back-channel message and the means to acknowledge it.
@@ -61,6 +81,20 @@ func (s *Session) Services() codec.Service { return s.services }
 // above it are hidden rather than absent, so the level is part of what
 // identifies a cached device model.
 func (s *Session) UserLevel() codec.UserLevel { return s.userLevel }
+
+// Link returns the connection this session runs on, which a server needs to
+// find the bookkeeping it keeps per connection.
+func (s *Session) Link() *Link { return s.link }
+
+// LocalAddress returns the address this session answers as, which on an
+// accepted session is the slot the client called rather than the gateway's
+// own address.
+func (s *Session) LocalAddress() codec.Address {
+	if s.server {
+		return s.local
+	}
+	return s.link.LocalAddress()
+}
 
 // LocalIndex is the session index we publish as our own.
 func (s *Session) LocalIndex() int16 { return s.localIndex }
@@ -206,9 +240,13 @@ func (s *Session) do(ctx context.Context, ch *channel, flags uint8,
 
 // frame builds an outbound frame with this session's addressing.
 func (s *Session) frame(flags uint8, typ codec.PacketType, payload []byte) codec.Frame {
+	src := s.link.LocalAddress()
+	if s.server {
+		src = s.local
+	}
 	return codec.Frame{
 		Dst:     addrWithIndex(s.peer, s.remoteIndex),
-		Src:     addrWithIndex(s.link.LocalAddress(), s.localIndex),
+		Src:     addrWithIndex(src, s.localIndex),
 		Type:    typ,
 		Flags:   flags,
 		Payload: payload,
@@ -229,9 +267,14 @@ func (s *Session) receive(f codec.Frame) {
 	if s.front.deliver(f) {
 		return
 	}
-	// A front-channel frame answering nothing is the peer talking out of
-	// turn. Announcements and display updates arrive this way from some
-	// units, so it is surfaced rather than dropped.
+	// Nothing was waiting for it. On a session we accepted that is a request
+	// and must be answered; on one we opened it is the peer talking out of
+	// turn, which some units do for display updates, so it is surfaced rather
+	// than dropped.
+	if s.server && s.link.cfg.Handler != nil {
+		s.link.cfg.Handler.Request(s, f)
+		return
+	}
 	s.link.deliverUnsolicited(f)
 }
 
@@ -295,22 +338,39 @@ func (s *Session) reportChange(ctx context.Context, command uint16) error {
 // time them out very well (at all), and then run out of available sessions" —
 // so a session we abandon is leaked until the unit reboots.
 func (s *Session) Term(ctx context.Context, code codec.TermCode, reason string) error {
-	var err error
-	s.closeOnce.Do(func() {
-		payload, perr := codec.TermSess{Code: code, Reason: reason}.AppendTo(nil)
-		if perr != nil {
-			// A reason too long for the field must not stop the session
-			// being closed; the code alone is what the peer acts on.
-			payload, _ = codec.TermSess{Code: code}.AppendTo(nil)
-		}
+	if !s.beginClose() {
+		return nil
+	}
 
-		// Term is sent directly rather than through the channel. The slot may
-		// be held by a request that will never be answered, and waiting for
-		// it is how a session ends up abandoned instead of closed.
-		err = s.link.send(s.frame(0, codec.MsgTerm, payload))
-		s.shutdown(ErrSessionClosed)
-	})
+	payload, perr := codec.TermSess{Code: code, Reason: reason}.AppendTo(nil)
+	if perr != nil {
+		// A reason too long for the field must not stop the session being
+		// closed; the code alone is what the peer acts on.
+		payload, _ = codec.TermSess{Code: code}.AppendTo(nil)
+	}
+
+	// Term is sent directly rather than through the channel. The slot may be
+	// held by a request that will never be answered, and waiting for it is how
+	// a session ends up abandoned instead of closed.
+	//
+	// A send that fails closes the link, which closes its sessions, which
+	// arrives back here on this same goroutine. beginClose above is what makes
+	// that a no-op rather than a deadlock, and the shutdown below still runs.
+	err := s.link.send(s.frame(0, codec.MsgTerm, payload))
+	s.shutdown(ErrSessionClosed)
 	return err
+}
+
+// beginClose reports whether this call is the one that closes the session.
+func (s *Session) beginClose() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closing {
+		return false
+	}
+	s.closing = true
+	return true
 }
 
 // Close terminates the session with the ordinary user code.
@@ -321,7 +381,10 @@ func (s *Session) Close() error {
 // linkClosed shuts the session down because the link underneath it went away.
 // No Term is sent: there is nothing left to send it on.
 func (s *Session) linkClosed(err error) {
-	s.closeOnce.Do(func() { s.shutdown(err) })
+	if !s.beginClose() {
+		return
+	}
+	s.shutdown(err)
 }
 
 func (s *Session) shutdown(err error) {

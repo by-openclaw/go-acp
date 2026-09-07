@@ -472,6 +472,26 @@ func TestGetSlotInfo(t *testing.T) {
 	}
 }
 
+// TestGetSlotInfo_EmptySlot covers a port with nothing fitted, which a unit
+// reports rather than refuses.
+func TestGetSlotInfo_EmptySlot(t *testing.T) {
+	h := newHarness(t, func(d *device) { d.emptySlots[1] = true })
+
+	info, err := h.plugin.GetSlotInfo(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("GetSlotInfo: %v", err)
+	}
+	if info.State != consumer.SlotStateNoCard {
+		t.Errorf("state = %v, want no_card", info.State)
+	}
+	if info.Status != consumer.SlotNoCard {
+		t.Errorf("status = %v, want no_card", info.Status)
+	}
+	if info.IsOnline {
+		t.Error("an empty slot is not online")
+	}
+}
+
 func TestGetSlotInfo_OutOfRange(t *testing.T) {
 	h := newHarness(t, nil)
 

@@ -64,6 +64,14 @@ type Config struct {
 	// PushQueue is the depth of the back-channel delivery queue.
 	PushQueue int
 
+	// Handler makes this link the answering side.
+	//
+	// With one set, a frame that matches no session of ours is a request
+	// rather than an announcement, and reaches the handler instead of the
+	// lossy announcement channel. Without one the link only calls, and an
+	// unmatched frame is dropped when nobody is listening.
+	Handler Handler
+
 	// Local is our own address on this link.
 	//
 	// A TCP client leaves the net, unit and port zero and lets the gateway

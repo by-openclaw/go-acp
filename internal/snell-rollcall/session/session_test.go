@@ -394,3 +394,33 @@ func TestSession_LinkClosedWakesEveryone(t *testing.T) {
 		t.Error("Done was not closed")
 	}
 }
+
+func TestClosingASessionWhoseSocketHasAlreadyGone(t *testing.T) {
+	hn, blocked := newBlockedHarness(t, Config{KeepaliveInterval: -1})
+	s := hn.callSession(t, codec.SvcMenus)
+
+	// A client session answers as the link's own address, which a gateway may
+	// reassign after the session is open; only a session we accepted has one
+	// of its own.
+	if got := s.LocalAddress(); got != hn.link.LocalAddress() {
+		t.Errorf("session address %s, want the link's %s", got, hn.link.LocalAddress())
+	}
+
+	blocked.failing.Store(true)
+
+	// Term is always sent, and this one cannot be. The write fails, a failed
+	// write closes the link, and closing a link closes its sessions — which
+	// arrives back inside this very call, on this goroutine. It has to return
+	// rather than wait for itself to finish.
+	done := make(chan error, 1)
+	go func() { done <- s.Close() }()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("closing over a dead socket should report the write that failed")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close deadlocked on its own shutdown")
+	}
+}

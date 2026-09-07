@@ -310,6 +310,16 @@ func (l *Link) dispatch(f codec.Frame) {
 	if f.Type.ValidBlindReply() && l.blind.deliver(f) {
 		return
 	}
+
+	// On a link that serves, everything else is a request.
+	if l.cfg.Handler != nil {
+		if f.Type == codec.MsgCall {
+			l.serveCall(f)
+			return
+		}
+		l.cfg.Handler.Unsolicited(l, f)
+		return
+	}
 	l.deliverUnsolicited(f)
 }
 

@@ -240,7 +240,17 @@ func (d *device) getID(f codec.Frame) {
 }
 
 func (d *device) getStat(f codec.Frame) {
+	d.mu.Lock()
+	empty := d.emptySlots[f.Dst.Port]
+	d.mu.Unlock()
+
 	st := codec.UnitStatus{Status: codec.StatusPresent | codec.StatusOnline}
+	if empty {
+		// A slot with nothing fitted. The unit answers rather than refusing:
+		// "no card" is an answer, and a client walking a frame needs one per
+		// slot.
+		st.Status = codec.StatusOnline
+	}
 	d.reply(f, codec.MsgRetStat, st.AppendTo(nil))
 }
 

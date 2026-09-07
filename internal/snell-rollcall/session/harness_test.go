@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -171,8 +172,29 @@ type harness struct {
 
 func newHarness(t *testing.T, cfg Config) *harness {
 	t.Helper()
+	h, _ := newHarnessWith(t, cfg, false)
+	return h
+}
+
+// newBlockedHarness is a harness whose writes can be made to fail while its
+// reads go on blocking. That is a socket that has gone away without our end
+// having noticed, which is the only way to reach the paths that answer into
+// one without racing the read loop.
+func newBlockedHarness(t *testing.T, cfg Config) (*harness, *blockedConn) {
+	t.Helper()
+	return newHarnessWith(t, cfg, true)
+}
+
+func newHarnessWith(t *testing.T, cfg Config, blocked bool) (*harness, *blockedConn) {
+	t.Helper()
 
 	ours, theirs := net.Pipe()
+
+	var block *blockedConn
+	if blocked {
+		block = &blockedConn{Conn: ours}
+		ours = block
+	}
 	clk := clock.NewFake(time.Time{})
 	met := metrics.NewConnector()
 
@@ -191,7 +213,20 @@ func newHarness(t *testing.T, cfg Config) *harness {
 		_ = h.link.Close()
 		h.peer.close()
 	})
-	return h
+	return h, block
+}
+
+// blockedConn fails writes on demand and leaves reads alone.
+type blockedConn struct {
+	net.Conn
+	failing atomic.Bool
+}
+
+func (c *blockedConn) Write(b []byte) (int, error) {
+	if c.failing.Load() {
+		return 0, io.ErrClosedPipe
+	}
+	return c.Conn.Write(b)
 }
 
 // fire advances the fake clock once n timers are armed.

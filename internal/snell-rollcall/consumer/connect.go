@@ -118,11 +118,10 @@ func (p *Plugin) Disconnect() error {
 	if l == nil {
 		return nil
 	}
-	select {
-	case <-events:
-	default:
-		close(events)
-	}
+	// Only this call can close it: the link is taken under the lock and set to
+	// nil in the same breath, so a second Disconnect returns above rather than
+	// arriving here, and the channel is created fresh by each Connect.
+	close(events)
 	l.close()
 	return nil
 }

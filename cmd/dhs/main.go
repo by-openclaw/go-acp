@@ -56,6 +56,7 @@ import (
 	_ "dhs/internal/osc/provider"
 	_ "dhs/internal/probel-sw02p/provider"
 	_ "dhs/internal/probel-sw08p/provider"
+	_ "dhs/internal/snell-rollcall/provider"
 	_ "dhs/internal/tsl/provider"
 
 	// Registry plugins — blank imports register with internal/registry.

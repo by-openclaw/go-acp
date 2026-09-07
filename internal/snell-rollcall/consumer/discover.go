@@ -150,6 +150,7 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 
 	info := consumer.SlotInfo{
 		Slot:     slot,
+		Status:   slotStatus(st.Status),
 		State:    slotState(st.Status),
 		IsOnline: st.Status.Has(codec.StatusPresent),
 		LiveAt:   p.clk.Now(),
@@ -166,6 +167,18 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 		info.Identity["category"] = ty.Category.String()
 	}
 	return info, nil
+}
+
+// slotStatus is the numeric the neutral model keeps beside the state.
+//
+// Both are filled in rather than one: callers read the state, exports and the
+// command line read the numeric, and a slot that reports one without the other
+// shows up as an empty slot in whichever of them was left out.
+func slotStatus(s codec.Status) consumer.SlotStatus {
+	if !s.Has(codec.StatusPresent) {
+		return consumer.SlotNoCard
+	}
+	return consumer.SlotPresent
 }
 
 // slotState maps a unit's status flags onto the neutral slot state.
