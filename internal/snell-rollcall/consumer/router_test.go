@@ -124,6 +124,17 @@ func TestFindRouterProbesEveryNode(t *testing.T) {
 	if r.Slot != 2 {
 		t.Errorf("found the router on slot %d, want 2", r.Slot)
 	}
+
+	// The address names the node and nothing else. A session index would make
+	// two runs against an unchanged router differ — the same panel reported
+	// itself as :010 on one run and :026 on the next — so the printed address
+	// carries none.
+	if r.Addr.Index != codec.IndexUnknown {
+		t.Errorf("addr = %s; a router address carries no session index", r.Addr)
+	}
+	if r.Addr.Unit == 0 && r.Addr.Port == 0 {
+		t.Errorf("addr = %s names no node", r.Addr)
+	}
 }
 
 func TestFindRouterOnADeviceWithNone(t *testing.T) {

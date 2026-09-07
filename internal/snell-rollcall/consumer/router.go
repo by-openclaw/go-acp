@@ -34,6 +34,11 @@ import (
 // RouterInterface is what a router node publishes about itself.
 type RouterInterface struct {
 	// Slot is the node this was read from, and Addr the address behind it.
+	//
+	// Addr carries no session index. The index is an artefact of one
+	// conversation rather than of the node — the same panel reported itself as
+	// :010 on one run and :026 on the next — so leaving it in makes two runs
+	// against an unchanged router differ for no reason.
 	Slot int
 	Addr codec.Address
 
@@ -143,7 +148,7 @@ func (p *Plugin) RouterAt(ctx context.Context, slot int) (*RouterInterface, erro
 			"rollcall: slot %d speaks the 16-bit generation, which has no routing interface", slot)
 	}
 
-	r := &RouterInterface{Slot: slot, Addr: s.Peer()}
+	r := &RouterInterface{Slot: slot, Addr: s.Peer().Device()}
 
 	// The interface version is the whole of the test for "is this a router",
 	// so it has to be a strict one. A card is not obliged to refuse command
