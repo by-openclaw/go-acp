@@ -370,9 +370,14 @@ func TestAccessors_RecorderProfileWalkProgress(t *testing.T) {
 		Interval: consumer.DisableInterval,
 		Timeout:  consumer.DisableTimeout,
 	})
-	// Before Connect: no profile.
-	if p.ComplianceProfile() != nil {
-		t.Error("ComplianceProfile non-nil before Connect")
+	// The profile exists from the start and survives reconnects. It used to
+	// be nil until Connect and replaced on every Connect, which threw away
+	// every deviation seen before a link blip — and made every caller carry
+	// a nil check, including cmd/dhs, which type-asserts and calls this
+	// straight.
+	before := p.ComplianceProfile()
+	if before == nil {
+		t.Error("ComplianceProfile must never be nil")
 	}
 	rec, err := transport.NewRecorder(t.TempDir() + "/cap.jsonl")
 	if err != nil {
@@ -390,9 +395,10 @@ func TestAccessors_RecorderProfileWalkProgress(t *testing.T) {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// After Connect: profile exists.
-	if p.ComplianceProfile() == nil {
-		t.Error("ComplianceProfile nil after Connect")
+	// Connect attaches that same profile to the session rather than
+	// installing a fresh one.
+	if got := p.ComplianceProfile(); got != before {
+		t.Error("Connect replaced the profile instead of reusing it")
 	}
 	_ = progressCount
 }
