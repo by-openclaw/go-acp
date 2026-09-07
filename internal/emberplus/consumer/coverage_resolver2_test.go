@@ -3,13 +3,12 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
 
 // TestResolve_NilElements covers resolve's nil-map early return.
 func TestResolve_NilElements(t *testing.T) {
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolve(nil, nil, CanonicalOptions{Labels: "inline"})
 }
 
@@ -21,9 +20,9 @@ func TestResolveMatrixLabels_BasepathNotNode(t *testing.T) {
 	elements := map[string]canonical.Element{
 		"1.2": &canonical.Parameter{Header: canonical.Header{OID: "1.2"}}, // not a Node
 	}
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixLabels(m, elements, modeInline)
-	if got := p.profile.Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
 		t.Errorf("basepath-not-node should fire unresolved: got %d", got)
 	}
 }
@@ -51,9 +50,9 @@ func TestResolveMatrixLabels_LevelMismatch(t *testing.T) {
 		"1.2": mkLevel("1.2", 2),
 		"1.3": mkLevel("1.3", 3), // different count → mismatch
 	}
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixLabels(m, elements, modeBoth)
-	if got := p.profile.Snapshot()[MatrixLabelLevelMismatch]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelLevelMismatch]; got != 1 {
 		t.Errorf("level mismatch should fire: got %d", got)
 	}
 }

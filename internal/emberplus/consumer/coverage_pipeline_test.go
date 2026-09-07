@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/ber"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
@@ -28,7 +27,6 @@ func newTreePlugin() *Plugin {
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
 	p.pendingSets = newPendingSetRegistry()
-	p.profile = &compliance.Profile{}
 	p.unknownCTX = newUnknownCTXAudit()
 	return p
 }
@@ -255,7 +253,7 @@ func TestProcessParameter_NonQualified(t *testing.T) {
 	if _, ok := p.numIndex["1.2"]; !ok {
 		t.Errorf("non-qualified child not indexed at 1.2; index=%v", keys(p.numIndex))
 	}
-	if p.profile.Snapshot()[NonQualifiedElement] == 0 {
+	if p.ComplianceProfile().Snapshot()[NonQualifiedElement] == 0 {
 		t.Error("NonQualifiedElement compliance event not fired")
 	}
 }

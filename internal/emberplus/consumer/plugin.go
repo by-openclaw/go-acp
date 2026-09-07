@@ -27,11 +27,8 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
-	"dhs/internal/metrics"
-	"dhs/internal/transport"
 )
 
 func init() {
@@ -55,8 +52,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // separate Plugin so cached tree state cannot cross devices.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, met: deps.Metrics}
-	p.Configure(deps.Net, emberStaleAfter)
+	p := &Plugin{logger: deps.Logger}
+	p.Init(deps, emberStaleAfter)
 	return p
 }
 
@@ -88,11 +85,7 @@ const (
 type Plugin struct {
 	// Health supplies SessionHealth. Inherited, not reimplemented: Ember+
 	// contributes the dead-man window and the Session as the time source.
-	consumer.Health
-
-	// met counts every frame in and out. Supplied rather than created, so
-	// the process scrapes every connector from one place. Always non-nil.
-	met *metrics.Connector
+	consumer.Base
 
 	logger  *slog.Logger
 	session *Session
@@ -152,17 +145,6 @@ type Plugin struct {
 	// Spec p.54–58 (Ember+ 1.4 Templates).
 	templates   map[string]*glow.Template
 	templatesMu sync.RWMutex
-
-	// profile tracks tolerance events (spec deviations absorbed
-	// during this session). Exposed via ComplianceProfile(); a
-	// summary line is logged on Disconnect. See compliance/profile.go
-	// and internal/emberplus/docs/consumer.md §A9.
-	profile *compliance.Profile
-
-	// recorder captures raw S101 frames (tx + rx) to a JSONL file
-	// when the CLI passed --capture. Shared with the Session so the
-	// reader/writer taps fire on every frame.
-	recorder *transport.Recorder
 
 	// connIP / connPort are captured at Connect time for log context.
 	connIP   string
@@ -280,24 +262,6 @@ func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
 	return false
 }
 
-// ComplianceProfile returns the live compliance profile for this
-// connection. Callers use it to classify the peer provider (strict
-// vs partial) and to drive a compatibility matrix.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	return p.profile
-}
-
-// SetRecorder attaches a raw-traffic recorder to this plugin. When set,
-// every S101 frame (both TX and RX) is written to the recorder with
-// proto="emberplus" and the raw bytes include BOF/EOF/CRC, so the
-// capture file is sufficient input for replay-based unit tests.
-// Call before Connect.
-func (p *Plugin) SetRecorder(r *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = r
-	p.mu.Unlock()
-}
-
 // treeEntry is the in-RAM record per decoded element. It keeps both the
 // protocol-agnostic Object (consumed by CLI/format code) and the raw Glow
 // struct (consumed by matrix / invoke operations that need the numeric
@@ -346,7 +310,7 @@ type treeEntry struct {
 // keep-alive reply is received first.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	s := NewSession(p.logger)
-	s.SetMetrics(p.met)
+	s.SetMetrics(p.Metrics())
 	p.mu.Lock()
 	p.session = s
 	p.Opened("tcp", ip, port, sessionTimes{s})
@@ -361,17 +325,16 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
 	p.pendingSets = newPendingSetRegistry()
-	p.profile = &compliance.Profile{}
 	p.connIP = ip
 	p.connPort = port
 	p.unknownCTX = newUnknownCTXAudit()
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
-	s.SetProfile(p.profile)
+	s.SetProfile(p.ComplianceProfile())
 	s.SetOnStateChange(p.onSessionStateChange)
-	if p.recorder != nil {
-		s.SetRecorder(p.recorder)
+	if rec := p.Recorder(); rec != nil {
+		s.SetRecorder(rec)
 	}
 	return s.Connect(ctx, ip, port)
 }
@@ -508,28 +471,24 @@ func (p *Plugin) Disconnect() error {
 
 	p.unsubscribeAll()
 
-	if p.profile != nil {
-		summary := p.profile.SummaryLine()
-		class := p.profile.Classification()
-		if summary == "" {
-			p.logger.Info("emberplus: compliance profile",
-				"host", p.connIP, "port", p.connPort,
-				"classification", class)
-		} else {
-			p.logger.Info("emberplus: compliance profile",
-				"host", p.connIP, "port", p.connPort,
-				"classification", class,
-				"deviations", summary)
-		}
+	summary := p.ComplianceProfile().SummaryLine()
+	class := p.ComplianceProfile().Classification()
+	if summary == "" {
+		p.logger.Info("emberplus: compliance profile",
+			"host", p.connIP, "port", p.connPort,
+			"classification", class)
+	} else {
+		p.logger.Info("emberplus: compliance profile",
+			"host", p.connIP, "port", p.connPort,
+			"classification", class,
+			"deviations", summary)
 	}
 
 	p.mu.Lock()
 	s := p.session
 	p.session = nil
 	p.Closed()
-	if p.met != nil {
-		p.logger.Info("emberplus session metrics", slog.String("summary", p.met.Summary()))
-	}
+	p.logger.Info("emberplus session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.mu.Unlock()
 	if s != nil {
 		return s.Disconnect()
@@ -1134,7 +1093,7 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 		// profile`. Refs #465.
 		if stolen := entry.matrixState.DetectOneToOneSourceSteal(target, sources); len(stolen) > 0 {
 			for _, pair := range stolen {
-				p.profile.Note(OneToOneSourceStealAccepted)
+				p.ComplianceProfile().Note(OneToOneSourceStealAccepted)
 				p.logger.Debug("emberplus: oneToOne source-steal accepted",
 					"matrix_path", matrixPath,
 					"target", target,
@@ -1297,7 +1256,7 @@ func (p *Plugin) resolveNumPath(explicit []int32, parent []int32, number int32) 
 	if len(explicit) > 0 {
 		return cloneInt32Slice(explicit)
 	}
-	p.profile.Note(NonQualifiedElement)
+	p.ComplianceProfile().Note(NonQualifiedElement)
 	// Provider speaks legacy non-qualified Glow (DTD <2.10). Pin the
 	// session so subscribe / unsubscribe / setvalue use the nested
 	// Node/Parameter chain wire form the provider's path index
@@ -2041,7 +2000,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 		// new registrant's side; duplicate-detection-on-existing would
 		// require re-reading numIndex entries here, which we avoid on
 		// the hot path.
-		if len(existing) > 0 && param.StreamDescriptor == nil && p.profile != nil {
+		if len(existing) > 0 && param.StreamDescriptor == nil {
 			isNewPath := true
 			for _, k := range existing {
 				if k == key {
@@ -2050,7 +2009,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 				}
 			}
 			if isNewPath {
-				p.profile.Note(StreamIDCollisionNoDescriptor)
+				p.ComplianceProfile().Note(StreamIDCollisionNoDescriptor)
 			}
 		}
 		p.streamIndex[param.StreamIdentifier] = appendUnique(existing, key)
@@ -2674,16 +2633,6 @@ func valueToGlow(val consumer.Value) any {
 		return val.Str
 	}
 	return val.Int
-}
-
-// Metrics returns the connector's counter set — S101 frames and bytes in
-// and out attributed by command byte, plus errors and latency. Satisfies the
-// optional interface the CLI type-asserts for --metrics-addr. Always
-// non-nil.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.met
 }
 
 // sessionTimes adapts a Session to consumer.RxTxTimes. The session stamps rx
