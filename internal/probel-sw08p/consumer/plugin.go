@@ -26,8 +26,6 @@ import (
 
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
-	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
 	sw08session "dhs/internal/probel-sw08p/session"
 	"dhs/internal/transport"
@@ -60,8 +58,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the given logger.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
-	p.Configure(deps.Net, DefaultOnlineStaleAfter)
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, DefaultOnlineStaleAfter)
 	return p
 }
 
@@ -93,7 +91,7 @@ type Plugin struct {
 	// Health supplies SessionHealth. Inherited, not reimplemented: the
 	// only protocol-specific parts are the stale window and the metrics
 	// Connector this consumer already counts every frame through.
-	consumer.Health
+	consumer.Base
 
 	logger *slog.Logger
 
@@ -101,15 +99,10 @@ type Plugin struct {
 	// process owns the transport posture and a test substitutes a fake.
 	net transport.Net
 
-	// metrics is supplied rather than created, so one place can scrape
-	// every connector.
-	metrics *metrics.Connector
-
-	mu       sync.Mutex
-	host     string
-	port     int
-	client   *sw08session.Client
-	recorder *transport.Recorder
+	mu     sync.Mutex
+	host   string
+	port   int
+	client *sw08session.Client
 
 	// kaPoll owns the spec-sanctioned cmd 08 keep-alive prober (§5
 	// "Supporting dual controllers over IP" — poll "to keep the connections
@@ -123,16 +116,6 @@ type Plugin struct {
 	// matrixCfg holds caller-supplied matrix shape. Set via
 	// SetMatrixConfig before Connect; defaults applied at use sites.
 	matrixCfg MatrixConfig
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
-
-	// metricsConn carries rx/tx counters + error counters. Nil until
-	// Connect fires; callers read via Metrics(). Preserved after
-	// Disconnect so post-mortem summaries are still available.
-	metricsConn *metrics.Connector
 }
 
 // SetMatrixConfig records the caller-supplied matrix shape. Call
@@ -152,15 +135,6 @@ func (p *Plugin) MatrixConfig() MatrixConfig {
 	return p.matrixCfg
 }
 
-// Metrics returns the session-scoped connector metrics. Nil before
-// Connect, non-nil after (preserved across Disconnect). Safe from any
-// goroutine — metrics.Connector is internally synchronised.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.metricsConn
-}
-
 // IsOnline reports whether the plugin considers the matrix alive — true
 // if we have seen any rx frame (application or DLE ACK / NAK) within
 // DefaultOnlineStaleAfter. Mirrors the canonical.Header.IsOnline flag
@@ -175,13 +149,7 @@ func (p *Plugin) IsOnline() bool {
 // when the caller knows the peer's keepalive cadence (e.g. an Ember+
 // mirror polling at 5 s can pass stale=15 s).
 func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
-	p.mu.Lock()
-	met := p.metricsConn
-	p.mu.Unlock()
-	if met == nil {
-		return false
-	}
-	snap := met.Snapshot()
+	snap := p.Metrics().Snapshot()
 	if snap.LastRxAt.IsZero() {
 		return false
 	}
@@ -189,25 +157,6 @@ func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
-// Nil before Connect, non-nil after. Safe to call from any goroutine —
-// compliance.Profile is internally synchronized.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect — the recorder is wired into the sw08session.Client at
-// Dial time and captures every TX and RX frame (including DLE ACK /
-// DLE NAK control sequences) in the same format the ACP1/ACP2/Ember+
-// plugins produce.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
-}
-
 // Connect opens a TCP session to the matrix. Idempotent when called
 // twice with the same endpoint. Port 0 resolves to DefaultPort.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
@@ -225,14 +174,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	prof := &compliance.Profile{}
-	// Normally injected. A Plugin built directly still gets a counter set
-	// rather than a nil Metrics(), which is what this used to guarantee by
-	// constructing its own.
-	met := p.metrics
-	if met == nil {
-		met = metrics.NewConnector()
-	}
+	prof := p.ComplianceProfile()
+	met := p.Metrics()
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids.
 	for _, id := range codec.CommandIDs() {
@@ -260,8 +203,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		},
 		OnEvent: p.keepaliveAutoResponder(),
 	}
-	if p.recorder != nil {
-		rec := p.recorder
+	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
 		cfg.OnTx = func(b []byte) {
@@ -280,8 +222,6 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.client = cli
 	p.host = ip
 	p.port = port
-	p.profile = prof
-	p.metricsConn = met
 	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	// Start the spec-sanctioned cmd 08 poll (§5 "…to keep the connections
 	// open") and arm the reader's dead-man deadline alongside it. Our own
@@ -323,7 +263,6 @@ func (p *Plugin) Disconnect() error {
 	// race the close and log a spurious write failure.
 	p.stopKeepalivePoll()
 	cli := p.client
-	met := p.metricsConn
 	p.client = nil
 	p.host = ""
 	p.port = 0
@@ -332,7 +271,7 @@ func (p *Plugin) Disconnect() error {
 	if cli == nil {
 		return nil
 	}
-	if met != nil {
+	if met := p.Metrics(); met != nil {
 		p.logger.Info("probel session metrics",
 			slog.String("summary", met.Summary()),
 		)
