@@ -93,7 +93,7 @@ concerns here.
 
 | Folder | State |
 |---|---|
-| `internal/snell-rollcall/` | **future protocol**, gated on every current connector first satisfying the ADR-0025 six-deliverable bar. Today the directory only holds `assets/` with a gitignored local vendor SDK dump (1656 files of `.tpl` / `.mib` / `.zip` / `.exe` / `.doc`) — already laid out per ADR-0001 so when work begins the scaffolded `consumer/` / `provider/` / `codec/` / `wireshark/` / `CLAUDE.md` land alongside it. No Go code, no registry entry yet. |
+| `internal/snell-rollcall/` | **in progress** (epic #1009, gate lifted by the owner 2026-09-07). The ADR-0025 step-1 audit is done and the wire is validated against a live oracle on `10.6.250.105` — consumer read/write/subscribe proven against the real stack, and a throwaway producer spike rendered and driven by RollCall Control Panel 4.12.48. Landed so far: `CLAUDE.md` (wire context) + `docs/` (audit, DM/UI analysis, 1 623 captured frames, 560 menu lines). Still to come, one PR each: `codec/` · `session/` · `consumer/` · `provider/` · `wireshark/` · `integration/` · `testdata/`. No Go code and no registry entry yet. |
 | `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped; no `provider/` folder exists yet on disk. Intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
 
 ---

@@ -1,0 +1,137 @@
+[
+ {
+  "addr": "0000-08-00",
+  "name": "Snell Centra WIN32 ",
+  "id": 605,
+  "items": 57,
+  "partials": 1,
+  "values": 40,
+  "secs": 0.3
+ },
+ {
+  "addr": "0000-11-00",
+  "name": "Matrix 1",
+  "id": 636,
+  "items": 3,
+  "partials": 1,
+  "values": 0,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-12-00",
+  "name": "Matrix 2",
+  "id": 636,
+  "items": 3,
+  "partials": 1,
+  "values": 0,
+  "secs": 0.1
+ },
+ {
+  "addr": "0000-41-00",
+  "name": "IP Slot 1: 5915",
+  "id": 617,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.1
+ },
+ {
+  "addr": "0000-42-00",
+  "name": "IP Slot 2: 5919",
+  "id": 695,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-43-00",
+  "name": "Slot 3: 4915 MADI",
+  "id": 619,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-44-00",
+  "name": "Slot 4: 4915 AES",
+  "id": 630,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-61-00",
+  "name": "OP Slot 1: 5925",
+  "id": 618,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-62-00",
+  "name": "OP Slot 2: 5949",
+  "id": 697,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-63-00",
+  "name": "Slot 3: 4929 MADI",
+  "id": 707,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-64-00",
+  "name": "Slot 4: 4929 AES",
+  "id": 708,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-65-00",
+  "name": "Slot 5: 4925 MADI",
+  "id": 620,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-66-00",
+  "name": "Slot 6: 4925 AES",
+  "id": 631,
+  "items": 5,
+  "partials": 1,
+  "values": 2,
+  "secs": 0.0
+ },
+ {
+  "addr": "0000-80-00",
+  "name": "TIELINES",
+  "id": 731,
+  "items": 444,
+  "partials": 1,
+  "values": 40,
+  "secs": 1.5
+ },
+ {
+  "addr": "0000-81-00",
+  "name": "XY Panel",
+  "id": 734,
+  "items": 3,
+  "partials": 1,
+  "values": 1,
+  "secs": 0.0
+ }
+]
