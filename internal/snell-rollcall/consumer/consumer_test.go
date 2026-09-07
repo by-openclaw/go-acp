@@ -470,6 +470,35 @@ func TestGetSlotInfo(t *testing.T) {
 	if info.Identity["category"] == "" {
 		t.Error("the product category should be reported")
 	}
+
+	// The address is the node itself. A slot number is a position in the
+	// device's own enumeration rather than a place in a frame, so on a
+	// controller it names nothing on its own — the routing interface sits on
+	// slot 14 of one model and slot 5 of another — and only the address says
+	// which node answered.
+	if got := info.Identity["address"]; got != "0000-08-01:0FF" {
+		t.Errorf("address = %q, want the address the enumeration gave slot 1", got)
+	}
+}
+
+// TestGetSlotInfoAddressesEachNodeSeparately covers the reason the address is
+// reported at all: two slots are two nodes, and the identity has to say which.
+func TestGetSlotInfoAddressesEachNodeSeparately(t *testing.T) {
+	h := newHarness(t, nil)
+	ctx := context.Background()
+
+	one, err := h.plugin.GetSlotInfo(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetSlotInfo(1): %v", err)
+	}
+	two, err := h.plugin.GetSlotInfo(ctx, 2)
+	if err != nil {
+		t.Fatalf("GetSlotInfo(2): %v", err)
+	}
+	if one.Identity["address"] == two.Identity["address"] {
+		t.Errorf("both slots report %q; an address that does not distinguish nodes reports nothing",
+			one.Identity["address"])
+	}
 }
 
 // TestGetSlotInfo_EmptySlot covers a port with nothing fitted, which a unit

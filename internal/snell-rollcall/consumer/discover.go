@@ -165,6 +165,17 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 		IsOnline: st.Status.Has(codec.StatusPresent),
 		LiveAt:   p.clk.Now(),
 		Identity: map[string]string{
+			// The address is the node itself. A slot number is a position in
+			// the device's own enumeration rather than a place in a frame, so
+			// on a controller it names nothing on its own: the routing
+			// interface is slot 14 on one model and slot 5 on another, and
+			// only the address says which node was reached. It costs nothing
+			// to report — the session already knows who it is talking to.
+			// The session index is dropped: it is an artefact of this
+			// conversation rather than of the node, it differs on every
+			// reconnection, and leaving it in would make two walks of one card
+			// look like two device models.
+			"address":  s.Peer().Device().String(),
 			"name":     id.Name,
 			"type":     codec.UnitTypeName(id.TypeID),
 			"type_id":  fmt.Sprint(id.TypeID),
