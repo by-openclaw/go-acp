@@ -98,7 +98,7 @@ jobs:
       # "^dhs/<pkg>/<file>.go:" so nested packages stay separate; a floor
       # package with no rows at all is a hard failure (renamed package
       # guard). On a miss the exact uncovered blocks are printed.
-      - name: Coverage floor (acp1 + acp2 + emberplus)
+      - name: Coverage floor (per-package)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e
@@ -168,6 +168,7 @@ jobs:
           check internal/osc/consumer 100
           check internal/osc/provider 100
           check internal/cerebrum-nb/codec 100
+          check internal/snell-rollcall/codec 100
           check internal/transport/ws 100
           check internal/transport/http 100
           check internal/auth 100
