@@ -99,6 +99,10 @@ type device struct {
 	// something other than a device record, which a walker should skip.
 	oddListItem int
 
+	// refuseMap makes the device refuse a call asking for the map service,
+	// which is what a gateway that will not open one looks like.
+	refuseMap bool
+
 	// emptySlots are the ports that report nothing fitted, which is what a
 	// frame with a slot left out looks like.
 	emptySlots map[uint8]bool
@@ -142,7 +146,8 @@ type device struct {
 func newDevice(t *testing.T, conn net.Conn) *device {
 	d := &device{
 		t:             t,
-		services:      codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcFile | codec.SvcLongStr,
+		services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
+			codec.SvcFile | codec.SvcMap | codec.SvcLongStr,
 		menus:         make(map[uint8][]codec.MenuItem),
 		values:        make(map[uint8]map[uint32]codec.Value),
 		files:         make(map[string][]byte),

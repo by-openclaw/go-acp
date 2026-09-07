@@ -107,15 +107,21 @@ func TestSlotState(t *testing.T) {
 	}
 }
 
-// TestSessionServices covers what a control session asks for, and the one bit
-// that changes the answer.
+// TestSessionServices covers what a session asks a particular peer for.
+//
+// The intersection is the point: a call naming one service the peer does not
+// have is refused entirely, so a fixed mask makes a whole class of device
+// unreachable.
 func TestSessionServices(t *testing.T) {
-	short := sessionServices(false)
-	long := sessionServices(true)
+	full := codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
+		codec.SvcFile | codec.SvcMap | codec.SvcLongStr
+
+	short := sessionServices(full, false)
+	long := sessionServices(full, true)
 
 	for _, want := range []codec.Service{codec.SvcMenus, codec.SvcControl, codec.SvcDisplay} {
 		if !short.Has(want) {
-			t.Errorf("a session should ask for %s", want)
+			t.Errorf("a session should ask a device that has %s for it", want)
 		}
 	}
 	// The file service is opened separately, because services are
@@ -123,7 +129,6 @@ func TestSessionServices(t *testing.T) {
 	if short.Has(codec.SvcFile) {
 		t.Error("the control session must not ask for the file service")
 	}
-
 	if short.LongStrings() {
 		t.Error("the 16-bit request must not carry the long-string bit")
 	}
@@ -132,6 +137,35 @@ func TestSessionServices(t *testing.T) {
 	}
 	if long&^codec.SvcLongStr != short {
 		t.Error("the two requests should differ in exactly that one bit")
+	}
+
+	// The vendor Centra advertises no display service and refuses any call
+	// naming it. Asking for one anyway is how a controller becomes unreachable.
+	centra := codec.SvcMenus | codec.SvcControl | codec.SvcFile |
+		codec.SvcMap | codec.SvcLongStr
+	got := sessionServices(centra, true)
+	if got.Has(codec.SvcDisplay) {
+		t.Errorf("asked a device with no display service for one: %s", got)
+	}
+	if !got.Has(codec.SvcMenus | codec.SvcControl | codec.SvcLongStr) {
+		t.Errorf("dropped more than the display service: %s", got)
+	}
+
+	// A peer that advertises long strings and is asked for the older
+	// generation gets the older generation.
+	if sessionServices(centra, false).LongStrings() {
+		t.Error("the 16-bit request carried the long-string bit")
+	}
+	// A peer that does not advertise them is not asked for them, however much
+	// we would like the wider command space.
+	if sessionServices(codec.SvcMenus|codec.SvcControl, true).LongStrings() {
+		t.Error("asked a 16-bit peer for long strings")
+	}
+
+	// A peer whose mask says it serves none of what we want is still asked
+	// something: an empty mask asks for nothing at all and can only be refused.
+	if got := sessionServices(codec.SvcFile, true); got == 0 {
+		t.Error("an empty request is not a question")
 	}
 }
 

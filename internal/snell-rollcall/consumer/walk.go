@@ -74,7 +74,7 @@ func (p *Plugin) walkTree(ctx context.Context, slot int) (*slotTree, error) {
 		return nil, fmt.Errorf("rollcall: slot %d is outside the port range", slot)
 	}
 
-	s, err := p.session(ctx, uint8(slot))
+	s, err := p.session(ctx, slot)
 	if err != nil {
 		return nil, err
 	}

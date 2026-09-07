@@ -31,9 +31,32 @@ import (
 func TestConcurrentSessionOpenKeepsOne(t *testing.T) {
 	gate := make(chan struct{})
 	h := newHarness(t, func(d *device) {
-		d.gateCall = gate
 		d.setMenu(1, testMenu())
 	})
+
+	// Enumeration first, before the gate exists. A slot number is resolved
+	// against the device's own node list, so the session that walks it would
+	// otherwise be one of the calls the gate holds — and it would hold it
+	// forever, because nothing else can arrive until it is through.
+	if _, err := h.plugin.nodes(context.Background()); err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+
+	h.device.mu.Lock()
+	h.device.gateCall = gate
+	h.device.mu.Unlock()
+
+	h.plugin.mu.RLock()
+	l0 := h.plugin.link
+	h.plugin.mu.RUnlock()
+	l0.mu.Lock()
+	before := len(l0.sessions)
+	l0.mu.Unlock()
+
+	h.device.mu.Lock()
+	deviceBefore := len(h.device.sessions)
+	h.device.callsSeen = 0
+	h.device.mu.Unlock()
 
 	// Two callers reach for port 1 together.
 	var wg sync.WaitGroup
@@ -70,29 +93,29 @@ func TestConcurrentSessionOpenKeepsOne(t *testing.T) {
 		}
 	}
 
-	// Exactly one session is kept for the port, and both callers got it.
+	// Exactly one session was added for the port, and both callers got it.
 	h.plugin.mu.RLock()
 	l := h.plugin.link
 	h.plugin.mu.RUnlock()
 
 	l.mu.Lock()
-	kept := len(l.sessions)
+	kept := len(l.sessions) - before
 	l.mu.Unlock()
 	if kept != 1 {
-		t.Errorf("the link holds %d sessions for one port, want 1", kept)
+		t.Errorf("the race added %d sessions for one port, want 1", kept)
 	}
 
 	// And the loser closed its own, so the device is not left holding two.
 	deadline = time.Now().Add(2 * time.Second)
 	for {
 		h.device.mu.Lock()
-		open := len(h.device.sessions)
+		open := len(h.device.sessions) - deviceBefore
 		h.device.mu.Unlock()
 		if open == 1 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Errorf("the device holds %d sessions, want 1", open)
+			t.Errorf("the device kept %d of the two sessions, want 1", open)
 			break
 		}
 		time.Sleep(time.Millisecond)
@@ -332,11 +355,22 @@ func TestPumpStopsWithTheLink(t *testing.T) {
 		Payload: []byte{0x01},
 	})
 
+	// Wait for the pump to have taken both before the link dies underneath it,
+	// so this tests what the pump does with an announcement rather than which
+	// of the two goroutines won.
+	deadline := time.Now().Add(2 * time.Second)
+	for h.plugin.Announcements() < 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("the pump absorbed %d announcements, want 2", h.plugin.Announcements())
+		}
+		time.Sleep(time.Millisecond)
+	}
+
 	h.device.close()
 
 	// The link notices and the plugin refuses further work rather than
 	// hanging.
-	deadline := time.Now().Add(2 * time.Second)
+	deadline = time.Now().Add(2 * time.Second)
 	for {
 		if _, err := h.plugin.GetSlotInfo(context.Background(), 1); err != nil {
 			return

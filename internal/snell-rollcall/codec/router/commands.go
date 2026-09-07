@@ -15,12 +15,21 @@
 //
 // The root table is pinned by the specification, which states outright that
 // CMD_INTERFACE_VERSION is command 100 and the rest follow in order. The
-// per-matrix, per-level and per-destination tables are documented as "defined
-// in a similar fashion" with their commands listed in order but no numbers
-// given, so their offsets are read from that ordering. That reading has not yet
-// been checked against a router controller: the audit oracle answered NACK to
-// command 100, so it exposes no routing interface at all. Treat the sub-table
-// offsets as unvalidated until a real controller confirms them.
+// per-matrix, per-level and per-entity tables are documented as "defined in a
+// similar fashion", with their commands listed in order but no numbers given,
+// so their offsets were read from that ordering.
+//
+// Those offsets have since been measured against the vendor Centra controller
+// running as a Sirius 800, which serves the routing interface on its XY Panel
+// node: every command in every sub-table was read individually and its content
+// identifies which field it is, and the four table sizes here — matrix 15,
+// level 12, source 3, destination 8 — are what that controller publishes. The
+// names-file checksum below reproduces the controller's own values exactly.
+// See internal/snell-rollcall/docs/oracle-centra.md for the measurements.
+//
+// The controller advertises interface version 13; the specification copy we
+// hold documents 12. Commands are only ever added, so everything named here
+// exists, but whatever 13 introduced is not described anywhere we can read.
 //
 // This package is stdlib-only and imports nothing from dhs (ADR-0006).
 package router

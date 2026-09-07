@@ -190,6 +190,11 @@ func (d *device) answerCall(f codec.Frame) {
 		d.reply(f, codec.MsgNack, []byte("no long strings\x00"))
 		return
 	}
+	if d.refuseMap && conn.Services.Has(codec.SvcMap) {
+		d.mu.Unlock()
+		d.reply(f, codec.MsgNack, append([]byte("no map service"), 0))
+		return
+	}
 	idx := d.nextIdx
 	d.nextIdx++
 	d.sessions[f.Src.Index] = f.Dst.Port
@@ -255,10 +260,15 @@ func (d *device) getStat(f codec.Frame) {
 }
 
 // deviceList answers a port enumeration with one entry per port.
+//
+// Each entry advertises what that node serves, which is what a real unit does:
+// the vendor Centra's own list gives each node its own service mask, and a
+// client uses it to decide what to ask that node for.
 func (d *device) deviceList(f codec.Frame) {
 	d.mu.Lock()
 	n := d.ports
 	odd := d.oddListItem
+	services := d.services
 	d.mu.Unlock()
 
 	d.block(f, codec.MsgGetDevList, n, func(i int) (codec.PacketType, []byte) {
@@ -269,7 +279,7 @@ func (d *device) deviceList(f codec.Frame) {
 			ProtocolVersion: codec.ProtocolVersion,
 			Address:         codec.Address{Unit: gatewayAddr.Unit, Port: uint8(i), Index: codec.IndexUnknown},
 			ID: codec.ID{
-				Services: codec.SvcMenus | codec.SvcControl,
+				Services: services,
 				TypeID:   623,
 				Name:     "Card",
 			},

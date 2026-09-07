@@ -161,7 +161,7 @@ func (p *Plugin) SetDefault(ctx context.Context, req consumer.ValueRequest) (con
 // landing in the gap between the two calls, which is a branch nothing can
 // exercise and nobody can reason about.
 func (p *Plugin) locate(ctx context.Context, req consumer.ValueRequest) (*menuLine, *session.Session, error) {
-	s, err := p.session(ctx, uint8(req.Slot))
+	s, err := p.session(ctx, req.Slot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -274,7 +274,7 @@ func (p *Plugin) encodeValue(line *menuLine, val consumer.Value) (codec.Mode, in
 // and a warning. That is why they have their own accessor rather than
 // appearing in a walk.
 func (p *Plugin) Display(ctx context.Context, slot int) (map[int16]string, error) {
-	s, err := p.session(ctx, uint8(slot))
+	s, err := p.session(ctx, slot)
 	if err != nil {
 		return nil, err
 	}

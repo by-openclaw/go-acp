@@ -61,7 +61,18 @@ func TestLinkClosesWhileASessionIsOpening(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			gate := make(chan struct{})
-			h := newHarness(t, func(d *device) { d.gateCall = gate })
+			h := newHarness(t, nil)
+
+			// Enumerate before the gate exists. Resolving a slot number walks
+			// the device's node list, and that walk's own call would otherwise
+			// be the one the gate holds.
+			if _, err := h.plugin.nodes(context.Background()); err != nil {
+				t.Fatalf("enumerate: %v", err)
+			}
+			h.device.mu.Lock()
+			h.device.gateCall = gate
+			h.device.callsSeen = 0
+			h.device.mu.Unlock()
 
 			done := make(chan error, 1)
 			go func() { done <- tc.open(h.plugin) }()

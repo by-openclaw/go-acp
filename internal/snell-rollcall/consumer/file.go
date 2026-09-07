@@ -50,7 +50,7 @@ func (p *Plugin) maxFileBytes() int {
 // line endings, which corrupts an archive or a names file, and it does so
 // silently: the read succeeds and the bytes are wrong.
 func (p *Plugin) ReadFile(ctx context.Context, slot int, path string) ([]byte, error) {
-	s, err := p.fileSession(ctx, uint8(slot))
+	s, err := p.fileSession(ctx, slot)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (p *Plugin) closeFile(ctx context.Context, s *session.Session, handle int16
 
 // ListDir lists a directory on a slot.
 func (p *Plugin) ListDir(ctx context.Context, slot int, path string) ([]codec.DirEntry, error) {
-	s, err := p.fileSession(ctx, uint8(slot))
+	s, err := p.fileSession(ctx, slot)
 	if err != nil {
 		return nil, err
 	}
@@ -188,30 +188,33 @@ func (p *Plugin) ListDir(ctx context.Context, slot int, path string) ([]codec.Di
 // negotiated together and all-or-nothing: asking for the file service on the
 // control session would mean a unit without one could not be controlled at
 // all.
-func (p *Plugin) fileSession(ctx context.Context, port uint8) (*session.Session, error) {
+func (p *Plugin) fileSession(ctx context.Context, slot int) (*session.Session, error) {
+	peer, err := p.slotAddress(ctx, slot)
+	if err != nil {
+		return nil, err
+	}
+
 	l, err := p.conn()
 	if err != nil {
 		return nil, err
 	}
+	peer = peer.Device()
 
 	l.mu.Lock()
 	if l.closed {
 		l.mu.Unlock()
 		return nil, fmt.Errorf("rollcall: link closed")
 	}
-	if s, ok := l.fileSessions[port]; ok {
+	if s, ok := l.fileSessions[peer]; ok {
 		l.mu.Unlock()
 		return s, nil
 	}
 	l.mu.Unlock()
 
-	peer := l.sess.RemoteAddress()
-	peer.Port = port
-
 	s, err := session.Call(ctx, l.sess, peer, codec.SvcFile,
 		codec.LevelSupervisor, p.identity())
 	if err != nil {
-		return nil, fmt.Errorf("rollcall: file service on port %02X: %w", port, err)
+		return nil, fmt.Errorf("rollcall: file service on %s: %w", peer, err)
 	}
 
 	l.mu.Lock()
@@ -220,18 +223,18 @@ func (p *Plugin) fileSession(ctx context.Context, port uint8) (*session.Session,
 		_ = s.Close()
 		return nil, fmt.Errorf("rollcall: link closed")
 	}
-	if existing, ok := l.fileSessions[port]; ok {
+	if existing, ok := l.fileSessions[peer]; ok {
 		go func() { _ = s.Close() }()
 		return existing, nil
 	}
-	l.fileSessions[port] = s
+	l.fileSessions[peer] = s
 	return s, nil
 }
 
 // ReadFileTo streams a file into a writer, for callers that would rather not
 // hold a whole archive in memory.
 func (p *Plugin) ReadFileTo(ctx context.Context, slot int, path string, w io.Writer) (int64, error) {
-	s, err := p.fileSession(ctx, uint8(slot))
+	s, err := p.fileSession(ctx, slot)
 	if err != nil {
 		return 0, err
 	}

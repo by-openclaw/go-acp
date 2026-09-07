@@ -45,10 +45,11 @@ func (p *Plugin) Devices(ctx context.Context) ([]codec.DeviceInfo, error) {
 		return nil, err
 	}
 
-	// The map is fetched outside any session: it is a property of the
-	// gateway, and asking for it opens a transient session the gateway
-	// closes itself when the walk ends.
-	s, err := p.session(ctx, 0)
+	// The map service has its own session, and it is addressed to the gateway
+	// directly rather than through the slot table: the table is built from
+	// this very walk, and asking it for an address here is how a lookup
+	// becomes a loop.
+	s, err := p.mapSession(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -76,12 +77,20 @@ func (p *Plugin) Devices(ctx context.Context) ([]codec.DeviceInfo, error) {
 	return out, nil
 }
 
-// Ports returns the ports of one unit, which are its cards.
+// Ports returns what one unit enumerates: the cards in a frame's slots, or on
+// a controller the units it fronts.
 func (p *Plugin) Ports(ctx context.Context, unit uint8) ([]codec.DeviceInfo, error) {
-	s, err := p.session(ctx, 0)
+	l, err := p.conn()
 	if err != nil {
 		return nil, err
 	}
+
+	// The map session again, for the same reasons as the walk above.
+	s, err := p.mapSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_ = l
 
 	var out []codec.DeviceInfo
 	err = session.Walk(ctx, s, codec.MsgGetDevList, []byte{unit, 0},
@@ -108,11 +117,12 @@ func (p *Plugin) Ports(ctx context.Context, unit uint8) ([]codec.DeviceInfo, err
 // done that, and checking twice would leave a branch that cannot be reached
 // except by a disconnection landing in the gap between them.
 func (p *Plugin) slotCount(ctx context.Context, l *link) (int, error) {
-	ports, err := p.Ports(ctx, l.sess.RemoteAddress().Unit)
+	t, err := p.nodes(ctx)
 	if err != nil {
 		return 0, err
 	}
-	return len(ports), nil
+	_ = l
+	return len(t.addrs), nil
 }
 
 // GetSlotInfo returns the identity and state of one port.
@@ -125,7 +135,7 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 		return consumer.SlotInfo{}, fmt.Errorf("rollcall: slot %d is outside the port range", slot)
 	}
 
-	s, err := p.session(ctx, uint8(slot))
+	s, err := p.session(ctx, slot)
 	if err != nil {
 		return consumer.SlotInfo{}, err
 	}

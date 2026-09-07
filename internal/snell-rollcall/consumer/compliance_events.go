@@ -50,6 +50,12 @@ const (
 	// cached walk does.
 	EventUnsolicitedCommand = "rollcall_unsolicited_command"
 
+	// EventUnlistedNode means a slot was addressed that the device's own
+	// enumeration does not mention. It is addressed anyway: a gateway ages a
+	// map entry out after sixty seconds of silence, so a node missing from the
+	// list is one that has gone quiet rather than one that never existed.
+	EventUnlistedNode = "rollcall_unlisted_node"
+
 	// EventDisplayLineOutOfRange means a status line arrived for a line
 	// number outside the four the display service defines and outside the
 	// two negative priorities. It is kept under its own number.

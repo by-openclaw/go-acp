@@ -26,12 +26,21 @@ type link struct {
 	gateway codec.DeviceInfo
 
 	mu       sync.Mutex
-	sessions map[uint8]*session.Session // control and menu, by port
+	// sessions are keyed by the node's whole address, not by a port: on a
+	// controller the nodes differ by unit, and keying by port would give every
+	// one of them the same session.
+	sessions map[codec.Address]*session.Session
 
 	// fileSessions are separate because services are negotiated together and
 	// all-or-nothing: asking for the file service on the control session
 	// would make a unit without one uncontrollable.
-	fileSessions map[uint8]*session.Session
+	fileSessions map[codec.Address]*session.Session
+
+	// mapSess is the one session that may ask for the device map, for the same
+	// reason. A unit answers a request belonging to a service the session did
+	// not negotiate with SP_INVSESS, not by ignoring it: measured against the
+	// vendor Centra, which refuses GETDEVLIST that way on a control session.
+	mapSess *session.Session
 
 	closed bool
 }
@@ -70,8 +79,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	l := &link{
 		sess:         sl,
 		gateway:      info,
-		sessions:     make(map[uint8]*session.Session),
-		fileSessions: make(map[uint8]*session.Session),
+		sessions:     make(map[codec.Address]*session.Session),
+		fileSessions: make(map[codec.Address]*session.Session),
 	}
 	l.keep = session.NewKeepalive(context.WithoutCancel(ctx), sl, nil)
 
@@ -133,7 +142,11 @@ func (l *link) close() {
 		return
 	}
 	l.closed = true
-	sessions := make([]*session.Session, 0, len(l.sessions)+len(l.fileSessions))
+	sessions := make([]*session.Session, 0, len(l.sessions)+len(l.fileSessions)+1)
+	if l.mapSess != nil {
+		sessions = append(sessions, l.mapSess)
+		l.mapSess = nil
+	}
 	for _, s := range l.sessions {
 		sessions = append(sessions, s)
 	}
@@ -168,28 +181,38 @@ func (p *Plugin) conn() (*link, error) {
 // requests are stateless. A peer that refuses the whole call because of that
 // bit is retried without it: services are all-or-nothing, so a partial grant
 // is not a thing that can happen.
-func (p *Plugin) session(ctx context.Context, port uint8) (*session.Session, error) {
+func (p *Plugin) session(ctx context.Context, slot int) (*session.Session, error) {
+	peer, err := p.slotAddress(ctx, slot)
+	if err != nil {
+		return nil, err
+	}
+	return p.sessionAt(ctx, peer)
+}
+
+// sessionAt opens or returns the session for one node address.
+//
+// Sessions are keyed by the whole address rather than by a port, because on a
+// controller the nodes differ by unit and keying by port would hand every one
+// of them the same session.
+func (p *Plugin) sessionAt(ctx context.Context, peer codec.Address) (*session.Session, error) {
 	l, err := p.conn()
 	if err != nil {
 		return nil, err
 	}
+	peer = peer.Device()
 
 	l.mu.Lock()
 	if l.closed {
 		l.mu.Unlock()
 		return nil, consumer.ErrNotConnected
 	}
-	if s, ok := l.sessions[port]; ok {
+	if s, ok := l.sessions[peer]; ok {
 		l.mu.Unlock()
 		return s, nil
 	}
 	l.mu.Unlock()
 
-	peer := l.sess.RemoteAddress()
-	peer.Port = port
-
-	wantLong := l.gateway.ID.Services.LongStrings()
-	s, err := p.call(ctx, l, peer, wantLong)
+	s, err := p.call(ctx, l, peer, p.advertisedBy(peer, l))
 	if err != nil {
 		return nil, err
 	}
@@ -201,18 +224,99 @@ func (p *Plugin) session(ctx context.Context, port uint8) (*session.Session, err
 		return nil, consumer.ErrNotConnected
 	}
 	// Another caller may have opened one while we were waiting for the
-	// reply. Keep theirs and close ours, so a port never has two.
-	if existing, ok := l.sessions[port]; ok {
+	// reply. Keep theirs and close ours, so a node never has two.
+	if existing, ok := l.sessions[peer]; ok {
 		go func() { _ = s.Close() }()
 		return existing, nil
 	}
-	l.sessions[port] = s
+	l.sessions[peer] = s
 	return s, nil
 }
 
+// mapSession returns the session enumeration runs on.
+//
+// It asks for the map service alone. A gateway that does not advertise one is
+// asked on the control session instead, because some units answer a list on
+// any session and the walk is worth attempting before it is given up on.
+func (p *Plugin) mapSession(ctx context.Context) (*session.Session, error) {
+	l, err := p.conn()
+	if err != nil {
+		return nil, err
+	}
+	gateway := l.sess.RemoteAddress().Device()
+
+	if !l.gateway.ID.Services.Has(codec.SvcMap) {
+		return p.sessionAt(ctx, gateway)
+	}
+
+	l.mu.Lock()
+	if l.closed {
+		l.mu.Unlock()
+		return nil, consumer.ErrNotConnected
+	}
+	if s := l.mapSess; s != nil {
+		l.mu.Unlock()
+		return s, nil
+	}
+	l.mu.Unlock()
+
+	// The map service is asked for on its own, without the long-string bit.
+	// What the map carries is fixed-width whichever generation is in force, so
+	// the bit buys nothing here, and the vendor Centra refuses the pair while
+	// accepting the map service alone.
+	s, err := session.Call(ctx, l.sess, gateway, codec.SvcMap, codec.LevelSupervisor, p.identity())
+	if err != nil {
+		// A gateway that will not open a map session may still answer a list
+		// on the control one. Trying is cheaper than reporting a device with
+		// no discoverable nodes.
+		p.log.Debug("rollcall: no map session; enumerating on the control session",
+			"gateway", gateway.String(), "err", err)
+		return p.sessionAt(ctx, gateway)
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		_ = s.Close()
+		return nil, consumer.ErrNotConnected
+	}
+	if existing := l.mapSess; existing != nil {
+		go func() { _ = s.Close() }()
+		return existing, nil
+	}
+	l.mapSess = s
+	return s, nil
+}
+
+// advertisedBy is what a node said it serves.
+//
+// Each node advertises for itself and they differ: on the vendor Centra the
+// matrices offer Ports and the panel node does not, and only the gateway offers
+// Map. What the enumeration said about a node is therefore better than what the
+// gateway said about itself, and the gateway's own mask is the fallback for a
+// node nothing has described.
+func (p *Plugin) advertisedBy(peer codec.Address, l *link) codec.Service {
+	p.mu.RLock()
+	t := p.nodeCache
+	p.mu.RUnlock()
+
+	if t != nil {
+		for i, addr := range t.addrs {
+			if addr.SameDevice(peer) {
+				return t.info[i].ID.Services
+			}
+		}
+	}
+	return l.gateway.ID.Services
+}
+
 // call opens one session, falling back a generation if the peer refuses.
-func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address, wantLong bool) (*session.Session, error) {
-	s, err := session.Call(ctx, l.sess, peer, sessionServices(wantLong),
+func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address,
+	advertised codec.Service) (*session.Session, error) {
+
+	wantLong := advertised.LongStrings()
+
+	s, err := session.Call(ctx, l.sess, peer, sessionServices(advertised, wantLong),
 		codec.LevelSupervisor, p.identity())
 	if err == nil {
 		return s, nil
@@ -227,7 +331,7 @@ func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address, wantLong
 	p.fire(EventLongStringsRefused, fmt.Sprintf(
 		"%s advertises SV_LONGSTR but refused a call requesting it: %v", peer, err))
 
-	s, err = session.Call(ctx, l.sess, peer, sessionServices(false),
+	s, err = session.Call(ctx, l.sess, peer, sessionServices(advertised, false),
 		codec.LevelSupervisor, p.identity())
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: call %s: %w", peer, err)
@@ -239,7 +343,7 @@ func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address, wantLong
 // generation. Callers that need to know which message types will be used ask
 // this rather than inferring it from the device.
 func (p *Plugin) Uses32Bit(ctx context.Context, slot int) (bool, error) {
-	s, err := p.session(ctx, uint8(slot))
+	s, err := p.session(ctx, slot)
 	if err != nil {
 		return false, err
 	}

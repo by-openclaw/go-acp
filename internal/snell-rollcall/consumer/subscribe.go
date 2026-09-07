@@ -26,7 +26,7 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 	}
 
 	ctx := context.Background()
-	s, err := p.session(ctx, uint8(req.Slot))
+	s, err := p.session(ctx, req.Slot)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 		return nil
 	}
 
-	s, err := p.session(ctx, uint8(req.Slot))
+	s, err := p.session(ctx, req.Slot)
 	if err != nil {
 		// Nothing left to tell; the subscription is gone either way.
 		return nil //nolint:nilerr // an unreachable device needs no unsubscribe
@@ -306,6 +306,7 @@ func (p *Plugin) pumpBackChannel() {
 			return
 		case f := <-l.sess.Unsolicited():
 			if f.Type == codec.MsgIam {
+				p.announcements.Add(1)
 				if info, err := codec.DecodeDeviceInfo(f.Payload); err == nil {
 					p.log.Debug("rollcall: announcement",
 						"unit", info.Address.String(),

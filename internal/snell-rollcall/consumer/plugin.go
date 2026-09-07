@@ -31,6 +31,7 @@ package rollcall
 import (
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
@@ -101,6 +102,11 @@ type Plugin struct {
 	// path resolvable without walking again.
 	trees map[int]*slotTree
 
+	// nodeCache is the device's enumerated nodes, walked once per connection.
+	// It is what turns a slot number into an address, and a controller's nodes
+	// are unreachable without it.
+	nodeCache *nodeTable
+
 	subs map[subKey]consumer.EventFunc
 
 	// comp collects spec deviations. The connector absorbs each one and keeps
@@ -116,7 +122,16 @@ type Plugin struct {
 	// addr is what we were asked to connect to, kept for DeviceInfo.
 	addr string
 	port int
+
+	// announcements counts the units that have announced themselves on this
+	// link. A device that has gone quiet is the usual explanation for a node
+	// missing from a gateway's map, so the count is worth having.
+	announcements atomic.Uint64
 }
+
+// Announcements returns how many unit announcements this connector has
+// absorbed since it connected.
+func (p *Plugin) Announcements() uint64 { return p.announcements.Load() }
 
 // subKey identifies a subscription. A zero command means every command on the
 // slot, which is what an empty label or id in the request asks for.
@@ -188,14 +203,31 @@ func styleAccess(style codec.Style) uint8 {
 	}
 }
 
-// sessionServices is what a control-and-menu session asks for.
+// wantedServices is what a control-and-menu session would like.
 //
 // Display is included because a unit's status lines are pushed on the same
-// session, and asking for it later would mean a second call. File is not:
-// it is opened on demand, so a unit without a file service is still usable.
-func sessionServices(longStrings bool) codec.Service {
-	s := codec.SvcMenus | codec.SvcControl | codec.SvcDisplay
-	if longStrings {
+// session, and asking for it later would mean a second call. File is not: it is
+// opened on demand, so a unit without a file service is still usable.
+const wantedServices = codec.SvcMenus | codec.SvcControl | codec.SvcDisplay
+
+// sessionServices is what to ask a particular peer for.
+//
+// It is the intersection of what we want with what the peer advertised, and
+// the intersection is not optional. Services are all-or-nothing: a call that
+// names one service the peer does not have is refused entirely, so asking a
+// controller with no display service for a display makes the whole device
+// unreachable. Measured against the vendor Centra, which refuses every call
+// naming SV_DISPLAY and accepts the identical call without it.
+func sessionServices(advertised codec.Service, longStrings bool) codec.Service {
+	s := wantedServices & advertised
+	if s == 0 {
+		// A peer that advertised none of them is either wrong about itself or
+		// serving something we do not know about. Ask for the pair every unit
+		// has and let it answer for itself, rather than sending an empty mask
+		// that asks for nothing at all.
+		s = codec.SvcMenus | codec.SvcControl
+	}
+	if longStrings && advertised.LongStrings() {
 		s |= codec.SvcLongStr
 	}
 	return s
@@ -204,5 +236,5 @@ func sessionServices(longStrings bool) codec.Service {
 // identity is what we present to a peer. The name is what appears in the
 // vendor's own session list, so it says what we are.
 func (p *Plugin) identity() codec.DeviceInfo {
-	return session.ClientIdentity("dhs rollcall", sessionServices(true))
+	return session.ClientIdentity("dhs rollcall", wantedServices|codec.SvcLongStr)
 }
