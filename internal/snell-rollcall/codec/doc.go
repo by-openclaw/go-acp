@@ -36,7 +36,10 @@
 // header, so the codec decodes whichever form it is handed and leaves the
 // negotiation to the session layer.
 //
-// This file set covers the frame, the addressing and the 16-bit payloads.
+// This package covers the frame, the addressing, both payload generations and
+// the unit-type table. Two subpackages carry the parts that only the router
+// command set uses: dtp encodes Data Transfer Params, and router holds the
+// command-space arithmetic and the layouts of the files names are fetched from.
 //
 // # Sources
 //

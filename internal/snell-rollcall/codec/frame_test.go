@@ -19,6 +19,17 @@ func mustHex(t *testing.T, s string) []byte {
 	return b
 }
 
+// mustHexBytes decodes a hex vector where no *testing.T is in scope, such as a
+// table literal. Test vectors are compile-time constants in this package, so a
+// bad one is a bug in the test rather than a runtime condition.
+func mustHexBytes(s string) []byte {
+	b, err := hex.DecodeString(strings.ReplaceAll(s, " ", ""))
+	if err != nil {
+		panic("bad test vector " + s + ": " + err.Error())
+	}
+	return b
+}
+
 // specIamFrame is the SP_IAM frame printed in the vendor ExampleClient
 // readme, reconstructed per spec 11: transmission header, MESSAGE_STR,
 // ROLLHEADER_STR and a 40-byte DEVICEINFO_STR.

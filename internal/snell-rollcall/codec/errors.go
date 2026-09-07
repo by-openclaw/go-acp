@@ -39,6 +39,12 @@ var (
 	// for: 20 bytes including the terminator for the 16-bit generation, 64
 	// for the 32-bit one.
 	ErrStringTooLong = errors.New("rollcall: string too long for field")
+
+	// ErrFieldRange means a value does not fit the field it was destined
+	// for. It is what projecting a 32-bit command number onto a 16-bit
+	// session returns: truncating it would silently address a different
+	// command, which is worse than refusing.
+	ErrFieldRange = errors.New("rollcall: value out of range for field")
 )
 
 // DecodeError locates a decode failure inside a structure so that a log line
