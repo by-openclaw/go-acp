@@ -286,6 +286,50 @@ Three objects, because slot 14 is the XY Panel: a router node serves its
 routing and its names as control variables, not as menu lines, which is exactly
 what the design document says and why a menu walk finds almost nothing there.
 
+## 9. The file service is not where the names are
+
+The routing interface names a file for every bulk set — association names,
+source and destination names, mappings, multi-channel data — and this
+controller will not serve any of them:
+
+```
+open "RC_Files\AssocNames_1_8.dat"  -> errno 2, no such file or directory
+```
+
+Every node's file service is rooted at that node's **own** directory, and a
+directory listing proves it: each of them lists `.`, `..`, `soft`,
+`Template.tpl` and `TEMPLATE.ZIP`, whatever path is asked for. The path in the
+routing interface is a path in the controller's filesystem, and the two need not
+meet. Whether a shipping Sirius exposes them is unknown; this simulator does not.
+
+So a client cannot rely on the bulk path. Ours tries the file, and on failure
+reads the names one command at a time — `CMD_SRC_NAME_8` and friends, which do
+answer — recording `rollcall_names_file_unreadable` so the slowness is not a
+mystery. On a level of sixty-five thousand sources that fallback is very slow,
+which is the whole reason the file mechanism exists.
+
+Two smaller things came out of the same probe:
+
+- **Directory entries are variable-length.** `MODULE_FILEINFO_STR` declares a
+  thirteen-byte name field and the server does not send it: the header, then the
+  name and its terminator, and nothing more. An entry for `.` is twelve bytes,
+  one for `TEMPLATE.ZIP` twenty-three. Our decoder demanded the declared width
+  and could read none of them. It now reads the name as what follows the header,
+  and the captured bytes are a test.
+- **A listing ignores the path it was given.** `\`, `.`, `RC_Files` and
+  `RC_Files\` all return the same five entries.
+
+## 10. Enabling the back channel does not replay the current state
+
+`SP_BKCHNREADY` with 1 asks for changes including what has already changed. This
+controller sends nothing at all until something moves: subscribing to a level
+and waiting delivers zero crosspoints, and the first push arrives only when a
+route is made.
+
+So a panel cannot subscribe and wait for the picture to fill in. It has to read
+the crosspoints it wants to show, once, and then keep them current from the
+pushes. Our `Routes` does the reading; `WatchRoutes` does the keeping.
+
 ## 9. Reproducing it
 
 ```

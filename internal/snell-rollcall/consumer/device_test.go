@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -99,6 +100,10 @@ type device struct {
 	// something other than a device record, which a walker should skip.
 	oddListItem int
 
+	// routers are the ports that serve a routing interface instead of a menu,
+	// which is what a router controller node is.
+	routers map[uint8]*fakeRouter
+
 	// refuseMap makes the device refuse a call asking for the map service,
 	// which is what a gateway that will not open one looks like.
 	refuseMap bool
@@ -161,6 +166,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		oddListItem:   -1,
 		oddDirItem:    -1,
 		emptySlots:    map[uint8]bool{},
+		routers:       map[uint8]*fakeRouter{},
 		failReadAfter: -1,
 		refuse:        make(map[codec.PacketType]bool),
 		garble:        make(map[codec.PacketType]bool),
@@ -292,12 +298,36 @@ type pipeNet struct {
 	t  *testing.T
 	mu sync.Mutex
 	fn func() net.Conn
+
+	// blocked, when set, receives a wrapper whose writes a test can make fail
+	// while its reads go on working: a socket that has gone away without our
+	// end having noticed.
+	blocked **blockedConn
+}
+
+// blockedConn fails writes on demand and leaves reads alone.
+type blockedConn struct {
+	net.Conn
+	failing atomic.Bool
+}
+
+func (c *blockedConn) Write(b []byte) (int, error) {
+	if c.failing.Load() {
+		return 0, io.ErrClosedPipe
+	}
+	return c.Conn.Write(b)
 }
 
 func (p *pipeNet) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.fn(), nil
+
+	conn := p.fn()
+	if p.blocked != nil {
+		*p.blocked = &blockedConn{Conn: conn}
+		return *p.blocked, nil
+	}
+	return conn, nil
 }
 
 func (p *pipeNet) Listen(context.Context, string, string) (net.Listener, error) {
@@ -315,11 +345,28 @@ var _ transport.Net = (*pipeNet)(nil)
 // newHarness builds a plugin wired to a fake device, and connects it.
 func newHarness(t *testing.T, setup func(*device)) *harness {
 	t.Helper()
+	h, _ := newHarnessWith(t, setup, false)
+	return h
+}
+
+// newBlockedHarness is a harness whose own writes can be made to fail while
+// what the device sends still arrives.
+func newBlockedHarness(t *testing.T, setup func(*device)) (*harness, **blockedConn) {
+	t.Helper()
+	return newHarnessWith(t, setup, true)
+}
+
+func newHarnessWith(t *testing.T, setup func(*device), blocked bool) (*harness, **blockedConn) {
+	t.Helper()
 
 	clk := clock.NewFake(time.Time{})
 	var dev *device
 
+	var block *blockedConn
 	dialer := &pipeNet{t: t}
+	if blocked {
+		dialer.blocked = &block
+	}
 	dialer.fn = func() net.Conn {
 		ours, theirs := net.Pipe()
 		dev = newDevice(t, theirs)
@@ -347,7 +394,7 @@ func newHarness(t *testing.T, setup func(*device)) *harness {
 			h.device.close()
 		}
 	})
-	return h
+	return h, &block
 }
 
 // menu builds a small but realistic menu: a container with three lines under

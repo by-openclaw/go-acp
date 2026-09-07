@@ -102,6 +102,12 @@ type Plugin struct {
 	// path resolvable without walking again.
 	trees map[int]*slotTree
 
+	// names caches the router name files by the checksum the controller
+	// published. A large level's names are tens of thousands of strings and
+	// they change only when somebody renames something, which is exactly what
+	// the checksum detects.
+	names map[namesKey]Names
+
 	// nodeCache is the device's enumerated nodes, walked once per connection.
 	// It is what turns a slot number into an address, and a controller's nodes
 	// are unreachable without it.

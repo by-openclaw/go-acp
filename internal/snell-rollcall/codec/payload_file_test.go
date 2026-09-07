@@ -296,25 +296,61 @@ func TestDirEntry_PaddedToTwentyFour(t *testing.T) {
 	}
 }
 
-// TestDirEntry_AcceptsTheTrimmedForm covers a peer that sends the 23 bytes of
-// content without the structure's padding. It is not wrong, and the entry must
-// still decode.
-func TestDirEntry_AcceptsTheTrimmedForm(t *testing.T) {
+// TestDirEntry_AcceptsWhatServersActuallySend covers the lengths a directory
+// listing arrives in.
+//
+// The structure declares a thirteen-byte name field, and servers do not send
+// it. These are bytes captured from the vendor's own controller: the header,
+// then the name and its terminator, and nothing else. An entry for "." is
+// twelve bytes. Demanding the declared width makes most of a listing
+// unreadable.
+func TestDirEntry_AcceptsWhatServersActuallySend(t *testing.T) {
+	tests := []struct {
+		name  string
+		bytes string
+		want  DirEntry
+	}{
+		{"the current directory, twelve bytes",
+			"6a9ee2a4" + "0010" + "00000000" + "2e00",
+			DirEntry{Info: FileInfo{Time: 0x6A9EE2A4, Attrib: AttrSubdir}, Name: "."}},
+		{"the parent, thirteen",
+			"6a9ee465" + "0010" + "00000000" + "2e2e00",
+			DirEntry{Info: FileInfo{Time: 0x6A9EE465, Attrib: AttrSubdir}, Name: ".."}},
+		{"a subdirectory, fifteen",
+			"6a9ee2a4" + "0010" + "00000000" + "736f667400",
+			DirEntry{Info: FileInfo{Time: 0x6A9EE2A4, Attrib: AttrSubdir}, Name: "soft"}},
+		{"a file, twenty-three",
+			"6a9ee2a4" + "0000" + "00000be2" + "54454d504c4154452e5a495000",
+			DirEntry{Info: FileInfo{Time: 0x6A9EE2A4, Length: 0x0BE2}, Name: "TEMPLATE.ZIP"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := DecodeDirEntry(mustHexBytes(tc.bytes))
+			if err != nil {
+				t.Fatalf("DecodeDirEntry: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+
+	// The form our own encoder produces still decodes, name field and all.
 	full, err := DirEntry{Name: "A.TXT"}.AppendTo(nil)
 	if err != nil {
 		t.Fatalf("AppendTo: %v", err)
 	}
-
-	trimmed := full[:FileInfoSize+FileNameSize]
-	got, err := DecodeDirEntry(trimmed)
+	got, err := DecodeDirEntry(full)
 	if err != nil {
-		t.Fatalf("DecodeDirEntry on the trimmed form: %v", err)
+		t.Fatalf("DecodeDirEntry on the full form: %v", err)
 	}
 	if got.Name != "A.TXT" {
 		t.Errorf("name = %q", got.Name)
 	}
 
-	if _, err := DecodeDirEntry(trimmed[:len(trimmed)-1]); !errors.Is(err, ErrShortBuffer) {
+	// The header and at least one byte of name is the least an entry can be.
+	if _, err := DecodeDirEntry(full[:FileInfoSize]); !errors.Is(err, ErrShortBuffer) {
 		t.Errorf("err = %v, want ErrShortBuffer", err)
 	}
 }

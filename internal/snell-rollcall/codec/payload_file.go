@@ -364,15 +364,23 @@ func (d DirEntry) AppendTo(dst []byte) ([]byte, error) {
 
 // DecodeDirEntry reads a directory entry.
 //
-// Twenty-three bytes are accepted as well as twenty-four: the content is 23
-// and a peer that trims the structure's padding is not wrong.
+// The name is read as whatever follows the header rather than as a fixed
+// thirteen-byte field, because that is what servers send. The structure
+// declares the field, but the vendor's own controller sends the header
+// followed by the name and its terminator and nothing more: an entry for "."
+// arrives in twelve bytes, one for "TEMPLATE.ZIP" in twenty-three. Demanding
+// the declared width makes every short entry unreadable, which is most of them.
+//
+// A name that fills its field without a terminator is accepted too, which is
+// what a server that does send the full width produces for a thirteen-character
+// name.
 func DecodeDirEntry(b []byte) (DirEntry, error) {
-	const content = FileInfoSize + FileNameSize
-	if err := need(b, content, "DirEntry", ""); err != nil {
+	if err := need(b, FileInfoSize+1, "DirEntry", ""); err != nil {
 		return DirEntry{}, err
 	}
+	name, _ := CString(b[FileInfoSize:])
 	return DirEntry{
 		Info: fileInfoAt(b),
-		Name: fixedString(b[FileInfoSize:content]),
+		Name: name,
 	}, nil
 }

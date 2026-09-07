@@ -434,6 +434,32 @@ func (d *device) getValue(f codec.Frame) {
 	}
 
 	d.mu.Lock()
+	r := d.routers[port]
+	d.mu.Unlock()
+
+	if r != nil {
+		if r.garbled(req.Command) {
+			// A reply too short for the structure it claims to be.
+			d.reply(f, codec.MsgRetValue, []byte{0x01})
+			return
+		}
+		v, mine, ok := r.get(req.Command)
+		if !mine || !ok {
+			// A command outside the routing interface is refused, which is how
+			// a client tells a router node from anything else.
+			d.reply(f, codec.MsgNack, nil)
+			return
+		}
+		payload, err := v.AppendTo(nil)
+		if err != nil {
+			d.t.Errorf("device: encode router value: %v", err)
+			return
+		}
+		d.reply(f, codec.MsgRetValue, payload)
+		return
+	}
+
+	d.mu.Lock()
 	v, ok := d.values[port][req.Command]
 	d.mu.Unlock()
 
@@ -457,6 +483,40 @@ func (d *device) setValueMsg(f codec.Frame) {
 	v, err := codec.DecodeValue(f.Payload)
 	if err != nil {
 		d.reply(f, codec.MsgNack, nil)
+		return
+	}
+
+	d.mu.Lock()
+	r := d.routers[port]
+	d.mu.Unlock()
+
+	if r != nil {
+		if r.garbled(v.Command) {
+			d.reply(f, codec.MsgRetValue, []byte{0x01})
+			return
+		}
+		reply, pushed, mine := r.set(v)
+		if !mine {
+			d.reply(f, codec.MsgNack, nil)
+			return
+		}
+		payload, err := reply.AppendTo(nil)
+		if err != nil {
+			d.t.Errorf("device: encode router reply: %v", err)
+			return
+		}
+		d.reply(f, codec.MsgRetValue, payload)
+
+		// The new value goes out afterwards, on the back channel, which is the
+		// only place a client ever sees it.
+		if pushed != nil {
+			body, err := pushed.AppendTo(nil)
+			if err != nil {
+				d.t.Errorf("device: encode router push: %v", err)
+				return
+			}
+			d.push(port, codec.MsgRetValue, body)
+		}
 		return
 	}
 

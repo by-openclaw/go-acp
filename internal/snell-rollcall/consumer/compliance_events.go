@@ -50,6 +50,19 @@ const (
 	// cached walk does.
 	EventUnsolicitedCommand = "rollcall_unsolicited_command"
 
+	// EventNamesChecksum means a router name file did not hash to the value
+	// the controller published beside its name. The names are kept: they are
+	// probably right, and a client with none at all is worse off than one with
+	// names it cannot prove. What it means in practice is that the cache
+	// cannot be trusted to notice the next change.
+	EventNamesChecksum = "rollcall_names_checksum_mismatch"
+
+	// EventNamesFileUnreadable means a router named a names file that its own
+	// file service would not open. The names are read one command at a time
+	// instead, which is what the file exists to avoid: the fallback works and
+	// is slow, and on a large level it is very slow.
+	EventNamesFileUnreadable = "rollcall_names_file_unreadable"
+
 	// EventUnlistedNode means a slot was addressed that the device's own
 	// enumeration does not mention. It is addressed anyway: a gateway ages a
 	// map entry out after sixty seconds of silence, so a node missing from the
