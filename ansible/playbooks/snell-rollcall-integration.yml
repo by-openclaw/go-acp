@@ -1,0 +1,355 @@
+---
+# Snell RollCall integration CONTRACT TEST, per ADR-0025 deliverable 3:
+# Ansible is the exclusive integration / verify / deploy driver — no shell
+# scripts in another language. This play drives the REAL dhs CLI verbs against
+# real servers, not `go test`.
+#
+# Three tiers, in the order ADR-0025 puts them:
+#
+#   1. VENDOR EMULATOR (gated on ROLLCALL_SIM_HOST): the Snell Centra
+#      controller from internal/snell-rollcall/assets/Emulator/RouterSimulator.
+#      It is the oracle that matters — it is the vendor's own code, it speaks
+#      both generations, and it serves a routing interface. Read-only verbs
+#      plus, when ROLLCALL_SIM_ROUTE is set, one crosspoint set on a
+#      destination the operator nominates.
+#
+#   2. LIVE DEVICE (gated on ROLLCALL_TEST_HOST): a real frame, Centra or
+#      Sirius on the lab network. READ-ONLY: info, walk, get, router, tally.
+#      Never a write to a real device from a test.
+#
+#   3. LOOPBACK (always): our own provider serving a committed tree, driven by
+#      our own consumer. It runs last because two halves of one codebase
+#      agreeing proves the least; it is a regression net, not an oracle. The
+#      producer is ephemeral and torn down in `always`, so the net effect is
+#      zero persistent change and run-twice is the same result.
+#
+# dhs logs go to stderr, so every task registers and surfaces both streams
+# under `ansible-playbook -v`.
+#
+#   # loopback only:
+#   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+#
+#   # plus the vendor emulator (start CentraController.exe first; it listens
+#   # on 2057 by default — see internal/snell-rollcall/docs/oracle-centra.md):
+#   ROLLCALL_SIM_HOST=127.0.0.1 ROLLCALL_SIM_PORT=2057 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+#
+#   # plus a live device, read-only:
+#   ROLLCALL_TEST_HOST=10.6.250.105 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+
+- name: Snell RollCall integration (emulator + live device + loopback)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    dhs_bin: "{{ repo_root }}/bin/dhs{{ '.exe' if ansible_os_family == 'Windows' else '' }}"
+    tree_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/frame_tree.json"
+    producer_log: "/tmp/dhs-rollcall-producer.log"
+
+    # The loopback producer. A high port so a developer's own device on 2050
+    # is never in the way.
+    loopback_port: 22050
+    loopback_host: "127.0.0.1"
+
+    # Tier 1: the vendor emulator.
+    sim_host: "{{ lookup('env', 'ROLLCALL_SIM_HOST') | default('', true) }}"
+    sim_port: "{{ lookup('env', 'ROLLCALL_SIM_PORT') | default('2057', true) }}"
+    # A destination to route on the emulator, as matrix:level:dest:source.
+    # Unset means read-only even there.
+    sim_route: "{{ lookup('env', 'ROLLCALL_SIM_ROUTE') | default('', true) }}"
+
+    # Tier 2: a live device, read-only.
+    live_host: "{{ lookup('env', 'ROLLCALL_TEST_HOST') | default('', true) }}"
+    live_port: "{{ lookup('env', 'ROLLCALL_TEST_PORT') | default('2050', true) }}"
+    live_slot: "{{ lookup('env', 'ROLLCALL_TEST_SLOT') | default('0', true) }}"
+
+  tasks:
+    - name: Build the dhs binary under test
+      ansible.builtin.command:
+        cmd: go build -o "{{ dhs_bin }}" ./cmd/dhs
+        chdir: "{{ repo_root }}"
+      changed_when: false
+
+    # -------------------------------------------------------------------
+    # Tier 1 — the vendor emulator. The oracle that counts.
+    # -------------------------------------------------------------------
+
+    - name: Tier 1 — the vendor emulator
+      when: sim_host | length > 0
+      block:
+        - name: Read the emulator's device info
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall info {{ sim_host }}:{{ sim_port }}"
+          register: sim_info
+          changed_when: false
+
+        - name: The emulator enumerated its nodes
+          ansible.builtin.assert:
+            that:
+              - "'slots' in sim_info.stdout"
+              - sim_info.stdout is search('slots\\s+[1-9]')
+            fail_msg: >-
+              The emulator reported no nodes. A controller fronts its matrices,
+              its tielines engine and its panel driver as separate units, so an
+              empty enumeration means the map service is not answering.
+            success_msg: "{{ sim_info.stdout_lines | select('search', 'slots') | first }}"
+
+        - name: Find the routing interface
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall router {{ sim_host }}:{{ sim_port }}"
+          register: sim_router
+          changed_when: false
+
+        - name: The routing interface published matrices and levels
+          ansible.builtin.assert:
+            that:
+              - "'interface' in sim_router.stdout"
+              - "'MATRIX' in sim_router.stdout"
+              - sim_router.stdout is search('LEVEL')
+            fail_msg: >-
+              No routing interface. It lives on the panel node, not on the
+              matrices, and it answers command 100 with a version number — see
+              internal/snell-rollcall/docs/oracle-centra.md §2.
+
+        - name: Read a crosspoint
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ sim_host }}:{{ sim_port }}
+              --matrix 1 --level 1 --dest 1 --output json
+          register: sim_xpt
+          changed_when: false
+
+        - name: The crosspoint names a matrix, a level and a source
+          ansible.builtin.assert:
+            that:
+              - (sim_xpt.stdout | from_json).destination == 1
+              - (sim_xpt.stdout | from_json).source.matrix is defined
+              - (sim_xpt.stdout | from_json).source.level is defined
+
+        - name: Make a route, when the operator nominated one
+          when: sim_route | length > 0
+          block:
+            - name: Route {{ sim_route }}
+              ansible.builtin.command:
+                cmd: >-
+                  {{ dhs_bin }} consumer rollcall route {{ sim_host }}:{{ sim_port }}
+                  --matrix {{ sim_route.split(':')[0] }}
+                  --level {{ sim_route.split(':')[1] }}
+                  --dest {{ sim_route.split(':')[2] }}
+                  --source {{ sim_route.split(':')[3] }}
+                  --output json
+              register: sim_take
+              # A route is a change to a device, and saying otherwise would be
+              # a lie to anyone reading the run.
+              changed_when: true
+
+            - name: The router reported what it actually routed
+              ansible.builtin.assert:
+                that:
+                  - (sim_take.stdout | from_json).routed
+                fail_msg: >-
+                  Nothing is routed to that destination after the take. Note the
+                  reported source may differ from the one asked for: where a
+                  route crosses a tieline the controller reports the far end.
+
+        - name: Emulator output
+          ansible.builtin.debug:
+            msg:
+              - "{{ sim_info.stdout_lines }}"
+              - "{{ sim_router.stdout_lines }}"
+          verbosity: 1
+
+    # -------------------------------------------------------------------
+    # Tier 2 — a live device. Read-only, always.
+    # -------------------------------------------------------------------
+
+    - name: Tier 2 — a live device, read-only
+      when: live_host | length > 0
+      block:
+        - name: Read the device
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall info {{ live_host }}:{{ live_port }}"
+          register: live_info
+          changed_when: false
+
+        - name: The device answered with its slots
+          ansible.builtin.assert:
+            that:
+              - "'protocol' in live_info.stdout"
+              - "'slots' in live_info.stdout"
+
+        - name: Walk one slot
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall walk {{ live_host }}:{{ live_port }} --slot {{ live_slot }}"
+          register: live_walk
+          changed_when: false
+          failed_when: false
+
+        - name: A walk either finds objects or says why
+          ansible.builtin.assert:
+            that:
+              - live_walk.rc == 0 or live_walk.stderr | length > 0
+            fail_msg: "The walk produced neither objects nor an explanation."
+
+        - name: Look for a routing interface
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall router {{ live_host }}:{{ live_port }}"
+          register: live_router
+          changed_when: false
+          # A frame of cards has no routing interface, and that is an answer.
+          failed_when: false
+
+        - name: Live device output
+          ansible.builtin.debug:
+            msg:
+              - "{{ live_info.stdout_lines }}"
+              - "{{ live_walk.stdout_lines | default([]) }}"
+              - "{{ live_router.stdout_lines | default([]) }}"
+          verbosity: 1
+
+    # -------------------------------------------------------------------
+    # Tier 3 — loopback. A regression net, not an oracle.
+    # -------------------------------------------------------------------
+
+    - name: Skip the loopback tier when the committed tree is absent
+      ansible.builtin.meta: end_play
+      when: not (tree_fixture is exists)
+
+    - name: Tier 3 — loopback
+      block:
+        - name: Serve the committed frame tree
+          ansible.builtin.shell:
+            cmd: >-
+              nohup "{{ dhs_bin }}" producer rollcall serve
+              --tree "{{ tree_fixture }}"
+              --host {{ loopback_host }} --port {{ loopback_port }}
+              > /tmp/dhs-rollcall-producer.log 2>&1 &
+              echo $!
+            executable: /bin/bash
+          register: producer
+          changed_when: false
+
+        - name: Wait for the producer to accept a connection
+          ansible.builtin.wait_for:
+            host: "{{ loopback_host }}"
+            port: "{{ loopback_port }}"
+            timeout: 20
+
+        - name: Read the served frame
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall info {{ loopback_host }}:{{ loopback_port }}"
+          register: loop_info
+          changed_when: false
+
+        - name: The frame has the two cards the fixture describes
+          ansible.builtin.assert:
+            that:
+              - loop_info.stdout is search('slots\\s+2')
+            fail_msg: "The served frame does not match the committed tree."
+
+        - name: Walk the first card
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall walk {{ loopback_host }}:{{ loopback_port }} --slot 0"
+          register: loop_walk
+          changed_when: false
+
+        - name: The walk found the tree's own objects
+          ansible.builtin.assert:
+            that:
+              - "'gain' in loop_walk.stdout"
+              - "'enable' in loop_walk.stdout"
+              - "'product' in loop_walk.stdout"
+
+        - name: Read a value
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall get {{ loopback_host }}:{{ loopback_port }}
+              --slot 0 --label gain
+          register: loop_get
+          changed_when: false
+
+        - name: The value carries the unit the tree declared
+          ansible.builtin.assert:
+            that:
+              - "'dB' in loop_get.stdout"
+            fail_msg: >-
+              A real is carried as an integer scaled by its factor, and the
+              format string is the only place the unit can travel.
+
+        - name: Write a value
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
+              --slot 0 --label gain --value -6
+          register: loop_set
+          # The producer is ephemeral and torn down below, so this run leaves
+          # nothing behind: run-twice is the same result (ADR-0025).
+          changed_when: false
+
+        - name: The device confirmed what it stored
+          ansible.builtin.assert:
+            that:
+              - "'-6' in loop_set.stdout"
+            fail_msg: >-
+              A write is answered with the stored value rather than an
+              acknowledgement, so a caller learns about clamping without a
+              second read.
+
+        - name: Write past the end of the range
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
+              --slot 0 --label gain --value 9999
+          register: loop_clamp
+          changed_when: false
+
+        - name: The device clamped it and said so
+          ansible.builtin.assert:
+            that:
+              - "'9999' not in loop_clamp.stdout"
+            fail_msg: "A value outside the range came back unchanged."
+
+        - name: Refuse a write to a read-only object
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
+              --slot 0 --label status --value 1
+          register: loop_readonly
+          changed_when: false
+          failed_when: false
+
+        - name: A read-only object refuses rather than pretending
+          ansible.builtin.assert:
+            that:
+              - loop_readonly.rc != 0
+            fail_msg: >-
+              Writing to a read-only line succeeded. Access is carried in the
+              menu line's style, and a device that ignores it is worse than one
+              that refuses.
+
+        - name: Loopback output
+          ansible.builtin.debug:
+            msg:
+              - "{{ loop_info.stdout_lines }}"
+              - "{{ loop_get.stdout_lines }}"
+              - "{{ loop_set.stdout_lines }}"
+          verbosity: 1
+
+      always:
+        - name: Stop the loopback producer
+          ansible.builtin.shell: "pkill -f '[d]hs producer rollcall serve --tree {{ tree_fixture }}' || true"
+          changed_when: false
+
+        - name: The producer's own log, when something went wrong
+          ansible.builtin.command: "cat {{ producer_log }}"
+          register: producer_out
+          changed_when: false
+          failed_when: false
+
+        - name: Producer log
+          ansible.builtin.debug:
+            var: producer_out.stdout_lines
+          verbosity: 1

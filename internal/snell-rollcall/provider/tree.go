@@ -176,7 +176,12 @@ func newPort(number uint8, name string, roots []canonical.Element) *port {
 	p := &port{
 		number: number,
 		id: codec.ID{
-			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay,
+			// What the card serves, which includes the long-string
+			// generation: the menu and the values come from one model and are
+			// projected per session, so every port serves both. A port that
+			// advertised less would have clients negotiating the older
+			// generation against a card that can speak the newer one.
+			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcLongStr,
 			TypeID:   codec.TypeIDRoutingIPShareClient,
 			Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
 			Name:     codec.TruncateFixed(name, codec.MaxTextSize),
