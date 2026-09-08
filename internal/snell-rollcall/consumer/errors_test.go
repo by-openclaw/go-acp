@@ -65,8 +65,11 @@ func TestDeviceRefusals(t *testing.T) {
 			_, err := p.SetDefault(context.Background(), consumer.ValueRequest{Slot: 1, ID: 0x0113})
 			return err
 		}},
+		// Enumeration has two ways to get its answer and falls back from one
+		// to the other, so a refusal reaches the caller here rather than
+		// through GetDeviceInfo. TestEnumeration* covers the choice itself.
 		{"port list", codec.MsgGetDevList, "", func(p *Plugin) error {
-			_, err := p.GetDeviceInfo(context.Background())
+			_, err := p.Ports(context.Background(), gatewayAddr.Unit)
 			return err
 		}},
 		{"device map", codec.MsgGetLocDevMap, "", func(p *Plugin) error {

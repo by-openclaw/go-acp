@@ -3,6 +3,7 @@ package rollcall
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"dhs/internal/snell-rollcall/codec"
 )
@@ -35,7 +36,8 @@ type nodeTable struct {
 //
 // The walk is a device-list request against the gateway's own unit, which is
 // what both kinds of device answer: a frame lists its ports, a controller lists
-// the units it fronts.
+// the units it fronts. A proxy answers neither, and enumerate says what to do
+// about that.
 func (p *Plugin) nodes(ctx context.Context) (*nodeTable, error) {
 	l, err := p.conn()
 	if err != nil {
@@ -49,7 +51,7 @@ func (p *Plugin) nodes(ctx context.Context) (*nodeTable, error) {
 		return cached, nil
 	}
 
-	list, err := p.Ports(ctx, l.sess.RemoteAddress().Unit)
+	list, err := p.enumerate(ctx, l)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +67,77 @@ func (p *Plugin) nodes(ctx context.Context) (*nodeTable, error) {
 	}
 	p.mu.Unlock()
 	return t, nil
+}
+
+// enumerate asks a device for its nodes by whichever service answers.
+//
+// Two shapes exist and the difference is not cosmetic. A frame or a controller
+// answers a port list: spec 7.6, the ports contained within a unit. A proxy or
+// a bridge contains no ports at all — it advertises Map and nothing else, and
+// spec 7.5 says a map server's node list is the map, which is the list of
+// devices on its segment.
+//
+// The port list is tried first because it cannot be decided from the service
+// flags. The vendor Centra advertises Map and not Ports, and answers a port
+// list anyway with the fifteen units it fronts; selecting on the flag would
+// regress every device that works today. A proxy, asked the same question,
+// does not refuse — it says nothing at all and the caller waits out its own
+// timeout, which is what made this look like an unreachable device rather than
+// a question asked of the wrong service.
+//
+// Enumeration is cached for the life of the connection, so the fallback is
+// paid once.
+func (p *Plugin) enumerate(ctx context.Context, l *link) ([]codec.DeviceInfo, error) {
+	// The probe gets half of whatever time is left, so that failing it leaves
+	// enough to ask the other way. A proxy does not refuse a port list, it
+	// ignores it, and an unbounded probe therefore spends the caller's whole
+	// deadline discovering nothing — which is what made a reachable proxy look
+	// like an unreachable device.
+	//
+	// A caller that set no deadline asked to wait, and is left to.
+	probe, cancel := halfOf(ctx, p.clk.Now())
+	defer cancel()
+
+	list, err := p.Ports(probe, l.sess.RemoteAddress().Unit)
+	if err == nil && len(list) > 0 {
+		return list, nil
+	}
+
+	if !l.gateway.ID.Services.Has(codec.SvcMap) {
+		if err != nil {
+			return nil, err
+		}
+		return list, nil
+	}
+
+	p.log.Debug("rollcall: no port list; reading the map instead",
+		"gateway", l.gateway.Address.Device().String(),
+		"type", codec.UnitTypeName(l.gateway.ID.TypeID), "err", err)
+
+	devs, mapErr := p.Devices(ctx)
+	if mapErr != nil {
+		// The port list is the primary question, so its failure is the one
+		// worth reporting when neither service answers.
+		if err != nil {
+			return nil, err
+		}
+		return nil, mapErr
+	}
+	return devs, nil
+}
+
+// halfOf returns a context holding half the time left on its parent, and a
+// cancel that must be called. A parent with no deadline is returned unchanged.
+func halfOf(ctx context.Context, now time.Time) (context.Context, context.CancelFunc) {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return context.WithCancel(ctx)
+	}
+	left := deadline.Sub(now)
+	if left <= 0 {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, left/2)
 }
 
 // buildNodeTable turns an enumeration into a slot table.

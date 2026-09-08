@@ -53,6 +53,11 @@ type device struct {
 	// ports is how many ports the device list reports.
 	ports int
 
+	// silent are messages the device ignores outright rather than refusing.
+	// A proxy does this to a port list: it holds no ports, and says so by
+	// saying nothing.
+	silent map[codec.PacketType]bool
+
 	// refuseLongStrings makes the device advertise long strings and then
 	// refuse a call that asks for them, which is a real deviation.
 	refuseLongStrings bool
@@ -170,6 +175,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		failReadAfter: -1,
 		refuse:        make(map[codec.PacketType]bool),
 		garble:        make(map[codec.PacketType]bool),
+		silent:        make(map[codec.PacketType]bool),
 		conn:          conn,
 		done:          make(chan struct{}),
 	}

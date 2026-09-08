@@ -2,6 +2,7 @@ package rollcall
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -347,5 +348,142 @@ func TestConcurrentFileSessionsKeepOne(t *testing.T) {
 	// stops answering anybody: the loser closes its own and takes the winner's.
 	if results[0] != results[1] {
 		t.Error("two callers were given two file sessions for one slot")
+	}
+}
+
+// A frame and a controller both answer a port list. A proxy answers neither:
+// it contains no ports at all, advertises Map and nothing else, and says
+// nothing whatever to a port request rather than refusing it. These three
+// cover which question gets asked of which device.
+
+func TestEnumerationPrefersThePortList(t *testing.T) {
+	// The vendor Centra advertises Map and not Ports, and answers a port list
+	// anyway with the units it fronts. Choosing on the advertised flag would
+	// stop asking the question that works, so the port list is tried first and
+	// its answer is kept.
+	h := newHarness(t, func(d *device) { d.ports = 3 })
+
+	info, err := h.plugin.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.NumSlots != 3 {
+		t.Errorf("%d nodes, want the three the port list named", info.NumSlots)
+	}
+}
+
+func TestEnumerationFallsBackToTheMap(t *testing.T) {
+	// The vendor RollCall IP Proxy answers a device enquiry and then says
+	// nothing at all to a port list, because it holds no ports — it aggregates
+	// whole frames under subnets and publishes them through its map. Refusing
+	// stands in for that silence: the point is that the caller gets the nodes
+	// rather than a timeout.
+	h := newHarness(t, func(d *device) { d.refuse[codec.MsgGetDevList] = true })
+
+	info, err := h.plugin.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("a device with a map should enumerate through it: %v", err)
+	}
+	if info.NumSlots == 0 {
+		t.Error("the map named no nodes")
+	}
+}
+
+func TestEnumerationFailsWhenNeitherServiceAnswers(t *testing.T) {
+	// With both ways shut the caller has to hear about it. Reporting the port
+	// list's failure is deliberate: it is the question that was asked first.
+	h := newHarness(t, func(d *device) {
+		d.refuse[codec.MsgGetDevList] = true
+		d.refuse[codec.MsgGetLocDevMap] = true
+	})
+
+	if _, err := h.plugin.GetDeviceInfo(context.Background()); err == nil {
+		t.Error("a device that answers neither enumeration should be an error")
+	}
+}
+
+func TestEnumerationWithoutAMapServiceKeepsThePortListError(t *testing.T) {
+	// Nothing to fall back to, so the original failure stands rather than
+	// being replaced by a complaint about a service the device never had.
+	h := newHarness(t, func(d *device) {
+		d.services &^= codec.SvcMap
+		d.refuse[codec.MsgGetDevList] = true
+	})
+
+	_, err := h.plugin.GetDeviceInfo(context.Background())
+	if err == nil {
+		t.Fatal("a device with neither service should be an error")
+	}
+	if !strings.Contains(err.Error(), "port list") {
+		t.Errorf("error = %v, want the port list's own failure", err)
+	}
+}
+
+func TestEnumerationReportsTheMapWhenThePortListWasMerelyEmpty(t *testing.T) {
+	// An empty port list is not a failure, so there is no earlier error to
+	// prefer: what the caller hears about is the map's own refusal.
+	h := newHarness(t, func(d *device) {
+		d.ports = 0
+		d.refuse[codec.MsgGetLocDevMap] = true
+	})
+
+	_, err := h.plugin.GetDeviceInfo(context.Background())
+	if err == nil {
+		t.Fatal("neither service answered, so this should be an error")
+	}
+	if !strings.Contains(err.Error(), "device map") {
+		t.Errorf("error = %v, want the map's own failure", err)
+	}
+}
+
+func TestEnumerationOfADeviceThatListsNothingAndHasNoMap(t *testing.T) {
+	// Nothing named itself and there is nowhere else to ask. That is an empty
+	// device rather than a broken one, and the gateway still stands for
+	// itself so slot zero reaches something.
+	h := newHarness(t, func(d *device) {
+		d.ports = 0
+		d.services &^= codec.SvcMap
+	})
+
+	info, err := h.plugin.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.NumSlots != 1 {
+		t.Errorf("%d nodes, want the gateway standing for itself", info.NumSlots)
+	}
+}
+
+func TestEnumerationLeavesTimeToAskTheOtherWay(t *testing.T) {
+	// The vendor proxy does not refuse a port list, it ignores one. An
+	// unbounded probe therefore spends the caller's whole deadline learning
+	// nothing, and the fallback inherits a context that is already dead —
+	// which is how a reachable proxy came to look like an unreachable device.
+	h := newHarness(t, func(d *device) { d.silent[codec.MsgGetDevList] = true })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
+	defer cancel()
+
+	info, err := h.plugin.GetDeviceInfo(ctx)
+	if err != nil {
+		t.Fatalf("the map should still have been read: %v", err)
+	}
+	if info.NumSlots == 0 {
+		t.Error("the map named no nodes")
+	}
+}
+
+func TestHalfOfADeadlineThatHasNoTimeLeft(t *testing.T) {
+	// Nothing to divide. The parent is handed back so the caller fails on the
+	// parent's own terms rather than on an arithmetic accident.
+	deadline := time.Now()
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+
+	got, cancel2 := halfOf(ctx, deadline.Add(time.Second))
+	defer cancel2()
+
+	if d, ok := got.Deadline(); !ok || !d.Equal(deadline) {
+		t.Errorf("deadline = %v (set %v), want the parent's own", d, ok)
 	}
 }

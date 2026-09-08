@@ -13,9 +13,16 @@ import (
 // field is a failure rather than a rewritten expectation.
 func (d *device) handle(f codec.Frame) {
 	d.mu.Lock()
-	refuse, garble := d.refuse[f.Type], d.garble[f.Type]
+	refuse, garble, silent := d.refuse[f.Type], d.garble[f.Type], d.silent[f.Type]
 	d.mu.Unlock()
 
+	if silent {
+		// Saying nothing is not the same as refusing, and the difference is
+		// the whole of issue #1042: the vendor proxy answers a device enquiry
+		// and then ignores a port list, so a client that treats silence as
+		// fatal waits out its own deadline instead of asking the map.
+		return
+	}
 	if refuse {
 		d.reply(f, codec.MsgNack, []byte{'r', 'e', 'f', 'u', 's', 'e', 'd', 0})
 		return
