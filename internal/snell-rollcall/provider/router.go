@@ -81,7 +81,7 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 		// levels is its own piece of work: what is here is the shape a client
 		// walks, not a claim about multi-level naming.
 		lv := routerLevel{
-			name:  rm.name,
+			name:  fmt.Sprintf("Level %d", len(rm.levels)+1),
 			dests: make([]routerDest, m.TargetCount),
 		}
 		for i := range int(m.SourceCount) {
@@ -150,6 +150,11 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	str(router.CmdDeviceNamesFile, "")
 	num(router.CmdGetAHPNode, 0)
 
+	// What the node says about itself while a client is reading the tables.
+	// The vendor's own template for this node type binds its only control to
+	// this command, so a node that will not answer it draws nothing at all.
+	str(99, "Ready")
+
 	for i := range r.matrices {
 		m := &r.matrices[i]
 		base, _ := r.table.Command(uint32(i) + 1)
@@ -208,28 +213,4 @@ func (r *routerModel) values() map[uint32]codec.Value {
 		}
 	}
 	return out
-}
-
-// newRouterPort builds the node a router is served on.
-//
-// It carries no menu. A client finds everything through the command space, and
-// a menu walk of it returns nothing — which is what the vendor's own router
-// nodes do, and what makes a walk of one look empty rather than broken.
-func newRouterPort(number uint8, name string, mx *canonical.Matrix) *port {
-	r := buildRouter(name, []*canonical.Matrix{mx})
-
-	p := &port{
-		number: number,
-		id: codec.ID{
-			Services: codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcLongStr,
-			TypeID:   codec.TypeIDRouterMatrix,
-			Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
-			Name:     codec.TruncateFixed(name, codec.MaxTextSize),
-		},
-		byCmd:  make(map[uint32]int),
-		byPath: make(map[string]int),
-		values: r.values(),
-		router: r,
-	}
-	return p
 }

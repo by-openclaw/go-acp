@@ -89,8 +89,17 @@ var templateEpoch = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 func buildTemplate(prt *port) []byte {
 	var body bytes.Buffer
 
-	fmt.Fprintf(&body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
-	writeTemplatePage(&body, prt)
+	switch {
+	case prt.level != nil:
+		writeRouterLevelPages(&body, prt)
+	case prt.matrix != nil:
+		writeRouterMatrixPage(&body, prt)
+	case prt.router != nil:
+		writeXYPanelPage(&body, prt)
+	default:
+		fmt.Fprintf(&body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
+		writeTemplatePage(&body, prt)
+	}
 
 	var out bytes.Buffer
 	zw := zip.NewWriter(&out)

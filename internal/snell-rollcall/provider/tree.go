@@ -82,6 +82,14 @@ type port struct {
 	// router is set on a node that serves the Full Control command space
 	// rather than a menu. Nil on a card.
 	router *routerModel
+
+	// level is set on a node that serves one level of that router. It is the
+	// node an XY panel is drawn on, and the one a crosspoint is taken on;
+	// the matrix node above it only says where to find it.
+	level *routerLevel
+
+	// matrix is set on a node that names a matrix and nothing else.
+	matrix *routerMatrix
 }
 
 // model is the whole served device: a frame and its ports.
@@ -123,23 +131,51 @@ func buildModel(tree *canonical.Export, name string) *model {
 		return m
 	}
 
-	for i, child := range children {
-		slot := i + int(firstCardPort)
-		if slot >= int(firstClientPort) {
+	// A matrix is a router, not a card, and a router is not one node. It is
+	// built after the cards so that every matrix in the tree lands in one
+	// model: the Full Control tables describe a plant rather than a matrix,
+	// and two of them built separately would each claim to be the whole thing.
+	next := int(firstCardPort)
+	var matrices []*canonical.Matrix
+
+	for _, child := range children {
+		if next >= int(firstClientPort) {
 			// Past here the port numbers are the ones a gateway hands out to
 			// its own clients, so a card there would be addressed as one.
 			break
 		}
-		// A matrix is a router, not a card. It serves no menu and answers the
-		// Full Control command space instead, so it is built as its own kind
-		// of port rather than flattened into menu lines that would describe a
-		// crosspoint grid as a list of parameters.
 		if mx, ok := child.(*canonical.Matrix); ok {
-			m.addPort(newRouterPort(uint8(slot), identifierOf(child), mx))
+			matrices = append(matrices, mx)
 			continue
 		}
-		m.addPort(newPort(uint8(slot), identifierOf(child), []canonical.Element{child}))
+		m.addPort(newPort(uint8(next), identifierOf(child), []canonical.Element{child}))
+		next++
 	}
+
+	if len(matrices) > 0 {
+		r := buildRouter(name, matrices)
+		for i := range r.matrices {
+			mx := &r.matrices[i]
+			if next >= int(firstClientPort) {
+				break
+			}
+			m.addPort(newRouterMatrixPort(uint8(next), mx.name, mx))
+			next++
+			for j := range mx.levels {
+				if next >= int(firstClientPort) {
+					break
+				}
+				m.addPort(newRouterLevelPort(uint8(next), mx.levels[j].name, &mx.levels[j]))
+				next++
+			}
+		}
+		// One node for the whole plant's tables, last, so the matrices it
+		// describes are already in the port list a client just enumerated.
+		if next < int(firstClientPort) {
+			m.addPort(newXYPanelPort(uint8(next), name, r))
+		}
+	}
+
 	// The gateway is a unit too and a panel expects to open it. It is not in
 	// the order, because the order is the card slots a port list enumerates.
 	m.ports[0] = newGatewayPort(m.frame)

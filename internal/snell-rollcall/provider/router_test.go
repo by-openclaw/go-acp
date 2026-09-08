@@ -129,28 +129,58 @@ func TestTheTablesDescribeTheMatrix(t *testing.T) {
 	}
 }
 
-func TestARouterNodeServesNoMenu(t *testing.T) {
-	// A menu walk of a router finds nothing, which is what the vendor's own
-	// router nodes do and what makes such a walk look empty rather than
-	// broken.
+func TestARouterIsServedAsThreeKindsOfNode(t *testing.T) {
+	// A Centra publishes a matrix, its levels, and the tables as separate
+	// nodes with separate types, and the three use the same command numbers
+	// for unrelated things. Serving them from one node cannot be made to work,
+	// so this pins the arrangement rather than the fact that it exists.
 	s := newServed(t, routerTree(8, 8))
-	prt := s.p.model.port(firstCardPort)
-	if prt == nil {
+
+	mx := s.p.model.port(firstCardPort)
+	if mx == nil {
 		t.Fatal("the matrix was not served as a node")
 	}
-	if len(prt.menu(true)) != 0 {
-		t.Errorf("a router served %d menu lines", len(prt.menu(true)))
+	if mx.id.TypeID != codec.TypeIDRouterMatrix {
+		t.Errorf("matrix type id = %d, want the router matrix id", mx.id.TypeID)
 	}
-	if prt.id.TypeID != codec.TypeIDRouterMatrix {
-		t.Errorf("type id = %d, want the router matrix id", prt.id.TypeID)
+	if mx.id.Services&codec.SvcPorts == 0 {
+		t.Error("a matrix advertises Ports: its levels are its own ports")
+	}
+	// Three lines, as the vendor's matrix publishes: the root, the way back
+	// out, and a notice. It controls nothing.
+	if got := len(mx.menu(true)); got != 3 {
+		t.Errorf("matrix served %d menu lines, want the vendor's three", got)
+	}
+
+	lv := s.p.model.port(firstCardPort + 1)
+	if lv == nil {
+		t.Fatal("the level was not served as a node of its own")
+	}
+	if lv.id.TypeID != codec.TypeIDRouterLevel {
+		t.Errorf("level type id = %d, want the router level id", lv.id.TypeID)
+	}
+	if len(lv.menu(true)) == 0 {
+		t.Error("the level is the routing interface and its menu carries it")
+	}
+
+	xy := s.p.model.port(firstCardPort + 2)
+	if xy == nil {
+		t.Fatal("the tables were not served as a node of their own")
+	}
+	if xy.id.TypeID != codec.TypeIDXYPanel {
+		t.Errorf("tables type id = %d, want the XY panel id", xy.id.TypeID)
+	}
+	if len(xy.menu(true)) != 0 {
+		t.Error("the tables node has nothing to walk: everything it says is a command")
 	}
 }
 
 func TestReadingTheRouterOverASession(t *testing.T) {
 	// What our own consumer does first: ask command 100 and believe the answer
-	// only if it is a number in a plausible range.
+	// only if it is a number in a plausible range. It is asked of the node
+	// that serves the tables, which is not the matrix.
 	s := newServed(t, routerTree(8, 8))
-	sess := s.open(firstCardPort, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+	sess := s.open(firstCardPort+2, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
 
 	reply, err := sess.Do(context.Background(), codec.MsgGetValue,
 		codec.GetValue{Command: uint32(router.CmdInterfaceVersion)}.AppendTo(nil))

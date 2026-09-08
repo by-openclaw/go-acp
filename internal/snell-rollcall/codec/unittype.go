@@ -34,6 +34,21 @@ const (
 	// consumer at the other end of the wire.
 	TypeIDPCSoftware uint16 = 23
 
+	// TypeIDRouterLevel marks a level of a matrix. The vendor gives each one a
+	// node of its own and a panel draws its XY screens from that node, not
+	// from the matrix.
+	TypeIDRouterLevel uint16 = 637
+
+	// TypeIDXYPanel marks the node that serves the Full Control command set:
+	// the tables naming every matrix, level, source and destination in a
+	// plant. On a Centra it is one node beside the matrices rather than one of
+	// them, which is why probing a matrix for those tables finds nothing.
+	TypeIDXYPanel uint16 = 734
+
+	// TypeIDTielines marks the node that owns the links between matrices. A
+	// route whose source is on a different matrix from its destination is
+	// completed through one of them.
+	TypeIDTielines uint16 = 731
 )
 
 // LookupUnitType returns what the vendor database says about a type id.
