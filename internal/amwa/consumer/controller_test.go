@@ -426,6 +426,12 @@ func udpDNSResponder(t *testing.T) string {
 // end to end (browser open, timed browse, empty drain) and
 // pickQueryInstance's no-instances arm.
 func TestResolveRegistryMDNSNoInstances(t *testing.T) {
+	orig := newQueryBrowser
+	newQueryBrowser = func(*slog.Logger) (dnssdsession.Browser, error) {
+		return fakeBrowser{}, nil // browser opens, nothing answers
+	}
+	defer func() { newQueryBrowser = orig }()
+
 	_, _, err := resolveRegistry(context.Background(), ControllerOptions{
 		DiscoveryMode:    "mdns",
 		DiscoveryTimeout: 150 * time.Millisecond,
@@ -442,38 +448,26 @@ func TestResolveRegistryMDNSNoInstances(t *testing.T) {
 // exercises browseQueryMDNS's instance-collecting loop and
 // resolveRegistry's mDNS success return.
 func TestResolveRegistryMDNSDiscoversInstance(t *testing.T) {
-	pkt, err := dnssdcodec.EncodeAnnounce(dnssdcodec.Instance{
+	// Inject the announced instance through the browser seam rather than
+	// multicasting it on the link: real loopback delivery is not guaranteed
+	// on a CI host, and the stdlib browser's own read/close path is raced
+	// and covered in the dnssd package. Here we test resolveRegistry's mDNS
+	// success return and the A-record/api_ver mapping deterministically.
+	instance := dnssdcodec.Instance{
 		Name: "dhs-query-1", Service: dnssdcodec.ServiceQuery, Domain: "local",
 		Host: "dhs-query-1.local", Port: 8235,
 		IPv4: []net.IP{net.IPv4(10, 6, 0, 9)},
 		TXT:  map[string]string{"api_proto": "http", "api_ver": "v1.2,v1.3", "pri": "10"},
-	}, true)
-	if err != nil {
-		t.Fatalf("encode announce: %v", err)
 	}
-
-	stop := make(chan struct{})
-	go func() {
-		conn, derr := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353})
-		if derr != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		for {
-			select {
-			case <-stop:
-				return
-			default:
-				_, _ = conn.Write(pkt)
-				time.Sleep(20 * time.Millisecond)
-			}
-		}
-	}()
-	defer close(stop)
+	orig := newQueryBrowser
+	newQueryBrowser = func(*slog.Logger) (dnssdsession.Browser, error) {
+		return fakeBrowser{instances: []dnssdcodec.Instance{instance}}, nil
+	}
+	defer func() { newQueryBrowser = orig }()
 
 	base, vers, err := resolveRegistry(context.Background(), ControllerOptions{
 		DiscoveryMode:    "mdns",
-		DiscoveryTimeout: 1500 * time.Millisecond,
+		DiscoveryTimeout: 150 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("mDNS discovery must find the announced instance: %v", err)
@@ -486,10 +480,16 @@ func TestResolveRegistryMDNSDiscoversInstance(t *testing.T) {
 	}
 }
 
-// fakeBrowser is a dnssd session Browser whose Browse can be made to
-// fail, so a test can drive browseQueryMDNS's Browse-error arm without a
-// real transport (the stdlib browser does not fail Browse on this host).
-type fakeBrowser struct{ browseErr error }
+// fakeBrowser is a dnssd session Browser used to drive browseQueryMDNS
+// deterministically — it delivers a canned instance set (or none), or fails
+// Browse on demand — without binding a real multicast socket. Real-socket
+// discovery is non-deterministic (it depends on the host actually looping the
+// multicast packet back) and is exercised in the dnssd package's own tests,
+// not here.
+type fakeBrowser struct {
+	browseErr error
+	instances []dnssdcodec.Instance
+}
 
 func (fakeBrowser) Close() error { return nil }
 
@@ -497,7 +497,10 @@ func (b fakeBrowser) Browse(context.Context, string) (<-chan dnssdcodec.Instance
 	if b.browseErr != nil {
 		return nil, b.browseErr
 	}
-	ch := make(chan dnssdcodec.Instance)
+	ch := make(chan dnssdcodec.Instance, len(b.instances))
+	for _, ins := range b.instances {
+		ch <- ins
+	}
 	close(ch)
 	return ch, nil
 }
