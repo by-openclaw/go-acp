@@ -57,22 +57,41 @@
       nodes and listed {{ contract_nodes.slot_status | default([]) | length }}.
       An enumeration that names nothing is a map service that is not answering.
 
-- name: "{{ endpoint.name }} — every node says what it is"
+- name: "{{ endpoint.name }} - a node either says what it is or says why not"
   ansible.builtin.assert:
     that:
-      - contract_nodes.slot_status | rejectattr('status', 'defined') | list | length == 0
+      - contract_nodes.slot_status
+        | rejectattr('status', 'defined') | rejectattr('error', 'defined')
+        | list | length == 0
     fail_msg: >-
-      {{ endpoint.name }} listed a node with no status.
+      {{ endpoint.name }} listed a node that reported neither a status nor a
+      reason. A node that will not answer is normal - the IQ frame lists a port
+      at 0000-0C-8E that then refuses a session - but it has to say so rather
+      than appear as an empty row.
+
+# A node that refused is excluded from what follows: it never got far enough to
+# have an identity, so demanding one of it would be demanding a fiction.
+- name: "{{ endpoint.name }} - separate the nodes that answered"
+  ansible.builtin.set_fact:
+    contract_answered: "{{ contract_nodes.slot_status | rejectattr('error', 'defined') | list }}"
+
+- name: "{{ endpoint.name }} - at least one node answered"
+  ansible.builtin.assert:
+    that:
+      - contract_answered | length > 0
+    fail_msg: >-
+      {{ endpoint.name }} enumerated {{ contract_nodes.slots }} node(s) and not
+      one of them answered. The enumeration is reaching something the sessions
+      cannot.
 
 # The address is what makes two paths comparable. A slot number is a position
 # in one device's enumeration and it moves between models; the address names
 # the node itself, so it is the only field a direct read and a proxied read can
 # be expected to agree on.
-- name: "{{ endpoint.name }} — every node carries its address"
+- name: "{{ endpoint.name }} - every node that answered carries its address"
   ansible.builtin.assert:
     that:
-      - contract_nodes.slot_status
-        | map(attribute='identity', default={})
+      - contract_answered | map(attribute='identity', default={})
         | rejectattr('address', 'defined') | list | length == 0
     fail_msg: >-
       {{ endpoint.name }} listed a node with no address in its identity. Without
