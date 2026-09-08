@@ -190,9 +190,9 @@ func newPort(number uint8, name string, roots []canonical.Element) *port {
 			// advertises Menus, Control and File on every one of its cards.
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 				codec.SvcFile | codec.SvcLongStr,
-			TypeID:   codec.TypeIDPCSoftware,
-			Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
-			Name:     codec.TruncateFixed(name, codec.MaxTextSize),
+			TypeID:  codec.TypeIDPCSoftware,
+			Version: codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
+			Name:    codec.TruncateFixed(name, codec.MaxTextSize),
 		},
 		byCmd:   make(map[uint32]int),
 		byPath:  make(map[string]int),

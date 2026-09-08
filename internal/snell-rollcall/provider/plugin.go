@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"dhs/internal/clock"
 	"dhs/internal/export/canonical"
@@ -100,16 +101,19 @@ type Provider struct {
 	longStrings   bool
 	longStringsAt map[uint8]bool
 
-	mu       sync.RWMutex
-	files    map[string][]byte
+	mu    sync.RWMutex
+	files map[string][]byte
+
+	// started is when the listener bound, for the gateway's own page.
+	started time.Time
 
 	// templates are the per-card archives a Control Panel reads, keyed by
 	// port. They are not in files because a name means a different file
 	// depending on which card was asked.
 	templates map[uint8][]byte
-	listener net.Listener
-	links    map[*session.Link]*linkState
-	addr     string
+	listener  net.Listener
+	links     map[*session.Link]*linkState
+	addr      string
 
 	// unit is the address this gateway presents as. A provider knows its own,
 	// unlike a client, because it is the one doing the stamping.
@@ -194,6 +198,7 @@ func (p *Provider) Serve(ctx context.Context, addr string) error {
 	p.mu.Lock()
 	p.listener = ln
 	p.addr = ln.Addr().String()
+	p.started = p.clk.Now()
 	p.mu.Unlock()
 
 	p.refreshGateway()

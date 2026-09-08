@@ -2,6 +2,7 @@ package rollcall
 
 import (
 	"context"
+	"runtime/debug"
 	"testing"
 	"time"
 
@@ -293,5 +294,82 @@ func TestReadingTheGatewayPageOverASession(t *testing.T) {
 	}
 	if v.Text != "10.6.239.107" {
 		t.Errorf("the page says %q, want where it is listening", v.Text)
+	}
+}
+
+func TestWhatTheGatewayPageSaysAboutTheBuild(t *testing.T) {
+	// It comes from the binary rather than a constant, so the page cannot
+	// claim a version the code is not.
+	for _, tc := range []struct {
+		name string
+		in   *debug.BuildInfo
+		want facts
+	}{
+		{
+			"a released build",
+			&debug.BuildInfo{
+				Main: debug.Module{Version: "v0.21.1"},
+				Settings: []debug.BuildSetting{
+					{Key: "vcs.revision", Value: "8af6dcce20d12c76528f7af493a8a3e7690fa269"},
+					{Key: "vcs.time", Value: "2026-09-08T15:10:10Z"},
+					{Key: "vcs.modified", Value: "false"},
+				},
+			},
+			facts{version: "v0.21.1", commit: "8af6dcc", built: "2026-09-08T15:10:10Z"},
+		},
+		{
+			"a build with uncommitted changes",
+			&debug.BuildInfo{
+				Main: debug.Module{Version: "(devel)"},
+				Settings: []debug.BuildSetting{
+					{Key: "vcs.revision", Value: "8af6dcce20d12c76528f7af493a8a3e7690fa269"},
+					{Key: "vcs.modified", Value: "true"},
+				},
+			},
+			// It is not the commit it names, and the page says so.
+			facts{version: "devel", commit: "8af6dcc-dirty", built: "unknown"},
+		},
+		{
+			"a short revision",
+			&debug.BuildInfo{
+				Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "abc"}},
+			},
+			facts{version: "devel", commit: "abc", built: "unknown"},
+		},
+		{
+			"no version control at all",
+			&debug.BuildInfo{},
+			facts{version: "devel", commit: "unknown", built: "unknown"},
+		},
+		{
+			"no build record at all",
+			nil,
+			facts{version: "devel", commit: "unknown", built: "unknown"},
+		},
+	} {
+		got := factsFrom(tc.in)
+		if got.version != tc.want.version || got.commit != tc.want.commit || got.built != tc.want.built {
+			t.Errorf("%s: %+v, want %+v", tc.name, got, tc.want)
+		}
+		if got.goVersion == "" {
+			t.Errorf("%s: no Go version", tc.name)
+		}
+	}
+}
+
+func TestTheGatewayPageReportsUptime(t *testing.T) {
+	s := newServed(t, testTree())
+
+	if got := s.p.uptime(); got != "not started" {
+		t.Errorf("uptime before serving = %q", got)
+	}
+
+	s.p.mu.Lock()
+	s.p.started = s.clk.Now()
+	s.p.mu.Unlock()
+	s.clk.Advance(90 * time.Second)
+
+	if got := s.p.uptime(); got != "1m30s" {
+		t.Errorf("uptime = %q, want 1m30s", got)
 	}
 }
