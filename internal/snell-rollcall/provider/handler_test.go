@@ -394,6 +394,38 @@ func (s *served) send(typ codec.PacketType, payload []byte) {
 	}
 }
 
+// rawTo sends a frame outside any session, addressed at one port, which is how
+// a panel asks a card about itself before opening anything.
+func (s *served) rawTo(port uint8, typ codec.PacketType, payload []byte) codec.Frame {
+	s.t.Helper()
+
+	dst := addrOf(s.cl.RemoteAddress(), codec.IndexUnknown)
+	dst.Port = port
+	err := s.cl.SendFrame(codec.Frame{
+		Dst:     dst,
+		Src:     addrOf(s.cl.LocalAddress(), codec.IndexUnknown),
+		Type:    typ,
+		Payload: payload,
+	})
+	if err != nil {
+		s.t.Fatalf("send %s to port %02X: %v", typ, port, err)
+	}
+
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case f := <-s.cl.Unsolicited():
+			if f.Type == codec.MsgIam {
+				continue
+			}
+			return f
+		case <-deadline:
+			s.t.Fatalf("%s to port %02X went unanswered", typ, port)
+			return codec.Frame{}
+		}
+	}
+}
+
 // raw sends a frame outside any session and returns what came back.
 func (s *served) raw(typ codec.PacketType, payload []byte) codec.Frame {
 	s.t.Helper()
@@ -445,4 +477,33 @@ func providerLink(t *testing.T, p *Provider) *session.Link {
 func addrOf(a codec.Address, index int16) codec.Address {
 	a.Index = index
 	return a
+}
+
+// A unit says what it is without being asked to open a session first. The
+// vendor Control Panel asks a card for its identity outside any session the
+// moment it is selected in the tree; answering InvCmd made it report "Cannot
+// retrieve the unit information" for every card in the frame.
+func TestIdentityIsAnsweredOutsideASession(t *testing.T) {
+	s := newServed(t, testTree())
+
+	got := s.rawTo(1, codec.MsgGetID, nil)
+	if got.Type != codec.MsgRetID {
+		t.Fatalf("a card answered %s, want RetID", got.Type)
+	}
+	id, err := codec.DecodeID(got.Payload)
+	if err != nil {
+		t.Fatalf("DecodeID: %v", err)
+	}
+	if id.Name != "card1" {
+		t.Errorf("identity = %q, want card1", id.Name)
+	}
+}
+
+func TestIdentityOfAnEmptySlotOutsideASession(t *testing.T) {
+	// Nothing fitted is a refusal, not "I do not know this message".
+	s := newServed(t, testTree())
+
+	if got := s.rawTo(200, codec.MsgGetID, nil); got.Type != codec.MsgNack {
+		t.Errorf("an empty slot answered %s, want Nack", got.Type)
+	}
 }

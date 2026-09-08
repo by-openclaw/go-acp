@@ -11,11 +11,21 @@ import (
 
 	"dhs/internal/clock"
 
+	"dhs/internal/export/canonical"
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/session"
 )
 
-func TestTemplateIsServedAndIsAnArchive(t *testing.T) {
+func TestTemplateIsServedInTheVendorsFormat(t *testing.T) {
+	// The Control Panel will not draw a unit without this file, and what it
+	// expects is the vendor's own layout: an archive holding one entry called
+	// Template.tpl, spelled that way, containing sections keyed by card type,
+	// command set and user level. Taken from the archives the Centra simulator
+	// ships, every one of which is exactly that.
+	//
+	// Handed anything else, a panel reports "Failed to process the template:
+	// No pages for the requested command set version and/or RollCall level",
+	// because it finds an archive, believes it, and cannot parse it.
 	s := newServed(t, testTree())
 	sess := s.open(1, codec.SvcFile)
 
@@ -24,14 +34,12 @@ func TestTemplateIsServedAndIsAnArchive(t *testing.T) {
 		t.Fatal("the template came back empty")
 	}
 
-	// The Control Panel will not render a device without this file, and what
-	// it expects is an archive. A blob that is not one is no better than none.
 	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 	if err != nil {
 		t.Fatalf("the template is not a zip archive: %v", err)
 	}
 	if len(zr.File) != 1 || zr.File[0].Name != templateEntryName {
-		t.Fatalf("archive holds %d entries", len(zr.File))
+		t.Fatalf("archive holds %v, want one %s", names(zr), templateEntryName)
 	}
 
 	f, err := zr.File[0].Open()
@@ -44,13 +52,39 @@ func TestTemplateIsServedAndIsAnArchive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read entry: %v", err)
 	}
-	// It describes the tree it was built from, which is the whole point of
-	// generating it rather than shipping a fixed one.
-	for _, want := range []string{"card1", "gain", "card2", "level"} {
-		if !strings.Contains(string(text), want) {
+	tpl := string(text)
+
+	if !strings.Contains(tpl, "version=12") {
+		t.Errorf("template carries no version line: %.40q", tpl)
+	}
+	// The section names the card type and its command set, and offers every
+	// user level. A panel connected at supervisor asks for level 4.
+	if !strings.Contains(tpl, "[23:1:15:0]") {
+		t.Errorf("no section for this card type and command set: %s", tpl)
+	}
+	if !strings.Contains(tpl, "Size=0,0,") {
+		t.Error("the page has no size")
+	}
+	// Every command in the menu is reachable from the drawing.
+	for _, want := range []string{"gain", "enable", "name", "status"} {
+		if !strings.Contains(tpl, want) {
 			t.Errorf("the template does not mention %q", want)
 		}
 	}
+	// A control line is caption then seven numbers, the last four being the
+	// rectangle.
+	if !strings.Contains(tpl, "Ctl0=") {
+		t.Error("the page has no controls")
+	}
+}
+
+// names lists what an archive holds, for a failure message.
+func names(zr *zip.Reader) []string {
+	out := make([]string, 0, len(zr.File))
+	for _, f := range zr.File {
+		out = append(out, f.Name)
+	}
+	return out
 }
 
 func TestTemplateIsTheSameBytesEveryTime(t *testing.T) {
@@ -351,4 +385,55 @@ func readFile(t *testing.T, s *session.Session, path string) []byte {
 	closeReq := codec.File{SrcHandle: 1, FileHandle: handle}
 	do(t, s, codec.MsgFileClose, closeReq.AppendTo(nil))
 	return out
+}
+
+func TestTemplateDrawsLinesThatNameThemselvesOddly(t *testing.T) {
+	// A parameter with no identifier and one whose style is neither a number,
+	// a checkbox nor an editable string: both have to appear on the page, or
+	// the drawing silently omits a control the menu offers.
+	blank := &canonical.Parameter{
+		Header: canonical.Header{Number: 1, Path: "frame.card1.", Access: canonical.AccessRead},
+		Type:   canonical.ParamString, Value: "",
+	}
+	// An enumeration becomes a list, which is neither a number, a checkbox nor
+	// an editable string, and so takes the drawing's last branch.
+	listy := &canonical.Parameter{
+		Header: canonical.Header{
+			Number: 2, Identifier: "mode", Path: "frame.card1.mode",
+			Access: canonical.AccessRead,
+		},
+		Type: canonical.ParamEnum, Value: int64(0), Minimum: 0, Maximum: 3,
+	}
+	card := &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "card1", Path: "frame.card1",
+			Children: []canonical.Element{blank, listy},
+		},
+	}
+	root := &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "frame", Path: "frame",
+			Children: []canonical.Element{card},
+		},
+	}
+
+	body := buildTemplate(buildModel(&canonical.Export{Root: root}, "dhs rollcall"))
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatalf("not an archive: %v", err)
+	}
+	f, err := zr.File[0].Open()
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+	text, _ := io.ReadAll(f)
+	tpl := string(text)
+
+	if !strings.Contains(tpl, "line ") {
+		t.Errorf("a line with no name is not drawn:\n%s", tpl)
+	}
+	if !strings.Contains(tpl, "mode") {
+		t.Errorf("a read-only line is not drawn:\n%s", tpl)
+	}
 }

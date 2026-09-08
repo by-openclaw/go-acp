@@ -204,6 +204,23 @@ func (p *Provider) Unsolicited(l *session.Link, req codec.Frame) {
 	case codec.MsgGetStat:
 		p.answerUnsolicited(l, req, codec.MsgRetStat, p.statusOf(req.Dst.Port).AppendTo(nil))
 
+	case codec.MsgGetID:
+		// A unit says what it is without being asked to open a session first.
+		// Status was already answered this way and identity is the same kind
+		// of question, so refusing it was an asymmetry with nothing behind it.
+		//
+		// Measured: the vendor Control Panel asks a card for its identity
+		// outside any session the moment it is selected in the tree. We
+		// answered InvCmd, and the panel reported "Cannot retrieve the unit
+		// information" for every card in the frame.
+		id, ok := p.identityOf(req.Dst.Port)
+		if !ok {
+			p.answerUnsolicited(l, req, codec.MsgNack, nil)
+			return
+		}
+		payload, _ := id.AppendTo(nil)
+		p.answerUnsolicited(l, req, codec.MsgRetID, payload)
+
 	case codec.MsgIam, codec.MsgTime:
 		// A peer announcing itself. Nothing to answer: Iam is one of the two
 		// types that may be broadcast, and a reply would go to everybody.
