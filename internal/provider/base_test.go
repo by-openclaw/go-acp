@@ -223,7 +223,12 @@ func TestAcceptLoopTracksAndRunsConnections(t *testing.T) {
 	if accepted.Load() != 1 {
 		t.Fatalf("accepted %d, want 1", accepted.Load())
 	}
-	for len(b.Conns()) == 0 && time.Now().Before(deadline) {
+	// Track is synchronous but Run is a goroutine, so a conn can be in the
+	// set a beat before its Run has scheduled. Wait for the running flag.
+	for time.Now().Before(deadline) {
+		if c := b.Conns(); len(c) == 1 && c[0].ran.Load() {
+			break
+		}
 		time.Sleep(5 * time.Millisecond)
 	}
 	conns := b.Conns()
@@ -451,5 +456,20 @@ func TestNextBackoff(t *testing.T) {
 		if got := nextBackoff(tc.prev); got != tc.want {
 			t.Errorf("nextBackoff(%v) = %v, want %v", tc.prev, got, tc.want)
 		}
+	}
+}
+
+func TestAddrIsNilBeforeListenThenReports(t *testing.T) {
+	var b Base[*fakeConn]
+	if b.Addr() != nil {
+		t.Error("Addr must be nil before Listen")
+	}
+	ln, err := b.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	if b.Addr() == nil || b.Addr().String() != ln.Addr().String() {
+		t.Errorf("Addr = %v, want the bound %v", b.Addr(), ln.Addr())
 	}
 }

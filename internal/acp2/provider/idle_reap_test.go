@@ -5,6 +5,7 @@ package acp2
 // vanished without an RST, accumulating one leak per lost peer.
 
 import (
+	"context"
 	"dhs/internal/plugin"
 	"io"
 	"log/slog"
@@ -47,7 +48,7 @@ func TestSessionReapsSilentClient(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:
@@ -65,7 +66,7 @@ func TestSessionKeepsSilentClientWhenDisabled(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:
@@ -86,7 +87,7 @@ func TestSessionRunReturnsWhenArmFails(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:

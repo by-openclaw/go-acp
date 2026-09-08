@@ -117,6 +117,18 @@ func (b *Base[S]) Listen(ctx context.Context, network, addr string) (net.Listene
 	return ln, nil
 }
 
+// Addr is the address the listener is bound to, or nil before Listen. A
+// server given ":0" reports the port the OS actually chose here — the only
+// way a caller (or a test) learns where to connect.
+func (b *Base[S]) Addr() net.Addr {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.listener == nil {
+		return nil
+	}
+	return b.listener.Addr()
+}
+
 // Stopped is closed once the accept loop has returned. Connectors with
 // background goroutines of their own (emberplus's streamer) select on it.
 func (b *Base[S]) Stopped() <-chan struct{} {

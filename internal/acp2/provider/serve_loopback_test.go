@@ -272,10 +272,8 @@ func startServe(t *testing.T, exp *canonical.Export) (*server, string, func()) {
 	// Wait until Serve has published its listener.
 	var addr string
 	ok := waitFor(t, 2*time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		if srv.listener != nil {
-			addr = srv.listener.Addr().String()
+		if a := srv.Addr(); a != nil {
+			addr = a.String()
 			return true
 		}
 		return false
@@ -384,9 +382,7 @@ func TestServe_SetProperty_AnnounceFanout(t *testing.T) {
 
 	// Wait until the server has registered all three sessions.
 	if !waitFor(t, time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		return len(srv.sessions) == 3
+		return len(srv.Conns()) == 3
 	}) {
 		t.Fatal("server never registered 3 sessions")
 	}
@@ -523,9 +519,7 @@ func TestServe_StopClosesSessions(t *testing.T) {
 	c.handshake(false)
 
 	if !waitFor(t, time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		return len(srv.sessions) == 1
+		return len(srv.Conns()) == 1
 	}) {
 		t.Fatal("session never registered")
 	}

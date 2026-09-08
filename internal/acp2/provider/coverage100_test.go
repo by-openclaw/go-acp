@@ -1,9 +1,9 @@
 package acp2
 
 import (
+	"context"
 	"dhs/internal/plugin"
 	"encoding/binary"
-	"errors"
 	"net"
 	"testing"
 	"time"
@@ -445,32 +445,9 @@ func TestWrite_EncodeError(t *testing.T) {
 // ----------------------------------------------------------------------
 // server.go — Serve accept-error (non-ErrClosed) + broadcast send failure
 
-// TestServe_AcceptHardError makes ln.Accept return a non-ErrClosed error
-// so acceptLoop returns it (the close(s.stopped)+return err arm). A
-// synthetic listener yields a non-net.ErrClosed error on Accept.
-func TestServe_AcceptHardError(t *testing.T) {
-	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
-	hl := &hardErrListener{}
-	err := srv.acceptLoop(hl)
-	if err == nil || errors.Is(err, net.ErrClosed) {
-		t.Fatalf("acceptLoop should surface the hard accept error, got %v", err)
-	}
-}
-
-// hardErrListener is a net.Listener whose Accept always fails with a
-// non-net.ErrClosed error, driving acceptLoop's hard-error return arm.
-type hardErrListener struct{}
-
-func (*hardErrListener) Accept() (net.Conn, error) {
-	return nil, errors.New("synthetic accept failure")
-}
-func (*hardErrListener) Close() error   { return nil }
-func (*hardErrListener) Addr() net.Addr { return dummyAddr{} }
-
-type dummyAddr struct{}
-
-func (dummyAddr) Network() string { return "tcp" }
-func (dummyAddr) String() string  { return "127.0.0.1:0" }
+// The hard-accept-error arm now lives on provider.Base.AcceptLoop and is
+// tested there (TestAcceptLoopReturnsTerminalErrors); acp2 no longer owns
+// an accept loop of its own to cover.
 
 // TestBroadcastAnnounce_SendFailure registers a session whose conn is
 // closed, subscribes it, and broadcasts — the per-session write fails and
@@ -482,7 +459,7 @@ func TestBroadcastAnnounce_SendFailure(t *testing.T) {
 	_ = b.Close()
 	sess := newSession(srv, a)
 	sess.enable(codec.AN2ProtoACP2)
-	srv.registerSession(sess)
+	srv.Track(sess)
 
 	ann := &codec.ACP2Message{
 		Type: codec.ACP2TypeAnnounce, MTID: 0, Func: 0, PID: codec.PIDValue,
@@ -502,7 +479,7 @@ func TestSessionRun_ReadError(t *testing.T) {
 	sess := newSession(srv, a)
 
 	done := make(chan struct{})
-	go func() { sess.run(); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	// Write a truncated/garbage AN2 frame then close so ReadAN2Frame hits
 	// a decode error (non-EOF) before the conn fully closes.
@@ -571,7 +548,8 @@ func TestMetricsExposed(t *testing.T) {
 	}
 	before := m.Snapshot().TxFrames
 	// A served reply flows through session.write, which counts tx.
-	sess := &session{srv: srv, conn: &nopConn{}}
+	// via newSession so the session caches srv.Metrics() like production.
+	sess := newSession(srv, &nopConn{})
 	if err := sess.write(&codec.AN2Frame{
 		Proto: codec.AN2ProtoACP2, Slot: 1, Type: codec.AN2TypeData, Payload: []byte{0, 0, 0, 0},
 	}); err != nil {

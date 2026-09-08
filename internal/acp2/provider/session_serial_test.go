@@ -1,6 +1,7 @@
 package acp2
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net"
@@ -27,7 +28,6 @@ func TestSession_SerializesRequestsPerConnection(t *testing.T) {
 	srv := &server{
 		logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		tree:     emptyTree(),
-		sessions: map[*session]struct{}{},
 	}
 	srv.tree.slotN = 1
 	srv.tree.perSlot[0] = map[uint32]*entry{}
@@ -49,7 +49,7 @@ func TestSession_SerializesRequestsPerConnection(t *testing.T) {
 		}
 		sess := newSession(srv, conn)
 		close(accepted)
-		sess.run()
+		sess.Run(context.Background())
 	}()
 
 	client, err := net.Dial("tcp", addr)

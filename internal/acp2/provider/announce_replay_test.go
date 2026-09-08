@@ -68,9 +68,7 @@ func TestRunAnnounceReplay_LoopsAndFansOut(t *testing.T) {
 	defer func() { _ = sess.conn.Close() }()
 	defer func() { _ = peer.Close() }()
 	sess.enable(codec.AN2ProtoACP2)
-	sess.srv.mu.Lock()
-	sess.srv.sessions[sess] = struct{}{}
-	sess.srv.mu.Unlock()
+	sess.srv.Track(sess)
 
 	items := []AnnounceItem{{
 		DtMs: 0, Slot: 1,
