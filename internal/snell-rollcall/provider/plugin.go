@@ -234,6 +234,22 @@ func (p *Provider) serveConn(conn net.Conn) {
 	}
 	p.mu.Unlock()
 
+	// Say we are here, and keep saying it.
+	//
+	// A client builds its picture of the network by listening for Iam (spec
+	// 7.5): "Normally when a unit joins the network it obtains its own map of
+	// the network by monitoring SP_IAM messages." A gateway that answers the
+	// device enquiry and then never announces leaves the client with an empty
+	// network, and the vendor Control Panel gives up on it after five seconds
+	// - measured, by capturing the bytes: enquiry, our reply, the panel's own
+	// Iam naming itself "ControlPanel", silence, disconnect.
+	//
+	// Only the gateway announces. A frame's cards are ports of it and are
+	// found through the port service, not by announcing themselves (spec 7.6).
+	session.NewAnnouncer(context.Background(), l, session.Identity{
+		Info: p.gatewayInfo(),
+	})
+
 	p.log.Debug("rollcall: client connected", "remote", conn.RemoteAddr().String())
 
 	p.wg.Add(1)
@@ -247,6 +263,17 @@ func (p *Provider) serveConn(conn net.Conn) {
 
 		p.log.Debug("rollcall: client gone", "remote", conn.RemoteAddr().String())
 	}()
+}
+
+// gatewayInfo is what this provider announces about itself: port zero of its
+// own unit, which is the gateway rather than any card in it.
+func (p *Provider) gatewayInfo() codec.DeviceInfo {
+	return codec.DeviceInfo{
+		ProtocolVersion: codec.ProtocolVersion,
+		Address:         codec.Address{Unit: p.unit, Port: 0, Index: codec.IndexUnknown},
+		ID:              p.model.frame,
+		Status:          p.statusOf(0),
+	}
 }
 
 // defaultUnit is the unit number a gateway presents as.

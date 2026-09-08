@@ -387,12 +387,22 @@ func (s *served) raw(typ codec.PacketType, payload []byte) codec.Frame {
 	s.t.Helper()
 
 	s.send(typ, payload)
-	select {
-	case f := <-s.cl.Unsolicited():
-		return f
-	case <-time.After(5 * time.Second):
-		s.t.Fatalf("%s went unanswered", typ)
-		return codec.Frame{}
+
+	// An announcement is not an answer. Iam is broadcast to everybody and
+	// arrives on the same channel as a reply, so a client that took the first
+	// frame it saw would answer its own request with somebody's presence.
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case f := <-s.cl.Unsolicited():
+			if f.Type == codec.MsgIam {
+				continue
+			}
+			return f
+		case <-deadline:
+			s.t.Fatalf("%s went unanswered", typ)
+			return codec.Frame{}
+		}
 	}
 }
 
