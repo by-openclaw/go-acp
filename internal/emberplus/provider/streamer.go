@@ -124,7 +124,7 @@ func (s *server) runStreamer(ctx context.Context, interval time.Duration) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-s.stopped:
+		case <-s.Stopped():
 			return
 		case <-ticker.C:
 			s.fanoutStreams(entries)
@@ -142,11 +142,16 @@ func (s *server) fanoutStreams(entries []streamEntry) {
 		sess *session
 		want []streamEntry
 	}
-	// sess.subs is protected by server.mu — single lock covers the whole
-	// snapshot.
+	// The session set lives in Base; snapshot it first (Base's lock), then
+	// read each session's subs under s.mu — the same lock subscribe /
+	// unsubscribe take to write sess.subs. The two locks are acquired in
+	// sequence, never nested. A session dropped between the snapshot and
+	// this read has had its subs cleaned by dropSession, so it contributes
+	// no work; one dropped after still just errors on send.
+	sessions := s.Conns()
 	s.mu.Lock()
 	var work []sessFilter
-	for sess := range s.sessions {
+	for _, sess := range sessions {
 		var want []streamEntry
 		for _, e := range entries {
 			if _, ok := sess.subs[e.oid]; ok {
