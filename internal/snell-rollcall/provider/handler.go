@@ -204,10 +204,26 @@ func (p *Provider) handshake(l *session.Link, req codec.Frame) {
 	assigned := st.assigned
 	st.mu.Unlock()
 
-	local := codec.Address{Unit: p.unit, Port: assigned, Index: codec.IndexUnknown}
+	// Where the answer goes depends on whether the asker knows who it is.
+	//
+	// A client that has no address yet says so by sending from the unknown
+	// index, and the reply's destination is how a gateway hands it one - that
+	// is how our own consumer learns it is 0000-01-E0. A client that supplies
+	// a real index is not asking for an address; it is numbering a
+	// transaction, and the answer belongs at the address it asked from.
+	//
+	// Measured against the vendor Control Panel, which asks from
+	// 0000-00-00:007D and ignores anything not addressed back to it: the
+	// Centra echoes that address, we invented one, and the panel sat through
+	// its five second timeout and dropped the connection without ever asking
+	// us a second question.
+	dst := req.Src
+	if req.Src.Index == codec.IndexUnknown {
+		dst = codec.Address{Unit: p.unit, Port: assigned, Index: codec.IndexUnknown}
+	}
 
 	err := l.SendFrame(codec.Frame{
-		Dst:     local,
+		Dst:     dst,
 		Src:     codec.Address{Unit: p.unit, Port: req.Dst.Port, Index: codec.IndexUnknown},
 		Type:    codec.MsgRetDevInfo,
 		Payload: p.deviceInfoFor(req.Dst.Port),
