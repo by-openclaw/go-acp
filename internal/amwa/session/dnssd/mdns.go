@@ -200,17 +200,56 @@ func (b *stdlibBrowser) Browse(ctx context.Context, service string) (<-chan dnss
 			}
 		}
 		b.mu.Unlock()
-		close(out)
+		sub.closeOut()
 	}()
 
 	return out, nil
 }
 
 // browseSub is one active Browse subscription on a shared Browser.
+//
+// out has multiple senders — one readLoop per socket fans every matching
+// Instance to it — and exactly one closer (the ctx-cancel goroutine). A
+// buffered channel with the send guarded only by a select-on-ctx.Done still
+// races: after ctx is cancelled the select can pick the send case on an
+// already-closed channel and panic. So the closed flag below serialises
+// every send against the close under mu — the standard safe-close-with-many-
+// senders pattern.
 type browseSub struct {
 	ctx     context.Context
 	service string
-	out     chan dnssd.Instance
+
+	mu     sync.Mutex
+	out    chan dnssd.Instance
+	closed bool
+}
+
+// deliver sends one Instance to the subscription unless it is closing. The
+// send and the close are serialised under mu, so a send can never land on a
+// closed channel; the select still bounds the send by ctx so a subscriber
+// that has stopped reading cannot wedge the shared read loop.
+func (s *browseSub) deliver(ins dnssd.Instance) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	select {
+	case s.out <- ins:
+	case <-s.ctx.Done():
+	}
+}
+
+// closeOut marks the subscription closed and closes its channel, under the
+// same lock deliver takes, so no in-flight send can race the close.
+func (s *browseSub) closeOut() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	s.closed = true
+	close(s.out)
 }
 
 // readLoop reads mDNS responses from one socket and fans every
@@ -256,10 +295,7 @@ func (b *stdlibBrowser) readLoop(c *net.UDPConn) {
 		b.mu.Unlock()
 		for _, sub := range subs {
 			for _, ins := range dnssd.DecodeInstances(msg, sub.service) {
-				select {
-				case sub.out <- ins:
-				case <-sub.ctx.Done():
-				}
+				sub.deliver(ins)
 			}
 		}
 	}
