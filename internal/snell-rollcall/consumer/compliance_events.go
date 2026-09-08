@@ -63,6 +63,11 @@ const (
 	// is slow, and on a large level it is very slow.
 	EventNamesFileUnreadable = "rollcall_names_file_unreadable"
 
+	// EventBridgeUnreadable means a node advertised the net service and then
+	// would not list what is behind it. The near side of the network is still
+	// worth having, so it is counted rather than fatal.
+	EventBridgeUnreadable = "rollcall_bridge_unreadable"
+
 	// EventUnlistedNode means a slot was addressed that the device's own
 	// enumeration does not mention. It is addressed anyway: a gateway ages a
 	// map entry out after sixty seconds of silence, so a node missing from the

@@ -208,6 +208,11 @@ func (d *device) answerCall(f codec.Frame) {
 		d.reply(f, codec.MsgNack, []byte("no long strings\x00"))
 		return
 	}
+	if d.refuseNet && conn.Services.Has(codec.SvcNet) {
+		d.mu.Unlock()
+		d.reply(f, codec.MsgNack, append([]byte("no net service"), 0))
+		return
+	}
 	if d.refusePorts && conn.Services.Has(codec.SvcPorts) {
 		d.mu.Unlock()
 		d.reply(f, codec.MsgNack, append([]byte("no port service"), 0))
@@ -332,6 +337,38 @@ func (d *device) getStat(f codec.Frame) {
 	d.reply(f, codec.MsgRetStat, st.AppendTo(nil))
 }
 
+// netList answers what is behind this bridge.
+//
+// The addresses carry their route, because a bridge fills in the network field
+// as it relays (spec 9.31) - measured against the vendor proxy, whose entries
+// all come back with the substitution address already set.
+func (d *device) netList(f codec.Frame) {
+	d.mu.Lock()
+	far := append([]codec.DeviceInfo(nil), d.farSide...)
+	refuse := d.refuseNetList
+	d.mu.Unlock()
+
+	if refuse {
+		d.reply(f, codec.MsgNack, append([]byte("no net list"), 0))
+		return
+	}
+
+	d.mu.Lock()
+	odd, bad := d.oddNetItem, d.badNetEntry
+	d.mu.Unlock()
+
+	d.block(f, codec.MsgGetLocDevMap, len(far), func(i int) (codec.PacketType, []byte) {
+		if i == odd {
+			return codec.MsgAck, nil
+		}
+		if bad {
+			return codec.MsgRetDevInfo, []byte{0x01}
+		}
+		payload, _ := far[i].AppendTo(nil)
+		return codec.MsgRetDevInfo, payload
+	})
+}
+
 // deviceList answers a port enumeration with one entry per port.
 //
 // Each entry advertises what that node serves, which is what a real unit does:
@@ -378,6 +415,15 @@ func (d *device) deviceList(f codec.Frame) {
 }
 
 func (d *device) deviceMap(f codec.Frame) {
+	// The same message means a different list depending on what the session
+	// negotiated (spec 7.7): Net without Map answers with what is behind this
+	// bridge, Map without Net with what is on its own segment. A bridge offers
+	// both, which is the case the rule exists for.
+	if d.negotiated(f).Has(codec.SvcNet) {
+		d.netList(f)
+		return
+	}
+
 	d.mu.Lock()
 	empty := d.emptyDeviceMap
 	d.mu.Unlock()

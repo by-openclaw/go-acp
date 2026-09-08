@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/session"
 )
 
 // What a slot number reaches depends on what the device enumerated, and
@@ -57,6 +58,7 @@ func (p *Plugin) nodes(ctx context.Context) (*nodeTable, error) {
 	}
 
 	t := buildNodeTable(list, l.gateway)
+	p.appendFarSide(ctx, t)
 
 	p.mu.Lock()
 	if p.nodeCache == nil {
@@ -143,6 +145,73 @@ func halfOf(ctx context.Context) (context.Context, context.CancelFunc) {
 		return context.WithCancel(ctx)
 	}
 	return context.WithTimeout(ctx, left/2)
+}
+
+// appendFarSide adds what each bridge in the table can see.
+//
+// A bridge publishes the equipment behind it through the net service, and it
+// fills in the route as it does so: measured against the vendor proxy, every
+// entry comes back carrying its substitution address, net=1000, which is what
+// spec 9.31 requires of a bridge. So the addresses are used exactly as given —
+// a session opened on one of them reaches across, which is also measured.
+//
+// One hop. An rNet holds four, and a proxy behind a proxy is expressible, but
+// nothing measured needs it and recursion wants cycle protection of its own.
+//
+// A bridge that will not answer is absorbed rather than fatal: the near side of
+// the network is still worth having, and a gateway whose downstream chassis is
+// unplugged is a normal thing to meet — the proxy we measured has one of those
+// too, and it answers with an empty list.
+func (p *Plugin) appendFarSide(ctx context.Context, t *nodeTable) {
+	for i := 0; i < len(t.info); i++ {
+		info := t.info[i]
+		if !info.ID.Services.Has(codec.SvcNet) {
+			continue
+		}
+		bridge := t.addrs[i]
+
+		far, err := p.netDevices(ctx, bridge)
+		if err != nil {
+			p.fire(EventBridgeUnreadable, fmt.Sprintf(
+				"%s offers the net service and would not list what is behind it: %v",
+				bridge, err))
+			continue
+		}
+		for _, d := range far {
+			if d.Address == (codec.Address{}) {
+				continue
+			}
+			t.addrs = append(t.addrs, d.Address.Device())
+			t.info = append(t.info, d)
+		}
+		p.log.Debug("rollcall: read past a bridge",
+			"bridge", bridge.String(), "devices", len(far))
+	}
+}
+
+// netDevices lists what one bridge can see on its other side.
+func (p *Plugin) netDevices(ctx context.Context, bridge codec.Address) ([]codec.DeviceInfo, error) {
+	s, err := p.netSession(ctx, bridge)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []codec.DeviceInfo
+	err = session.Walk(ctx, s, codec.MsgGetLocDevMap, nil, func(_ int, f codec.Frame) error {
+		if f.Type != codec.MsgRetDevInfo {
+			return nil
+		}
+		d, err := codec.DecodeDeviceInfo(f.Payload)
+		if err != nil {
+			return err
+		}
+		out = append(out, d)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // buildNodeTable turns an enumeration into a slot table.

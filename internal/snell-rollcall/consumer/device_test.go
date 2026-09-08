@@ -80,6 +80,20 @@ type device struct {
 	iams    []codec.DeviceInfo
 	iamSeen chan struct{}
 
+	// farSide is what this device reports behind it when asked on a net
+	// session, and refuseNetList makes it advertise the service and refuse.
+	farSide       []codec.DeviceInfo
+	refuseNetList bool
+
+	// refuseNet refuses a call that names the net service at all, which is a
+	// unit advertising something it will not open.
+	refuseNet bool
+
+	// oddNetItem answers that entry of the net list with something other than
+	// a device record, and badNetEntry with a payload too short to decode.
+	oddNetItem  int
+	badNetEntry bool
+
 	// servicelessPort is a port the device lists with an empty service mask,
 	// the way a frame lists an attached Control Panel. -1 means every port
 	// offers something.
@@ -206,6 +220,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		failReadAfter:   -1,
 		refuseSessionOn: -1,
 		servicelessPort: -1,
+		oddNetItem:      -1,
 		iamSeen:         make(chan struct{}, 1),
 		refuse:          make(map[codec.PacketType]bool),
 		garble:          make(map[codec.PacketType]bool),

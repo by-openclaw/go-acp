@@ -46,6 +46,11 @@ type link struct {
 	// vendor Centra, which refuses GETDEVLIST that way on a control session.
 	mapSess *session.Session
 
+	// netSessions are the far-side enumerations, one per bridge. A bridge
+	// offers Map and Net alike and the same message means a different list on
+	// each, so the two cannot share a session.
+	netSessions map[codec.Address]*session.Session
+
 	// portSess is the same story for the port service. A real IQ frame keeps
 	// its cards behind SP_GETDEVLIST and ignores that request on a session
 	// that did not negotiate Ports, so a frame full of cards enumerates as one
@@ -91,6 +96,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		gateway:      info,
 		sessions:     make(map[codec.Address]*session.Session),
 		fileSessions: make(map[codec.Address]*session.Session),
+		netSessions:  make(map[codec.Address]*session.Session),
 	}
 	l.keep = session.NewKeepalive(context.WithoutCancel(ctx), sl, nil)
 
@@ -172,6 +178,10 @@ func (l *link) close() {
 	if l.portSess != nil {
 		sessions = append(sessions, l.portSess)
 		l.portSess = nil
+	}
+	for a, s := range l.netSessions {
+		sessions = append(sessions, s)
+		delete(l.netSessions, a)
 	}
 	for _, s := range l.sessions {
 		sessions = append(sessions, s)
@@ -368,6 +378,49 @@ func (p *Plugin) portSession(ctx context.Context) (*session.Session, error) {
 		return existing, nil
 	}
 	l.portSess = s
+	return s, nil
+}
+
+// netSession returns the session a bridge's far-side list runs on.
+//
+// Net and Map are different services that answer the same message with
+// different lists, and spec 7.7 is explicit: a session that names both is read
+// as Net, so the two must be asked for separately. A bridge offers both, which
+// is exactly the case the rule exists for.
+func (p *Plugin) netSession(ctx context.Context, bridge codec.Address) (*session.Session, error) {
+	l, err := p.conn()
+	if err != nil {
+		return nil, err
+	}
+	node := bridge.Device()
+
+	l.mu.Lock()
+	if l.closed {
+		l.mu.Unlock()
+		return nil, consumer.ErrNotConnected
+	}
+	if s := l.netSessions[node]; s != nil {
+		l.mu.Unlock()
+		return s, nil
+	}
+	l.mu.Unlock()
+
+	s, err := session.Call(ctx, l.sess, node, codec.SvcNet, codec.LevelSupervisor, p.identity())
+	if err != nil {
+		return nil, err
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		_ = s.Close()
+		return nil, consumer.ErrNotConnected
+	}
+	if existing := l.netSessions[node]; existing != nil {
+		_ = s.Close()
+		return existing, nil
+	}
+	l.netSessions[node] = s
 	return s, nil
 }
 
