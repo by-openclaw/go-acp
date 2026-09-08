@@ -11,6 +11,7 @@ import (
 
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 )
 
 // fakeConn is the smallest thing that satisfies Conn: Run blocks until
@@ -512,5 +513,142 @@ func TestAcceptLoopRefusesAnInjectedListenerAfterStop(t *testing.T) {
 	}
 	if _, err := ln.Accept(); !errors.Is(err, net.ErrClosed) {
 		t.Error("an injected listener after Stop must be closed")
+	}
+}
+
+// --- UDP surface: ListenUDP / NoConn / Stop-closes-packet ---
+
+// ListenUDP binds a datagram socket with SO_REUSEADDR set, so a second bind
+// on the same port succeeds — the property that lets a provider and a
+// consumer share one port on the same host. This is the whole point of the
+// method, so it is the first thing the test proves.
+func TestListenUDPReuseAddrSharesThePort(t *testing.T) {
+	var b Base[*NoConn]
+	first, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:0", transport.UDPBindOptions{ReuseAddr: true})
+	if err != nil {
+		t.Fatalf("first ListenUDP: %v", err)
+	}
+	addr := first.LocalAddr().String()
+	if _, err := b.ListenUDP(context.Background(), "udp4", addr, transport.UDPBindOptions{ReuseAddr: true}); err != nil {
+		// Windows honours SO_REUSEADDR for UDP differently; skip rather than
+		// fail there, matching transport's own ListenUDPAddr reuse test.
+		t.Skipf("second bind on %s: %v (platform may not share UDP ports)", addr, err)
+	}
+	// Both sockets were recorded; Stop closes them both, each exactly once.
+	if err := b.Stop(); err != nil {
+		t.Errorf("Stop after ListenUDP: %v", err)
+	}
+}
+
+// The datagram socket ListenUDP bound is closed by Stop, which is what makes
+// a packet provider's blocked ReadFrom return.
+func TestStopClosesTheDatagramSocket(t *testing.T) {
+	var b Base[*NoConn]
+	pc, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:0", transport.UDPBindOptions{})
+	if err != nil {
+		t.Fatalf("ListenUDP: %v", err)
+	}
+	if err := b.Stop(); err != nil {
+		t.Errorf("Stop: %v", err)
+	}
+	// A read on the closed socket returns immediately with ErrClosed rather
+	// than blocking, proving Stop closed it.
+	_ = pc.SetReadDeadline(time.Now().Add(time.Second))
+	buf := make([]byte, 1)
+	if _, _, err := pc.ReadFromUDP(buf); !errors.Is(err, net.ErrClosed) {
+		t.Errorf("read after Stop = %v, want ErrClosed", err)
+	}
+}
+
+// A ListenUDP that loses the race with Stop closes the socket it just bound
+// rather than leaking one nothing will ever close, and reports ErrClosed —
+// the UDP counterpart of the Listen-after-Stop race.
+func TestListenUDPRefusedAfterStop(t *testing.T) {
+	var b Base[*NoConn]
+	_ = b.Stop()
+	pc, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:0", transport.UDPBindOptions{})
+	if !errors.Is(err, net.ErrClosed) {
+		t.Errorf("ListenUDP after Stop = %v, want ErrClosed", err)
+	}
+	if pc != nil {
+		t.Error("no socket should be returned after Stop")
+		_ = pc.Close()
+	}
+}
+
+// NoConn is a placeholder: its Run returns at once and Close is a no-op, so
+// a packet provider embedding Base[*NoConn] carries no live-connection cost.
+func TestNoConnIsInert(t *testing.T) {
+	var c NoConn
+	c.Run(context.Background()) // must return immediately, not block
+	c.Close()                   // must not panic
+	// It satisfies Session, so Base[*NoConn] compiles and its set works.
+	var b Base[*NoConn]
+	if got := b.Conns(); len(got) != 0 {
+		t.Errorf("a fresh packet Base has %d conns, want 0", len(got))
+	}
+}
+
+// ListenUDP honours a Stop that raced the bind: if the socket binds but Stop
+// runs before ListenUDP records it, the socket is closed and ErrClosed
+// returned rather than a socket leaked that nothing will ever stop. Driven
+// through the listenUDPAddr seam because ListenUDP deliberately does not go
+// through the injected Net.
+func TestListenUDPHonoursAStopThatRacedTheBind(t *testing.T) {
+	var b Base[*NoConn]
+	real := listenUDPAddr
+	listenUDPAddr = func(ctx context.Context, network, addr string, opts transport.UDPBindOptions) (*net.UDPConn, error) {
+		pc, err := real(ctx, network, addr, opts)
+		if err == nil {
+			_ = b.Stop() // flip closed AFTER a successful bind, BEFORE record
+		}
+		return pc, err
+	}
+	defer func() { listenUDPAddr = real }()
+
+	pc, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:0", transport.UDPBindOptions{})
+	if !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("a ListenUDP that lost the race to Stop must report ErrClosed, got %v", err)
+	}
+	if pc != nil {
+		t.Error("no socket should be returned when Stop won the race")
+	}
+}
+
+// Stop surfaces the first socket-close error rather than swallowing it: a
+// datagram socket closed out from under Base makes Close error, and Stop
+// reports it.
+func TestStopSurfacesADatagramCloseError(t *testing.T) {
+	var b Base[*NoConn]
+	pc, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:0", transport.UDPBindOptions{})
+	if err != nil {
+		t.Fatalf("ListenUDP: %v", err)
+	}
+	_ = pc.Close() // close behind Base's back so Stop's Close errors
+	if err := b.Stop(); err == nil {
+		t.Error("Stop must surface the datagram close error")
+	}
+}
+
+// The listener-close-error arm of Stop: a listener closed out from under
+// Base makes ln.Close error, and Stop reports it.
+func TestStopSurfacesAListenerCloseError(t *testing.T) {
+	var b Base[*fakeConn]
+	ln, err := b.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen: %v", err)
+	}
+	_ = ln.Close() // close behind Base's back
+	if err := b.Stop(); err == nil {
+		t.Error("Stop must surface the listener close error")
+	}
+}
+
+// A bind failure from ListenUDP is returned as-is, not masked. An address
+// with an out-of-range port cannot bind on any platform.
+func TestListenUDPSurfacesBindErrors(t *testing.T) {
+	var b Base[*NoConn]
+	if _, err := b.ListenUDP(context.Background(), "udp4", "127.0.0.1:999999", transport.UDPBindOptions{}); err == nil {
+		t.Error("ListenUDP must surface a bind error")
 	}
 }

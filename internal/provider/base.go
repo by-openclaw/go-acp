@@ -34,6 +34,22 @@ type Conn interface {
 	Close()
 }
 
+// NoConn is the placeholder session type for packet providers.
+//
+// UDP providers bind one socket and either push (osc, tsl) or dispatch each
+// datagram inline (acp1); none has a per-connection session to track. They
+// still embed the SAME Base — as Base[*NoConn] — so metrics, Init, Stop,
+// Stopped and the UDP bind (ListenUDP) come from one contract, not a second
+// base. The connection set stays empty because AcceptLoop is never called.
+type NoConn struct{}
+
+// Run and Close satisfy Conn so *NoConn satisfies Session. Neither is ever
+// invoked: a packet provider never accepts a connection to run or close.
+func (*NoConn) Run(context.Context) {}
+
+// Close is a no-op; see Run.
+func (*NoConn) Close() {}
+
 // Base is the half of a TCP provider that is not its protocol: the
 // listener, the set of live connections, the stop sequence, and the
 // counters.
@@ -56,6 +72,7 @@ type Conn interface {
 type Base[S Session] struct {
 	mu       sync.Mutex
 	listener net.Listener
+	packet   []*net.UDPConn
 	conns    map[S]struct{}
 	closed   bool
 	stopped  chan struct{}
@@ -115,6 +132,52 @@ func (b *Base[S]) Listen(ctx context.Context, network, addr string) (net.Listene
 	b.listener = ln
 	b.mu.Unlock()
 	return ln, nil
+}
+
+// listenUDPAddr is transport.ListenUDPAddr, indirected through a package
+// var so a test can drive the Stop-races-the-bind branch deterministically
+// (the same reason transport itself indirects its raw-socket calls). It is
+// never reassigned in production.
+var listenUDPAddr = transport.ListenUDPAddr
+
+// ListenUDP binds a datagram socket, the UDP analogue of Listen. It goes
+// through transport.ListenUDPAddr so the socket policy — SO_REUSEADDR, and
+// SO_BROADCAST when opts asks — is applied in the pre-bind Control window,
+// the only window in which SO_REUSEADDR takes effect. That is what lets a
+// provider and a consumer share one port on the same host, and what lets a
+// provider bind a port a controller already holds.
+//
+// It does NOT go through the injected transport.Net: WithDefaults hands a
+// connector a Net built from an empty Config (no ReuseAddr/Broadcast), so
+// delegating there would silently drop the socket policy this method exists
+// to guarantee. UDP loopback binds are deterministic, so tests exercise the
+// real path rather than a fake Net.
+//
+// The socket is recorded so Stop closes it, and a Stop that already ran
+// wins — the same race Listen handles: bind, then re-check under the lock
+// and close rather than leak a socket nothing will ever stop.
+func (b *Base[S]) ListenUDP(ctx context.Context, network, addr string, opts transport.UDPBindOptions) (*net.UDPConn, error) {
+	b.mu.Lock()
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return nil, net.ErrClosed
+	}
+
+	pc, err := listenUDPAddr(ctx, network, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		_ = pc.Close()
+		return nil, net.ErrClosed
+	}
+	b.packet = append(b.packet, pc)
+	b.mu.Unlock()
+	return pc, nil
 }
 
 // Addr is the address the listener is bound to, or nil before Listen. A
@@ -279,6 +342,8 @@ func (b *Base[S]) Stop() error {
 	}
 	b.closed = true
 	ln := b.listener
+	packet := b.packet
+	b.packet = nil
 	conns := make([]S, 0, len(b.conns))
 	for c := range b.conns {
 		conns = append(conns, c)
@@ -288,8 +353,19 @@ func (b *Base[S]) Stop() error {
 	for _, c := range conns {
 		c.Close()
 	}
-	if ln != nil {
-		return ln.Close()
+	// Close every datagram socket ListenUDP bound. A packet provider's read
+	// loop is blocked in ReadFrom on one of these; closing it is what makes
+	// that loop return, the UDP counterpart of closing the listener.
+	var firstErr error
+	for _, pc := range packet {
+		if err := pc.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
-	return nil
+	if ln != nil {
+		if err := ln.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
