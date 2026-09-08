@@ -72,7 +72,8 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 	// node's file service is rooted at its own directory, and two cards can
 	// carry different menus.
 	p.templates = make(map[uint8][]byte)
-	for _, n := range p.model.portNumbers() {
+	p.refreshGateway()
+	for _, n := range append([]uint8{0}, p.model.portNumbers()...) {
 		p.templates[n] = buildTemplate(p.model.port(n))
 	}
 	return p
@@ -195,6 +196,7 @@ func (p *Provider) Serve(ctx context.Context, addr string) error {
 	p.addr = ln.Addr().String()
 	p.mu.Unlock()
 
+	p.refreshGateway()
 	p.log.Info("rollcall: serving", "addr", p.addr, "ports", len(p.model.portNumbers()))
 
 	// Closing the listener is what unblocks Accept, so the context has to

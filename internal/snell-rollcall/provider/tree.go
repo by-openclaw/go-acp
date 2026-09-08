@@ -128,6 +128,10 @@ func buildModel(tree *canonical.Export, name string) *model {
 		}
 		m.addPort(newPort(uint8(slot), identifierOf(child), []canonical.Element{child}))
 	}
+	// The gateway is a unit too and a panel expects to open it. It is not in
+	// the order, because the order is the card slots a port list enumerates.
+	m.ports[0] = newGatewayPort(m.frame)
+
 	return m
 }
 
@@ -476,6 +480,18 @@ func (p *port) value(command uint32) (codec.Value, bool) {
 	defer p.mu.RUnlock()
 	v, ok := p.values[command]
 	return v, ok
+}
+
+// seed writes a value the device produced about itself, without the access
+// check a client's write goes through.
+//
+// A read-only line still holds a value; read-only says a client may not change
+// it, not that nothing may. It is how the gateway fills its own status page.
+func (p *port) seed(command uint32, v codec.Value) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	v.Command = command
+	p.values[command] = v
 }
 
 // setValue writes a command and returns what was stored.

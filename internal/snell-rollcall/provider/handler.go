@@ -184,6 +184,11 @@ func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 		return p.menuRequest(s, prt, req)
 
 	case codec.MsgGetFStat, codec.MsgGetValue:
+		if slot == 0 {
+			// The gateway's page is what the connector is doing now, not what
+			// it was doing when the tree was loaded.
+			p.refreshGateway()
+		}
 		return p.readValue(s, prt, req)
 
 	case codec.MsgSetParam, codec.MsgSetValue:
@@ -312,11 +317,8 @@ func (p *Provider) identityOf(slot uint8) (codec.ID, bool) {
 		id.Services = p.advertiseAt(slot, id.Services)
 		return id, true
 	}
-	if slot == 0 {
-		id := p.model.frame
-		id.Services = p.advertise(id.Services)
-		return id, true
-	}
+	// No special case for the gateway: it is a port like any other now, and
+	// its identity is the frame's because that is what it was built with.
 	return codec.ID{}, false
 }
 

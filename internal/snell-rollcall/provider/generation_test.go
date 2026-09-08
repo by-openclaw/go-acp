@@ -3,7 +3,9 @@ package rollcall
 import (
 	"context"
 	"testing"
+	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/snell-rollcall/codec"
 )
 
@@ -147,5 +149,149 @@ func TestAServiceACardDoesNotHaveIsRefused(t *testing.T) {
 		t.Errorf("the gateway refused a map session: %v", err)
 	} else {
 		_ = sess.Close()
+	}
+}
+
+func TestTheGatewayHasAPageOfItsOwn(t *testing.T) {
+	// A gateway is a unit and a panel expects to open it. Ours had no menu at
+	// all, so selecting it offered nothing to read. A real controller does the
+	// opposite: the Nucleus template the Centra simulator ships draws a Unit
+	// Setup page of exactly this shape.
+	s := newServed(t, testTree())
+
+	gw := s.p.model.port(0)
+	if gw == nil {
+		t.Fatal("the gateway has no port")
+	}
+	lines := gw.menu(true)
+	if len(lines) == 0 {
+		t.Fatal("the gateway has no menu")
+	}
+
+	want := map[string]bool{
+		"Ethernet": false, "IP Address": false, "IPShare Port": false,
+		"RollCall": false, "Generation": false, "Cards": false,
+		"Software": false, "Version": false,
+	}
+	for _, l := range lines {
+		if _, ok := want[l.Text]; ok {
+			want[l.Text] = true
+		}
+		// Nothing here may be written: a connector that let a panel change
+		// where it listens would answer the question by cutting the wire.
+		if l.Command != 0 && !l.Style.Disabled() {
+			t.Errorf("%q is writable on the gateway page", l.Text)
+		}
+	}
+	for name, seen := range want {
+		if !seen {
+			t.Errorf("the gateway page does not show %q", name)
+		}
+	}
+}
+
+func TestTheGatewayIsNotACardSlot(t *testing.T) {
+	// It has a page, but a port list enumerates card slots and the gateway is
+	// not one. Putting it in the order would have every client counting a card
+	// that is not there.
+	s := newServed(t, testTree())
+
+	for _, n := range s.p.model.portNumbers() {
+		if n == 0 {
+			t.Error("the gateway appears in the card enumeration")
+		}
+	}
+	if _, ok := s.p.templates[0]; !ok {
+		t.Error("the gateway serves no template")
+	}
+}
+
+func TestTheGatewayPageSaysWhereItIsListening(t *testing.T) {
+	for _, tc := range []struct {
+		addr string
+		host string
+		port int
+	}{
+		{"", "not listening", 0},
+		{"10.6.239.107:2061", "10.6.239.107", 2061},
+		{"[::]:2061", "all interfaces", 2061},
+		{":2061", "all interfaces", 2061},
+		{"[fe80::1]:2050", "fe80::1", 2050},
+		{"nonsense", "nonsense", 0},
+		{"host:notaport", "host", 0},
+	} {
+		host, port := splitListen(tc.addr)
+		if host != tc.host || port != tc.port {
+			t.Errorf("splitListen(%q) = %q,%d; want %q,%d",
+				tc.addr, host, port, tc.host, tc.port)
+		}
+	}
+}
+
+func TestTheGatewayPageIsRefreshedWhenRead(t *testing.T) {
+	// It shows what the connector is doing now, not what it was doing when the
+	// tree loaded.
+	s := newServed(t, testTree())
+	gw := s.p.model.port(0)
+
+	s.p.mu.Lock()
+	s.p.addr = "10.6.239.107:2061"
+	s.p.mu.Unlock()
+	s.p.refreshGateway()
+
+	v, ok := gw.value(cmdGatewayAddress)
+	if !ok || v.Text != "10.6.239.107" {
+		t.Errorf("address = %q", v.Text)
+	}
+	if v, ok := gw.value(cmdGatewayPort); !ok || v.Val != 2061 {
+		t.Errorf("port = %d", v.Val)
+	}
+	if v, ok := gw.value(cmdGatewayCards); !ok || v.Val != 2 {
+		t.Errorf("cards = %d, want the two the tree has", v.Val)
+	}
+	if v, ok := gw.value(cmdGatewayGeneration); !ok || v.Text != "32-bit" {
+		t.Errorf("generation = %q", v.Text)
+	}
+
+	// And it follows the frame it belongs to.
+	s.p.SetLongStrings(false)
+	s.p.refreshGateway()
+	if v, _ := gw.value(cmdGatewayGeneration); v.Text != "16-bit" {
+		t.Errorf("generation after the frame changed = %q", v.Text)
+	}
+}
+
+func TestRefreshingAGatewayThatIsNotThere(t *testing.T) {
+	// A model with no gateway port is not a reason to panic.
+	p := New(testDeps(clock.NewFake(time.Time{})), testTree())
+	p.model.mu.Lock()
+	delete(p.model.ports, 0)
+	p.model.mu.Unlock()
+
+	p.refreshGateway()
+}
+
+func TestReadingTheGatewayPageOverASession(t *testing.T) {
+	// What a panel does when it opens the controller: a session on port zero
+	// and a read of its lines. The page is refreshed as it is read, so the
+	// listening address is the one in force now.
+	s := newServed(t, testTree())
+	s.p.mu.Lock()
+	s.p.addr = "10.6.239.107:2061"
+	s.p.mu.Unlock()
+
+	sess := s.open(0, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	reply, err := sess.Do(context.Background(), codec.MsgGetValue,
+		codec.GetValue{Command: cmdGatewayAddress}.AppendTo(nil))
+	if err != nil {
+		t.Fatalf("read the gateway's address: %v", err)
+	}
+	v, err := codec.DecodeValue(reply.Payload)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if v.Text != "10.6.239.107" {
+		t.Errorf("the page says %q, want where it is listening", v.Text)
 	}
 }
