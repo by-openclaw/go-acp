@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"dhs/internal/tsl/codec"
 )
@@ -111,11 +112,16 @@ func (s *udpSender) sendBytes(payload []byte) error {
 	}
 	var firstErr error
 	for _, d := range dests {
+		// Time the write so the connector reports send latency (footprint)
+		// like every other connector, instead of a permanently-zero
+		// histogram. For a push provider the datagram write IS the
+		// per-request work; encode happens once, upstream in encodeAndSend*.
+		start := time.Now()
 		if _, err := conn.WriteToUDP(payload, d); err == nil {
 			// One count per destination actually written to: fanning one
 			// UMD packet to eight receivers really is eight datagrams.
 			if s.met != nil {
-				s.met.ObserveTx(len(payload), 0)
+				s.met.ObserveTx(len(payload), time.Since(start))
 			}
 		} else if firstErr == nil {
 			firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
