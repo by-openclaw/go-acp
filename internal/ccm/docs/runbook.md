@@ -86,6 +86,12 @@ Open `http://HOST:8080/x-dhs/` in a browser for the landing (identity, the API t
 - **No change notifications** — the `/ws` change stream (§13) is not served by this emulation yet; it is JWT-gated on the real device and a later unit.
 - **Metrics show zero** — pass `--metrics-addr`; every response records size and handler latency, so `dhs metrics show --url http://HOST:9100/snapshot.json` reports real traffic.
 
-## 7. Idempotency (ADR-0007)
+## 7. Idempotency (ADR-0007) — partly TODO
 
-`dhs producer ccm ensure --state present|absent` converges the serving instance the same way as every other producer (keyed on `--pidfile`); run-twice yields no change. The replay is deterministic: the same `dm-tree.json` serves the same bytes every time, so two exports of the same firmware diff to nothing.
+The replay itself is deterministic: the same `dm-tree.json` serves the same bytes every time, so two exports of the same firmware diff to nothing.
+
+**Not yet wired for `producer ccm`:** the generic `ensure --state present|absent`, `stop` and `status` verbs, and the `--pidfile` they key on. Today only `serve` exists; stop it with Ctrl-C / SIGTERM. Wiring those verbs (and `--pidfile` on `serve`) is the next CCM unit — until then an Ansible play manages the process directly rather than through `dhs producer ccm ensure`.
+
+## 8. Matrix (§17) — available in CCM, out of scope for dhs by decision
+
+The real device exposes 16 `/v1/matrix/...` paths (audio, data, video × `info`, `current`, `main`, `backup`); `main`/`backup` accept `PUT`. dhs deliberately does **not** implement routing over CCM — routing stays with Cerebrum (the Route Master) and the router protocols (`spec-review-0v1.md`, owner decision 2026-08-22). The emulator is a replay: if a capture contains matrix resources it serves them, and a `PUT` to `main`/`backup` is stored like any other resource write — but **no routing semantics run** (no crosspoint logic, `current` is not recomputed). Treat matrix on the emulator as read-back-what-you-wrote, not as a router.
