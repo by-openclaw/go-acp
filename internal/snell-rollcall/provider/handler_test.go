@@ -208,8 +208,11 @@ func TestDeviceListEnumeratesTheFrame(t *testing.T) {
 	if err != nil {
 		t.Fatalf("walk: %v", err)
 	}
-	if len(names) != 2 || names[0] != "card1" || names[1] != "card2" {
-		t.Errorf("device list = %v, want [card1 card2]", names)
+	// The gateway first, then its cards, which is what both devices we can
+	// measure do: the IQ frame reports 0000-0C-00 before its cards and the
+	// Centra 0000-08-00 before its units.
+	if len(names) != 3 || names[0] != "dhs rollcall" || names[1] != "card1" || names[2] != "card2" {
+		t.Errorf("device list = %v, want [dhs rollcall card1 card2]", names)
 	}
 }
 

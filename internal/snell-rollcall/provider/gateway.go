@@ -74,25 +74,40 @@ func newGatewayPort(id codec.ID) *port {
 	str := codec.StyleEditString | codec.StyleDisabled
 	num := codec.StyleNumber | codec.StyleDisabled
 
-	add("Ethernet", "ethernet", codec.StyleList, 0, 0, 0)
-	add("IP Address", "ethernet.address", str, cmdGatewayAddress, 0, codec.MaxLongString-1)
-	add("IPShare Port", "ethernet.port", num, cmdGatewayPort, 0, 65535)
+	// A container's step is the size of its whole subtree, not the count of
+	// its immediate children: a client walks it as a span, and anything else
+	// nests the page wrongly. Written as groups so the spans cannot drift from
+	// what is under them.
+	group := func(name, path string, lines func()) {
+		idx := len(p.lines)
+		add(name, path, codec.StyleList, 0, 0, 0)
+		lines()
+		p.lines[idx].Step = uint32(len(p.lines) - idx - 1)
+	}
 
-	add("RollCall", "rollcall", codec.StyleList, 0, 0, 0)
-	add("Unit", "rollcall.unit", num, cmdGatewayUnit, 0, 255)
-	add("Generation", "rollcall.generation", str, cmdGatewayGeneration, 0, codec.MaxLongString-1)
-	add("Cards", "rollcall.cards", num, cmdGatewayCards, 0, 255)
+	group("Ethernet", "ethernet", func() {
+		add("IP Address", "ethernet.address", str, cmdGatewayAddress, 0, codec.MaxLongString-1)
+		add("IPShare Port", "ethernet.port", num, cmdGatewayPort, 0, 65535)
+	})
 
-	add("Software", "software", codec.StyleList, 0, 0, 0)
-	add("Version", "software.version", str, cmdGatewayVersion, 0, codec.MaxLongString-1)
-	add("Build", "software.build", str, cmdGatewayBuild, 0, codec.MaxLongString-1)
-	add("Built", "software.built", str, cmdGatewayBuilt, 0, codec.MaxLongString-1)
-	add("Go", "software.go", str, cmdGatewayGo, 0, codec.MaxLongString-1)
+	group("RollCall", "rollcall", func() {
+		add("Unit", "rollcall.unit", num, cmdGatewayUnit, 0, 255)
+		add("Generation", "rollcall.generation", str, cmdGatewayGeneration, 0, codec.MaxLongString-1)
+		add("Cards", "rollcall.cards", num, cmdGatewayCards, 0, 255)
+	})
 
-	add("Status", "status", codec.StyleList, 0, 0, 0)
-	add("Protocol", "status.protocol", str, cmdGatewayProtocol, 0, codec.MaxLongString-1)
-	add("Uptime", "status.uptime", str, cmdGatewayUptime, 0, codec.MaxLongString-1)
-	add("Compliance Events", "status.events", num, cmdGatewayEvents, 0, 0x7FFFFFFF)
+	group("Software", "software", func() {
+		add("Version", "software.version", str, cmdGatewayVersion, 0, codec.MaxLongString-1)
+		add("Build", "software.build", str, cmdGatewayBuild, 0, codec.MaxLongString-1)
+		add("Built", "software.built", str, cmdGatewayBuilt, 0, codec.MaxLongString-1)
+		add("Go", "software.go", str, cmdGatewayGo, 0, codec.MaxLongString-1)
+	})
+
+	group("Status", "status", func() {
+		add("Protocol", "status.protocol", str, cmdGatewayProtocol, 0, codec.MaxLongString-1)
+		add("Uptime", "status.uptime", str, cmdGatewayUptime, 0, codec.MaxLongString-1)
+		add("Compliance Events", "status.events", num, cmdGatewayEvents, 0, 0x7FFFFFFF)
+	})
 
 	return p
 }

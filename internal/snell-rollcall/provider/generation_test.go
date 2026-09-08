@@ -8,6 +8,7 @@ import (
 
 	"dhs/internal/clock"
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/session"
 )
 
 // A session negotiates one generation and keeps it. A message from the other
@@ -371,5 +372,65 @@ func TestTheGatewayPageReportsUptime(t *testing.T) {
 
 	if got := s.p.uptime(); got != "1m30s" {
 		t.Errorf("uptime = %q, want 1m30s", got)
+	}
+}
+
+func TestTheGatewayPageNests(t *testing.T) {
+	// A container's step is the size of its whole subtree, not the count of
+	// its immediate children. Written without one, every group was empty and a
+	// client drew the page flat.
+	s := newServed(t, testTree())
+	lines := s.p.model.port(0).menu(true)
+
+	spans := map[string]uint32{}
+	for _, l := range lines {
+		if l.Command == 0 {
+			spans[l.Text] = l.Step
+		}
+	}
+	for name, want := range map[string]uint32{
+		"Ethernet": 2, "RollCall": 3, "Software": 4, "Status": 3,
+	} {
+		if spans[name] != want {
+			t.Errorf("%q spans %d lines, want %d", name, spans[name], want)
+		}
+	}
+
+	// And every line under a group is inside its span.
+	for i, l := range lines {
+		if l.Command != 0 {
+			continue
+		}
+		for j := i + 1; j <= i+int(l.Step) && j < len(lines); j++ {
+			if lines[j].Command == 0 {
+				t.Errorf("%q contains the container %q", l.Text, lines[j].Text)
+			}
+		}
+	}
+}
+
+func TestTheProviderListsItself(t *testing.T) {
+	// Both devices we can measure put themselves at the head of their own port
+	// list: the IQ frame reports 0000-0C-00 before its cards, the Centra
+	// 0000-08-00 before its units. A provider that left itself out was the
+	// only thing on the network doing so.
+	s := newServed(t, testTree())
+	sess := s.open(0, codec.SvcMenus|codec.SvcMap)
+
+	var names []string
+	err := session.Walk(context.Background(), sess, codec.MsgGetDevList, []byte{0, 0},
+		func(_ int, f codec.Frame) error {
+			info, err := codec.DecodeDeviceInfo(f.Payload)
+			if err != nil {
+				return err
+			}
+			names = append(names, info.ID.Name)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("port list: %v", err)
+	}
+	if len(names) != 3 || names[0] != "dhs rollcall" {
+		t.Errorf("port list = %v, want the gateway then its cards", names)
 	}
 }

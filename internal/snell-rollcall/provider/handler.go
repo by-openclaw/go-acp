@@ -360,7 +360,14 @@ func (p *Provider) deviceInfoFor(slot uint8) []byte {
 // deviceList answers the map and port enumerations, which is how a client
 // discovers what is in the frame.
 func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
-	ports := p.model.portNumbers()
+	// The gateway first, then its cards.
+	//
+	// Measured: both devices we can read put themselves at the head of their
+	// own port list — the IQ frame reports 0000-0C-00 before its cards, the
+	// Centra 0000-08-00 before its units. A provider that left itself out was
+	// the only thing on the network doing so, and a client enumerating it by
+	// port list found cards and no controller.
+	ports := append([]uint8{0}, p.model.portNumbers()...)
 	sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
 
 	items := make([][]byte, 0, len(ports))
@@ -368,26 +375,13 @@ func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
 		items = append(items, p.deviceInfoFor(n))
 	}
 
-	// The map carries the gateway and everything behind it.
+	// Map and port list now carry the same thing, and both are answered.
 	//
-	// It used to name only the gateway, on the reading that a client walks the
-	// map for units and then asks the unit it found for a port list. Our
-	// consumer does exactly that, so loopback tests agreed with themselves.
-	//
-	// The vendor Control Panel does not. Measured by capturing its traffic: it
-	// opens a map session, reads the map, and if the map holds one device it
-	// asks nothing further - no port list, ever. It then sits on the
-	// connection answering keepalives with an empty tree. The Centra behaves
-	// the way the panel expects, returning all fifteen of its units in the
-	// map.
-	//
-	// So the map is what a client can reach through us, which is the gateway
-	// and its cards. Spec 7.6 says other units see only the gateway and find
-	// modules through the port service; that remains true of the port service,
-	// and both enumerations now answer, so a client of either habit works.
-	if req.Type == codec.MsgGetLocDevMap {
-		items = append([][]byte{p.deviceInfoFor(0)}, items...)
-	}
+	// A vendor Control Panel builds its tree from the map alone: measured, it
+	// reads the map, and a map holding one device ends its interest — no port
+	// list, ever. Our consumer walks the port list. Serving the same content
+	// on both means a client of either habit works, and the gateway is at the
+	// head of it either way.
 	return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, items)
 }
 

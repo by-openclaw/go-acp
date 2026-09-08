@@ -362,11 +362,14 @@
             loop_var: endpoint
             label: "{{ endpoint.name }}"
 
-        - name: The frame has the two cards the fixture describes
+        - name: The frame is the gateway and the two cards the fixture describes
           ansible.builtin.assert:
             that:
-              - contract_nodes.slots | int == 2
-            fail_msg: "The served frame does not match the committed tree."
+              - contract_nodes.slots | int == 3
+            fail_msg: >-
+              The served frame does not match the committed tree. It is three
+              nodes rather than two: a port list names the gateway before its
+              cards, which is what both devices we can measure do.
 
         - name: Walk the first card
           ansible.builtin.command:
