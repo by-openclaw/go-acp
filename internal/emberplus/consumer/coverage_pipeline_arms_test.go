@@ -108,7 +108,7 @@ func TestProcessParameter_StreamIDCollision(t *testing.T) {
 		{Parameter: &glow.Parameter{Number: 2, Identifier: "b", Type: glow.ParamTypeInteger,
 			HasStreamIdentifier: true, StreamIdentifier: 5}},
 	})
-	if p.profile.Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
+	if p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
 		t.Error("expected StreamIDCollisionNoDescriptor compliance event")
 	}
 }

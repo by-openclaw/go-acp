@@ -9,7 +9,6 @@ import (
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 )
 
 // stringObject builds the wire bytes for a String identity object
@@ -61,11 +60,8 @@ func newPluginWithClient(t *testing.T) (*Plugin, *fakeTransport, uint32) {
 		ReceiveTimeout: 50 * time.Millisecond,
 	})
 	c.nextMTID = 1000
-	p := &Plugin{
-		logger:  slog.Default(),
-		client:  c,
-		profile: &compliance.Profile{},
-	}
+	// Base gives every connector a profile without a constructor call.
+	p := &Plugin{logger: slog.Default(), client: c}
 	return p, ft, 1000
 }
 
@@ -95,7 +91,7 @@ func TestGetIdentity_HappyPath(t *testing.T) {
 	if id.HwRev != "100" {
 		t.Fatalf("HwRev = %q, want 100", id.HwRev)
 	}
-	if got := p.profile.Snapshot()[IdentityNAK]; got != 0 {
+	if got := p.ComplianceProfile().Snapshot()[IdentityNAK]; got != 0 {
 		t.Fatalf("IdentityNAK fired %d times, want 0", got)
 	}
 }
@@ -113,7 +109,7 @@ func TestGetIdentity_CardLabelNAK_FiresComplianceEvent(t *testing.T) {
 	if !errors.Is(err, consumer.ErrIdentityUnresolved) {
 		t.Fatalf("err = %v, want ErrIdentityUnresolved", err)
 	}
-	if got := p.profile.Snapshot()[IdentityNAK]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[IdentityNAK]; got != 1 {
 		t.Fatalf("IdentityNAK fired %d times, want 1", got)
 	}
 }
@@ -140,7 +136,7 @@ func TestGetIdentity_PartialIdentity_OnSwRevNAK(t *testing.T) {
 		t.Fatalf("partial identity wrong: %+v", id)
 	}
 	// Soft-NAK must NOT trip the IdentityNAK compliance event.
-	if got := p.profile.Snapshot()[IdentityNAK]; got != 0 {
+	if got := p.ComplianceProfile().Snapshot()[IdentityNAK]; got != 0 {
 		t.Fatalf("IdentityNAK fired %d times, want 0", got)
 	}
 }

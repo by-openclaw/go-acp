@@ -311,7 +311,7 @@ func TestSplitFormatUnit(t *testing.T) {
 // masked item), the legacy-enumeration-derived path, and the empty
 // (nil) path.
 func TestEnumMapToCanonical(t *testing.T) {
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	if got := p.enumMapToCanonical(nil, ""); got != nil {
 		t.Errorf("empty = %v, want nil", got)
@@ -332,14 +332,14 @@ func TestEnumMapToCanonical(t *testing.T) {
 	if len(legacy) != 3 || legacy[1].Key != "b" || !legacy[1].Masked {
 		t.Errorf("legacy = %+v", legacy)
 	}
-	if got := p.profile.Snapshot()[EnumMapDerived]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[EnumMapDerived]; got != 1 {
 		t.Errorf("enum_map_derived = %d, want 1", got)
 	}
 
 	// Both present + count mismatch → EnumDoubleSource.
-	p2 := &Plugin{profile: &compliance.Profile{}}
+	p2 := &Plugin{}
 	p2.enumMapToCanonical(map[int64]string{0: "x"}, "x\ny")
-	if got := p2.profile.Snapshot()[EnumDoubleSource]; got != 1 {
+	if got := p2.ComplianceProfile().Snapshot()[EnumDoubleSource]; got != 1 {
 		t.Errorf("enum_double_source = %d, want 1", got)
 	}
 }

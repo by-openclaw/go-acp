@@ -425,10 +425,10 @@ func TestProcessParameter_StreamIDReannounceSamePath(t *testing.T) {
 			Type: glow.ParamTypeInteger, HasStreamIdentifier: true, StreamIdentifier: 5}}
 	}
 	p.handleElements([]glow.Element{mk()})
-	before := p.profile.Snapshot()[StreamIDCollisionNoDescriptor]
+	before := p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor]
 	// Re-announce the SAME parameter (key "1") → isNewPath false → no Note.
 	p.handleElements([]glow.Element{mk()})
-	after := p.profile.Snapshot()[StreamIDCollisionNoDescriptor]
+	after := p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor]
 	if after != before {
 		t.Errorf("re-announce of same stream path must not re-fire collision: %d → %d", before, after)
 	}

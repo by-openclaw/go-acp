@@ -15,7 +15,6 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
-	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -41,10 +40,7 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
 	p := NewPlugin(deps.Logger)
-	if deps.Metrics != nil {
-		p.met = deps.Metrics
-	}
-	p.Configure(deps.Net, defaultKeepAliveTimeout)
+	p.Init(deps, defaultKeepAliveTimeout)
 	return p
 }
 
@@ -55,13 +51,9 @@ type Plugin struct {
 	// Health supplies SessionHealth. Inherited, not reimplemented: what is
 	// Cerebrum's is the stale window — the keep-alive timeout it already
 	// judges a dead link by — and the Session as the time source.
-	consumer.Health
+	consumer.Base
 
 	logger *slog.Logger
-
-	// met counts every XML document in and out. Supplied rather than
-	// created, so the process scrapes every connector from one place.
-	met *metrics.Connector
 
 	// Username / Password come from CLI flags or the
 	// DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS env vars. Optional —
@@ -105,14 +97,11 @@ func NewPlugin(logger *slog.Logger) *Plugin {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	// The connector is created here rather than only in the factory: the
-	// CLI builds this plugin directly with NewPlugin, so a nil default
-	// would leave every command-line session uncounted. Deps.Metrics
-	// overrides it in Factory.New when there is one to share.
-	return &Plugin{
-		logger: logger.With(slog.String("plugin", "cerebrum-nb")),
-		met:    metrics.NewConnector(),
-	}
+	// No connector to create here any more: Base supplies one on demand,
+	// which is what NewPlugin needed. The CLI builds this plugin directly
+	// rather than through the factory, so a field that only the factory
+	// filled left every command-line session uncounted.
+	return &Plugin{logger: logger.With(slog.String("plugin", "cerebrum-nb"))}
 }
 
 // Connect dials the Cerebrum WebSocket endpoint. Cerebrum has no path
@@ -159,7 +148,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
 		Enable:   p.UseTLS,
 		Insecure: p.InsecureSkipVerify,
-	}, rec, p.met)
+	}, rec, p.Metrics())
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err
@@ -201,9 +190,7 @@ func (p *Plugin) Disconnect() error {
 	sess := p.session
 	p.session = nil
 	p.Closed()
-	if p.met != nil {
-		p.logger.Info("cerebrum-nb session metrics", slog.String("summary", p.met.Summary()))
-	}
+	p.logger.Info("cerebrum-nb session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.mu.Unlock()
 	if sess == nil {
 		return nil
@@ -304,15 +291,6 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 // canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
 // Routing/category/salvo subscriptions keep their precise §5 addressing
 // through Session.Subscribe<X> (the Matrix-template half).
-
-// Metrics returns the connector's counter set — XML documents and bytes in
-// and out, plus errors. Satisfies the optional interface the CLI
-// type-asserts for --metrics-addr.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.met
-}
 
 // sessionTimes adapts a Session to consumer.RxTxTimes.
 //

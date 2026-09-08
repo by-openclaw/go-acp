@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
 )
 
@@ -12,8 +11,9 @@ import (
 // connector exists but no rx frame has been observed yet: a freshly-dialed
 // session whose LastRxAt is still zero must report offline.
 func TestIsOnlineWithin_MetricsButNoRx(t *testing.T) {
+	// Base always supplies a connector, so this is now simply a plugin
+	// that has never received a frame.
 	p := freshPlugin()
-	p.metricsConn = metrics.NewConnector() // connected, but never received a frame
 	if p.IsOnlineWithin(1 * time.Second) {
 		t.Error("IsOnlineWithin true with zero LastRxAt; want false")
 	}

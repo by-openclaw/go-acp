@@ -329,15 +329,11 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 			}
 			if isMasked(lbl) {
 				entry.Masked = true
-				if p.profile != nil {
-					p.profile.Note(EnumMaskedItem)
-				}
+				p.ComplianceProfile().Note(EnumMaskedItem)
 			}
 			entries = append(entries, entry)
 		}
-		if p.profile != nil {
-			p.profile.Note(EnumMapDerived)
-		}
+		p.ComplianceProfile().Note(EnumMapDerived)
 		return entries
 	}
 
@@ -350,9 +346,7 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 		}
 		if isMasked(k) {
 			entry.Masked = true
-			if p.profile != nil {
-				p.profile.Note(EnumMaskedItem)
-			}
+			p.ComplianceProfile().Note(EnumMaskedItem)
 		}
 		entries = append(entries, entry)
 	}
@@ -362,10 +356,10 @@ func (p *Plugin) enumMapToCanonical(glowMap map[int64]string, enumeration string
 	// Both forms present — fires only when they disagree on count,
 	// which we check via a quick length compare against the legacy
 	// enumeration split.
-	if enumeration != "" && p.profile != nil {
+	if enumeration != "" {
 		legacy := strings.Split(enumeration, "\n")
 		if len(legacy) != len(entries) {
-			p.profile.Note(EnumDoubleSource)
+			p.ComplianceProfile().Note(EnumDoubleSource)
 		}
 	}
 	return entries
@@ -388,14 +382,10 @@ func (p *Plugin) buildParameter(e *treeEntry) *canonical.Parameter {
 	if typeName == "" || typeName == "null" {
 		if inferred := inferParamType(pr.Value); inferred != "" {
 			typeName = inferred
-			if p.profile != nil {
-				p.profile.Note(FieldInferred)
-			}
+			p.ComplianceProfile().Note(FieldInferred)
 		} else {
 			typeName = canonical.ParamString
-			if p.profile != nil {
-				p.profile.Note(FieldInferred)
-			}
+			p.ComplianceProfile().Note(FieldInferred)
 		}
 	}
 

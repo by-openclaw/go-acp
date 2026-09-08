@@ -25,8 +25,6 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
-	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
 	session "dhs/internal/probel-sw02p/session"
 	"dhs/internal/transport"
@@ -71,8 +69,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New constructs a fresh consumer plugin bound to the injected dependencies.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
-	p.Configure(deps.Net, DefaultOnlineStaleAfter)
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, DefaultOnlineStaleAfter)
 	return p
 }
 
@@ -117,7 +115,7 @@ type Plugin struct {
 	// Health supplies SessionHealth. Inherited, not reimplemented: the
 	// only protocol-specific parts are the stale window and the metrics
 	// Connector this consumer already counts every frame through.
-	consumer.Health
+	consumer.Base
 
 	logger *slog.Logger
 
@@ -126,15 +124,10 @@ type Plugin struct {
 	// address) and a test substitutes a fake without a real port.
 	net transport.Net
 
-	// metrics is supplied rather than created, so the process can scrape
-	// every connector from one place.
-	metrics *metrics.Connector
-
-	mu       sync.Mutex
-	host     string
-	port     int
-	client   *session.Client
-	recorder *transport.Recorder
+	mu     sync.Mutex
+	host   string
+	port   int
+	client *session.Client
 
 	// matrixCfg holds caller-supplied matrix shape + bootstrap/keep-
 	// alive knobs. Set via SetMatrixConfig before Connect; defaults
@@ -144,16 +137,6 @@ type Plugin struct {
 	// keepaliveCancel stops the per-session bootstrap + keep-alive
 	// goroutine. Nil unless one is running.
 	keepaliveCancel context.CancelFunc
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
-
-	// metricsConn carries rx/tx counters + error counters. Nil until
-	// Connect fires; callers read via Metrics(). Preserved after
-	// Disconnect so post-mortem summaries are still available.
-	metricsConn *metrics.Connector
 }
 
 // SetMatrixConfig records the caller-supplied matrix shape + poll
@@ -173,15 +156,6 @@ func (p *Plugin) MatrixConfig() MatrixConfig {
 	return p.matrixCfg
 }
 
-// Metrics returns the session-scoped connector metrics. Nil before
-// Connect, non-nil after (preserved across Disconnect). Safe from any
-// goroutine — metrics.Connector is internally synchronised.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.metricsConn
-}
-
 // IsOnline reports whether the plugin considers the matrix alive —
 // true if we have seen any rx frame within DefaultOnlineStaleAfter.
 // Mirrors the canonical.Header.IsOnline flag surfaced by the Ember+
@@ -194,33 +168,11 @@ func (p *Plugin) IsOnline() bool {
 
 // IsOnlineWithin is IsOnline with an explicit staleness threshold.
 func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
-	p.mu.Lock()
-	met := p.metricsConn
-	p.mu.Unlock()
-	if met == nil {
-		return false
-	}
-	snap := met.Snapshot()
+	snap := p.Metrics().Snapshot()
 	if snap.LastRxAt.IsZero() {
 		return false
 	}
 	return time.Since(snap.LastRxAt) < stale
-}
-
-// ComplianceProfile returns the session-scoped compliance profile.
-// Nil before Connect, non-nil after.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
 }
 
 // Connect opens a TCP session to the matrix. Idempotent when called
@@ -240,15 +192,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	prof := &compliance.Profile{}
-	// Normally injected by the factory. A Plugin built directly — tests, and
-	// any caller that predates Deps — still gets a working counter set rather
-	// than a nil Metrics(), which is what this used to guarantee by
-	// constructing its own.
-	met := p.metrics
-	if met == nil {
-		met = metrics.NewConnector()
-	}
+	met := p.Metrics()
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids. Empty in the scaffold;
 	// per-command commits populate the catalogue.
@@ -259,8 +203,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnTx: func(b []byte) { observeTxBytes(met, b) },
 		OnRx: func(b []byte) { observeRxBytes(met, b) },
 	}
-	if p.recorder != nil {
-		rec := p.recorder
+	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
 		cfg.OnTx = func(b []byte) {
@@ -279,8 +222,6 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.client = cli
 	p.host = ip
 	p.port = port
-	p.profile = prof
-	p.metricsConn = met
 	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	p.logger.Info("probel-sw02p connected",
 		slog.String("host", ip),
@@ -301,7 +242,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	cli := p.client
-	met := p.metricsConn
+	met := p.Metrics()
 	cancel := p.keepaliveCancel
 	p.client = nil
 	p.host = ""
