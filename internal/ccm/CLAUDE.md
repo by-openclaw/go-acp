@@ -28,9 +28,14 @@ paths, per-essence matrices, UUID-addressed; `main`/`backup` are two
 independent routing levels (main and backup source per destination —
 the FE has main and backup inputs and outputs; NOT ST 2022-7, which is
 the IP stream `legs` concept), `current` is the read-only effective
-route whose failover rule the spec does not define (ask EVS); the
-emulator stores writes but does not yet run routing semantics — next
-matrix unit. The
+route whose failover rule the spec does not define (ask EVS). LIVE-
+CONFIRMED (2026-09-09): state ids are NOT uuids — each info group
+`{template,type,path,children[]{id,subIds}}` renders `template` with
+`{idx}`/`{subIdsIdx}` to the state key (`IP000-05`), which resolves to
+`children[idx].id` at `path/{id}` (uuid, or integer for Delay Bank —
+schema deviation); `info` has no `levels` array (deviation; levels are
+endpoints). The emulator stores writes but does not yet validate them
+against info or run routing semantics — next matrix unit. The
 `/ws` change stream is a later unit. Operate it per `docs/runbook.md`.
 
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**

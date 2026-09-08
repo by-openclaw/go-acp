@@ -112,10 +112,34 @@ How the CCM matrix relates to the probel / Ember+ (Snell SW-P-08 family) matrix 
 | Planes | one matrix, numbered *levels* = signal planes (video, audio…) | one matrix **per essence** (`/matrix/audio`, `/matrix/data`, `/matrix/video`) |
 | `main` / `backup` | no equivalent | two independent **routing levels**: each destination has a main source and a backup source (the Neuron front end has main and backup inputs and outputs; the backup level routes a source to the output's backup side). Named, writable, strings. **Not** ST 2022-7 — that is the IP stream `legs` concept, unrelated to the matrix. |
 | `current` | tally / read-back | the effective route per destination, read-only; how it is derived from main/backup (failover rule) is **not in the spec** — open question for EVS |
-| State | crosspoint tally per level | `MatrixState`: **dst-uuid → src-uuid** map (multi-level extended form) |
-| Info | matrix size / labels | `MatrixInfo{description, version, sources[], destinations[]}`, entries as path refs or inline, `slot_type` for mixed essences |
+| State | crosspoint tally per level | `MatrixState`: a flat **dst → src** map per level endpoint. **The ids are not uuids**: they are each group's `template` rendered with `{idx}` (child index, 3 digits) and `{subIdsIdx}` (channel, 2 digits), e.g. `IP000-05`, `EM003-12`, `DB255-01` |
+| Info | matrix size / labels | `MatrixInfo{description, version, sources[], destinations[]}` where each entry is a **group** `{template, type, path, children[]{id, subIds}}`. **This is the link**: a state id resolves through its group → `children[idx].id` (the object uuid — or an integer id for internal resources) → the object at `path/{id}`, channel `subIdsIdx` |
 | Write | set crosspoint | `PUT`/`PATCH` a level's map → **202**, confirm via `current` |
 
-So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map). The mapping is cleaner than it first looks: the essence matrices (`audio`, `video`, `data`…) are separate canonical **matrices** (`matrix_id` as a string identifier), `main`/`backup` are canonical **levels** (string names — our grammar already stores levels as strings), and `current` is the read-only **tally** level. The one thing the canonical entity must grow is **UUID-keyed destination/source ids** (with `slots` expanding a stream into its channels), as NMOS already needs.
+**Worked samples, confirmed live on the BRIDGE 7.0.2 (2026-09-09)** — the link that could not be made before, made explicit. Two real routes from `/matrix/audio/current`:
+
+```
+route  EM000-00  <-  IP000-00        (embedder channel fed by an IP receiver channel)
+  destination EM000-00 -> group type=Embedder    template=EM{idx}-{subIdsIdx}  idx=0 channel=00
+                          children[0] = {id: 619811ac-96bc-473f-a90b-cc7c31470a00, subIds: 16}
+                          GET /api/v1/processing/video/channels/619811ac-…   -> uuid 619811ac-…  (video channel; no name field)
+  source      IP000-00 -> group type=IP          template=IP{idx}-{subIdsIdx}  idx=0 channel=00
+                          children[0] = {id: cd17dc08-f637-4b0b-a221-4e6a9d0c9530, subIds: 16}
+                          GET /api/v1/io/ip/receivers/audio/cd17dc08-…        -> uuid cd17dc08-…  name "Input Audio Stream 1"
+
+route  IP000-05  <-  DM000-05        (IP sender channel 5 fed by de-embedder channel 5)
+  destination IP000-05 -> group type=IP          template=IP{idx}-{subIdsIdx}  idx=0 channel=05
+                          children[0] = {id: cc0e77f7-966a-41a1-a054-8c02d480b829, subIds: 16}
+                          GET /api/v1/io/ip/senders/audio/cc0e77f7-…          -> uuid cc0e77f7-…  name "Output Audio Stream 1"  channels=16
+  source      DM000-05 -> group type=De-embedder template=DM{idx}-{subIdsIdx}  idx=0 channel=05
+                          children[0] = {id: 619811ac-96bc-473f-a90b-cc7c31470a00, subIds: 16}
+                          GET /api/v1/processing/video/channels/619811ac-…   -> the SAME video channel object as the embedder above
+```
+
+Reading it: the state never carries a uuid. `info` tells you, per group, the `template`, the `path` and the ordered `children`; render the template with the child index and channel to get the state id, or parse a state id back (`\d+` for each placeholder) to reach `children[idx].id` and `GET path/{id}`. One video-channel object appears in two groups — as a **De-embedder source** and an **Embedder destination** — and processing objects carry no `name` (only io streams do). The identity at `/self` is nested: `app.productName` / `app.productVersion` / `app.modelVersion`.
+
+Not every matrix is multi-level: `data/output` and `video/output` answer `404` for `main`/`backup` (single level — `current` only); `audio`, `data/path`, `video/path` have all three. The `{idx}` zero-pad width is per matrix (`IP000`, `MA003` on audio; `IP00`, `PATH00` on data/path) — parse with `\d+`; the rendering width rule is unconfirmed and is a question for EVS. These captures live under `internal/ccm/codec/testdata/live/BRIDGE@7.0.2/` as the real oracle. The audio matrix has four source groups (IP receivers ×144, De-embedder ×32, Delay Bank ×256, MADI inputs ×4) and four destination groups (IP senders, Embedder, Delay Bank, MADI outputs); routes cross groups (`EM000-00 ← IP000-00`). The same rendered key can name a receiver (as a value) and a sender (as a key) — the side disambiguates. Firmware deviations from the paper/schema, recorded as compliance events not worked around: `info` carries **no `levels`** array (levels exist only as the `current`/`main`/`backup` endpoints), and Delay-Bank `children[].id` is the **integer `0`** where the schema says string.
+
+So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map). The essence matrices (`audio`, `video`, `data/output`, `data/path`, `video/output`, `video/path`) are separate canonical **matrices** (`matrix_id` as a string identifier), `main`/`backup` are canonical **levels** (string names), and `current` is the read-only **tally** level. What the canonical entity must grow: a destination/source id that is a **resolved tuple** — `(group type, object uuid or int id, channel)` — with the object's `name` fetched from `path/{id}`; the template-rendered key is the wire form, the tuple is the model. The emulator validates every written key/value by rendering the group templates over `info.children` (a key that renders to no child is a `400`), and the consumer view shows names, not `IP000-05`.
 
 **Emulator today:** a `PUT` to `main`/`backup` is stored like any resource write, but **`current` is not recomputed** — routing semantics are the next matrix unit (see the TODO list), not yet implemented. Until then treat matrix on the emulator as read-back-what-you-wrote.
