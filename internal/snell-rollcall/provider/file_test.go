@@ -90,8 +90,8 @@ func names(zr *zip.Reader) []string {
 func TestTemplateIsTheSameBytesEveryTime(t *testing.T) {
 	// A client caches the archive by checksum. Rebuilding it must not produce
 	// different bytes for the same tree, or every restart re-fetches it.
-	first := buildTemplate(buildModel(testTree(), "dhs rollcall"))
-	second := buildTemplate(buildModel(testTree(), "dhs rollcall"))
+	first := buildTemplate(buildModel(testTree(), "dhs rollcall").port(1))
+	second := buildTemplate(buildModel(testTree(), "dhs rollcall").port(1))
 
 	if !bytes.Equal(first, second) {
 		t.Error("two builds of one tree produced different archives")
@@ -417,7 +417,7 @@ func TestTemplateDrawsLinesThatNameThemselvesOddly(t *testing.T) {
 		},
 	}
 
-	body := buildTemplate(buildModel(&canonical.Export{Root: root}, "dhs rollcall"))
+	body := buildTemplate(buildModel(&canonical.Export{Root: root}, "dhs rollcall").port(1))
 	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 	if err != nil {
 		t.Fatalf("not an archive: %v", err)
@@ -436,4 +436,62 @@ func TestTemplateDrawsLinesThatNameThemselvesOddly(t *testing.T) {
 	if !strings.Contains(tpl, "mode") {
 		t.Errorf("a read-only line is not drawn:\n%s", tpl)
 	}
+}
+
+func TestEachCardServesItsOwnTemplate(t *testing.T) {
+	// Two cards can carry different menus. One archive for the frame, with its
+	// sections keyed by card type, gave the second card the first one's page —
+	// and a panel drew the first card's controls against the second card's
+	// commands. A real frame serves a template per node, because each node's
+	// file service is rooted at its own directory.
+	s := newServed(t, testTree())
+
+	one := templateOf(t, s, 1)
+	two := templateOf(t, s, 2)
+
+	if one == two {
+		t.Fatal("both cards served the same page")
+	}
+	if !strings.Contains(one, "card1") || strings.Contains(one, "card2") {
+		t.Errorf("card 1 was given the wrong page:\n%s", one)
+	}
+	if !strings.Contains(two, "card2") || strings.Contains(two, "card1") {
+		t.Errorf("card 2 was given the wrong page:\n%s", two)
+	}
+}
+
+func TestANumberCarriesItsPresetButton(t *testing.T) {
+	// The vendor puts a preset beside every scrollbar. A card without them can
+	// be driven but not put back, which is half a control.
+	s := newServed(t, testTree())
+	tpl := templateOf(t, s, 1)
+
+	if !strings.Contains(tpl, ",-14,") {
+		t.Errorf("no preset button on a page with a number:\n%s", tpl)
+	}
+	if !strings.Contains(tpl, ",-9,") {
+		t.Errorf("no scrollbar on a page with a number:\n%s", tpl)
+	}
+}
+
+// templateOf reads one card's template as text.
+func templateOf(t *testing.T, s *served, port uint8) string {
+	t.Helper()
+
+	sess := s.open(port, codec.SvcFile)
+	body := readFile(t, sess, TemplateFileName)
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatalf("port %d: not an archive: %v", port, err)
+	}
+	f, err := zr.File[0].Open()
+	if err != nil {
+		t.Fatalf("port %d: open: %v", port, err)
+	}
+	defer func() { _ = f.Close() }()
+	text, err := io.ReadAll(f)
+	if err != nil {
+		t.Fatalf("port %d: read: %v", port, err)
+	}
+	return string(text)
 }

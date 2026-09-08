@@ -63,7 +63,13 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 	// The Control Panel will not render a device without this. It reads the
 	// archive over the file service before it draws anything, which the menu
 	// service alone cannot supply.
-	p.files[cleanPath(TemplateFileName)] = buildTemplate(p.model)
+	// One template per card, because that is how a real frame serves it: each
+	// node's file service is rooted at its own directory, and two cards can
+	// carry different menus.
+	p.templates = make(map[uint8][]byte)
+	for _, n := range p.model.portNumbers() {
+		p.templates[n] = buildTemplate(p.model.port(n))
+	}
 	return p
 }
 
@@ -79,6 +85,11 @@ type Provider struct {
 
 	mu       sync.RWMutex
 	files    map[string][]byte
+
+	// templates are the per-card archives a Control Panel reads, keyed by
+	// port. They are not in files because a name means a different file
+	// depending on which card was asked.
+	templates map[uint8][]byte
 	listener net.Listener
 	links    map[*session.Link]*linkState
 	addr     string
@@ -434,11 +445,49 @@ func (p *Provider) Files() []string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	out := make([]string, 0, len(p.files))
+	out := make([]string, 0, len(p.files)+1)
 	for name := range p.files {
 		out = append(out, name)
 	}
+	// Every card serves a template, under one name and with different bytes,
+	// so the name belongs in the list once.
+	if len(p.templates) > 0 {
+		out = append(out, cleanPath(TemplateFileName))
+	}
 	return out
+}
+
+// filesAt is what one card offers: everything the provider serves, plus its
+// own template when it has one.
+func (p *Provider) filesAt(port uint8) []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	out := make([]string, 0, len(p.files)+1)
+	for name := range p.files {
+		out = append(out, name)
+	}
+	if _, ok := p.templates[port]; ok {
+		out = append(out, cleanPath(TemplateFileName))
+	}
+	return out
+}
+
+// fileAt resolves a name against one card.
+//
+// Every card serves its own template under the same name, so the name alone
+// does not identify the bytes. Everything else a provider serves is the same
+// whichever card asked.
+func (p *Provider) fileAt(port uint8, name string) ([]byte, bool) {
+	if name == cleanPath(TemplateFileName) {
+		p.mu.RLock()
+		b, ok := p.templates[port]
+		p.mu.RUnlock()
+		if ok {
+			return b, true
+		}
+	}
+	return p.file(name)
 }
 
 func (p *Provider) file(name string) ([]byte, bool) {

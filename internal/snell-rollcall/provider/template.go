@@ -41,6 +41,7 @@ const (
 	ctlValueText = -18 // CM_LEFTTEXT, a value rendered as text
 	ctlScrollbar = -9  // CM_HSCROLLBAR
 	ctlEditBox   = -12 // CM_EDITBOX
+	ctlPreset    = -14 // CM_PRESET, the little button that restores a default
 	ctlCheckbox  = 64  // CM_CHECKBOX
 )
 
@@ -51,12 +52,18 @@ const (
 	tplTopMargin = 14
 	tplLabelX    = 10
 	tplLabelW    = 100
-	tplControlX  = 116
-	tplControlW  = 150
-	tplValueX    = 274
+	tplPresetX   = 116
+	tplPresetW   = 8
+	tplControlX  = 128
+	tplControlW  = 140
+	tplValueX    = 276
 	tplValueW    = 120
 	tplRowH      = 8
 )
+
+// nl is the line ending every template line uses. Built from its code point
+// so the source carries no escape of its own.
+var nl = string(rune(10))
 
 // templateEpoch is the timestamp every entry carries.
 //
@@ -65,34 +72,25 @@ const (
 // client caching by checksum would otherwise re-fetch it on every restart.
 var templateEpoch = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-// buildTemplate renders the served model as the archive a Control Panel reads.
+// buildTemplate renders one card as the archive a Control Panel reads.
 //
 // The format is the vendor's, not ours. It was previously a paragraph of prose
-// in a file called template.txt, on the belief that the real layout was
-// undocumented. It is documented — assets/Protocol/Docs/TemplateDoc.html — and
-// the Centra simulator ships working examples of it. A panel handed the prose
-// answered "Failed to process the template: No pages for the requested command
-// set version and/or RollCall level", because it found an archive, believed
-// it, and could not parse it.
+// in a file called template.txt, on the belief recorded here that "the vendor's
+// binary layout is not documented anywhere we have". It is documented, in
+// assets/Protocol/Docs/TemplateDoc.html, and the Centra simulator ships working
+// examples: every one of their TEMPLATE.ZIP archives holds exactly one entry
+// called Template.tpl.
 //
-// One section per distinct card type and command set, since that is what a
-// section header names, and a panel asks for the pair belonging to the unit it
-// is drawing.
-func buildTemplate(m *model) []byte {
+// One archive per card, because that is how a real frame serves it — each
+// node's file service is rooted at its own directory — and because two cards
+// can carry different menus. Building one archive for the frame and keying its
+// sections by card type gave the second card the first one's page, and a panel
+// drew the first card's controls against the second card's commands.
+func buildTemplate(prt *port) []byte {
 	var body bytes.Buffer
 
-	fmt.Fprintf(&body, "[Version]\nversion=%d\n", templateFormatVersion)
-
-	seen := make(map[[2]uint32]bool)
-	for _, n := range m.portNumbers() {
-		prt := m.port(n)
-		key := [2]uint32{uint32(prt.id.TypeID), uint32(prt.id.Version.CmdSet)}
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		writeTemplatePage(&body, prt)
-	}
+	fmt.Fprintf(&body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
+	writeTemplatePage(&body, prt)
 
 	var out bytes.Buffer
 	zw := zip.NewWriter(&out)
@@ -154,6 +152,10 @@ func writeTemplatePage(body *bytes.Buffer, prt *port) {
 				ctl(label, cmd, 0, ctlValueText, tplControlX, y, tplControlW, tplRowH)
 				break
 			}
+			// "P" restores the line's default. The vendor puts one beside
+			// every scrollbar; a card without them can be driven but not put
+			// back, which is half a control.
+			ctl("P", cmd, 0, ctlPreset, tplPresetX, y, tplPresetW, tplRowH)
 			ctl("New Scrollbar", cmd, 0, ctlScrollbar, tplControlX, y, tplControlW, tplRowH)
 			ctl(label, cmd, 0, ctlValueText, tplValueX, y, tplValueW, tplRowH)
 		default:

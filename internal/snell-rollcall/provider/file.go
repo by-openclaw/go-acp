@@ -68,7 +68,7 @@ func (p *Provider) fileOpen(s *session.Session, st *linkState, req codec.Frame) 
 		return session.RefuseNack("malformed file open")
 	}
 
-	body, ok := p.file(cleanPath(path))
+	body, ok := p.fileAt(req.Dst.Port, cleanPath(path))
 	if !ok {
 		// Not an error at the protocol level: the reply says which errno, and
 		// the client decides. Refusing the message instead would tell it the
@@ -159,13 +159,13 @@ func (p *Provider) fileDir(s *session.Session, req codec.Frame) error {
 		return session.RefuseNack("malformed directory request")
 	}
 
-	names := p.Files()
+	names := p.filesAt(req.Dst.Port)
 	sort.Strings(names)
 
 	now := int32(p.clk.Now().Unix())
 	items := make([][]byte, 0, len(names))
 	for _, name := range names {
-		body, _ := p.file(name)
+		body, _ := p.fileAt(req.Dst.Port, name)
 		entry, _ := codec.DirEntry{
 			Info: codec.FileInfo{
 				Time:   now,
