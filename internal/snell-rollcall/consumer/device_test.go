@@ -75,6 +75,10 @@ type device struct {
 	// calls counts sessions opened.
 	calls int
 
+	// refuseSessionOn is a port that grants no session at all, the way a
+	// connected client does. -1 means every port answers.
+	refuseSessionOn int
+
 	// silentUnlessPorts makes the device ignore a port list that arrives on a
 	// session without the port service, which is what a real IQ frame does.
 	silentUnlessPorts bool
@@ -174,27 +178,28 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		t: t,
 		services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 			codec.SvcFile | codec.SvcMap | codec.SvcLongStr,
-		menus:         make(map[uint8][]codec.MenuItem),
-		values:        make(map[uint8]map[uint32]codec.Value),
-		files:         make(map[string][]byte),
-		identity:      make(map[uint8]codec.ID),
-		ports:         2,
-		blockSize:     0,
-		sessions:      make(map[int16]uint8),
-		sessionSvc:    make(map[int16]codec.Service),
-		nextIdx:       0x30,
-		backChannel:   make(map[int16]bool),
-		oddMenuItem:   -1,
-		oddListItem:   -1,
-		oddDirItem:    -1,
-		emptySlots:    map[uint8]bool{},
-		routers:       map[uint8]*fakeRouter{},
-		failReadAfter: -1,
-		refuse:        make(map[codec.PacketType]bool),
-		garble:        make(map[codec.PacketType]bool),
-		silent:        make(map[codec.PacketType]bool),
-		conn:          conn,
-		done:          make(chan struct{}),
+		menus:           make(map[uint8][]codec.MenuItem),
+		values:          make(map[uint8]map[uint32]codec.Value),
+		files:           make(map[string][]byte),
+		identity:        make(map[uint8]codec.ID),
+		ports:           2,
+		blockSize:       0,
+		sessions:        make(map[int16]uint8),
+		sessionSvc:      make(map[int16]codec.Service),
+		nextIdx:         0x30,
+		backChannel:     make(map[int16]bool),
+		oddMenuItem:     -1,
+		oddListItem:     -1,
+		oddDirItem:      -1,
+		emptySlots:      map[uint8]bool{},
+		routers:         map[uint8]*fakeRouter{},
+		failReadAfter:   -1,
+		refuseSessionOn: -1,
+		refuse:          make(map[codec.PacketType]bool),
+		garble:          make(map[codec.PacketType]bool),
+		silent:          make(map[codec.PacketType]bool),
+		conn:            conn,
+		done:            make(chan struct{}),
 	}
 	go d.serve()
 	return d

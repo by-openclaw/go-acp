@@ -652,3 +652,77 @@ func TestConcurrentPortSessionsKeepOne(t *testing.T) {
 		t.Error("two callers got two port sessions; one of them is leaked")
 	}
 }
+
+// The connected clients of a frame appear in its port list as nodes of their
+// own: a RollCall Control Panel shows up as "142: ControlPanel ... RC32
+// Control Panel" on port 0x8E. A client owes another client no session, so
+// asking one for its identity times out — and reporting an error while holding
+// everything the enumeration already said about it is worse than reporting it.
+
+func TestANodeThatGrantsNoSessionIsStillDescribed(t *testing.T) {
+	h := newHarness(t, func(d *device) {
+		d.ports = 3
+		// The third node refuses a session, the way a connected client does.
+		d.refuseSessionOn = 2
+	})
+
+	// A node that says nothing is waited for, so the caller's deadline is what
+	// ends it. The command line always sets one.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	info, err := h.plugin.GetSlotInfo(ctx, 2)
+	if err != nil {
+		t.Fatalf("a node that grants no session should still be described: %v", err)
+	}
+	if info.Identity["address"] == "" {
+		t.Error("the enumeration knew its address")
+	}
+	if info.Identity["source"] != "enumeration" {
+		t.Errorf("source = %q; a second-hand reading must say so",
+			info.Identity["source"])
+	}
+	if info.Identity["type"] == "" || info.Identity["name"] == "" {
+		t.Errorf("type = %q name = %q, both known from the port list",
+			info.Identity["type"], info.Identity["name"])
+	}
+}
+
+func TestANodeNobodyEnumeratedAndThatGrantsNoSession(t *testing.T) {
+	// Nothing to fall back on, so the session failure is the answer.
+	h := newHarness(t, func(d *device) {
+		d.ports = 2
+		d.refuseSessionOn = 9
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if _, err := h.plugin.GetSlotInfo(ctx, 9); err == nil {
+		t.Error("a slot past the enumeration that will not talk should be an error")
+	}
+}
+
+func TestASecondHandReadingNeedsAnAddressToBeWorthAnything(t *testing.T) {
+	// A list entry that decoded to nothing describes nothing. Reporting a node
+	// with no address would be inventing one, so the session failure stands.
+	h := newHarness(t, nil)
+
+	h.plugin.mu.Lock()
+	h.plugin.nodeCache = &nodeTable{
+		addrs: []codec.Address{{}},
+		info:  []codec.DeviceInfo{{}},
+	}
+	h.plugin.mu.Unlock()
+
+	if _, ok := h.plugin.enumerated(context.Background(), 0); ok {
+		t.Error("an entry with no address should describe nothing")
+	}
+}
+
+func TestNothingIsSecondHandWithoutAConnection(t *testing.T) {
+	p := New(testDeps())
+	if _, ok := p.enumerated(context.Background(), 0); ok {
+		t.Error("there is no enumeration to fall back on")
+	}
+}

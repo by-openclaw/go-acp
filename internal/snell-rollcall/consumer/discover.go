@@ -138,9 +138,21 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 
 	s, err := p.session(ctx, slot)
 	if err != nil {
+		// A node that will not grant a session is not necessarily a fault. The
+		// connected clients of a frame appear in its port list as nodes of
+		// their own - a Control Panel shows up as "142: ControlPanel ... RC32
+		// Control Panel" - and a client owes another client nothing. The
+		// enumeration already said what it is, so say that rather than
+		// nothing.
+		if known, ok := p.enumerated(ctx, slot); ok {
+			return known, nil
+		}
 		return consumer.SlotInfo{}, err
 	}
 
+	// Only a node that will not talk at all is described second-hand. One that
+	// granted a session and then refuses to identify is a different thing, and
+	// substituting the enumeration's word for its own would hide it.
 	idReply, err := s.Do(ctx, codec.MsgGetID, nil)
 	if err != nil {
 		return consumer.SlotInfo{}, err
@@ -189,6 +201,52 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 		info.Identity["category"] = ty.Category.String()
 	}
 	return info, nil
+}
+
+// enumerated builds a slot from what the device's own enumeration said about
+// it, for a node that will not be asked directly.
+//
+// Everything the vendor's panel displays for such a node arrives in the
+// DEVICEINFO_STR of the port list: name, type, version, services and status.
+// Reporting an error while holding that is worse than reporting it, and an
+// operator about to upgrade firmware needs to see every client attached to the
+// frame, not only the ones willing to talk to us.
+//
+// The identity says the reading is second-hand, so nobody mistakes it for a
+// live one.
+func (p *Plugin) enumerated(ctx context.Context, slot int) (consumer.SlotInfo, bool) {
+	t, err := p.nodes(ctx)
+	if err != nil || slot < 0 || slot >= len(t.info) {
+		return consumer.SlotInfo{}, false
+	}
+	d := t.info[slot]
+	if d.Address == (codec.Address{}) {
+		return consumer.SlotInfo{}, false
+	}
+
+	info := consumer.SlotInfo{
+		Slot:     slot,
+		Status:   slotStatus(d.Status.Status),
+		State:    slotState(d.Status.Status),
+		IsOnline: d.Status.Status.Has(codec.StatusPresent),
+		LiveAt:   p.clk.Now(),
+		Identity: map[string]string{
+			"address":  d.Address.Device().String(),
+			"name":     d.ID.Name,
+			"type":     codec.UnitTypeName(d.ID.TypeID),
+			"type_id":  fmt.Sprint(d.ID.TypeID),
+			"version":  d.ID.Version.String(),
+			"services": d.ID.Services.String(),
+			// Second-hand: this node was described by the device that
+			// enumerated it, not asked.
+			"source": "enumeration",
+		},
+	}
+	if ty, ok := codec.LookupUnitType(d.ID.TypeID); ok {
+		info.Identity["product"] = ty.Enum
+		info.Identity["category"] = ty.Category.String()
+	}
+	return info, true
 }
 
 // slotStatus is the numeric the neutral model keeps beside the state.

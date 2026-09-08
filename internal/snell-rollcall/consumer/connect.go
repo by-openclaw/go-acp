@@ -25,7 +25,7 @@ type link struct {
 	// gateway is what the peer said it was during the handshake.
 	gateway codec.DeviceInfo
 
-	mu       sync.Mutex
+	mu sync.Mutex
 	// sessions are keyed by the node's whole address, not by a port: on a
 	// controller the nodes differ by unit, and keying by port would give every
 	// one of them the same session.

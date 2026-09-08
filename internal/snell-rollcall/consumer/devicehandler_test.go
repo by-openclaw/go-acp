@@ -191,6 +191,12 @@ func (d *device) answerCall(f codec.Frame) {
 	}
 
 	d.mu.Lock()
+	if d.refuseSessionOn >= 0 && int(f.Dst.Port) == d.refuseSessionOn {
+		// Says nothing at all, which is what a client does when another
+		// client asks it for a session.
+		d.mu.Unlock()
+		return
+	}
 	refuse := d.refuseLongStrings && conn.Services.LongStrings()
 	if refuse {
 		d.mu.Unlock()
