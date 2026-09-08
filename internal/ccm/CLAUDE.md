@@ -24,9 +24,13 @@ capabilities) lives under `/x-dhs` via the one `HandleExtension` entry
 point and can never change what a controller observes. Matrix (§17) is
 **in scope** (owner reversed the 2026-08-22 exclusion on 2026-09-09 —
 it was made unaware matrix is in the protocol): 16 `/v1/matrix/...`
-paths, per-essence matrices, UUID-addressed, `main`/`backup` are
-ST 2022-7 redundancy levels, `current` read-only; the emulator stores
-writes but does not yet run routing semantics — next matrix unit. The
+paths, per-essence matrices, UUID-addressed; `main`/`backup` are two
+independent routing levels (main and backup source per destination —
+the FE has main and backup inputs and outputs; NOT ST 2022-7, which is
+the IP stream `legs` concept), `current` is the read-only effective
+route whose failover rule the spec does not define (ask EVS); the
+emulator stores writes but does not yet run routing semantics — next
+matrix unit. The
 `/ws` change stream is a later unit. Operate it per `docs/runbook.md`.
 
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**

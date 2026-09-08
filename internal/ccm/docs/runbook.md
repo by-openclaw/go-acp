@@ -110,12 +110,12 @@ How the CCM matrix relates to the probel / Ember+ (Snell SW-P-08 family) matrix 
 |---|---|---|
 | Addressing | numeric `(matrix, level, dst, src)` / OID + `(target, source)` | **UUIDs** for sources, destinations and per-channel slots |
 | Planes | one matrix, numbered *levels* = signal planes (video, audio…) | one matrix **per essence** (`/matrix/audio`, `/matrix/data`, `/matrix/video`) |
-| `main` / `backup` | no equivalent | ST 2022-7 **redundancy paths** for one route — named write levels, not signal planes |
-| `current` | tally / read-back | the effective route, read-only |
+| `main` / `backup` | no equivalent | two independent **routing levels**: each destination has a main source and a backup source (the Neuron front end has main and backup inputs and outputs; the backup level routes a source to the output's backup side). Named, writable, strings. **Not** ST 2022-7 — that is the IP stream `legs` concept, unrelated to the matrix. |
+| `current` | tally / read-back | the effective route per destination, read-only; how it is derived from main/backup (failover rule) is **not in the spec** — open question for EVS |
 | State | crosspoint tally per level | `MatrixState`: **dst-uuid → src-uuid** map (multi-level extended form) |
 | Info | matrix size / labels | `MatrixInfo{description, version, sources[], destinations[]}`, entries as path refs or inline, `slot_type` for mixed essences |
 | Write | set crosspoint | `PUT`/`PATCH` a level's map → **202**, confirm via `current` |
 
-So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map, level names as strings), with two things the canonical entity must grow: **UUID-keyed ids** (as NMOS already needs) and a **redundancy-leg** notion for `main`/`backup`, which today's `level_id` (a signal plane) does not express.
+So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map). The mapping is cleaner than it first looks: the essence matrices (`audio`, `video`, `data`…) are separate canonical **matrices** (`matrix_id` as a string identifier), `main`/`backup` are canonical **levels** (string names — our grammar already stores levels as strings), and `current` is the read-only **tally** level. The one thing the canonical entity must grow is **UUID-keyed destination/source ids** (with `slots` expanding a stream into its channels), as NMOS already needs.
 
 **Emulator today:** a `PUT` to `main`/`backup` is stored like any resource write, but **`current` is not recomputed** — routing semantics are the next matrix unit (see the TODO list), not yet implemented. Until then treat matrix on the emulator as read-back-what-you-wrote.
