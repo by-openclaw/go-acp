@@ -134,3 +134,61 @@ func TestCCMServeBadReadmeFile(t *testing.T) {
 		t.Errorf("err = %v, want a read --readme error", err)
 	}
 }
+
+// ensure / stop / status route to the generic producer implementations, so a
+// CCM device is managed like every other dhs producer (ADR-0007). Each is
+// keyed on the pidfile serve writes; without it they refuse with an
+// operator-sentence error rather than guessing.
+func TestCCMProducerEnsureStopStatusDispatch(t *testing.T) {
+	ctx := context.Background()
+	if err := runCCMProducer(ctx, []string{"ensure", "--state", "present"}); err == nil || !strings.Contains(err.Error(), "--pidfile") {
+		t.Errorf("ensure without --pidfile = %v, want the pidfile-required error", err)
+	}
+	if err := runCCMProducer(ctx, []string{"stop"}); err == nil {
+		t.Error("stop without --pidfile must fail")
+	}
+	// status delegates to metrics show; with no --url it cannot fetch a snapshot.
+	if err := runCCMProducer(ctx, []string{"status"}); err == nil {
+		t.Error("status without --url must fail")
+	}
+}
+
+// serve --pidfile writes the PID on start and removes it on exit, which is
+// what stop/ensure key on.
+func TestCCMServeWritesAndRemovesPidfile(t *testing.T) {
+	pid := filepath.Join(t.TempDir(), "ccm.pid")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- runCCMServe(ctx, []string{"--dm-tree", writeCCMTree(t), "--bind", "127.0.0.1:0", "--pidfile", pid})
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if _, err := os.Stat(pid); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			t.Fatal("pidfile was not written")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("serve returned %v after cancel", err)
+	}
+	if _, err := os.Stat(pid); err == nil {
+		t.Error("pidfile must be removed on exit")
+	}
+}
+
+// A pidfile that cannot be written is an error before serving.
+func TestCCMServeBadPidfilePath(t *testing.T) {
+	err := runCCMServe(context.Background(), []string{
+		"--dm-tree", writeCCMTree(t),
+		"--pidfile", filepath.Join(t.TempDir(), "no-such-dir", "ccm.pid"),
+	})
+	if err == nil || !strings.Contains(err.Error(), "pidfile") {
+		t.Errorf("err = %v, want a write-pidfile error", err)
+	}
+}

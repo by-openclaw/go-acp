@@ -86,12 +86,36 @@ Open `http://HOST:8080/x-dhs/` in a browser for the landing (identity, the API t
 - **No change notifications** — the `/ws` change stream (§13) is not served by this emulation yet; it is JWT-gated on the real device and a later unit.
 - **Metrics show zero** — pass `--metrics-addr`; every response records size and handler latency, so `dhs metrics show --url http://HOST:9100/snapshot.json` reports real traffic.
 
-## 7. Idempotency (ADR-0007) — partly TODO
+## 7. Idempotency (ADR-0007)
 
-The replay itself is deterministic: the same `dm-tree.json` serves the same bytes every time, so two exports of the same firmware diff to nothing.
+Start under your service manager with a pidfile, then converge declaratively — the same generic verbs every dhs producer has:
 
-**Not yet wired for `producer ccm`:** the generic `ensure --state present|absent`, `stop` and `status` verbs, and the `--pidfile` they key on. Today only `serve` exists; stop it with Ctrl-C / SIGTERM. Wiring those verbs (and `--pidfile` on `serve`) is the next CCM unit — until then an Ansible play manages the process directly rather than through `dhs producer ccm ensure`.
+```
+dhs producer ccm serve --dm-tree dm-tree.json --bind :8080 --pidfile /run/dhs-ccm.pid --metrics-addr :9100
+dhs producer ccm ensure --state present --pidfile /run/dhs-ccm.pid   # drift report; run-twice = 0 changes
+dhs producer ccm ensure --state absent  --pidfile /run/dhs-ccm.pid   # graceful stop, idempotent
+dhs producer ccm stop   --pidfile /run/dhs-ccm.pid
+dhs producer ccm status --url http://HOST:9100/snapshot.json
+```
 
-## 8. Matrix (§17) — available in CCM, out of scope for dhs by decision
+`serve --pidfile` writes the PID on start and removes it on exit; `ensure`/`stop` key on that file. `ensure --state present` on a stopped instance reports the fact rather than starting a foreground service — starting is the service manager's job, which is what the Ansible play drives. The replay itself is deterministic: the same `dm-tree.json` serves the same bytes every time, so two exports of the same firmware diff to nothing.
 
-The real device exposes 16 `/v1/matrix/...` paths (audio, data, video × `info`, `current`, `main`, `backup`); `main`/`backup` accept `PUT`. dhs deliberately does **not** implement routing over CCM — routing stays with Cerebrum (the Route Master) and the router protocols (`spec-review-0v1.md`, owner decision 2026-08-22). The emulator is a replay: if a capture contains matrix resources it serves them, and a `PUT` to `main`/`backup` is stored like any other resource write — but **no routing semantics run** (no crosspoint logic, `current` is not recomputed). Treat matrix on the emulator as read-back-what-you-wrote, not as a router.
+## 8. Matrix (§17) — in scope (owner decision reversed 2026-09-09)
+
+The real device exposes 16 `/v1/matrix/...` paths — audio, data, video, each with `info`, `current` (read-only), `main` and `backup` (`PUT`). The 2026-08-22 exclusion was made without knowing matrix was in the protocol; it is now **in scope** for dhs.
+
+How the CCM matrix relates to the probel / Ember+ (Snell SW-P-08 family) matrix DM — the same *kind* of model, mappable onto the canonical matrix entity (ADR-0023), but not identical:
+
+| Aspect | Probel SW-P-08 / Ember+ | CCM §17 |
+|---|---|---|
+| Addressing | numeric `(matrix, level, dst, src)` / OID + `(target, source)` | **UUIDs** for sources, destinations and per-channel slots |
+| Planes | one matrix, numbered *levels* = signal planes (video, audio…) | one matrix **per essence** (`/matrix/audio`, `/matrix/data`, `/matrix/video`) |
+| `main` / `backup` | no equivalent | ST 2022-7 **redundancy paths** for one route — named write levels, not signal planes |
+| `current` | tally / read-back | the effective route, read-only |
+| State | crosspoint tally per level | `MatrixState`: **dst-uuid → src-uuid** map (multi-level extended form) |
+| Info | matrix size / labels | `MatrixInfo{description, version, sources[], destinations[]}`, entries as path refs or inline, `slot_type` for mixed essences |
+| Write | set crosspoint | `PUT`/`PATCH` a level's map → **202**, confirm via `current` |
+
+So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map, level names as strings), with two things the canonical entity must grow: **UUID-keyed ids** (as NMOS already needs) and a **redundancy-leg** notion for `main`/`backup`, which today's `level_id` (a signal plane) does not express.
+
+**Emulator today:** a `PUT` to `main`/`backup` is stored like any resource write, but **`current` is not recomputed** — routing semantics are the next matrix unit (see the TODO list), not yet implemented. Until then treat matrix on the emulator as read-back-what-you-wrote.

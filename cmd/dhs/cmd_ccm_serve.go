@@ -38,8 +38,20 @@ func runCCMProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runCCMServe(ctx, rest)
+	case "ensure":
+		// ADR-0007: converge the serving instance to --state present|absent,
+		// keyed on the --pidfile serve wrote — the same generic implementation
+		// every producer uses, so an Ansible play treats a CCM device like any
+		// other dhs producer.
+		return runProducerEnsure(ctx, "ccm", rest)
+	case "stop":
+		return runProducerStop(ctx, "ccm", rest)
+	case "status":
+		// Live runtime snapshot of a serving instance (frames/bytes/latency),
+		// fetched from its --metrics-addr /snapshot.json via --url.
+		return runMetricsShow(ctx, rest)
 	}
-	return fmt.Errorf("producer ccm: unknown verb %q (expected: serve)", verb)
+	return fmt.Errorf("producer ccm: unknown verb %q (expected: serve | ensure | stop | status)", verb)
 }
 
 func printCCMProducerHelp() {
@@ -50,10 +62,14 @@ USAGE
 
 VERBS
   serve     replay a dm-tree over HTTP(S) as a CCM device a controller can drive
+  ensure    ADR-0007 converge to --state present|absent, keyed on --pidfile
+  stop      signal a 'serve --pidfile PATH' instance to shut down (--pidfile PATH)
+  status    live runtime snapshot of a serving instance (--url http://host:port/snapshot.json)
 
-FLAGS
+FLAGS (serve)
   --dm-tree PATH        device model to replay: resource path -> resource JSON,
                         as written by 'dhs consumer ccm export' (required)
+  --pidfile PATH        write the PID here on start (removed on exit) for stop/ensure
   --api-spec PATH       the device's OpenAPI 3.1 api.yml, served at
                         /api/v1/docs/api.yml (the path a real device uses)
   --bind ADDR           listen address (default :8080; a real device is https :443)
@@ -81,6 +97,7 @@ func runCCMServe(ctx context.Context, args []string) error {
 	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")
 	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json on this address")
 	readmePath := fs.String("readme", "", "Markdown document to serve rendered at /x-dhs/readme (default: the provider's own README)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer ccm stop|ensure --pidfile PATH` can manage it")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -89,6 +106,12 @@ func runCCMServe(ctx context.Context, args []string) error {
 	}
 	if (*tlsCert == "") != (*tlsKey == "") {
 		return fmt.Errorf("producer ccm serve: --tls-cert and --tls-key must be given together")
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("producer ccm serve: write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
 	raw, err := os.ReadFile(*treePath)
