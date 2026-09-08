@@ -12,6 +12,19 @@ productName@productVersion for firmware diff). The acp2 connector
 stays regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 (mixed-firmware, multi-protocol box).
 
+**Unit 2 (PR #1065): the PROVIDER.** `dhs producer ccm serve` replays a
+captured device model (a dm-tree: resource path → resource JSON, the
+shape `ccm export` captures) so Cerebrum drives dhs as a CCM device —
+emulate before hardware. Compliance boundary, enforced by construction:
+`/api/v1` is the CCM protocol 100% to the spec (self-describing tree,
+the OpenAPI at `/api/v1/docs/api.yml`, §11 PUT + PATCH with an empty
+202, §12 `{code,message}`, `uuid`/`id` immutable, `/status` and the
+spec GET-only); every dhs addition (landing, rendered README,
+capabilities) lives under `/x-dhs` via the one `HandleExtension` entry
+point and can never change what a controller observes. Matrix (§17) is
+out of scope. The `/ws` change stream is a later unit. Operate it per
+`docs/runbook.md`.
+
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**
 this build serves the CCM resource MODEL (UUID-addressed REST, `/self`,
 recursive `{uuid}` paths) but a SUBSET of the CCM 0v1 PROTOCOL — it has
@@ -32,11 +45,16 @@ internal/ccm/
 ├── assets/      ← DROP ZONE: everything EVS provides goes here
 │                  (OpenAPI/swagger JSON, PDFs, examples, postman
 │                  collections, firmware release notes)
-├── docs/        keys/endpoint catalogue + consumer.md (written
-│                  during spec review)
-├── codec/       (later) stdlib-only — likely thin: HTTP+JSON, the
-│                  "codec" is the OpenAPI schema types
-├── consumer/    (later) package ccm — implements consumer.Protocol
+├── docs/        spec review, keys/endpoint catalogue, runbook.md
+│                  (operate the provider), README index
+├── codec/       shipped — stdlib-only UUID-keyed model (Device,
+│                  Stream, Leg) + testdata/neuron-api-1.0.0.yml, the
+│                  device's real OpenAPI 3.1.2
+├── consumer/    shipped — package ccm: walk + export
+├── provider/    shipped (PR #1065) — package ccm: replays a captured
+│                  dm-tree as a CCM device. /api/v1 = the protocol,
+│                  100% to spec; /x-dhs = dhs additions only. Own
+│                  README.md served rendered at /x-dhs/readme
 └── wireshark/   (later) dhs_ccm.lua — HTTP/JSON dissection with
                    per-endpoint Info columns (repo rule: every
                    protocol ships a dissector, no exceptions)
