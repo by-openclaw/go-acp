@@ -25,7 +25,23 @@ const MaxMDNSPacketSize = 1500
 // QueryInterval is the default browser query cadence (RFC 6762 ??5.2 ???
 // the recommendation is roughly every minute, increasing for quiet
 // services).
-const QueryInterval = 30 * time.Second
+var QueryInterval = 30 * time.Second
+
+// netInterfaces is net.Interfaces, indirected through a package var so a
+// test can drive the enumerate-interfaces error path. Never reassigned
+// in production.
+var netInterfaces = net.Interfaces
+
+// listenMulticastUDP is net.ListenMulticastUDP, indirected through a
+// package var so a test can drive openMulticastConns over loopback
+// sockets without joining the real 224.0.0.251 group. Never reassigned
+// in production.
+var listenMulticastUDP = net.ListenMulticastUDP
+
+// interfaceAddrs is (net.Interface).Addrs, indirected through a package
+// var so a test can drive hasIPv4's Addrs() error return. Never
+// reassigned in production.
+var interfaceAddrs = func(ifi net.Interface) ([]net.Addr, error) { return ifi.Addrs() }
 
 // openMulticastConns returns one mDNS socket per up + multicast + IPv4
 // interface so sends and joins use IP_MULTICAST_IF explicitly. Without
@@ -34,7 +50,7 @@ const QueryInterval = 30 * time.Second
 // socket if no usable interface is found, so loopback-only test
 // environments still work.
 func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
-	ifaces, err := net.Interfaces()
+	ifaces, err := netInterfaces()
 	if err != nil {
 		return nil, fmt.Errorf("dnssd: enumerate interfaces: %w", err)
 	}
@@ -47,7 +63,7 @@ func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
 		if !hasIPv4(ifi) {
 			continue
 		}
-		c, err := net.ListenMulticastUDP("udp4", ifi, &mdnsIPv4)
+		c, err := listenMulticastUDP("udp4", ifi, &mdnsIPv4)
 		if err != nil {
 			if logger != nil {
 				logger.Debug("dnssd: bind iface failed", "iface", ifi.Name, "err", err)
@@ -67,7 +83,7 @@ func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
 		}
 	}
 	if len(conns) == 0 {
-		c, err := net.ListenMulticastUDP("udp4", nil, &mdnsIPv4)
+		c, err := listenMulticastUDP("udp4", nil, &mdnsIPv4)
 		if err != nil {
 			return nil, fmt.Errorf("dnssd: listen mDNS multicast: %w", err)
 		}
@@ -81,7 +97,7 @@ func openMulticastConns(logger *slog.Logger) ([]*net.UDPConn, error) {
 }
 
 func hasIPv4(ifi *net.Interface) bool {
-	addrs, err := ifi.Addrs()
+	addrs, err := interfaceAddrs(*ifi)
 	if err != nil {
 		return false
 	}
