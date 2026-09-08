@@ -3,7 +3,10 @@ package ccm
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -82,11 +85,19 @@ func NewServer(deps plugin.Deps, tree *Tree, spec []byte) *Server {
 		met:    deps.Metrics,
 		http:   thttp.NewServer(deps.Logger),
 	}
-	// One prefix route covers the whole tree plus the spec; the handler
-	// separates them so route precedence never has to be reasoned about.
+	// One prefix route per method covers the whole tree plus the spec; the
+	// handlers separate them so route precedence never has to be reasoned
+	// about. PUT and PATCH are the §11 mutations (the shipped OpenAPI lists
+	// PUT; §11.2 makes PATCH mandatory — a compliant device serves both).
 	s.http.HandlePrefix(s.prefix, http.MethodGet, s.handleGet)
+	s.http.HandlePrefix(s.prefix, http.MethodPut, s.handleWrite)
+	s.http.HandlePrefix(s.prefix, http.MethodPatch, s.handleWrite)
 	return s
 }
+
+// maxWriteBody bounds a PUT/PATCH body. CCM resources are small objects; a
+// megabyte is generous and stops a runaway client from exhausting memory.
+const maxWriteBody = 1 << 20
 
 // Metrics returns the provider's counter set. Always non-nil.
 func (s *Server) Metrics() *metrics.Connector { return s.met }
@@ -140,7 +151,7 @@ func (s *Server) handleGet(_ context.Context, r *http.Request) (int, any, error)
 
 	if sub == specPath {
 		if s.spec == nil {
-			return http.StatusNotFound, s.notFound("no OpenAPI document is served"), nil
+			return http.StatusNotFound, apiError(http.StatusNotFound, "no OpenAPI document is served"), nil
 		}
 		s.met.ObserveTx(len(s.spec), time.Since(start))
 		return http.StatusOK, &thttp.RawBody{ContentType: "application/yaml", Body: s.spec}, nil
@@ -152,11 +163,56 @@ func (s *Server) handleGet(_ context.Context, r *http.Request) (int, any, error)
 		s.met.ObserveTx(len(body), time.Since(start))
 		return http.StatusOK, &thttp.RawBody{ContentType: "application/json", Body: body}, nil
 	default:
-		return http.StatusNotFound, s.notFound(fmt.Sprintf("no resource at %q", sub)), nil
+		return http.StatusNotFound, apiError(http.StatusNotFound, fmt.Sprintf("no resource at %q", sub)), nil
 	}
 }
 
-// notFound builds the CCM error envelope for a missing path.
-func (s *Server) notFound(msg string) GenericApiMessage {
-	return GenericApiMessage{Code: http.StatusNotFound, Message: msg}
+// handleWrite answers PUT and PATCH under the prefix per §11: the body is a
+// JSON object of one or more mutable fields (maps, not arrays — §11.2), the
+// change is applied to the stored resource, and the response is an EMPTY 202
+// (§11.1) — accepted as well-formed and applied; the caller confirms by
+// reading the resource or its /status back (§11.3 split request/status).
+// Read-only endpoints (the /status views and the OpenAPI document) expose
+// GET only (§11.1) and refuse writes with 405. Every refusal carries the §12
+// {code,message} envelope.
+func (s *Server) handleWrite(_ context.Context, r *http.Request) (int, any, error) {
+	start := time.Now()
+	sub := strings.Trim(strings.TrimPrefix(r.URL.Path, s.prefix), "/")
+
+	if sub == specPath || strings.HasSuffix(sub, "/status") {
+		return http.StatusMethodNotAllowed, apiError(http.StatusMethodNotAllowed, "read-only endpoint: GET only"), nil
+	}
+
+	raw, err := io.ReadAll(io.LimitReader(r.Body, maxWriteBody))
+	if err != nil {
+		return http.StatusBadRequest, apiError(http.StatusBadRequest, "read body: "+err.Error()), nil
+	}
+	s.met.ObserveRx(len(raw))
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
+		return http.StatusBadRequest, apiError(http.StatusBadRequest,
+			"body must be a JSON object of mutable fields (maps, not arrays)"), nil
+	}
+	if len(fields) == 0 {
+		return http.StatusBadRequest, apiError(http.StatusBadRequest,
+			"body needs one or more mutable fields (minProperties: 1)"), nil
+	}
+
+	switch err := s.tree.Update(sub, fields, r.Method == http.MethodPut); {
+	case errors.Is(err, ErrNotFound):
+		return http.StatusNotFound, apiError(http.StatusNotFound, fmt.Sprintf("no resource at %q", sub)), nil
+	case errors.Is(err, ErrNotMutable):
+		return http.StatusMethodNotAllowed, apiError(http.StatusMethodNotAllowed, "not a mutable resource"), nil
+	}
+
+	s.met.ObserveTx(0, time.Since(start))
+	// An explicitly empty RawBody: the default JSON path would write "null",
+	// and §11.1 says the response is empty.
+	return http.StatusAccepted, &thttp.RawBody{ContentType: "application/json"}, nil
+}
+
+// apiError builds the §12 GenericApiMessage envelope for a refused request.
+func apiError(code int, msg string) GenericApiMessage {
+	return GenericApiMessage{Code: code, Message: msg}
 }

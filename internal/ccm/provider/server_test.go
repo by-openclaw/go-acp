@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -202,5 +204,141 @@ func TestWithTLSInstallsConfig(t *testing.T) {
 	cfg := &tls.Config{MinVersion: tls.VersionTLS12}
 	if got := s.WithTLS(cfg); got != s || s.http.TLS != cfg {
 		t.Error("WithTLS must install the config and return the server for chaining")
+	}
+}
+
+// --- §11 writes over HTTP ---
+
+func do(t *testing.T, hs *httptest.Server, method, path, body string) (*http.Response, []byte) {
+	t.Helper()
+	req, err := http.NewRequest(method, hs.URL+path, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("%s %s: %v", method, path, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := hs.Client().Do(req)
+	if err != nil {
+		t.Fatalf("%s %s: %v", method, path, err)
+	}
+	out, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	return resp, out
+}
+
+// PATCH is an EMPTY 202 (§11.1) and the change is visible on read-back
+// (§11.3 split request/status).
+func TestWritePatchIsEmpty202AndApplies(t *testing.T) {
+	s, hs := newTestServer(t, nil)
+	resp, body := do(t, hs, http.MethodPatch, "/api/v1/io/ip/senders/tx-1", `{"name":"CAM 1B"}`)
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202 (%s)", resp.StatusCode, body)
+	}
+	if len(body) != 0 {
+		t.Errorf("202 body = %q, want empty (§11.1)", body)
+	}
+	_, got := get(t, hs, "/api/v1/io/ip/senders/tx-1")
+	var res map[string]any
+	_ = json.Unmarshal(got, &res)
+	if res["name"] != "CAM 1B" || res["uuid"] != "tx-1" {
+		t.Errorf("read-back = %v, want the patch applied and uuid kept", res)
+	}
+	if s.Metrics().Snapshot().RxBytes == 0 {
+		t.Error("a write must count its request bytes")
+	}
+}
+
+// PUT replaces the mutable fields and is likewise an empty 202.
+func TestWritePutReplaces(t *testing.T) {
+	_, hs := newTestServer(t, nil)
+	resp, body := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/tx-1", `{"enable":true}`)
+	if resp.StatusCode != http.StatusAccepted || len(body) != 0 {
+		t.Fatalf("PUT = %d %q, want empty 202", resp.StatusCode, body)
+	}
+	_, got := get(t, hs, "/api/v1/io/ip/senders/tx-1")
+	var res map[string]any
+	_ = json.Unmarshal(got, &res)
+	if _, still := res["name"]; still || res["enable"] != true || res["uuid"] != "tx-1" {
+		t.Errorf("read-back = %v, want name dropped, enable set, uuid kept", res)
+	}
+}
+
+// Anything that is not a non-empty JSON object is a 400 with the §12 envelope:
+// arrays (§11.2 "maps, not arrays"), invalid JSON, null, and {} (minProperties 1).
+func TestWriteRejectsBadBodies(t *testing.T) {
+	_, hs := newTestServer(t, nil)
+	for _, b := range []string{`[1]`, `{`, `null`, `{}`, `"str"`} {
+		resp, body := do(t, hs, http.MethodPatch, "/api/v1/self", b)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("body %s -> %d, want 400", b, resp.StatusCode)
+			continue
+		}
+		var msg GenericApiMessage
+		if err := json.Unmarshal(body, &msg); err != nil || msg.Code != 400 || msg.Message == "" {
+			t.Errorf("body %s -> 400 without the §12 envelope: %s", b, body)
+		}
+	}
+}
+
+// A write to an unknown path or an interior node is a 404 envelope.
+func TestWriteUnknownAndNodeAre404(t *testing.T) {
+	_, hs := newTestServer(t, nil)
+	for _, p := range []string{"/api/v1/nope", "/api/v1/io/ip"} {
+		resp, body := do(t, hs, http.MethodPatch, p, `{"a":1}`)
+		var msg GenericApiMessage
+		_ = json.Unmarshal(body, &msg)
+		if resp.StatusCode != http.StatusNotFound || msg.Code != 404 {
+			t.Errorf("%s -> %d %s, want 404 envelope", p, resp.StatusCode, body)
+		}
+	}
+}
+
+// §11.1: read-only/status endpoints expose GET only, and the OpenAPI document
+// is not a resource — writes are 405 with the envelope. A collection array is
+// not an individual resource either.
+func TestWriteReadOnlyTargetsAre405(t *testing.T) {
+	s := NewServer(plugin.Deps{}, mustCollectionTree(t), []byte("openapi: '3.1.2'\n"))
+	hs := httptest.NewServer(s.Handler())
+	t.Cleanup(hs.Close)
+	for _, p := range []string{
+		"/api/v1/io/ip/senders/tx-1/status", // status view
+		"/api/v1/docs/api.yml",              // the spec
+		"/api/v1/io/ip/senders/video",       // a collection array
+	} {
+		for _, m := range []string{http.MethodPut, http.MethodPatch} {
+			resp, body := do(t, hs, m, p, `{"a":1}`)
+			var msg GenericApiMessage
+			_ = json.Unmarshal(body, &msg)
+			if resp.StatusCode != http.StatusMethodNotAllowed || msg.Code != 405 {
+				t.Errorf("%s %s -> %d %s, want 405 envelope", m, p, resp.StatusCode, body)
+			}
+		}
+	}
+}
+
+func mustCollectionTree(t *testing.T) *Tree {
+	t.Helper()
+	tr, err := LoadTree([]byte(`{"self":{"productName":"BRIDGE"},"io/ip/senders/tx-1":{"uuid":"tx-1"},"io/ip/senders/video":[{"uuid":"tx-1"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tr
+}
+
+// errReader fails the first read, so a body that cannot be read is a 400
+// rather than a hang or a panic.
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
+
+func TestWriteBodyReadErrorIs400(t *testing.T) {
+	tr, _ := LoadTree([]byte(sampleTree))
+	s := NewServer(plugin.Deps{}, tr, nil)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/self", errReader{})
+	status, body, err := s.handleWrite(context.Background(), req)
+	if err != nil || status != http.StatusBadRequest {
+		t.Fatalf("handleWrite = %d, %v; want 400", status, err)
+	}
+	if msg, ok := body.(GenericApiMessage); !ok || msg.Code != 400 {
+		t.Errorf("body = %#v, want a 400 envelope", body)
 	}
 }
