@@ -652,3 +652,16 @@ func TestListenUDPSurfacesBindErrors(t *testing.T) {
 		t.Error("ListenUDP must surface a bind error")
 	}
 }
+
+// Closed flips from false to true across Stop, so a packet provider can gate
+// shutdown work on it.
+func TestClosedReflectsStop(t *testing.T) {
+	var b Base[*NoConn]
+	if b.Closed() {
+		t.Error("a fresh Base must not report Closed")
+	}
+	_ = b.Stop()
+	if !b.Closed() {
+		t.Error("Base must report Closed after Stop")
+	}
+}

@@ -233,7 +233,7 @@ func TestBroadcastAnnounce_SilentDuringShutdown(t *testing.T) {
 	s := newTestServer(t)
 	var buf bytes.Buffer
 	s.logger = slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	s.closed = true // simulate the shutdown window
+	_ = s.Stop() // enter the shutdown window (sets Base.Closed)
 
 	s.broadcastAnnounce(&codec.Message{
 		MTID: 0, MType: codec.MTypeAnnounce,

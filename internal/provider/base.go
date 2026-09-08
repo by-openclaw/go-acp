@@ -192,6 +192,17 @@ func (b *Base[S]) Addr() net.Addr {
 	return b.listener.Addr()
 }
 
+// Closed reports whether Stop has been called. A packet provider that gates
+// spontaneous work on shutdown checks this: acp1 suppresses broadcast
+// announces once the socket is closing, since a write racing the close only
+// produces a shutdown-noise warning. Connection providers observe shutdown
+// through the listener close and rarely need it.
+func (b *Base[S]) Closed() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.closed
+}
+
 // Stopped is closed once the accept loop has returned. Connectors with
 // background goroutines of their own (emberplus's streamer) select on it.
 func (b *Base[S]) Stopped() <-chan struct{} {
