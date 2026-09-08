@@ -151,3 +151,41 @@ func TestServeBindsAndStopsOnCancel(t *testing.T) {
 		t.Fatal("Serve did not return after context cancel")
 	}
 }
+
+// The compliance boundary: a dhs extension is reachable ONLY under
+// ExtensionPrefix. The same relative path under the CCM namespace stays a
+// tree lookup (here a 404), so registering our own endpoints can never change
+// what a CCM controller observes under /api/v1 — the original protocol is
+// untouched by construction.
+func TestExtensionNeverLeaksIntoCCMNamespace(t *testing.T) {
+	s, hs := newTestServer(t, nil)
+	s.HandleExtension(http.MethodGet, "/capabilities/", func(context.Context, *http.Request) (int, any, error) {
+		return http.StatusOK, map[string]string{"dhs": "extension"}, nil
+	})
+
+	// Served under the dhs namespace (leading/trailing slashes normalised).
+	resp, body := get(t, hs, ExtensionPrefix+"/capabilities")
+	if resp.StatusCode != 200 {
+		t.Fatalf("extension status = %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	var got map[string]string
+	if err := json.Unmarshal(body, &got); err != nil || got["dhs"] != "extension" {
+		t.Errorf("extension body = %s, want the registered payload", body)
+	}
+
+	// The identical path under the CCM namespace is NOT the extension — it
+	// resolves against the device tree like any other CCM path.
+	resp, body = get(t, hs, DefaultPrefix+"/capabilities")
+	if resp.StatusCode != 404 {
+		t.Fatalf("CCM-namespace status = %d, want 404 — an extension leaked into /api/v1 (%s)", resp.StatusCode, body)
+	}
+	var msg GenericApiMessage
+	if err := json.Unmarshal(body, &msg); err != nil || msg.Code != 404 {
+		t.Errorf("CCM 404 must still be the §12 envelope, got %s", body)
+	}
+
+	// And the CCM surface itself is unaffected by having extensions mounted.
+	if resp, _ := get(t, hs, DefaultPrefix+"/self"); resp.StatusCode != 200 {
+		t.Errorf("/api/v1/self = %d after mounting an extension, want 200", resp.StatusCode)
+	}
+}
