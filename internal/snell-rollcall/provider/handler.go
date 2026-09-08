@@ -64,6 +64,31 @@ func (p *Provider) Call(l *session.Link, req codec.Frame, conn codec.Connect) er
 	return nil
 }
 
+// checkGeneration notices a request that does not belong to its session.
+//
+// A session negotiates one generation and keeps it. The two use different
+// message numbers for the same job, so a 32-bit message on a 16-bit session is
+// a client asking for a reply in a shape it did not negotiate.
+//
+// It is absorbed rather than refused: the message is well formed, answering it
+// costs nothing, and refusing would break a client that is otherwise working.
+// What it must not do is pass silently, which is what it did before — leaving
+// no trace in a log an operator could read.
+func (p *Provider) checkGeneration(s *session.Session, req codec.Frame) {
+	want := codec.Gen16
+	if s.Uses32Bit() {
+		want = codec.Gen32
+	}
+	got := req.Type.Generation()
+	if got == codec.GenAny || got == want {
+		return
+	}
+	p.fire(EventMixedGeneration, fmt.Sprintf(
+		"%s arrived on a %s session (%s)", req.Type, want, s.Describe()))
+	p.log.Debug("rollcall: message of the other generation",
+		"type", req.Type.String(), "session", want.String())
+}
+
 // served is every service this provider can supply.
 func (p *Provider) served() codec.Service {
 	return codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
@@ -99,6 +124,8 @@ func (p *Provider) Request(s *session.Session, req codec.Frame) {
 func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 	slot := req.Dst.Port
 	prt := p.model.port(slot)
+
+	p.checkGeneration(s, req)
 
 	switch req.Type {
 	case codec.MsgKeepAlive:
@@ -304,11 +331,25 @@ func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
 		items = append(items, p.deviceInfoFor(n))
 	}
 
-	// A map request names the gateway itself rather than its cards: a client
-	// walking the map is looking for units, and the cards come from a port
-	// list against the unit it found.
+	// The map carries the gateway and everything behind it.
+	//
+	// It used to name only the gateway, on the reading that a client walks the
+	// map for units and then asks the unit it found for a port list. Our
+	// consumer does exactly that, so loopback tests agreed with themselves.
+	//
+	// The vendor Control Panel does not. Measured by capturing its traffic: it
+	// opens a map session, reads the map, and if the map holds one device it
+	// asks nothing further - no port list, ever. It then sits on the
+	// connection answering keepalives with an empty tree. The Centra behaves
+	// the way the panel expects, returning all fifteen of its units in the
+	// map.
+	//
+	// So the map is what a client can reach through us, which is the gateway
+	// and its cards. Spec 7.6 says other units see only the gateway and find
+	// modules through the port service; that remains true of the port service,
+	// and both enumerations now answer, so a client of either habit works.
 	if req.Type == codec.MsgGetLocDevMap {
-		items = [][]byte{p.deviceInfoFor(0)}
+		items = append([][]byte{p.deviceInfoFor(0)}, items...)
 	}
 	return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, items)
 }

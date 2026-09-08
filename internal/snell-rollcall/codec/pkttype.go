@@ -236,3 +236,45 @@ func PacketTypeByName(name string) (PacketType, bool) {
 	}
 	return 0, false
 }
+
+// Generation says which wire generation a message belongs to.
+//
+// The two generations do the same jobs with different message numbers: a menu
+// is GetFunc in one and GetMenuCount plus GetMenuItem in the other; a value is
+// GetFStat and SetParam against GetValue and RetValue. Most messages belong to
+// neither and are the same in both.
+type Generation uint8
+
+const (
+	// GenAny is a message both generations use unchanged.
+	GenAny Generation = iota
+	// Gen16 is a message only the 16-bit generation uses.
+	Gen16
+	// Gen32 is a message only the long-string generation uses.
+	Gen32
+)
+
+// String names the generation for a log line or an event.
+func (g Generation) String() string {
+	switch g {
+	case Gen16:
+		return "16-bit"
+	case Gen32:
+		return "32-bit"
+	default:
+		return "either"
+	}
+}
+
+// Generation reports which generation this packet type belongs to.
+func (t PacketType) Generation() Generation {
+	switch t {
+	case MsgGetFunc, MsgRetFunc, MsgGetFStat, MsgRetFStat, MsgSetParam:
+		return Gen16
+	case MsgGetMenuCount, MsgRetMenuCount, MsgGetMenuItem, MsgRetMenuItem,
+		MsgGetValue, MsgRetValue, MsgSetValue:
+		return Gen32
+	default:
+		return GenAny
+	}
+}

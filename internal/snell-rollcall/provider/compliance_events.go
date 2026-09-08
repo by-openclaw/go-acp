@@ -33,6 +33,15 @@ const (
 	// values it missed are still readable, and the event says it missed them.
 	EventPushDropped = "rollcall_push_dropped"
 
+	// EventMixedGeneration means a request arrived whose wire generation is
+	// not the one its session negotiated: a 32-bit message on a 16-bit
+	// session, or the reverse. The two generations use different message
+	// numbers for the same job, so a client that mixes them is reading its own
+	// replies in a shape it did not ask for. We answer it anyway — the message
+	// itself is well formed and refusing would break a client that works — and
+	// count it, because without this a mixed message left no trace at all.
+	EventMixedGeneration = "rollcall_mixed_generation"
+
 	// EventInvalidUserLevel means a call named a user level outside the four
 	// the specification defines. It is refused: the level decides which menu
 	// lines are shown, so guessing one would show a client something it may

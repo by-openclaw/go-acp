@@ -213,28 +213,40 @@ func TestDeviceListEnumeratesTheFrame(t *testing.T) {
 	}
 }
 
-func TestLocalDeviceMapNamesTheGatewayOnly(t *testing.T) {
+// The map is what a client can reach through us: the gateway and its cards.
+//
+// It used to name the gateway alone, on the reading that a client walks the
+// map for units and then asks the unit it found for a port list. Our consumer
+// does exactly that, so this agreed with itself for a long time. The vendor
+// Control Panel does not: measured from its own traffic, it reads the map, and
+// a map holding one device ends its interest — no port list, ever, just
+// keepalives against an empty tree.
+func TestTheDeviceMapNamesTheGatewayAndItsCards(t *testing.T) {
 	s := newServed(t, testTree())
 	sess := s.open(0, codec.SvcMenus|codec.SvcMap)
 
-	var count int
+	var names []string
 	err := session.Walk(context.Background(), sess, codec.MsgGetLocDevMap, nil,
 		func(_ int, f codec.Frame) error {
 			info, err := codec.DecodeDeviceInfo(f.Payload)
 			if err != nil {
 				return err
 			}
-			count++
-			if info.ID.Name != "dhs rollcall" {
-				t.Errorf("map named %q, want the gateway", info.ID.Name)
-			}
+			names = append(names, info.ID.Name)
 			return nil
 		})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("map had %d entries, want 1", count)
+
+	if len(names) != 3 {
+		t.Fatalf("map = %v, want the gateway and both cards", names)
+	}
+	if names[0] != "dhs rollcall" {
+		t.Errorf("map[0] = %q, want the gateway first", names[0])
+	}
+	if names[1] != "card1" || names[2] != "card2" {
+		t.Errorf("map = %v, want the cards after it", names)
 	}
 }
 

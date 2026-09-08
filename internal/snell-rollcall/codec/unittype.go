@@ -33,6 +33,7 @@ const (
 	// routing-client id would make a provider indistinguishable from the
 	// consumer at the other end of the wire.
 	TypeIDPCSoftware uint16 = 23
+
 )
 
 // LookupUnitType returns what the vendor database says about a type id.
