@@ -42,6 +42,12 @@ type SubscribeRequest struct {
 // failure rather than something to work around.
 var ErrNoWSHref = errors.New("query: subscription response has no ws_href")
 
+// marshalJSON is json.Marshal, indirected through a package var so a test can
+// drive Subscribe's encode-error guard. The subscription body is a map of
+// marshalable values, so the guard is otherwise unreachable — the same
+// testability seam transport uses for its raw-socket calls.
+var marshalJSON = json.Marshal
+
 // Subscribe opens (or re-uses) a Query API subscription.
 //
 // A Registry may answer 200 with an existing subscription instead of 201 when
@@ -71,7 +77,7 @@ func (c *Client) Subscribe(ctx context.Context, req SubscribeRequest) (*Subscrip
 	if len(req.Params) > 0 {
 		body["params"] = req.Params
 	}
-	raw, err := json.Marshal(body)
+	raw, err := marshalJSON(body)
 	if err != nil {
 		return nil, fmt.Errorf("query: encode subscription: %w", err)
 	}
