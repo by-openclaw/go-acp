@@ -61,11 +61,29 @@ func newServedFaulty(t *testing.T, tree *canonical.Export) (*served, *blockedCon
 	return newServedWith(t, tree, true)
 }
 
+// newServedDeps is newServed for a test that needs to hand the provider
+// something extra, such as the log level a running process kept hold of.
+func newServedDeps(t *testing.T, tree *canonical.Export, mutate func(*plugin.Deps)) *served {
+	t.Helper()
+	s, _ := newServedFull(t, tree, false, mutate)
+	return s
+}
+
 func newServedWith(t *testing.T, tree *canonical.Export, faulty bool) (*served, *blockedConn) {
+	t.Helper()
+	return newServedFull(t, tree, faulty, nil)
+}
+
+func newServedFull(t *testing.T, tree *canonical.Export, faulty bool,
+	mutate func(*plugin.Deps)) (*served, *blockedConn) {
+
 	t.Helper()
 
 	clk := clock.NewFake(time.Time{})
 	deps := testDeps(clk)
+	if mutate != nil {
+		mutate(&deps)
+	}
 	p := New(deps, tree)
 
 	ours, theirs := net.Pipe()

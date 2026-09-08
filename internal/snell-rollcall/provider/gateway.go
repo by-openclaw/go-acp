@@ -2,6 +2,7 @@ package rollcall
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"runtime"
 	"runtime/debug"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/session"
 )
 
 // The gateway is a unit like any other and a panel expects to open it.
@@ -38,6 +40,7 @@ const (
 	cmdGatewayProtocol   uint32 = 10
 	cmdGatewayUptime     uint32 = 11
 	cmdGatewayEvents     uint32 = 12
+	cmdGatewayDebugLog   uint32 = 13
 )
 
 // newGatewayPort builds the menu a gateway serves about itself.
@@ -103,6 +106,17 @@ func newGatewayPort(id codec.ID) *port {
 		add("Go", "software.go", str, cmdGatewayGo, 0, codec.MaxLongString-1)
 	})
 
+	// The one line on this page a client may write.
+	//
+	// A connector that let a panel change where it listens would answer the
+	// question by cutting the wire, so everything else here is read-only. This
+	// one is different: an operator watching a frame misbehave turns its
+	// logging up and reads what happens next, without restarting a process
+	// whose sessions a gateway may not reclaim.
+	group("Logging", "logging", func() {
+		add("Debug Logging", "logging.debug", codec.StyleCheckbox, cmdGatewayDebugLog, 0, 1)
+	})
+
 	group("Status", "status", func() {
 		add("Protocol", "status.protocol", str, cmdGatewayProtocol, 0, codec.MaxLongString-1)
 		add("Uptime", "status.uptime", str, cmdGatewayUptime, 0, codec.MaxLongString-1)
@@ -155,6 +169,33 @@ func (p *Provider) refreshGateway() {
 	text(cmdGatewayProtocol, fmt.Sprintf("RollCall v%d", codec.ProtocolVersion))
 	text(cmdGatewayUptime, p.uptime())
 	number(cmdGatewayEvents, int32(len(p.ComplianceEvents())))
+
+	on := int32(0)
+	if p.deps.LogLevel != nil && p.deps.LogLevel.Level() <= slog.LevelDebug {
+		on = 1
+	}
+	number(cmdGatewayDebugLog, on)
+}
+
+// setDebugLogging turns this connector's own logging up or down.
+//
+// It moves the level the process built its handlers with rather than replacing
+// a logger it does not own, which is why the level travels in Deps. A caller
+// that kept no level — a test, a library embedding — has nothing to move, and
+// the line refuses rather than pretending.
+func (p *Provider) setDebugLogging(on bool) error {
+	v := p.deps.LogLevel
+	if v == nil {
+		return session.RefuseNack("this process fixed its log level at start")
+	}
+
+	level := slog.LevelInfo
+	if on {
+		level = slog.LevelDebug
+	}
+	v.Set(level)
+	p.log.Info("rollcall: log level changed from the gateway page", "level", level)
+	return nil
 }
 
 // facts is what the binary can say about itself.

@@ -2,11 +2,13 @@ package rollcall
 
 import (
 	"context"
+	"log/slog"
 	"runtime/debug"
 	"testing"
 	"time"
 
 	"dhs/internal/clock"
+	"dhs/internal/plugin"
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/session"
 )
@@ -174,15 +176,19 @@ func TestTheGatewayHasAPageOfItsOwn(t *testing.T) {
 		"Ethernet": false, "IP Address": false, "IPShare Port": false,
 		"RollCall": false, "Generation": false, "Cards": false,
 		"Software": false, "Version": false,
+		"Logging": false, "Debug Logging": false,
 	}
 	for _, l := range lines {
 		if _, ok := want[l.Text]; ok {
 			want[l.Text] = true
 		}
-		// Nothing here may be written: a connector that let a panel change
-		// where it listens would answer the question by cutting the wire.
-		if l.Command != 0 && !l.Style.Disabled() {
-			t.Errorf("%q is writable on the gateway page", l.Text)
+		// One line may be written and the rest may not: a connector that let a
+		// panel change where it listens would answer the question by cutting
+		// the wire, but turning its own logging up is exactly what an operator
+		// watching it misbehave wants.
+		writable := l.Command == cmdGatewayDebugLog
+		if l.Command != 0 && !l.Style.Disabled() != writable {
+			t.Errorf("%q writable=%v, want %v", l.Text, !l.Style.Disabled(), writable)
 		}
 	}
 	for name, seen := range want {
@@ -389,7 +395,7 @@ func TestTheGatewayPageNests(t *testing.T) {
 		}
 	}
 	for name, want := range map[string]uint32{
-		"Ethernet": 2, "RollCall": 3, "Software": 4, "Status": 3,
+		"Ethernet": 2, "RollCall": 3, "Software": 4, "Logging": 1, "Status": 3,
 	} {
 		if spans[name] != want {
 			t.Errorf("%q spans %d lines, want %d", name, spans[name], want)
@@ -432,5 +438,92 @@ func TestTheProviderListsItself(t *testing.T) {
 	}
 	if len(names) != 3 || names[0] != "dhs rollcall" {
 		t.Errorf("port list = %v, want the gateway then its cards", names)
+	}
+}
+
+func TestTurningLoggingUpFromThePage(t *testing.T) {
+	// The control has to do the thing rather than remember that somebody asked.
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelInfo)
+
+	deps := testDeps(clock.NewFake(time.Time{}))
+	deps.LogLevel = lvl
+	p := New(deps, testTree())
+
+	if err := p.setDebugLogging(true); err != nil {
+		t.Fatalf("turning logging up: %v", err)
+	}
+	if lvl.Level() != slog.LevelDebug {
+		t.Errorf("level = %v, want debug", lvl.Level())
+	}
+
+	// And the page reads back what is in force.
+	p.refreshGateway()
+	if v, ok := p.model.port(0).value(cmdGatewayDebugLog); !ok || v.Val != 1 {
+		t.Errorf("the page says %d, want 1", v.Val)
+	}
+
+	if err := p.setDebugLogging(false); err != nil {
+		t.Fatalf("turning logging down: %v", err)
+	}
+	if lvl.Level() != slog.LevelInfo {
+		t.Errorf("level = %v, want info", lvl.Level())
+	}
+	p.refreshGateway()
+	if v, _ := p.model.port(0).value(cmdGatewayDebugLog); v.Val != 0 {
+		t.Errorf("the page says %d, want 0", v.Val)
+	}
+}
+
+func TestAProcessThatFixedItsLogLevelRefuses(t *testing.T) {
+	// A caller that kept no level has nothing to move, and the line says so
+	// rather than pretending it worked.
+	p := New(testDeps(clock.NewFake(time.Time{})), testTree())
+
+	if err := p.setDebugLogging(true); err == nil {
+		t.Error("a fixed log level should refuse the write")
+	}
+	p.refreshGateway()
+	if v, _ := p.model.port(0).value(cmdGatewayDebugLog); v.Val != 0 {
+		t.Errorf("the page claims logging is up: %d", v.Val)
+	}
+}
+
+func TestWritingTheLoggingControlOverASession(t *testing.T) {
+	// What a panel does: tick the box.
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelInfo)
+
+	s := newServedDeps(t, testTree(), func(d *plugin.Deps) { d.LogLevel = lvl })
+	sess := s.open(0, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	payload, err := codec.Value{
+		Command: cmdGatewayDebugLog, Mode: codec.ModeValue, Val: 1,
+	}.AppendTo(nil)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if _, err := sess.Do(context.Background(), codec.MsgSetValue, payload); err != nil {
+		t.Fatalf("write the logging control: %v", err)
+	}
+	if lvl.Level() != slog.LevelDebug {
+		t.Errorf("level = %v, want debug", lvl.Level())
+	}
+}
+
+func TestTheLoggingControlRefusesOverASession(t *testing.T) {
+	// A process that fixed its level refuses the write on the wire too, rather
+	// than storing a value that changed nothing.
+	s := newServed(t, testTree())
+	sess := s.open(0, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	payload, err := codec.Value{
+		Command: cmdGatewayDebugLog, Mode: codec.ModeValue, Val: 1,
+	}.AppendTo(nil)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if _, err := sess.Do(context.Background(), codec.MsgSetValue, payload); err == nil {
+		t.Error("the write should have been refused")
 	}
 }

@@ -100,6 +100,15 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 		return v, nil
 	}
 
+	// The gateway's own page carries one writable line, and writing it has to
+	// do the thing rather than remember that somebody asked. A control that
+	// stored a value and changed nothing would be worse than no control.
+	if prt.number == 0 && command == cmdGatewayDebugLog {
+		if err := p.setDebugLogging(num != 0); err != nil {
+			return codec.Value{}, err
+		}
+	}
+
 	stored, err := prt.setValue(command, mode, num, text)
 	if err != nil {
 		return codec.Value{}, session.RefuseNack(err.Error())

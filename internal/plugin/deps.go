@@ -45,6 +45,12 @@ type Deps struct {
 	// timeouts and keepalive cadence without sleeping.
 	Clock clock.Clock
 
+	// LogLevel is the level the Logger is using, when the process kept hold of
+	// it. A connector that offers its own logging as a control moves this
+	// rather than rebuilding a logger it did not create; nil means the level
+	// is fixed, which is what a test or a library caller usually wants.
+	LogLevel *slog.LevelVar
+
 	// Metrics is the connector's counter set. Supplied rather than created,
 	// so the process can scrape every connector from one place instead of
 	// each one owning a registry nobody else can reach.

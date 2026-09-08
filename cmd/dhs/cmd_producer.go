@@ -97,7 +97,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
-	logger := newLogger(*logLevel, *logFormat)
+	logger, logLevelVar := newLoggerWithLevel(*logLevel, *logFormat)
 	if *syslogAddr != "" {
 		udp, err := dialSyslogUDP(*syslogAddr)
 		if err != nil {
@@ -147,7 +147,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
-	srv := factory.New(pluginDeps(logger), tree)
+	srv := factory.New(pluginDepsWithLevel(logger, logLevelVar), tree)
 
 	// A frame that withholds SV_LONGSTR cannot be asked for the newer
 	// generation, so every client on it speaks 16-bit. Serving one tree twice,
@@ -550,8 +550,23 @@ func parseLogLevel(level string) slog.Level {
 }
 
 func newLogger(level, format string) *slog.Logger {
+	lg, _ := newLoggerWithLevel(level, format)
+	return lg
+}
+
+// newLoggerWithLevel is newLogger, and hands back the level it is using so the
+// caller can move it while the process runs.
+//
+// A served device can then offer its own logging as a control: an operator
+// watching a frame misbehave turns its logging up from the panel rather than
+// restarting it, which on a gateway that does not reclaim sessions well is a
+// meaningful difference.
+func newLoggerWithLevel(level, format string) (*slog.Logger, *slog.LevelVar) {
+	v := new(slog.LevelVar)
+	v.Set(parseLogLevel(level))
+
 	// Delegate to the shared format chooser (epic #987) so producer and
 	// consumer pick the log FORMAT identically. Sinks (stderr here, +file/
 	// +syslog-addr) are layered by the caller.
-	return newLoggerTo(os.Stderr, parseLogLevel(level), format)
+	return newLoggerTo(os.Stderr, v, format), v
 }

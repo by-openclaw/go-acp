@@ -126,7 +126,13 @@ const DefaultLogFormat = "syslog"
 // (serve) and the consumer verbs so `--log-format` means one thing across
 // the whole CLI. The remote (syslog-addr) and local-file sinks are layered
 // on by the caller via teeHandler / the file writer.
-func newLoggerTo(w io.Writer, level slog.Level, format string) *slog.Logger {
+// newLoggerTo builds a logger at a level that may be a fixed one or a variable
+// the caller keeps hold of.
+//
+// It takes a Leveler rather than a Level so a running process can be turned up
+// without rebuilding its handlers: a slog.Level satisfies it unchanged, and a
+// *slog.LevelVar makes the level movable.
+func newLoggerTo(w io.Writer, level slog.Leveler, format string) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: level}
 	switch format {
 	case "json":
