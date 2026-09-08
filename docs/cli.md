@@ -615,6 +615,8 @@ Usage of producer ccm serve:
     	device model to replay (resource path -> resource JSON), from 'dhs consumer ccm export' (required)
   -metrics-addr string
     	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json on this address
+  -readme string
+    	Markdown document to serve rendered at /x-dhs/readme (default: the provider's own README)
   -tls-cert string
     	server certificate PEM; with --tls-key, serve HTTPS
   -tls-key string

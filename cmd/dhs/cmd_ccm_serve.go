@@ -60,10 +60,12 @@ FLAGS
   --tls-cert PATH       server certificate (PEM) — with --tls-key, serves HTTPS
   --tls-key PATH        private key for --tls-cert
   --metrics-addr ADDR   serve Prometheus /metrics + /snapshot.json here
+  --readme PATH         Markdown to render at /x-dhs/readme (default: the provider README)
 
 NAMESPACES
-  /api/v1   the CCM protocol, 100% to the spec — the tree, the OpenAPI, §12 errors
-  /x-dhs    dhs-only additions (landing, docs, capabilities); never touches /api/v1
+  /api/v1   the CCM protocol, 100% to the spec — the tree, the OpenAPI, PUT/PATCH, §12 errors
+  /x-dhs    dhs-only additions — landing (/x-dhs/), rendered README (/x-dhs/readme),
+            capabilities (/x-dhs/capabilities); never touches /api/v1
 
 EXAMPLES
   dhs producer ccm serve --dm-tree BRIDGE@7.0.2/dm-tree.json --api-spec BRIDGE@7.0.2/api.yml
@@ -78,6 +80,7 @@ func runCCMServe(ctx context.Context, args []string) error {
 	tlsCert := fs.String("tls-cert", "", "server certificate PEM; with --tls-key, serve HTTPS")
 	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")
 	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json on this address")
+	readmePath := fs.String("readme", "", "Markdown document to serve rendered at /x-dhs/readme (default: the provider's own README)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -102,17 +105,24 @@ func runCCMServe(ctx context.Context, args []string) error {
 			return fmt.Errorf("producer ccm serve: read --api-spec: %w", err)
 		}
 	}
+	var readme []byte
+	if *readmePath != "" {
+		if readme, err = os.ReadFile(*readmePath); err != nil {
+			return fmt.Errorf("producer ccm serve: read --readme: %w", err)
+		}
+	}
 
 	logger, _, logClean, _ := consumerLogger(ctx, "ccm", *bind, "serve")
 	defer logClean()
 
 	srv := ccmp.NewServer(plugin.Deps{Logger: logger}, tree, spec)
+	// The dhs landing (this page, the rendered README, capabilities) lives
+	// under /x-dhs — never under the CCM namespace.
+	srv.MountLanding(readme)
 	if *tlsCert != "" {
-		cfg, err := transport.TLSOptions{Enable: true, CertFile: *tlsCert, KeyFile: *tlsKey}.Server()
-		if err != nil {
+		if err := srv.WithTLS(transport.TLSOptions{Enable: true, CertFile: *tlsCert, KeyFile: *tlsKey}); err != nil {
 			return fmt.Errorf("producer ccm serve: %w", err)
 		}
-		srv.WithTLS(cfg)
 	}
 
 	srvCtx, cancel := context.WithCancel(ctx)

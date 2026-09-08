@@ -2,10 +2,16 @@ package ccm
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +19,7 @@ import (
 	"time"
 
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 )
 
 func newTestServer(t *testing.T, spec []byte) (*Server, *httptest.Server) {
@@ -193,17 +200,48 @@ func TestExtensionNeverLeaksIntoCCMNamespace(t *testing.T) {
 	}
 }
 
-// WithTLS installs the server certificate config so Serve listens with HTTPS,
-// matching a real CCM device on 443; nil keeps plain HTTP for lab captures.
-func TestWithTLSInstallsConfig(t *testing.T) {
+// selfSignedOptions is a TLS posture with an in-memory self-signed server
+// certificate, so a test can turn HTTPS on without files. The provider itself
+// never touches crypto/tls (architecture gate); the test may.
+func selfSignedOptions(t *testing.T) transport.TLSOptions {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "dhs-ccm-test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create certificate: %v", err)
+	}
+	return transport.TLSOptions{Enable: true, Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: key}}}
+}
+
+// WithTLS takes a TLS posture, not a crypto/tls config: the posture is built
+// by transport (TLS 1.2 floor, certificate), the provider only installs the
+// result. A disabled posture leaves plain HTTP; a posture with no certificate
+// is transport's own error; a real posture turns HTTPS on.
+func TestWithTLSTakesAPosture(t *testing.T) {
 	tr, _ := LoadTree([]byte(sampleTree))
 	s := NewServer(plugin.Deps{}, tr, nil)
 	if s.http.TLS != nil {
 		t.Fatal("a fresh server must be plain HTTP")
 	}
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12}
-	if got := s.WithTLS(cfg); got != s || s.http.TLS != cfg {
-		t.Error("WithTLS must install the config and return the server for chaining")
+	if err := s.WithTLS(transport.TLSOptions{}); err != nil || s.http.TLS != nil {
+		t.Errorf("disabled posture: err=%v tls=%v, want nil/nil (plain HTTP)", err, s.http.TLS)
+	}
+	if err := s.WithTLS(transport.TLSOptions{Enable: true}); err == nil {
+		t.Error("a TLS posture with no certificate must be refused")
+	}
+	if err := s.WithTLS(selfSignedOptions(t)); err != nil || s.http.TLS == nil {
+		t.Errorf("real posture: err=%v tls=%v, want HTTPS on", err, s.http.TLS)
 	}
 }
 

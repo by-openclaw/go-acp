@@ -122,3 +122,15 @@ func TestCCMServeRunsAndStopsOnCancel(t *testing.T) {
 		t.Fatal("serve did not return after cancel")
 	}
 }
+
+// A missing --readme file is an error naming the flag, not a silent fallback
+// to the embedded README the operator did not ask for.
+func TestCCMServeBadReadmeFile(t *testing.T) {
+	err := runCCMServe(context.Background(), []string{
+		"--dm-tree", writeCCMTree(t),
+		"--readme", filepath.Join(t.TempDir(), "nope.md"),
+	})
+	if err == nil || !strings.Contains(err.Error(), "--readme") {
+		t.Errorf("err = %v, want a read --readme error", err)
+	}
+}

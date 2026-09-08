@@ -2,7 +2,6 @@ package ccm
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	thttp "dhs/internal/transport/http"
 )
 
@@ -102,13 +102,20 @@ const maxWriteBody = 1 << 20
 // Metrics returns the provider's counter set. Always non-nil.
 func (s *Server) Metrics() *metrics.Connector { return s.met }
 
-// WithTLS makes Serve listen with HTTPS. A real CCM device serves HTTPS on
-// 443, so an emulation that must be indistinguishable to a controller passes
-// the server certificate config here (transport.TLSOptions.Server builds it
-// with the shared TLS 1.2 floor). Nil leaves plain HTTP for lab captures.
-func (s *Server) WithTLS(cfg *tls.Config) *Server {
+// WithTLS makes Serve listen with HTTPS from a TLS posture. A real CCM device
+// serves HTTPS on 443, so an emulation that must be indistinguishable to a
+// controller enables it here. The posture — certificate, the shared TLS 1.2
+// floor, optional client CAs — is decided by transport.TLSOptions, never in
+// this package: a protocol package holds no crypto/tls code (architecture
+// gate), it only hands the built config to its HTTP server. A posture with
+// Enable false leaves plain HTTP for lab captures.
+func (s *Server) WithTLS(opts transport.TLSOptions) error {
+	cfg, err := opts.Server()
+	if err != nil {
+		return fmt.Errorf("ccm provider: tls: %w", err)
+	}
 	s.http.TLS = cfg
-	return s
+	return nil
 }
 
 // Handler exposes the routed HTTP handler so a test can drive the provider
