@@ -726,3 +726,73 @@ func TestNothingIsSecondHandWithoutAConnection(t *testing.T) {
 		t.Error("there is no enumeration to fall back on")
 	}
 }
+
+func TestANodeThatServesNothingIsNotAsked(t *testing.T) {
+	// Measured on a real IQ frame: the attached Control Panel is listed with
+	// an empty service mask where every card offers Menus, Control and File.
+	// Services are all-or-nothing, so there is nothing to open — asking costs
+	// a three-second timeout to learn what the list already said.
+	h := newHarness(t, func(d *device) {
+		d.ports = 3
+		d.servicelessPort = 2
+	})
+	ctx := context.Background()
+
+	// Enumerate first, so the calls counted below are only the ones this
+	// lookup makes.
+	if _, err := h.plugin.nodes(ctx); err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	before := h.device.callCount()
+
+	info, err := h.plugin.GetSlotInfo(ctx, 2)
+	if err != nil {
+		t.Fatalf("GetSlotInfo: %v", err)
+	}
+	if info.Identity["source"] != "enumeration" {
+		t.Errorf("source = %q, want the list's own word", info.Identity["source"])
+	}
+	if got := h.device.callCount(); got != before {
+		t.Errorf("%d session(s) opened on a node that serves nothing", got-before)
+	}
+}
+
+func TestANodeTheEnumerationNeverNamedIsAsked(t *testing.T) {
+	// The converse, so describing from the list cannot quietly swallow a node
+	// nobody described. A gateway ages an entry out after a minute of silence,
+	// so a slot past the list is one that has gone quiet rather than one that
+	// never existed, and it is still worth asking.
+	h := newHarness(t, func(d *device) { d.ports = 2 })
+	ctx := context.Background()
+
+	info, err := h.plugin.GetSlotInfo(ctx, 5)
+	if err != nil {
+		t.Fatalf("GetSlotInfo: %v", err)
+	}
+	if info.Identity["source"] == "enumeration" {
+		t.Error("a node the list never named has to be asked directly")
+	}
+}
+
+func TestAnUnnamedNodeThatRefusesItsIdentity(t *testing.T) {
+	// Past the enumeration, so it is asked; and it says no.
+	h := newHarness(t, func(d *device) {
+		d.ports = 2
+		d.refuse[codec.MsgGetID] = true
+	})
+
+	if _, err := h.plugin.GetSlotInfo(context.Background(), 5); err == nil {
+		t.Error("a refused identity should reach the caller")
+	}
+}
+
+func TestAnUnnamedNodeWhoseIdentityWillNotDecode(t *testing.T) {
+	h := newHarness(t, func(d *device) {
+		d.ports = 2
+		d.garble[codec.MsgGetID] = true
+	})
+
+	if _, err := h.plugin.GetSlotInfo(context.Background(), 5); err == nil {
+		t.Error("an identity that will not decode should be an error")
+	}
+}

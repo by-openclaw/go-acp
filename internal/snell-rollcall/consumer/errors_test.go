@@ -27,12 +27,16 @@ func TestDeviceRefusals(t *testing.T) {
 		only string
 		call func(*Plugin) error
 	}{
+		// An inventory is answered from the enumeration and asks no node
+		// anything, so these two reach a device through the calls that still
+		// read a node directly: an identity probe, and a slot the enumeration
+		// never named.
 		{"identity", codec.MsgGetID, "", func(p *Plugin) error {
-			_, err := p.GetSlotInfo(context.Background(), 1)
+			_, err := p.IdentityProbe(context.Background(), 1)
 			return err
 		}},
 		{"status", codec.MsgGetStat, "", func(p *Plugin) error {
-			_, err := p.GetSlotInfo(context.Background(), 1)
+			_, err := p.GetSlotInfo(context.Background(), 5)
 			return err
 		}},
 		{"menu count", codec.MsgGetMenuCount, "32", func(p *Plugin) error {
@@ -145,12 +149,16 @@ func TestDeviceGarbledReplies(t *testing.T) {
 		only string
 		call func(*Plugin) error
 	}{
+		// An inventory is answered from the enumeration and asks no node
+		// anything, so these two reach a device through the calls that still
+		// read a node directly: an identity probe, and a slot the enumeration
+		// never named.
 		{"identity", codec.MsgGetID, "", func(p *Plugin) error {
-			_, err := p.GetSlotInfo(context.Background(), 1)
+			_, err := p.IdentityProbe(context.Background(), 1)
 			return err
 		}},
 		{"status", codec.MsgGetStat, "", func(p *Plugin) error {
-			_, err := p.GetSlotInfo(context.Background(), 1)
+			_, err := p.GetSlotInfo(context.Background(), 5)
 			return err
 		}},
 		{"menu count", codec.MsgGetMenuCount, "32", func(p *Plugin) error {

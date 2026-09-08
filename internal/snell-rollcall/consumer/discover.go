@@ -136,17 +136,26 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, 
 		return consumer.SlotInfo{}, fmt.Errorf("rollcall: slot %d is outside the port range", slot)
 	}
 
+	// An inventory costs no session. The device's own enumeration already
+	// describes every node it lists — name, type id, version, services and
+	// status all travel in the DEVICEINFO_STR of the port list — and that is
+	// exactly what the vendor's Control Panel displays.
+	//
+	// Asking each node again cost a session per card: twelve for an eleven
+	// node frame where one is enough. Sessions are the scarce thing on this
+	// protocol, servers do not time them out, and opening one on a node that
+	// serves nothing cannot even succeed.
+	//
+	// A session is what a value costs, not an inventory.
+	if known, ok := p.enumerated(ctx, slot); ok {
+		return known, nil
+	}
+
+	// Only a node the enumeration never named gets this far, and a gateway
+	// ages an entry out after a minute of silence: such a slot is one that has
+	// gone quiet rather than one that never existed, so it is worth asking.
 	s, err := p.session(ctx, slot)
 	if err != nil {
-		// A node that will not grant a session is not necessarily a fault. The
-		// connected clients of a frame appear in its port list as nodes of
-		// their own - a Control Panel shows up as "142: ControlPanel ... RC32
-		// Control Panel" - and a client owes another client nothing. The
-		// enumeration already said what it is, so say that rather than
-		// nothing.
-		if known, ok := p.enumerated(ctx, slot); ok {
-			return known, nil
-		}
 		return consumer.SlotInfo{}, err
 	}
 

@@ -283,21 +283,42 @@ func (d *device) port(f codec.Frame) uint8 {
 	return d.sessions[f.Src.Index]
 }
 
-func (d *device) getID(f codec.Frame) {
-	port := d.port(f)
-
+// idOf is what a port reports about itself. The port list and the card's own
+// answer come from here alike, because on real hardware they agree: the IQ
+// frame's list carries exactly the name, type and version its Control Panel
+// displays.
+func (d *device) idOf(port uint8) codec.ID {
 	d.mu.Lock()
-	id, ok := d.identity[port]
+	defer d.mu.Unlock()
+	if id, ok := d.identity[port]; ok {
+		return id
+	}
+	return codec.ID{
+		Services: codec.SvcMenus | codec.SvcControl,
+		TypeID:   623,
+		Version:  codec.Version{Major: 2, Minor: 1, Alpha: 'a', CmdSet: 3},
+		Name:     "5915 Card",
+	}
+}
+
+// statusOf is the same for a port's status.
+func (d *device) statusOf(port uint8) codec.UnitStatus {
+	d.mu.Lock()
+	empty := d.emptySlots[port]
 	d.mu.Unlock()
 
-	if !ok {
-		id = codec.ID{
-			Services: codec.SvcMenus | codec.SvcControl,
-			TypeID:   623,
-			Version:  codec.Version{Major: 2, Minor: 1, Alpha: 'a', CmdSet: 3},
-			Name:     "5915 Card",
-		}
+	if empty {
+		// A slot with nothing fitted. The unit answers rather than refusing:
+		// "no card" is an answer, and a client walking a frame needs one per
+		// slot.
+		return codec.UnitStatus{Status: codec.StatusOnline}
 	}
+	return codec.UnitStatus{Status: codec.StatusPresent | codec.StatusOnline}
+}
+
+func (d *device) getID(f codec.Frame) {
+	id := d.idOf(d.port(f))
+
 	payload, err := id.AppendTo(nil)
 	if err != nil {
 		d.fail("device: encode id: %v", err)
@@ -307,17 +328,7 @@ func (d *device) getID(f codec.Frame) {
 }
 
 func (d *device) getStat(f codec.Frame) {
-	d.mu.Lock()
-	empty := d.emptySlots[f.Dst.Port]
-	d.mu.Unlock()
-
-	st := codec.UnitStatus{Status: codec.StatusPresent | codec.StatusOnline}
-	if empty {
-		// A slot with nothing fitted. The unit answers rather than refusing:
-		// "no card" is an answer, and a client walking a frame needs one per
-		// slot.
-		st.Status = codec.StatusOnline
-	}
+	st := d.statusOf(f.Dst.Port)
 	d.reply(f, codec.MsgRetStat, st.AppendTo(nil))
 }
 
@@ -340,6 +351,7 @@ func (d *device) deviceList(f codec.Frame) {
 	d.mu.Lock()
 	n := d.ports
 	odd := d.oddListItem
+	serviceless := d.servicelessPort
 	services := d.services
 	d.mu.Unlock()
 
@@ -347,15 +359,18 @@ func (d *device) deviceList(f codec.Frame) {
 		if i == odd {
 			return codec.MsgAck, nil
 		}
+		id := d.idOf(uint8(i))
+		id.Services = services
+		if i == serviceless {
+			// A node that serves nothing, the way a frame lists an attached
+			// Control Panel: it is in the list and it offers no service at all.
+			id.Services = 0
+		}
 		info := codec.DeviceInfo{
 			ProtocolVersion: codec.ProtocolVersion,
 			Address:         codec.Address{Unit: gatewayAddr.Unit, Port: uint8(i), Index: codec.IndexUnknown},
-			ID: codec.ID{
-				Services: services,
-				TypeID:   623,
-				Name:     "Card",
-			},
-			Status: codec.UnitStatus{Status: codec.StatusPresent},
+			ID:              id,
+			Status:          d.statusOf(uint8(i)),
 		}
 		payload, _ := info.AppendTo(nil)
 		return codec.MsgRetDevInfo, payload

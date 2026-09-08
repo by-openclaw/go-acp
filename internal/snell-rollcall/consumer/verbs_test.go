@@ -141,7 +141,10 @@ func TestEveryVerbFailsAfterDisconnect(t *testing.T) {
 func TestGetSlotInfoRefusalsPerStep(t *testing.T) {
 	h := newHarness(t, func(d *device) { d.refuse[codec.MsgGetStat] = true })
 
-	_, err := h.plugin.GetSlotInfo(context.Background(), 1)
+	// Slot 5 is past the two the enumeration named, so it is the one still
+	// asked directly. A slot the enumeration described is answered from that
+	// description and never reaches the device.
+	_, err := h.plugin.GetSlotInfo(context.Background(), 5)
 	if err == nil {
 		t.Fatal("a refused status should fail the slot query")
 	}
