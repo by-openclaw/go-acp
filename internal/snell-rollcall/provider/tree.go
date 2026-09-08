@@ -78,6 +78,10 @@ type port struct {
 
 	// display holds the unit's status lines, which are not menu objects.
 	display map[int16]string
+
+	// router is set on a node that serves the Full Control command space
+	// rather than a menu. Nil on a card.
+	router *routerModel
 }
 
 // model is the whole served device: a frame and its ports.
@@ -125,6 +129,14 @@ func buildModel(tree *canonical.Export, name string) *model {
 			// Past here the port numbers are the ones a gateway hands out to
 			// its own clients, so a card there would be addressed as one.
 			break
+		}
+		// A matrix is a router, not a card. It serves no menu and answers the
+		// Full Control command space instead, so it is built as its own kind
+		// of port rather than flattened into menu lines that would describe a
+		// crosspoint grid as a list of parameters.
+		if mx, ok := child.(*canonical.Matrix); ok {
+			m.addPort(newRouterPort(uint8(slot), identifierOf(child), mx))
+			continue
 		}
 		m.addPort(newPort(uint8(slot), identifierOf(child), []canonical.Element{child}))
 	}
