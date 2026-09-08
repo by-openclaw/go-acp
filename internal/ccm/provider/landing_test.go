@@ -49,7 +49,7 @@ func TestLandingRendersIdentityNamespacesAndAPITable(t *testing.T) {
 		`href="/api/v1/docs/api.yml"`,
 		"<td><code>/v1/self</code></td><td>GET</td>",
 		"<td><code>/v1/io/ip/senders/video/{uuid}</code></td><td>GET PUT</td>",
-		"Writes: PUT, PATCH",
+		"Writes: PUT",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("landing lacks %q", want)
@@ -114,7 +114,7 @@ func TestLandingCapabilitiesJSON(t *testing.T) {
 	}
 	if c.Protocol != "ccm" || c.CCMPrefix != "/api/v1" || c.ExtensionPrefix != "/x-dhs" ||
 		!c.OpenAPIServed || c.OpenAPIPath != "/api/v1/docs/api.yml" ||
-		c.Resources != 5 || c.Nodes != 6 || c.TLS || len(c.Writes) != 2 {
+		c.Resources != 5 || c.Nodes != 6 || c.TLS || len(c.Writes) != 1 || c.Writes[0] != "PUT" {
 		t.Errorf("capabilities = %+v", c)
 	}
 }

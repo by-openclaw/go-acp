@@ -70,8 +70,9 @@ FLAGS (serve)
   --dm-tree PATH        device model to replay: resource path -> resource JSON,
                         as written by 'dhs consumer ccm export' (required)
   --pidfile PATH        write the PID here on start (removed on exit) for stop/ensure
-  --api-spec PATH       the device's OpenAPI 3.1 api.yml, served at
-                        /api/v1/docs/api.yml (the path a real device uses)
+  --api-spec PATH       the device's OpenAPI 3.1 api.yml: served at
+                        /api/v1/docs/api.yml and the WRITE CONTRACT — only the
+                        operations it declares are accepted (without it: GET only)
   --bind ADDR           listen address (default :8080; a real device is https :443)
   --tls-cert PATH       server certificate (PEM) — with --tls-key, serves HTTPS
   --tls-key PATH        private key for --tls-cert
@@ -79,7 +80,8 @@ FLAGS (serve)
   --readme PATH         Markdown to render at /x-dhs/readme (default: the provider README)
 
 NAMESPACES
-  /api/v1   the CCM protocol, 100% to the spec — the tree, the OpenAPI, PUT/PATCH, §12 errors
+  /api/v1   the CCM protocol, 100% to the device's api.yml — the tree, the document,
+            the writes it declares, {code,message} errors
   /x-dhs    dhs-only additions — landing (/x-dhs/), rendered README (/x-dhs/readme),
             capabilities (/x-dhs/capabilities); never touches /api/v1
 
@@ -91,7 +93,7 @@ EXAMPLES
 func runCCMServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("producer ccm serve", flag.ContinueOnError)
 	treePath := fs.String("dm-tree", "", "device model to replay (resource path -> resource JSON), from 'dhs consumer ccm export' (required)")
-	specPath := fs.String("api-spec", "", "the device's OpenAPI 3.1 api.yml, served at /api/v1/docs/api.yml")
+	specPath := fs.String("api-spec", "", "the device's OpenAPI 3.1 api.yml: served at /api/v1/docs/api.yml and the write contract (without it: GET only)")
 	bind := fs.String("bind", ":8080", "listen address (a real device serves https on :443)")
 	tlsCert := fs.String("tls-cert", "", "server certificate PEM; with --tls-key, serve HTTPS")
 	tlsKey := fs.String("tls-key", "", "private key for --tls-cert")

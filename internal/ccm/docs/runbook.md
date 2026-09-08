@@ -54,13 +54,16 @@ curl -s http://HOST:8080/api/v1/self         # identity
 curl -s http://HOST:8080/api/v1/docs/api.yml # the OpenAPI 3.1
 ```
 
-Write, then confirm by read-back (§11.3 — the 202 is an acknowledgement, not the result):
+Write exactly as the device's `api.yml` declares it — `PUT` on the 35 resources and the matrix `main`/`backup` levels it lists, answered `200` with the resource as it now reads (there is no `PATCH` in the document, so `PATCH` is `405`):
 
 ```
-curl -s -i -X PATCH http://HOST:8080/api/v1/io/ip/senders/video/<uuid> \
-  -H 'Content-Type: application/json' -d '{"enable":true}'   # HTTP/1.1 202, empty body
-curl -s http://HOST:8080/api/v1/io/ip/senders/video/<uuid>   # shows enable:true
+curl -s -i -X PUT http://HOST:8080/api/v1/io/ip/senders/video/<uuid> \
+  -H 'Content-Type: application/json' -d '{"enable":true, ...all mutable fields}'   # HTTP/1.1 200 + the resource
+curl -s -i -X PUT http://HOST:8080/api/v1/matrix/audio/main \
+  -H 'Content-Type: application/json' -d '{"IP000-05":"DM000-05"}'   # HTTP/1.1 200 + the main map
 ```
+
+`--api-spec` is therefore not optional for a writable emulation: the document is the write contract, and without it the replay is `GET`-only.
 
 Open `http://HOST:8080/x-dhs/` in a browser for the landing (identity, the API table read from the OpenAPI, links), `/x-dhs/readme` for the tech doc, `/x-dhs/capabilities` for the JSON summary. Everything under `/x-dhs` is dhs-only and never appears under `/api/v1`.
 
@@ -71,18 +74,21 @@ Open `http://HOST:8080/x-dhs/` in a browser for the landing (identity, the API t
 | `GET` node path | `200` sorted array of child names |
 | `GET` resource path | `200` captured body, verbatim |
 | `GET` unknown path | `404 {"code":404,"message":...}` |
-| `PUT` / `PATCH` resource | `202` empty (§11.1) — read back to confirm |
-| `PUT` / `PATCH` with `uuid`/`id` | those keys ignored (§14.1 immutable) |
-| write to `.../status` or `docs/api.yml` | `405` (GET-only, §11.1) |
-| write to a collection array | `405` (not an individual resource) |
-| body not a non-empty JSON object | `400` (§11.2 maps not arrays; minProperties 1) |
+| `PUT` where the `api.yml` declares it | the status the document declares — `200` + the resource as it now reads |
+| `PUT` matrix `main`/`backup` (`MatrixState`) | `200` + the level map as stored; `current` is left as captured (the document defines no rule) |
+| `PUT` with `uuid`/`id` | those keys ignored (never overwritten) |
+| verb the document does not declare on the path | `405` — `PATCH` anywhere, `PUT` on `/self`, `.../status`, `info`, `current`, `docs/api.yml`, collections, nodes |
+| `PUT` on a path the device does not have | `404` — e.g. `matrix/data/output/main` (single-level matrix) |
+| body not a JSON object | `400` naming the schema |
+| `MatrixState` value not a string | `400` naming the key |
+| no `--api-spec` | every write `405`: no contract, `GET`-only replay |
 
 ## 6. Troubleshooting
 
 - **`--dm-tree` parse error** — the file must be a JSON object whose keys are resource paths and values the resource bodies. Every ancestor becomes a node automatically; record leaves only.
 - **Cerebrum sees no spec** — start with `--api-spec`; without it `/api/v1/docs/api.yml` is a `404` and the landing says so.
 - **Cerebrum refuses plain HTTP** — a real device is HTTPS on 443; run with `--tls-cert/--tls-key --bind :8443` (or `:443` with the right privileges).
-- **A write "did nothing"** — the `202` is only the acknowledgement; `GET` the resource. Writes to `/status`, the spec, or a collection are refused with `405` by design.
+- **A write is `405`** — the `api.yml` does not declare that verb on that path (`PATCH` is never declared by this firmware), or the emulator runs without `--api-spec`. Check the document: `grep -n -A1 '^  /v1/<path>:' api.yml`.
 - **No change notifications** — the `/ws` change stream (§13) is not served by this emulation yet; it is JWT-gated on the real device and a later unit.
 - **Metrics show zero** — pass `--metrics-addr`; every response records size and handler latency, so `dhs metrics show --url http://HOST:9100/snapshot.json` reports real traffic.
 
@@ -114,7 +120,7 @@ How the CCM matrix relates to the probel / Ember+ (Snell SW-P-08 family) matrix 
 | `current` | tally / read-back | the effective route per destination, read-only; how it is derived from main/backup (failover rule) is **not in the spec** — open question for EVS |
 | State | crosspoint tally per level | `MatrixState`: a flat **dst → src** map per level endpoint. **The ids are not uuids**: they are each group's `template` rendered with `{idx}` (child index, 3 digits) and `{subIdsIdx}` (channel, 2 digits), e.g. `IP000-05`, `EM003-12`, `DB255-01` |
 | Info | matrix size / labels | `MatrixInfo{description, version, sources[], destinations[]}` where each entry is a **group** `{template, type, path, children[]{id, subIds}}`. **This is the link**: a state id resolves through its group → `children[idx].id` (the object uuid — or an integer id for internal resources) → the object at `path/{id}`, channel `subIdsIdx` |
-| Write | set crosspoint | `PUT`/`PATCH` a level's map → **202**, confirm via `current` |
+| Write | set crosspoint | `PUT` a level's map (`MatrixState`) → **`200` + the map**, exactly as the `api.yml` declares; `main`/`backup` only on `audio`, `data/path`, `video/path` (`data/output` and `video/output` are single-level: `404`); `current` and `info` are `GET` only (`405`). The document defines no `current`-from-`main`/`backup` rule, so the emulator applies none |
 
 **Worked samples, confirmed live on the BRIDGE 7.0.2 (2026-09-09)** — the link that could not be made before, made explicit. Two real routes from `/matrix/audio/current`:
 

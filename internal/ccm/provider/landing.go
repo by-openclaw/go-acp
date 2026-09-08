@@ -87,10 +87,10 @@ func (s *Server) caps() capabilities {
 		Resources:       s.tree.Len(),
 		Nodes:           s.tree.Nodes(),
 		TLS:             s.http.TLS != nil,
-		Writes:          []string{"PUT", "PATCH"},
-		WriteResponse:   "202 empty (§11.1); confirm by reading the resource or its /status back (§11.3)",
-		StatusEndpoints: "GET only (§11.1)",
-		Matrix:          "out of scope — routing stays with the controller and the router protocols",
+		Writes:          s.contract.writeMethods(),
+		WriteResponse:   "as the API document declares per operation (the shipped api.yml: 200 + the resource as it now reads); undeclared operations are 405",
+		StatusEndpoints: "GET only — the API document declares no write on them",
+		Matrix:          "served as the API document declares: info/current GET, main/backup GET+PUT (MatrixState) where the device has them",
 		Events:          "WebSocket /ws not served by this emulation (later unit)",
 	}
 }
@@ -120,7 +120,7 @@ func (s *Server) handleLanding(context.Context, *http.Request) (int, any, error)
 		c.Resources, c.Nodes, onOff(c.TLS))
 
 	b.WriteString("<h2>Namespaces</h2>\n<table><thead><tr><th>Prefix</th><th>What</th></tr></thead><tbody>\n")
-	b.WriteString("<tr><td><code>" + html.EscapeString(s.prefix) + "</code></td><td>The CCM protocol, 100% to the spec — the self-describing tree, the OpenAPI document, §11 PUT/PATCH, §12 errors. A CCM controller sees exactly a CCM device here.</td></tr>\n")
+	b.WriteString("<tr><td><code>" + html.EscapeString(s.prefix) + "</code></td><td>The CCM protocol, 100% to the device's own OpenAPI document — the self-describing tree, the document itself, the writes it declares, the {code,message} errors. A CCM controller sees exactly a CCM device here.</td></tr>\n")
 	b.WriteString("<tr><td><code>" + ExtensionPrefix + "</code></td><td>dhs additions only — this page, <a href=\"" + ExtensionPrefix + "/readme\">the README</a>, <a href=\"" + ExtensionPrefix + "/capabilities\">capabilities</a>. Never touches the protocol.</td></tr>\n")
 	b.WriteString("</tbody></table>\n")
 

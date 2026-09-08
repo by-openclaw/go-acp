@@ -22,10 +22,10 @@ import (
 // the full base is /api/v1 — the same base the CCM consumer dials.
 //
 // COMPLIANCE BOUNDARY. Everything under DefaultPrefix is the CCM protocol as
-// EVS defines it, served 100% to the spec: the self-describing tree, the
-// OpenAPI document at its well-known path, the §12 error envelope, and (in
-// later slices) §11.2 PATCH semantics. Nothing dhs invents is ever mounted
-// here. Our own additions — the Swagger landing, the rendered README, a
+// the device's own OpenAPI document declares it, served 100% to that
+// document: the self-describing tree, the document at its well-known path,
+// the §12 error envelope, and writes only where and how the document says.
+// Nothing dhs invents is ever mounted here. Our own additions — the Swagger landing, the rendered README, a
 // capabilities view — go under ExtensionPrefix, so a controller that speaks
 // CCM sees exactly a CCM device and our contract stays separable. This is the
 // same discipline EVS applies to itself, keeping /x-evs/ beside /x-nmos/.
@@ -54,15 +54,17 @@ type GenericApiMessage struct {
 
 // Server replays a captured CCM device model over HTTP so a controller can
 // drive dhs as if it were a real CCM (EVS BRIDGE / Neuron) device. It is the
-// read + describe surface: the self-describing DM tree and the OpenAPI
-// document. Config writes (PATCH) and the change-stream WebSocket are separate
-// units; matrix routing is deliberately out of scope (owner decision,
-// docs/spec-review-0v1.md) — routing stays with Cerebrum and the router
-// protocols.
+// read + describe + write surface: the self-describing DM tree, the OpenAPI
+// document, and the writes that document declares (resources and matrix
+// levels alike — the matrix is part of the document). The change-stream
+// WebSocket is a separate unit.
 type Server struct {
-	tree   *Tree
-	spec   []byte // OAS 3.1 api.yml served at {prefix}/docs/api.yml; nil = 404
-	prefix string
+	tree *Tree
+	spec []byte // OAS 3.1 api.yml served at {prefix}/docs/api.yml; nil = 404
+	// contract is the write contract read from spec: which paths accept
+	// which operations and with what status. Nil spec = nothing declared.
+	contract *contract
+	prefix   string
 
 	logger *slog.Logger
 	// met counts what this provider serves, exposed via Metrics() so
@@ -78,24 +80,26 @@ type Server struct {
 func NewServer(deps plugin.Deps, tree *Tree, spec []byte) *Server {
 	deps = deps.WithDefaults()
 	s := &Server{
-		tree:   tree,
-		spec:   spec,
-		prefix: DefaultPrefix,
-		logger: deps.Logger.With(slog.String("plugin", "ccm-provider")),
-		met:    deps.Metrics,
-		http:   thttp.NewServer(deps.Logger),
+		tree:     tree,
+		spec:     spec,
+		contract: newContract(spec),
+		prefix:   DefaultPrefix,
+		logger:   deps.Logger.With(slog.String("plugin", "ccm-provider")),
+		met:      deps.Metrics,
+		http:     thttp.NewServer(deps.Logger),
 	}
 	// One prefix route per method covers the whole tree plus the spec; the
 	// handlers separate them so route precedence never has to be reasoned
-	// about. PUT and PATCH are the §11 mutations (the shipped OpenAPI lists
-	// PUT; §11.2 makes PATCH mandatory — a compliant device serves both).
+	// about. Both write verbs route to one handler that consults the
+	// document: the shipped api.yml declares PUT only, so PATCH is 405
+	// everywhere until a device document declares it.
 	s.http.HandlePrefix(s.prefix, http.MethodGet, s.handleGet)
 	s.http.HandlePrefix(s.prefix, http.MethodPut, s.handleWrite)
 	s.http.HandlePrefix(s.prefix, http.MethodPatch, s.handleWrite)
 	return s
 }
 
-// maxWriteBody bounds a PUT/PATCH body. CCM resources are small objects; a
+// maxWriteBody bounds a write body. CCM resources are small objects; a
 // megabyte is generous and stops a runaway client from exhausting memory.
 const maxWriteBody = 1 << 20
 
@@ -174,20 +178,30 @@ func (s *Server) handleGet(_ context.Context, r *http.Request) (int, any, error)
 	}
 }
 
-// handleWrite answers PUT and PATCH under the prefix per §11: the body is a
-// JSON object of one or more mutable fields (maps, not arrays — §11.2), the
-// change is applied to the stored resource, and the response is an EMPTY 202
-// (§11.1) — accepted as well-formed and applied; the caller confirms by
-// reading the resource or its /status back (§11.3 split request/status).
-// Read-only endpoints (the /status views and the OpenAPI document) expose
-// GET only (§11.1) and refuse writes with 405. Every refusal carries the §12
-// {code,message} envelope.
+// handleWrite answers a write under the prefix exactly as the device's own
+// OpenAPI document declares it. The document is the contract: a write is
+// accepted only on a path where it declares that operation (the real
+// api.yml declares PUT on 35 resources and on the matrix main/backup
+// levels, and no PATCH), the body must be a JSON object (every declared
+// request schema is one; a MatrixState is an object of strings), and the
+// response is the status the document promises with the resource as it now
+// reads — 200 + body on this firmware. Anything the document does not
+// declare is 405, an unknown path is 404, a malformed body is 400, all with
+// the §12 {code,message} envelope. Nothing here is inferred beyond the
+// document; without a document the replay is GET-only.
 func (s *Server) handleWrite(_ context.Context, r *http.Request) (int, any, error) {
 	start := time.Now()
 	sub := strings.Trim(strings.TrimPrefix(r.URL.Path, s.prefix), "/")
 
-	if sub == specPath || strings.HasSuffix(sub, "/status") {
-		return http.StatusMethodNotAllowed, apiError(http.StatusMethodNotAllowed, "read-only endpoint: GET only"), nil
+	op, declared := s.contract.lookup(r.Method, specRoot+"/"+sub)
+	if !declared {
+		// The document itself is served, not stored in the tree; a write to
+		// it is undeclared like any other, not an unknown path.
+		if _, kind := s.tree.Get(sub); kind == KindAbsent && sub != specPath {
+			return http.StatusNotFound, apiError(http.StatusNotFound, fmt.Sprintf("no resource at %q", sub)), nil
+		}
+		return http.StatusMethodNotAllowed, apiError(http.StatusMethodNotAllowed,
+			fmt.Sprintf("%s is not declared for this path by the API document", r.Method)), nil
 	}
 
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxWriteBody))
@@ -199,11 +213,12 @@ func (s *Server) handleWrite(_ context.Context, r *http.Request) (int, any, erro
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
 		return http.StatusBadRequest, apiError(http.StatusBadRequest,
-			"body must be a JSON object of mutable fields (maps, not arrays)"), nil
+			fmt.Sprintf("body must be a JSON object (%s)", op.Body)), nil
 	}
-	if len(fields) == 0 {
-		return http.StatusBadRequest, apiError(http.StatusBadRequest,
-			"body needs one or more mutable fields (minProperties: 1)"), nil
+	if op.Body == matrixStateSchema {
+		if err := checkMatrixState(fields); err != nil {
+			return http.StatusBadRequest, apiError(http.StatusBadRequest, err.Error()), nil
+		}
 	}
 
 	switch err := s.tree.Update(sub, fields, r.Method == http.MethodPut); {
@@ -213,10 +228,35 @@ func (s *Server) handleWrite(_ context.Context, r *http.Request) (int, any, erro
 		return http.StatusMethodNotAllowed, apiError(http.StatusMethodNotAllowed, "not a mutable resource"), nil
 	}
 
-	s.met.ObserveTx(0, time.Since(start))
-	// An explicitly empty RawBody: the default JSON path would write "null",
-	// and §11.1 says the response is empty.
-	return http.StatusAccepted, &thttp.RawBody{ContentType: "application/json"}, nil
+	status := op.Success
+	if status == 0 {
+		status = http.StatusOK
+	}
+	body, _ := s.tree.Get(sub)
+	s.met.ObserveTx(len(body), time.Since(start))
+	return status, &thttp.RawBody{ContentType: "application/json", Body: body}, nil
+}
+
+// specRoot is the path prefix the OpenAPI document uses for every operation
+// ("/v1/self"); the served prefix is DefaultPrefix ("/api/v1/self").
+const specRoot = "/v1"
+
+// matrixStateSchema is the request/response schema of a matrix level in the
+// device's api.yml: `type: object, additionalProperties: {type: string}` —
+// a flat destination -> source map of string ids.
+const matrixStateSchema = "MatrixState"
+
+// checkMatrixState enforces the MatrixState schema on a level write: every
+// value is a string. The keys are unconstrained by the document
+// (additionalProperties), so they are not checked here.
+func checkMatrixState(fields map[string]json.RawMessage) error {
+	for dst, raw := range fields {
+		var src string
+		if err := json.Unmarshal(raw, &src); err != nil {
+			return fmt.Errorf("MatrixState: value of %q must be a string, got %s", dst, strings.TrimSpace(string(raw)))
+		}
+	}
+	return nil
 }
 
 // apiError builds the §12 GenericApiMessage envelope for a refused request.

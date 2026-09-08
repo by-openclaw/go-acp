@@ -263,103 +263,220 @@ func do(t *testing.T, hs *httptest.Server, method, path, body string) (*http.Res
 	return resp, out
 }
 
-// PATCH is an EMPTY 202 (§11.1) and the change is visible on read-back
-// (§11.3 split request/status).
-func TestWritePatchIsEmpty202AndApplies(t *testing.T) {
-	s, hs := newTestServer(t, nil)
-	resp, body := do(t, hs, http.MethodPatch, "/api/v1/io/ip/senders/tx-1", `{"name":"CAM 1B"}`)
-	if resp.StatusCode != http.StatusAccepted {
-		t.Fatalf("status = %d, want 202 (%s)", resp.StatusCode, body)
+// writeSpec is a device-shaped OpenAPI document: PUT declared on one resource
+// template (200) and on the audio matrix main level (200, MatrixState);
+// /self, /status views, info and current are GET only; no PATCH.
+const writeSpec = `openapi: '3.1.2'
+paths:
+  /v1/self:
+    get:
+  /v1/io/ip/senders/{uuid}:
+    get:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpSenderPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+        '400':
+          description: '400 response'
+  /v1/io/ip/senders/{uuid}/status:
+    get:
+  /v1/matrix/audio/info:
+    get:
+  /v1/matrix/audio/current:
+    get:
+  /v1/matrix/audio/main:
+    get:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+      responses:
+        '200':
+          description: '200 response'
+  /v1/matrix/data/output/current:
+    get:
+`
+
+const writeTree = `{
+  "self": {"productName":"BRIDGE"},
+  "io/ip/senders/tx-1": {"uuid":"tx-1","name":"CAM 1","enable":false},
+  "io/ip/senders/tx-1/status": {"state":"ok"},
+  "io/ip/senders/video": [{"uuid":"tx-1"}],
+  "matrix/audio/info": {"description":"Audio matrix","sources":[],"destinations":[]},
+  "matrix/audio/current": {"IP000-00":"DM000-00"},
+  "matrix/audio/main": {"IP000-00":"DM000-00"},
+  "matrix/data/output/current": {"IP00":"DM00"}
+}`
+
+func newWriteServer(t *testing.T, spec []byte) (*Server, *httptest.Server) {
+	t.Helper()
+	tr, err := LoadTree([]byte(writeTree))
+	if err != nil {
+		t.Fatalf("LoadTree: %v", err)
 	}
-	if len(body) != 0 {
-		t.Errorf("202 body = %q, want empty (§11.1)", body)
-	}
-	_, got := get(t, hs, "/api/v1/io/ip/senders/tx-1")
-	var res map[string]any
-	_ = json.Unmarshal(got, &res)
-	if res["name"] != "CAM 1B" || res["uuid"] != "tx-1" {
-		t.Errorf("read-back = %v, want the patch applied and uuid kept", res)
-	}
-	if s.Metrics().Snapshot().RxBytes == 0 {
-		t.Error("a write must count its request bytes")
-	}
+	s := NewServer(plugin.Deps{}, tr, spec)
+	hs := httptest.NewServer(s.Handler())
+	t.Cleanup(hs.Close)
+	return s, hs
 }
 
-// PUT replaces the mutable fields and is likewise an empty 202.
-func TestWritePutReplaces(t *testing.T) {
-	_, hs := newTestServer(t, nil)
+// A PUT the document declares answers the status it promises (200) with the
+// resource as it now reads: the mutable fields replaced, uuid kept.
+func TestWritePutAnswersAsDeclared(t *testing.T) {
+	s, hs := newWriteServer(t, []byte(writeSpec))
 	resp, body := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/tx-1", `{"enable":true}`)
-	if resp.StatusCode != http.StatusAccepted || len(body) != 0 {
-		t.Fatalf("PUT = %d %q, want empty 202", resp.StatusCode, body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT = %d %s, want 200 as the document declares", resp.StatusCode, body)
+	}
+	var res map[string]any
+	if err := json.Unmarshal(body, &res); err != nil {
+		t.Fatalf("200 body is not the resource: %s", body)
+	}
+	if _, still := res["name"]; still || res["enable"] != true || res["uuid"] != "tx-1" {
+		t.Errorf("response = %v, want name dropped, enable set, uuid kept", res)
 	}
 	_, got := get(t, hs, "/api/v1/io/ip/senders/tx-1")
-	var res map[string]any
-	_ = json.Unmarshal(got, &res)
-	if _, still := res["name"]; still || res["enable"] != true || res["uuid"] != "tx-1" {
-		t.Errorf("read-back = %v, want name dropped, enable set, uuid kept", res)
+	if string(got) != string(body) {
+		t.Errorf("read-back %s differs from the write response %s", got, body)
+	}
+	snap := s.Metrics().Snapshot()
+	if snap.RxBytes == 0 || snap.TxBytes == 0 {
+		t.Errorf("a write must count request and response bytes: %+v", snap)
 	}
 }
 
-// Anything that is not a non-empty JSON object is a 400 with the §12 envelope:
-// arrays (§11.2 "maps, not arrays"), invalid JSON, null, and {} (minProperties 1).
+// A matrix level PUT (MatrixState) stores the map and returns it; the
+// document says nothing about current following main, so current is
+// untouched.
+func TestWriteMatrixLevelStoresAndReturnsState(t *testing.T) {
+	_, hs := newWriteServer(t, []byte(writeSpec))
+	resp, body := do(t, hs, http.MethodPut, "/api/v1/matrix/audio/main", `{"IP000-00":"MA000-03","EM001-02":"IP002-00"}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT main = %d %s, want 200", resp.StatusCode, body)
+	}
+	var state map[string]string
+	if err := json.Unmarshal(body, &state); err != nil || state["IP000-00"] != "MA000-03" || state["EM001-02"] != "IP002-00" || len(state) != 2 {
+		t.Errorf("returned state = %s, want the written map", body)
+	}
+	_, cur := get(t, hs, "/api/v1/matrix/audio/current")
+	if string(cur) != `{"IP000-00":"DM000-00"}` {
+		t.Errorf("current changed to %s; the document declares no such rule", cur)
+	}
+}
+
+// MatrixState is an object of strings: a non-string value is a 400 envelope.
+func TestWriteMatrixStateValuesMustBeStrings(t *testing.T) {
+	_, hs := newWriteServer(t, []byte(writeSpec))
+	resp, body := do(t, hs, http.MethodPut, "/api/v1/matrix/audio/main", `{"IP000-00":7}`)
+	var msg GenericApiMessage
+	_ = json.Unmarshal(body, &msg)
+	if resp.StatusCode != http.StatusBadRequest || msg.Code != 400 || !strings.Contains(msg.Message, "IP000-00") {
+		t.Errorf("non-string source -> %d %s, want 400 envelope naming the key", resp.StatusCode, body)
+	}
+}
+
+// A body that is not a JSON object is a 400 with the envelope naming the
+// schema: arrays, invalid JSON, null, scalars.
 func TestWriteRejectsBadBodies(t *testing.T) {
-	_, hs := newTestServer(t, nil)
-	for _, b := range []string{`[1]`, `{`, `null`, `{}`, `"str"`} {
-		resp, body := do(t, hs, http.MethodPatch, "/api/v1/self", b)
+	_, hs := newWriteServer(t, []byte(writeSpec))
+	for _, b := range []string{`[1]`, `{`, `null`, `"str"`} {
+		resp, body := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/tx-1", b)
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("body %s -> %d, want 400", b, resp.StatusCode)
 			continue
 		}
 		var msg GenericApiMessage
-		if err := json.Unmarshal(body, &msg); err != nil || msg.Code != 400 || msg.Message == "" {
-			t.Errorf("body %s -> 400 without the §12 envelope: %s", b, body)
+		if err := json.Unmarshal(body, &msg); err != nil || msg.Code != 400 || !strings.Contains(msg.Message, "IpSenderPut") {
+			t.Errorf("body %s -> 400 without the §12 envelope naming the schema: %s", b, body)
 		}
 	}
 }
 
-// A write to an unknown path or an interior node is a 404 envelope.
-func TestWriteUnknownAndNodeAre404(t *testing.T) {
-	_, hs := newTestServer(t, nil)
-	for _, p := range []string{"/api/v1/nope", "/api/v1/io/ip"} {
-		resp, body := do(t, hs, http.MethodPatch, p, `{"a":1}`)
+// An operation the document does not declare is 405 with the envelope,
+// whatever the target: PATCH anywhere (the shipped api.yml has none), PUT on
+// GET-only paths (/self, a /status view, matrix info and current), the spec,
+// a collection, an interior node. A PUT on a path that exists nowhere — an
+// unknown path, or main/backup on a matrix the device serves single-level —
+// is 404.
+func TestWriteUndeclaredIs405UnknownIs404(t *testing.T) {
+	_, hs := newWriteServer(t, []byte(writeSpec))
+	for _, c := range []struct{ m, p string }{
+		{http.MethodPatch, "/api/v1/io/ip/senders/tx-1"},
+		{http.MethodPatch, "/api/v1/matrix/audio/main"},
+		{http.MethodPut, "/api/v1/self"},
+		{http.MethodPut, "/api/v1/io/ip/senders/tx-1/status"},
+		{http.MethodPut, "/api/v1/matrix/audio/info"},
+		{http.MethodPut, "/api/v1/matrix/audio/current"},
+		{http.MethodPut, "/api/v1/matrix/data/output/current"},
+		{http.MethodPut, "/api/v1/docs/api.yml"},
+		{http.MethodPut, "/api/v1/io/ip/senders/video"},
+		{http.MethodPut, "/api/v1/io/ip"},
+	} {
+		resp, body := do(t, hs, c.m, c.p, `{"a":"b"}`)
+		var msg GenericApiMessage
+		_ = json.Unmarshal(body, &msg)
+		if resp.StatusCode != http.StatusMethodNotAllowed || msg.Code != 405 {
+			t.Errorf("%s %s -> %d %s, want 405 envelope", c.m, c.p, resp.StatusCode, body)
+		}
+	}
+	for _, p := range []string{"/api/v1/nope", "/api/v1/matrix/data/output/main"} {
+		resp, body := do(t, hs, http.MethodPut, p, `{"a":"b"}`)
 		var msg GenericApiMessage
 		_ = json.Unmarshal(body, &msg)
 		if resp.StatusCode != http.StatusNotFound || msg.Code != 404 {
-			t.Errorf("%s -> %d %s, want 404 envelope", p, resp.StatusCode, body)
+			t.Errorf("PUT %s -> %d %s, want 404 envelope", p, resp.StatusCode, body)
 		}
 	}
 }
 
-// §11.1: read-only/status endpoints expose GET only, and the OpenAPI document
-// is not a resource — writes are 405 with the envelope. A collection array is
-// not an individual resource either.
-func TestWriteReadOnlyTargetsAre405(t *testing.T) {
-	s := NewServer(plugin.Deps{}, mustCollectionTree(t), []byte("openapi: '3.1.2'\n"))
-	hs := httptest.NewServer(s.Handler())
-	t.Cleanup(hs.Close)
-	for _, p := range []string{
-		"/api/v1/io/ip/senders/tx-1/status", // status view
-		"/api/v1/docs/api.yml",              // the spec
-		"/api/v1/io/ip/senders/video",       // a collection array
-	} {
-		for _, m := range []string{http.MethodPut, http.MethodPatch} {
-			resp, body := do(t, hs, m, p, `{"a":1}`)
-			var msg GenericApiMessage
-			_ = json.Unmarshal(body, &msg)
-			if resp.StatusCode != http.StatusMethodNotAllowed || msg.Code != 405 {
-				t.Errorf("%s %s -> %d %s, want 405 envelope", m, p, resp.StatusCode, body)
-			}
-		}
+// The document declares a PUT on a template the tree does not hold (an id
+// that was never captured): declared, but nothing to write -> 404. A declared
+// PUT whose stored body is not an object (a collection captured at a
+// templated path) -> 405.
+func TestWriteDeclaredButNotInTreeOrNotObject(t *testing.T) {
+	_, hs := newWriteServer(t, []byte(writeSpec))
+	resp, _ := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/ghost", `{"a":"b"}`)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("PUT on an uncaptured id -> %d, want 404", resp.StatusCode)
+	}
+	resp, _ = do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/video", `{"a":"b"}`)
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("PUT on a collection -> %d, want 405", resp.StatusCode)
 	}
 }
 
-func mustCollectionTree(t *testing.T) *Tree {
-	t.Helper()
-	tr, err := LoadTree([]byte(`{"self":{"productName":"BRIDGE"},"io/ip/senders/tx-1":{"uuid":"tx-1"},"io/ip/senders/video":[{"uuid":"tx-1"}]}`))
-	if err != nil {
-		t.Fatal(err)
+// Without an API document there is no write contract: every write is 405 and
+// the tree is untouched — replay is GET-only.
+func TestWriteWithoutSpecIsGetOnly(t *testing.T) {
+	_, hs := newWriteServer(t, nil)
+	resp, body := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/tx-1", `{"enable":true}`)
+	var msg GenericApiMessage
+	_ = json.Unmarshal(body, &msg)
+	if resp.StatusCode != http.StatusMethodNotAllowed || msg.Code != 405 {
+		t.Fatalf("PUT without a document -> %d %s, want 405 envelope", resp.StatusCode, body)
 	}
-	return tr
+	_, got := get(t, hs, "/api/v1/io/ip/senders/tx-1")
+	if !strings.Contains(string(got), `"enable":false`) {
+		t.Errorf("tree changed without a contract: %s", got)
+	}
+}
+
+// A declared PUT whose document names no 2xx code still answers 200: the
+// resource as it now reads is the only success there is.
+func TestWriteDefaultsTo200WhenNoCodeDeclared(t *testing.T) {
+	_, hs := newWriteServer(t, []byte("openapi: '3.1.2'\npaths:\n  /v1/io/ip/senders/{uuid}:\n    put:\n"))
+	resp, _ := do(t, hs, http.MethodPut, "/api/v1/io/ip/senders/tx-1", `{"enable":true}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("PUT = %d, want 200", resp.StatusCode)
+	}
 }
 
 // errReader fails the first read, so a body that cannot be read is a 400
@@ -369,9 +486,9 @@ type errReader struct{}
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
 
 func TestWriteBodyReadErrorIs400(t *testing.T) {
-	tr, _ := LoadTree([]byte(sampleTree))
-	s := NewServer(plugin.Deps{}, tr, nil)
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/self", errReader{})
+	tr, _ := LoadTree([]byte(writeTree))
+	s := NewServer(plugin.Deps{}, tr, []byte(writeSpec))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/io/ip/senders/tx-1", errReader{})
 	status, body, err := s.handleWrite(context.Background(), req)
 	if err != nil || status != http.StatusBadRequest {
 		t.Fatalf("handleWrite = %d, %v; want 400", status, err)

@@ -16,10 +16,13 @@ stays regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 captured device model (a dm-tree: resource path → resource JSON, the
 shape `ccm export` captures) so Cerebrum drives dhs as a CCM device —
 emulate before hardware. Compliance boundary, enforced by construction:
-`/api/v1` is the CCM protocol 100% to the spec (self-describing tree,
-the OpenAPI at `/api/v1/docs/api.yml`, §11 PUT + PATCH with an empty
-202, §12 `{code,message}`, `uuid`/`id` immutable, `/status` and the
-spec GET-only); every dhs addition (landing, rendered README,
+`/api/v1` is the CCM protocol 100% to the device's own `api.yml`
+(self-describing tree, the OpenAPI at `/api/v1/docs/api.yml`, writes
+ONLY where and how that document declares them — the shipped document
+has 35 PUT answering 200 + the resource, no PATCH — §12
+`{code,message}`, `uuid`/`id` immutable). THE `api.yml` IS THE CONTRACT,
+not the 0v1 PDF (a proposal: PATCH, empty 202, `/state`); where they
+differ the document wins, and the emulator infers nothing beyond it; every dhs addition (landing, rendered README,
 capabilities) lives under `/x-dhs` via the one `HandleExtension` entry
 point and can never change what a controller observes. Matrix (§17) is
 **in scope** (owner reversed the 2026-08-22 exclusion on 2026-09-09 —
@@ -34,8 +37,10 @@ CONFIRMED (2026-09-09): state ids are NOT uuids — each info group
 `{idx}`/`{subIdsIdx}` to the state key (`IP000-05`), which resolves to
 `children[idx].id` at `path/{id}` (uuid, or integer for Delay Bank —
 schema deviation); `info` has no `levels` array (deviation; levels are
-endpoints). The emulator stores writes but does not yet validate them
-against info or run routing semantics — next matrix unit. The
+endpoints). The emulator serves the matrix exactly as the document
+declares: `info`/`current` GET, `main`/`backup` GET+PUT (`MatrixState`:
+object of strings, stored and returned, 200) on the matrices that have
+them; no `current` recomputation (the document defines none). The
 `/ws` change stream is a later unit. Operate it per `docs/runbook.md`.
 
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**

@@ -608,7 +608,7 @@ usage: dhs consumer nmos registers <list|show> [urn] [--json]
 ```text
 Usage of producer ccm serve:
   -api-spec string
-    	the device's OpenAPI 3.1 api.yml, served at /api/v1/docs/api.yml
+    	the device's OpenAPI 3.1 api.yml: served at /api/v1/docs/api.yml and the write contract (without it: GET only)
   -bind string
     	listen address (a real device serves https on :443) (default ":8080")
   -dm-tree string
