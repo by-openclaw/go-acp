@@ -58,6 +58,10 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 		links: make(map[*session.Link]*linkState),
 		done:  make(chan struct{}),
 		unit:  defaultUnit,
+
+		// A frame speaks the newer generation unless it is told to be an older
+		// one, because that is what the tree it serves can express.
+		longStrings: true,
 	}
 
 	// The Control Panel will not render a device without this. It reads the
@@ -82,6 +86,11 @@ type Provider struct {
 	deps plugin.Deps
 
 	model *model
+
+	// longStrings says whether this frame advertises SV_LONGSTR. A frame that
+	// does not is a 16-bit frame: a client cannot negotiate the newer
+	// generation with it, because the service it would ask for is not there.
+	longStrings bool
 
 	mu       sync.RWMutex
 	files    map[string][]byte
@@ -279,10 +288,13 @@ func (p *Provider) serveConn(conn net.Conn) {
 // gatewayInfo is what this provider announces about itself: port zero of its
 // own unit, which is the gateway rather than any card in it.
 func (p *Provider) gatewayInfo() codec.DeviceInfo {
+	// Through identityOf so the announcement says the same about this frame
+	// as an enquiry does, including which generation it offers.
+	id, _ := p.identityOf(0)
 	return codec.DeviceInfo{
 		ProtocolVersion: codec.ProtocolVersion,
 		Address:         codec.Address{Unit: p.unit, Port: 0, Index: codec.IndexUnknown},
-		ID:              p.model.frame,
+		ID:              id,
 		Status:          p.statusOf(0),
 	}
 }
@@ -301,6 +313,34 @@ func (p *Provider) SetUnit(u uint8) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.unit = u
+}
+
+// SetLongStrings chooses which generation this frame offers.
+//
+// A frame that does not advertise SV_LONGSTR cannot be asked for the newer
+// generation at all, so every client on it speaks 16-bit. It is how a 16-bit
+// device is emulated without a second implementation: the same tree, the same
+// menus, the same values, projected into the older forms by the code that
+// already does that for a 16-bit client of a 32-bit frame.
+//
+// It takes effect on the next connection, because a session's generation is
+// fixed when it is called.
+func (p *Provider) SetLongStrings(on bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.longStrings = on
+}
+
+// advertise masks off what this frame does not offer.
+func (p *Provider) advertise(s codec.Service) codec.Service {
+	p.mu.RLock()
+	long := p.longStrings
+	p.mu.RUnlock()
+
+	if !long {
+		s &^= codec.SvcLongStr
+	}
+	return s
 }
 
 // firstClientPort is the port number the first client on a link is given.

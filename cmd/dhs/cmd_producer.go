@@ -48,6 +48,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		port           = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
+		generation     = fs.String("generation", "32", "snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree.")
 		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
 		syslogAddr     = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
@@ -146,6 +147,24 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
 	srv := factory.New(pluginDeps(logger), tree)
+
+	// A frame that withholds SV_LONGSTR cannot be asked for the newer
+	// generation, so every client on it speaks 16-bit. Serving one tree twice,
+	// once each way, is how the two generations are compared without a second
+	// implementation to disagree with the first.
+	switch *generation {
+	case "16":
+		if o, ok := srv.(interface{ SetLongStrings(bool) }); ok {
+			o.SetLongStrings(false)
+			logger.Info("serving the 16-bit generation", slog.String("generation", "16"))
+		} else {
+			logger.Warn("this protocol has one generation; --generation ignored")
+		}
+	case "32", "":
+		// The default: advertise long strings and let a client choose.
+	default:
+		return fmt.Errorf("--generation %q: want 16 or 32", *generation)
+	}
 	// Manifest slots may declare per-slot GetSlotInfo proto lists
 	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]
 	// and Cerebrum's driver gates on it). Providers that support the

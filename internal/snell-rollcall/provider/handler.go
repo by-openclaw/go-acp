@@ -91,8 +91,8 @@ func (p *Provider) checkGeneration(s *session.Session, req codec.Frame) {
 
 // served is every service this provider can supply.
 func (p *Provider) served() codec.Service {
-	return codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
-		codec.SvcFile | codec.SvcMap | codec.SvcPorts | codec.SvcLongStr
+	return p.advertise(codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
+		codec.SvcFile | codec.SvcMap | codec.SvcPorts | codec.SvcLongStr)
 }
 
 func generationName(s codec.Service) string {
@@ -294,10 +294,14 @@ func (p *Provider) answerUnsolicited(l *session.Link, req codec.Frame, typ codec
 // card is fitted on any other, and nothing at all on an empty one.
 func (p *Provider) identityOf(slot uint8) (codec.ID, bool) {
 	if prt := p.model.port(slot); prt != nil {
-		return prt.id, true
+		id := prt.id
+		id.Services = p.advertise(id.Services)
+		return id, true
 	}
 	if slot == 0 {
-		return p.model.frame, true
+		id := p.model.frame
+		id.Services = p.advertise(id.Services)
+		return id, true
 	}
 	return codec.ID{}, false
 }

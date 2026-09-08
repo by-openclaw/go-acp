@@ -235,3 +235,34 @@ func walk32(t *testing.T, s *served) []codec.MenuItem {
 	}
 	return out
 }
+
+func TestA16BitMenuPromisesOnlyWhatItCanStore(t *testing.T) {
+	// A string's range is its length. The older generation carries a string in
+	// a fixed twenty-byte field, so a menu that reports the long-string
+	// ceiling to a 16-bit client promises sixty-three characters and stores
+	// nineteen. The write is answered honestly with the stored value, but the
+	// menu had already said otherwise.
+	m := buildModel(testTree(), "dhs rollcall")
+	prt := m.port(1)
+
+	var long, short int32
+	for _, l := range prt.menu(true) {
+		if l.Style.Kind() == codec.StyleEditString {
+			long = l.MaxRange
+			break
+		}
+	}
+	for _, l := range prt.menu(false) {
+		if l.Style.Kind() == codec.StyleEditString {
+			short = l.MaxRange
+			break
+		}
+	}
+
+	if long != codec.MaxLongString-1 {
+		t.Errorf("32-bit string length = %d, want %d", long, codec.MaxLongString-1)
+	}
+	if short != codec.MaxTextSize-1 {
+		t.Errorf("16-bit string length = %d, want %d", short, codec.MaxTextSize-1)
+	}
+}

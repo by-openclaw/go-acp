@@ -56,3 +56,47 @@ func TestAMessageBelongingToBothIsNotCounted(t *testing.T) {
 		t.Error("messages common to both generations were reported as mixed")
 	}
 }
+
+func TestA16BitFrameWithholdsLongStrings(t *testing.T) {
+	// A frame that does not advertise SV_LONGSTR cannot be asked for the newer
+	// generation, so every client on it speaks 16-bit. It is how a 16-bit
+	// device is emulated from the same tree, without a second implementation
+	// to disagree with the first.
+	s := newServed(t, testTree())
+	s.p.SetLongStrings(false)
+
+	if s.p.served().LongStrings() {
+		t.Error("a 16-bit frame still offers the long-string service")
+	}
+	id, ok := s.p.identityOf(0)
+	if !ok {
+		t.Fatal("the gateway has no identity")
+	}
+	if id.Services.LongStrings() {
+		t.Error("the gateway still advertises long strings")
+	}
+	card, ok := s.p.identityOf(1)
+	if !ok {
+		t.Fatal("card 1 has no identity")
+	}
+	if card.Services.LongStrings() {
+		t.Error("a card still advertises long strings")
+	}
+	// What it announces has to agree with what it answers.
+	if s.p.gatewayInfo().ID.Services.LongStrings() {
+		t.Error("the announcement still offers long strings")
+	}
+}
+
+func TestA32BitFrameOffersLongStrings(t *testing.T) {
+	s := newServed(t, testTree())
+
+	if !s.p.served().LongStrings() {
+		t.Error("the default frame should offer the newer generation")
+	}
+	s.p.SetLongStrings(false)
+	s.p.SetLongStrings(true)
+	if !s.p.served().LongStrings() {
+		t.Error("turning it back on did not restore it")
+	}
+}

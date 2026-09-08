@@ -452,6 +452,15 @@ func (p *port) menu(longStrings bool) []line {
 		}
 		l.Text = codec.TruncateFixed(l.Text, codec.MaxTextSize)
 		l.Param = codec.TruncateFixed(l.Param, codec.MaxTextSize)
+
+		// A string's range is its length, and the older generation carries a
+		// string in a fixed field. Reporting the long-string ceiling to a
+		// client that will be handed nineteen bytes promises what this
+		// generation cannot store: the write is truncated and answered
+		// honestly with the stored value, but the menu said otherwise.
+		if l.Style.Kind() == codec.StyleEditString && l.MaxRange > codec.MaxTextSize-1 {
+			l.MaxRange = codec.MaxTextSize - 1
+		}
 		out = append(out, l)
 	}
 	return out

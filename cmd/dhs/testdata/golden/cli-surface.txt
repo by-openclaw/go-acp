@@ -3504,6 +3504,8 @@ Usage of producer acp1 serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -3610,6 +3612,8 @@ Usage of producer acp2 serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -3716,6 +3720,8 @@ Usage of producer emberplus serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -4079,6 +4085,8 @@ Usage of producer probel-sw02p serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -4185,6 +4193,8 @@ Usage of producer probel-sw08p serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
