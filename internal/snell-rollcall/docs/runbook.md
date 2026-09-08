@@ -188,7 +188,119 @@ Unpack it somewhere writable and run `CentraController.exe`; set
 command it refuses, which is a quick way to tell a Full Control refusal from a
 session-layer one.
 
-## 9. Known device quirks
+## 9. Testing through a proxy
+
+A RollCall client reaches one chassis per connection. The **RollCall IP Proxy**
+is what a plant uses to get past that: it holds a connection to each chassis
+and publishes them all through one port. The manual is
+[`assets/Protocol/Docs/RollCall_IP_Proxy_Operation[1].pdf`](../assets/Protocol/Docs);
+§2.1.1 is blunt about why it exists — *"needed in a system to enable connection
+to more than one Ethernet enabled IQ chassis."*
+
+Three paths reach the same plant, and all three are worth testing:
+
+| Path | What only it proves |
+|---|---|
+| direct | our session layer against the vendor's own code |
+| through the vendor proxy | that we behave like a RollCall Control Panel |
+| through our own bridge | that our aggregation is indistinguishable from theirs |
+
+### 9.1 Emulators, one per chassis
+
+Unpack one copy of the simulator per instance and give each its own four ports
+— see [oracle-centra.md](oracle-centra.md) §12, which lists all four and why
+`SharePort` alone is not enough.
+
+### 9.2 Point the proxy at them
+
+The proxy installs as the Windows service `RollIPProxy` and starts
+automatically. Open its GUI from the system-tray icon, or
+`Start > All Programs > SAM > RollCall > RollCall Proxy Service`.
+
+For each emulator, in **Map Connections to Ethernet Chassis or IP Share**, click
+**Add** and give it three things:
+
+| Field | Value |
+|---|---|
+| IP Address | the host running the emulator, or a resolvable name |
+| Port | that emulator's `RollCall/SharePort` |
+| Substitution address | a four-digit RollCall net — see below |
+
+**The substitution address is the `rNet` field**, and the manual states the rule
+our codec already enforces in `Address.ValidRoute`: four digits, non-zero from
+the leftmost digit. `1000`, `1200`, `1230` and `1234` are valid; `0100` is not.
+Its **first digit is the bridge unit** the proxy publishes that chassis as —
+`1000` becomes node `0000-01-00`, `2000` becomes `0000-02-00`.
+
+That is also the organising handle. The manual (§3.4) says to rename each node
+"to indicate their location or network type", so the substitution address is
+where a site, a rack row or a function belongs.
+
+Watch the **Status** column: `Connected` means it found the chassis, `Calling`
+means it did not.
+
+### 9.3 Ports the proxy listens on
+
+| Port | For |
+|---|---|
+| 2050 | RollCall control clients — the Control Panel, and us |
+| 2053 | RollMap / RollView. The default 2052 collides with LogServer on the same host, and the manual recommends moving this one |
+
+### 9.4 What a proxied read looks like today
+
+```
+dhs consumer rollcall info <proxy-host>:2050
+```
+
+The proxy answers as `RollProxy Service` on unit `0xFF`, advertises **Map**
+alone, and speaks the **16-bit** generation. Its map lists one `Proxy Virtual
+Node` per configured chassis, each carrying the **Net** service:
+
+```
+slot 0  0000-02-00  Proxy Virtual Node  "Example IQ frame"
+slot 1  0000-01-00  Proxy Virtual Node  "Local RollNet"
+```
+
+Those are bridges, not the equipment behind them. Reading *through* a bridge
+needs the Net service — spec §7.7, and note that `SP_GETLOCDEVMAP` means "map"
+or "net" depending on the session's services, so it needs a Net-without-Map
+session exactly as the map needs Map-without-Net. That is not implemented yet,
+which is why a proxied read reports two nodes where a direct read reports
+fifteen.
+
+**Two limits worth knowing before designing a topology.** `rNet` is four
+nibbles of 1–15, so one proxy fronts at most **15 chassis** and routes cross at
+most **four** bridges. And the proxy wedges under connection churn like every
+other RollCall gateway — leave seconds between verbs.
+
+### 9.5 Running the contract over every path
+
+Every path is asserted the same way, by the same task file, and each path's
+node table is kept so two can be diffed. From the control node:
+
+```
+cd ansible
+DHS_BIN=/root/acp/bin/dhs ROLLCALL_SIM_HOST=<emulator>   ROLLCALL_SIM_PORT=2050 ROLLCALL_PROXY_HOST=<proxy>    ROLLCALL_PROXY_PORT=2050 ROLLCALL_SETTLE_SECONDS=12   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+```
+
+`ROLLCALL_BRIDGE_HOST` adds our own bridge when there is one, and
+`ROLLCALL_TEST_HOST` adds real hardware, read-only. A path with no host is
+skipped rather than faked. `DHS_BIN` is for a control node with Ansible and no
+Go toolchain, which is what the designated one is.
+
+The run ends with the comparison, which is the point of the shape:
+
+```
+direct        10.6.239.107:2050  15 node(s) [ 0000-08-00 ... 0000-81-00 ]
+vendor-proxy  10.6.250.105:2050   2 node(s) [ 0000-01-00 0000-02-00 ]
+loopback      127.0.0.1:22050     2 node(s) [ 0000-01-01 0000-01-02 ]
+```
+
+It reports rather than asserts. A proxy publishes one node per chassis, so
+those counts differing is correct on both paths; asserting they matched would
+be asserting a bug. The report is there for the difference nobody predicted.
+
+## 10. Known device quirks
 
 | Device | What it does | What we do |
 |---|---|---|
