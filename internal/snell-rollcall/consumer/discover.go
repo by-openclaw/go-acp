@@ -85,8 +85,9 @@ func (p *Plugin) Ports(ctx context.Context, unit uint8) ([]codec.DeviceInfo, err
 		return nil, err
 	}
 
-	// The map session again, for the same reasons as the walk above.
-	s, err := p.mapSession(ctx)
+	// The port service has its own session: a unit that implements it properly
+	// ignores this request on a session that did not negotiate Ports.
+	s, err := p.portSession(ctx)
 	if err != nil {
 		return nil, err
 	}

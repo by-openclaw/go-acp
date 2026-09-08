@@ -197,6 +197,11 @@ func (d *device) answerCall(f codec.Frame) {
 		d.reply(f, codec.MsgNack, []byte("no long strings\x00"))
 		return
 	}
+	if d.refusePorts && conn.Services.Has(codec.SvcPorts) {
+		d.mu.Unlock()
+		d.reply(f, codec.MsgNack, append([]byte("no port service"), 0))
+		return
+	}
 	if d.refuseMap && conn.Services.Has(codec.SvcMap) {
 		d.mu.Unlock()
 		d.reply(f, codec.MsgNack, append([]byte("no map service"), 0))
@@ -205,6 +210,8 @@ func (d *device) answerCall(f codec.Frame) {
 	idx := d.nextIdx
 	d.nextIdx++
 	d.sessions[f.Src.Index] = f.Dst.Port
+	d.sessionSvc[f.Src.Index] = conn.Services
+	d.calls++
 	d.mu.Unlock()
 
 	d.send(codec.Frame{
@@ -219,6 +226,21 @@ func (d *device) term(f codec.Frame) {
 	delete(d.sessions, f.Src.Index)
 	delete(d.backChannel, f.Src.Index)
 	d.mu.Unlock()
+}
+
+// callCount is how many sessions have been opened, so a test can prove one was
+// kept rather than reopened.
+func (d *device) callCount() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.calls
+}
+
+// negotiated is what a session asked for.
+func (d *device) negotiated(f codec.Frame) codec.Service {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.sessionSvc[f.Src.Index]
 }
 
 // port returns which port a session was opened on.
@@ -272,6 +294,16 @@ func (d *device) getStat(f codec.Frame) {
 // the vendor Centra's own list gives each node its own service mask, and a
 // client uses it to decide what to ask that node for.
 func (d *device) deviceList(f codec.Frame) {
+	// A unit that implements the port service properly answers a port list
+	// only on a session that negotiated it, and ignores the request otherwise
+	// rather than refusing it. A real IQ 3U frame does exactly this.
+	d.mu.Lock()
+	strict := d.silentUnlessPorts
+	d.mu.Unlock()
+	if strict && !d.negotiated(f).Has(codec.SvcPorts) {
+		return
+	}
+
 	d.mu.Lock()
 	n := d.ports
 	odd := d.oddListItem

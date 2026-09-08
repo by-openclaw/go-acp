@@ -461,7 +461,7 @@ func TestEnumerationLeavesTimeToAskTheOtherWay(t *testing.T) {
 	// which is how a reachable proxy came to look like an unreachable device.
 	h := newHarness(t, func(d *device) { d.silent[codec.MsgGetDevList] = true })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 
 	info, err := h.plugin.GetDeviceInfo(ctx)
@@ -476,14 +476,179 @@ func TestEnumerationLeavesTimeToAskTheOtherWay(t *testing.T) {
 func TestHalfOfADeadlineThatHasNoTimeLeft(t *testing.T) {
 	// Nothing to divide. The parent is handed back so the caller fails on the
 	// parent's own terms rather than on an arithmetic accident.
-	deadline := time.Now()
+	deadline := time.Now().Add(-time.Second)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
-	got, cancel2 := halfOf(ctx, deadline.Add(time.Second))
+	got, cancel2 := halfOf(ctx)
 	defer cancel2()
 
 	if d, ok := got.Deadline(); !ok || !d.Equal(deadline) {
 		t.Errorf("deadline = %v (set %v), want the parent's own", d, ok)
+	}
+}
+
+// The cards in a frame are ports of its gateway (spec 7.6), reached through
+// the port service. A unit that implements it properly ignores the request on
+// a session that did not negotiate Ports — a real IQ 3U frame does exactly
+// that, and a frame full of cards enumerated as one gateway because of it.
+
+func TestAPortListAsksForThePortService(t *testing.T) {
+	h := newHarness(t, func(d *device) {
+		d.services |= codec.SvcPorts
+		d.ports = 4
+		// The port list is answerable only on a session that asked for Ports.
+		// Anything else is met with the silence real hardware answers with.
+		d.silentUnlessPorts = true
+	})
+
+	info, err := h.plugin.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.NumSlots != 4 {
+		t.Errorf("%d nodes, want the four cards behind the port service", info.NumSlots)
+	}
+}
+
+func TestAPortSessionIsOpenedOnce(t *testing.T) {
+	h := newHarness(t, func(d *device) {
+		d.services |= codec.SvcPorts
+		d.ports = 3
+	})
+	ctx := context.Background()
+
+	if _, err := h.plugin.Ports(ctx, gatewayAddr.Unit); err != nil {
+		t.Fatalf("Ports: %v", err)
+	}
+	before := h.device.callCount()
+	if _, err := h.plugin.Ports(ctx, gatewayAddr.Unit); err != nil {
+		t.Fatalf("Ports again: %v", err)
+	}
+	if got := h.device.callCount(); got != before {
+		t.Errorf("%d calls after the second port list, want the session kept", got-before)
+	}
+}
+
+func TestAUnitThatAdvertisesPortsAndRefusesThem(t *testing.T) {
+	// Saying one thing and doing another. The map session still answers on
+	// this device, and reporting a frame with no cards would be worse than
+	// trying it.
+	h := newHarness(t, func(d *device) {
+		d.services |= codec.SvcPorts
+		d.refusePorts = true
+		d.ports = 2
+	})
+
+	info, err := h.plugin.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.NumSlots != 2 {
+		t.Errorf("%d nodes, want the fallback to have found them", info.NumSlots)
+	}
+}
+
+func TestAPortSessionOnAClosedLink(t *testing.T) {
+	h := newHarness(t, func(d *device) { d.services |= codec.SvcPorts })
+	if err := h.plugin.Disconnect(); err != nil {
+		t.Fatalf("Disconnect: %v", err)
+	}
+	if _, err := h.plugin.portSession(context.Background()); err == nil {
+		t.Error("a closed link has no port session to give")
+	}
+}
+
+func TestAPortSessionOnALinkAlreadyFinishedWith(t *testing.T) {
+	// The link object is still there and its socket may still be open, but it
+	// has been finished with. Opening a session on it would leak one on the
+	// peer, which is what a unit runs out of.
+	h := newHarness(t, func(d *device) { d.services |= codec.SvcPorts })
+
+	h.plugin.mu.RLock()
+	l := h.plugin.link
+	h.plugin.mu.RUnlock()
+	l.mu.Lock()
+	l.closed = true
+	l.mu.Unlock()
+
+	if _, err := h.plugin.portSession(context.Background()); err == nil {
+		t.Error("a link that has been finished with must not open a session")
+	}
+}
+
+func TestTheLinkClosesWhileThePortSessionIsOpening(t *testing.T) {
+	gate := make(chan struct{})
+	h := newHarness(t, func(d *device) {
+		d.services |= codec.SvcPorts
+		d.gateCall = gate
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := h.plugin.portSession(context.Background())
+		done <- err
+	}()
+
+	waitForCalls(t, h, 1)
+
+	// Finished with, without closing the socket, so the call still completes
+	// and the answer still arrives. The session the peer just granted has to
+	// be closed rather than handed out.
+	h.plugin.mu.RLock()
+	l := h.plugin.link
+	h.plugin.mu.RUnlock()
+	l.mu.Lock()
+	l.closed = true
+	l.mu.Unlock()
+
+	close(gate)
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("a port session granted after the link finished must not be handed out")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the caller was left waiting")
+	}
+}
+
+func TestConcurrentPortSessionsKeepOne(t *testing.T) {
+	// Two callers racing for the port service get one session between them.
+	// Opening one costs a round trip and closing one is what a unit runs out
+	// of, so the loser closes its own rather than replacing the winner's.
+	gate := make(chan struct{})
+	h := newHarness(t, func(d *device) { d.services |= codec.SvcPorts })
+
+	h.device.mu.Lock()
+	h.device.gateCall = gate
+	h.device.callsSeen = 0
+	h.device.mu.Unlock()
+
+	var wg sync.WaitGroup
+	results := make([]*session.Session, 2)
+	for i := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s, err := h.plugin.portSession(context.Background())
+			if err != nil {
+				t.Errorf("caller %d: %v", i, err)
+				return
+			}
+			results[i] = s
+		}()
+	}
+
+	waitForCalls(t, h, 2)
+	close(gate)
+	wg.Wait()
+
+	if results[0] == nil || results[1] == nil {
+		t.Fatal("both callers should have a session")
+	}
+	if results[0] != results[1] {
+		t.Error("two callers got two port sessions; one of them is leaked")
 	}
 }

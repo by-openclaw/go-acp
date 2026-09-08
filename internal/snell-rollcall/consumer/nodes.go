@@ -95,7 +95,7 @@ func (p *Plugin) enumerate(ctx context.Context, l *link) ([]codec.DeviceInfo, er
 	// like an unreachable device.
 	//
 	// A caller that set no deadline asked to wait, and is left to.
-	probe, cancel := halfOf(ctx, p.clk.Now())
+	probe, cancel := halfOf(ctx)
 	defer cancel()
 
 	list, err := p.Ports(probe, l.sess.RemoteAddress().Unit)
@@ -128,12 +128,17 @@ func (p *Plugin) enumerate(ctx context.Context, l *link) ([]codec.DeviceInfo, er
 
 // halfOf returns a context holding half the time left on its parent, and a
 // cancel that must be called. A parent with no deadline is returned unchanged.
-func halfOf(ctx context.Context, now time.Time) (context.Context, context.CancelFunc) {
+//
+// The arithmetic is against the wall clock rather than the injected one. A
+// context deadline is real time whatever a test has done to the clock the
+// protocol runs on, and measuring one with the other makes the split silently
+// not happen.
+func halfOf(ctx context.Context) (context.Context, context.CancelFunc) {
 	deadline, ok := ctx.Deadline()
 	if !ok {
 		return context.WithCancel(ctx)
 	}
-	left := deadline.Sub(now)
+	left := time.Until(deadline)
 	if left <= 0 {
 		return context.WithCancel(ctx)
 	}

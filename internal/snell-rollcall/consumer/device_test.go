@@ -67,7 +67,18 @@ type device struct {
 
 	// sessions maps our index to the port it was opened on.
 	sessions map[int16]uint8
-	nextIdx  int16
+
+	// sessionSvc maps our index to what that session negotiated, so the device
+	// can answer a request only on a session entitled to ask it.
+	sessionSvc map[int16]codec.Service
+
+	// calls counts sessions opened.
+	calls int
+
+	// silentUnlessPorts makes the device ignore a port list that arrives on a
+	// session without the port service, which is what a real IQ frame does.
+	silentUnlessPorts bool
+	nextIdx           int16
 
 	// backChannel records which sessions asked for pushes.
 	backChannel map[int16]bool
@@ -113,6 +124,11 @@ type device struct {
 	// which is what a gateway that will not open one looks like.
 	refuseMap bool
 
+	// refusePorts makes the device advertise the port service and refuse a
+	// call asking for it, which is a unit that says one thing and does
+	// another.
+	refusePorts bool
+
 	// emptySlots are the ports that report nothing fitted, which is what a
 	// frame with a slot left out looks like.
 	emptySlots map[uint8]bool
@@ -155,7 +171,7 @@ type device struct {
 
 func newDevice(t *testing.T, conn net.Conn) *device {
 	d := &device{
-		t:             t,
+		t: t,
 		services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 			codec.SvcFile | codec.SvcMap | codec.SvcLongStr,
 		menus:         make(map[uint8][]codec.MenuItem),
@@ -165,6 +181,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		ports:         2,
 		blockSize:     0,
 		sessions:      make(map[int16]uint8),
+		sessionSvc:    make(map[int16]codec.Service),
 		nextIdx:       0x30,
 		backChannel:   make(map[int16]bool),
 		oddMenuItem:   -1,

@@ -42,6 +42,12 @@ type link struct {
 	// vendor Centra, which refuses GETDEVLIST that way on a control session.
 	mapSess *session.Session
 
+	// portSess is the same story for the port service. A real IQ frame keeps
+	// its cards behind SP_GETDEVLIST and ignores that request on a session
+	// that did not negotiate Ports, so a frame full of cards enumerates as one
+	// gateway and nothing else.
+	portSess *session.Session
+
 	closed bool
 }
 
@@ -146,6 +152,10 @@ func (l *link) close() {
 	if l.mapSess != nil {
 		sessions = append(sessions, l.mapSess)
 		l.mapSess = nil
+	}
+	if l.portSess != nil {
+		sessions = append(sessions, l.portSess)
+		l.portSess = nil
 	}
 	for _, s := range l.sessions {
 		sessions = append(sessions, s)
@@ -285,6 +295,63 @@ func (p *Plugin) mapSession(ctx context.Context) (*session.Session, error) {
 		return existing, nil
 	}
 	l.mapSess = s
+	return s, nil
+}
+
+// portSession returns the session a port list runs on.
+//
+// The cards in a frame are ports of its gateway (spec 7.6) and they are
+// reached through the port service, which is a different service from the map
+// even though both answer with a list of devices. A unit that implements it
+// properly ignores SP_GETDEVLIST asked on a session that did not negotiate
+// Ports: measured against a real IQ 3U frame, which advertises the service and
+// then says nothing at all, so a frame full of cards enumerated as one gateway.
+//
+// A peer that does not advertise Ports is asked on the map session, which is
+// what the vendor Centra needs - it advertises Map and not Ports and answers a
+// port list there anyway with the units it fronts.
+func (p *Plugin) portSession(ctx context.Context) (*session.Session, error) {
+	l, err := p.conn()
+	if err != nil {
+		return nil, err
+	}
+	if !l.gateway.ID.Services.Has(codec.SvcPorts) {
+		return p.mapSession(ctx)
+	}
+	gateway := l.sess.RemoteAddress().Device()
+
+	l.mu.Lock()
+	if l.closed {
+		l.mu.Unlock()
+		return nil, consumer.ErrNotConnected
+	}
+	if s := l.portSess; s != nil {
+		l.mu.Unlock()
+		return s, nil
+	}
+	l.mu.Unlock()
+
+	s, err := session.Call(ctx, l.sess, gateway, codec.SvcPorts, codec.LevelSupervisor, p.identity())
+	if err != nil {
+		// A unit that advertises the service and refuses a session for it can
+		// still answer on the map session, and trying is cheaper than
+		// reporting a frame with no cards.
+		p.log.Debug("rollcall: no port session; enumerating on the map session",
+			"gateway", gateway.String(), "err", err)
+		return p.mapSession(ctx)
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		_ = s.Close()
+		return nil, consumer.ErrNotConnected
+	}
+	if existing := l.portSess; existing != nil {
+		_ = s.Close()
+		return existing, nil
+	}
+	l.portSess = s
 	return s, nil
 }
 
