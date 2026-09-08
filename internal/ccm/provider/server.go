@@ -2,6 +2,7 @@ package ccm
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -89,6 +90,15 @@ func NewServer(deps plugin.Deps, tree *Tree, spec []byte) *Server {
 
 // Metrics returns the provider's counter set. Always non-nil.
 func (s *Server) Metrics() *metrics.Connector { return s.met }
+
+// WithTLS makes Serve listen with HTTPS. A real CCM device serves HTTPS on
+// 443, so an emulation that must be indistinguishable to a controller passes
+// the server certificate config here (transport.TLSOptions.Server builds it
+// with the shared TLS 1.2 floor). Nil leaves plain HTTP for lab captures.
+func (s *Server) WithTLS(cfg *tls.Config) *Server {
+	s.http.TLS = cfg
+	return s
+}
 
 // Handler exposes the routed HTTP handler so a test can drive the provider
 // through httptest without binding a socket.

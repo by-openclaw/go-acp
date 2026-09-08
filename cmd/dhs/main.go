@@ -357,6 +357,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	if proto == "nmos" {
 		return runNMOSProducer(ctx, rest)
 	}
+	if proto == "ccm" {
+		return runCCMProducer(ctx, rest)
+	}
 	// Same rule as dispatchConsumer (#462): help IN PLACE of a verb =
 	// catalogue; help after the verb belongs to the verb's own FlagSet.
 	if len(rest) == 0 || isHelpToken(rest[0]) {
@@ -610,6 +613,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)

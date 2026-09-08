@@ -2,6 +2,7 @@ package ccm
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -187,5 +188,19 @@ func TestExtensionNeverLeaksIntoCCMNamespace(t *testing.T) {
 	// And the CCM surface itself is unaffected by having extensions mounted.
 	if resp, _ := get(t, hs, DefaultPrefix+"/self"); resp.StatusCode != 200 {
 		t.Errorf("/api/v1/self = %d after mounting an extension, want 200", resp.StatusCode)
+	}
+}
+
+// WithTLS installs the server certificate config so Serve listens with HTTPS,
+// matching a real CCM device on 443; nil keeps plain HTTP for lab captures.
+func TestWithTLSInstallsConfig(t *testing.T) {
+	tr, _ := LoadTree([]byte(sampleTree))
+	s := NewServer(plugin.Deps{}, tr, nil)
+	if s.http.TLS != nil {
+		t.Fatal("a fresh server must be plain HTTP")
+	}
+	cfg := &tls.Config{MinVersion: tls.VersionTLS12}
+	if got := s.WithTLS(cfg); got != s || s.http.TLS != cfg {
+		t.Error("WithTLS must install the config and return the server for chaining")
 	}
 }

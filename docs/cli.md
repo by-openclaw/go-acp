@@ -26,6 +26,8 @@ Ansible templates render the same shape.
 - [NMOS plant audit](#nmos-plant-audit)
 - [NMOS live probe](#nmos-live-probe)
 - [NMOS parameter registers](#nmos-parameter-registers)
+- [CCM device (producer)](#ccm-device-producer)
+- [CCM controller (consumer)](#ccm-controller-consumer)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -197,6 +199,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -596,6 +599,39 @@ usage: dhs consumer nmos registers <list|show> [urn] [--json]
   list          every parameter, URN-sorted
   show <urn>    one parameter's typed constraint
   --json        machine-readable output
+```
+
+## CCM device (producer)
+
+`dhs producer ccm serve --help`
+
+```text
+Usage of producer ccm serve:
+  -api-spec string
+    	the device's OpenAPI 3.1 api.yml, served at /api/v1/docs/api.yml
+  -bind string
+    	listen address (a real device serves https on :443) (default ":8080")
+  -dm-tree string
+    	device model to replay (resource path -> resource JSON), from 'dhs consumer ccm export' (required)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json on this address
+  -tls-cert string
+    	server certificate PEM; with --tls-key, serve HTTPS
+  -tls-key string
+    	private key for --tls-cert
+```
+
+## CCM controller (consumer)
+
+`dhs consumer ccm --help`
+
+```text
+usage: dhs consumer ccm <verb> <host> [flags]
+  walk <host>    connect to the CCM (Neuron REST) API and list its streams by UUID
+  export <host>  store api.yml (schema) + tree (DM) + extract, versioned for firmware diff
+  flags: --json  emit the whole device as JSON
+         --verify-tls  verify the device certificate (default: skip, lab self-signed)
+         --timeout D   per-request timeout (default 8s)
 ```
 
 ## consumer info
