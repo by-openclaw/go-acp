@@ -177,8 +177,8 @@ func TestServeBindsAndStops(t *testing.T) {
 	var addr string
 	for time.Now().Before(deadline) {
 		srv.mu.Lock()
-		if srv.listener != nil {
-			addr = srv.listener.Addr().String()
+		if a := srv.Addr(); a != nil {
+			addr = a.String()
 		}
 		srv.mu.Unlock()
 		if addr != "" {
@@ -373,7 +373,7 @@ func TestFanOutWriteFailureNotesEventAndContinues(t *testing.T) {
 	dead := &session{conn: a}
 
 	srv.mu.Lock()
-	srv.sessions[dead] = struct{}{}
+	srv.Track(dead)
 	srv.mu.Unlock()
 
 	before := srv.profile.Snapshot()[OutboundWriteFailed]
@@ -399,7 +399,7 @@ func TestSessionRunReturnsOnCancelledContext(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		sess.run(ctx)
+		sess.Run(ctx)
 		close(done)
 	}()
 	select {
@@ -425,7 +425,7 @@ func TestSessionRunReadErrorDebugBranch(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		sess.run(context.Background())
+		sess.Run(context.Background())
 		close(done)
 	}()
 	select {
@@ -558,21 +558,32 @@ func TestServeListenerReturnsAcceptError(t *testing.T) {
 	}
 }
 
-// TestAcceptLoopReturnsOnCancelledContext covers acceptLoop's ctx.Err()
-// guard at the top of the loop: a pre-cancelled context returns
-// context.Canceled before Accept is called.
-func TestAcceptLoopReturnsOnCancelledContext(t *testing.T) {
+// TestServeReturnsOnCancelledContext: cancelling Serve's context closes the
+// listener via the ctx.Done->Stop goroutine and Serve returns nil. The bare
+// accept loop is provider.Base's now and observes cancellation through the
+// listener closing, not a preemptive ctx check.
+func TestServeReturnsOnCancelledContext(t *testing.T) {
 	srv := newTestServer(t)
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
-
 	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.Serve(ctx, "127.0.0.1:0") }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for srv.Addr() == nil && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if srv.Addr() == nil {
+		cancel()
+		t.Fatal("Serve never bound a listener")
+	}
 	cancel()
-	if err := srv.acceptLoop(ctx, ln); !errors.Is(err, context.Canceled) {
-		t.Errorf("acceptLoop(cancelled) = %v; want context.Canceled", err)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Serve after ctx cancel = %v; want nil", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not return after ctx cancel")
 	}
 }
 
@@ -588,14 +599,14 @@ func TestSessionWriteFailureClosesSession(t *testing.T) {
 	provConn, peerConn := net.Pipe()
 	sess := newSession(srv, provConn)
 	srv.mu.Lock()
-	srv.sessions[sess] = struct{}{}
+	srv.Track(sess)
 	srv.mu.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan struct{})
 	go func() {
-		sess.run(ctx)
+		sess.Run(ctx)
 		close(done)
 	}()
 
@@ -627,7 +638,7 @@ func TestStopClosesRegisteredSessions(t *testing.T) {
 	defer func() { _ = b.Close() }()
 	sess := newSession(srv, a)
 	srv.mu.Lock()
-	srv.sessions[sess] = struct{}{}
+	srv.Track(sess)
 	srv.mu.Unlock()
 
 	if err := srv.Stop(); err != nil {

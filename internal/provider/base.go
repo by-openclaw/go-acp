@@ -215,6 +215,18 @@ func (b *Base[S]) AcceptLoop(ctx context.Context, ln net.Listener, accept func(n
 		b.mu.Unlock()
 	})
 
+	// Adopt the listener so Stop closes it, whether it came from Listen or
+	// was injected by a ServeListener seam. A Stop that already ran wins:
+	// close this listener rather than serve on one nothing will stop.
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		_ = ln.Close()
+		return nil
+	}
+	b.listener = ln
+	b.mu.Unlock()
+
 	var delay time.Duration
 	for {
 		conn, err := ln.Accept()

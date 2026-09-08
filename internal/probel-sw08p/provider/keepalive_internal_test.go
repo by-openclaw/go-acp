@@ -40,7 +40,7 @@ func TestStartKeepaliveClosedSessionStops(t *testing.T) {
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
 	sess := newSession(srv, c1)
-	sess.close() // isClosed() now true
+	sess.Close() // isClosed() now true
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

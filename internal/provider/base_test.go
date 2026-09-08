@@ -473,3 +473,44 @@ func TestAddrIsNilBeforeListenThenReports(t *testing.T) {
 		t.Errorf("Addr = %v, want the bound %v", b.Addr(), ln.Addr())
 	}
 }
+
+// AcceptLoop adopts a listener it was handed directly (the ServeListener
+// case), so Stop closes it even though Listen never recorded it.
+func TestAcceptLoopAdoptsAnInjectedListener(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b Base[*fakeConn]
+	go func() { _ = b.AcceptLoop(context.Background(), ln, func(net.Conn) *fakeConn { return newFakeConn() }) }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for b.Addr() == nil && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if b.Addr() == nil {
+		t.Fatal("AcceptLoop did not adopt the listener")
+	}
+	if err := b.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	if _, err := ln.Accept(); !errors.Is(err, net.ErrClosed) {
+		t.Error("Stop did not close the adopted listener")
+	}
+}
+
+// A listener injected after Stop is closed immediately, not served.
+func TestAcceptLoopRefusesAnInjectedListenerAfterStop(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b Base[*fakeConn]
+	_ = b.Stop()
+	if err := b.AcceptLoop(context.Background(), ln, func(net.Conn) *fakeConn { return newFakeConn() }); err != nil {
+		t.Errorf("want nil after Stop, got %v", err)
+	}
+	if _, err := ln.Accept(); !errors.Is(err, net.ErrClosed) {
+		t.Error("an injected listener after Stop must be closed")
+	}
+}

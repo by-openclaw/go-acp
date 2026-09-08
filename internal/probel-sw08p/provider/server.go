@@ -2,8 +2,6 @@ package probelsw08p
 
 import (
 	"context"
-	"dhs/internal/plugin"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -12,9 +10,9 @@ import (
 
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/transport"
+	"dhs/internal/provider"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors
@@ -28,17 +26,16 @@ type Server = server
 // own goroutine reading framed commands and dispatching them to per-CMD
 // handlers (added per-command PRs).
 type server struct {
-	// net is the only way this server binds a socket. Injected, so the
-	// process owns the transport posture.
-	net    transport.Net
+	// Base owns the listener, the live-session set, the stop sequence and
+	// the metrics connector — everything a TCP provider keeps that is not
+	// about SW-P-08.
+	provider.Base[*session]
+
 	logger *slog.Logger
 	tree   *tree
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
-	closed   bool
-	stopped  chan struct{}
+	// mu guards sessionIdle + keepaliveInterval; the session set is Base's.
+	mu sync.Mutex
 
 	// sessionIdle, when > 0, reaps a client session that has sent nothing
 	// for that long. Guarded by mu; 0 = disabled (the default).
@@ -48,18 +45,10 @@ type server struct {
 	// session since the server started. See compliance_events.go.
 	profile *compliance.Profile
 
-	// metrics aggregates rx/tx counters + error counters + handler
-	// latency buckets across every session since Serve started.
-	// Always non-nil after newServer.
-	metrics *metrics.Connector
-
 	// keepaliveInterval is the per-session ping cadence. 0 disables.
 	// Set via SetKeepaliveInterval before Serve.
 	keepaliveInterval time.Duration
 }
-
-// Metrics returns the server-wide connector metrics. Always non-nil.
-func (s *server) Metrics() *metrics.Connector { return s.metrics }
 
 // ComplianceProfile returns the provider-scoped compliance profile —
 // always non-nil once newServer has run. Safe to read from any
@@ -76,19 +65,12 @@ func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 		logger.Error("probel provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := deps.Metrics
+	srv := &server{logger: logger, tree: t, profile: &compliance.Profile{}}
+	srv.Init(deps)
 	for _, id := range codec.CommandIDs() {
-		met.RegisterCmd(uint8(id), codec.CommandName(id))
+		srv.Metrics().RegisterCmd(uint8(id), codec.CommandName(id))
 	}
-	return &server{
-		logger:   logger,
-		net:      deps.Net,
-		tree:     t,
-		sessions: map[*session]struct{}{},
-		stopped:  make(chan struct{}),
-		profile:  &compliance.Profile{},
-		metrics:  met,
-	}
+	return srv
 }
 
 // listenHook is a test-only seam. In production it is nil and Serve
@@ -103,66 +85,32 @@ var listenHook func(ctx context.Context, addr string) (net.Listener, error)
 
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	listen := func(ctx context.Context, addr string) (net.Listener, error) {
-		// The embedded listener, not the wrapper: acceptLoop applies the
-		// socket policy itself, so a listener from listenHook gets it too.
-		return s.net.Listen(ctx, "tcp", addr)
-	}
+	var ln net.Listener
+	var err error
 	if listenHook != nil {
-		listen = listenHook
+		ln, err = listenHook(ctx, addr)
+	} else {
+		ln, err = s.Listen(ctx, "tcp", addr)
 	}
-	ln, err := listen(ctx, addr)
 	if err != nil {
 		return fmt.Errorf("probel provider: listen %q: %w", addr, err)
 	}
-	s.mu.Lock()
-	s.listener = ln
-	s.mu.Unlock()
 
 	s.logger.Info("probel provider listening",
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("matrices", s.tree.Size()),
 	)
 
+	// Base.Stop closes the listener (unblocking Accept) and drains sessions;
+	// idempotent, so a later explicit Stop is a no-op.
 	go func() {
 		<-ctx.Done()
-		s.mu.Lock()
-		if !s.closed {
-			s.closed = true
-			_ = ln.Close()
-		}
-		s.mu.Unlock()
+		_ = s.Stop()
 	}()
 
-	err = s.acceptLoop(ctx, ln)
-	close(s.stopped)
-	if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
-		return nil
-	}
-	return err
-}
-
-// Stop closes the listener and drops all active sessions.
-func (s *server) Stop() error {
-	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		return nil
-	}
-	s.closed = true
-	ln := s.listener
-	sessions := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		sessions = append(sessions, sess)
-	}
-	s.mu.Unlock()
-	for _, sess := range sessions {
-		sess.close()
-	}
-	if ln != nil {
-		return ln.Close()
-	}
-	return nil
+	return s.AcceptLoop(ctx, ln, func(conn net.Conn) *session {
+		return newSession(s, conn)
+	})
 }
 
 // SetValue mutates the served tree from the API path (acp-srv / tests).
@@ -190,36 +138,11 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 	return map[string]uint16{"src": src}, nil
 }
 
-func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		conn, err := ln.Accept()
-		if err != nil {
-			return err
-		}
-		// OS-level dead-peer probe, in addition to the app-layer cmd 08
-		// keepalive below: the two answer different questions, and a peer
-		// that never implements cmd 09 still needs a dead-socket detector.
-		// Applied in the accept loop rather than at bind time so an
-		// injected listener (listenHook) gets it too.
-		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
-		sess := newSession(s, conn)
-		s.mu.Lock()
-		s.sessions[sess] = struct{}{}
-		interval := s.keepaliveInterval
-		s.mu.Unlock()
-		go func() {
-			sessCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			sess.startKeepalive(sessCtx, interval)
-			sess.run(sessCtx)
-			s.mu.Lock()
-			delete(s.sessions, sess)
-			s.mu.Unlock()
-		}()
-	}
+// kaInterval is the configured per-session keepalive cadence (0 = off).
+func (s *server) kaInterval() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.keepaliveInterval
 }
 
 // parseCrosspointPath parses "matrix.level.dst" into uint8/uint8/uint16.
@@ -242,15 +165,12 @@ func parseCrosspointPath(path string) (uint8, uint8, uint16, error) {
 // handlerResult.reply path — it does not need the tally too.
 func (s *server) fanOutTally(origin *session, f codec.Frame) {
 	raw := codec.Pack(f)
-	s.mu.Lock()
-	sessions := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		if sess == origin {
-			continue
+	var sessions []*session
+	for _, sess := range s.Conns() {
+		if sess != origin {
+			sessions = append(sessions, sess)
 		}
-		sessions = append(sessions, sess)
 	}
-	s.mu.Unlock()
 	// Per docs/logging.md: skip announce logs entirely. Tally
 	// fan-out runs on every connect and fires N-1 times per session,
 	// so an Info+HexDump here is ~N² work per connect at scale. Keep

@@ -295,8 +295,8 @@ func waitBound(t *testing.T, srv *server) string {
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		srv.mu.Lock()
-		if srv.listener != nil {
-			addr := srv.listener.Addr().String()
+		if a := srv.Addr(); a != nil {
+			addr := a.String()
 			srv.mu.Unlock()
 			return addr
 		}
