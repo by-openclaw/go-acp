@@ -61,7 +61,8 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 
 		// A frame speaks the newer generation unless it is told to be an older
 		// one, because that is what the tree it serves can express.
-		longStrings: true,
+		longStrings:   true,
+		longStringsAt: make(map[uint8]bool),
 	}
 
 	// The Control Panel will not render a device without this. It reads the
@@ -87,10 +88,16 @@ type Provider struct {
 
 	model *model
 
-	// longStrings says whether this frame advertises SV_LONGSTR. A frame that
-	// does not is a 16-bit frame: a client cannot negotiate the newer
-	// generation with it, because the service it would ask for is not there.
-	longStrings bool
+	// longStrings says whether this frame advertises SV_LONGSTR by default,
+	// and longStringsAt overrides it for one card.
+	//
+	// A rack is not one generation. Services are advertised per unit and a
+	// session is negotiated with the node it is opened on, so an older card
+	// that speaks only the 16-bit forms can sit behind a gateway that speaks
+	// both, and a client talking to two cards in one frame can be in two
+	// generations at once.
+	longStrings   bool
+	longStringsAt map[uint8]bool
 
 	mu       sync.RWMutex
 	files    map[string][]byte
@@ -331,16 +338,36 @@ func (p *Provider) SetLongStrings(on bool) {
 	p.longStrings = on
 }
 
-// advertise masks off what this frame does not offer.
-func (p *Provider) advertise(s codec.Service) codec.Service {
+// SetLongStringsAt chooses the generation of one card, whatever the frame does.
+//
+// A rack holds cards of different ages. The service mask is per unit, so an
+// old card offering no long strings is reached in the 16-bit forms while the
+// card beside it is reached in the newer ones, on the same connection.
+func (p *Provider) SetLongStringsAt(port uint8, on bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.longStringsAt[port] = on
+}
+
+// advertiseAt masks off what one node does not offer.
+func (p *Provider) advertiseAt(port uint8, s codec.Service) codec.Service {
 	p.mu.RLock()
-	long := p.longStrings
+	long, ok := p.longStringsAt[port]
+	if !ok {
+		long = p.longStrings
+	}
 	p.mu.RUnlock()
 
 	if !long {
 		s &^= codec.SvcLongStr
 	}
 	return s
+}
+
+// advertise masks off what the frame as a whole does not offer, which is what
+// the gateway itself says.
+func (p *Provider) advertise(s codec.Service) codec.Service {
+	return p.advertiseAt(0, s)
 }
 
 // firstClientPort is the port number the first client on a link is given.

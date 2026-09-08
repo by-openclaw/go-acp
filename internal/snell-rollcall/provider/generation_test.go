@@ -100,3 +100,52 @@ func TestA32BitFrameOffersLongStrings(t *testing.T) {
 		t.Error("turning it back on did not restore it")
 	}
 }
+
+func TestARackHoldsCardsOfDifferentAges(t *testing.T) {
+	// Services are advertised per unit and a session is negotiated with the
+	// node it is opened on, so an old card that speaks only the 16-bit forms
+	// sits behind a gateway that speaks both. A client talking to two cards in
+	// one frame is in two generations at once.
+	s := newServed(t, testTree())
+	s.p.SetLongStringsAt(1, false)
+
+	if !s.p.served().LongStrings() {
+		t.Error("the gateway should still offer the newer generation")
+	}
+	old, _ := s.p.identityOf(1)
+	if old.Services.LongStrings() {
+		t.Error("the card told to be older still advertises long strings")
+	}
+	rest, _ := s.p.identityOf(2)
+	if !rest.Services.LongStrings() {
+		t.Error("a card nobody changed lost its generation")
+	}
+
+	// And a session on the old card cannot negotiate what it does not offer.
+	if _, err := s.tryOpen(1, codec.SvcMenus|codec.SvcLongStr, codec.LevelSupervisor); err == nil {
+		t.Error("the old card granted a long-string session")
+	}
+	sess, err := s.tryOpen(2, codec.SvcMenus|codec.SvcLongStr, codec.LevelSupervisor)
+	if err != nil {
+		t.Errorf("the newer card refused a long-string session: %v", err)
+	} else {
+		_ = sess.Close()
+	}
+}
+
+func TestAServiceACardDoesNotHaveIsRefused(t *testing.T) {
+	// The map is the gateway's, not a card's. Checking a call against the
+	// frame's services rather than the node's granted a client something the
+	// node it asked does not serve.
+	s := newServed(t, testTree())
+
+	if _, err := s.tryOpen(1, codec.SvcMap, codec.LevelSupervisor); err == nil {
+		t.Error("a card granted a map session")
+	}
+	sess, err := s.tryOpen(0, codec.SvcMap, codec.LevelSupervisor)
+	if err != nil {
+		t.Errorf("the gateway refused a map session: %v", err)
+	} else {
+		_ = sess.Close()
+	}
+}

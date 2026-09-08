@@ -29,7 +29,10 @@ func (p *Provider) Call(l *session.Link, req codec.Frame, conn codec.Connect) er
 	// Services are all-or-nothing: a client that asks for something we do not
 	// serve is refused outright rather than granted a subset, because a subset
 	// would leave it believing it had something it does not.
-	if missing := conn.Services &^ p.served(); missing != 0 {
+	// Against what this node offers, not what the frame does: an old card and
+	// a new one in the same rack answer differently, and a session belongs to
+	// the node it was opened on.
+	if missing := conn.Services &^ p.servedAt(req.Dst.Port); missing != 0 {
 		p.fire(EventUnservedService, fmt.Sprintf(
 			"%s asked for %s, which this device does not serve", req.Src, missing))
 		return session.RefuseNack("service not available: " + missing.String())
@@ -93,6 +96,17 @@ func (p *Provider) checkGeneration(s *session.Session, req codec.Frame) {
 func (p *Provider) served() codec.Service {
 	return p.advertise(codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 		codec.SvcFile | codec.SvcMap | codec.SvcPorts | codec.SvcLongStr)
+}
+
+// servedAt is what one node offers. The gateway serves the frame's services;
+// a card serves its own.
+func (p *Provider) servedAt(port uint8) codec.Service {
+	if port != 0 {
+		if prt := p.model.port(port); prt != nil {
+			return p.advertiseAt(port, prt.id.Services)
+		}
+	}
+	return p.served()
 }
 
 func generationName(s codec.Service) string {
@@ -295,7 +309,7 @@ func (p *Provider) answerUnsolicited(l *session.Link, req codec.Frame, typ codec
 func (p *Provider) identityOf(slot uint8) (codec.ID, bool) {
 	if prt := p.model.port(slot); prt != nil {
 		id := prt.id
-		id.Services = p.advertise(id.Services)
+		id.Services = p.advertiseAt(slot, id.Services)
 		return id, true
 	}
 	if slot == 0 {

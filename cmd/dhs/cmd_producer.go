@@ -49,6 +49,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		generation     = fs.String("generation", "32", "snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree.")
+		gen16Slots     = fs.String("generation-16-slots", "", "snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.")
 		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
 		syslogAddr     = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
@@ -164,6 +165,26 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		// The default: advertise long strings and let a client choose.
 	default:
 		return fmt.Errorf("--generation %q: want 16 or 32", *generation)
+	}
+
+	// Per-card overrides. A rack is not one generation.
+	if *gen16Slots != "" {
+		o, ok := srv.(interface{ SetLongStringsAt(uint8, bool) })
+		if !ok {
+			return fmt.Errorf("--generation-16-slots: this protocol serves one generation")
+		}
+		for _, field := range strings.Split(*gen16Slots, ",") {
+			field = strings.TrimSpace(field)
+			if field == "" {
+				continue
+			}
+			n, err := strconv.Atoi(field)
+			if err != nil || n < 0 || n > 0xFF {
+				return fmt.Errorf("--generation-16-slots %q: %q is not a slot", *gen16Slots, field)
+			}
+			o.SetLongStringsAt(uint8(n), false)
+			logger.Info("card serves the 16-bit generation", slog.Int("slot", n))
+		}
 	}
 	// Manifest slots may declare per-slot GetSlotInfo proto lists
 	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]

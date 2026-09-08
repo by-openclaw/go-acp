@@ -181,7 +181,11 @@ func newPort(number uint8, name string, roots []canonical.Element) *port {
 			// projected per session, so every port serves both. A port that
 			// advertised less would have clients negotiating the older
 			// generation against a card that can speak the newer one.
-			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcLongStr,
+			// File as well, because a card serves its own template: the
+			// vendor's cards each carry a TEMPLATE.ZIP, and the real IQ frame
+			// advertises Menus, Control and File on every one of its cards.
+			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
+				codec.SvcFile | codec.SvcLongStr,
 			TypeID:   codec.TypeIDPCSoftware,
 			Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
 			Name:     codec.TruncateFixed(name, codec.MaxTextSize),
