@@ -1,0 +1,271 @@
+package provider
+
+import (
+	"context"
+	"errors"
+	"net"
+	"sync"
+	"time"
+
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
+	"dhs/internal/transport"
+)
+
+// Session is the constraint on Base's type parameter: a Conn that can be a
+// map key. Every concrete session here is a pointer, which is comparable
+// by identity — exactly what a set of live connections wants.
+type Session interface {
+	Conn
+	comparable
+}
+
+// Conn is what Base needs from a connector's per-connection state.
+//
+// Every TCP provider here already has it — a goroutine that reads until the
+// peer goes away, and a way to make the peer go away — under the unexported
+// names run and close. Naming the pair is what lets one accept loop and one
+// Stop serve every connector instead of each rewriting both.
+type Conn interface {
+	// Run blocks until the connection is finished, for whatever reason.
+	Run(ctx context.Context)
+	// Close ends the connection. Idempotent: Stop may call it on a session
+	// that is already closing itself.
+	Close()
+}
+
+// Base is the half of a TCP provider that is not its protocol: the
+// listener, the set of live connections, the stop sequence, and the
+// counters.
+//
+// Four providers carried all of it — acp2, emberplus, probel-sw08p and
+// probel-sw02p — as one algorithm in three idioms. The two probel copies were
+// byte-for-byte identical. emberplus retried transient accept errors where
+// the others returned. acp2 closed every session while still holding the
+// server mutex, and reached into sess.conn to do it because its session had
+// no close of its own. None of that variation was intended; it is what
+// happens when the same loop is written four times.
+//
+// S is the connector's own session type, so the connection set stays typed:
+// eleven fan-out sites in the repo iterate it, and a []Conn would have cost
+// each of them a type assertion.
+//
+// Embedded BY VALUE, and the zero value works, for the same reason as
+// consumer.Base: this repo builds providers as bare struct literals in
+// hundreds of tests, and an embedded pointer would be nil in every one.
+type Base[S Session] struct {
+	mu       sync.Mutex
+	listener net.Listener
+	conns    map[S]struct{}
+	closed   bool
+	stopped  chan struct{}
+	stopOnce sync.Once
+
+	net     transport.Net
+	metrics *metrics.Connector
+}
+
+// Init wires the injected dependency set. Called once from the factory.
+func (b *Base[S]) Init(deps plugin.Deps) {
+	deps = deps.WithDefaults()
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.net = deps.Net
+	b.metrics = deps.Metrics
+}
+
+// Metrics returns the provider's counter set, satisfying the optional
+// interface cmd/dhs type-asserts for --metrics-addr. Never nil.
+func (b *Base[S]) Metrics() *metrics.Connector {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.metrics == nil {
+		b.metrics = metrics.NewConnector()
+	}
+	return b.metrics
+}
+
+// Listen binds through the injected transport and records the listener so
+// Stop can close it. The only way a provider built on Base opens a socket.
+func (b *Base[S]) Listen(ctx context.Context, network, addr string) (net.Listener, error) {
+	b.mu.Lock()
+	n := b.net
+	if n == nil {
+		n = transport.New(transport.Config{})
+		b.net = n
+	}
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return nil, net.ErrClosed
+	}
+
+	ln, err := n.Listen(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+	b.mu.Lock()
+	// Stop may have run while we were binding. Honour it rather than
+	// leaving a listener nothing will ever close.
+	if b.closed {
+		b.mu.Unlock()
+		_ = ln.Close()
+		return nil, net.ErrClosed
+	}
+	b.listener = ln
+	b.mu.Unlock()
+	return ln, nil
+}
+
+// Stopped is closed once the accept loop has returned. Connectors with
+// background goroutines of their own (emberplus's streamer) select on it.
+func (b *Base[S]) Stopped() <-chan struct{} {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.stoppedLocked()
+}
+
+// stoppedLocked lazily creates the channel so the zero Base works. Caller
+// holds b.mu.
+func (b *Base[S]) stoppedLocked() chan struct{} {
+	if b.stopped == nil {
+		b.stopped = make(chan struct{})
+	}
+	return b.stopped
+}
+
+// Track adds a live connection to the set. Remove is the twin.
+func (b *Base[S]) Track(c S) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.conns == nil {
+		b.conns = map[S]struct{}{}
+	}
+	b.conns[c] = struct{}{}
+}
+
+// Remove drops a connection from the set. Safe for one already removed.
+func (b *Base[S]) Remove(c S) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.conns, c)
+}
+
+// Conns snapshots the live set for fan-out. A copy, taken under the lock,
+// so a broadcast never holds the lock across a write to a peer — and never
+// iterates a map a session goroutine is deleting from.
+func (b *Base[S]) Conns() []S {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	out := make([]S, 0, len(b.conns))
+	for c := range b.conns {
+		out = append(out, c)
+	}
+	return out
+}
+
+// Backoff policy for a temporary accept error: start at 5ms, double, cap at
+// one second — the same shape and ceiling as net/http.Server.Serve.
+const (
+	acceptBackoffMin = 5 * time.Millisecond
+	acceptBackoffMax = time.Second
+)
+
+// nextBackoff is the policy as a pure function, so it is tested as a table
+// rather than by sleeping through it. prev is the previous delay, 0 for the
+// first retry after a success.
+func nextBackoff(prev time.Duration) time.Duration {
+	if prev == 0 {
+		return acceptBackoffMin
+	}
+	if next := prev * 2; next < acceptBackoffMax {
+		return next
+	}
+	return acceptBackoffMax
+}
+
+// AcceptLoop accepts on ln until it is closed or ctx ends, handing each
+// connection to accept and running the result on its own goroutine.
+//
+// The socket policy is applied here, per connection, rather than at bind:
+// a listener injected by a test — ServeListener, listenHook — gets it too.
+//
+// On a transient accept error it backs off and retries, following
+// net/http.Server.Serve. Of the four loops this replaces, one retried and
+// three returned; a provider that has been up for months should not exit
+// because the host ran out of file descriptors for a moment. A closed
+// listener or a finished ctx returns nil; any other terminal error is
+// returned as is. Either way Stopped is closed on the way out.
+func (b *Base[S]) AcceptLoop(ctx context.Context, ln net.Listener, accept func(net.Conn) S) error {
+	defer b.stopOnce.Do(func() {
+		b.mu.Lock()
+		close(b.stoppedLocked())
+		b.mu.Unlock()
+	})
+
+	var delay time.Duration
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) || ctx.Err() != nil {
+				return nil
+			}
+			var ne net.Error
+			if errors.As(err, &ne) && ne.Timeout() {
+				delay = nextBackoff(delay)
+				select {
+				case <-time.After(delay):
+				case <-ctx.Done():
+					return nil
+				}
+				continue
+			}
+			return err
+		}
+		delay = 0
+
+		// OS-level dead-peer probe. Without it a half-open client session
+		// — a NAT or firewall drop with no RST — holds a goroutine and a
+		// socket for ever.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
+
+		c := accept(conn)
+		b.Track(c)
+		go func() {
+			defer b.Remove(c)
+			c.Run(ctx)
+		}()
+	}
+}
+
+// Stop closes the listener and every live connection. Safe to call more
+// than once, and before Serve has run.
+//
+// The set is snapshotted under the lock and closed OUTSIDE it. Closing a
+// connection makes its goroutine exit, and that goroutine's exit path takes
+// this same lock to remove itself — holding the lock across the close does
+// not deadlock, because Stop releases on return, but it queues every session
+// goroutine on the mutex for the duration and makes the lock's hold time a
+// function of peer I/O. acp2 did exactly that.
+func (b *Base[S]) Stop() error {
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		return nil
+	}
+	b.closed = true
+	ln := b.listener
+	conns := make([]S, 0, len(b.conns))
+	for c := range b.conns {
+		conns = append(conns, c)
+	}
+	b.mu.Unlock()
+
+	for _, c := range conns {
+		c.Close()
+	}
+	if ln != nil {
+		return ln.Close()
+	}
+	return nil
+}

@@ -147,6 +147,7 @@ jobs:
           check internal/acp2/codec 100
           check internal/acp2/consumer 100
           check internal/acp2/provider 100
+          check internal/provider 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
