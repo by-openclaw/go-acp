@@ -32,6 +32,17 @@ type Options struct {
 	KeepAlive time.Duration
 	// Logger receives connection lifecycle events. Nil = slog.Default.
 	Logger *slog.Logger
+
+	// TLS is the transport-security posture for the broker connection —
+	// MQTT-over-TLS ("mqtts", broker port 8883 by convention). The zero
+	// value (Enable false) is plaintext, so an IS-07 lab broker on 1883
+	// needs no TLS block. When Enable is set the client dials through
+	// transport.TLSDialer, which negotiates the shared dhs posture (TLS 1.2
+	// floor, RootCAs, optional client certificate for mutual TLS) — the same
+	// TLSOptions the HTTP, WebSocket and raw-TCP clients use, so MQTT is not
+	// a security exception. BCP-003-01 secure communications applies to the
+	// IS-07 MQTT transport as much as to its WebSocket sibling.
+	TLS transport.TLSOptions
 }
 
 type message struct {
@@ -84,10 +95,24 @@ func New(opts Options) (*Client, error) {
 		// client never set. MQTT has its own PINGREQ keep-alive, but that
 		// only detects a broker still speaking MQTT; a half-open socket
 		// needs the OS probe underneath it.
-		dialer: transport.TCPDialer{Timeout: 10 * time.Second},
+		dialer: newBrokerDialer(opts.TLS),
 	}
 	go c.run(ctx)
 	return c, nil
+}
+
+// newBrokerDialer chooses the broker dialer from the TLS posture. The 10 s
+// connect bound and the shared socket policy (SO_KEEPALIVE) apply to both the
+// plaintext and TLS paths: a TLS handshake still rides a TCP connection that
+// needs the OS dead-peer probe underneath it. When TLS is disabled the
+// TLSDialer is bypassed entirely by returning the plain TCPDialer, so the
+// hot reconnect path allocates no tls.Config it will not use.
+func newBrokerDialer(opts transport.TLSOptions) transport.Dialer {
+	base := transport.TCPDialer{Timeout: 10 * time.Second}
+	if !opts.Enable {
+		return base
+	}
+	return transport.TLSDialer{Base: base, TLS: opts}
 }
 
 // Publish queues one message. Retained messages are also remembered
