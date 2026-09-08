@@ -147,6 +147,7 @@ jobs:
           check internal/acp2/codec 100
           check internal/acp2/consumer 100
           check internal/acp2/provider 100
+          check internal/provider 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
@@ -173,6 +174,13 @@ jobs:
           check internal/auth 100
           check internal/plugin 100
           check internal/cerebrum-nb/consumer 100
+          # AMWA NMOS controller path — gold-template gated. dnssd is not
+          # listed: its Linux-only avahi/DBus and unix multicast-loop files
+          # can only be coverage-verified on the Linux tools host, so its
+          # floor is added there, not from the Windows dev build.
+          check internal/amwa/session/connection 100
+          check internal/amwa/session/query 100
+          check internal/amwa/consumer 100
           exit $fail
 
       - name: Upload coverage

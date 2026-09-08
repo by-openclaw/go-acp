@@ -87,7 +87,7 @@ func TestSessionRunHandlerDecodeErrorSeam(t *testing.T) {
 	if got := srv.profile.Snapshot()[HandlerDecodeFailed]; got < 1 {
 		t.Errorf("HandlerDecodeFailed = %d; want >= 1", got)
 	}
-	if got := srv.metrics.Snapshot().DecodeErrors; got < 1 {
+	if got := srv.Metrics().Snapshot().DecodeErrors; got < 1 {
 		t.Errorf("metrics DecodeErrors = %d; want >= 1", got)
 	}
 

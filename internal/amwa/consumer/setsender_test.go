@@ -1,10 +1,14 @@
 package consumer
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 
+	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
 )
 
@@ -185,5 +189,247 @@ func TestFlattenLegsReadsUntypedParams(t *testing.T) {
 	}
 	if got[1] != (LegState{}) {
 		t.Errorf("an empty leg must flatten to zero values, got %+v", got[1])
+	}
+}
+
+// TestFlattenLegsHandlesIntPort: transport_params usually arrive as
+// untyped JSON (float64), but an in-process caller may hand a native
+// int; intParam must read both without falling through to zero.
+func TestFlattenLegsHandlesIntPort(t *testing.T) {
+	got := flattenLegs([]is05.TransportParams{
+		{"destination_port": 12700}, // native int, not float64
+	})
+	if len(got) != 1 || got[0].DestinationPort != 12700 {
+		t.Errorf("int destination_port must read as 12700, got %+v", got)
+	}
+}
+
+// --- SetSender over the connection stub -------------------------------
+
+// setSenderIS05 serves a one-leg active sender and echoes a PATCH back
+// with the requested destination applied to that leg. When forceZero is
+// set, the echoed leg keeps 0.0.0.0 to model a device that accepted the
+// stage but is still emitting nowhere.
+func setSenderIS05(t *testing.T, senderID string, forceZero bool) http.HandlerFunc {
+	t.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasSuffix(p, "/senders/"+senderID+"/active"):
+			_, _ = w.Write(activeSenderBody(t, true, []is05.TransportParams{
+				{"source_ip": "10.6.0.9", "destination_ip": "0.0.0.0", "destination_port": float64(5004)},
+			}))
+		case strings.HasSuffix(p, "/senders/"+senderID+"/staged"):
+			body, _ := io.ReadAll(r.Body)
+			dst := "239.5.5.5"
+			if forceZero || !strings.Contains(string(body), "239.5.5.5") {
+				dst = "0.0.0.0"
+			}
+			_, _ = w.Write(activeSenderBody(t, true, []is05.TransportParams{
+				{"source_ip": "10.6.0.9", "destination_ip": dst, "destination_port": float64(5004)},
+			}))
+		default:
+			http.Error(w, "unexpected "+p, http.StatusNotFound)
+		}
+	}
+}
+
+// TestSetSenderRejectsBadRequest covers the pre-flight guards that fail
+// before any walk: no id, nothing to change, a bad mode, a scheduled
+// mode with no --when, and a malformed IP.
+func TestSetSenderRejectsBadRequest(t *testing.T) {
+	h := newHarness(t)
+	enable := true
+	cases := []struct {
+		name string
+		req  SetSenderRequest
+		want string
+	}{
+		{"no id", SetSenderRequest{}, "sender id is required"},
+		{"nothing to change", SetSenderRequest{SenderID: "s"}, "nothing to change"},
+		{"bad mode", SetSenderRequest{SenderID: "s", MasterEnable: &enable, Mode: "activate_someday"},
+			"not an IS-05 activation mode"},
+		{"scheduled without when",
+			SetSenderRequest{SenderID: "s", MasterEnable: &enable, Mode: is05.ActivationModeScheduledRelative},
+			"needs --when"},
+		{"bad ip", SetSenderRequest{SenderID: "s", DestinationIPs: []string{"not-an-ip"}}, "not an IP address"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := h.ctrl.SetSender(context.Background(), tc.req); err == nil ||
+				!strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want contains %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestSetSenderUnknownSender: a sender absent from the catalogue is a
+// hard error, before any device is touched.
+func TestSetSenderUnknownSender(t *testing.T) {
+	h := newHarness(t)
+	if _, err := h.ctrl.SetSender(context.Background(),
+		SetSenderRequest{SenderID: uuidN(9), DestinationIPs: []string{"239.5.5.5"}}); err == nil ||
+		!strings.Contains(err.Error(), "no sender") {
+		t.Fatalf("err = %v, want a no-such-sender error", err)
+	}
+}
+
+// TestSetSenderActiveReadError: SetSender reads the device's active
+// state first (to learn the leg count); a refused read is fatal.
+func TestSetSenderActiveReadError(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}
+	if _, err := h.ctrl.SetSender(context.Background(),
+		SetSenderRequest{SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"}}); err == nil ||
+		!strings.Contains(err.Error(), "read sender") {
+		t.Fatalf("err = %v, want a read-sender failure", err)
+	}
+}
+
+// TestSetSenderNoLegs: a sender that reports zero transport legs cannot
+// be addressed positionally — buildSenderPatch refuses it.
+func TestSetSenderNoLegs(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/active") {
+			_, _ = w.Write(activeSenderBody(t, true, []is05.TransportParams{})) // no legs
+			return
+		}
+		http.Error(w, "unexpected", http.StatusNotFound)
+	}
+	if _, err := h.ctrl.SetSender(context.Background(),
+		SetSenderRequest{SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"}}); err == nil ||
+		!strings.Contains(err.Error(), "no transport legs") {
+		t.Fatalf("err = %v, want a no-transport-legs error", err)
+	}
+}
+
+// TestSetSenderBadControlHref: a device whose control href carries no
+// api_ver fails NewClient before any read.
+func TestSetSenderBadControlHref(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, "http://h/x-nmos/connection/nope")}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	if _, err := h.ctrl.SetSender(context.Background(),
+		SetSenderRequest{SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"}}); err == nil {
+		t.Fatal("a control href with no api_ver must fail NewClient")
+	}
+}
+
+// TestSetSenderDryRun: a dry run reads the active state and returns the
+// would-be patch plus the current legs, without PATCHing.
+func TestSetSenderDryRun(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	patched := false
+	h.is05 = func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPatch {
+			patched = true
+		}
+		if strings.HasSuffix(r.URL.Path, "/active") {
+			_, _ = w.Write(activeSenderBody(t, true, []is05.TransportParams{
+				{"source_ip": "10.6.0.9", "destination_ip": "0.0.0.0", "destination_port": float64(5004)},
+			}))
+			return
+		}
+		http.Error(w, "unexpected", http.StatusNotFound)
+	}
+	res, err := h.ctrl.SetSender(context.Background(), SetSenderRequest{
+		SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"}, DryRun: true,
+	})
+	if err != nil {
+		t.Fatalf("SetSender dry run: %v", err)
+	}
+	if patched {
+		t.Fatal("a dry run must never PATCH")
+	}
+	if !res.DryRun || res.Patch == nil || len(res.Current) != 1 {
+		t.Errorf("dry run must return the would-be patch and current legs, got %+v", res)
+	}
+}
+
+// TestSetSenderRoutes: the happy path stages a destination and reports
+// the device's echoed leg state.
+func TestSetSenderRoutes(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = setSenderIS05(t, uuidN(1), false)
+	res, err := h.ctrl.SetSender(context.Background(), SetSenderRequest{
+		SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"},
+	})
+	if err != nil {
+		t.Fatalf("SetSender: %v", err)
+	}
+	if len(res.Legs) != 1 || res.Legs[0].DestinationIP != "239.5.5.5" {
+		t.Errorf("Legs = %+v, want the staged destination echoed", res.Legs)
+	}
+}
+
+// TestSetSenderSkipsEmptyIP: an empty slot in --destination is the
+// "leave this leg alone" marker (as `--leg red` renders it), so IP
+// validation must skip it rather than reject it. The trailing empty
+// then trims away, leaving a one-leg patch.
+func TestSetSenderSkipsEmptyIP(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = setSenderIS05(t, uuidN(1), false)
+	res, err := h.ctrl.SetSender(context.Background(), SetSenderRequest{
+		SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5", ""},
+	})
+	if err != nil {
+		t.Fatalf("an empty destination slot must be skipped, not rejected: %v", err)
+	}
+	if len(res.Legs) != 1 || res.Legs[0].DestinationIP != "239.5.5.5" {
+		t.Errorf("Legs = %+v, want the single addressed leg", res.Legs)
+	}
+}
+
+// TestSetSenderDestinationIgnored: a device that accepts the stage but
+// keeps 0.0.0.0 on a leg we asked to address is still emitting nowhere;
+// SetSender must fire an error event, not report success.
+func TestSetSenderDestinationIgnored(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = setSenderIS05(t, uuidN(1), true) // device keeps 0.0.0.0
+	if _, err := h.ctrl.SetSender(context.Background(), SetSenderRequest{
+		SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"},
+	}); err != nil {
+		t.Fatalf("SetSender: %v", err)
+	}
+	if !hasCode(h.rep, "nmos_is05_destination_ignored") {
+		t.Error("a leg the device kept at 0.0.0.0 must fire nmos_is05_destination_ignored")
+	}
+}
+
+// TestSetSenderPatchError: a device that refuses the stage surfaces the
+// error.
+func TestSetSenderPatchError(t *testing.T) {
+	h := newHarness(t)
+	h.cat.devices = []is04.Device{deviceWith(testUUID, h.controlHref)}
+	h.cat.senders = []is04.Sender{senderOn(uuidN(1), "CAM 1", testUUID, is04.TransportRTPMcast)}
+	h.is05 = func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/active") {
+			_, _ = w.Write(activeSenderBody(t, true, []is05.TransportParams{
+				{"source_ip": "10.6.0.9", "destination_ip": "0.0.0.0", "destination_port": float64(5004)},
+			}))
+			return
+		}
+		http.Error(w, "destination_ip is not routable", http.StatusBadRequest)
+	}
+	if _, err := h.ctrl.SetSender(context.Background(), SetSenderRequest{
+		SenderID: uuidN(1), DestinationIPs: []string{"239.5.5.5"},
+	}); err == nil || !strings.Contains(err.Error(), "not routable") {
+		t.Fatalf("err = %v, want the device's refusal surfaced", err)
 	}
 }

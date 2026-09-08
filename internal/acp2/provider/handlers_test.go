@@ -17,7 +17,6 @@ func newTestSession(t *testing.T) (*session, net.Conn) {
 	server := &server{
 		logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		tree:     emptyTree(),
-		sessions: map[*session]struct{}{},
 	}
 	server.tree.slotN = 2
 	// Mark slots 0 and 1 as present in perSlot so slotInfo returns

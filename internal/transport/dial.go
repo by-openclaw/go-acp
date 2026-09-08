@@ -25,6 +25,7 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"time"
 )
@@ -59,4 +60,59 @@ func (d TCPDialer) DialContext(ctx context.Context, network, address string) (ne
 	}
 	_ = ApplySocketOptions(conn, d.Options)
 	return conn, nil
+}
+
+// TLSDialer completes a TLS handshake on top of the connection its Base
+// opens, using the shared TLSOptions so every dhs client negotiates the same
+// posture (TLS 1.2 floor, RootCAs, client certs). It is the dial-side
+// counterpart of stdNet.Listen's tls.NewListener — TLS decided in one place,
+// not per connector — and the seam a connector injects to speak a "…s"
+// variant of its protocol (mqtts, etc.) over the same Dialer interface.
+type TLSDialer struct {
+	// Base opens the raw connection. Nil ⇒ TCPDialer{} (default socket policy).
+	Base Dialer
+
+	// TLS is the posture to negotiate. A zero value (Enable false) makes this
+	// dialer plaintext — it returns Base's connection untouched — so a caller
+	// can hand it an unconditional TLSDialer and let the options decide.
+	TLS TLSOptions
+}
+
+// DialContext implements Dialer: it dials through Base, then runs the TLS
+// handshake bounded by ctx. When TLSOptions leaves ServerName empty it is
+// filled from the dialled host, so certificate verification has a name to
+// check without the caller repeating the address.
+func (d TLSDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	base := d.Base
+	if base == nil {
+		base = TCPDialer{}
+	}
+	raw, err := base.DialContext(ctx, network, address)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := d.TLS.Client()
+	if err != nil {
+		_ = raw.Close()
+		return nil, err
+	}
+	if cfg == nil {
+		// TLS not enabled: a TLSDialer with Enable=false is plaintext by
+		// definition, so return the raw connection rather than fail.
+		return raw, nil
+	}
+	if cfg.ServerName == "" && !cfg.InsecureSkipVerify {
+		if host, _, splitErr := net.SplitHostPort(address); splitErr == nil {
+			cfg = cfg.Clone()
+			cfg.ServerName = host
+		}
+	}
+
+	tc := tls.Client(raw, cfg)
+	if err := tc.HandshakeContext(ctx); err != nil {
+		_ = raw.Close()
+		return nil, err
+	}
+	return tc, nil
 }

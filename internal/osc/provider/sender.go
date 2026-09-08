@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"dhs/internal/osc/codec"
 )
@@ -102,6 +103,11 @@ func (s *udpSender) sendBytes(payload []byte) error {
 	}
 	var firstErr error
 	for _, d := range dests {
+		// Time the write so the connector reports send latency (footprint)
+		// like every other connector, instead of a permanently-zero
+		// histogram. For a push provider the datagram write IS the
+		// per-request work; encode happens once, upstream in send*.
+		start := time.Now()
 		if _, err := conn.WriteToUDP(payload, d); err != nil {
 			if firstErr == nil {
 				firstErr = fmt.Errorf("write to %s: %w", d.String(), err)
@@ -112,7 +118,7 @@ func (s *udpSender) sendBytes(payload []byte) error {
 		// message to eight receivers really is eight datagrams on the
 		// wire, and a per-message count would understate the load by 8x.
 		if s.met != nil {
-			s.met.ObserveTx(len(payload), 0)
+			s.met.ObserveTx(len(payload), time.Since(start))
 		}
 	}
 	return firstErr

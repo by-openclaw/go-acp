@@ -86,3 +86,31 @@ func TestReadPeerList_MissingFile(t *testing.T) {
 		t.Fatalf("expected error on missing file")
 	}
 }
+
+// TestReadPeerList_ParseError covers the arm where the file opens fine
+// but a row is malformed: ReadPeerList must wrap the parse error (rather
+// than return ErrEmptyPeerList or nil).
+func TestReadPeerList_ParseError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "peers.csv")
+	if err := os.WriteFile(path, []byte("host,not-a-port\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_, err := ReadPeerList(path)
+	if err == nil {
+		t.Fatal("expected parse error")
+	}
+	if errors.Is(err, ErrEmptyPeerList) {
+		t.Fatalf("parse error misreported as empty-list: %v", err)
+	}
+}
+
+// TestParsePeerList_ScannerError covers the bufio.Scanner error arm: a
+// single line longer than bufio.MaxScanTokenSize (64 KiB) makes Scan
+// abort with ErrTooLong, which parsePeerList must surface via s.Err().
+func TestParsePeerList_ScannerError(t *testing.T) {
+	huge := strings.Repeat("a", bufio.MaxScanTokenSize+1) // no newline -> one over-long token
+	if _, err := parsePeerList(bufio.NewScanner(strings.NewReader(huge))); err == nil {
+		t.Fatal("expected scanner error on an over-long line")
+	}
+}

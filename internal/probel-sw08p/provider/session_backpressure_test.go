@@ -92,7 +92,7 @@ func TestReadLoopDispatchBackpressureCancel(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	runDone := make(chan struct{})
-	go func() { sess.run(ctx); close(runDone) }()
+	go func() { sess.Run(ctx); close(runDone) }()
 
 	// Give the read loop time to saturate dispatchCh and block on the
 	// select send (the dispatcher is stuck writing the first reply).

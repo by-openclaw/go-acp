@@ -52,9 +52,7 @@ func TestEmitFloatAnnounce_ToSubscriber(t *testing.T) {
 	c.handshake(true)
 
 	if !waitFor(t, time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		return len(srv.sessions) == 1
+		return len(srv.Conns()) == 1
 	}) {
 		t.Fatal("session never registered")
 	}

@@ -43,7 +43,7 @@ func TestFanoutStreams_Subscribed(t *testing.T) {
 	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
-	srv.registerSession(sess)
+	srv.Track(sess)
 	// Subscribe the session to the stream param OID (1.5).
 	srv.subscribe(sess, "1.5")
 	// Drain the out channel in the background so send() doesn't block.
@@ -769,14 +769,17 @@ func TestSweepIdleSessions_Closes(t *testing.T) {
 	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
-	srv.registerSession(sess)
+	srv.Track(sess)
 	// Backdate activity so any positive ttl sweeps it.
 	sess.lastActive.Store(time.Now().Add(-time.Hour).UnixNano())
 	srv.sweepIdleSessions(time.Minute)
-	// After sweep the session should be dropped.
-	srv.mu.Lock()
-	_, still := srv.sessions[sess]
-	srv.mu.Unlock()
+	// After sweep the session should be dropped from Base's set.
+	still := false
+	for _, c := range srv.Conns() {
+		if c == sess {
+			still = true
+		}
+	}
 	if still {
 		t.Error("idle session not swept")
 	}
@@ -787,11 +790,11 @@ func TestStop_WithSessions(t *testing.T) {
 	srv := newServer(plugin.Deps{}, buildRichExport())
 	_, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
-	srv.registerSession(sess)
+	srv.Track(sess)
 	if err := srv.Stop(); err != nil {
 		t.Errorf("Stop: %v", err)
 	}
-	// Stop again (stopOnce guards) — no panic.
+	// Stop again (Base guards with closed flag) — no panic.
 	_ = srv.Stop()
 }
 
@@ -836,10 +839,7 @@ func TestServe_AcceptAfterCancel(t *testing.T) {
 	go func() { errc <- srv.Serve(ctx, "127.0.0.1:0") }()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		srv.mu.Lock()
-		up := srv.listener != nil
-		srv.mu.Unlock()
-		if up {
+		if srv.Addr() != nil {
 			break
 		}
 		time.Sleep(2 * time.Millisecond)

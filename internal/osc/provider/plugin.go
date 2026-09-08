@@ -16,7 +16,6 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
 	"dhs/internal/osc/codec"
 	"dhs/internal/provider"
 )
@@ -72,10 +71,13 @@ func (f *Factory) Meta() provider.Meta {
 
 func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
 	deps = deps.WithDefaults()
-	return &Server{version: f.version, logger: deps.Logger, met: deps.Metrics, tree: tree}
+	s := &Server{version: f.version, logger: deps.Logger, tree: tree}
+	s.Init(deps)
+	return s
 }
 
-// NewServerV10 / NewServerV11 construct version-bound Servers directly.
+// NewServerV10 / NewServerV11 construct version-bound Servers directly. They
+// do not call Init, so Metrics() lazily creates the connector on first use.
 func NewServerV10(logger *slog.Logger) *Server {
 	return &Server{version: V10, logger: logger}
 }
@@ -86,14 +88,19 @@ func NewServerV11(logger *slog.Logger) *Server {
 // Server implements provider.Provider for one OSC version. It owns an
 // outbound UDP sender fanning messages + bundles to configured
 // destinations.
+//
+// It embeds the same provider.Base the TCP providers do, as Base[*NoConn]:
+// OSC is push-only, so there is no listener and no per-connection session —
+// Base supplies the shared metrics + Init contract, and the accept-loop /
+// ListenUDP half simply goes unused, the way a push-only protocol shapes it.
+// The outbound socket lives in udpSender, which binds through the shared
+// transport primitive (SO_REUSEADDR + SO_BROADCAST) so a producer and a
+// consumer still share a port on the same host.
 type Server struct {
+	provider.Base[*provider.NoConn]
+
 	version Version
 	logger  *slog.Logger
-
-	// met counts what this provider puts on the wire, exposed via
-	// Metrics() so --metrics-addr scrapes it. Aggregate rather than
-	// per-command: OSC has no command byte, only an address pattern.
-	met *metrics.Connector
 
 	tree *canonical.Export
 
@@ -116,7 +123,7 @@ func (s *Server) ensureSender() *udpSender {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.sender == nil {
-		s.sender = newUDPSender(s.met)
+		s.sender = newUDPSender(s.Metrics())
 	}
 	return s.sender
 }
@@ -136,7 +143,7 @@ func (s *Server) ensureTCPDialer() *tcpDialer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tcp == nil {
-		s.tcp = newTCPDialer(s.framerForVersion(), s.met)
+		s.tcp = newTCPDialer(s.framerForVersion(), s.Metrics())
 	}
 	return s.tcp
 }
@@ -257,8 +264,3 @@ func (s *Server) SendBundleTCP(host string, port int, b codec.Bundle) error {
 	dialer := s.ensureTCPDialer()
 	return dialer.sendBundle(host, port, b)
 }
-
-// Metrics returns the server-wide connector metrics — satisfies the
-// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
-// osc provider. Always non-nil.
-func (s *Server) Metrics() *metrics.Connector { return s.met }
