@@ -99,7 +99,7 @@ func buildModel(tree *canonical.Export, name string) *model {
 		frame: codec.ID{
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 				codec.SvcFile | codec.SvcMap | codec.SvcPorts | codec.SvcLongStr,
-			TypeID:  codec.TypeIDRoutingIPShareClient,
+			TypeID:  codec.TypeIDPCSoftware,
 			Version: codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
 			Name:    codec.TruncateFixed(name, codec.MaxTextSize),
 		},
@@ -182,7 +182,7 @@ func newPort(number uint8, name string, roots []canonical.Element) *port {
 			// advertised less would have clients negotiating the older
 			// generation against a card that can speak the newer one.
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay | codec.SvcLongStr,
-			TypeID:   codec.TypeIDRoutingIPShareClient,
+			TypeID:   codec.TypeIDPCSoftware,
 			Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
 			Name:     codec.TruncateFixed(name, codec.MaxTextSize),
 		},

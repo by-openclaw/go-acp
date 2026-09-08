@@ -22,6 +22,17 @@ const (
 	// presents. Our own consumer reports it so that vendor tools show us as
 	// something they recognise.
 	TypeIDRoutingIPShareClient uint16 = 483
+
+	// TypeIDPCSoftware is what a unit served by software rather than by
+	// hardware says it is: the vendor's own "RollCall PC Software", described
+	// in their table as the stack used through any interface.
+	//
+	// A provider reports it. Claiming a real product id instead would make a
+	// panel fetch that product's template and manuals for a tree we
+	// synthesised, and would file the device model under a fake; claiming the
+	// routing-client id would make a provider indistinguishable from the
+	// consumer at the other end of the wire.
+	TypeIDPCSoftware uint16 = 23
 )
 
 // LookupUnitType returns what the vendor database says about a type id.
