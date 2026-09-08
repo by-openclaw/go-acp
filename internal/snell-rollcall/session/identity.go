@@ -61,6 +61,15 @@ func (a *Announcer) Interval() time.Duration {
 func (a *Announcer) Sent() uint64 { return a.sent }
 
 func (a *Announcer) loop(ctx context.Context) {
+	// Once on joining, before the first interval elapses. A unit is not in
+	// anybody's network map until it has announced, and a client that
+	// connects, reads one value and leaves takes a couple of seconds — far
+	// less than the twelve and a half the schedule starts with. Waiting for
+	// the first tick would mean short-lived clients were never seen at all,
+	// which is exactly the case an operator needs to see before pulling
+	// everyone off for a firmware upgrade.
+	_ = a.Announce()
+
 	t := a.link.clk.NewTicker(a.Interval())
 	defer t.Stop()
 

@@ -75,6 +75,11 @@ type device struct {
 	// calls counts sessions opened.
 	calls int
 
+	// iams is what the client has announced about itself, and iamSeen wakes a
+	// test waiting for the first one.
+	iams    []codec.DeviceInfo
+	iamSeen chan struct{}
+
 	// refuseSessionOn is a port that grants no session at all, the way a
 	// connected client does. -1 means every port answers.
 	refuseSessionOn int
@@ -195,6 +200,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		routers:         map[uint8]*fakeRouter{},
 		failReadAfter:   -1,
 		refuseSessionOn: -1,
+		iamSeen:         make(chan struct{}, 1),
 		refuse:          make(map[codec.PacketType]bool),
 		garble:          make(map[codec.PacketType]bool),
 		silent:          make(map[codec.PacketType]bool),

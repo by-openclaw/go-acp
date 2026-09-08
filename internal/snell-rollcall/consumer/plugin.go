@@ -94,6 +94,10 @@ type Plugin struct {
 
 	mu sync.RWMutex
 
+	// name labels this client in the network map, for the operator reading the
+	// list of who is attached. Empty means the default.
+	name string
+
 	// link and its sessions are replaced wholesale on reconnect, so a caller
 	// holding a stale one cannot use it by accident.
 	link *link
@@ -242,5 +246,42 @@ func sessionServices(advertised codec.Service, longStrings bool) codec.Service {
 // identity is what we present to a peer. The name is what appears in the
 // vendor's own session list, so it says what we are.
 func (p *Plugin) identity() codec.DeviceInfo {
-	return session.ClientIdentity("dhs rollcall", wantedServices|codec.SvcLongStr)
+	return session.ClientIdentity(p.clientName(), wantedServices|codec.SvcLongStr)
 }
+
+// announceIdentity is what we broadcast, at the address the gateway gave us.
+//
+// It differs from identity only in carrying that address. An announcement is
+// how the network learns a unit exists, so one sent from the empty address a
+// client holds before its handshake would name nothing.
+func (p *Plugin) announceIdentity(addr codec.Address) codec.DeviceInfo {
+	info := p.identity()
+	info.Address = addr
+	return info
+}
+
+// clientName is what an operator sees in the list of connected clients.
+//
+// It is settable because the question that list answers is "who is attached",
+// and two dhs instances that both call themselves dhs do not answer it. The
+// name is what an operator reads before disconnecting clients for a firmware
+// upgrade.
+func (p *Plugin) clientName() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if p.name != "" {
+		return p.name
+	}
+	return defaultClientName
+}
+
+// SetName labels this client in the network map. It takes effect on the next
+// connection, because the name travels in the handshake.
+func (p *Plugin) SetName(name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.name = name
+}
+
+// defaultClientName fits the twenty bytes a name field holds.
+const defaultClientName = "dhs rollcall"

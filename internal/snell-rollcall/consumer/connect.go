@@ -22,6 +22,10 @@ type link struct {
 	sess *session.Link
 	keep *session.Keepalive
 
+	// announce is our presence on the network. A RollCall client is a node
+	// like any other and the specification requires it to say so.
+	announce *session.Announcer
+
 	// gateway is what the peer said it was during the handshake.
 	gateway codec.DeviceInfo
 
@@ -89,6 +93,18 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		fileSessions: make(map[codec.Address]*session.Session),
 	}
 	l.keep = session.NewKeepalive(context.WithoutCancel(ctx), sl, nil)
+
+	// Say we are here, and keep saying it. Spec 9.31 requires every unit on
+	// the network to broadcast Iam at about fifteen second intervals, and a
+	// client is a unit: the vendor's own Control Panel appears in a frame's
+	// port list as one. That list is how an operator sees who is attached, and
+	// a firmware upgrade requires every client disconnected first — so a
+	// client nobody can see is a client nobody knows to disconnect.
+	//
+	// The address is the one the gateway just assigned us, not the empty one
+	// the identity carries before a handshake has happened.
+	l.announce = session.NewAnnouncer(context.WithoutCancel(ctx), sl,
+		session.Identity{Info: p.announceIdentity(sl.LocalAddress())})
 
 	p.mu.Lock()
 	p.link = l

@@ -41,6 +41,11 @@ func (d *device) handle(f codec.Frame) {
 		d.call(f)
 	case codec.MsgTerm:
 		d.term(f)
+	case codec.MsgIam:
+		// An announcement is never answered: it is broadcast, and a peer that
+		// replied would be talking to everybody. The device records it so a
+		// test can prove the client said it was here.
+		d.recordIam(f)
 	case codec.MsgKeepAlive:
 		d.reply(f, codec.MsgAck, nil)
 
@@ -232,6 +237,28 @@ func (d *device) term(f codec.Frame) {
 	delete(d.sessions, f.Src.Index)
 	delete(d.backChannel, f.Src.Index)
 	d.mu.Unlock()
+}
+
+// recordIam keeps what a client announced about itself.
+func (d *device) recordIam(f codec.Frame) {
+	info, err := codec.DecodeDeviceInfo(f.Payload)
+	if err != nil {
+		return
+	}
+	d.mu.Lock()
+	d.iams = append(d.iams, info)
+	d.mu.Unlock()
+	select {
+	case d.iamSeen <- struct{}{}:
+	default:
+	}
+}
+
+// announced returns what the client has said about itself so far.
+func (d *device) announced() []codec.DeviceInfo {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]codec.DeviceInfo(nil), d.iams...)
 }
 
 // callCount is how many sessions have been opened, so a test can prove one was
