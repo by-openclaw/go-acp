@@ -22,8 +22,12 @@ the OpenAPI at `/api/v1/docs/api.yml`, §11 PUT + PATCH with an empty
 spec GET-only); every dhs addition (landing, rendered README,
 capabilities) lives under `/x-dhs` via the one `HandleExtension` entry
 point and can never change what a controller observes. Matrix (§17) is
-out of scope. The `/ws` change stream is a later unit. Operate it per
-`docs/runbook.md`.
+**in scope** (owner reversed the 2026-08-22 exclusion on 2026-09-09 —
+it was made unaware matrix is in the protocol): 16 `/v1/matrix/...`
+paths, per-essence matrices, UUID-addressed, `main`/`backup` are
+ST 2022-7 redundancy levels, `current` read-only; the emulator stores
+writes but does not yet run routing semantics — next matrix unit. The
+`/ws` change stream is a later unit. Operate it per `docs/runbook.md`.
 
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**
 this build serves the CCM resource MODEL (UUID-addressed REST, `/self`,

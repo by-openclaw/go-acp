@@ -18,6 +18,18 @@ undefined matrix-write is downgraded from blocking to informational.
 An acp2↔CCM diff report is nice-to-have only — no differences
 expected, not a deliverable.**
 
+**SCOPE REVERSAL (owner, 2026-09-09): matrix IS IN SCOPE.** The
+2026-08-22 exclusion above was taken without knowing §17 matrix is
+present in the protocol and the shipped firmware (16 `/v1/matrix/...`
+paths: audio/data/video × info/current/main/backup, `PUT` on
+main/backup). Same kind of DM as the probel/Ember+ matrix and mappable
+to the canonical entity, but UUID-addressed, per-essence, with
+`main`/`backup` as ST 2022-7 redundancy levels rather than signal
+planes — see docs/runbook.md §8. The §17 row in the verb mapping
+table stands as the implementation guide; matrix-write is no longer
+informational but a deliverable (emulator semantics + consumer
+`matrix`/`usage` verbs).
+
 ## 1. Transport, spec, auth
 
 | Aspect | CCM 0v1 | dhs consequence |
