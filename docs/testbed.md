@@ -25,7 +25,7 @@ same PR — and the inventory wins on any disagreement.
 | `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
 | `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
-| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` (guest static unconfirmed post-migration) |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and a Centra emulator (`:2057`). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
 | `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
 ## Physical devices under test
@@ -39,9 +39,28 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
+| **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
 | **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
 | **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
+
+The IQ frame is unit `0x0C` and carries nine cards, reached as **ports of the
+gateway** (spec 7.6) rather than as units of their own:
+
+| Address | Type | Name |
+| --- | --- | --- |
+| `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
+| `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
+| `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
+| `0000-0C-8E` | — | listed by the gateway and refuses a session; carried as that slot's error |
+
+It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
+the 16-bit generation — the one a proxy also speaks, and the one the emulator
+does not exercise. Its cards advertise `Menus|Control|File` only: no
+`SV_LOC1`, so no thumbnails from this frame (they are audio cards).
+
+Drive it with `ROLLCALL_TEST_HOST=10.6.255.113`. It is **read-only** in the
+play, like every real device.
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four

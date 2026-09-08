@@ -284,7 +284,16 @@ DHS_BIN=/root/acp/bin/dhs ROLLCALL_SIM_HOST=<emulator>   ROLLCALL_SIM_PORT=2050 
 ```
 
 `ROLLCALL_BRIDGE_HOST` adds our own bridge when there is one, and
-`ROLLCALL_TEST_HOST` adds real hardware, read-only. A path with no host is
+`ROLLCALL_TEST_HOST` adds real hardware, read-only — the IQ 3U frame at
+`10.6.255.113` is the one on the fabric today:
+
+```
+ROLLCALL_TEST_HOST=10.6.255.113 ROLLCALL_TEST_PORT=2050 ROLLCALL_TEST_SLOT=1
+```
+
+It matters more than its node count suggests. It advertises no long strings, so
+it is the **16-bit generation** — the one a proxy also speaks and the one the
+emulator never exercises, because the emulator is 32-bit throughout. A path with no host is
 skipped rather than faked. `DHS_BIN` is for a control node with Ansible and no
 Go toolchain, which is what the designated one is.
 
@@ -310,4 +319,7 @@ be asserting a bug. The report is there for the difference nobody predicted.
 | Centra | Directory entries are variable-length, not the declared 13-byte field | Read the name as what follows the header |
 | Centra | Names files named in its own filesystem, unreachable over RollCall | Fall back to one command per name |
 | Centra | Enabling the back channel replays nothing | Read the state, then follow it |
+| IQ 3U frame | Keeps its cards behind the **port** service and ignores a port list asked on a map session | Ask for `SvcPorts` when a peer advertises it; the Centra, which does not, is still asked on the map session |
+| IQ 3U frame | Lists a port (`0000-0C-8E`) that then refuses a session | Carried as that slot's error rather than failing the enumeration |
+| IQ audio cards | Advertise `Menus|Control|File` and no `SV_LOC1` | No thumbnails from an audio card; the service is a video one |
 | Any unit | Sessions are not timed out | Always send `SP_TERM`; a leaked session is held until reboot |
