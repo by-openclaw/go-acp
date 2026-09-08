@@ -1,0 +1,96 @@
+---
+# The RollCall contract, asserted against ONE endpoint.
+#
+# This file is included once per path to the plant — direct, through the vendor
+# RollCall IP Proxy, through our own bridge, or against our own producer — and
+# it does not know which. That is the whole point: a path that needs its own
+# assertions is a path nobody can compare against another.
+#
+# Caller supplies `endpoint`:
+#   name    a short label, used for the artifact filename
+#   host    address to dial
+#   port    TCP port
+#   why     one line on what this path proves, printed with the result
+#   router  true when this path is expected to reach a routing interface
+#
+# The node table read over every path is written to
+# {{ artifact_dir }}/nodes-<name>.json so two paths can be diffed afterwards.
+
+- name: "{{ endpoint.name }} — settle before connecting"
+  ansible.builtin.pause:
+    seconds: "{{ settle_seconds | int }}"
+  when: settle_seconds | int > 0
+
+- name: "{{ endpoint.name }} — read the node table"
+  ansible.builtin.command:
+    cmd: >-
+      {{ dhs_bin }} consumer rollcall info {{ endpoint.host }}:{{ endpoint.port }}
+      --timeout {{ endpoint_timeout }} --output json
+  register: contract_info
+  changed_when: false
+  failed_when: false
+
+- name: "{{ endpoint.name }} — the endpoint answered at all"
+  ansible.builtin.assert:
+    that:
+      - contract_info.rc == 0
+    fail_msg: >-
+      {{ endpoint.name }} ({{ endpoint.host }}:{{ endpoint.port }}) did not
+      answer: {{ contract_info.stderr | default(contract_info.stdout) }}.
+      This path proves {{ endpoint.why }}, so a failure here is not a
+      formatting problem — nothing on this route works.
+
+- name: "{{ endpoint.name }} — decode the node table"
+  ansible.builtin.set_fact:
+    contract_nodes: "{{ contract_info.stdout | from_json }}"
+
+# Three assertions, and they hold on every path by construction. A frame
+# answers with its cards, a controller with the units it fronts, a proxy with
+# the bridges it aggregates — different devices, same shape.
+- name: "{{ endpoint.name }} — the plant enumerated"
+  ansible.builtin.assert:
+    that:
+      - contract_nodes.slots | int > 0
+      - contract_nodes.slot_status | length == contract_nodes.slots | int
+    fail_msg: >-
+      {{ endpoint.name }} reported {{ contract_nodes.slots | default('no') }}
+      nodes and listed {{ contract_nodes.slot_status | default([]) | length }}.
+      An enumeration that names nothing is a map service that is not answering.
+
+- name: "{{ endpoint.name }} — every node says what it is"
+  ansible.builtin.assert:
+    that:
+      - contract_nodes.slot_status | rejectattr('status', 'defined') | list | length == 0
+    fail_msg: >-
+      {{ endpoint.name }} listed a node with no status.
+
+# The address is what makes two paths comparable. A slot number is a position
+# in one device's enumeration and it moves between models; the address names
+# the node itself, so it is the only field a direct read and a proxied read can
+# be expected to agree on.
+- name: "{{ endpoint.name }} — every node carries its address"
+  ansible.builtin.assert:
+    that:
+      - contract_nodes.slot_status
+        | map(attribute='identity', default={})
+        | rejectattr('address', 'defined') | list | length == 0
+    fail_msg: >-
+      {{ endpoint.name }} listed a node with no address in its identity. Without
+      it this path cannot be compared with any other, because a slot number
+      alone names a different node on a different topology.
+
+- name: "{{ endpoint.name }} — keep the node table for comparison"
+  ansible.builtin.copy:
+    content: "{{ contract_info.stdout }}\n"
+    dest: "{{ artifact_dir }}/nodes-{{ endpoint.name }}.json"
+    mode: "0644"
+  changed_when: false
+
+- name: "{{ endpoint.name }} — what this path found"
+  ansible.builtin.debug:
+    msg: >-
+      {{ endpoint.name }} ({{ endpoint.host }}:{{ endpoint.port }}) —
+      {{ contract_nodes.slots }} node(s):
+      {{ contract_nodes.slot_status
+         | map(attribute='identity', default={})
+         | map(attribute='address', default='?') | list | join(', ') }}

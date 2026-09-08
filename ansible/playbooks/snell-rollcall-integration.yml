@@ -58,9 +58,32 @@
     loopback_port: 22050
     loopback_host: "127.0.0.1"
 
-    # Tier 1: the vendor emulator.
+    # Where the node table of each path is kept, so two paths can be diffed.
+    artifact_dir: "{{ lookup('env', 'ROLLCALL_ARTIFACTS') | default('/tmp/dhs-rollcall', true) }}"
+
+    # A prebuilt binary, for a control node with Ansible and no Go toolchain —
+    # which is what the designated control node is. Empty means build one.
+    dhs_bin_given: "{{ lookup('env', 'DHS_BIN') | default('', true) }}"
+
+    # Each endpoint gets its own budget because a proxy adds a hop and the
+    # 16-bit generation asks for one item at a time.
+    endpoint_timeout: "{{ lookup('env', 'ROLLCALL_ENDPOINT_TIMEOUT') | default('30s', true) }}"
+
+    # Tier 1: the vendor emulator, reached directly.
     sim_host: "{{ lookup('env', 'ROLLCALL_SIM_HOST') | default('', true) }}"
     sim_port: "{{ lookup('env', 'ROLLCALL_SIM_PORT') | default('2057', true) }}"
+
+    # The same plant reached through the vendor RollCall IP Proxy. A proxy
+    # publishes each downstream chassis as a bridge node under a substitution
+    # address, so what comes back is a different set of nodes describing the
+    # same equipment — which is exactly what makes the comparison worth making.
+    proxy_host: "{{ lookup('env', 'ROLLCALL_PROXY_HOST') | default('', true) }}"
+    proxy_port: "{{ lookup('env', 'ROLLCALL_PROXY_PORT') | default('2050', true) }}"
+
+    # The same plant reached through our own bridge. Gated and skipped until
+    # there is one; a path that does not exist is not faked.
+    bridge_host: "{{ lookup('env', 'ROLLCALL_BRIDGE_HOST') | default('', true) }}"
+    bridge_port: "{{ lookup('env', 'ROLLCALL_BRIDGE_PORT') | default('22051', true) }}"
     # A destination to route on the emulator, as matrix:level:dest:source.
     # Unset means read-only even there.
     sim_route: "{{ lookup('env', 'ROLLCALL_SIM_ROUTE') | default('', true) }}"
@@ -77,17 +100,88 @@
     # Set ROLLCALL_SETTLE_SECONDS=0 to drive a gateway that does not need it.
     settle_seconds: "{{ lookup('env', 'ROLLCALL_SETTLE_SECONDS') | default('5', true) }}"
 
+    # Every path to the plant, in the order they prove things. A path with no
+    # host configured is dropped rather than faked.
+    rollcall_candidates:
+      - name: direct
+        host: "{{ sim_host }}"
+        port: "{{ sim_port }}"
+        router: true
+        why: "the connector's own session layer against the vendor's own code"
+      - name: vendor-proxy
+        host: "{{ proxy_host }}"
+        port: "{{ proxy_port }}"
+        router: false
+        why: "that we behave like a RollCall Control Panel on the aggregation path a real plant uses"
+      - name: dhs-bridge
+        host: "{{ bridge_host }}"
+        port: "{{ bridge_port }}"
+        router: false
+        why: "that our own aggregation is indistinguishable from the vendor's"
+      - name: live
+        host: "{{ live_host }}"
+        port: "{{ live_port }}"
+        router: false
+        why: "that real hardware answers what the emulator taught us to expect"
+
     # Tier 2: a live device, read-only.
     live_host: "{{ lookup('env', 'ROLLCALL_TEST_HOST') | default('', true) }}"
     live_port: "{{ lookup('env', 'ROLLCALL_TEST_PORT') | default('2050', true) }}"
     live_slot: "{{ lookup('env', 'ROLLCALL_TEST_SLOT') | default('0', true) }}"
 
   tasks:
+    - name: Keep the node tables somewhere
+      ansible.builtin.file:
+        path: "{{ artifact_dir }}"
+        state: directory
+        mode: "0755"
+
     - name: Build the dhs binary under test
       ansible.builtin.command:
         cmd: go build -o "{{ dhs_bin }}" ./cmd/dhs
         chdir: "{{ repo_root }}"
       changed_when: false
+      when: dhs_bin_given | length == 0
+
+    - name: Use the binary that was handed to us
+      ansible.builtin.set_fact:
+        dhs_bin: "{{ dhs_bin_given }}"
+      when: dhs_bin_given | length > 0
+
+    - name: The binary under test runs here
+      ansible.builtin.command:
+        cmd: "{{ dhs_bin }} version"
+      register: dhs_version
+      changed_when: false
+      failed_when: dhs_version.rc != 0
+
+    # ------------------------------------------------------------------
+    # One contract, every path to the plant.
+    #
+    # A frame answers with its cards, a controller with the units it fronts, a
+    # proxy with the bridges it aggregates. Different devices, same shape — so
+    # the same assertions run over each, and each node table is kept for the
+    # comparison at the end.
+    # ------------------------------------------------------------------
+
+    - name: Work out which paths to the plant are configured
+      ansible.builtin.set_fact:
+        rollcall_paths: "{{ rollcall_candidates | rejectattr('host', 'equalto', '') | list }}"
+
+    - name: Say which paths are being tested
+      ansible.builtin.debug:
+        msg: >-
+          {{ rollcall_paths | length }} path(s):
+          {{ rollcall_paths | map(attribute='name') | list | join(', ') }}
+          {{ '(set ROLLCALL_SIM_HOST / ROLLCALL_PROXY_HOST / ROLLCALL_BRIDGE_HOST / ROLLCALL_TEST_HOST to add more)'
+             if rollcall_paths | length < 4 else '' }}
+
+    - name: The same contract over every configured path
+      ansible.builtin.include_tasks: tasks/snell-rollcall-contract.yml
+      loop: "{{ rollcall_paths }}"
+      loop_control:
+        loop_var: endpoint
+        label: "{{ endpoint.name }} -> {{ endpoint.host }}:{{ endpoint.port }}"
 
     # -------------------------------------------------------------------
     # Tier 1 — the vendor emulator. The oracle that counts.
@@ -96,23 +190,9 @@
     - name: Tier 1 — the vendor emulator
       when: sim_host | length > 0
       block:
-        - name: Read the emulator's device info
-          ansible.builtin.command:
-            cmd: "{{ dhs_bin }} consumer rollcall info {{ sim_host }}:{{ sim_port }}"
-          register: sim_info
-          changed_when: false
-
-        - name: The emulator enumerated its nodes
-          ansible.builtin.assert:
-            that:
-              - "'slots' in sim_info.stdout"
-              - sim_info.stdout is search('slots\\s+[1-9]')
-            fail_msg: >-
-              The emulator reported no nodes. A controller fronts its matrices,
-              its tielines engine and its panel driver as separate units, so an
-              empty enumeration means the map service is not answering.
-            success_msg: "{{ sim_info.stdout_lines | select('search', 'slots') | first }}"
-
+        # Enumeration is the shared contract's job and has already run over
+        # this path. What is left is what only this path can prove: a
+        # routing interface, and a crosspoint on it.
         - name: Settle before the next connection — finding the routing interface
           ansible.builtin.pause:
             seconds: "{{ settle_seconds | int }}"
@@ -188,10 +268,8 @@
 
         - name: Emulator output
           ansible.builtin.debug:
-            msg:
-              - "{{ sim_info.stdout_lines }}"
-              - "{{ sim_router.stdout_lines }}"
-          verbosity: 1
+            msg: "{{ sim_router.stdout_lines }}"
+            verbosity: 1
 
     # -------------------------------------------------------------------
     # Tier 2 — a live device. Read-only, always.
@@ -200,18 +278,8 @@
     - name: Tier 2 — a live device, read-only
       when: live_host | length > 0
       block:
-        - name: Read the device
-          ansible.builtin.command:
-            cmd: "{{ dhs_bin }} consumer rollcall info {{ live_host }}:{{ live_port }}"
-          register: live_info
-          changed_when: false
-
-        - name: The device answered with its slots
-          ansible.builtin.assert:
-            that:
-              - "'protocol' in live_info.stdout"
-              - "'slots' in live_info.stdout"
-
+        # The contract has already enumerated this device. A walk is what
+        # only a real device can prove: that a card's menu decodes.
         - name: Settle before the next connection — walking a slot
           ansible.builtin.pause:
             seconds: "{{ settle_seconds | int }}"
@@ -246,20 +314,20 @@
         - name: Live device output
           ansible.builtin.debug:
             msg:
-              - "{{ live_info.stdout_lines }}"
               - "{{ live_walk.stdout_lines | default([]) }}"
               - "{{ live_router.stdout_lines | default([]) }}"
-          verbosity: 1
+            verbosity: 1
 
     # -------------------------------------------------------------------
     # Tier 3 — loopback. A regression net, not an oracle.
     # -------------------------------------------------------------------
 
-    - name: Skip the loopback tier when the committed tree is absent
-      ansible.builtin.meta: end_play
-      when: not (tree_fixture is exists)
+    - name: Note whether the committed tree is here to serve
+      ansible.builtin.set_fact:
+        have_fixture: "{{ tree_fixture is exists }}"
 
-    - name: Tier 3 — loopback
+    - name: Tier 3 - loopback
+      when: have_fixture
       block:
         - name: Serve the committed frame tree
           ansible.builtin.shell:
@@ -279,16 +347,25 @@
             port: "{{ loopback_port }}"
             timeout: 20
 
-        - name: Read the served frame
-          ansible.builtin.command:
-            cmd: "{{ dhs_bin }} consumer rollcall info {{ loopback_host }}:{{ loopback_port }}"
-          register: loop_info
-          changed_when: false
+        # Our own producer is held to the contract every other path is held
+        # to. It is the weakest oracle in the play - two halves of one codebase
+        # agreeing - but it is the only one that must never regress.
+        - name: The same contract, against our own producer
+          ansible.builtin.include_tasks: tasks/snell-rollcall-contract.yml
+          loop:
+            - name: loopback
+              host: "{{ loopback_host }}"
+              port: "{{ loopback_port }}"
+              router: false
+              why: "that our provider serves what our consumer reads"
+          loop_control:
+            loop_var: endpoint
+            label: "{{ endpoint.name }}"
 
         - name: The frame has the two cards the fixture describes
           ansible.builtin.assert:
             that:
-              - loop_info.stdout is search('slots\\s+2')
+              - contract_nodes.slots | int == 2
             fail_msg: "The served frame does not match the committed tree."
 
         - name: Walk the first card
@@ -374,10 +451,9 @@
         - name: Loopback output
           ansible.builtin.debug:
             msg:
-              - "{{ loop_info.stdout_lines }}"
               - "{{ loop_get.stdout_lines }}"
               - "{{ loop_set.stdout_lines }}"
-          verbosity: 1
+            verbosity: 1
 
       always:
         - name: Stop the loopback producer
@@ -393,4 +469,67 @@
         - name: Producer log
           ansible.builtin.debug:
             var: producer_out.stdout_lines
-          verbosity: 1
+            verbosity: 1
+
+    # ------------------------------------------------------------------
+    # The comparison. This is what the whole shape is for: the same plant,
+    # read every way it can be reached, side by side.
+    #
+    # It reports rather than asserts, deliberately. A proxy publishes each
+    # downstream chassis as one bridge node, so reading fifteen units directly
+    # and two bridges through a proxy is correct on both paths and not a
+    # disagreement. Asserting they match would be asserting a bug. What the
+    # report is for is the difference nobody predicted.
+    # ------------------------------------------------------------------
+
+    - name: Collect every node table that was written
+      ansible.builtin.find:
+        paths: "{{ artifact_dir }}"
+        patterns: "nodes-*.json"
+      register: node_tables
+
+    - name: Read them back
+      ansible.builtin.slurp:
+        src: "{{ item.path }}"
+      loop: "{{ node_tables.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      register: node_blobs
+
+    - name: Build the comparison
+      ansible.builtin.set_fact:
+        rollcall_comparison: >-
+          {{ node_blobs.results | map(attribute='content') | map('b64decode')
+             | map('from_json') | list }}
+        rollcall_names: >-
+          {{ node_blobs.results | map(attribute='item') | map(attribute='path')
+             | map('basename') | map('replace', 'nodes-', '')
+             | map('replace', '.json', '') | list }}
+
+    - name: The same plant, every way it can be reached
+      ansible.builtin.debug:
+        msg: >-
+          {{ rollcall_names[idx] }}:
+          {{ rollcall_comparison[idx].device }} =
+          {{ rollcall_comparison[idx].slots }} node(s) [
+          {{ rollcall_comparison[idx].slot_status
+             | map(attribute='identity', default={})
+             | map(attribute='address', default='?') | list | join(' ') }} ]
+      loop: "{{ range(rollcall_names | length) | list }}"
+      loop_control:
+        loop_var: idx
+        label: "{{ rollcall_names[idx] }}"
+
+    - name: Keep the comparison beside the tables it was built from
+      ansible.builtin.copy:
+        content: |
+          {{ dict(rollcall_names | zip(rollcall_comparison)) | to_nice_json }}
+        dest: "{{ artifact_dir }}/comparison.json"
+        mode: "0644"
+      changed_when: false
+
+    - name: Where the evidence is
+      ansible.builtin.debug:
+        msg: >-
+          {{ node_tables.files | length }} node table(s) and comparison.json in
+          {{ artifact_dir }} - diff two paths to see what a hop costs.
