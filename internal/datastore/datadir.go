@@ -6,6 +6,17 @@ import (
 	"runtime"
 )
 
+// goos and osExecutable are runtime.GOOS and os.Executable, indirected
+// through package vars so a test can walk every branch of the
+// per-OS resolution below on whichever OS runs it. A single test host
+// can otherwise reach only its own case, and an os.Executable failure
+// cannot be provoked on Windows or Linux — the same testability seam
+// amwa/consumer uses for marshalJSON.
+var (
+	goos         = runtime.GOOS
+	osExecutable = os.Executable
+)
+
 // DataDir resolves the dhs writable data directory according to a
 // portable-first rule:
 //
@@ -27,12 +38,12 @@ func DataDir(override string) string {
 		_ = os.MkdirAll(override, 0o755)
 		return override
 	}
-	if runtime.GOOS == "windows" {
-		if exe, err := os.Executable(); err == nil {
+	if goos == "windows" {
+		if exe, err := osExecutable(); err == nil {
 			return filepath.Dir(exe)
 		}
 	}
-	switch runtime.GOOS {
+	switch goos {
 	case "linux":
 		if x := os.Getenv("XDG_DATA_HOME"); x != "" {
 			return filepath.Join(x, "dhs")

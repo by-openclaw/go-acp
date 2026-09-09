@@ -215,3 +215,18 @@ func TestIdleSetOnZeroClearsDeadline(t *testing.T) {
 		t.Fatal("SetOn(0) did not clear the expired deadline")
 	}
 }
+
+// SetOn takes the same -1 "off" sentinel Set does. Taken literally it would
+// arm a deadline already in the past and tear the session down on the next
+// read; it must disable instead, and report as disabled.
+func TestIdleSetOnNegativeDisables(t *testing.T) {
+	c := tcpPair(t)
+	var i Idle
+	i.Set(time.Hour)
+	if err := i.SetOn(c, -time.Second); err != nil {
+		t.Fatalf("SetOn(-1s): %v", err)
+	}
+	if got := i.Get(); got != 0 || i.Enabled() {
+		t.Fatalf("Get = %v, Enabled = %v after a negative SetOn; want 0, false", got, i.Enabled())
+	}
+}

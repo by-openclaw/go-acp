@@ -159,6 +159,11 @@ jobs:
           check internal/scenario 100
           check internal/amwa/session/http 100
           check internal/amwa/session/auth 100
+          check internal/manifest 100
+          check internal/datastore 100
+          check internal/devicemodel 100
+          check internal/transport 100
+          check internal/amwa/session/mqtt 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
