@@ -50,12 +50,34 @@ var socketOpeners = map[string]bool{
 	"net.ListenTCP":    true,
 	"net.ListenUDP":    true,
 	"net.ListenIP":     true,
+	// Raw sockets bypass net entirely — the same ownership question.
+	"syscall.Socket":   true,
+	"syscall.Bind":     true,
+	"syscall.Recvfrom": true,
+	// An HTTP server that binds its own port is a listener by another name.
+	"http.ListenAndServe":       true,
+	"http.ListenAndServeTLS":    true,
+	"stdhttp.ListenAndServe":    true,
+	"stdhttp.ListenAndServeTLS": true,
 }
 
 // socketTypes are constructed rather than called.
 var socketTypes = map[string]bool{
 	"net.Dialer":       true,
 	"net.ListenConfig": true,
+}
+
+// serverLiterals are HTTP plumbing a protocol package must not assemble
+// itself: an http.Server owns a listener and its TLS posture, an
+// http.Transport owns the client TLS posture. Both belong to
+// internal/transport/http. Checked on composite literals only — naming the
+// type in a field or parameter is fine, BUILDING one is the ownership.
+// Both spellings, because the amwa tree imports net/http as stdhttp.
+var serverLiterals = map[string]bool{
+	"http.Server":       true,
+	"http.Transport":    true,
+	"stdhttp.Server":    true,
+	"stdhttp.Transport": true,
 }
 
 // allowed maps a repo-relative file to why it may still do transport work.
@@ -82,6 +104,27 @@ var allowed = map[string]string{
 	// IS-04 §4.4 error body and the BCP-003-02 gate. Extracting it also
 	// closes the conformance gap where http has a client and no server.
 	"internal/amwa/registry/mirror_serve.go": "TLS listener → transport once the server moves",
+	// The same extraction closes these: each assembles an http.Server (a
+	// listener + TLS posture by another name) or an http.Transport (the
+	// client posture) that transport/http already provides. They are the
+	// amwa Base/Deps refactor's work list, not five separate exceptions.
+	"internal/amwa/facade/facade.go":                "builds http.Server → transport/http Server when amwa moves onto the base contract",
+	"internal/amwa/registry/mirror_audit.go":        "builds http.Server for the audit endpoint → transport/http Server",
+	"internal/amwa/registry/registry.go":            "builds http.Server per API → transport/http Server",
+	"internal/amwa/provider/registration_client.go": "builds http.Transport for the client TLS posture → transport/http client (TLSOptions)",
+
+	// DEBT — the CCM consumer predates transport/http's client.
+	//
+	// It builds its own http.Transport for the TLS posture; moving it onto
+	// consumer.Base + transport/http is the ccm consumer's contract unit.
+	"internal/ccm/consumer/client.go": "builds http.Transport → transport/http client when ccm/consumer adopts consumer.Base",
+
+	// DEBT — LLDP capture is a raw AF_PACKET socket.
+	//
+	// Layer-2 frame capture has no counterpart in transport (which models
+	// TCP/UDP/TLS sessions); until it grows a raw-frame listener the
+	// capture owns its socket. Linux-only by build tag.
+	"internal/lldp/capture_linux.go": "AF_PACKET raw capture; transport has no layer-2 frame model yet",
 
 	// PERMANENT — certificate handling.
 	//
@@ -184,6 +227,18 @@ func transportUsesIn(t *testing.T, path string) []string {
 	}
 	seen := map[string]bool{}
 	ast.Inspect(full, func(n ast.Node) bool {
+		if lit, ok := n.(*ast.CompositeLit); ok {
+			if sel, ok := lit.Type.(*ast.SelectorExpr); ok {
+				if ident, ok := sel.X.(*ast.Ident); ok {
+					name := ident.Name + "." + sel.Sel.Name
+					if serverLiterals[name] && !seen[name] {
+						seen[name] = true
+						out = append(out, "builds an "+name+" — HTTP listener/TLS posture belongs to transport/http")
+					}
+				}
+			}
+			return true
+		}
 		sel, ok := n.(*ast.SelectorExpr)
 		if !ok {
 			return true
