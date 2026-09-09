@@ -122,3 +122,11 @@ func (r *routerModel) fireSalvo(n uint32) (uint32, []routedChange) {
 	}
 	return uint32(len(moved)), moved
 }
+
+// salvoAt returns one salvo, counting from one.
+func (r *routerModel) salvoAt(n uint32) (*routerSalvo, bool) {
+	if n < 1 || int(n) > len(r.salvos) {
+		return nil, false
+	}
+	return &r.salvos[n-1], true
+}

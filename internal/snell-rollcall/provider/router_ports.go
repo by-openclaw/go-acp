@@ -164,6 +164,57 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 		}
 		p.lines[group].Step = uint32(len(p.lines) - group - 1)
 		p.byCmd[uint32(router.CmdFireSalvo)] = group + 1
+
+		// What the last one did. Pressing a salvo otherwise says nothing at
+		// all: the routes it makes are on other nodes, and an operator looking
+		// at this page has no way to tell a salvo that fired from one that was
+		// refused.
+		idx := len(p.lines)
+		p.lines = append(p.lines, line{
+			Index: uint32(idx), Style: codec.StyleDisplay | codec.StyleCacheable,
+			Command: cmdXYLastSalvo, MinRange: -32767, MaxRange: 23767,
+			Text: "Last Salvo", Param: "%s", path: "menu.salvos.last",
+		})
+		p.byCmd[cmdXYLastSalvo] = idx
+		p.byPath["menu.salvos.last"] = idx
+		p.values[cmdXYLastSalvo] = codec.Value{
+			Command: cmdXYLastSalvo, Mode: codec.ModeString, Text: "none fired yet",
+		}
+	}
+
+	// The categories, so they can be seen at all.
+	//
+	// A panel's XY grid has no category key — the whole set it accepts names
+	// counts, names, routing, protect and reference — so nothing here can make
+	// it filter by them. What it can do is show them, and a menu is drawn by
+	// every client there is. A group is a name matched at a character index,
+	// so that is what each line says.
+	for i := range r.categories {
+		c := &r.categories[i]
+		group := len(p.lines)
+		path := fmt.Sprintf("menu.category.%d", i+1)
+		p.lines = append(p.lines, line{
+			Index: uint32(group), Style: codec.StyleList | codec.StyleCacheable,
+			Text: c.name, path: path,
+		})
+		for j := range c.groups {
+			g := &c.groups[j]
+			idx := len(p.lines)
+			gpath := fmt.Sprintf("%s.%d", path, j+1)
+			cmd := cmdXYCategoryBase + uint32(i)*maxCategoryGroups + uint32(j)
+			p.lines = append(p.lines, line{
+				Index: uint32(idx), Style: codec.StyleDisplay | codec.StyleCacheable,
+				Command: cmd, MinRange: -32767, MaxRange: 23767,
+				Text: g.name, Param: "%s", path: gpath,
+			})
+			p.byCmd[cmd] = idx
+			p.byPath[gpath] = idx
+			p.values[cmd] = codec.Value{
+				Command: cmd, Mode: codec.ModeString,
+				Text: fmt.Sprintf("names with %q at %d", g.search, g.start),
+			}
+		}
+		p.lines[group].Step = uint32(len(p.lines) - group - 1)
 	}
 
 	// The root spans everything under it.

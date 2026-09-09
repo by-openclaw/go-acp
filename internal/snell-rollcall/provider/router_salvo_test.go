@@ -1,6 +1,7 @@
 package rollcall
 
 import (
+	"strings"
 	"testing"
 
 	"dhs/internal/export/canonical"
@@ -356,5 +357,94 @@ func TestFiringThroughTheTablesWhenNoListIsPublished(t *testing.T) {
 	}
 	if fired.Routes != 0 {
 		t.Errorf("a plant with no salvos made %d routes", fired.Routes)
+	}
+}
+
+func TestFiringSaysWhatItDidInWords(t *testing.T) {
+	// The routes a salvo makes are on other nodes, so an operator looking at
+	// this page has no other way to tell a salvo that fired from one that was
+	// refused. Pressing one used to say nothing at all.
+	s := salvoRouter(t)
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	if v, ok := xy.value(cmdXYLastSalvo); !ok || v.Text != "none fired yet" {
+		t.Errorf("before anything is fired the readout says %q", v.Text)
+	}
+
+	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 3, "", nil); err != nil {
+		t.Fatalf("press: %v", err)
+	}
+
+	v, ok := xy.value(cmdXYLastSalvo)
+	if !ok {
+		t.Fatal("the node says nothing about the salvo it just fired")
+	}
+	if !strings.Contains(v.Text, "VTR 1") || !strings.Contains(v.Text, "4 route") {
+		t.Errorf("the readout says %q, want the salvo's name and what it did", v.Text)
+	}
+
+	// A salvo that made nothing says so rather than staying as it was.
+	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 99, "", nil); err != nil {
+		t.Fatalf("press: %v", err)
+	}
+	v, _ = xy.value(cmdXYLastSalvo)
+	if !strings.Contains(v.Text, "no routes made") {
+		t.Errorf("a salvo that is not there says %q", v.Text)
+	}
+	if !strings.Contains(v.Text, "unknown") {
+		t.Errorf("a salvo that is not there is named %q", v.Text)
+	}
+}
+
+func TestTheCategoriesAreVisibleInTheMenu(t *testing.T) {
+	// A panel's XY grid has no category key, so nothing can make it filter by
+	// them. A menu is drawn by every client there is, so that is where they
+	// are shown — as what each group matches, which is what a group is.
+	s := newServed(t, &canonical.Export{Root: &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "frame",
+			Children: []canonical.Element{namedMatrix(
+				[]string{"CAM 1", "VTR 1"}, []string{"MON 1", "REC 1"},
+			)},
+		},
+	}})
+	xy := s.p.model.tablePort()
+
+	var group *line
+	lines := xy.menu(true)
+	for i := range lines {
+		if lines[i].Text == "Type" {
+			group = &lines[i]
+		}
+	}
+	if group == nil {
+		t.Fatal("the categories are not in the menu")
+	}
+	if int(group.Step) != len(xy.router.categories[0].groups) {
+		t.Errorf("the category spans %d lines for %d groups",
+			group.Step, len(xy.router.categories[0].groups))
+	}
+
+	// Every line under it says what it matches, and answers when asked.
+	for n := uint32(1); n <= group.Step; n++ {
+		l := lines[group.Index+n]
+		v, ok := xy.value(l.Command)
+		if !ok {
+			t.Fatalf("group %q has no value", l.Text)
+		}
+		if !strings.Contains(v.Text, "names with") {
+			t.Errorf("group %q says %q", l.Text, v.Text)
+		}
+	}
+}
+
+func TestANodeThatIsNotARouterHasNoCategories(t *testing.T) {
+	// The page builder asks every node it draws, and a card is not a router.
+	s := newServed(t, testTree())
+	if got := categoriesOf(s.p.model.port(firstCardPort)); got != nil {
+		t.Errorf("a card published %d categories", len(got))
 	}
 }

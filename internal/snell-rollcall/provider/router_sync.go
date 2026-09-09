@@ -2,6 +2,7 @@ package rollcall
 
 import (
 	"context"
+	"fmt"
 
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/codec/dtp"
@@ -251,6 +252,11 @@ func (p *Provider) fireSalvo(ctx context.Context, s *session.Session, prt *port,
 		Command: uint32(router.CmdFireSalvo), Mode: codec.ModeData, Data: body,
 	})
 
+	// And in words, because the routes a salvo makes are on other nodes and an
+	// operator looking at this page has no other way to tell a salvo that
+	// fired from one that was refused.
+	p.publishText(ctx, s, prt, cmdXYLastSalvo, salvoOutcome(prt.router, salvo, made))
+
 	for _, c := range moved {
 		p.republishCrosspoint(ctx, s, c.level, c.dest)
 	}
@@ -352,4 +358,26 @@ func salvoAsked(v codec.Value) (uint32, bool) {
 		return uint32(v.Val), true
 	}
 	return 0, false
+}
+
+// salvoOutcome says what firing a salvo did, for an operator rather than a
+// client.
+func salvoOutcome(r *routerModel, salvo, made uint32) string {
+	name := "unknown"
+	if s, ok := r.salvoAt(salvo); ok {
+		name = s.name
+	}
+	if made == 0 {
+		return fmt.Sprintf("%d %s: no routes made", salvo, name)
+	}
+	return fmt.Sprintf("%d %s: %d route(s) made", salvo, name, made)
+}
+
+// publishText stores a string and tells the node's watchers.
+func (p *Provider) publishText(ctx context.Context, s *session.Session,
+	prt *port, cmd uint32, text string) {
+
+	v := codec.Value{Command: cmd, Mode: codec.ModeString, Text: text}
+	prt.seed(cmd, v)
+	p.publishExcept(ctx, s, prt.number, v)
 }

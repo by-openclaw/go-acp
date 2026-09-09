@@ -42,6 +42,18 @@ const (
 	// reading its tables. The vendor's template binds its only control to it.
 	cmdXYStatus = 99
 
+	// cmdXYLastSalvo carries what the last salvo did, and the category block
+	// carries what each category's groups match. Neither is in the routing
+	// interface: they are how this node makes salvos and categories visible to
+	// a panel that has no other way to see them. They sit far above the
+	// command space the tables are allocated from, which starts just after the
+	// root block at 119 and grows with the plant.
+	cmdXYLastSalvo    = 90000
+	cmdXYCategoryBase = 91000
+
+	// maxCategoryGroups is the room each category has for its groups.
+	maxCategoryGroups = 1000
+
 	cmdXYDestSelect = 100 // the destination list, and which entry is selected
 	cmdXYSrcSelect  = 110 // the source list, and which entry is selected
 	cmdXYProtect    = 113 // protect state of the selected destination
@@ -277,25 +289,64 @@ const (
 func writeXYPanelPage(body *bytes.Buffer, prt *port) {
 	fmt.Fprintf(body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
 	fmt.Fprintf(body, "[%d:%d:%d:0]%s", prt.id.TypeID, prt.id.Version.CmdSet, templateAllLevels, nl)
-	// A page tall enough for the salvo list when there is one. The vendor's
-	// own is a hundred high and holds nothing but the status line, because its
-	// controller offers a panel nothing else here.
-	height := 100
-	if prt.router != nil && len(prt.router.salvos) > 0 {
-		height = 300
+	// A page tall enough for what is on it. The vendor's own is a hundred high
+	// and holds nothing but the status line, because its controller offers a
+	// panel nothing else here.
+	salvos := 0
+	if prt.router != nil {
+		salvos = len(prt.router.salvos)
 	}
-	fmt.Fprintf(body, "Size=0,0,350,%d%s", height, nl)
-	fmt.Fprintf(body, "Ctl0=Initialising...,%d,0,%d,8,10,330,20%s", cmdXYStatus, ctlValueText, nl)
+	rows := salvos
+	for i := range categoriesOf(prt) {
+		rows += len(categoriesOf(prt)[i].groups) + 1
+	}
+	height := 100 + rows*14
+	fmt.Fprintf(body, "Size=0,0,420,%d%s", height, nl)
 
-	// The salvos, as a list a panel can press. Nothing in the routing
-	// interface makes them visible to one: the XY grid understands names,
-	// counts, routing, protect and reference, and a salvo is none of those.
-	if prt.router != nil && len(prt.router.salvos) > 0 {
-		fmt.Fprintf(body, "Ctl1=Salvos,-1,0,%d,8,40,330,240%s", ctlGroupBox, nl)
-		fmt.Fprintf(body, "Ctl2=New Listbox,%d,0,%d,14,54,318,220%s",
-			router.CmdFireSalvo, ctlListbox, nl)
+	n := 0
+	ctl := func(caption string, command int64, flags, typ, x, y, w, h int) {
+		fmt.Fprintf(body, "Ctl%d=%s,%d,%d,%d,%d,%d,%d,%d%s",
+			n, caption, command, flags, typ, x, y, w, h, nl)
+		n++
+	}
+
+	ctl("Initialising...", cmdXYStatus, 0, ctlValueText, 8, 10, 400, 20)
+	y := 36
+
+	// The salvos, as a list a panel can press, with what the last one did
+	// underneath it. Pressing one otherwise says nothing at all: the routes it
+	// makes are on other nodes.
+	if salvos > 0 {
+		listHeight := salvos*14 + 10
+		ctl("Salvos", -1, 0, ctlGroupBox, 8, y, 400, listHeight+34)
+		ctl("New Listbox", int64(router.CmdFireSalvo), 0, ctlListbox, 14, y+14, 388, listHeight)
+		ctl("Last Salvo", -1, 0, ctlLabel, 14, y+listHeight+18, 60, 10)
+		ctl("New Displaytext", cmdXYLastSalvo, 0, ctlValueText, 80, y+listHeight+18, 322, 10)
+		y += listHeight + 40
+	}
+
+	// The categories, so they can be seen at all. A panel's XY grid has no
+	// category key, so nothing here can make it filter by them; what it can do
+	// is show what each group matches.
+	for i, c := range categoriesOf(prt) {
+		boxHeight := len(c.groups)*12 + 16
+		ctl(c.name, -1, 0, ctlGroupBox, 8, y, 400, boxHeight)
+		for j, g := range c.groups {
+			cmd := int64(cmdXYCategoryBase + uint32(i)*maxCategoryGroups + uint32(j))
+			ctl(g.name, -1, 0, ctlLabel, 14, y+12+j*12, 70, 10)
+			ctl("New Displaytext", cmd, 0, ctlValueText, 90, y+12+j*12, 312, 10)
+		}
+		y += boxHeight + 6
 	}
 
 	fmt.Fprintf(body, "SaveSet=%d,%d%s", cmdXYDestSelect, cmdXYStatus, nl)
 	body.WriteString(nl)
+}
+
+// categoriesOf returns the categories a node publishes, if it publishes any.
+func categoriesOf(prt *port) []routerCategory {
+	if prt.router == nil {
+		return nil
+	}
+	return prt.router.categories
 }
