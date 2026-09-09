@@ -80,7 +80,7 @@ func TestInvokeGetAndSet(t *testing.T) {
 	if err != nil || status != 200 {
 		t.Fatalf("Set = %d, %+v, %v", status, body, err)
 	}
-	status, body, _ = s.invoke(root, get, args(userLabel))
+	_, body, _ = s.invoke(root, get, args(userLabel))
 	raw := body.(ms05.NcMethodResultPropertyValue).Value
 	if string(raw) != `"renamed"` {
 		t.Errorf("read back %s, want the value just written", raw)
