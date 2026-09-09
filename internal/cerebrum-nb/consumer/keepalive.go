@@ -81,7 +81,7 @@ func (s *Session) SetKeepAlive(cfg consumer.KeepAliveConfig) {
 		s.conn.SetIdleTimeout(timeout)
 	}
 	if interval > 0 {
-		s.startKeepAlive(interval, clock.System())
+		s.startKeepAlive(interval, s.clk)
 	}
 }
 

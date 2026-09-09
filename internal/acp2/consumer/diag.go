@@ -2,11 +2,12 @@ package acp2
 
 import (
 	"context"
-	"dhs/internal/acp2/codec"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"dhs/internal/acp2/codec"
+	"dhs/internal/plugin"
 )
 
 // DiagResult is one diagnostic probe result.

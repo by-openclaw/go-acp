@@ -2,7 +2,6 @@ package acp1
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +12,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	an2 "dhs/internal/acp2/codec"
+	"dhs/internal/plugin"
 )
 
 // AN2DefaultPort is the ACP1 Mode C (AN2/TCP) port per spec p.10.

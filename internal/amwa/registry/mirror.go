@@ -29,7 +29,6 @@ package registry
 import (
 	"bytes"
 	"context"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +42,7 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/session/query"
+	"dhs/internal/plugin"
 )
 
 // MirrorHeartbeatInterval is the IS-04 §6.1 heartbeat cadence the

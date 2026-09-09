@@ -16,7 +16,6 @@
 package provider
 
 import (
-	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -30,6 +29,7 @@ import (
 	"dhs/internal/amwa/codec/is12"
 	"dhs/internal/amwa/codec/ms05"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // ncpWireVersion is the IS-12 minor this endpoint serves.

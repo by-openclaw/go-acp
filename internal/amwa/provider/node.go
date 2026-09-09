@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +24,7 @@ import (
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	"dhs/internal/lldp"
+	"dhs/internal/plugin"
 
 	"dhs/internal/amwa/codec/est"
 )

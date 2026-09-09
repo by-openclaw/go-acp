@@ -46,6 +46,10 @@ type Session struct {
 	// it. Nil until SetMetrics.
 	met *metrics.Connector
 
+	// clk drives the keepalive prober and every deadline: the plugin's
+	// injected clock, so a test advances time instead of waiting for it.
+	clk clock.Clock
+
 	mu       sync.Mutex
 	pending  map[string]chan *codec.Frame
 	subs     []*Subscription
@@ -163,7 +167,10 @@ func (p *Profile) Counts() map[string]int {
 // through a setter because the read loop is running before this returns —
 // a connector assigned afterwards would be a data race, and would miss the
 // LOGIN exchange besides.
-func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder, met *metrics.Connector) (*Session, error) {
+func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder, met *metrics.Connector, clk clock.Clock) (*Session, error) {
+	if clk == nil {
+		clk = clock.System()
+	}
 	// The POSTURE is injected; the *tls.Config is built once in the
 	// transport layer. This connector used to assemble its own, with no
 	// MinVersion — see internal/transport/tls.go for why that is now a
@@ -188,6 +195,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 		pending:    map[string]chan *codec.Frame{},
 		stopRX:     make(chan struct{}),
 		met:        met,
+		clk:        clk,
 		done:       make(chan struct{}),
 	}
 	s.mtidNext.Store(1)
@@ -197,7 +205,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 	// consumer.DisableInterval / DisableTimeout turn it off deliberately.
 	s.conn.SetIdleTimeout(defaultKeepAliveTimeout)
 	go s.readLoop()
-	s.startKeepAlive(defaultKeepAliveInterval, clock.System())
+	s.startKeepAlive(defaultKeepAliveInterval, s.clk)
 	return s, nil
 }
 

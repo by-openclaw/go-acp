@@ -2,9 +2,6 @@ package session
 
 import (
 	"context"
-	"dhs/internal/plugin"
-	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/transport"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +10,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"dhs/internal/plugin"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/transport"
 )
 
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.

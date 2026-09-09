@@ -21,7 +21,6 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"log/slog"
 	"net"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	systemsession "dhs/internal/amwa/session/system"
+	"dhs/internal/plugin"
 )
 
 // SystemWatcher browses `_nmos-system._tcp` and fetches the global

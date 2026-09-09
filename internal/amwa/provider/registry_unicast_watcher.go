@@ -20,13 +20,13 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"log/slog"
 	"sync"
 	"time"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
+	"dhs/internal/plugin"
 )
 
 // unicastReresolveInterval is how often the DNS zone is re-asked.

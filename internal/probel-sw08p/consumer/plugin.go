@@ -18,14 +18,13 @@ package probelsw08p
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw08p/codec"
 	sw08session "dhs/internal/probel-sw08p/session"
 	"dhs/internal/transport"
@@ -227,7 +226,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	// open") and arm the reader's dead-man deadline alongside it. Our own
 	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
 	// matrix that never pings leaves the session with no liveness signal.
-	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), clock.System())
+	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), p.Clock())
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),

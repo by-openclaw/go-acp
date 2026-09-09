@@ -19,7 +19,6 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"dhs/internal/plugin"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -32,6 +31,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/est"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 

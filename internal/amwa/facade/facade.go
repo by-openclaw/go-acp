@@ -27,7 +27,6 @@ package facade
 import (
 	"bytes"
 	"context"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -35,6 +34,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/consumer"
+	"dhs/internal/plugin"
 )
 
 // Question is what the tool POSTs to the facade.

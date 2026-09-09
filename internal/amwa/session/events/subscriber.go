@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,6 +10,7 @@ import (
 
 	"dhs/internal/amwa/codec/is07"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // MessageHandler receives every IS-07 sender-to-receiver wire frame

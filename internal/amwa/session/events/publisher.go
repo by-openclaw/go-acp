@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +12,7 @@ import (
 
 	"dhs/internal/amwa/codec/is07"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // Publisher is the IS-07 WebSocket server attached to a Node. One

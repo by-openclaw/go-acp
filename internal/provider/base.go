@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 	"dhs/internal/transport"
@@ -80,6 +81,7 @@ type Base[S Session] struct {
 
 	net     transport.Net
 	metrics *metrics.Connector
+	clk     clock.Clock
 }
 
 // Init wires the injected dependency set. Called once from the factory.
@@ -89,6 +91,19 @@ func (b *Base[S]) Init(deps plugin.Deps) {
 	defer b.mu.Unlock()
 	b.net = deps.Net
 	b.metrics = deps.Metrics
+	b.clk = deps.Clock
+}
+
+// Clock returns the injected clock — every wait, deadline and timestamp in
+// a provider goes through it so a test drives time instead of sleeping.
+// Never nil: a Base that was never Init'ed answers with the system clock.
+func (b *Base[S]) Clock() clock.Clock {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.clk == nil {
+		b.clk = clock.System()
+	}
+	return b.clk
 }
 
 // Metrics returns the provider's counter set, satisfying the optional

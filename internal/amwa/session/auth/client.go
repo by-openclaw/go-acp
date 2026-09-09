@@ -22,7 +22,6 @@ package auth
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,6 +35,7 @@ import (
 
 	"dhs/internal/amwa/codec/is10"
 	jwt "dhs/internal/auth"
+	"dhs/internal/plugin"
 )
 
 // httpTimeout caps every exchange with the Authorization Server.

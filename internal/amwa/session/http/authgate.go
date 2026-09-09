@@ -25,7 +25,6 @@ package http
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"log/slog"
 	stdhttp "net/http"
 	"strings"
@@ -34,6 +33,7 @@ import (
 
 	nmosauth "dhs/internal/amwa/session/auth"
 	jwt "dhs/internal/auth"
+	"dhs/internal/plugin"
 )
 
 // KeyProvider hands the gate the Authorization Server's current

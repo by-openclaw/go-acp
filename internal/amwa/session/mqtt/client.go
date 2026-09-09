@@ -10,13 +10,13 @@ package mqtt
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
 	"sync"
 	"time"
 
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 

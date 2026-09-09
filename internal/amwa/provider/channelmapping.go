@@ -36,7 +36,6 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,6 +52,7 @@ import (
 	"dhs/internal/amwa/codec/is08"
 	"dhs/internal/amwa/codec/spec"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // IS08ChannelMappingConfig configures the Channel Mapping surface.

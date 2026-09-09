@@ -2,7 +2,6 @@ package acp1
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 

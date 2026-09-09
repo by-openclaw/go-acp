@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
-	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 

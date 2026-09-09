@@ -7,7 +7,6 @@ package cerebrumnb
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -15,6 +14,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -146,7 +146,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
 		Enable:   p.UseTLS,
 		Insecure: p.InsecureSkipVerify,
-	}, rec, p.Metrics())
+	}, rec, p.Metrics(), p.Clock())
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err

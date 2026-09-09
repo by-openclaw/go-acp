@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"crypto/rand"
-	"dhs/internal/plugin"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/plugin"
 	stdhttp "net/http"
 
 	"dhs/internal/amwa/codec/is04"

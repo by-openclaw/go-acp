@@ -334,6 +334,7 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 		p.logger.Warn("acp1 listener unavailable — Subscribe will fail",
 			"port", port, "err", lerr)
 	} else {
+		l.SetClock(p.Clock()) // the plugin's injected clock paces its retries
 		p.listener = l
 		p.listener.Start(context.Background())
 	}

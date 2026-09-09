@@ -1,8 +1,9 @@
 package dnssd
 
 import (
-	"dhs/internal/plugin"
 	"log/slog"
+
+	"dhs/internal/plugin"
 )
 
 // tryDaemonBrowserFn / tryDaemonResponderFn indirect the build-tagged daemon

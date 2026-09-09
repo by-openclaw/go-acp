@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -13,6 +12,7 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
+	"dhs/internal/plugin"
 )
 
 // RegistryCandidate is one Registry instance discovered via DNS-SD,
