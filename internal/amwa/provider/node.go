@@ -698,10 +698,11 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		// Mode B with discovery: registries come from a conventional
 		// DNS zone instead of multicast — same client, same failover.
 		uw := NewUnicastRegistryWatcher(s.logger, s.cfg.UnicastResolver, s.cfg.UnicastDomain, s.cfg.APIVer)
-		if err := uw.Run(ctx); err != nil {
-			s.mu.Unlock()
-			return fmt.Errorf("provider/node: start unicast registry watcher: %w", err)
-		}
+		// No error to check: the resolve loop starts in its own
+		// goroutine and every zone failure inside it is a logged
+		// retry, because a DNS server that is down for a minute is
+		// not a reason to refuse to serve the Node API.
+		uw.Run(ctx)
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
 		s.attachAuthToken(rc)
 		s.attachTLSTrust(rc)

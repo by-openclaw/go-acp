@@ -80,9 +80,7 @@ func TestUnicastWatcherResolvesAndReResolves(t *testing.T) {
 	})
 
 	w := NewUnicastRegistryWatcher(tap.logger(), "10.0.0.53", "example.arpa", "")
-	if err := w.Run(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	w.Run(context.Background())
 	tap.wait(t, "registry discovered (unicast DNS-SD)")
 	// The rejection is logged while walking the same answer, so it can
 	// land either side of the line above.

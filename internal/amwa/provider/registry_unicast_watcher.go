@@ -82,7 +82,7 @@ func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIV
 // Run resolves once immediately — a Node must not sit a full interval
 // before its first registration attempt — then re-resolves on the
 // interval until ctx is cancelled. Returns immediately.
-func (w *UnicastRegistryWatcher) Run(ctx context.Context) error {
+func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 	go func() {
@@ -98,7 +98,6 @@ func (w *UnicastRegistryWatcher) Run(ctx context.Context) error {
 			}
 		}
 	}()
-	return nil
 }
 
 // Close stops the resolve loop. Idempotent.
