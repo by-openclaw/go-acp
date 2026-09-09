@@ -36,6 +36,8 @@ func (p *Provider) syncRouterWrite(ctx context.Context, s *session.Session, prt 
 		p.routeByAssociation(ctx, s, prt, v)
 	case prt.router != nil && v.Command == uint32(router.CmdFireSalvo):
 		p.fireSalvo(ctx, s, prt, v)
+	case prt.router != nil && isGroupSelect(v.Command):
+		p.showWhatAGroupSelects(ctx, s, prt, v)
 	case prt.level != nil:
 		p.levelWriteToTables(ctx, s, prt, v)
 	case prt.router != nil:
@@ -245,7 +247,7 @@ func (p *Provider) republishCrosspoint(ctx context.Context, s *session.Session, 
 // routes made or 0 on error" and does not distinguish an empty salvo from one
 // that does not exist, so neither does this.
 func (p *Provider) fireSalvo(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
-	salvo, ok := salvoAsked(v)
+	salvo, ok := salvoAsked(prt, v)
 	var made uint32
 	var moved []routedChange
 	if ok {
@@ -348,10 +350,10 @@ func routedSourceReply(prt *port, command uint32, before codec.Value) (codec.Val
 // salvoAsked reads which salvo a client asked for, in either form it may ask.
 //
 // The specification carries the request as parameters, and a client that reads
-// the tables sends those. A menu button cannot: it sends the number in its own
-// minimum-range field and nothing else, and the salvo list this node publishes
-// is the only way a panel sees salvos at all. They are the same request.
-func salvoAsked(v codec.Value) (uint32, bool) {
+// the tables sends those, naming the salvo. A panel cannot: its Fire button
+// sends one, the way the vendor's own Take button does, and which salvo it
+// means is whichever the list beside it has selected.
+func salvoAsked(prt *port, v codec.Value) (uint32, bool) {
 	if len(v.Data) > 0 {
 		req, err := router.DecodeFireSalvo(v.Data)
 		if err != nil {
@@ -359,10 +361,35 @@ func salvoAsked(v codec.Value) (uint32, bool) {
 		}
 		return req.Salvo, true
 	}
+	if sel, ok := prt.value(cmdXYSalvoSelect); ok && sel.Val > 0 {
+		return uint32(sel.Val), true
+	}
 	if v.Val > 0 {
 		return uint32(v.Val), true
 	}
 	return 0, false
+}
+
+// isGroupSelect reports whether a command chooses a group of a category.
+func isGroupSelect(cmd uint32) bool {
+	return cmd >= cmdXYGroupSelect && cmd < cmdXYGroupSelect+maxCategoryGroups
+}
+
+// showWhatAGroupSelects answers the only question a category can answer here.
+//
+// A group is a search string and the character index to look for it at; it
+// owns no set and nothing is tagged with it. A panel's grid has no category
+// key to run the match with, so the match is run here and the result written
+// where the page can show it.
+func (p *Provider) showWhatAGroupSelects(ctx context.Context, s *session.Session,
+	prt *port, v codec.Value) {
+
+	i := int(v.Command - cmdXYGroupSelect)
+	if i < 0 || i >= len(prt.router.categories) {
+		return
+	}
+	c := &prt.router.categories[i]
+	p.publishText(ctx, s, prt, uint32(cmdXYGroupMatch+i), c.selects(prt.router, int(v.Val)))
 }
 
 // salvoOutcome says what firing a salvo did, for an operator rather than a

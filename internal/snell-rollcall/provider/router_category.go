@@ -201,3 +201,61 @@ func firstLevel(labels map[string]map[string]string) map[string]string {
 	sort.Strings(keys)
 	return labels[keys[0]]
 }
+
+// selects lists what one of a category's groups picks out of the plant.
+//
+// A group is a search string and the character index to look for it at, and
+// nothing else: it owns no set and nothing is tagged with it. So the only way
+// to say what it selects is to run the match, which is what a panel would do
+// if it could — and what this says instead, because the panel's grid has no
+// category key to run it with.
+func (c *routerCategory) selects(r *routerModel, group int) string {
+	if group < 1 || group > len(c.groups) {
+		return "nothing"
+	}
+	g := &c.groups[group-1]
+
+	var names []string
+	for i := range r.matrices {
+		for j := range r.matrices[i].levels {
+			lv := &r.matrices[i].levels[j]
+			for _, n := range lv.sources {
+				names = appendMatch(names, n, g)
+			}
+			for k := range lv.dests {
+				names = appendMatch(names, lv.dests[k].name, g)
+			}
+		}
+	}
+	if len(names) == 0 {
+		return "nothing"
+	}
+	return strings.Join(names, ", ")
+}
+
+// appendMatch adds a name to the list when the group matches it, and never
+// twice: a plant of four levels names the same source four times.
+func appendMatch(out []string, name string, g *routerGroup) []string {
+	if !g.matches(name) {
+		return out
+	}
+	for _, seen := range out {
+		if seen == name {
+			return out
+		}
+	}
+	return append(out, name)
+}
+
+// matches reports whether a group picks out a name.
+//
+// The search string is looked for at a fixed character index rather than
+// anywhere in the name, which is what the start field means: a group searching
+// "CAM" at 0 selects "CAM 1" and not "STUDIO CAM 1".
+func (g *routerGroup) matches(name string) bool {
+	start := int(g.start)
+	if start < 0 || start+len(g.search) > len(name) {
+		return false
+	}
+	return name[start:start+len(g.search)] == g.search
+}

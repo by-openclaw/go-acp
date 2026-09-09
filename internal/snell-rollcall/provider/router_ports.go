@@ -147,6 +147,10 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 	// and a list whose parameter is "#SEL:" with a button per entry is how the
 	// vendor publishes any set of choices — so that is how these are offered.
 	if len(r.salvos) > 0 {
+		// A list selects and a button acts, which is the vendor's own pattern:
+		// its routing page has listboxes for sources and destinations and a
+		// Take button beside them. A list that acted on selection would fire a
+		// salvo every time an operator scrolled past one.
 		group := len(p.lines)
 		p.lines = append(p.lines, line{
 			Index: uint32(group), Style: codec.StyleList | codec.StyleCacheable,
@@ -157,17 +161,29 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 			path := fmt.Sprintf("menu.salvos.%d", i+1)
 			p.lines = append(p.lines, line{
 				Index: uint32(idx), Style: codec.StyleButton | codec.StyleCacheable,
-				Command: uint32(router.CmdFireSalvo), MinRange: int32(i + 1),
+				Command: cmdXYSalvoSelect, MinRange: int32(i + 1),
 				Text: r.salvos[i].name, path: path,
 			})
 			p.byPath[path] = idx
 		}
 		p.lines[group].Step = uint32(len(p.lines) - group - 1)
-		p.byCmd[uint32(router.CmdFireSalvo)] = group + 1
+		p.byCmd[cmdXYSalvoSelect] = group + 1
+		p.values[cmdXYSalvoSelect] = codec.Value{
+			Command: cmdXYSalvoSelect, Mode: codec.ModeValue, Val: 1,
+		}
 
-		// What the last one did. Pressing a salvo otherwise says nothing at
-		// all: the routes it makes are on other nodes, and an operator looking
-		// at this page has no way to tell a salvo that fired from one that was
+		fire := len(p.lines)
+		p.lines = append(p.lines, line{
+			Index: uint32(fire), Style: codec.StyleButton | codec.StyleCacheable,
+			Command: uint32(router.CmdFireSalvo), MinRange: 1,
+			Text: "Fire", path: "menu.salvos.fire",
+		})
+		p.byCmd[uint32(router.CmdFireSalvo)] = fire
+		p.byPath["menu.salvos.fire"] = fire
+
+		// What the last one did. Pressing Fire otherwise says nothing at all:
+		// the routes it makes are on other nodes, and an operator looking at
+		// this page has no way to tell a salvo that fired from one that was
 		// refused.
 		idx := len(p.lines)
 		p.lines = append(p.lines, line{
@@ -182,39 +198,58 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 		}
 	}
 
-	// The categories, so they can be seen at all.
+	// The categories, so they can be seen and tried.
 	//
 	// A panel's XY grid has no category key — the whole set it accepts names
 	// counts, names, routing, protect and reference — so nothing here can make
-	// it filter by them. What it can do is show them, and a menu is drawn by
-	// every client there is. A group is a name matched at a character index,
-	// so that is what each line says.
+	// it filter by them. What it can do is show what a category is: a set of
+	// groups, each matching a name at a character index. Choosing one lists
+	// what it selects, which is the whole of what a category does.
 	for i := range r.categories {
 		c := &r.categories[i]
-		group := len(p.lines)
+		outer := len(p.lines)
 		path := fmt.Sprintf("menu.category.%d", i+1)
 		p.lines = append(p.lines, line{
-			Index: uint32(group), Style: codec.StyleList | codec.StyleCacheable,
+			Index: uint32(outer), Style: codec.StyleTiled | codec.StyleCacheable,
 			Text: c.name, path: path,
 		})
+
+		groups := len(p.lines)
+		p.lines = append(p.lines, line{
+			Index: uint32(groups), Style: codec.StyleList | codec.StyleCacheable,
+			Text: "Groups", Param: "#SEL:", path: path + ".groups",
+		})
+		selectCmd := uint32(cmdXYGroupSelect + i)
 		for j := range c.groups {
-			g := &c.groups[j]
 			idx := len(p.lines)
-			gpath := fmt.Sprintf("%s.%d", path, j+1)
-			cmd := cmdXYCategoryBase + uint32(i)*maxCategoryGroups + uint32(j)
+			gpath := fmt.Sprintf("%s.groups.%d", path, j+1)
 			p.lines = append(p.lines, line{
-				Index: uint32(idx), Style: codec.StyleDisplay | codec.StyleCacheable,
-				Command: cmd, MinRange: -32767, MaxRange: 23767,
-				Text: g.name, Param: "%s", path: gpath,
+				Index: uint32(idx), Style: codec.StyleButton | codec.StyleCacheable,
+				Command: selectCmd, MinRange: int32(j + 1),
+				Text: c.groups[j].name, path: gpath,
 			})
-			p.byCmd[cmd] = idx
 			p.byPath[gpath] = idx
-			p.values[cmd] = codec.Value{
-				Command: cmd, Mode: codec.ModeString,
-				Text: fmt.Sprintf("names with %q at %d", g.search, g.start),
-			}
 		}
-		p.lines[group].Step = uint32(len(p.lines) - group - 1)
+		p.lines[groups].Step = uint32(len(p.lines) - groups - 1)
+		p.byCmd[selectCmd] = groups + 1
+		p.values[selectCmd] = codec.Value{
+			Command: selectCmd, Mode: codec.ModeValue, Val: 1,
+		}
+
+		matchCmd := uint32(cmdXYGroupMatch + i)
+		idx := len(p.lines)
+		p.lines = append(p.lines, line{
+			Index: uint32(idx), Style: codec.StyleDisplay | codec.StyleCacheable,
+			Command: matchCmd, MinRange: -32767, MaxRange: 23767,
+			Text: "Selects", Param: "%s", path: path + ".selects",
+		})
+		p.byCmd[matchCmd] = idx
+		p.byPath[path+".selects"] = idx
+		p.values[matchCmd] = codec.Value{
+			Command: matchCmd, Mode: codec.ModeString, Text: c.selects(r, 1),
+		}
+
+		p.lines[outer].Step = uint32(len(p.lines) - outer - 1)
 	}
 
 	// The root spans everything under it.

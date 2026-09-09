@@ -49,7 +49,10 @@ const (
 	// command space the tables are allocated from, which starts just after the
 	// root block at 119 and grows with the plant.
 	cmdXYLastSalvo    = 90000
+	cmdXYSalvoSelect  = 90001
 	cmdXYCategoryBase = 91000
+	cmdXYGroupSelect  = 92000
+	cmdXYGroupMatch   = 93000
 
 	// maxCategoryGroups is the room each category has for its groups.
 	maxCategoryGroups = 1000
@@ -296,9 +299,9 @@ func writeXYPanelPage(body *bytes.Buffer, prt *port) {
 	if prt.router != nil {
 		salvos = len(prt.router.salvos)
 	}
-	rows := salvos
-	for i := range categoriesOf(prt) {
-		rows += len(categoriesOf(prt)[i].groups) + 1
+	rows := salvos + 4
+	for _, c := range categoriesOf(prt) {
+		rows += len(c.groups) + 4
 	}
 	height := 100 + rows*14
 	fmt.Fprintf(body, "Size=0,0,420,%d%s", height, nl)
@@ -313,30 +316,31 @@ func writeXYPanelPage(body *bytes.Buffer, prt *port) {
 	ctl("Initialising...", cmdXYStatus, 0, ctlValueText, 8, 10, 400, 20)
 	y := 36
 
-	// The salvos, as a list a panel can press, with what the last one did
-	// underneath it. Pressing one otherwise says nothing at all: the routes it
-	// makes are on other nodes.
+	// The salvos: a list to choose from and a button to act, which is the
+	// vendor's own pattern — its routing page has listboxes and a Take button
+	// beside them. A list that acted on selection would fire a salvo every
+	// time an operator scrolled past one.
 	if salvos > 0 {
 		listHeight := salvos*14 + 10
-		ctl("Salvos", -1, 0, ctlGroupBox, 8, y, 400, listHeight+34)
-		ctl("New Listbox", int64(router.CmdFireSalvo), 0, ctlListbox, 14, y+14, 388, listHeight)
-		ctl("Last Salvo", -1, 0, ctlLabel, 14, y+listHeight+18, 60, 10)
-		ctl("New Displaytext", cmdXYLastSalvo, 0, ctlValueText, 80, y+listHeight+18, 322, 10)
-		y += listHeight + 40
+		ctl("Salvos", -1, 0, ctlGroupBox, 8, y, 400, listHeight+52)
+		ctl("New Listbox", cmdXYSalvoSelect, 0, ctlListbox, 14, y+14, 300, listHeight)
+		ctl("Fire", int64(router.CmdFireSalvo), 1, ctlPushBtn, 324, y+14, 76, 24)
+		ctl("Last Salvo", -1, 0, ctlLabel, 14, y+listHeight+22, 60, 10)
+		ctl("New Displaytext", cmdXYLastSalvo, 0, ctlValueText, 80, y+listHeight+22, 322, 10)
+		y += listHeight + 58
 	}
 
-	// The categories, so they can be seen at all. A panel's XY grid has no
-	// category key, so nothing here can make it filter by them; what it can do
-	// is show what each group matches.
+	// The categories. A panel's grid has no category key, so nothing here can
+	// make it filter by them; what it can do is let one be chosen and say what
+	// it picks out, which is the whole of what a category does.
 	for i, c := range categoriesOf(prt) {
-		boxHeight := len(c.groups)*12 + 16
-		ctl(c.name, -1, 0, ctlGroupBox, 8, y, 400, boxHeight)
-		for j, g := range c.groups {
-			cmd := int64(cmdXYCategoryBase + uint32(i)*maxCategoryGroups + uint32(j))
-			ctl(g.name, -1, 0, ctlLabel, 14, y+12+j*12, 70, 10)
-			ctl("New Displaytext", cmd, 0, ctlValueText, 90, y+12+j*12, 312, 10)
-		}
-		y += boxHeight + 6
+		listHeight := len(c.groups)*14 + 10
+		ctl(c.name, -1, 0, ctlGroupBox, 8, y, 400, listHeight+40)
+		ctl("New Listbox", int64(cmdXYGroupSelect+i), 0, ctlListbox, 14, y+14, 150, listHeight)
+		ctl("Selects", -1, 0, ctlLabel, 174, y+14, 50, 10)
+		ctl("New Displaytext", int64(cmdXYGroupMatch+i), 0, ctlValueText,
+			174, y+26, 228, listHeight-16)
+		y += listHeight + 46
 	}
 
 	fmt.Fprintf(body, "SaveSet=%d,%d%s", cmdXYDestSelect, cmdXYStatus, nl)

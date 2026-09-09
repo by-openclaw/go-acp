@@ -1,6 +1,7 @@
 package rollcall
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -254,67 +255,108 @@ func TestASalvoNamingRoutesThatAreNotThere(t *testing.T) {
 	}
 }
 
-func TestFiringASalvoFromAMenuButton(t *testing.T) {
+func TestTheSalvosArePublishedAsAListAndAButton(t *testing.T) {
 	// Nothing in the routing interface makes salvos visible to a panel: the XY
 	// grid understands names, counts, routing, protect and reference, and a
-	// salvo is none of those. A menu is drawn by every client there is, so the
-	// salvos are published as a list of buttons — and a button sends the
-	// number in its own minimum-range field rather than as parameters.
+	// salvo is none of those. A menu is drawn by every client there is, so
+	// they are published as one — a list to choose from and a button to act,
+	// which is the vendor's own pattern.
 	s := salvoRouter(t)
 	xy := s.p.model.tablePort()
-	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+	lines := xy.menu(true)
 
-	var group, first *line
-	for i, l := range xy.menu(true) {
-		if l.Text == "Salvos" {
-			group = &xy.menu(true)[i]
-		}
-		if l.Command == uint32(router.CmdFireSalvo) && first == nil {
-			first = &xy.menu(true)[i]
+	var group, fire *line
+	for i := range lines {
+		switch {
+		case lines[i].Text == "Salvos":
+			group = &lines[i]
+		case lines[i].Command == uint32(router.CmdFireSalvo):
+			fire = &lines[i]
 		}
 	}
 	if group == nil || group.Param != "#SEL:" {
-		t.Fatal("the salvos are not published as a list a panel can press")
-	}
-	if first == nil {
-		t.Fatal("no salvo button carries the fire command")
+		t.Fatal("the salvos are not published as a list a panel can choose from")
 	}
 	if int(group.Step) != len(xy.router.salvos) {
 		t.Errorf("the list spans %d lines for %d salvos", group.Step, len(xy.router.salvos))
 	}
-
-	// Pressing the third one, the way a panel does.
-	stored, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
-		codec.ModeValue, 3, "", nil)
-	if err != nil {
-		t.Fatalf("press: %v", err)
+	if fire == nil {
+		t.Fatal("nothing carries the fire command")
 	}
+	if fire.Style.Kind() != codec.StyleButton || fire.Text != "Fire" {
+		t.Errorf("the fire control is %q, a %v", fire.Text, fire.Style.Kind())
+	}
+
+	// Each entry selects rather than acts: a list that acted on selection
+	// would fire a salvo every time an operator scrolled past one.
+	for n := uint32(1); n <= group.Step; n++ {
+		l := lines[group.Index+n]
+		if l.Command != cmdXYSalvoSelect {
+			t.Errorf("salvo %d is on command %d, want the selection", n, l.Command)
+		}
+		if l.MinRange != int32(n) {
+			t.Errorf("salvo %d selects %d", n, l.MinRange)
+		}
+	}
+}
+
+func TestFireActsOnWhatTheListSelected(t *testing.T) {
+	// A list selects and a button acts, which is the vendor's own pattern: its
+	// routing page has listboxes and a Take button beside them. A list that
+	// acted on selection would fire a salvo every time an operator scrolled
+	// past one.
+	s := salvoRouter(t)
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	// Choose the third, then press Fire — which sends one, not three.
+	if _, err := s.p.applyWrite(sess, xy, cmdXYSalvoSelect, 0,
+		codec.ModeValue, 3, "", nil); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	stored, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 1, "", nil)
+	if err != nil {
+		t.Fatalf("fire: %v", err)
+	}
+
 	fired, err := router.DecodeSalvoFired(stored.Data)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if fired.Salvo != 3 || fired.Routes != 4 {
-		t.Errorf("salvo %d made %d routes, want 3 and 4", fired.Salvo, fired.Routes)
+	if fired.Salvo != 3 {
+		t.Errorf("pressing Fire ran salvo %d, want the selected 3", fired.Salvo)
+	}
+	if fired.Routes != 4 {
+		t.Errorf("it made %d routes", fired.Routes)
 	}
 
-	m := &xy.router.matrices[0]
-	if got := m.levels[0].dests[0].routed.Source; got != 3 {
-		t.Errorf("destination 1 carries source %d, want the third salvo's", got)
+	// And a client that reads the tables still names the salvo itself.
+	body, _ := router.FireSalvo{Salvo: 1}.AppendTo(nil)
+	stored, err = s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeData, 0, "", body)
+	if err != nil {
+		t.Fatalf("fire by number: %v", err)
+	}
+	fired, _ = router.DecodeSalvoFired(stored.Data)
+	if fired.Salvo != 1 {
+		t.Errorf("a request naming salvo 1 ran %d", fired.Salvo)
 	}
 }
 
 func TestAPressThatNamesNoSalvo(t *testing.T) {
-	// A button carries its number; zero is not one, and neither is a request
-	// whose parameters hold something else.
-	if _, ok := salvoAsked(codec.Value{Mode: codec.ModeValue}); ok {
-		t.Error("a press naming salvo zero was taken for a salvo")
-	}
-	if _, ok := salvoAsked(codec.Value{Mode: codec.ModeData, Data: []byte{0xFF, 0xFF}}); ok {
+	// Parameters that are not a fire name nothing, whatever is selected.
+	s := salvoRouter(t)
+	xy := s.p.model.tablePort()
+
+	if _, ok := salvoAsked(xy, codec.Value{Mode: codec.ModeData, Data: []byte{0xFF, 0xFF}}); ok {
 		t.Error("parameters that are not a fire were taken for one")
 	}
-	got, ok := salvoAsked(codec.Value{Mode: codec.ModeValue, Val: 2})
-	if !ok || got != 2 {
-		t.Errorf("a press of salvo 2 read as %d, %v", got, ok)
+
+	// With nothing selected and no number, there is nothing to fire.
+	bare := newServed(t, routerTree(0, 0)).p.model.tablePort()
+	if _, ok := salvoAsked(bare, codec.Value{Mode: codec.ModeValue}); ok {
+		t.Error("a press with nothing selected was taken for a salvo")
 	}
 }
 
@@ -372,8 +414,12 @@ func TestFiringSaysWhatItDidInWords(t *testing.T) {
 		t.Errorf("before anything is fired the readout says %q", v.Text)
 	}
 
-	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+	if _, err := s.p.applyWrite(sess, xy, cmdXYSalvoSelect, 0,
 		codec.ModeValue, 3, "", nil); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 1, "", nil); err != nil {
 		t.Fatalf("press: %v", err)
 	}
 
@@ -385,9 +431,15 @@ func TestFiringSaysWhatItDidInWords(t *testing.T) {
 		t.Errorf("the readout says %q, want the salvo's name and what it did", v.Text)
 	}
 
-	// A salvo that made nothing says so rather than staying as it was.
-	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+	// A salvo that made nothing says so rather than staying as it was. It is
+	// chosen and then fired, because the button says only "fire what is
+	// selected".
+	if _, err := s.p.applyWrite(sess, xy, cmdXYSalvoSelect, 0,
 		codec.ModeValue, 99, "", nil); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if _, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 1, "", nil); err != nil {
 		t.Fatalf("press: %v", err)
 	}
 	v, _ = xy.value(cmdXYLastSalvo)
@@ -399,10 +451,113 @@ func TestFiringSaysWhatItDidInWords(t *testing.T) {
 	}
 }
 
-func TestTheCategoriesAreVisibleInTheMenu(t *testing.T) {
+func TestACategorySaysWhatItSelects(t *testing.T) {
 	// A panel's XY grid has no category key, so nothing can make it filter by
-	// them. A menu is drawn by every client there is, so that is where they
-	// are shown — as what each group matches, which is what a group is.
+	// them. What a category is, though, is a set of groups that each match a
+	// name at a character index — so choosing one and being told what it picks
+	// out is the whole of what a category does, and that it can do here.
+	s := newServed(t, &canonical.Export{Root: &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "frame",
+			Children: []canonical.Element{namedMatrix(
+				[]string{"CAM 1", "CAM 2", "VTR 1"}, []string{"MON 1", "REC 1"},
+			)},
+		},
+	}})
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	lines := xy.menu(true)
+	var groups, selects *line
+	for i := range lines {
+		switch lines[i].Text {
+		case "Groups":
+			groups = &lines[i]
+		case "Selects":
+			selects = &lines[i]
+		}
+	}
+	if groups == nil || groups.Param != "#SEL:" {
+		t.Fatal("the groups are not published as a list a panel can choose from")
+	}
+	if selects == nil {
+		t.Fatal("nothing says what a group selects")
+	}
+
+	// The groups of this plant, in order: CAM, MON, REC, VTR.
+	if int(groups.Step) != 4 {
+		t.Fatalf("the list spans %d lines, want one per group", groups.Step)
+	}
+
+	// Choosing the first says what it picks out, and it picks out both
+	// cameras and nothing else.
+	if _, err := s.p.applyWrite(sess, xy, uint32(cmdXYGroupSelect), 0,
+		codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	v, _ := xy.value(uint32(cmdXYGroupMatch))
+	if !strings.Contains(v.Text, "CAM 1") || !strings.Contains(v.Text, "CAM 2") {
+		t.Errorf("the camera group selects %q", v.Text)
+	}
+	if strings.Contains(v.Text, "VTR") || strings.Contains(v.Text, "MON") {
+		t.Errorf("the camera group also selected %q", v.Text)
+	}
+
+	// And a group that is not there selects nothing rather than everything.
+	if _, err := s.p.applyWrite(sess, xy, uint32(cmdXYGroupSelect), 0,
+		codec.ModeValue, 99, "", nil); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	if v, _ := xy.value(uint32(cmdXYGroupMatch)); v.Text != "nothing" {
+		t.Errorf("a group that is not there selects %q", v.Text)
+	}
+}
+
+func TestAGroupMatchesAtItsOwnCharacter(t *testing.T) {
+	// The search string is looked for at a fixed index rather than anywhere in
+	// the name, which is what the start field means.
+	g := routerGroup{name: "CAM", search: "CAM", start: 0}
+	for _, tc := range []struct {
+		name string
+		want bool
+	}{
+		{"CAM 1", true},
+		{"STUDIO CAM 1", false},
+		{"CA", false},
+		{"", false},
+	} {
+		if got := g.matches(tc.name); got != tc.want {
+			t.Errorf("%q matched %v, want %v", tc.name, got, tc.want)
+		}
+	}
+
+	// A start past the name matches nothing rather than reading past it.
+	far := routerGroup{name: "X", search: "X", start: 20}
+	if far.matches("CAM 1") {
+		t.Error("a group searching past the end of a name matched it")
+	}
+}
+
+func TestAGroupSelectForACategoryThatIsNotThere(t *testing.T) {
+	s := newServed(t, routerTree(4, 4))
+	xy := s.p.model.tablePort()
+
+	s.p.showWhatAGroupSelects(context.Background(), nil, xy, codec.Value{
+		Command: uint32(cmdXYGroupSelect + 99), Mode: codec.ModeValue, Val: 1,
+	})
+}
+
+func TestANodeThatIsNotARouterHasNoCategories(t *testing.T) {
+	// The page builder asks every node it draws, and a card is not a router.
+	s := newServed(t, testTree())
+	if got := categoriesOf(s.p.model.port(firstCardPort)); got != nil {
+		t.Errorf("a card published %d categories", len(got))
+	}
+}
+
+func TestAGroupThatSelectsNothing(t *testing.T) {
+	// A group whose search matches no name in the plant says so, rather than
+	// showing an empty line an operator would read as a fault.
 	s := newServed(t, &canonical.Export{Root: &canonical.Node{
 		Header: canonical.Header{
 			Number: 1, Identifier: "frame",
@@ -411,40 +566,28 @@ func TestTheCategoriesAreVisibleInTheMenu(t *testing.T) {
 			)},
 		},
 	}})
-	xy := s.p.model.tablePort()
+	r := s.p.model.routerModel()
+	c := &r.categories[0]
+	c.groups = append(c.groups, routerGroup{name: "XYZ", search: "XYZ"})
 
-	var group *line
-	lines := xy.menu(true)
-	for i := range lines {
-		if lines[i].Text == "Type" {
-			group = &lines[i]
-		}
-	}
-	if group == nil {
-		t.Fatal("the categories are not in the menu")
-	}
-	if int(group.Step) != len(xy.router.categories[0].groups) {
-		t.Errorf("the category spans %d lines for %d groups",
-			group.Step, len(xy.router.categories[0].groups))
+	if got := c.selects(r, len(c.groups)); got != "nothing" {
+		t.Errorf("a group matching no name selects %q", got)
 	}
 
-	// Every line under it says what it matches, and answers when asked.
-	for n := uint32(1); n <= group.Step; n++ {
-		l := lines[group.Index+n]
-		v, ok := xy.value(l.Command)
-		if !ok {
-			t.Fatalf("group %q has no value", l.Text)
-		}
-		if !strings.Contains(v.Text, "names with") {
-			t.Errorf("group %q says %q", l.Text, v.Text)
-		}
+	// And a plant names a source once however many levels carry it.
+	if got := c.selects(r, 1); strings.Count(got, "CAM 1") != 1 {
+		t.Errorf("the camera group lists CAM 1 more than once: %q", got)
 	}
 }
 
-func TestANodeThatIsNotARouterHasNoCategories(t *testing.T) {
-	// The page builder asks every node it draws, and a card is not a router.
-	s := newServed(t, testTree())
-	if got := categoriesOf(s.p.model.port(firstCardPort)); got != nil {
-		t.Errorf("a card published %d categories", len(got))
+func TestFiringByNumberWhenNothingIsSelected(t *testing.T) {
+	// A client that is not a panel may write the number without parameters.
+	// With no selection to fall back on, that number is the request.
+	s := newServed(t, routerTree(0, 0))
+	xy := s.p.model.tablePort()
+
+	got, ok := salvoAsked(xy, codec.Value{Mode: codec.ModeValue, Val: 2})
+	if !ok || got != 2 {
+		t.Errorf("a numeric fire read as %d, %v", got, ok)
 	}
 }
