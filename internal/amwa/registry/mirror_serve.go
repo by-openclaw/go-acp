@@ -263,9 +263,11 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	return nil
 }
 
-// newServeResponder is the mDNS seam — production uses the same
-// session/dnssd backend detection Registry.Serve does; unit tests
-// inject a recording fake (same seam pattern as osHostnameFn).
+// newServeResponder is the package's one mDNS seam: both the
+// Registry's own announce and the mirror's served Query face open
+// their responder through it, so a unit test injects a recording fake
+// for either without joining 224.0.0.251 (same seam pattern as
+// osHostnameFn).
 var newServeResponder = func(logger *slog.Logger) (session.Responder, error) {
 	return session.NewResponder(logger)
 }

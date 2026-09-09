@@ -297,7 +297,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	}()
 
 	if mode == "mdns" {
-		resp, err := session.NewResponder(r.logger)
+		resp, err := newServeResponder(r.logger)
 		if err != nil {
 			return fmt.Errorf("registry/nmos: open mDNS responder: %w", err)
 		}
@@ -445,11 +445,20 @@ func (r *Registry) Stats() registryslot.Stats {
 //   - Empty override + no codecs registered — fall back to "v1.3" so
 //     unit tests that don't blank-import is04/vXX still exercise the
 //     route installer.
+// supportedVersions and interfaceAddrs are the two OS/registry
+// lookups Serve depends on, behind package vars so a unit test can
+// script "no codecs registered" and "no addresses to advertise"
+// without touching the process or the host.
+var (
+	supportedVersions = is04.SupportedVersions
+	interfaceAddrs    = net.InterfaceAddrs
+)
+
 func pickAPIVersions(override string) []string {
 	if override != "" {
 		return []string{override}
 	}
-	if vs := is04.SupportedVersions(); len(vs) > 0 {
+	if vs := supportedVersions(); len(vs) > 0 {
 		return vs
 	}
 	return []string{"v1.3"}
@@ -490,7 +499,7 @@ func localIPv4Candidates(host string) []net.IP {
 	if ip := net.ParseIP(strings.TrimSuffix(host, ".")); ip != nil && ip.To4() != nil {
 		return []net.IP{ip.To4()}
 	}
-	ifs, err := net.InterfaceAddrs()
+	ifs, err := interfaceAddrs()
 	if err != nil {
 		return nil
 	}
