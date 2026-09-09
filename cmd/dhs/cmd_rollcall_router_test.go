@@ -119,3 +119,27 @@ func TestNamePlaceholders(t *testing.T) {
 		t.Errorf("a name printed as %q", got)
 	}
 }
+
+func TestCheckNeedsSomethingToCheckAgainst(t *testing.T) {
+	// A dry run answers "does this destination already carry that source".
+	// Without a source there is no question, and reading a crosspoint is what
+	// the verb does anyway without the flag.
+	err := runRollcallRoute(context.Background(),
+		[]string{"127.0.0.1:2050", "--dest", "1", "--check"})
+	if err == nil {
+		t.Fatal("--check without --source should fail")
+	}
+	if !strings.Contains(err.Error(), "--source") {
+		t.Errorf("error = %v, want it to name the missing flag", err)
+	}
+}
+
+func TestUnroutedReadsAsAWordRatherThanAZero(t *testing.T) {
+	if got := nameOrUnrouted(router.SourcePin{}); got != "nothing" {
+		t.Errorf("an unrouted destination printed as %q", got)
+	}
+	got := nameOrUnrouted(router.SourcePin{Matrix: 1, Level: 2, Source: 7})
+	if got != "m1/l2/s7" {
+		t.Errorf("a routed source printed as %q", got)
+	}
+}

@@ -1124,7 +1124,10 @@ local function dtp_dissect(tvb, tree, spec)
             item:set_text(string.format("%s: %s (0x%08X)",
                 want and want.name or "uint", shown, v))
             if want and want.fmt == "pin" then
-                local _, mx, lv, sr = pin_string(v)
+                local pin, mx, lv, sr = pin_string(v)
+                -- The whole pin as one string, because filtering a capture for
+                -- crosspoints is filtering for this and not for its parts.
+                subtree:add(f.pin, body(start, off - start), pin)
                 item:add(f.pin_matrix, body(start, off - start), mx)
                 item:add(f.pin_level, body(start, off - start), lv)
                 item:add(f.pin_source, body(start, off - start), sr)
@@ -1182,7 +1185,8 @@ local function dtp_dissect(tvb, tree, spec)
                     array:add(f.dtp_uint, body(start, off - start), v):set_text(
                         string.format("%s: %s", nm, text))
                     if want and want.fmt == "pin" then
-                        local _, mx, lv, sr = pin_string(v)
+                        local pin, mx, lv, sr = pin_string(v)
+                        subtree:add(f.pin, body(start, off - start), pin)
                         array:add(f.pin_matrix, body(start, off - start), mx)
                         array:add(f.pin_level, body(start, off - start), lv)
                         array:add(f.pin_source, body(start, off - start), sr)

@@ -40,7 +40,8 @@ Examples:
 
 func helpRollcallRoute() {
 	fmt.Println(`dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
-                                   [--slot N] [--protect-id ID] [--output text|json]
+                                   [--slot N] [--protect-id ID] [--check]
+                                   [--output text|json]
 
 Read a crosspoint, or make one when --source is given.
 
@@ -54,9 +55,26 @@ Two things about this protocol are worth knowing before reading the output:
     source 1, because the number reported is the final upstream source rather
     than the one asked for. That is the router working.
 
+IDEMPOTENCY (ADR-0007)
+
+  A take reports "changed", and it is a measurement rather than a prediction:
+  the destination is read before the take and again after it, and changed says
+  whether those two differ. Nothing about it can be wrong, which matters here
+  because of the tieline behaviour above — a crosspoint that already carries
+  what was asked for reports the far end rather than the near one, and any
+  rule that compared the request with the reading would call a converged route
+  unconverged and take it again for ever.
+
+  --check reads and sends nothing. It reports "satisfied": whether the
+  destination already reads back as the source asked for. On a route within
+  one matrix that is the whole answer. Across matrices it can be false while
+  the route is already made, for the same reason — so --check across matrices
+  is a question about the reading, not about the plant.
+
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9 --check
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json`)
 }
 
@@ -175,6 +193,7 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 	srcMatrix := fs.Int("source-matrix", 0, "matrix the source is on (default: the destination's)")
 	srcLevel := fs.Int("source-level", 0, "level the source is on (default: the destination's)")
 	protectID := fs.Int("protect-id", 0, "panel id for a temporary protected override")
+	check := fs.Bool("check", false, "read only: report whether the destination already carries --source, and send nothing (ADR-0007)")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 
 	host, rest, err := popHost(args)
@@ -185,6 +204,9 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 
 	if *dest < 1 {
 		return fmt.Errorf("--dest is required and counts from one")
+	}
+	if *check && *source < 1 {
+		return fmt.Errorf("--check needs a --source to check against")
 	}
 
 	p, cleanup, err := rollcallPlugin(ctx, host, cf)
@@ -200,22 +222,47 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 
 	m, l, d := uint32(*matrix), uint32(*level), uint32(*dest)
 
-	var xpt rollcall.Crosspoint
+	var (
+		xpt     rollcall.Crosspoint
+		changed bool
+		want    router.SourcePin
+	)
 	if *source > 0 {
-		pin := router.SourcePin{
+		want = router.SourcePin{
 			Matrix: uint8(orDefault(*srcMatrix, *matrix)),
 			Level:  uint8(orDefault(*srcLevel, *level)),
 			Source: uint16(*source),
 		}
-		if xpt, err = takeRoute(ctx, p, r, m, l, d, pin, uint16(*protectID)); err != nil {
+	}
+
+	switch {
+	case *check:
+		// A dry run sends nothing, so all it can report is the reading.
+		if xpt, err = p.Route(ctx, r, m, l, d); err != nil {
 			return err
 		}
-	} else if xpt, err = p.Route(ctx, r, m, l, d); err != nil {
-		return err
+	case *source > 0:
+		// Read before, take, read after. Whether anything changed is then a
+		// comparison of two readings rather than a guess about what a
+		// controller will do with a request — which is the only form that
+		// survives a route across a tieline, where what comes back is the far
+		// end of the cable rather than the source that was asked for.
+		var before rollcall.Crosspoint
+		if before, err = p.Route(ctx, r, m, l, d); err != nil {
+			return err
+		}
+		if xpt, err = takeRoute(ctx, p, r, m, l, d, want, uint16(*protectID)); err != nil {
+			return err
+		}
+		changed = xpt.Source != before.Source
+	default:
+		if xpt, err = p.Route(ctx, r, m, l, d); err != nil {
+			return err
+		}
 	}
 
 	if strings.EqualFold(*output, "json") {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
+		out := map[string]any{
 			"matrix":      m,
 			"level":       l,
 			"destination": d,
@@ -225,15 +272,44 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 				"source": xpt.Source.Source,
 			},
 			"routed": xpt.Source.Source != 0,
-		})
+		}
+		if *check {
+			out["satisfied"] = xpt.Source == want
+			out["checked"] = true
+		} else if *source > 0 {
+			out["changed"] = changed
+		}
+		return json.NewEncoder(os.Stdout).Encode(out)
 	}
 
+	if *check {
+		if xpt.Source == want {
+			fmt.Printf("matrix %d level %d destination %d already reads %s\n", m, l, d, want)
+			return nil
+		}
+		fmt.Printf("matrix %d level %d destination %d reads %s, would take %s\n",
+			m, l, d, nameOrUnrouted(xpt.Source), want)
+		return nil
+	}
 	if xpt.Source.Source == 0 {
 		fmt.Printf("matrix %d level %d destination %d has nothing routed to it\n", m, l, d)
 		return nil
 	}
+	if *source > 0 && !changed {
+		fmt.Printf("matrix %d level %d destination %d <- %s (unchanged)\n", m, l, d, xpt.Source)
+		return nil
+	}
 	fmt.Printf("matrix %d level %d destination %d <- %s\n", m, l, d, xpt.Source)
 	return nil
+}
+
+// nameOrUnrouted spells a pin that names no source, so a dry run reads as a
+// sentence rather than as a zero.
+func nameOrUnrouted(p router.SourcePin) string {
+	if p.Source == 0 {
+		return "nothing"
+	}
+	return p.String()
 }
 
 func runRollcallTally(ctx context.Context, args []string) error {

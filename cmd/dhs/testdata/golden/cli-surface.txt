@@ -897,7 +897,8 @@ Examples:
 ========== consumer/acp1/route ==========
 $ dhs consumer acp1 route --help
 dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
-                                   [--slot N] [--protect-id ID] [--output text|json]
+                                   [--slot N] [--protect-id ID] [--check]
+                                   [--output text|json]
 
 Read a crosspoint, or make one when --source is given.
 
@@ -911,9 +912,26 @@ Two things about this protocol are worth knowing before reading the output:
     source 1, because the number reported is the final upstream source rather
     than the one asked for. That is the router working.
 
+IDEMPOTENCY (ADR-0007)
+
+  A take reports "changed", and it is a measurement rather than a prediction:
+  the destination is read before the take and again after it, and changed says
+  whether those two differ. Nothing about it can be wrong, which matters here
+  because of the tieline behaviour above — a crosspoint that already carries
+  what was asked for reports the far end rather than the near one, and any
+  rule that compared the request with the reading would call a converged route
+  unconverged and take it again for ever.
+
+  --check reads and sends nothing. It reports "satisfied": whether the
+  destination already reads back as the source asked for. On a route within
+  one matrix that is the whole answer. Across matrices it can be false while
+  the route is already made, for the same reason — so --check across matrices
+  is a question about the reading, not about the plant.
+
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9 --check
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
 
 ========== consumer/acp1/tally ==========
@@ -1138,7 +1156,8 @@ Examples:
 ========== consumer/rollcall/route ==========
 $ dhs consumer rollcall route --help
 dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
-                                   [--slot N] [--protect-id ID] [--output text|json]
+                                   [--slot N] [--protect-id ID] [--check]
+                                   [--output text|json]
 
 Read a crosspoint, or make one when --source is given.
 
@@ -1152,9 +1171,26 @@ Two things about this protocol are worth knowing before reading the output:
     source 1, because the number reported is the final upstream source rather
     than the one asked for. That is the router working.
 
+IDEMPOTENCY (ADR-0007)
+
+  A take reports "changed", and it is a measurement rather than a prediction:
+  the destination is read before the take and again after it, and changed says
+  whether those two differ. Nothing about it can be wrong, which matters here
+  because of the tieline behaviour above — a crosspoint that already carries
+  what was asked for reports the far end rather than the near one, and any
+  rule that compared the request with the reading would call a converged route
+  unconverged and take it again for ever.
+
+  --check reads and sends nothing. It reports "satisfied": whether the
+  destination already reads back as the source asked for. On a route within
+  one matrix that is the whole answer. Across matrices it can be false while
+  the route is already made, for the same reason — so --check across matrices
+  is a question about the reading, not about the plant.
+
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9 --check
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
 
 ========== consumer/rollcall/tally ==========

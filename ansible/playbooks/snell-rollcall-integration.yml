@@ -53,6 +53,18 @@
     tree_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/frame_tree.json"
     producer_log: "/tmp/dhs-rollcall-producer.log"
 
+    # The committed router plant: two matrices, four levels each, tielines
+    # between them. It is what gives the router verbs coverage on a run with
+    # no device configured, which is every run in CI.
+    router_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/router_two_matrices.json"
+    router_log: "/tmp/dhs-rollcall-router-producer.log"
+    router_port: 22051
+
+    # tally reads a level and then follows it, so it is given a bounded run.
+    # Long enough to prove the reading arrived; short enough that a play that
+    # runs it per path does not take a minute doing so.
+    tally_seconds: "{{ lookup('env', 'ROLLCALL_TALLY_SECONDS') | default('8', true) }}"
+
     # The loopback producer. A high port so a developer's own device on 2050
     # is never in the way.
     loopback_port: 22050
@@ -191,85 +203,25 @@
       when: sim_host | length > 0
       block:
         # Enumeration is the shared contract's job and has already run over
-        # this path. What is left is what only this path can prove: a
-        # routing interface, and a crosspoint on it.
-        - name: Settle before the next connection — finding the routing interface
-          ansible.builtin.pause:
-            seconds: "{{ settle_seconds | int }}"
-          when: settle_seconds | int > 0
-
-        - name: Find the routing interface
-          ansible.builtin.command:
-            cmd: "{{ dhs_bin }} consumer rollcall router {{ sim_host }}:{{ sim_port }}"
-          register: sim_router
-          changed_when: false
-
-        - name: The routing interface published matrices and levels
-          ansible.builtin.assert:
-            that:
-              - "'interface' in sim_router.stdout"
-              - "'MATRIX' in sim_router.stdout"
-              - sim_router.stdout is search('LEVEL')
-            fail_msg: >-
-              No routing interface. It lives on the panel node, not on the
-              matrices, and it answers command 100 with a version number — see
-              internal/snell-rollcall/docs/oracle-centra.md §2.
-
-        - name: Settle before the next connection — reading a crosspoint
-          ansible.builtin.pause:
-            seconds: "{{ settle_seconds | int }}"
-          when: settle_seconds | int > 0
-
-        - name: Read a crosspoint
-          ansible.builtin.command:
-            cmd: >-
-              {{ dhs_bin }} consumer rollcall route {{ sim_host }}:{{ sim_port }}
-              --matrix 1 --level 1 --dest 1 --output json
-          register: sim_xpt
-          changed_when: false
-
-        - name: The crosspoint names a matrix, a level and a source
-          ansible.builtin.assert:
-            that:
-              - (sim_xpt.stdout | from_json).destination == 1
-              - (sim_xpt.stdout | from_json).source.matrix is defined
-              - (sim_xpt.stdout | from_json).source.level is defined
-
-        - name: Make a route, when the operator nominated one
-          when: sim_route | length > 0
-          block:
-            - name: Settle before the take
-              ansible.builtin.pause:
-                seconds: "{{ settle_seconds | int }}"
-              when: settle_seconds | int > 0
-
-            - name: Route {{ sim_route }}
-              ansible.builtin.command:
-                cmd: >-
-                  {{ dhs_bin }} consumer rollcall route {{ sim_host }}:{{ sim_port }}
-                  --matrix {{ sim_route.split(':')[0] }}
-                  --level {{ sim_route.split(':')[1] }}
-                  --dest {{ sim_route.split(':')[2] }}
-                  --source {{ sim_route.split(':')[3] }}
-                  --output json
-              register: sim_take
-              # A route is a change to a device, and saying otherwise would be
-              # a lie to anyone reading the run.
-              changed_when: true
-
-            - name: The router reported what it actually routed
-              ansible.builtin.assert:
-                that:
-                  - (sim_take.stdout | from_json).routed
-                fail_msg: >-
-                  Nothing is routed to that destination after the take. Note the
-                  reported source may differ from the one asked for: where a
-                  route crosses a tieline the controller reports the far end.
-
-        - name: Emulator output
-          ansible.builtin.debug:
-            msg: "{{ sim_router.stdout_lines }}"
-            verbosity: 1
+        # this path. What is left is what only this path can prove: the router
+        # verbs against the vendor's own code.
+        #
+        # Writing happens only where the operator nominated a crosspoint. A
+        # take against the vendor emulator is still a take, and nobody's
+        # emulator should be rearranged by a test that was not asked to.
+        - name: The router verbs, against the vendor's own code
+          ansible.builtin.include_tasks: tasks/snell-rollcall-router.yml
+          loop:
+            - name: emulator
+              host: "{{ sim_host }}"
+              port: "{{ sim_port }}"
+              why: "the router verbs against the vendor's own controller"
+              writable: "{{ sim_route | length > 0 }}"
+              dest: "{{ sim_route.split(':')[2] if sim_route | length > 0 else 1 }}"
+              source: "{{ sim_route.split(':')[3] if sim_route | length > 0 else 1 }}"
+          loop_control:
+            loop_var: rt
+            label: "{{ rt.name }}"
 
     # -------------------------------------------------------------------
     # Tier 2 — a live device. Read-only, always.
@@ -472,6 +424,86 @@
         - name: Producer log
           ansible.builtin.debug:
             var: producer_out.stdout_lines
+            verbosity: 1
+
+    # -------------------------------------------------------------------
+    # Tier 3b — the router verbs, with no device in the room.
+    #
+    # The router verbs had no coverage in a default run: they only ran against
+    # the vendor emulator, which is gated on an environment variable nobody
+    # sets in CI. A committed router tree fixes that — two matrices, four
+    # levels each, tielines between them — so router, route, tally and salvo
+    # are exercised on every run, and the idempotency contract with them.
+    #
+    # This producer is ephemeral and torn down in `always`. Everything it was
+    # asked to route goes with it, so run-twice is the same result: the play
+    # leaves nothing behind to be idempotent about.
+    # -------------------------------------------------------------------
+
+    - name: Note whether the committed router tree is here to serve
+      ansible.builtin.set_fact:
+        have_router_fixture: "{{ router_fixture is exists }}"
+
+    - name: Tier 3b — the router verbs against our own producer
+      when: have_router_fixture
+      block:
+        - name: Serve the committed router tree
+          ansible.builtin.shell:
+            cmd: >-
+              nohup "{{ dhs_bin }}" producer rollcall serve
+              --tree "{{ router_fixture }}"
+              --host {{ loopback_host }} --port {{ router_port }}
+              > {{ router_log }} 2>&1 &
+              echo $!
+            executable: /bin/bash
+          changed_when: false
+
+        - name: Wait for the router producer to accept a connection
+          ansible.builtin.wait_for:
+            host: "{{ loopback_host }}"
+            port: "{{ router_port }}"
+            timeout: 20
+
+        - name: The router contract, against our own producer
+          ansible.builtin.include_tasks: tasks/snell-rollcall-router.yml
+          loop:
+            - name: loopback-router
+              host: "{{ loopback_host }}"
+              port: "{{ router_port }}"
+              why: "that our provider serves a routing interface our consumer can drive"
+              # Safe to write to: it is ours, it is ephemeral, and it dies below.
+              writable: true
+              dest: 2
+              source: 5
+              salvo: 1
+          loop_control:
+            loop_var: rt
+            label: "{{ rt.name }}"
+
+        - name: The plant is the two matrices the fixture describes
+          ansible.builtin.assert:
+            that:
+              - rtr_json.matrices | length == 2
+              - rtr_json.matrices[0].levels | length == 4
+            fail_msg: >-
+              The served router does not match the committed tree. It is two
+              matrices of four levels each, which is what makes a tieline
+              between them possible at all.
+
+      always:
+        - name: Stop the router producer
+          ansible.builtin.shell: "pkill -f '[d]hs producer rollcall serve --tree {{ router_fixture }}' || true"
+          changed_when: false
+
+        - name: The router producer's own log, when something went wrong
+          ansible.builtin.command: "cat {{ router_log }}"
+          register: router_out
+          changed_when: false
+          failed_when: false
+
+        - name: Router producer log
+          ansible.builtin.debug:
+            var: router_out.stdout_lines
             verbosity: 1
 
     # ------------------------------------------------------------------

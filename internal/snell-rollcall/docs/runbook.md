@@ -106,12 +106,26 @@ Install it per [docs/wireshark.md](../../../docs/wireshark.md), then:
 | Who opened what | `dhs_snell_rollcall.type == 2` |
 | One node only | `dhs_snell_rollcall.dst.unit == 0x81` |
 | Crosspoints | `dhs_snell_rollcall.source_pin` |
+| One matrix, one level | `dhs_snell_rollcall.matrix == 1 && dhs_snell_rollcall.level == 2` |
+| One destination, everywhere | `dhs_snell_rollcall.destination == 40` |
+| Routes that were refused | `dhs_snell_rollcall.route_result > 0` |
+| Which nodes are router nodes | `dhs_snell_rollcall.router_node` |
 | Tally, not replies | `dhs_snell_rollcall.flags.back_channel == 1` |
 | Refusals | `dhs_snell_rollcall.type in {0 14 15 23}` |
 
 A refusal type says which kind: `NACK` is "I understood and will not",
 `INVCMD` is "I do not know this message", `INVSESS` is "not on this session",
 `BUSY` is "try again".
+
+**Start the capture before the client connects.** A command number here means
+nothing on its own: 100 is the interface version on the node serving the Full
+Control tables and the selected destination on a level, and everything above
+119 is addressed by bases and steps the controller publishes once, as the
+session opens. The dissector reads both out of the capture — each node's type
+from the RETID it answers with, each table from the reply carrying it — so a
+capture that joins a session already in progress has missed them, and those
+commands then read as `unresolved` rather than as a plant. That is the
+dissector being honest; the fix is to capture from the start.
 
 ## 6. Routers
 
@@ -180,6 +194,43 @@ ROLLCALL_SIM_HOST=127.0.0.1 ROLLCALL_SIM_PORT=2057 ansible-playbook ...
 # with a live device, read-only
 ROLLCALL_TEST_HOST=10.6.250.105 ansible-playbook ...
 ```
+
+A run with nothing configured still exercises the router verbs. Two producers
+are served from committed trees — a frame of cards, and a plant of two matrices
+with four levels each and tielines between them — so `router`, `route`, `tally`
+and `salvo` are covered on every run rather than only where an emulator happens
+to be configured. Both producers are ephemeral and torn down in `always`, so
+the play leaves nothing behind and run-twice is the same result.
+
+The idempotency contract (ADR-0007) is proved on the wire rather than in prose:
+a take reports `changed`, a second take of the same crosspoint reports
+unchanged, and `--check` then agrees without sending anything. `changed` is a
+comparison of the destination read *before* the take with the destination read
+*after* it — a measurement, not a prediction — because a route across a tieline
+reads back as the far end of the cable rather than as the source that was
+asked for, and any rule comparing the request with the reading would call a
+converged route unconverged and take it again for ever.
+
+### The dissector
+
+```
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-dissector.yml
+```
+
+Captures a real conversation on the loopback interface and decodes it with
+`dhs_snell_rollcall.lua`. The assertion that matters is that **command 100
+resolves two different ways in one capture** — the interface version on the
+panel node, the selected destination on a level — because nothing in the bytes
+distinguishes them and only the node's type does. It also asserts that all four
+router node types were identified, that commands above 119 resolved to a matrix,
+level and destination, that a crosspoint set decoded as a source pin, that no
+frame raised an expert warning, and that a second pass draws every frame the
+same as the first.
+
+Wireshark on RHEL and Rocky is built without Lua. Capture there with `dumpcap`
+and decode on a host that has it, the way
+[`acp1-capture.yml`](../../../ansible/playbooks/acp1-capture.yml) relays an
+ACP1 pcap.
 
 The emulator lives in [`assets/Emulator/RouterSimulator`](../assets/Emulator/RouterSimulator).
 Unpack it somewhere writable and run `CentraController.exe`; set
