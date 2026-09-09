@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"net"
 	stdhttp "net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -144,7 +143,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		}
 		go kc.Run(ctx)
 		gateHosts := []string{advertiseHostOnly(advertise)}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: m.logger}

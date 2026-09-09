@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net"
 	stdhttp "net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -160,7 +159,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		if host != "" && net.ParseIP(host) == nil {
 			idents = append(idents, host)
 		}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			idents = append(idents, hn, hn+".local")
 		}
 		if len(idents) == 0 {
@@ -212,7 +211,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		}
 		go kc.Run(ctx)
 		gateHosts := []string{host}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: r.logger}
@@ -292,6 +291,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			Addr:              bindAddr,
 			Handler:           dispatcher,
 			ReadHeaderTimeout: 5 * time.Second,
+			TLSConfig:         srv.TLS,
 		}
 		httpErrCh <- runHTTPServer(httpCtx, s)
 	}()
@@ -386,10 +386,24 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 
 // runHTTPServer adapts a stdhttp.Server to ctx-cancel semantics —
 // returns when the server exits.
+//
+// A server carrying a TLS config is served over TLS, never alongside a
+// plain listener: BCP-003-01 says a secured API SHALL NOT accept plain
+// HTTP, and the announce already told peers `api_proto=https` and
+// minted `wss://` ws_hrefs. Serving plaintext under that advertisement
+// leaves every conforming controller unable to connect at all.
 func runHTTPServer(ctx context.Context, srv *stdhttp.Server) error {
 	errCh := make(chan error, 1)
 	go func() {
-		err := srv.ListenAndServe()
+		var err error
+		if srv.TLSConfig != nil {
+			// The pair rides in the config (Certificates, or
+			// GetCertificate for the enrolled path), so the file
+			// arguments stay empty.
+			err = srv.ListenAndServeTLS("", "")
+		} else {
+			err = srv.ListenAndServe()
+		}
 		if err == stdhttp.ErrServerClosed {
 			err = nil
 		}
