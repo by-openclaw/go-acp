@@ -30,7 +30,7 @@ func TestHtonsIsBigEndianRegardlessOfHost(t *testing.T) {
 // the wrong end of the link. This runs before any socket is opened, so it
 // needs no privileges.
 func TestUnknownInterfaceIsAnError(t *testing.T) {
-	_, _, err := interfaceIndex("definitely-not-an-interface-0")
+	_, _, err := interfaceIndex(net.Interfaces, "definitely-not-an-interface-0")
 	if err == nil {
 		t.Fatal("an unknown interface name must be rejected")
 	}
@@ -51,7 +51,7 @@ func TestInterfaceIndexResolvesARealInterface(t *testing.T) {
 		t.Skip("no interfaces to test against")
 	}
 	want := ifs[0]
-	byIndex, idx, err := interfaceIndex(want.Name)
+	byIndex, idx, err := interfaceIndex(net.Interfaces, want.Name)
 	if err != nil {
 		t.Fatalf("interfaceIndex(%q): %v", want.Name, err)
 	}
@@ -63,7 +63,7 @@ func TestInterfaceIndexResolvesARealInterface(t *testing.T) {
 	}
 
 	// Empty name means "every interface" and resolves to no specific index.
-	if _, idx, err := interfaceIndex(""); err != nil || idx != -1 {
+	if _, idx, err := interfaceIndex(net.Interfaces, ""); err != nil || idx != -1 {
 		t.Errorf("empty name: idx=%d err=%v, want -1 and no error", idx, err)
 	}
 }

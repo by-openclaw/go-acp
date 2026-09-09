@@ -206,6 +206,12 @@ func TestConstructors_Error(t *testing.T) {
 	defer func() { netInterfaces = orig }()
 	netInterfaces = func() ([]net.Interface, error) { return nil, errors.New("boom") }
 
+	// This is about the stdlib path, so say so: on a host that actually
+	// runs avahi-daemon the constructors take the daemon path and never
+	// reach openMulticastConns at all. GitHub's runners have no avahi
+	// and stayed quiet about it; the Linux tools host does, and did not.
+	noDaemon(t)
+
 	if _, err := newStdlibBrowser(discardLogger()); err == nil {
 		t.Error("newStdlibBrowser should error")
 	}
