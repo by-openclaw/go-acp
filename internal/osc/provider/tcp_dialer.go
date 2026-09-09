@@ -78,6 +78,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 }
 
 func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
+	start := time.Now() // send footprint: frame + dial + write
 	var wire []byte
 	switch d.framer {
 	case framerLenPrefix:
@@ -91,7 +92,7 @@ func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
 	}
 	if _, werr := c.Write(wire); werr == nil {
 		if d.met != nil {
-			d.met.ObserveTx(len(wire), 0)
+			d.met.ObserveTx(len(wire), time.Since(start))
 		}
 	} else {
 		d.mu.Lock()

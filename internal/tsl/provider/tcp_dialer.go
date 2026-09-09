@@ -75,6 +75,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 // On write error the connection is closed and dropped so the next send
 // redials.
 func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
+	start := time.Now() // send footprint: encode + dial + write
 	packet, err := p.Encode()
 	if err != nil {
 		return fmt.Errorf("tsl v5.0 encode: %w", err)
@@ -87,7 +88,7 @@ func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
 	}
 	if _, werr := c.Write(wrapped); werr == nil {
 		if d.met != nil {
-			d.met.ObserveTx(len(wrapped), 0)
+			d.met.ObserveTx(len(wrapped), time.Since(start))
 		}
 	} else {
 		// Close + forget on write failure.

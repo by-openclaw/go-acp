@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"testing"
 )
 
@@ -16,7 +17,14 @@ func TestProducerLoggerFromContextFlags(t *testing.T) {
 	}
 	cleanup()
 
-	ctx := withLogFlags(context.Background(), &logFlags{format: "json", level: "debug", syslogAddr: "127.0.0.1:0"})
+	// A real UDP socket as the collector: dialing port 0 is refused on some
+	// platforms (macOS), which would exercise the fallback branch instead.
+	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pc.Close() }()
+	ctx := withLogFlags(context.Background(), &logFlags{format: "json", level: "debug", syslogAddr: pc.LocalAddr().String()})
 	logger, cleanup = producerLogger(ctx)
 	if logger == nil {
 		t.Fatal("logger with a syslog forwarder is nil")

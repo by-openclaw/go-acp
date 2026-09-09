@@ -50,8 +50,9 @@ type ClientConfig struct {
 	OnRx func(n int)
 
 	// OnTx is the write-side twin, fired after a frame is successfully
-	// written. Optional — nil ⇒ no-op.
-	OnTx func(n int)
+	// written, with the send footprint: encode start to write done — the
+	// connector's own cost of emitting that frame. Optional — nil ⇒ no-op.
+	OnTx func(n int, elapsed time.Duration)
 }
 
 // defaultConfig returns a ClientConfig with all fields populated.

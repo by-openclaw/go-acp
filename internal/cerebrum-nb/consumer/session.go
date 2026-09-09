@@ -259,6 +259,7 @@ func (s *Session) nextMTID() uint32 {
 // or login_reply / poll_reply (any frame whose mtid matches). Returns
 // the matched Frame; turns NACK into a NackError. Times out per ctx.
 func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*codec.Frame, error) {
+	start := time.Now() // send footprint: entry -> document written
 	ch := make(chan *codec.Frame, 1)
 	mtidStr := strconv.FormatUint(uint64(mtid), 10)
 
@@ -290,7 +291,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
 	}
 	if s.met != nil {
-		s.met.ObserveTx(len(payload), 0)
+		s.met.ObserveTx(len(payload), time.Since(start))
 	}
 
 	select {

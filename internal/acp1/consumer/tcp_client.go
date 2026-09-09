@@ -155,6 +155,7 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		c.pendingMu.Unlock()
 	}()
 
+	start := time.Now()
 	payload, err := req.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("acp1 tcp: encode: %w", err)
@@ -167,7 +168,7 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		return nil, fmt.Errorf("acp1 tcp send: %w", err)
 	}
 	if c.cfg.OnTx != nil {
-		c.cfg.OnTx(len(payload))
+		c.cfg.OnTx(len(payload), time.Since(start))
 	}
 
 	// Wait for the reader goroutine to route the matching reply.

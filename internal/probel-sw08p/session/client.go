@@ -124,7 +124,7 @@ type Client struct {
 	// Observer callbacks — stdlib-only hooks for higher layers to plug
 	// in traffic capture, metrics, or compliance counters without
 	// coupling this package to any specific implementation.
-	onTx      func([]byte)
+	onTx      func([]byte, time.Duration)
 	onRx      func([]byte)
 	onCapSoft func(dataLen int) // DATA > 128 bytes but <= 255
 	onNAK     func()            // peer sent codec.DLE codec.NAK for our frame
@@ -226,8 +226,9 @@ type ClientConfig struct {
 	// OnTx / OnRx are optional raw-byte observer callbacks invoked on
 	// every send and receive respectively. Kept as plain funcs to
 	// avoid pulling any other acp package into this codec — callers
-	// wire capture / metrics at their own layer.
-	OnTx func([]byte)
+	// wire capture / metrics at their own layer. OnTx fires after the
+	// write with the send footprint (pack start -> write done).
+	OnTx func(raw []byte, elapsed time.Duration)
 	OnRx func([]byte)
 
 	// OnCapSoft fires when an outbound frame's DATA field exceeds
@@ -422,6 +423,7 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 		c.onCapSoft(total)
 	}
 
+	start := time.Now()
 	raw := codec.Pack(f)
 
 	waiter := &pendingWaiter{
@@ -464,11 +466,11 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 				slog.String("hex", codec.HexDump(raw)),
 			)
 		}
-		if c.onTx != nil {
-			c.onTx(raw)
-		}
 		if _, err := conn.Write(raw); err != nil {
 			return codec.Frame{}, fmt.Errorf("probel write: %w", err)
+		}
+		if c.onTx != nil {
+			c.onTx(raw, time.Since(start))
 		}
 
 		timer := time.NewTimer(ackTimeout)
@@ -644,10 +646,11 @@ func (c *Client) Write(raw []byte) error {
 	conn := c.conn
 	onTx := c.onTx
 	c.mu.Unlock()
-	if onTx != nil {
-		onTx(raw)
-	}
+	start := time.Now()
 	_, err := conn.Write(raw)
+	if err == nil && onTx != nil {
+		onTx(raw, time.Since(start))
+	}
 	return err
 }
 

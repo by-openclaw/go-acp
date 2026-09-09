@@ -186,11 +186,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
 		OnRetry:   func(int) { prof.Note(RetryAttempted); met.ObserveRetry() },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
-		OnTx: func(b []byte) {
+		OnTx: func(b []byte, elapsed time.Duration) {
 			if id, ok := probelCmdFromBytes(b); ok {
-				met.ObserveCmdTx(id, len(b), 0)
+				met.ObserveCmdTx(id, len(b), elapsed)
 			} else {
-				met.ObserveTx(len(b), 0)
+				met.ObserveTx(len(b), elapsed)
 			}
 		},
 		OnRx: func(b []byte) {
@@ -205,8 +205,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
-		cfg.OnTx = func(b []byte) {
-			wrappedTx(b)
+		cfg.OnTx = func(b []byte, elapsed time.Duration) {
+			wrappedTx(b, elapsed)
 			rec.Record("probel-sw08p", "tx", b)
 		}
 		cfg.OnRx = func(b []byte) {
