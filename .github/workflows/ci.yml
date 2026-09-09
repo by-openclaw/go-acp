@@ -185,6 +185,9 @@ jobs:
           check internal/amwa/codec/is08/v10 100
           check internal/amwa/session/events 100
           check internal/amwa/session/certmgr 100
+          check internal/amwa/session/dnssd 100
+          check internal/amwa/session/system 100
+          check internal/lldp 100
           check internal/amwa/session/export 98
           check internal/amwa/codec/bcp 100
           check internal/amwa/codec/bcp/bcp00201 100
