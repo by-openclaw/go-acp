@@ -66,6 +66,39 @@ type RouterInterface struct {
 	// Categories is the category table, which groups sources and destinations
 	// for a panel's filter buttons.
 	Categories router.Table
+
+	// CategoryList is what those categories say about themselves.
+	CategoryList []RouterCategory
+}
+
+// RouterCategory is one way of narrowing a plant down.
+//
+// A plant of a thousand sources is not navigable as a list. A category holds
+// groups, and a group matches a name rather than owning a set: it carries the
+// string to look for and the character index to look for it at, so a plant
+// whose names say what they are needs nothing added to be navigable.
+type RouterCategory struct {
+	Number uint32
+	Name   string
+
+	// Exclusive says whether choosing one group here rules out the others.
+	Exclusive bool
+
+	// SortIndex is the order a panel offers categories in, which the
+	// specification calls a guided flow of category selections.
+	SortIndex int32
+
+	Groups []RouterGroup
+}
+
+// RouterGroup is one filter within a category.
+type RouterGroup struct {
+	Number uint32
+	Name   string
+
+	// Search is the string a name must contain at Start to be in this group.
+	Search string
+	Start  int32
 }
 
 // RouterMatrix is one matrix of a router.
@@ -204,6 +237,14 @@ func (p *Plugin) RouterAt(ctx context.Context, slot int) (*RouterInterface, erro
 		if r.DeviceNames, err = p.readFile(ctx, slot, uint32(router.CmdDeviceNamesFile)); err != nil {
 			return nil, err
 		}
+	}
+
+	for c := uint32(1); c <= r.Categories.Count; c++ {
+		cat, err := p.readCategory(ctx, slot, r.Categories, c)
+		if err != nil {
+			return nil, err
+		}
+		r.CategoryList = append(r.CategoryList, cat)
 	}
 
 	for m := uint32(1); m <= matrices.Count; m++ {
@@ -490,4 +531,70 @@ func (p *Plugin) readFile(ctx context.Context, slot int, command uint32) (Router
 		}
 	}
 	return f, nil
+}
+
+// readCategory reads one category and the groups under it.
+func (p *Plugin) readCategory(ctx context.Context, slot int, t router.Table, n uint32) (RouterCategory, error) {
+	c := RouterCategory{Number: n}
+
+	base, ok := t.Command(n)
+	if !ok {
+		return c, fmt.Errorf("rollcall: category %d is outside the table", n)
+	}
+
+	var err error
+	if c.Name, err = p.readString(ctx, slot, uint32(base+router.OffCategoryName)); err != nil {
+		return c, err
+	}
+	excl, err := p.readUint(ctx, slot, uint32(base+router.OffCategoryExclusive))
+	if err != nil {
+		return c, err
+	}
+	c.Exclusive = excl != 0
+
+	sort, err := p.readUint(ctx, slot, uint32(base+router.OffCategorySortIndex))
+	if err != nil {
+		return c, err
+	}
+	c.SortIndex = int32(sort)
+
+	groups, err := p.readTable(ctx, slot,
+		uint32(base+router.OffNumGroups), uint32(base+router.OffGroupBase),
+		uint32(base+router.OffGroupStep))
+	if err != nil {
+		return c, err
+	}
+
+	for g := uint32(1); g <= groups.Count; g++ {
+		grp, err := p.readGroup(ctx, slot, groups, g)
+		if err != nil {
+			return c, err
+		}
+		c.Groups = append(c.Groups, grp)
+	}
+	return c, nil
+}
+
+// readGroup reads one filter within a category.
+func (p *Plugin) readGroup(ctx context.Context, slot int, t router.Table, n uint32) (RouterGroup, error) {
+	g := RouterGroup{Number: n}
+
+	base, ok := t.Command(n)
+	if !ok {
+		return g, fmt.Errorf("rollcall: group %d is outside the table", n)
+	}
+
+	var err error
+	if g.Name, err = p.readString(ctx, slot, uint32(base+router.OffGroupName)); err != nil {
+		return g, err
+	}
+	if g.Search, err = p.readString(ctx, slot, uint32(base+router.OffGroupSearchString)); err != nil {
+		return g, err
+	}
+	start, err := p.readUint(ctx, slot, uint32(base+router.OffGroupSearchStart))
+	if err != nil {
+		return g, err
+	}
+	g.Start = int32(start)
+	return g, nil
 }

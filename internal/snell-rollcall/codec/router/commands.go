@@ -132,6 +132,33 @@ const (
 	LevelTableSize        = 12
 )
 
+// Offsets within a category's table, from CategoryBase.
+//
+// A category is how a panel narrows a plant down to the sources or
+// destinations an operator is looking for. Read from the order the
+// specification lists them in; see the package note on confidence.
+const (
+	OffCategoryName      = 0
+	OffCategoryExclusive = 1
+	OffCategorySortIndex = 2
+	OffNumGroups         = 3
+	OffGroupBase         = 4
+	OffGroupStep         = 5
+	CategoryTableSize    = 6
+)
+
+// Offsets within a group's table, from GroupBase.
+//
+// A group selects by matching a name rather than by tagging what it selects:
+// the search string is looked for at a fixed character index, so a plant whose
+// names carry their kind in them needs nothing added to be navigable.
+const (
+	OffGroupName         = 0
+	OffGroupSearchString = 1
+	OffGroupSearchStart  = 2
+	GroupTableSize       = 3
+)
+
 // Offsets within a source's table, from SrcBase.
 const (
 	OffSrcName8   = 0

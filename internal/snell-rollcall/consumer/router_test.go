@@ -472,3 +472,79 @@ func TestARouteWithAProtectID(t *testing.T) {
 		t.Errorf("routed %s, want %s", after.Source, src)
 	}
 }
+
+func TestReadingTheCategoriesOfAPlant(t *testing.T) {
+	// A plant of a thousand sources is not navigable as a list. A category
+	// holds groups, and a group matches a name rather than owning a set: it
+	// carries the string to look for and the character index to look for it
+	// at, so a plant whose names say what they are needs nothing added.
+	_, r := routerHarness(t, nil)
+
+	if len(r.CategoryList) != 1 {
+		t.Fatalf("%d categories, want the one the device publishes", len(r.CategoryList))
+	}
+	c := r.CategoryList[0]
+	if c.Name != "Type" || !c.Exclusive || c.SortIndex != 1 {
+		t.Errorf("category = %q exclusive=%v sort=%d", c.Name, c.Exclusive, c.SortIndex)
+	}
+	if len(c.Groups) != 2 {
+		t.Fatalf("%d groups", len(c.Groups))
+	}
+	if c.Groups[0].Name != "Cameras" || c.Groups[0].Search != "CAM" || c.Groups[0].Start != 0 {
+		t.Errorf("group 1 = %q searching %q at %d",
+			c.Groups[0].Name, c.Groups[0].Search, c.Groups[0].Start)
+	}
+	if c.Groups[1].Search != "MON" {
+		t.Errorf("group 2 searches for %q", c.Groups[1].Search)
+	}
+}
+
+func TestACategoryOutsideItsTable(t *testing.T) {
+	// The table says how many there are, so a number past it is a client
+	// asking about something that was never published.
+	h, _ := routerHarness(t, nil)
+	one := router.Table{Base: 100, Step: 6, Count: 1}
+
+	if _, err := h.plugin.readCategory(context.Background(), 2, one, 2); err == nil {
+		t.Error("a category past the end of the table was read")
+	}
+	if _, err := h.plugin.readGroup(context.Background(), 2, one, 2); err == nil {
+		t.Error("a group past the end of the table was read")
+	}
+}
+
+func TestACategoryThatWillNotAnswer(t *testing.T) {
+	// Every command in a category's block has to answer. A refusal partway
+	// through is a controller describing something it will not then describe,
+	// and reading on would mean believing a table that is not there.
+	for _, tc := range []struct {
+		name   string
+		offset uint32
+		group  bool
+	}{
+		{"its name", router.OffCategoryName, false},
+		{"whether it is exclusive", router.OffCategoryExclusive, false},
+		{"its sort index", router.OffCategorySortIndex, false},
+		{"how many groups it has", router.OffNumGroups, false},
+		{"a group's name", router.OffGroupName, true},
+		{"what a group searches for", router.OffGroupSearchString, true},
+		{"where a group searches", router.OffGroupSearchStart, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, func(d *device) {
+				d.ports = 3
+				fake := newFakeRouter(2, testRouterShape())
+				base := fake.catBase
+				if tc.group {
+					base = fake.grpBase
+				}
+				delete(fake.values, base+tc.offset)
+				d.routers[2] = fake
+			})
+
+			if _, err := h.plugin.RouterAt(context.Background(), 2); err == nil {
+				t.Errorf("a category that would not say %s was read anyway", tc.name)
+			}
+		})
+	}
+}

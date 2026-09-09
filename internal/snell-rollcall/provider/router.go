@@ -26,6 +26,11 @@ type routerModel struct {
 	name     string
 	matrices []routerMatrix
 
+	// categories are how a panel narrows the plant down. They are derived
+	// from the names in it rather than configured: see router_category.go.
+	categories []routerCategory
+	catTable   router.Table
+
 	// base and step are what command 102 to 104 publish. Every table below
 	// carries its own pair, because a client walks them the same way.
 	table router.Table
@@ -72,6 +77,10 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 	// the root block.
 	next := router.CmdGetAHPNode + 1
 
+	// Whether the tree named anything, which is what decides if the plant can
+	// be organised into categories at all.
+	named := false
+
 	alloc := func(count, size uint32) router.Table {
 		t := router.Table{Base: next, Step: size, Count: count}
 		next += router.Command(count * size)
@@ -91,14 +100,29 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 			name:  fmt.Sprintf("Level %d", len(rm.levels)+1),
 			dests: make([]routerDest, m.TargetCount),
 		}
-		for i := range int(m.SourceCount) {
-			lv.sources = append(lv.sources, fmt.Sprintf("SRC %d", i+1))
-		}
+		// Names come from the tree when it carries them. A plant's own names
+		// are the only evidence of how it is organised, and the categories
+		// below are derived from nothing else.
+		srcNames, srcNamed := matrixLabels(m.SourceLabels, int(m.SourceCount), "SRC")
+		dstNames, dstNamed := matrixLabels(m.TargetLabels, int(m.TargetCount), "DST")
+		lv.sources = srcNames
 		for i := range lv.dests {
-			lv.dests[i].name = fmt.Sprintf("DST %d", i+1)
+			lv.dests[i].name = dstNames[i]
 		}
+		named = named || srcNamed || dstNamed
 		rm.levels = append(rm.levels, lv)
 		r.matrices = append(r.matrices, rm)
+	}
+
+	// Categories, then their groups. They come before the matrices because a
+	// client reads the root block first and the categories are named in it.
+	if named && len(r.matrices) > 0 && len(r.matrices[0].levels) > 0 {
+		lv := &r.matrices[0].levels[0]
+		r.categories = buildCategories(lv.sources, lv.dests)
+	}
+	r.catTable = alloc(uint32(len(r.categories)), router.CategoryTableSize)
+	for i := range r.categories {
+		r.categories[i].table = alloc(uint32(len(r.categories[i].groups)), router.GroupTableSize)
 	}
 
 	// Levels, then the sources and destinations under each, so a matrix's
@@ -141,9 +165,9 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	// refusal there reads as "this is not a routing interface" rather than
 	// "there are none of those": our own consumer gives up on the whole node
 	// when command 106 will not answer.
-	num(router.CmdNumCategories, 0)
-	num(router.CmdCategoryBase, 0)
-	num(router.CmdCategoryStep, 0)
+	num(router.CmdNumCategories, int32(r.catTable.Count))
+	num(router.CmdCategoryBase, int32(r.catTable.Base))
+	num(router.CmdCategoryStep, int32(r.catTable.Step))
 	num(router.CmdAssocMakeRoute, 0)
 	num(router.CmdNumTrackTemplates, 0)
 	num(router.CmdGetTrackTemplate, 0)
@@ -161,6 +185,18 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	// The vendor's own template for this node type binds its only control to
 	// this command, so a node that will not answer it draws nothing at all.
 	str(cmdXYStatus, "Active. Routing tables published on this node.")
+
+	// Categories and the groups under them, which is how a panel narrows a
+	// plant down to what an operator is looking for.
+	anyNum := func(c router.Command, v any) { num(c, v.(int32)) }
+	anyStr := func(c router.Command, v any) { str(c, v.(string)) }
+	for i := range r.categories {
+		base, ok := r.catTable.Command(uint32(i) + 1)
+		if !ok {
+			continue
+		}
+		r.categories[i].values(base, anyNum, anyStr)
+	}
 
 	for i := range r.matrices {
 		m := &r.matrices[i]

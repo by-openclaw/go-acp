@@ -21,6 +21,11 @@ import (
 
 // fakeRouter is a routing interface served on one port.
 type fakeRouter struct {
+	// catBase and grpBase are where the category and group tables were laid
+	// out, so a test can take one of their commands away.
+	catBase uint32
+	grpBase uint32
+
 	port uint8
 
 	version  uint32
@@ -112,10 +117,32 @@ func (r *fakeRouter) layout() {
 	r.num(uint32(router.CmdMatrixBase), matrixBase)
 	r.num(uint32(router.CmdMatrixStep), matrixStep)
 
+	// One category with two groups, which is how a panel narrows a plant down:
+	// a group matches a name rather than owning a set, carrying the string to
+	// look for and the character index to look for it at.
 	categoryBase := uint32(matrixBase + len(r.matrices)*matrixStep)
-	r.num(uint32(router.CmdNumCategories), 0)
+	groupBase := categoryBase + router.CategoryTableSize
+	r.catBase, r.grpBase = categoryBase, groupBase
+	r.num(uint32(router.CmdNumCategories), 1)
 	r.num(uint32(router.CmdCategoryBase), int32(categoryBase))
-	r.num(uint32(router.CmdCategoryStep), 6)
+	r.num(uint32(router.CmdCategoryStep), router.CategoryTableSize)
+
+	r.str(categoryBase+router.OffCategoryName, "Type")
+	r.num(categoryBase+router.OffCategoryExclusive, 1)
+	r.num(categoryBase+router.OffCategorySortIndex, 1)
+	r.num(categoryBase+router.OffNumGroups, 2)
+	r.num(categoryBase+router.OffGroupBase, int32(groupBase))
+	r.num(categoryBase+router.OffGroupStep, router.GroupTableSize)
+
+	for i, g := range []struct {
+		name, search string
+		start        int32
+	}{{"Cameras", "CAM", 0}, {"Monitors", "MON", 0}} {
+		base := groupBase + uint32(i)*router.GroupTableSize
+		r.str(base+router.OffGroupName, g.name)
+		r.str(base+router.OffGroupSearchString, g.search)
+		r.num(base+router.OffGroupSearchStart, g.start)
+	}
 
 	r.num(uint32(router.CmdNumSalvos), int32(r.salvos))
 	r.file(uint32(router.CmdSalvoNames8File), `RC_Files\SalvoNames_8.dat`, 0x1111)

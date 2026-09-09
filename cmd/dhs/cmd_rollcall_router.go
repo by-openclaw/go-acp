@@ -134,6 +134,22 @@ func runRollcallRouter(ctx context.Context, args []string) error {
 	fmt.Printf("devices      %d\n", r.Devices)
 	fmt.Println()
 
+	// Categories are how a panel narrows a plant down: a group matches a name
+	// rather than owning a set, so what is printed is the match itself.
+	for _, c := range r.CategoryList {
+		kind := "any of"
+		if c.Exclusive {
+			kind = "one of"
+		}
+		fmt.Printf("category %d   %s (%s)\n", c.Number, nameOrUnset(c.Name), kind)
+		for _, g := range c.Groups {
+			fmt.Printf("             %-12s names starting %q at %d\n", g.Name, g.Search, g.Start)
+		}
+	}
+	if len(r.CategoryList) > 0 {
+		fmt.Println()
+	}
+
 	// The writer buffers, so a write cannot fail here; Flush is where an error
 	// would surface, and that one is returned.
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -363,7 +379,28 @@ func routerJSON(r *rollcall.RouterInterface) map[string]any {
 			"levels":                   levels,
 		})
 	}
+	cats := make([]map[string]any, 0, len(r.CategoryList))
+	for _, c := range r.CategoryList {
+		groups := make([]map[string]any, 0, len(c.Groups))
+		for _, g := range c.Groups {
+			groups = append(groups, map[string]any{
+				"group":  g.Number,
+				"name":   g.Name,
+				"search": g.Search,
+				"start":  g.Start,
+			})
+		}
+		cats = append(cats, map[string]any{
+			"category":   c.Number,
+			"name":       c.Name,
+			"exclusive":  c.Exclusive,
+			"sort_index": c.SortIndex,
+			"groups":     groups,
+		})
+	}
+
 	return map[string]any{
+		"categories":        cats,
 		"slot":              r.Slot,
 		"address":           r.Addr.String(),
 		"name":              r.Name,
