@@ -39,8 +39,9 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
-| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` (consumer, pending) |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` (consumer, pending) |
+| **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP `:161` · 8 trap destinations `:162` | `snmp` (consumer, pending) |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
@@ -102,6 +103,52 @@ Scope, per the codeowner:
   Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
 
 So one connector serves these devices, and it is the SNMP one.
+
+### Snell RollCall frame — the second SNMP vendor tree
+
+`10.6.255.113`, an **IQH3UM4-S** modular frame reporting itself as
+`FRAME_12 EMB`. Read off its RollCall SNMP page:
+
+| Setting | Value |
+| --- | --- |
+| SNMP | enabled, **and "Legacy SNMP" enabled alongside** |
+| Read / write port | `161` |
+| Read community | `public` |
+| Write community | `private` |
+| `sysContact` / `sysName` / `sysLocation` | `www.snellgroup.com` / `FRAME 12` / `TEC RACK 23` |
+| Trap destinations | **eight** rows, each with its own IP, port (`162`) and community (`public`); only the first is enabled today, at `0.0.0.0` — i.e. pointing nowhere |
+| Slot trap enable | gateway + slots 1–16, all on |
+| SNMP control | gateway + slots 1–16, all on |
+
+Two things follow for `internal/snmp`.
+
+**"Legacy SNMP" alongside SNMP means the frame answers more than one
+version at once**, which is exactly the shape the trap sender is built
+for: one event, a per-destination version. Eight destination rows on the
+device says the same thing from the other side — a plant here fans one
+alarm out to several managers that do not agree on a version.
+
+**The vendor tree is Snell & Wilcox, IANA enterprise 7995** — a second
+one beside Tandberg's 1773, so nothing may assume a single vendor root.
+`SNELL-WILCOX-SMI.mib` defines `snellWilcoxRoot ::= { enterprises 7995 }`
+with `snellWilcoxProductReg` at `.1` (the branch `sysObjectID` values come
+from) and a generic sub-tree beside it. The frame-level objects are in
+`SNELL-WILCOX-MODULAR-GATEWAY.mib` and `SNELL-WILCOX-UNIT.mib`; the
+per-card MIBs are one file each under `IQ_Modular_MIBs/`.
+
+The MIB set the codeowner supplied — 232 files, including the SMI, the
+textual conventions, the product registry, the modular-gateway and unit
+MIBs, and per-card MIBs for the IQ range — is **not in this repo**. Per
+`internal/snmp/CLAUDE.md` MIBs live in `github.com/by-protocol/mib` and
+are compiled OFFLINE into Go OID tables; the runtime knows numbers and
+types only. Until that repository has them, the source set is at
+`Downloads/acp/internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`
+on the codeowner's workstation.
+
+> The trap destination is `0.0.0.0` on every enabled row, so this frame
+> currently emits traps to nobody — the same defect the IRDs have with
+> their stale `192.168.0.229`. Point row 1 at the receiver before any
+> trap work is expected to show anything.
 
 ### Cerebrum is a multi-protocol peer, not only the NB API
 

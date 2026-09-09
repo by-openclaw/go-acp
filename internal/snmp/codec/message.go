@@ -36,10 +36,16 @@ type Message struct {
 	Version   Version
 	Community string
 
-	// PDU is set for every PDU type except PDUTypeTrapV1.
+	// PDU is set for every PDU type except PDUTypeTrapV1. On a v3
+	// message it is the PDU from inside the scoped PDU, so a caller
+	// that only cares what was asked reads one field whatever version
+	// carried it — and is nil when the scoped PDU arrived encrypted.
 	PDU *PDU
 	// TrapV1 is set only for PDUTypeTrapV1, and only on a v1 message.
 	TrapV1 *TrapV1
+	// V3 is the v3-only envelope: the header, the security model's
+	// opaque parameters, and the scope. Nil on v1 and v2c.
+	V3 *V3
 }
 
 // Type reports which PDU this message carries, without the caller having
@@ -70,8 +76,10 @@ func Encode(m Message) ([]byte, error) {
 	switch m.Version {
 	case Version1, Version2c:
 	case Version3:
-		return nil, fmt.Errorf("snmp: v3 messages are not built by this package yet " +
-			"(USM authentication and privacy are a separate unit); use v1 or v2c")
+		// The security model needs to know where the parameters landed
+		// (see EncodeV3); a caller that does not can ignore it.
+		raw, _, err := EncodeV3(m)
+		return raw, err
 	default:
 		return nil, fmt.Errorf("snmp: unknown version %d", int(m.Version))
 	}
@@ -156,8 +164,9 @@ func Decode(b []byte) (Message, error) {
 	switch m.Version {
 	case Version1, Version2c:
 	case Version3:
-		return Message{}, malformed("v3 messages are not read by this package yet " +
-			"(USM authentication and privacy are a separate unit)")
+		// The whole datagram travels alongside what is left of it, so
+		// the v3 decoder can report absolute offsets into it.
+		return decodeV3(b, rest)
 	default:
 		return Message{}, malformed("unknown version %d", version)
 	}

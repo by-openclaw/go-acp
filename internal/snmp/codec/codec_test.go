@@ -882,7 +882,8 @@ func TestEncodeRefusals(t *testing.T) {
 			TrapV1: &TrapV1{Enterprise: MustParseOID("1.3.6.1")}}, "both a PDU and a v1 trap"},
 		{"a version nobody speaks", Message{Version: Version(7),
 			PDU: &PDU{Type: PDUTypeGet}}, "unknown version"},
-		{"v3", Message{Version: Version3, PDU: &PDU{Type: PDUTypeGet}}, "not built by this package yet"},
+		{"a v3 message with no header", Message{Version: Version3, PDU: &PDU{Type: PDUTypeGet}},
+			"needs its V3 header"},
 		{"GetBulk to a v1 agent", Message{Version: Version1,
 			PDU: &PDU{Type: PDUTypeGetBulk}}, "not a v1 PDU"},
 		{"an SNMPv2-Trap to a v1 manager", Message{Version: Version1,
@@ -947,11 +948,11 @@ func TestDecodeRefusals(t *testing.T) {
 			b[2] = tagOctetString
 			return b
 		}(), "version: tag"},
-		{"v3", func() []byte {
+		{"a v3 body that is not a v3 body", func() []byte {
 			b := append([]byte(nil), good...)
 			b[4] = 0x03
 			return b
-		}(), "not read by this package yet"},
+		}(), "msgGlobalData"},
 		{"a version nobody speaks", func() []byte {
 			b := append([]byte(nil), good...)
 			b[4] = 0x09

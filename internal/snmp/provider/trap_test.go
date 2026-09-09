@@ -14,7 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/clock"
+	"dhs/internal/plugin"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/usm"
 )
 
 // alarm is the notification the IRDs actually emit: enterprise-specific
@@ -135,11 +138,36 @@ func TestTrapOIDMapping(t *testing.T) {
 	}
 }
 
-// A notification cannot be sent as a version this package does not
-// build, and says so rather than emitting nothing and returning nil.
+// v3 renders the same SNMPv2-Trap PDU as v2c, inside a v3 envelope the
+// engine still has to seal — and with no community, because v3 has none.
+func TestAV3NotificationIsBuiltUnsealed(t *testing.T) {
+	m, err := alarm().Message(codec.Version3, "ignored", 9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Type() != codec.PDUTypeTrapV2 {
+		t.Fatalf("built a %s", m.Type())
+	}
+	if m.V3 == nil || m.V3.ID != 9 {
+		t.Fatalf("V3 = %+v, want the message numbered", m.V3)
+	}
+	if m.Community != "" {
+		t.Errorf("community = %q, want none on v3", m.Community)
+	}
+	if m.V3.Flags.Auth() || m.V3.Flags.Priv() {
+		t.Errorf("flags = %s before sealing", m.V3.Flags.SecurityLevel())
+	}
+	if len(m.PDU.VarBinds) != 3 {
+		t.Errorf("%d varbinds, want the two mandatory ones plus the sender's",
+			len(m.PDU.VarBinds))
+	}
+}
+
+// A notification cannot be sent as a version that does not exist, and
+// says so rather than emitting nothing and returning nil.
 func TestANotificationInAVersionWeCannotSend(t *testing.T) {
-	if _, err := alarm().Message(codec.Version3, "public", 1); err == nil ||
-		!strings.Contains(err.Error(), "v3") {
+	if _, err := alarm().Message(codec.Version(7), "public", 1); err == nil ||
+		!strings.Contains(err.Error(), "cannot send a notification") {
 		t.Fatalf("= %v, want the refusal", err)
 	}
 }
@@ -212,7 +240,7 @@ func newDialer() *fakeDialer {
 	return &fakeDialer{sockets: map[string]*fakeSocket{}, failing: map[string]error{}}
 }
 
-func (d *fakeDialer) dial(_, addr string) (net.Conn, error) {
+func (d *fakeDialer) dial(_ context.Context, _, addr string) (net.Conn, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.dials++
@@ -235,7 +263,7 @@ func (d *fakeDialer) socket(addr string) *fakeSocket {
 
 func senderOn(t *testing.T, d *fakeDialer, dests ...TrapDestination) *TrapSender {
 	t.Helper()
-	s := NewTrapSender(dests, quiet())
+	s := NewTrapSender(dests, plugin.Deps{Logger: quiet()})
 	s.dial = d.dial
 	t.Cleanup(func() { _ = s.Close() })
 	return s
@@ -341,17 +369,19 @@ func TestACancelledContextStopsTheFanOut(t *testing.T) {
 	}
 }
 
-// A version no destination can be sent in is reported per destination,
+// A destination this sender cannot serve is reported per destination,
 // not by refusing the whole event.
-func TestADestinationWithAVersionWeCannotSend(t *testing.T) {
+func TestADestinationWeCannotSendTo(t *testing.T) {
 	d := newDialer()
 	s := senderOn(t, d,
-		TrapDestination{Addr: "10.6.250.5:162", Version: codec.Version3},
+		// v3 with no engine on the sender: refused rather than sent
+		// unauthenticated, which is the failure that would matter.
+		TrapDestination{Addr: "10.6.250.5:162", Version: codec.Version3, User: "u"},
 		TrapDestination{Addr: "10.6.250.6:162", Version: codec.Version2c})
 
 	if err := s.Send(context.Background(), alarm()); err == nil ||
-		!strings.Contains(err.Error(), "v3") {
-		t.Fatalf("= %v, want the version refusal", err)
+		!strings.Contains(err.Error(), "no USM engine") {
+		t.Fatalf("= %v, want the refusal", err)
 	}
 	if d.socket("10.6.250.6:162").count() != 1 {
 		t.Error("the destination that CAN be sent to was not")
@@ -433,7 +463,7 @@ func TestDestinationsIsACopy(t *testing.T) {
 func TestCloseEndsTheSender(t *testing.T) {
 	d := newDialer()
 	s := NewTrapSender([]TrapDestination{
-		{Addr: "10.6.250.5:162", Version: codec.Version2c}}, quiet())
+		{Addr: "10.6.250.5:162", Version: codec.Version2c}}, plugin.Deps{Logger: quiet()})
 	s.dial = d.dial
 
 	if err := s.Send(context.Background(), alarm()); err != nil {
@@ -456,21 +486,21 @@ func TestCloseEndsTheSender(t *testing.T) {
 // A Close racing a dial must not leave a socket nobody owns.
 func TestACloseThatRacesADial(t *testing.T) {
 	d := newDialer()
-	s := NewTrapSender(nil, quiet())
+	s := NewTrapSender(nil, plugin.Deps{Logger: quiet()})
 
 	// inDial fires once connFor is PAST its own closed check and inside
 	// the dial, which is the only window this arm lives in.
 	inDial := make(chan struct{})
 	release := make(chan struct{})
-	s.dial = func(network, addr string) (net.Conn, error) {
+	s.dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		close(inDial)
 		<-release
-		return d.dial(network, addr)
+		return d.dial(ctx, network, addr)
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := s.connFor("10.6.250.5:162")
+		_, err := s.connFor(context.Background(), "10.6.250.5:162")
 		done <- err
 	}()
 
@@ -492,7 +522,7 @@ func TestACloseThatRacesADial(t *testing.T) {
 // is closed rather than leaked.
 func TestTwoDialsForOneDestinationKeepOne(t *testing.T) {
 	d := newDialer()
-	s := NewTrapSender(nil, quiet())
+	s := NewTrapSender(nil, plugin.Deps{Logger: quiet()})
 	t.Cleanup(func() { _ = s.Close() })
 
 	// Hold BOTH callers inside the dial until each is there, so both are
@@ -500,7 +530,7 @@ func TestTwoDialsForOneDestinationKeepOne(t *testing.T) {
 	// window connFor closes.
 	entered := make(chan struct{}, 2)
 	proceed := make(chan struct{})
-	s.dial = func(string, string) (net.Conn, error) {
+	s.dial = func(context.Context, string, string) (net.Conn, error) {
 		entered <- struct{}{}
 		<-proceed
 		d.mu.Lock()
@@ -515,7 +545,7 @@ func TestTwoDialsForOneDestinationKeepOne(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			c, err := s.connFor("10.6.250.5:162")
+			c, err := s.connFor(context.Background(), "10.6.250.5:162")
 			if err != nil {
 				t.Errorf("connFor: %v", err)
 				return
@@ -559,7 +589,7 @@ func TestTheDefaultDialerSendsARealDatagram(t *testing.T) {
 
 	s := NewTrapSender([]TrapDestination{{
 		Addr: rx.LocalAddr().String(), Version: codec.Version2c, Community: "public",
-	}}, quiet())
+	}}, plugin.Deps{Logger: quiet()})
 	t.Cleanup(func() { _ = s.Close() })
 
 	if err := s.Send(context.Background(), alarm()); err != nil {
@@ -578,12 +608,12 @@ func TestTheDefaultDialerSendsARealDatagram(t *testing.T) {
 
 	// A destination nothing is listening on still dials; the datagram
 	// simply goes nowhere, which is what UDP is.
-	if _, err := s.connFor("127.0.0.1:1"); err != nil {
+	if _, err := s.connFor(context.Background(), "127.0.0.1:1"); err != nil {
 		t.Errorf("dialing an unused port: %v", err)
 	}
 	// And a destination that cannot be resolved at all is reported with
 	// the address in it.
-	if _, err := s.connFor("not a host:162"); err == nil ||
+	if _, err := s.connFor(context.Background(), "not a host:162"); err == nil ||
 		!strings.Contains(err.Error(), "not a host:162") {
 		t.Errorf("= %v, want the destination named", err)
 	}
@@ -593,16 +623,170 @@ func TestTheDefaultDialerSendsARealDatagram(t *testing.T) {
 // connFor is also reachable directly and has to refuse on its own.
 func TestConnForRefusesAfterClose(t *testing.T) {
 	d := newDialer()
-	s := NewTrapSender(nil, quiet())
+	s := NewTrapSender(nil, plugin.Deps{Logger: quiet()})
 	s.dial = d.dial
 
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.connFor("10.6.250.5:162"); !errors.Is(err, net.ErrClosed) {
+	if _, err := s.connFor(context.Background(), "10.6.250.5:162"); !errors.Is(err, net.ErrClosed) {
 		t.Errorf("= %v, want net.ErrClosed", err)
 	}
 	if d.dials != 0 {
 		t.Errorf("%d dials after Close", d.dials)
+	}
+}
+
+// ---------------------------------------------------------------------
+// v3
+// ---------------------------------------------------------------------
+
+// trapEngine is the local authoritative engine a v3 notification is sent
+// as: for a trap the SENDER is authoritative, so the keys are localised
+// against our engine ID and the receiver has to know it.
+func trapEngine(t *testing.T, u usm.User) *usm.Engine {
+	t.Helper()
+	id, err := usm.NewEngineID(usm.ExampleEnterprise, "dhs-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := usm.NewEngine(id, 1, clock.NewFake(time.Unix(1_700_000_000, 0)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.AddUser(u); err != nil {
+		t.Fatal(err)
+	}
+	return e
+}
+
+// A v3 notification reaches a receiver that shares the user, at every
+// security level — which is what "traps for any version" has to mean.
+func TestAV3TrapReachesAReceiverAtEveryLevel(t *testing.T) {
+	for _, u := range []usm.User{
+		{Name: "operator"},
+		{Name: "operator", Auth: usm.HMACSHA256, AuthPass: "maplesyrup"},
+		{Name: "operator", Auth: usm.HMACSHA256, AuthPass: "maplesyrup",
+			Priv: usm.AES128CFB, PrivPass: "maplesyrup"},
+		{Name: "operator", Auth: usm.HMACMD5, AuthPass: "maplesyrup",
+			Priv: usm.DESCBC, PrivPass: "maplesyrup"},
+	} {
+		t.Run(u.SecurityLevel()+"/"+u.Auth.String()+"/"+u.Priv.String(), func(t *testing.T) {
+			engine := trapEngine(t, u)
+			d := newDialer()
+			s := NewTrapSenderV3([]TrapDestination{{
+				Addr: "10.6.250.5:162", Version: codec.Version3, User: "operator",
+			}}, engine, plugin.Deps{Logger: quiet()})
+			s.dial = d.dial
+			t.Cleanup(func() { _ = s.Close() })
+
+			if err := s.Send(context.Background(), alarm()); err != nil {
+				t.Fatalf("Send: %v", err)
+			}
+			raw := d.socket("10.6.250.5:162").last()
+			if raw == nil {
+				t.Fatal("nothing was sent")
+			}
+
+			// The receiver is the same engine here, because for a trap
+			// the sender IS the authoritative one — a receiver keys on
+			// the sender's engine ID, which is the identity in the
+			// message.
+			got, user, err := engine.Open(raw)
+			if err != nil {
+				t.Fatalf("the receiver could not open it: %v", err)
+			}
+			if user.Name != "operator" {
+				t.Errorf("opened as %q", user.Name)
+			}
+			if got.PDU.Type != codec.PDUTypeTrapV2 {
+				t.Fatalf("received a %s", got.PDU.Type)
+			}
+			// The two mandatory bindings survive the whole round trip.
+			if got.PDU.VarBinds[0].Name.Compare(SysUpTimeInstance) != 0 ||
+				got.PDU.VarBinds[1].Name.Compare(SNMPTrapOID) != 0 {
+				t.Errorf("bindings = %v", names(got.PDU.VarBinds))
+			}
+			if got.PDU.VarBinds[1].Value.OID.String() != "1.3.6.1.4.1.1773.1.3.200.0.1" {
+				t.Errorf("snmpTrapOID.0 = %s", got.PDU.VarBinds[1].Value)
+			}
+			// A notification is not reportable: nobody is waiting to
+			// answer it.
+			if got.V3.Flags.Reportable() {
+				t.Error("a trap must not ask for a Report")
+			}
+			if lvl := got.V3.Flags.SecurityLevel(); lvl != u.SecurityLevel() {
+				t.Errorf("sent at %s, the user is %s", lvl, u.SecurityLevel())
+			}
+		})
+	}
+}
+
+// One event, three managers, three versions: the frames in this plant
+// speak v1, Cerebrum speaks v2c, and a v3 receiver is what a new NMS
+// wants. All three are told, from one Send.
+func TestOneEventReachesAllThreeVersions(t *testing.T) {
+	engine := trapEngine(t, usm.User{Name: "operator",
+		Auth: usm.HMACSHA256, AuthPass: "maplesyrup"})
+	d := newDialer()
+	s := NewTrapSenderV3([]TrapDestination{
+		{Addr: "10.6.255.9:162", Version: codec.Version1, Community: "public"},
+		{Addr: "10.6.250.5:162", Version: codec.Version2c, Community: "public"},
+		{Addr: "10.6.250.7:162", Version: codec.Version3, User: "operator"},
+	}, engine, plugin.Deps{Logger: quiet()})
+	s.dial = d.dial
+	t.Cleanup(func() { _ = s.Close() })
+
+	if err := s.Send(context.Background(), alarm()); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	if got := decodeTrap(t, d.socket("10.6.255.9:162").last()); got.Version != codec.Version1 ||
+		got.TrapV1 == nil {
+		t.Errorf("the v1 manager got %s/%s", got.Version, got.Type())
+	}
+	if got := decodeTrap(t, d.socket("10.6.250.5:162").last()); got.Version != codec.Version2c ||
+		got.Type() != codec.PDUTypeTrapV2 {
+		t.Errorf("the v2c manager got %s/%s", got.Version, got.Type())
+	}
+	if got := decodeTrap(t, d.socket("10.6.250.7:162").last()); got.Version != codec.Version3 {
+		t.Errorf("the v3 manager got %s", got.Version)
+	}
+}
+
+// A v3 destination naming a user the engine does not have is reported
+// per destination rather than sent unauthenticated.
+func TestAV3DestinationWithAnUnknownUser(t *testing.T) {
+	engine := trapEngine(t, usm.User{Name: "operator", Auth: usm.HMACSHA256, AuthPass: "p"})
+	d := newDialer()
+	s := NewTrapSenderV3([]TrapDestination{
+		{Addr: "10.6.250.5:162", Version: codec.Version3, User: "nobody"},
+	}, engine, plugin.Deps{Logger: quiet()})
+	s.dial = d.dial
+	t.Cleanup(func() { _ = s.Close() })
+
+	if err := s.Send(context.Background(), alarm()); err == nil ||
+		!strings.Contains(err.Error(), "no user") {
+		t.Fatalf("= %v, want the unknown user reported", err)
+	}
+	if d.dials != 0 {
+		t.Error("a message that cannot be built must not open a socket")
+	}
+}
+
+// A destination asking for a version that does not exist is reported
+// where it is configured, not by refusing the whole event.
+func TestADestinationWithAVersionThatDoesNotExist(t *testing.T) {
+	d := newDialer()
+	s := senderOn(t, d,
+		TrapDestination{Addr: "10.6.250.5:162", Version: codec.Version(7)},
+		TrapDestination{Addr: "10.6.250.6:162", Version: codec.Version2c})
+
+	if err := s.Send(context.Background(), alarm()); err == nil ||
+		!strings.Contains(err.Error(), "cannot send a notification") {
+		t.Fatalf("= %v, want the version refusal", err)
+	}
+	if d.socket("10.6.250.6:162").count() != 1 {
+		t.Error("the destination that CAN be sent to was not")
 	}
 }

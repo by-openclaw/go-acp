@@ -9,6 +9,7 @@ import (
 
 	"dhs/internal/plugin"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/usm"
 )
 
 // TrapPort is where a manager listens for notifications. Cerebrum's own
@@ -93,9 +94,14 @@ func (n Notification) TrapOID() codec.OID {
 
 // Message renders the notification for one version.
 //
-// v1 produces a Trap-PDU; v2c produces an SNMPv2-Trap-PDU whose first
-// two varbinds are the mandatory sysUpTime.0 and snmpTrapOID.0. This is
-// the one place the two shapes are built, so they cannot drift.
+// v1 produces a Trap-PDU; v2c and v3 produce an SNMPv2-Trap-PDU whose
+// first two varbinds are the mandatory sysUpTime.0 and snmpTrapOID.0.
+// This is the one place all three shapes are built, so they cannot
+// drift.
+//
+// A v3 message comes back UNSEALED: the security parameters, the digest
+// and any encryption are the engine's to add, because they depend on
+// keys this package does not hold. [TrapSender] does that step.
 func (n Notification) Message(v codec.Version, community string, requestID int32) (codec.Message, error) {
 	switch v {
 	case codec.Version1:
@@ -112,19 +118,28 @@ func (n Notification) Message(v codec.Version, community string, requestID int32
 			},
 		}, nil
 
-	case codec.Version2c:
+	case codec.Version2c, codec.Version3:
 		vbs := make([]codec.VarBind, 0, len(n.VarBinds)+2)
 		vbs = append(vbs,
 			codec.VarBind{Name: SysUpTimeInstance, Value: codec.TimeTicks(n.Uptime)},
 			codec.VarBind{Name: SNMPTrapOID, Value: codec.ObjectID(n.TrapOID())})
 		vbs = append(vbs, n.VarBinds...)
-		return codec.Message{
-			Version:   codec.Version2c,
+
+		m := codec.Message{
+			Version:   v,
 			Community: community,
 			PDU: &codec.PDU{
 				Type: codec.PDUTypeTrapV2, RequestID: requestID, VarBinds: vbs,
 			},
-		}, nil
+		}
+		if v == codec.Version3 {
+			// A notification is not reportable: nobody is waiting to
+			// answer it, so asking for a Report would only produce
+			// traffic to a sender that has stopped listening.
+			m.V3 = &codec.V3{ID: requestID}
+			m.Community = ""
+		}
+		return m, nil
 
 	default:
 		return codec.Message{}, fmt.Errorf("snmp: cannot send a notification as %s", v)
@@ -137,9 +152,14 @@ func (n Notification) Message(v codec.Version, community string, requestID int32
 // mid-migration has both: the old NMS listening for v1 traps and the new
 // one for v2c notifications, from the same device, at the same time.
 type TrapDestination struct {
-	Addr      string
-	Version   codec.Version
+	Addr    string
+	Version codec.Version
+	// Community is the v1/v2c password. Ignored for v3.
 	Community string
+	// User names the USM user a v3 notification is sent as. Required for
+	// v3 and ignored otherwise; the user itself, with its keys, lives on
+	// the engine given to [NewTrapSenderV3].
+	User string
 }
 
 // TrapSender emits notifications to a set of destinations.
@@ -150,7 +170,16 @@ type TrapDestination struct {
 // see, which is what a manager's own access list is written against.
 type TrapSender struct {
 	logger *slog.Logger
-	dial   func(network, addr string) (net.Conn, error)
+	// dial goes through the injected transport rather than net.Dial, so
+	// a plant's dial policy — source address, timeouts, whatever the
+	// deployment needs — applies to traps as it does to everything else.
+	// The architecture gate enforces it.
+	dial func(ctx context.Context, network, addr string) (net.Conn, error)
+
+	// engine is this process's authoritative USM engine, needed only for
+	// v3 destinations. A sender with none refuses a v3 destination
+	// rather than silently sending it unauthenticated.
+	engine *usm.Engine
 
 	mu    sync.Mutex
 	dests []TrapDestination
@@ -160,11 +189,21 @@ type TrapSender struct {
 	closed bool
 }
 
-// NewTrapSender builds a sender for a set of destinations.
-func NewTrapSender(dests []TrapDestination, logger *slog.Logger) *TrapSender {
+// NewTrapSender builds a sender for v1 and v2c destinations. deps
+// carries the transport its sockets are dialed through.
+func NewTrapSender(dests []TrapDestination, deps plugin.Deps) *TrapSender {
+	return NewTrapSenderV3(dests, nil, deps)
+}
+
+// NewTrapSenderV3 is NewTrapSender with the local USM engine, which a v3
+// destination needs: a v3 notification is authenticated as the SENDER's
+// engine, so the keys are localised against ours.
+func NewTrapSenderV3(dests []TrapDestination, engine *usm.Engine, deps plugin.Deps) *TrapSender {
+	deps = deps.WithDefaults()
 	return &TrapSender{
-		logger: plugin.LoggerOrDefault(logger),
-		dial:   func(network, addr string) (net.Conn, error) { return net.Dial(network, addr) },
+		logger: plugin.LoggerOrDefault(deps.Logger),
+		dial:   deps.Net.Dial,
+		engine: engine,
 		dests:  append([]TrapDestination(nil), dests...),
 		conns:  map[string]net.Conn{},
 	}
@@ -206,7 +245,7 @@ func (s *TrapSender) Send(ctx context.Context, n Notification) error {
 			}
 			break
 		}
-		if err := s.sendOne(d, n, id); err != nil {
+		if err := s.sendOne(ctx, d, n, id); err != nil {
 			s.logger.Warn("snmp: trap not delivered",
 				slog.String("to", d.Addr), slog.String("err", err.Error()))
 			if firstErr == nil {
@@ -217,16 +256,26 @@ func (s *TrapSender) Send(ctx context.Context, n Notification) error {
 	return firstErr
 }
 
-func (s *TrapSender) sendOne(d TrapDestination, n Notification, id int32) error {
+func (s *TrapSender) sendOne(ctx context.Context, d TrapDestination, n Notification, id int32) error {
 	msg, err := n.Message(d.Version, d.Community, id)
 	if err != nil {
 		return err
 	}
-	raw, err := codec.Encode(msg)
+
+	var raw []byte
+	if d.Version == codec.Version3 {
+		if s.engine == nil {
+			return fmt.Errorf(
+				"snmp: %s is a v3 destination and this sender has no USM engine", d.Addr)
+		}
+		raw, err = s.engine.Seal(msg, d.User)
+	} else {
+		raw, err = codec.Encode(msg)
+	}
 	if err != nil {
 		return err
 	}
-	conn, err := s.connFor(d.Addr)
+	conn, err := s.connFor(ctx, d.Addr)
 	if err != nil {
 		return err
 	}
@@ -242,7 +291,7 @@ func (s *TrapSender) sendOne(d TrapDestination, n Notification, id int32) error 
 }
 
 // connFor returns the socket for a destination, dialing on first use.
-func (s *TrapSender) connFor(addr string) (net.Conn, error) {
+func (s *TrapSender) connFor(ctx context.Context, addr string) (net.Conn, error) {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -255,7 +304,7 @@ func (s *TrapSender) connFor(addr string) (net.Conn, error) {
 	dial := s.dial
 	s.mu.Unlock()
 
-	c, err := dial("udp4", addr)
+	c, err := dial(ctx, "udp4", addr)
 	if err != nil {
 		return nil, fmt.Errorf("snmp: trap destination %q: %w", addr, err)
 	}
