@@ -242,10 +242,11 @@ func loadOne(dir string) (*Harvest, error) {
 			return nil //nolint:nilerr // a missing sdp dir is not an error
 		}
 		if b, rerr := os.ReadFile(p); rerr == nil {
-			rel, relErr := filepath.Rel(sdpDir, p)
-			if relErr != nil {
-				rel = d.Name()
-			}
+			// WalkDir hands back paths under the root it was given, so
+			// the key is that root trimmed off — no second opinion from
+			// filepath.Rel, which can only disagree about paths this
+			// walk cannot produce.
+			rel := strings.TrimPrefix(p, sdpDir+string(filepath.Separator))
 			h.SDP[filepath.ToSlash(rel)] = b
 		}
 		return nil

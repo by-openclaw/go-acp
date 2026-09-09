@@ -217,7 +217,7 @@ func TestHintCountsMeasureCoverage(t *testing.T) {
 // "RACK:1:video" into a group called "RACK".
 func TestHintSplitsOnLastColon(t *testing.T) {
 	acc := newGroupAccumulator()
-	acc.add("RACK:1:Video 1", "dev", "senders")
+	acc.add("RACK:1:Video 1", &Harvest{Target: "dev"}, "senders")
 	rows := acc.rows()
 	if len(rows) != 1 {
 		t.Fatalf("want 1 group, got %v", rows)
@@ -234,9 +234,9 @@ func TestHintSplitsOnLastColon(t *testing.T) {
 // must not create a group keyed on the whole string.
 func TestMalformedHintsIgnored(t *testing.T) {
 	acc := newGroupAccumulator()
-	acc.add("no-colon-here", "dev", "senders")
-	acc.add(":only-a-role", "dev", "senders")
-	acc.add("", "dev", "senders")
+	acc.add("no-colon-here", &Harvest{Target: "dev"}, "senders")
+	acc.add(":only-a-role", &Harvest{Target: "dev"}, "senders")
+	acc.add("", &Harvest{Target: "dev"}, "senders")
 	if rows := acc.rows(); len(rows) != 0 {
 		t.Errorf("malformed hints produced groups: %v", rows)
 	}
