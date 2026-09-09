@@ -173,6 +173,33 @@ jobs:
           check internal/amwa/session/events 100
           check internal/amwa/session/certmgr 100
           check internal/amwa/session/export 98
+          check internal/amwa/codec/bcp 100
+          check internal/amwa/codec/bcp/bcp00201 100
+          check internal/amwa/codec/bcp/bcp00202 100
+          check internal/amwa/codec/bcp/bcp00401 100
+          check internal/amwa/codec/bcp/bcp00402 100
+          check internal/amwa/codec/bcp/bcp00601 100
+          check internal/amwa/codec/bcp/bcp00604 100
+          check internal/amwa/codec/bcp/bcp00801 100
+          check internal/amwa/codec/bcp/bcp00802 100
+          check internal/amwa/codec/is04/schemas 100
+          check internal/amwa/codec/is04/v10 100
+          check internal/amwa/codec/is04/v12 100
+          check internal/amwa/codec/is05 100
+          check internal/amwa/codec/is05/v10 100
+          check internal/amwa/codec/is05/v11 100
+          check internal/amwa/codec/is05/v12 100
+          check internal/amwa/codec/is09 100
+          check internal/amwa/codec/is09/v10 100
+          check internal/amwa/codec/is10 100
+          check internal/amwa/codec/is10/v10 100
+          check internal/amwa/codec/is11 100
+          check internal/amwa/codec/is11/v10 100
+          check internal/amwa/codec/is12/v10 100
+          check internal/amwa/codec/is14 100
+          check internal/amwa/codec/is14/v10 100
+          check internal/amwa/codec/registers 100
+          check internal/amwa/codec/spec 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100

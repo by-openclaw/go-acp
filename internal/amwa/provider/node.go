@@ -30,6 +30,21 @@ import (
 	"dhs/internal/amwa/codec/est"
 )
 
+// Test seams. Each is the real implementation in production and is
+// swapped only by a test that needs a branch no real input reaches
+// deterministically (the same transparent pattern as
+// session/certmgr):
+//
+//   - newDNSSDResponder: the real responder binds the multicast group;
+//     a scripted one lets the announce / suspend / re-announce cycle of
+//     IS-04 §4.2.1 be asserted without a link.
+//   - osHostname: the hostname-lookup failure arms fall back to a
+//     fixed identity, and os.Hostname does not fail on demand.
+var (
+	newDNSSDResponder = dnssdsession.NewResponder
+	osHostname        = os.Hostname
+)
+
 // encodeOne wraps a per-resource codec Encode method into a
 // json.RawMessage suitable for handing back to the HTTP framework.
 //
@@ -598,7 +613,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		// ["http://*.<domain>", "http://*.local"]) that the advertise
 		// IP alone can never match.
 		gateHosts := []string{gateHost}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostname(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		srv.Auth = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: s.logger}
@@ -867,7 +882,7 @@ func (s *IS04NodeServer) startMDNSAnnounceLocked() error {
 	if s.responder != nil {
 		return nil
 	}
-	resp, err := dnssdsession.NewResponder(s.logger)
+	resp, err := newDNSSDResponder(s.logger)
 	if err != nil {
 		return fmt.Errorf("provider/node: open mDNS responder: %w", err)
 	}
@@ -1219,7 +1234,7 @@ func tlsIdentities(advertiseHost string) []string {
 			out = append(out, h)
 		}
 	}
-	if hn, err := os.Hostname(); err == nil && hn != "" {
+	if hn, err := osHostname(); err == nil && hn != "" {
 		out = append(out, hn, hn+".local")
 	}
 	if len(out) == 0 {

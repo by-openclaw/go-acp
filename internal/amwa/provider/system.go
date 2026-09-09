@@ -166,7 +166,7 @@ func (s *IS09Server) Serve(ctx context.Context) error {
 	// publishes records via Unbound or similar.
 	if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		host, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind)
-		resp, err := dnssdsession.NewResponder(s.logger)
+		resp, err := newDNSSDResponder(s.logger)
 		if err != nil {
 			s.mu.Unlock()
 			return fmt.Errorf("provider/system: open mDNS responder: %w", err)
@@ -249,7 +249,7 @@ func splitHostPort(advertise, bind string) (string, int) {
 	}
 	host, port := splitHP(bind)
 	if host == "" || host == "0.0.0.0" || host == "::" {
-		if h, err := os.Hostname(); err == nil && h != "" {
+		if h, err := osHostname(); err == nil && h != "" {
 			host = h
 		} else {
 			host = "localhost"

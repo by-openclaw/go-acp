@@ -39,6 +39,20 @@ const HeartbeatGracePeriod = 12 * time.Second
 // scratch.
 var ErrRegistryNotFound = errors.New("provider/node: registry returned 404 — re-registration required")
 
+// Test seams. Each is the real implementation in production and is
+// swapped only by a test that needs a branch no real input reaches
+// (the same transparent pattern as session/certmgr):
+//
+//   - deregisterWait: Close's bound on the shutdown DELETEs is two
+//     grace periods, a wall-clock wait a test cannot sit through.
+//   - tlsClientConfig: transport.TLSOptions.Client fails only while
+//     reading a CA or client-certificate FILE, and SetTLSRoots passes
+//     neither — its guard is unreachable from a real pool.
+var (
+	deregisterWait  = 2 * HeartbeatGracePeriod
+	tlsClientConfig = transport.TLSOptions.Client
+)
+
 // RegistrationClient drives the Node-side registration loop:
 //
 //  1. POST /resource for the Node, then each Device, Source, Flow,
@@ -569,7 +583,7 @@ func (c *RegistrationClient) Close() error {
 	c.mu.Unlock()
 	select {
 	case <-c.closed:
-	case <-time.After(2 * HeartbeatGracePeriod):
+	case <-time.After(deregisterWait):
 		return errors.New("provider/node: deregistration timed out")
 	}
 	return nil
@@ -648,7 +662,7 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 	// Built by the transport layer so every dhs client shares one posture;
 	// this was already the strictest of the four hand-rolled configs, and
 	// it is now the only one.
-	cfg, err := transport.TLSOptions{Enable: true, RootCAs: roots}.Client()
+	cfg, err := tlsClientConfig(transport.TLSOptions{Enable: true, RootCAs: roots})
 	if err != nil {
 		// Unreachable: no CA or client-certificate FILE is configured here,
 		// and those are Client's only failure modes. Leaving the transport

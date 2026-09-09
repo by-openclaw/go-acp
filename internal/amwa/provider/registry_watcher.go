@@ -79,6 +79,13 @@ type RegistryWatcher struct {
 	hostIPv4 map[string]string
 }
 
+// newDNSSDBrowser is the mDNS browser constructor the watchers open. A
+// package var so a test can hand the watcher a scripted Browser: the
+// real one joins 224.0.0.251 on every interface, which is neither
+// deterministic nor permitted on a CI runner. Production never
+// reassigns it.
+var newDNSSDBrowser = dnssdsession.NewBrowser
+
 // NewRegistryWatcher opens an mDNS browser for `_nmos-register._tcp`.
 // preferAPIVer (e.g. "v1.3") is used as the highest-mutual selection
 // preference when a Registry advertises multiple comma-separated
@@ -88,7 +95,7 @@ func NewRegistryWatcher(logger *slog.Logger, preferAPIVer string) (*RegistryWatc
 	if preferAPIVer == "" {
 		preferAPIVer = "v1.3"
 	}
-	br, err := dnssdsession.NewBrowser(logger)
+	br, err := newDNSSDBrowser(logger)
 	if err != nil {
 		return nil, fmt.Errorf("provider/node: open mDNS browser: %w", err)
 	}

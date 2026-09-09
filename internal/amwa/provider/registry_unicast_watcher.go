@@ -31,8 +31,10 @@ import (
 
 // unicastReresolveInterval is how often the DNS zone is re-asked.
 // DNS-SD gives no push channel, so this is the staleness bound on
-// registry changes reaching the Node.
-const unicastReresolveInterval = 60 * time.Second
+// registry changes reaching the Node. A var only so a test can drive
+// the re-ask without sitting out a minute; production never
+// reassigns it.
+var unicastReresolveInterval = 60 * time.Second
 
 // unicastDisqualifyTTL matches the mDNS watcher's failover penalty —
 // the two discovery modes must yield the same failover behaviour.

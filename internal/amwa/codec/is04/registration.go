@@ -31,12 +31,19 @@ func EncodeRegistration(t ResourceType, data any) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("is04: marshal %s: %w", t, err)
 	}
-	body, err := json.Marshal(RegistrationRequest{Type: t, Data: raw})
+	body, err := marshalEnvelope(RegistrationRequest{Type: t, Data: raw})
 	if err != nil {
 		return nil, fmt.Errorf("is04: marshal registration envelope: %w", err)
 	}
 	return body, nil
 }
+
+// marshalEnvelope is json.Marshal behind a package variable, for one
+// reason: the envelope wraps bytes json.Marshal itself just produced, so
+// no input can make this second call fail and the error branch above
+// would otherwise be unprovable. A test swaps it to show the failure is
+// reported, not swallowed. Production never reassigns it.
+var marshalEnvelope = json.Marshal
 
 // EncodeRegistrationVersioned builds the registration body using the
 // per-api_ver codec for the resource. The Data field of the envelope

@@ -69,7 +69,7 @@ func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, u
 	if apiVer == "" {
 		apiVer = "v1.0"
 	}
-	br, err := dnssdsession.NewBrowser(logger)
+	br, err := newDNSSDBrowser(logger)
 	if err != nil {
 		return nil, err
 	}
