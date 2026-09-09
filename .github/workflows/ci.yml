@@ -167,6 +167,8 @@ jobs:
           check internal/diff 100
           check internal/export 100
           check internal/export/canonical 100
+          check internal/amwa/profile 100
+          check internal/amwa/audit 99
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100

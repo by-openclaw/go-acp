@@ -55,6 +55,11 @@ func (d *device) writeJSON(w http.ResponseWriter, v any) {
 	}
 	if d.contentType != "" {
 		w.Header().Set("Content-Type", d.contentType)
+	} else {
+		// A nil entry is how net/http is told to send NO Content-Type;
+		// leaving the key absent makes the server sniff one, and the
+		// "no header" case would then never be exercised.
+		w.Header()["Content-Type"] = nil
 	}
 	_ = json.NewEncoder(w).Encode(v)
 }
