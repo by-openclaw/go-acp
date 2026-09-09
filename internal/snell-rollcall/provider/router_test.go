@@ -170,8 +170,22 @@ func TestARouterIsServedAsThreeKindsOfNode(t *testing.T) {
 	if xy.id.TypeID != codec.TypeIDXYPanel {
 		t.Errorf("tables type id = %d, want the XY panel id", xy.id.TypeID)
 	}
-	if len(xy.menu(true)) != 0 {
-		t.Error("the tables node has nothing to walk: everything it says is a command")
+	// It is not menuless. The Centra publishes a Status line on command 99 and
+	// the node's template binds its only control to it; without the line the
+	// panel draws an empty box.
+	xyLines := xy.menu(true)
+	if len(xyLines) != 3 {
+		t.Fatalf("the tables node served %d menu lines, want the vendor's three", len(xyLines))
+	}
+	if xyLines[2].Command != cmdXYStatus || xyLines[2].Text != "Status" {
+		t.Errorf("its third line is %q on command %d, want Status on %d",
+			xyLines[2].Text, xyLines[2].Command, cmdXYStatus)
+	}
+	if xyLines[2].Param != "%s" {
+		t.Errorf("the status line carries %q, want the string format", xyLines[2].Param)
+	}
+	if v, ok := xy.value(cmdXYStatus); !ok || v.Text == "" {
+		t.Error("the status command has to say something: it is the only thing the page draws")
 	}
 }
 

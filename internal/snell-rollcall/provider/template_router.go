@@ -3,6 +3,8 @@ package rollcall
 import (
 	"bytes"
 	"fmt"
+
+	"dhs/internal/snell-rollcall/codec/router"
 )
 
 // Router nodes carry templates the vendor writes by hand rather than pages
@@ -82,6 +84,19 @@ func writeRouterMatrixPage(body *bytes.Buffer, prt *port) {
 // page 2 the monitor readouts. The tab strip on page 0 names all three and
 // carries the user level each is visible at; a panel connected below that
 // level is shown the pages it is allowed and told nothing about the rest.
+//
+// Two things about the file rather than the pages, both learned from a panel
+// refusing the first version of this:
+//
+// Every SaveSet line belongs to page zero. Anywhere else the panel stops with
+// "SaveSet entries found in page other than zero" and draws no page at all,
+// which is a whole template lost to a line in the wrong place.
+//
+// The [XYPanel] section at the end is not decoration. It is how the panel is
+// told which commands mean what — the grid is a generic control and the
+// section is its wiring — and it ends with the same numbers this provider
+// serves, which is the closest thing to a specification for this interface
+// that exists.
 func writeRouterLevelPages(body *bytes.Buffer, prt *port) {
 	fmt.Fprintf(body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
 
@@ -95,12 +110,57 @@ func writeRouterLevelPages(body *bytes.Buffer, prt *port) {
 		i++
 	}
 
+	readouts := []struct {
+		label string
+		base  int64
+	}{
+		{"Source or Dest", cmdXYMonKind},
+		{"Index", cmdXYMonIndex},
+		{"Name", cmdXYMonName},
+		{"RC Source Addr", cmdXYMonSrcAddr},
+		{"RC Dest Addr", cmdXYMonDstAddr},
+	}
+
 	// Page 0 — the XY grid. The tab strip is a control on this page and not a
 	// property of the file, so it is written first and only here.
 	page(0)
 	fmt.Fprintf(body, "Size=0,0,350,347%s", nl)
 	ctl("XYPanel Control=15:Routing=15:Monitor Outputs=15", -1, 0, ctlPageList, 2, 2, 94, 44)
 	ctl("New XYPanel", -1, 0, ctlXYPanel, 8, 57, 309, 210)
+
+	// The commands a panel keeps across a restart, and the block it watches
+	// for tally: every destination's routed source and every destination's
+	// protect, then the take mode and the monitor readouts.
+	//
+	// Only commands this provider actually answers are listed. The vendor's
+	// own file carries a third per-destination block at 23001 that appears in
+	// neither the menu it publishes nor the [XYPanel] wiring below, so there
+	// is nothing here to serve it with; naming it would subscribe a panel to
+	// commands that would then be refused.
+	var saved []int64
+	for d := 1; d <= len(prt.level.dests); d++ {
+		saved = append(saved, int64(router.LvlRoute(d)))
+	}
+	for d := 1; d <= len(prt.level.dests); d++ {
+		saved = append(saved, int64(router.LvlProtect(d)))
+	}
+	saved = append(saved, cmdXYTakeMode)
+	for _, r := range readouts {
+		for mon := 1; mon <= xyMonitors; mon++ {
+			saved = append(saved, r.base+int64(mon))
+		}
+	}
+	for start := 0; start < len(saved); start += 10 {
+		end := min(start+10, len(saved))
+		body.WriteString("SaveSet=")
+		for k, c := range saved[start:end] {
+			if k > 0 {
+				body.WriteString(",")
+			}
+			fmt.Fprintf(body, "%d", c)
+		}
+		body.WriteString(nl)
+	}
 
 	// Page 1 — the same routing done as a form: pick a source, pick a
 	// destination, take it.
@@ -123,16 +183,6 @@ func writeRouterLevelPages(body *bytes.Buffer, prt *port) {
 	i = 0
 	page(2)
 	fmt.Fprintf(body, "Size=0,0,300,237%s", nl)
-	rows := []struct {
-		label string
-		base  int64
-	}{
-		{"Source or Dest", cmdXYMonKind},
-		{"Index", cmdXYMonIndex},
-		{"Name", cmdXYMonName},
-		{"RC Source Addr", cmdXYMonSrcAddr},
-		{"RC Dest Addr", cmdXYMonDstAddr},
-	}
 	for mon := 1; mon <= xyMonitors; mon++ {
 		// Monitors 1 and 3 sit in the left column, 2 and 4 in the right.
 		x, y := 16, 63
@@ -143,37 +193,72 @@ func writeRouterLevelPages(body *bytes.Buffer, prt *port) {
 			y = 147
 		}
 		ctl(fmt.Sprintf("Monitor %d", mon), -1, 0, ctlGroupBox, x, y, 117, 74)
-		for r, row := range rows {
+		for r, row := range readouts {
 			ctl("New Displaytext", row.base+int64(mon), 0, ctlValueText,
 				x+60, y+10+r*10, 51, 10)
 		}
-		for r, row := range rows {
+		for r, row := range readouts {
 			ctl(row.label, -1, 0, ctlLabel, x+10, y+10+r*10, 40, 10)
 		}
 	}
 
-	// SaveSet names the commands a panel keeps across a restart, ten to a line
-	// as the format requires. Only page 2's readouts and the take mode belong
-	// here: a selected source is a thing you are doing, not a setting.
-	saved := []int64{cmdXYTakeMode}
-	for _, row := range rows {
-		for mon := 1; mon <= xyMonitors; mon++ {
-			saved = append(saved, row.base+int64(mon))
-		}
-	}
-	for start := 0; start < len(saved); start += 10 {
-		end := min(start+10, len(saved))
-		body.WriteString("SaveSet=")
-		for k, c := range saved[start:end] {
-			if k > 0 {
-				body.WriteString(",")
-			}
-			fmt.Fprintf(body, "%d", c)
-		}
-		body.WriteString(nl)
-	}
+	writeXYPanelSection(body, prt)
 	body.WriteString(nl)
 }
+
+// writeXYPanelSection wires the grid control to this level's commands.
+//
+// The keys are the vendor's, in the vendor's order, and every command in them
+// is one this provider answers. It is worth reading as documentation: it is
+// the only place the meaning of the level command set is written down at all.
+func writeXYPanelSection(body *bytes.Buffer, prt *port) {
+	kv := func(k string, v any) { fmt.Fprintf(body, "%s=%v%s", k, v, nl) }
+
+	body.WriteString("[XYPanel]" + nl)
+	kv("AllowNameEdit", false)
+	kv("AllowOptions", true)
+	kv("AllowPopout", true)
+	kv("AllowProtectEdit", true)
+	kv("AllowResize", true)
+	kv("CMDDestCount", router.LvlDestCount)
+	kv("CMDDestName", router.LvlDstName)
+	kv("CMDDestNameIndex", router.LvlDstNameIndex)
+	kv("CMDDestProtect", router.LvlDestProtect)
+	kv("CMDDestRouteIndex", router.LvlDestSelect)
+	kv("CMDProtectDestBase", router.LvlProtect(1))
+	kv("CMDRoutingDestBase", router.LvlRoute(1))
+	kv("CMDSourceCount", router.LvlSourceCount)
+	kv("CMDSourceName", router.LvlSrcName)
+	kv("CMDSourceNameIndex", router.LvlSrcNameIndex)
+	kv("CMDSourceRoute", router.LvlSrcSelect)
+	kv("DestButtonHeight", 50)
+	kv("DestButtonWidth", 100)
+	kv("DestCount", len(prt.level.dests))
+	kv("DestPanelColumns", xyPanelColumns)
+	kv("DestPanelRows", xyPanelRows)
+	kv("FilterFunction", false)
+	// The whole interface counts from one — a source is 1..n and a protect is
+	// off at 1 — and this is where the panel is told so.
+	kv("OneBased", true)
+	kv("ShowPorts", false)
+	kv("ShowProtect", true)
+	kv("ShowReference", false)
+	kv("SourceButtonHeight", 50)
+	kv("SourceButtonWidth", 100)
+	kv("SourceCount", len(prt.level.sources))
+	kv("SourcePanelColumns", xyPanelColumns)
+	kv("SourcePanelRows", xyPanelRows)
+	kv("TakeFunction", true)
+	kv("UndoFunction", true)
+}
+
+// The grid a panel opens with. It is a starting size rather than a limit: the
+// control pages through a plant larger than one screen, which is how the
+// vendor draws eleven hundred sources in an eight by eight grid.
+const (
+	xyPanelColumns = 8
+	xyPanelRows    = 8
+)
 
 // writeXYPanelPage renders the node that serves the Full Control tables.
 //
@@ -186,5 +271,6 @@ func writeXYPanelPage(body *bytes.Buffer, prt *port) {
 	fmt.Fprintf(body, "[%d:%d:%d:0]%s", prt.id.TypeID, prt.id.Version.CmdSet, templateAllLevels, nl)
 	fmt.Fprintf(body, "Size=0,0,350,100%s", nl)
 	fmt.Fprintf(body, "Ctl0=Initialising...,%d,0,%d,8,10,330,20%s", cmdXYStatus, ctlValueText, nl)
+	fmt.Fprintf(body, "SaveSet=%d,%d%s", cmdXYDestSelect, cmdXYStatus, nl)
 	body.WriteString(nl)
 }

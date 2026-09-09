@@ -91,12 +91,18 @@ func newRouterLevelPort(number uint8, name string, lv *routerLevel) *port {
 
 // newXYPanelPort builds the node that serves the Full Control command set.
 //
-// It carries no menu. Everything it has to say is in the tables, and a client
-// walks those by reading commands rather than lines — which is what our own
-// router verb does, and what found nothing when these tables were served from
-// the matrix node instead.
+// Almost everything it has to say is in the tables, which a client reads as
+// commands rather than walking as lines — which is what our own router verb
+// does, and what found nothing when these tables were served from the matrix
+// node instead.
+//
+// But it is not menuless. The Centra publishes three lines here — the root,
+// the way out, and a Status display on command 99 — and the node's template
+// binds its only control to that command. Served without the menu the panel
+// draws an empty box: a template names a command, and a command with no line
+// behind it is not something a panel will render, whatever its value.
 func newXYPanelPort(number uint8, name string, r *routerModel) *port {
-	return &port{
+	p := &port{
 		number: number,
 		id: codec.ID{
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcLongStr,
@@ -109,4 +115,17 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 		values: r.values(),
 		router: r,
 	}
+
+	p.lines = []line{
+		{Index: 0, Style: codec.StyleList, Step: 2, Text: "Menu", path: "menu"},
+		{Index: 1, Style: codec.StylePartial | codec.StyleHidden, Text: "RETURN", path: "menu.return"},
+		{
+			Index: 2, Style: codec.StyleDisplay | codec.StyleCacheable,
+			Command: cmdXYStatus, MinRange: -32767, MaxRange: 23767,
+			Text: "Status", Param: "%s", path: "menu.status",
+		},
+	}
+	p.byCmd[cmdXYStatus] = 2
+	p.byPath["menu.status"] = 2
+	return p
 }

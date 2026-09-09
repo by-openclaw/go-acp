@@ -153,7 +153,7 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	// What the node says about itself while a client is reading the tables.
 	// The vendor's own template for this node type binds its only control to
 	// this command, so a node that will not answer it draws nothing at all.
-	str(99, "Ready")
+	str(cmdXYStatus, "Active. Routing tables published on this node.")
 
 	for i := range r.matrices {
 		m := &r.matrices[i]
