@@ -93,7 +93,7 @@ func (s *Subscriber) Subscribe(sources []string) error {
 	if ws == nil {
 		return errors.New("nmos/is07/subscriber: not connected")
 	}
-	cmd := is07.CommandSubscription{Sources: append([]string{}, sources...)}
+	cmd := is07.CommandSubscription{Sources: append([]string(nil), sources...)}
 	if cmd.Sources == nil {
 		cmd.Sources = []string{}
 	}

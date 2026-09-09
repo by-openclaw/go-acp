@@ -93,7 +93,7 @@ func New(opts Options) (*Manager, error) {
 // LoadManual installs a cert/key pair from files (the spec-mandated
 // manual path for plants without an EST server).
 func (m *Manager) LoadManual(certFile, keyFile string) error {
-	pair, err := tls.LoadX509KeyPair(certFile, keyFile)
+	pair, err := loadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return fmt.Errorf("certmgr: load manual pair: %w", err)
 	}
@@ -222,7 +222,7 @@ func (m *Manager) enroll(ctx context.Context, endpoint string, clientCert *tls.C
 	// RSA is the algorithm every consumer MUST cope with; one RSA CSR
 	// keeps the flow lean (the spec's per-algorithm fan-out is a
 	// SHOULD — noted as future work).
-	csrDER, key, err := est.NewCSR(est.CSROptions{
+	csrDER, key, err := newCSR(est.CSROptions{
 		CommonName: m.opts.Hostnames[0], DNSNames: m.opts.Hostnames,
 		SerialNumber: m.opts.Serial, Algorithm: est.KeyRSA2048,
 	})
@@ -252,7 +252,7 @@ func (m *Manager) enroll(ctx context.Context, endpoint string, clientCert *tls.C
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(secs) * time.Second):
+		case <-after(time.Duration(secs) * time.Second):
 		}
 	}
 	certs, err := est.ParseCertsResponse(body)
@@ -325,7 +325,7 @@ func (m *Manager) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(10 * time.Minute):
+		case <-after(10 * time.Minute):
 		}
 		m.mu.RLock()
 		leaf := m.leaf
@@ -343,7 +343,7 @@ func (m *Manager) Run(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(wait):
+			case <-after(wait):
 			}
 		}
 	}
@@ -406,6 +406,23 @@ func (m *Manager) TLSServerConfig() *tls.Config {
 }
 
 // ---- internals ----
+
+// Test seams. Each is the real implementation in production and is
+// swapped only by a test that needs to drive a branch no real input
+// can reach (same transparent pattern as internal/transport/ws/seam.go):
+//
+//   - after: Run's ten-minute check and the Retry-After / backoff
+//     waits are wall-clock waits a test cannot sit through.
+//   - loadX509KeyPair: tls.LoadX509KeyPair parses the leaf itself, so
+//     the parse guard that follows it in LoadManual can only be reached
+//     by a loader that hands back an unparseable leaf.
+//   - newCSR: est.NewCSR only ever mints RSA or ECDSA keys, so
+//     buildPair's key-type guard is unreachable from a real CSR.
+var (
+	after           = time.After
+	loadX509KeyPair = tls.LoadX509KeyPair
+	newCSR          = est.NewCSR
+)
 
 func (m *Manager) setRoots(roots, inters []*x509.Certificate) {
 	pool := x509.NewCertPool()

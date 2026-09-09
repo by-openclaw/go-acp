@@ -313,7 +313,7 @@ func captureAt(ctx context.Context, opts Options, root, target string, visited *
 			// on the PARENT is what lets the audit see a registry
 			// advertising a node nobody can reach.
 			if sub.Requests == 0 {
-				if err := os.RemoveAll(sub.Dir); err != nil {
+				if err := removeAll(sub.Dir); err != nil {
 					return nil, err
 				}
 				h.note(fmt.Sprintf("SKIP  node %s '%s' unreachable at: %s", n.ID, n.Label, addr))
@@ -440,7 +440,7 @@ func (h *harvester) renameWithIdentity() error {
 		h.note(fmt.Sprintf("NOTE  folder not renamed to %q: a folder of that name already exists", base+"__"+suffix))
 		return nil
 	}
-	if err := os.Rename(h.dir, target); err != nil {
+	if err := renameDir(h.dir, target); err != nil {
 		h.note(fmt.Sprintf("NOTE  folder not renamed: %v", err))
 		return nil
 	}
@@ -1045,6 +1045,19 @@ func (h *harvester) do(ctx context.Context, rawURL string) ([]byte, http.Header,
 
 // --- writers ---
 
+// Test seams: the real os call in production, swapped only by a test
+// that needs a filesystem failure no portable fixture can produce
+// (same transparent pattern as internal/transport/ws/seam.go). A
+// directory rename and an empty-directory remove both succeed on
+// every writable filesystem a test can set up; the branches that
+// handle them failing exist for the locked folder and the vanished
+// mount, which a test cannot arrange on both Windows and Linux.
+var (
+	renameDir = os.Rename
+	removeDir = os.Remove
+	removeAll = os.RemoveAll
+)
+
 func (h *harvester) writeRaw(path string, body []byte) {
 	if !h.opts.Raw {
 		return
@@ -1120,7 +1133,7 @@ func (h *harvester) pruneEmptyDirs() error {
 		if err != nil || len(entries) > 0 {
 			continue
 		}
-		if err := os.Remove(p); err != nil {
+		if err := removeDir(p); err != nil {
 			return err
 		}
 	}
