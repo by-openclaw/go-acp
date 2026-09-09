@@ -176,6 +176,7 @@ jobs:
           check internal/amwa/codec/ms05/v10 100
           check internal/amwa/codec/is07/v10 100
           check internal/amwa/codec/is08 100
+          check internal/amwa/codec/is12 98
           check internal/amwa/codec/is08/v10 100
           check internal/amwa/session/events 100
           check internal/amwa/session/certmgr 100
