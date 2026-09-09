@@ -175,6 +175,7 @@ jobs:
           check internal/amwa/codec/est 96
           check internal/amwa/codec/is07 99
           check internal/amwa/codec/ms05 95
+          check internal/amwa/codec/sdp 100
           check internal/amwa/codec/ms05/v10 100
           check internal/amwa/codec/is07/v10 100
           check internal/amwa/codec/is08 100
