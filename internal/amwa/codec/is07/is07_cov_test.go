@@ -578,13 +578,19 @@ func TestDecodeRefusals(t *testing.T) {
 		})
 	}
 
-	// Trailing content past a complete frame is refused too — one
-	// frame per message, per the transport. The discriminator peek
-	// reads the whole payload, so it is the peek that catches it.
+	// Trailing content past a complete frame is refused — one frame
+	// per message, per the transport — and the strict decode is what
+	// names it, so the fault reads as what it is rather than as a
+	// failed peek.
 	twoFrames := `{"command":"health","timestamp":"1:0"} {"command":"health","timestamp":"1:0"}`
 	if _, err := DecodeCommand([]byte(twoFrames)); err == nil ||
-		!strings.Contains(err.Error(), "peek command") {
+		!strings.Contains(err.Error(), "trailing JSON") {
 		t.Errorf("two frames in one payload = %v", err)
+	}
+	if _, err := DecodeMessage([]byte(
+		`{"message_type":"connection_status","active":true} {"message_type":"health"}`)); err == nil ||
+		!strings.Contains(err.Error(), "trailing JSON") {
+		t.Errorf("two message frames in one payload = %v", err)
 	}
 }
 

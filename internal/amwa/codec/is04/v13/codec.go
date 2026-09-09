@@ -1,8 +1,9 @@
 // Package v13 is the AMWA NMOS IS-04 v1.3.3 wire codec.
 //
 // SELF-CONTAINED BY DESIGN. Everything v1.3-specific lives in this
-// file: its drop table, its strip helper, its identity. Nothing is
-// shared with the other minors, and the duplication between them is
+// file: its egress pipeline, its identity, and — the day a v1.4 lands
+// — the drop table and strip helper the older minors carry. Nothing
+// is shared with the other minors, and the duplication between them is
 // deliberate — a change to v1.3 must be incapable of altering how any
 // other version behaves.
 //
@@ -15,7 +16,7 @@
 //
 // The two directions have opposite postures, and that is the point:
 //
-//	Encode  marshal -> drop what v1.3 lacks -> schema check is FATAL
+//	Encode  marshal -> schema check is FATAL (v1.3 drops nothing)
 //	Decode  parse tolerantly -> schema deviations become EVENTS
 //
 // We must not emit a payload AMWA would reject. But refusing to READ
@@ -28,7 +29,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
@@ -43,21 +43,6 @@ const APIVer = "v1.3"
 // SpecPatch is the AMWA spec revision it strictly complies with —
 // the latest patch within v1.3, and the schema set in is04/schemas/v1.3.3.
 const SpecPatch = "v1.3.3"
-
-// drop names the properties a v1.3 payload MUST NOT carry, because
-// IS-04 did not define them until a later minor.
-//
-// Paths are dot-separated; a segment ending in "[]" applies to every
-// element of that array. This table is v1.3's alone — the other
-// minors keep their own, even where the entries coincide.
-var drop = map[string][]string{
-	"node":     nil,
-	"device":   nil,
-	"source":   nil,
-	"flow":     nil,
-	"sender":   nil,
-	"receiver": nil,
-}
 
 // Codec implements [is04.Codec] for IS-04 wire minor v1.3.
 //
@@ -194,19 +179,26 @@ func (Codec) ValidateReceiver(r is04.Receiver) error {
 	return err
 }
 
-// encode is the one egress path: marshal, drop what v1.3 does not
-// define, then check the result against AMWA's own v1.3.3 schema.
+// marshal is json.Marshal behind a package variable — the same seam
+// every other minor carries. The IS-04 resource types hold nothing
+// json.Marshal can refuse, so the failure arm below is unreachable in
+// production; a test swaps this to prove the refusal is reported
+// rather than shipped. Production never reassigns it.
+var marshal = json.Marshal
+
+// encode is the one egress path: marshal, then check the result against AMWA's own v1.3.3 schema.
 //
 // The schema check is FATAL here. Emitting a payload AMWA would
 // reject is our bug, and the AMWA test suite fails the Node for it.
 func encode(kind string, x any) ([]byte, error) {
-	raw, err := json.Marshal(x)
+	raw, err := marshal(x)
 	if err != nil {
 		return nil, fmt.Errorf("is04 %s: marshal %s: %w", APIVer, kind, err)
 	}
-	if raw, err = stripPaths(raw, drop[kind]); err != nil {
-		return nil, err
-	}
+	// No drop stage here, unlike the older minors: v1.3 is the newest
+	// IS-04 release, so there is nothing a later minor defined that
+	// this one has to strip. The day v1.4 lands, this is where its
+	// additions come out again.
 	if err := schemas.Validate(APIVer, kind, raw); err != nil {
 		return nil, err
 	}
@@ -246,52 +238,6 @@ func (c Codec) fire(kind, detail string) {
 		Resource:  kind,
 		At:        time.Now(),
 	})
-}
-
-// stripPaths removes each dotted path from a JSON object. A segment
-// ending in "[]" fans out across that array, so nested and top-level
-// properties are the same code path.
-//
-// Private to v13 on purpose: the other minors carry their own copy.
-func stripPaths(raw []byte, paths []string) ([]byte, error) {
-	if len(paths) == 0 {
-		return raw, nil
-	}
-	var doc any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return nil, fmt.Errorf("is04 %s: strip: %w", APIVer, err)
-	}
-	for _, p := range paths {
-		remove(doc, strings.Split(p, "."))
-	}
-	return json.Marshal(doc)
-}
-
-func remove(node any, segs []string) {
-	obj, ok := node.(map[string]any)
-	if !ok || len(segs) == 0 {
-		return
-	}
-	if len(segs) == 1 {
-		delete(obj, segs[0])
-		return
-	}
-	key, fanOut := strings.CutSuffix(segs[0], "[]")
-	child, present := obj[key]
-	if !present {
-		return
-	}
-	if !fanOut {
-		remove(child, segs[1:])
-		return
-	}
-	arr, ok := child.([]any)
-	if !ok {
-		return
-	}
-	for _, el := range arr {
-		remove(el, segs[1:])
-	}
 }
 
 func init() {

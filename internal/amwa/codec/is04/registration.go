@@ -60,11 +60,10 @@ func EncodeRegistrationVersioned(c Codec, t ResourceType, data any) ([]byte, err
 	if c == nil {
 		return EncodeRegistration(t, data)
 	}
-	if !IsValidResourceType(string(t)) {
-		return nil, fmt.Errorf("is04: invalid resource type %q", t)
-	}
 	var raw []byte
 	var err error
+	// The switch below is the one gate on the resource type: a second
+	// pre-check would only ever shadow its default arm.
 	switch t {
 	case ResourceNode:
 		v, ok := data.(*Node)

@@ -325,3 +325,16 @@ func TestTXTEncodeDecode(t *testing.T) {
 		t.Error("a pri that is not a number names no priority")
 	}
 }
+
+// A record whose rdata will not fit the 16-bit length field is
+// refused: the length would wrap and every reader after it would
+// mis-parse the rest of the packet.
+func TestEncodeRefusesOversizedRData(t *testing.T) {
+	msg := Message{Answers: []RR{{
+		Name: "a.local", Type: 99, Class: ClassIN,
+		RawData: make([]byte, 0x10000),
+	}}}
+	if _, err := msg.Encode(); err == nil || !strings.Contains(err.Error(), "65535") {
+		t.Errorf("= %v, want the oversized rdata refused", err)
+	}
+}

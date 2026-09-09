@@ -267,7 +267,10 @@ func TestEncodeAndDecodeRefusals(t *testing.T) {
 		raw  string
 		want string
 	}{
-		"a frame that is not JSON":         {`{`, "peek messageType"},
+		"a frame that is not JSON": {`{`, "peek messageType"},
+		"two frames in one payload": {
+			`{"messageType":3,"subscriptions":[]} {"messageType":3,"subscriptions":[]}`, "trailing JSON",
+		},
 		"a messageType we do not know":     {`{"messageType":9}`, "unknown"},
 		"an unknown field on a command":    {`{"messageType":0,"commands":[],"x":1}`, "decode"},
 		"a command that does not validate": {`{"messageType":0}`, "commands"},
