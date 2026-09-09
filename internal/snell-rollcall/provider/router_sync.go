@@ -125,14 +125,18 @@ func (p *Provider) tableWriteToLevel(ctx context.Context, s *session.Session, pr
 	p.publishRouterValue(ctx, s, p.model.levelPort(lv), cmd, val)
 }
 
-// publishRouterValue stores a value on another node and tells its watchers.
+// publishRouterValue stores a value and tells everyone watching it.
 //
-// The write that caused this was answered on its own node; this is the same
-// fact appearing on the other one, so every session watching that node hears
-// about it. The session that made the original write is excluded because it
-// has already been answered, and telling it twice about one change is how a
-// panel ends up fighting its own echo.
-func (p *Provider) publishRouterValue(ctx context.Context, s *session.Session,
+// Nobody is excluded, including whoever caused it. A client is excluded from a
+// push only for the command it wrote, because the reply already carried that
+// one; this is a different command that changed as a consequence, and the
+// writer has no other way to learn of it.
+//
+// That distinction was got wrong and it showed: a panel that pressed Fire was
+// the one session not told what the salvo did, and a panel that chose a
+// category group was the one session not told what the group selects. Both sat
+// there displaying the value from before their own click.
+func (p *Provider) publishRouterValue(_ context.Context, _ *session.Session,
 	prt *port, cmd router.Command, val int32) {
 
 	if prt == nil {
@@ -140,7 +144,7 @@ func (p *Provider) publishRouterValue(ctx context.Context, s *session.Session,
 	}
 	v := codec.Value{Command: uint32(cmd), Mode: codec.ModeValue, Val: val}
 	prt.seed(uint32(cmd), v)
-	p.publishExcept(ctx, s, prt.number, v)
+	p.publish(context.Background(), prt.number, v)
 }
 
 // destinationFor resolves a table command to the destination it belongs to.
@@ -271,15 +275,15 @@ func (p *Provider) fireSalvo(ctx context.Context, s *session.Session, prt *port,
 	}
 }
 
-// publishRoutedSource stores what is routed to a destination and tells its
-// watchers.
+// publishRoutedSource stores what is routed to a destination and tells
+// everyone watching it, including whoever caused it: see publishRouterValue.
 //
 // A routed source is carried as Data Transfer Params rather than as a number,
 // which is what the specification says and what a client reads: it has room
 // for the result of the last set beside the pin, and a bare number has not.
 // Publishing it as a number made every read report a destination with nothing
 // routed to it, whatever had been routed.
-func (p *Provider) publishRoutedSource(ctx context.Context, s *session.Session,
+func (p *Provider) publishRoutedSource(_ context.Context, _ *session.Session,
 	prt *port, cmd router.Command, pin router.SourcePin) {
 
 	if prt == nil {
@@ -287,7 +291,7 @@ func (p *Provider) publishRoutedSource(ctx context.Context, s *session.Session,
 	}
 	v := routedSourceValue(cmd, pin)
 	prt.seed(uint32(cmd), v)
-	p.publishExcept(ctx, s, prt.number, v)
+	p.publish(context.Background(), prt.number, v)
 }
 
 // routedSourceValue renders a routed source as the parameters a client reads.
@@ -407,13 +411,14 @@ func salvoOutcome(r *routerModel, salvo, made uint32) string {
 	return fmt.Sprintf("%d %s: %d route(s) made", salvo, name, made)
 }
 
-// publishText stores a string and tells the node's watchers.
-func (p *Provider) publishText(ctx context.Context, s *session.Session,
+// publishText stores a string and tells everyone watching it, including
+// whoever caused it: see publishRouterValue.
+func (p *Provider) publishText(_ context.Context, _ *session.Session,
 	prt *port, cmd uint32, text string) {
 
 	v := codec.Value{Command: cmd, Mode: codec.ModeString, Text: text}
 	prt.seed(cmd, v)
-	p.publishExcept(ctx, s, prt.number, v)
+	p.publish(context.Background(), prt.number, v)
 }
 
 // tielineAction answers the node the cables are managed from.

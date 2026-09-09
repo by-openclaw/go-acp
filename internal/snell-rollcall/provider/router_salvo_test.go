@@ -591,3 +591,45 @@ func TestFiringByNumberWhenNothingIsSelected(t *testing.T) {
 		t.Errorf("a numeric fire read as %d, %v", got, ok)
 	}
 }
+
+func TestTheClientThatCausedAChangeIsToldAboutIt(t *testing.T) {
+	// A client is excluded from a push only for the command it wrote, because
+	// the reply already carried that one. A different command that changed as
+	// a consequence has to reach it too — it has no other way to learn of it.
+	//
+	// Got wrong, this is invisible from the provider's side and obvious from
+	// the panel's: the one session not told what a salvo did was the session
+	// that pressed Fire, which sat there showing "none fired yet" while the
+	// node held the answer.
+	s := salvoRouter(t)
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	if _, err := sess.Do(context.Background(), codec.MsgBkChnReady,
+		[]byte{codec.BackChannelFutureOnly}); err != nil {
+		t.Fatalf("back channel: %v", err)
+	}
+
+	watching := s.p.slotSubscribers(xy.number, codec.SvcControl)
+	if len(watching) != 1 {
+		t.Fatalf("%d sessions watching the node", len(watching))
+	}
+	writer := watching[0].s
+
+	// The rule, stated as the two lists differ by exactly the writer.
+	if got := s.p.slotSubscribers(xy.number, codec.SvcControl); len(got) != 1 {
+		t.Fatalf("a push to everyone reaches %d sessions", len(got))
+	}
+
+	// What publishText and publishRouterValue send goes to everyone, and the
+	// writer is only left out of a push for the command it wrote.
+	before := len(xy.values)
+	s.p.publishText(context.Background(), writer, xy, cmdXYLastSalvo, "1 All CAM 1: 4 route(s) made")
+	if len(xy.values) != before {
+		t.Error("publishing a side effect added a command rather than changing one")
+	}
+	v, ok := xy.value(cmdXYLastSalvo)
+	if !ok || !strings.Contains(v.Text, "route(s) made") {
+		t.Errorf("the node holds %q", v.Text)
+	}
+}
