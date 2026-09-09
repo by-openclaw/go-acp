@@ -348,6 +348,23 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	proto := args[0]
 	rest := args[1:]
 
+	// The canonical lifecycle verbs — ADR-0007 `ensure`, `stop`, `status` —
+	// are the same for every producer: they key on --pidfile / the metrics
+	// endpoint, not on the protocol. They are answered HERE, before any
+	// per-protocol dispatcher, so a connector that owns its own verb table
+	// (osc, tsl, nmos) cannot lose them; the Ansible role talks to one
+	// contract whatever the protocol.
+	if len(rest) > 0 {
+		switch rest[0] {
+		case "status":
+			return runMetricsShow(ctx, rest[1:])
+		case "stop":
+			return runProducerStop(ctx, proto, rest[1:])
+		case "ensure":
+			return runProducerEnsure(ctx, proto, rest[1:])
+		}
+	}
+
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCProducer(ctx, proto, rest)
 	}

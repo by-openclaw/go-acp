@@ -264,6 +264,8 @@ Usage of serve:
     	disable mDNS announce (Mode B / static)
   -no-registry
     	stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node
+  -pidfile dhs producer nmos stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer nmos stop|ensure --pidfile PATH can manage it
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
   -registry string

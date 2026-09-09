@@ -332,11 +332,18 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	fs.Var(&tlsKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
 	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if len(tlsCerts) != len(tlsKeys) {
 		return fmt.Errorf("producer nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(tlsCerts), len(tlsKeys))
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
@@ -555,11 +562,18 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version exposed under /x-nmos/system/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role system: --config FILE required")
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
@@ -793,8 +807,12 @@ PATCHes, activates, or registers, so it is safe against a plant that is on air.
 func printNMOSProducerHelp() {
 	fmt.Println(`Usage:
   dhs producer nmos serve [flags]
+  dhs producer nmos status --url http://HOST:PORT/snapshot.json   live runtime snapshot of a serving instance
+  dhs producer nmos stop   --pidfile PATH                           stop a serving instance
+  dhs producer nmos ensure --state present|absent --pidfile PATH   converge a serving instance (ADR-0007, Ansible)
 
   --role node|system    Producer role (default: node)
+  --pidfile PATH        write the PID on start (removed on exit) for stop / ensure
 
 Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
   Loads a Node bundle JSON (node + devices + sources + flows + senders +

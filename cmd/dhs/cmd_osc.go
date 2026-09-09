@@ -312,6 +312,7 @@ func runOSCServe(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	bind := fs.String("bind", "udp:8000", "transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001")
 	pattern := fs.String("pattern", "", "OSC address pattern to log (empty = log all)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer "+proto+" stop|ensure --pidfile PATH` can manage it")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -321,6 +322,12 @@ func runOSCServe(ctx context.Context, proto string, args []string) error {
 	}
 	if err := requireVersion(proto, transport); err != nil {
 		return err
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 	// Uniform logging (epic #987): human stderr + default local syslog file.
 	logger, _, logClean, _ := consumerLogger(ctx, proto, fmt.Sprintf("%s.%d", transport, port), "serve")
@@ -639,11 +646,14 @@ VERBS
   send    emit one OSC message and exit
   fader   continuous high-rate fader simulator (perf measurement)
   serve   bind a port and log incoming messages (act-as-OSC-device, no echo)
+  status  live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop    stop a serving instance (--pidfile PATH)
+  ensure  converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 USAGE
   dhs producer %s send  --to HOST:PORT --transport KIND --address /A --types TAGS [args...]
   dhs producer %s fader --to HOST:PORT --transport KIND --address /A [--rate N] [--duration D] [--min --max] [--pattern ramp|sine|random]
-  dhs producer %s serve --bind <transport>:<port>
+  dhs producer %s serve --bind <transport>:<port> [--pidfile PATH]
 
 TRANSPORTS
   udp        UDP datagrams (default; both versions)

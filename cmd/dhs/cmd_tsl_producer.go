@@ -60,6 +60,7 @@ type tslSendFlags struct {
 	tcp       bool
 	keepalive time.Duration
 	refresh   time.Duration
+	pidfile   string
 
 	// v3.1/v4.0 + v5.0 shared
 	addr       int
@@ -92,6 +93,7 @@ func registerTSLSendFlags(fs *flag.FlagSet, version tslprov.Version, f *tslSendF
 	fs.StringVar(&f.bind, "bind", "0.0.0.0:0", "local UDP egress bind (':0' = ephemeral)")
 	fs.Var(&f.dests, "dest", "destination MV host:port (repeatable; required for UDP)")
 	fs.DurationVar(&f.refresh, "refresh", 0, "if >0 (serve only), re-emit the frame every DURATION")
+	fs.StringVar(&f.pidfile, "pidfile", "", "serve only: write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop|ensure --pidfile PATH` can manage it")
 
 	fs.StringVar(&f.text, "text", "", "UMD label text (≤16 ASCII for v3.1/v4.0, free for v5.0)")
 	fs.IntVar(&f.brightness, "brightness", 3, "brightness 0=off 1=1/7 2=1/2 3=full")
@@ -144,6 +146,13 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 
 	logger, logClean := producerLogger(ctx)
 	defer logClean()
+
+	if loop && f.pidfile != "" {
+		if err := writePIDFile(f.pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(f.pidfile) }()
+	}
 
 	if !f.tcp && len(f.dests) == 0 {
 		return fmt.Errorf("producer %s %s: at least one --dest is required for UDP", proto, verbName)
@@ -495,11 +504,15 @@ USAGE
 VERBS
   send            encode one frame from the flags and push once
   serve           encode + push, then re-emit every --refresh DURATION until Ctrl-C
+  status          live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop            stop a serving instance (--pidfile PATH)
+  ensure          converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 COMMON FLAGS
   --bind HOST:PORT       local egress bind (default 0.0.0.0:0 ephemeral)
   --dest HOST:PORT       destination MV (repeatable; required for UDP)
   --refresh DURATION     periodic re-emit (serve only; e.g. 1s)
+  --pidfile PATH         serve only: PID file for stop / ensure (removed on exit)
   --text "STR"           UMD label
   --brightness 0..3      0=off 1=1/7 2=1/2 3=full
 
