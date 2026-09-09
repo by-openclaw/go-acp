@@ -46,6 +46,7 @@
     workdir: "{{ lookup('env', 'ROLLCALL_ARTIFACTS') | default('/tmp/dhs-rollcall', true) }}"
     pcap: "{{ workdir }}/dissector.pcap"
     producer_log: "/tmp/dhs-rollcall-dissector-producer.log"
+    producer_pid: "/tmp/dhs-rollcall-dissector-producer.pid"
     capture_log: "/tmp/dhs-rollcall-dissector-capture.log"
 
     # How long to let the capture settle before and after driving the verbs.
@@ -118,6 +119,7 @@
               nohup "{{ dhs_bin }}" producer rollcall serve
               --tree "{{ router_fixture }}"
               --host {{ host }} --port {{ port }}
+              --pidfile "{{ producer_pid }}"
               > {{ producer_log }} 2>&1 &
               echo $!
             executable: /bin/bash
@@ -379,9 +381,17 @@
           changed_when: false
           failed_when: false
 
+        # Converged to absent by the pidfile it wrote, not hunted for with a
+        # process pattern. Converging one that has already gone is a no-op, so
+        # this is safe after a failure anywhere above — including before the
+        # producer existed.
         - name: Stop the producer
-          ansible.builtin.shell: "pkill -f '[d]hs producer rollcall serve --tree {{ router_fixture }}' || true"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ producer_pid }} --state absent
           changed_when: false
+          failed_when: false
 
         - name: The producer's own log, when something went wrong
           ansible.builtin.command: "cat {{ producer_log }}"

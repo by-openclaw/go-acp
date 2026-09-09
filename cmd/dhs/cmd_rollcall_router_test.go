@@ -143,3 +143,37 @@ func TestUnroutedReadsAsAWordRatherThanAZero(t *testing.T) {
 		t.Errorf("a routed source printed as %q", got)
 	}
 }
+
+func TestARouteDiffIsNeverNil(t *testing.T) {
+	// ADR-0007 requires diff to be emitted even when empty. A nil slice
+	// marshals as null rather than as [], which a play then has to
+	// special-case — which is the whole thing the shape exists to avoid.
+	empty := routeDiff(false, router.SourcePin{}, router.SourcePin{Matrix: 1, Source: 2})
+	if empty == nil {
+		t.Fatal("an unchanged route produced a nil diff")
+	}
+	if len(empty) != 0 {
+		t.Errorf("an unchanged route produced %d diff entries", len(empty))
+	}
+	b, err := json.Marshal(empty)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(b) != "[]" {
+		t.Errorf("an empty diff marshalled as %s, want []", b)
+	}
+
+	moved := routeDiff(true,
+		router.SourcePin{},
+		router.SourcePin{Matrix: 1, Level: 1, Source: 6})
+	if len(moved) != 1 {
+		t.Fatalf("a route that moved produced %d diff entries", len(moved))
+	}
+	if moved[0].Field != "source" {
+		t.Errorf("the diff names field %q, want the thing that moved", moved[0].Field)
+	}
+	// A destination that carried nothing says so rather than reporting zero.
+	if moved[0].From != "nothing" || moved[0].To != "m1/l1/s6" {
+		t.Errorf("the diff reads %q -> %q", moved[0].From, moved[0].To)
+	}
+}

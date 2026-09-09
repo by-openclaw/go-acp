@@ -922,11 +922,17 @@ IDEMPOTENCY (ADR-0007)
   rule that compared the request with the reading would call a converged route
   unconverged and take it again for ever.
 
-  --check reads and sends nothing. It reports "satisfied": whether the
+  --check reads and sends nothing, and reports would_change: whether the
   destination already reads back as the source asked for. On a route within
-  one matrix that is the whole answer. Across matrices it can be false while
+  one matrix that is the whole answer. Across matrices it can say true while
   the route is already made, for the same reason — so --check across matrices
   is a question about the reading, not about the plant.
+
+  With --output json a take answers in the shape every other convergence in
+  this repository answers in: {changed | would_change, previous, current,
+  target, diff[]}, with diff always present even when empty. The matrix,
+  level, destination and source fields come as well, because an operator
+  wants to see where the route went and a play wants changed.
 
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
@@ -1181,11 +1187,17 @@ IDEMPOTENCY (ADR-0007)
   rule that compared the request with the reading would call a converged route
   unconverged and take it again for ever.
 
-  --check reads and sends nothing. It reports "satisfied": whether the
+  --check reads and sends nothing, and reports would_change: whether the
   destination already reads back as the source asked for. On a route within
-  one matrix that is the whole answer. Across matrices it can be false while
+  one matrix that is the whole answer. Across matrices it can say true while
   the route is already made, for the same reason — so --check across matrices
   is a question about the reading, not about the plant.
+
+  With --output json a take answers in the shape every other convergence in
+  this repository answers in: {changed | would_change, previous, current,
+  target, diff[]}, with diff always present even when empty. The matrix,
+  level, destination and source fields come as well, because an operator
+  wants to see where the route went and a play wants changed.
 
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4

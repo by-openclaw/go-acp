@@ -231,16 +231,35 @@
       register: take_check
       changed_when: false
 
-    - name: "{{ rt.name }} — --check reports the destination already satisfied"
+    - name: "{{ rt.name }} — --check reports the destination already converged"
       ansible.builtin.assert:
         that:
-          - (take_check.stdout | from_json).checked | bool
-          - (take_check.stdout | from_json).satisfied | bool
+          - not ((take_check.stdout | from_json).would_change | bool)
+          - (take_check.stdout | from_json).diff | length == 0
         fail_msg: >-
-          A dry run of a route already made reported it unsatisfied. Across
-          matrices that is expected — the controller reports the far end of
-          the tieline rather than the source asked for — but this take was
-          within one matrix and one level, where the reading is the request.
+          A dry run of a route already made said it would change something.
+          Across matrices that is expected — the controller reports the far
+          end of the tieline rather than the source asked for — but this take
+          was within one matrix and one level, where the reading is the
+          request.
+
+    - name: "{{ rt.name }} — the take answered in the shape every converge answers in"
+      ansible.builtin.assert:
+        that:
+          # ADR-0007 requires diff to be emitted even when empty, so that a
+          # play never has to tell "nothing changed" from "this verb forgot
+          # to say".
+          - (take_again.stdout | from_json).diff is defined
+          - (take_again.stdout | from_json).diff | length == 0
+          - (take_first.stdout | from_json).diff | length == 1
+          - (take_first.stdout | from_json).diff[0].field == 'source'
+          - (take_again.stdout | from_json).current ==
+            (take_again.stdout | from_json).previous
+        fail_msg: >-
+          The take did not answer in the ADR-0007 shape. A converge reports
+          changed, previous, current, target and a diff that is always
+          present — the same fields under the same names as every other
+          converge here, so one play can read any of them.
 
     - name: "{{ rt.name }} — settle before the salvo"
       ansible.builtin.pause:

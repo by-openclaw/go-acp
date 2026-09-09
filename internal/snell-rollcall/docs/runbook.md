@@ -202,14 +202,42 @@ and `salvo` are covered on every run rather than only where an emulator happens
 to be configured. Both producers are ephemeral and torn down in `always`, so
 the play leaves nothing behind and run-twice is the same result.
 
-The idempotency contract (ADR-0007) is proved on the wire rather than in prose:
-a take reports `changed`, a second take of the same crosspoint reports
-unchanged, and `--check` then agrees without sending anything. `changed` is a
-comparison of the destination read *before* the take with the destination read
-*after* it — a measurement, not a prediction — because a route across a tieline
-reads back as the far end of the cable rather than as the source that was
-asked for, and any rule comparing the request with the reading would call a
-converged route unconverged and take it again for ever.
+### Convergence
+
+Three things converge on this connector, and they are not the same thing:
+
+| What | Reached by | Verb |
+|---|---|---|
+| a value on a card | slot + label | `consumer rollcall ensure` |
+| a crosspoint on a router | matrix + level + destination | `consumer rollcall route --source` |
+| the producer itself | the pidfile it wrote | `producer rollcall ensure --state` |
+
+A crosspoint gets its own verb because it has no slot and no label and never
+did. All three answer in the same shape — `{changed | would_change, previous,
+current, target, diff[]}`, with `diff` always present even when empty — so one
+play reads any of them.
+
+```
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ensure.yml
+```
+
+runs the ADR-0007 three-step contract over all three: converge → `changed`,
+converge again → unchanged, `--check` → `would_change=false` having sent
+nothing.
+
+For a crosspoint, `changed` is a comparison of the destination read *before*
+the take with the destination read *after* it — a measurement, not a
+prediction. It has to be: a route across a tieline reads back as the far end
+of the cable rather than as the source that was asked for, so any rule
+comparing the request with the reading would call a converged route
+unconverged and take it again for ever. The same caveat applies to `--check`
+across matrices, where the question is about the reading rather than about the
+plant.
+
+Converging a producer to `absent` by its pidfile is also how these plays tear
+themselves down. It beats hunting for a process with a pattern, and converging
+one that has already gone is a clean no-op — so the teardown is safe after a
+failure anywhere, including before the producer existed.
 
 ### The dissector
 

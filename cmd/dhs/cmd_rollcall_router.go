@@ -65,11 +65,17 @@ IDEMPOTENCY (ADR-0007)
   rule that compared the request with the reading would call a converged route
   unconverged and take it again for ever.
 
-  --check reads and sends nothing. It reports "satisfied": whether the
+  --check reads and sends nothing, and reports would_change: whether the
   destination already reads back as the source asked for. On a route within
-  one matrix that is the whole answer. Across matrices it can be false while
+  one matrix that is the whole answer. Across matrices it can say true while
   the route is already made, for the same reason — so --check across matrices
   is a question about the reading, not about the plant.
+
+  With --output json a take answers in the shape every other convergence in
+  this repository answers in: {changed | would_change, previous, current,
+  target, diff[]}, with diff always present even when empty. The matrix,
+  level, destination and source fields come as well, because an operator
+  wants to see where the route went and a play wants changed.
 
 Examples:
   dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
@@ -224,6 +230,7 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 
 	var (
 		xpt     rollcall.Crosspoint
+		before  rollcall.Crosspoint
 		changed bool
 		want    router.SourcePin
 	)
@@ -247,7 +254,6 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 		// controller will do with a request — which is the only form that
 		// survives a route across a tieline, where what comes back is the far
 		// end of the cable rather than the source that was asked for.
-		var before rollcall.Crosspoint
 		if before, err = p.Route(ctx, r, m, l, d); err != nil {
 			return err
 		}
@@ -273,21 +279,35 @@ func runRollcallRoute(ctx context.Context, args []string) error {
 			},
 			"routed": xpt.Source.Source != 0,
 		}
-		if *check {
-			out["satisfied"] = xpt.Source == want
-			out["checked"] = true
-		} else if *source > 0 {
+		// A take is a convergence, so it answers in the shape every other
+		// convergence in this repository answers in (ADR-0007): the same
+		// fields, the same names, and diff always present even when empty.
+		// The crosspoint fields above are extra rather than instead — an
+		// operator wants to see where the route went, and a play wants
+		// changed.
+		switch {
+		case *check:
+			out["would_change"] = xpt.Source != want
+			out["current"] = nameOrUnrouted(xpt.Source)
+			out["target"] = want.String()
+			out["diff"] = routeDiff(xpt.Source != want, xpt.Source, want)
+		case *source > 0:
 			out["changed"] = changed
+			out["previous"] = nameOrUnrouted(before.Source)
+			out["current"] = nameOrUnrouted(xpt.Source)
+			out["target"] = want.String()
+			out["diff"] = routeDiff(changed, before.Source, xpt.Source)
 		}
 		return json.NewEncoder(os.Stdout).Encode(out)
 	}
 
 	if *check {
 		if xpt.Source == want {
-			fmt.Printf("matrix %d level %d destination %d already reads %s\n", m, l, d, want)
+			fmt.Printf("would_change=false  matrix %d level %d destination %d already reads %s\n",
+				m, l, d, want)
 			return nil
 		}
-		fmt.Printf("matrix %d level %d destination %d reads %s, would take %s\n",
+		fmt.Printf("would_change=true  matrix %d level %d destination %d reads %s, would take %s\n",
 			m, l, d, nameOrUnrouted(xpt.Source), want)
 		return nil
 	}
@@ -310,6 +330,19 @@ func nameOrUnrouted(p router.SourcePin) string {
 		return "nothing"
 	}
 	return p.String()
+}
+
+// routeDiff is the ADR-0007 diff[] for a crosspoint: one entry when the
+// destination moved, an empty list when it did not.
+//
+// It is never nil. ADR-0007 requires diff to be emitted even when empty, and a
+// nil slice marshals as null rather than as [] — which a play then has to
+// special-case, which is the whole thing the shape exists to avoid.
+func routeDiff(changed bool, from, to router.SourcePin) []ensureDiff {
+	if !changed {
+		return []ensureDiff{}
+	}
+	return []ensureDiff{{Field: "source", From: nameOrUnrouted(from), To: nameOrUnrouted(to)}}
 }
 
 func runRollcallTally(ctx context.Context, args []string) error {
