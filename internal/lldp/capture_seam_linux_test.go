@@ -379,3 +379,37 @@ func TestTheDefaultCaptureIsTheRealKernel(t *testing.T) {
 		t.Error("an unseamed Capture must resolve to the real syscalls")
 	}
 }
+
+// The two adapters in realOS are the only code between this package and
+// the kernel, and they are the only code the seam above cannot reach.
+// They take an fd, so an ordinary UDP socket exercises them — no
+// AF_PACKET, no CAP_NET_RAW, which is what CI has.
+func TestTheRealAdaptersTalkToTheKernel(t *testing.T) {
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
+	if err != nil {
+		t.Fatalf("a plain UDP socket: %v", err)
+	}
+	t.Cleanup(func() { _ = realOS.close(fd) })
+
+	addr := &syscall.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}}
+	if err := realOS.bind(fd, addr); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+
+	// A read timeout that the kernel accepts, then a read that hits it:
+	// nothing was sent, so recvfrom returns EAGAIN rather than blocking
+	// this test for as long as the suite is allowed to run.
+	tv := syscall.NsecToTimeval(int64(50 * time.Millisecond))
+	if err := realOS.setTimeout(fd, &tv); err != nil {
+		t.Fatalf("set read timeout: %v", err)
+	}
+	if _, _, err := realOS.recvfrom(fd, make([]byte, 16)); err == nil {
+		t.Error("a read with nothing to read must time out, not succeed")
+	} else if !errors.Is(err, syscall.EAGAIN) && !errors.Is(err, syscall.EWOULDBLOCK) {
+		t.Errorf("recvfrom = %v, want the timeout", err)
+	}
+
+	if realOS.socket == nil || realOS.interfaces == nil {
+		t.Error("realOS must carry the kernel's own calls")
+	}
+}

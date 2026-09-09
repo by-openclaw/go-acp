@@ -252,6 +252,10 @@ jobs:
           check internal/ccm/codec 100
           check internal/ccm/consumer 100
           check internal/consumer/compliance 100
+          # SNMP wire format. Floor verified on the Linux tools host as well
+          # as this desk: the package is stdlib-only with no build tags, so
+          # the two agree, but the check is what says so.
+          check internal/snmp/codec 100
           check internal/cerebrum-nb/consumer 100
           # AMWA NMOS controller path — gold-template gated. dnssd is not
           # listed: its Linux-only avahi/DBus and unix multicast-loop files
