@@ -664,10 +664,11 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 	// it is now the only one.
 	cfg, err := tlsClientConfig(transport.TLSOptions{Enable: true, RootCAs: roots})
 	if err != nil {
-		// Unreachable: no CA or client-certificate FILE is configured here,
-		// and those are Client's only failure modes. Leaving the transport
-		// alone keeps the verifying stdlib default rather than installing a
-		// half-built config.
+		// Not reachable from here: no CA or client-certificate FILE is
+		// configured, and those are the builder's only failure modes.
+		// Leaving the transport alone keeps the verifying stdlib default
+		// rather than installing a half-built config, which is the one
+		// outcome that would be worse than not installing the roots.
 		return
 	}
 	c.http.Transport = &stdhttp.Transport{TLSClientConfig: cfg}
@@ -700,9 +701,10 @@ func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceTy
 			return err
 		}
 	}
-	if status != stdhttp.StatusOK && status != stdhttp.StatusCreated {
-		return fmt.Errorf("provider/node: POST resource (%s): unexpected HTTP %d", t, status)
-	}
+	// No status check here: postResourceOnce already refuses anything
+	// that is not 200 or 201, so reaching this line means the Registry
+	// accepted the resource. A second check would only ever disagree
+	// with the first about what the same response meant.
 	atomic.AddUint64(&c.registrations, 1)
 	return nil
 }
