@@ -224,6 +224,13 @@ func TestServeWithoutAHostname(t *testing.T) {
 // and signs whatever CSR is enrolled with it.
 func estServer(t *testing.T) string {
 	t.Helper()
+	return estServerRefusing(t, false)
+}
+
+// estServerRefusing is estServer, optionally refusing every enrolment
+// so the client-side failure can be driven.
+func estServerRefusing(t *testing.T, refuseEnroll bool) string {
+	t.Helper()
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -257,6 +264,10 @@ func estServer(t *testing.T) string {
 		_, _ = w.Write(body)
 	})
 	enroll := func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if refuseEnroll {
+			stdhttp.Error(w, "no certificates for you", stdhttp.StatusInternalServerError)
+			return
+		}
 		raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
 			stdhttp.Error(w, err.Error(), stdhttp.StatusBadRequest)
@@ -407,4 +418,25 @@ func TestServeTLSWithANamedAdvertiseHost(t *testing.T) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // a self-signed test cert
 	}}
 	waitForFace(t, client, "https://"+addr+"/x-nmos")
+}
+
+// An EST server that publishes its CA but refuses to enrol leaves the
+// Registry with no certificate to serve, which is a startup failure —
+// not a face that quietly comes up plaintext.
+func TestServeReportsARefusedEnrolment(t *testing.T) {
+	useRegistryResponder(t, &scriptedRegistryResponder{})
+	host := estServerRefusing(t, true)
+
+	err := (&Registry{logger: newRegistryLogTap().logger()}).Serve(context.Background(),
+		registryslot.ServeOptions{
+			BindAddrs:     []string{"127.0.0.1:0"},
+			AdvertiseHost: "127.0.0.1:8235",
+			DiscoveryMode: "static",
+			APIVer:        "v1.3",
+			ESTHost:       host,
+			TLSDataDir:    t.TempDir(),
+		})
+	if err == nil || !strings.Contains(err.Error(), "EST enrollment") {
+		t.Errorf("Serve = %v, want the refused enrolment reported", err)
+	}
 }

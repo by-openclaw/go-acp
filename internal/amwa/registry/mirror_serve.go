@@ -235,17 +235,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	m.mu.Unlock()
 
 	httpSrv := &stdhttp.Server{Handler: dispatcher, ReadHeaderTimeout: 5 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = httpSrv.Shutdown(shutCtx)
-	}()
-	go func() {
-		if err := httpSrv.Serve(ln); err != nil && err != stdhttp.ErrServerClosed {
-			m.logger.Warn("registry/mirror: served query face failed", "addr", ln.Addr().String(), "err", err)
-		}
-	}()
+	go m.serveUntil(ctx, httpSrv, ln, "served query face")
 	// DNS-SD announce of the served Query face (AMWA IS-04-02 test_02):
 	// only with an operator-provided advertise identity — the
 	// bound-address fallbacks (loopback binds, bare OS hostnames) are
