@@ -445,6 +445,7 @@ func (r *Registry) Stats() registryslot.Stats {
 //   - Empty override + no codecs registered — fall back to "v1.3" so
 //     unit tests that don't blank-import is04/vXX still exercise the
 //     route installer.
+//
 // supportedVersions and interfaceAddrs are the two OS/registry
 // lookups Serve depends on, behind package vars so a unit test can
 // script "no codecs registered" and "no addresses to advertise"

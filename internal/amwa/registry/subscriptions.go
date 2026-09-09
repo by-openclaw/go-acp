@@ -553,7 +553,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			byTopic[topic] = append(byTopic[topic], c)
 		}
 		for _, topic := range order {
-			frame, err := buildBatchGrain(sub.source, byTopic[topic], now)
+			frame, err := buildGrain(sub.source, byTopic[topic], now)
 			if err != nil {
 				m.logger.Warn("registry/subs: build sync grain", "err", err)
 				continue
@@ -680,7 +680,7 @@ func (m *SubscriptionManager) onChange(c Change) {
 func (m *SubscriptionManager) enqueue(s *subscription, c Change) {
 	if s.MaxUpdateRate <= 0 {
 		now := time.Now()
-		frame, err := buildBatchGrain(s.source, []Change{c}, now)
+		frame, err := buildGrain(s.source, []Change{c}, now)
 		if err != nil {
 			return
 		}
@@ -727,7 +727,7 @@ func (m *SubscriptionManager) flush(s *subscription) {
 		byTopic[topic] = append(byTopic[topic], c)
 	}
 	for _, topic := range order {
-		frame, err := buildBatchGrain(s.source, byTopic[topic], now)
+		frame, err := buildGrain(s.source, byTopic[topic], now)
 		if err != nil {
 			continue
 		}
@@ -1079,6 +1079,13 @@ func grainRow(c Change) GrainDataRow {
 	return row
 }
 
+// buildGrain is the grain renderer every push path goes through,
+// behind a package var so a test can prove that a grain which cannot
+// be built is reported and skipped rather than sent half-formed —
+// the store's own documents always marshal, so the arm is otherwise
+// unreachable. Production never reassigns it.
+var buildGrain = buildBatchGrain
+
 // buildBatchGrain wraps one or more Changes that share a topic into a
 // single IS-04 §5.2 grain envelope. IS-04 lets a grain's `data` array
 // carry many objects; batching all current/changed resources into one
@@ -1113,13 +1120,18 @@ func buildBatchGrain(source string, changes []Change, now time.Time) ([]byte, er
 	return json.Marshal(g)
 }
 
+// randRead is the entropy source behind newUUIDLike, kept as a
+// package var so a test can prove the failure path answers 500
+// rather than minting a subscription with an empty id.
+var randRead = rand.Read
+
 // newUUIDLike returns a v4-shaped UUID built from crypto/rand. We
 // don't need RFC 4122 strictness here — Subscription IDs are opaque
 // to clients — but the v4 shape keeps every IS-04 id pattern check
 // happy.
 func newUUIDLike() (string, error) {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return "", err
 	}
 	b[6] = (b[6] & 0x0f) | 0x40 // version 4
