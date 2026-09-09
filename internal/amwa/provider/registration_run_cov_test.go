@@ -116,19 +116,19 @@ func TestRegistrationRunRegistersAndDeregisters(t *testing.T) {
 	c := NewRegistrationClient(tap.logger(), reg.ts.URL, "v1.3", validBundle())
 	cancel := runClient(t, c)
 
-	waitUntil(t, "the bundle to be registered", func() bool {
-		posted, _ := reg.snapshot()
-		return len(posted) >= 2
-	})
+	// The flag is set after the last POST of the pass, so waiting on
+	// it is what makes the ordering assertions below deterministic —
+	// waiting on the POST count alone races the flag.
+	waitUntil(t, "the client to consider itself registered", c.registered.Load)
 	posted, _ := reg.snapshot()
+	if len(posted) < 2 {
+		t.Fatalf("posted = %v, want at least the node and a device", posted)
+	}
 	if posted[0] != "node:"+validBundle().Node.ID {
 		t.Errorf("first POST = %q, want the node itself", posted[0])
 	}
 	if posted[1] != "device:"+validBundle().Devices[0].ID {
 		t.Errorf("second POST = %q, want a device", posted[1])
-	}
-	if !c.registered.Load() {
-		t.Error("the client must consider itself registered")
 	}
 
 	cancel()

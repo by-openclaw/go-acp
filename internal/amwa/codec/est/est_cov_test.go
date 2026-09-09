@@ -90,7 +90,10 @@ func TestBaseURL(t *testing.T) {
 // drop the padding; the decoder accepts both and still refuses what
 // is not base64 at all.
 func TestDecodeBase64Robust(t *testing.T) {
-	payload := []byte("the certificate bytes")
+	// A length that is NOT a multiple of 3, so the canonical form
+	// carries padding and the trimmed form only decodes on the raw
+	// (unpadded) alphabet — which is the fallback under test.
+	payload := []byte("the certificate bytes!")
 	padded := base64.StdEncoding.EncodeToString(payload)
 
 	for name, raw := range map[string]string{
