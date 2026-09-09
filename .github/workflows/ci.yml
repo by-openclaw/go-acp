@@ -171,6 +171,8 @@ jobs:
           check internal/amwa/audit 99
           check internal/amwa/facade 100
           check internal/amwa/registry 95
+          check internal/amwa/codec/is07 99
+          check internal/amwa/codec/is07/v10 100
           check internal/amwa/codec/is08 100
           check internal/amwa/codec/is08/v10 100
           check internal/amwa/session/events 100
