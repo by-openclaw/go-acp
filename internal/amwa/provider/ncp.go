@@ -179,8 +179,11 @@ func (s *IS12NCPServer) handleSubscription(c *ncpConn, m is12.SubscriptionMessag
 // notifyPropertyChanged fans one successful property write out to
 // every socket subscribed to that oid.
 func (s *IS12NCPServer) notifyPropertyChanged(oid ms05.NcOid, id ms05.NcPropertyId, value any) {
-	raw, err := json.Marshal(value)
+	raw, err := marshalJSON(value)
 	if err != nil {
+		// A value the model cannot render is not sent: a notification
+		// carrying nothing tells a subscriber the property changed to
+		// null, which is a different fact from "it changed".
 		return
 	}
 	n := is12.NotificationMessage{Notifications: []is12.Notification{{
