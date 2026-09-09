@@ -26,6 +26,7 @@ type Link struct {
 	conn net.Conn
 	cfg  Config
 	log  *slog.Logger
+	rec  Recorder
 	clk  clock.Clock
 	met  *metrics.Connector
 
@@ -72,6 +73,7 @@ func NewLink(conn net.Conn, cfg Config, deps plugin.Deps) *Link {
 		conn:        conn,
 		cfg:         cfg,
 		log:         deps.Logger,
+		rec:         cfg.Recorder,
 		clk:         deps.Clock,
 		met:         deps.Metrics,
 		sessions:    make(map[int16]*Session),
@@ -242,8 +244,21 @@ func (l *Link) send(f codec.Frame) error {
 	}
 	l.txFrames.Add(1)
 	l.met.ObserveTx(len(buf), 0)
+	l.record("tx", buf)
 	l.trace("tx", f)
 	return nil
+}
+
+// record hands one frame to a capture, if there is one.
+//
+// The bytes are what crossed the wire rather than what re-encoding would
+// produce: a fixture built from our own encoder could never catch our own
+// encoder being wrong.
+func (l *Link) record(dir string, raw []byte) {
+	if l.rec == nil {
+		return
+	}
+	l.rec.Record("rollcall", dir, raw)
 }
 
 // LevelTrace is the level a per-frame log records at.
@@ -296,7 +311,7 @@ func (l *Link) readLoop() {
 
 	r := codec.NewReader(l.conn)
 	for {
-		f, err := r.ReadFrame()
+		f, raw, err := r.ReadFrameRaw()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				l.closeWith(ErrLinkClosed)
@@ -317,6 +332,8 @@ func (l *Link) readLoop() {
 		// somebody drains it, and even a reply sits in a buffered channel
 		// until its caller wakes. Copying here is what makes all of them safe
 		// at the cost of one short-lived allocation per frame.
+		l.record("rx", raw)
+
 		f.Payload = append([]byte(nil), f.Payload...)
 		l.trace("rx", f)
 		l.dispatch(f)

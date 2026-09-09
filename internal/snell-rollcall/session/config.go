@@ -64,6 +64,14 @@ type Config struct {
 	// PushQueue is the depth of the back-channel delivery queue.
 	PushQueue int
 
+	// Recorder captures every frame, in both directions, for a replay
+	// fixture. Nil records nothing, which is every case but a capture.
+	//
+	// It is an interface here rather than the capture package's type so this
+	// layer keeps knowing only about frames: what a recording is written to,
+	// and in what format, is the caller's business.
+	Recorder Recorder
+
 	// Handler makes this link the answering side.
 	//
 	// With one set, a frame that matches no session of ours is a request
@@ -127,4 +135,14 @@ func (c Config) pushQueue() int {
 		return c.PushQueue
 	}
 	return DefaultPushQueue
+}
+
+// Recorder is told about every frame that crosses a link.
+//
+// It is the shape internal/transport's capture recorder already has, so a
+// caller passes that one; nothing here depends on it.
+type Recorder interface {
+	// Record is called with the protocol name, "tx" or "rx", and the bytes
+	// exactly as they crossed the wire.
+	Record(proto, dir string, data []byte)
 }

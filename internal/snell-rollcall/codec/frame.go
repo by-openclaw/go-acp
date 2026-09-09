@@ -225,13 +225,29 @@ func (r *Reader) Resyncs() uint64 { return r.sync }
 // The returned Payload aliases the reader's buffer and is only valid until the
 // next call; copy it if it must outlive that.
 func (r *Reader) ReadFrame() (Frame, error) {
+	f, _, err := r.ReadFrameRaw()
+	return f, err
+}
+
+// ReadFrameRaw is ReadFrame, and also the bytes the frame occupied on the
+// wire.
+//
+// The bytes are what a capture writes and a replay reads back, so they are the
+// ones that were received rather than the ones re-encoding would produce: a
+// fixture that recorded our own encoder could never catch our own encoder
+// being wrong.
+//
+// The slice aliases the reader's buffer, which the next read overwrites. Copy
+// it if it must outlive the call.
+func (r *Reader) ReadFrameRaw() (Frame, []byte, error) {
 	for {
 		if r.n-r.off > 0 {
 			f, used, err := DecodeFrame(r.buf[r.off:r.n])
 			switch {
 			case err == nil:
+				raw := r.buf[r.off : r.off+used]
 				r.off += used
-				return f, nil
+				return f, raw, nil
 			case errors.Is(err, ErrShortBuffer):
 				// Need more bytes; fall through to fill.
 			default:
@@ -243,7 +259,7 @@ func (r *Reader) ReadFrame() (Frame, error) {
 			}
 		}
 		if err := r.fill(); err != nil {
-			return Frame{}, err
+			return Frame{}, nil, err
 		}
 	}
 }

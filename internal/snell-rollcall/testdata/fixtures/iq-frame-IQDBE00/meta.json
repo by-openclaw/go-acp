@@ -1,0 +1,17 @@
+{
+  "protocol": "rollcall",
+  "manufacturer": "Snell",
+  "product": "IQDBE00",
+  "direction": "consumer",
+  "version": "1.0",
+  "version_kind": "firmware",
+  "discovered_at": "2026-09-09T21:21:54Z",
+  "dm_fingerprint": "sha256:77b346a7a4a16149d58f7ae57fa966a805cd7704b8aabc448d481ad04e92f9c0",
+  "object_count": 167,
+  "capture_tool": {
+    "name": "dhs",
+    "version": "devel",
+    "git_tag": "devel-7c547c5-dirty",
+    "git_commit": "7c547c5"
+  }
+}

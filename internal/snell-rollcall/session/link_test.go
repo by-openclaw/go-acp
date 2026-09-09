@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -487,5 +488,113 @@ func TestTracingEveryFrame(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), "rollcall: frame") {
 		t.Error("frames were traced at debug level")
+	}
+}
+
+// recordingCapture is a capture that keeps what it was told, so a test can ask
+// what crossed the wire.
+type recordingCapture struct {
+	mu    sync.Mutex
+	tx    [][]byte
+	rx    [][]byte
+	proto string
+}
+
+func (c *recordingCapture) Record(proto, dir string, data []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.proto = proto
+	cp := append([]byte(nil), data...)
+	if dir == "tx" {
+		c.tx = append(c.tx, cp)
+		return
+	}
+	c.rx = append(c.rx, cp)
+}
+
+func (c *recordingCapture) counts() (int, int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.tx), len(c.rx)
+}
+
+func TestALinkRecordsWhatCrossesIt(t *testing.T) {
+	// A committed capture is only worth keeping if it holds the bytes that
+	// were actually sent, so the recording sits where the bytes are: the
+	// encoded frame on the way out, and the frame's own span on the way in
+	// rather than what re-encoding would produce.
+	cap := &recordingCapture{}
+
+	ours, theirs := net.Pipe()
+	t.Cleanup(func() { _ = theirs.Close() })
+
+	l := NewLink(ours, Config{Recorder: cap}, deps.Deps{})
+	t.Cleanup(func() { _ = l.Close() })
+
+	// Something on the other end that answers, so both directions are used.
+	go func() {
+		r := codec.NewReader(theirs)
+		for {
+			f, err := r.ReadFrame()
+			if err != nil {
+				return
+			}
+			reply := codec.Frame{Type: codec.MsgAck, Src: f.Dst, Dst: f.Src}
+			b, err := reply.Encode()
+			if err != nil {
+				return
+			}
+			if _, err := theirs.Write(b); err != nil {
+				return
+			}
+		}
+	}()
+
+	if _, err := l.Handshake(context.Background()); err != nil {
+		// The peer answers with ACK rather than RETDEVINFO, so the handshake
+		// itself may fail; what matters is that both directions were recorded.
+		_ = err
+	}
+
+	tx, rx := cap.counts()
+	if tx == 0 {
+		t.Error("nothing was recorded on the way out")
+	}
+	if rx == 0 {
+		t.Error("nothing was recorded on the way in")
+	}
+	if cap.proto != "rollcall" {
+		t.Errorf("frames were recorded as %q", cap.proto)
+	}
+
+	// And the bytes are a frame, not a fragment.
+	cap.mu.Lock()
+	first := cap.tx[0]
+	cap.mu.Unlock()
+	if _, used, err := codec.DecodeFrame(first); err != nil || used != len(first) {
+		t.Errorf("what was recorded is not one whole frame: used %d of %d, %v",
+			used, len(first), err)
+	}
+}
+
+func TestALinkWithNoCaptureRecordsNothing(t *testing.T) {
+	// The ordinary case, and it must cost nothing.
+	ours, theirs := net.Pipe()
+	t.Cleanup(func() { _ = theirs.Close() })
+
+	l := NewLink(ours, Config{}, deps.Deps{})
+	t.Cleanup(func() { _ = l.Close() })
+
+	go func() {
+		buf := make([]byte, 256)
+		for {
+			if _, err := theirs.Read(buf); err != nil {
+				return
+			}
+		}
+	}()
+
+	if err := l.send(codec.Frame{Type: codec.MsgKeepAlive}); err != nil {
+		t.Fatalf("send: %v", err)
 	}
 }

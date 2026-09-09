@@ -92,6 +92,10 @@ type Plugin struct {
 	met  *metrics.Connector
 	deps plugin.Deps
 
+	// recorder captures every frame for a replay fixture, when one was asked
+	// for. Nil is the ordinary case.
+	recorder session.Recorder
+
 	mu sync.RWMutex
 
 	// name labels this client in the network map, for the operator reading the
@@ -285,3 +289,15 @@ func (p *Plugin) SetName(name string) {
 
 // defaultClientName fits the twenty bytes a name field holds.
 const defaultClientName = "dhs rollcall"
+
+// SetRecorder attaches a capture to every link this plugin opens.
+//
+// It is the hook the CLI looks for when a verb was given somewhere to write a
+// capture, and it must be set before Connect: a link records from the frame it
+// opens with, and a capture that began halfway through a session is one whose
+// replay starts in the middle of a conversation.
+func (p *Plugin) SetRecorder(rec *transport.Recorder) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.recorder = rec
+}

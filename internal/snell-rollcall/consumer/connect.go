@@ -80,7 +80,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("rollcall: dial %s: %w", addr, err)
 	}
 
-	sl := session.NewLink(conn, session.Config{}, p.deps)
+	p.mu.RLock()
+	rec := p.recorder
+	p.mu.RUnlock()
+
+	sl := session.NewLink(conn, session.Config{Recorder: rec}, p.deps)
 
 	// The first message on a new connection. It learns our address, which the
 	// gateway assigns, and the gateway's own, which we cannot know; and its
