@@ -166,11 +166,11 @@ func (r *routerModel) makeRoute(req router.MakeRoute) (router.RouteResult, []rou
 		return router.RouteBadParameters, nil
 	}
 
-	// A route across matrices needs a tieline, and there is no pool to take
-	// one from yet. Saying so is the answer the specification has for it;
-	// routing anyway would put a crosspoint somewhere it cannot reach.
+	// A route across matrices is made through a tieline, one per level asked
+	// for. It is a different mechanism from the local case and it can run out,
+	// so it is answered separately rather than folded in.
 	if req.DestMatrix != req.SourceMatrix {
-		return router.RouteNoTieline, nil
+		return r.routeAcrossMatrices(req, srcMx, dstMx, src, dst)
 	}
 
 	// Nothing is applied until everything has been checked, so a request that
@@ -203,6 +203,9 @@ func (r *routerModel) makeRoute(req router.MakeRoute) (router.RouteResult, []rou
 
 	moved := make([]routedChange, 0, len(changes))
 	for _, c := range changes {
+		// A destination fed from its own matrix has no more use for a cable,
+		// and a cable nobody has released is one nobody can take.
+		r.releaseTielines(c.level, c.dest)
 		c.level.dests[c.dest-1].routed = router.SourcePin{
 			Matrix: c.level.matrixNumber,
 			Level:  c.level.levelNumber,
@@ -235,4 +238,40 @@ func assocAt(list []routerAssoc, n uint32) (*routerAssoc, bool) {
 		return nil, false
 	}
 	return &list[n-1], true
+}
+
+// routeAcrossMatrices makes an association route between two matrices.
+//
+// Every level asked for needs its own tieline: a cable carries one signal, and
+// a camera crossing to another matrix with its picture and two audio levels is
+// three cables. Nothing is applied until all of them are found, because a
+// camera that arrived with its picture and no sound would be worse than one
+// that did not arrive.
+func (r *routerModel) routeAcrossMatrices(req router.MakeRoute,
+	srcMx, dstMx *routerMatrix, src, dst *routerAssoc) (router.RouteResult, []routedChange) {
+
+	var moved []routedChange
+	for level := 1; level <= len(dstMx.levels); level++ {
+		if !levelSelected(req.Levels, level) {
+			continue
+		}
+		if level > len(src.members) || level > len(dst.members) ||
+			level > len(srcMx.levels) {
+			return router.RouteBadParameters, nil
+		}
+
+		up, down := &srcMx.levels[level-1], &dstMx.levels[level-1]
+		result, changes := r.routeAcross(up, down,
+			uint16(src.members[level-1]), int(dst.members[level-1]))
+		if !result.OK() {
+			// What has been taken so far goes back: a half-crossed route
+			// holds cables for a signal that never arrives.
+			for _, c := range moved {
+				r.releaseTielines(c.level, c.dest)
+			}
+			return result, nil
+		}
+		moved = append(moved, changes...)
+	}
+	return router.RouteOK, moved
 }

@@ -34,6 +34,10 @@ type routerModel struct {
 	// provider's own choice: a canonical tree has no field for a salvo.
 	salvos []routerSalvo
 
+	// tielines are the cables between matrices, and what is holding each.
+	// Without them a route across matrices cannot be made at all.
+	tielines []routerTieline
+
 	// base and step are what command 102 to 104 publish. Every table below
 	// carries its own pair, because a client walks them the same way.
 	table router.Table
@@ -146,6 +150,7 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 	}
 
 	r.salvos = buildSalvos(r.matrices)
+	r.tielines = buildTielines(r.matrices)
 
 	// Categories, then their groups. They come before the matrices because a
 	// client reads the root block first and the categories are named in it.

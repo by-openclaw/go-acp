@@ -70,6 +70,11 @@ func (p *Provider) levelWriteToTables(ctx context.Context, s *session.Session, p
 		// A level names a source by its number alone: everything on this node
 		// is one matrix and one level, so the pin's other two fields are the
 		// level's own and a route made here is always a local one.
+		// A level routes within itself, so whatever cable fed this
+		// destination is no longer wanted.
+		if r := p.model.routerModel(); r != nil {
+			r.releaseTielines(lv, dest)
+		}
 		d.routed = router.SourcePin{
 			Matrix: lv.matrixNumber,
 			Level:  lv.levelNumber,

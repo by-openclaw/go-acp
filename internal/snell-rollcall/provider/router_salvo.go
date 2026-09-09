@@ -113,6 +113,7 @@ func (r *routerModel) fireSalvo(n uint32) (uint32, []routedChange) {
 		if lv.dests[rt.dest-1].protect.Protected {
 			continue
 		}
+		r.releaseTielines(lv, rt.dest)
 		lv.dests[rt.dest-1].routed = router.SourcePin{
 			Matrix: lv.matrixNumber,
 			Level:  lv.levelNumber,
