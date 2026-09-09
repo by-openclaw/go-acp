@@ -172,16 +172,16 @@ jobs:
           check internal/amwa/facade 100
           check internal/amwa/provider 87
           check internal/amwa/registry 100
-          check internal/amwa/codec/dnssd 99
-          check internal/amwa/codec/edid 99
-          check internal/amwa/codec/est 96
-          check internal/amwa/codec/is07 99
-          check internal/amwa/codec/ms05 95
+          check internal/amwa/codec/dnssd 100
+          check internal/amwa/codec/edid 100
+          check internal/amwa/codec/est 100
+          check internal/amwa/codec/is07 100
+          check internal/amwa/codec/ms05 100
           check internal/amwa/codec/sdp 100
           check internal/amwa/codec/ms05/v10 100
           check internal/amwa/codec/is07/v10 100
           check internal/amwa/codec/is08 100
-          check internal/amwa/codec/is12 98
+          check internal/amwa/codec/is12 100
           check internal/amwa/codec/is08/v10 100
           check internal/amwa/session/events 100
           check internal/amwa/session/certmgr 100
@@ -195,12 +195,12 @@ jobs:
           check internal/amwa/codec/bcp/bcp00604 100
           check internal/amwa/codec/bcp/bcp00801 100
           check internal/amwa/codec/bcp/bcp00802 100
-          check internal/amwa/codec/is04 99
+          check internal/amwa/codec/is04 100
           check internal/amwa/codec/is04/schemas 100
           check internal/amwa/codec/is04/v10 100
           check internal/amwa/codec/is04/v11 100
           check internal/amwa/codec/is04/v12 100
-          check internal/amwa/codec/is04/v13 99
+          check internal/amwa/codec/is04/v13 100
           check internal/amwa/codec/is05 100
           check internal/amwa/codec/is05/v10 100
           check internal/amwa/codec/is05/v11 100
@@ -216,6 +216,7 @@ jobs:
           check internal/amwa/codec/is14/v10 100
           check internal/amwa/codec/registers 100
           check internal/amwa/codec/spec 100
+          check internal/amwa/codec/jsonschema 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
