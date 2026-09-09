@@ -8,11 +8,28 @@
 // CI regenerates and diffs it; a verb added without updating the
 // matrix here fails the freshness check the moment its help text
 // differs from nothing.
+//
+// # Contract
+//
+// The document goes to stdout and nothing else does, so the command
+// can be redirected straight into the file. Diagnostics go to stderr.
+//
+//	0  the reference was written
+//	2  the command could not run: no -dhs, or a binary that will not start
+//
+// A verb whose help exits non-zero is NOT an error here: several verbs
+// answer -h through flag.ErrHelp and exit 2 while printing exactly the
+// text this page exists to show. What is an error is a binary that
+// cannot be started at all — that produces a page of empty code blocks
+// that CI would then diff against the real one, reporting every verb
+// as changed when nothing changed but the invocation.
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -69,12 +86,41 @@ var matrix = []helpEntry{
 	{"metrics", []string{"metrics", "--help"}},
 }
 
-func main() {
-	dhs := flag.String("dhs", "", "path to the dhs binary (required)")
-	flag.Parse()
+// helpOf runs one matrix entry and returns everything it printed.
+//
+// Behind a package variable so the generator can be exercised without a
+// built binary: what this command does with the output is its own
+// business, and it is separable from being able to obtain it.
+// Production never reassigns it.
+var helpOf = func(bin string, argv []string) ([]byte, error) {
+	out, err := exec.Command(bin, argv...).CombinedOutput() //nolint:gosec // argv is the fixed matrix above
+	// A non-zero exit is normal: several verbs answer -h through
+	// flag.ErrHelp and exit 2 while printing exactly what this page
+	// shows. Only a command that could not be STARTED is an error.
+	var ee *exec.ExitError
+	if err != nil && errors.As(err, &ee) {
+		err = nil
+	}
+	return out, err
+}
+
+// osExit is os.Exit behind a package variable, so main itself can be
+// exercised rather than only the function under it.
+// Production never reassigns it.
+var osExit = os.Exit
+
+func main() { osExit(run(os.Args[1:], os.Stdout, os.Stderr)) }
+
+func run(argv []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("gencli", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dhs := fs.String("dhs", "", "path to the dhs binary (required)")
+	if err := fs.Parse(argv); err != nil {
+		return 2
+	}
 	if *dhs == "" {
-		fmt.Fprintln(os.Stderr, "gencli: -dhs <binary> is required")
-		os.Exit(2)
+		_, _ = fmt.Fprintln(stderr, "gencli: -dhs <binary> is required")
+		return 2
 	}
 
 	var b strings.Builder
@@ -93,11 +139,20 @@ func main() {
 	b.WriteString("\n")
 
 	for _, e := range matrix {
-		out, _ := exec.Command(*dhs, e.argv...).CombinedOutput() //nolint:gosec // argv is the fixed matrix above
+		out, err := helpOf(*dhs, e.argv)
+		if err != nil {
+			// A binary that will not start yields a page of empty code
+			// blocks, which CI then diffs against the real one and
+			// reports every verb as changed. Refusing here says what
+			// actually went wrong.
+			_, _ = fmt.Fprintf(stderr, "gencli: %s: %v\n", *dhs, err)
+			return 2
+		}
 		fmt.Fprintf(&b, "## %s\n\n`dhs %s`\n\n```text\n%s\n```\n\n",
 			e.title, strings.Join(e.argv, " "), strings.TrimRight(string(out), "\n"))
 	}
-	fmt.Print(b.String())
+	_, _ = fmt.Fprint(stdout, b.String())
+	return 0
 }
 
 // anchor renders a GitHub-style heading anchor.
