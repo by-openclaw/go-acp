@@ -27,6 +27,7 @@ type recorder struct {
 	mu     sync.Mutex
 	cases  []string
 	failed map[string][]string
+	logs   map[string][]string
 	name   string
 }
 
@@ -35,10 +36,12 @@ type recorder struct {
 type fatal struct{ msg string }
 
 func newRecorder(t *testing.T) *recorder {
-	return &recorder{host: t, failed: map[string][]string{}}
+	return &recorder{host: t, failed: map[string][]string{}, logs: map[string][]string{}}
 }
 
 func (r *recorder) Helper() {}
+
+func (r *recorder) Logf(f string, a ...any) { r.log(fmt.Sprintf(f, a...)) }
 
 func (r *recorder) Error(a ...any) { r.note(fmt.Sprint(a...)) }
 
@@ -56,6 +59,12 @@ func (r *recorder) Fatalf(f string, a ...any) {
 
 func (r *recorder) hostT() *testing.T { return r.host }
 
+func (r *recorder) log(msg string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.logs[r.name] = append(r.logs[r.name], msg)
+}
+
 func (r *recorder) note(msg string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -63,7 +72,7 @@ func (r *recorder) note(msg string) {
 }
 
 func (r *recorder) run(name string, f func(reporter)) {
-	sub := &recorder{host: r.host, failed: r.failed, name: name}
+	sub := &recorder{host: r.host, failed: r.failed, logs: r.logs, name: name}
 	r.mu.Lock()
 	r.cases = append(r.cases, name)
 	r.mu.Unlock()
@@ -83,6 +92,17 @@ func (r *recorder) failures() []string {
 	defer r.mu.Unlock()
 	var out []string
 	for _, msgs := range r.failed {
+		out = append(out, msgs...)
+	}
+	return out
+}
+
+// logLines returns everything logged, flattened.
+func (r *recorder) logLines() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []string
+	for _, msgs := range r.logs {
 		out = append(out, msgs...)
 	}
 	return out
@@ -401,5 +421,44 @@ func TestErrSkipped(t *testing.T) {
 	}
 	if !strings.Contains(ErrSkipped.Error(), "not applicable") {
 		t.Errorf("= %q", ErrSkipped.Error())
+	}
+}
+
+// A capability a transport declares that this battery has no case for
+// is reported rather than ignored. The package's whole argument is
+// that a silent skip reads as proof; a capability nothing checks at
+// all is the same silence one level up.
+func TestDeclaredCapabilitiesWithNoCaseAreReported(t *testing.T) {
+	tr := fakeTransport(nil)
+	tr.Caps.TLS = true
+	tr.Caps.MutualTLS = true
+	tr.Caps.Bearer = true
+
+	r := newRecorder(t)
+	run(r, tr)
+
+	if got := r.failures(); len(got) != 0 {
+		t.Fatalf("a declared capability is not a failure: %v", got)
+	}
+	logged := strings.Join(r.logLines(), "\n")
+	for _, want := range []string{"tls", "mutual tls", "bearer token"} {
+		if !strings.Contains(logged, want) {
+			t.Errorf("%q was declared and never mentioned:\n%s", want, logged)
+		}
+	}
+	if !strings.Contains(logged, ErrSkipped.Error()) {
+		t.Errorf("the reason must be the skip sentinel:\n%s", logged)
+	}
+}
+
+// A transport that declares none of them says nothing extra: the
+// report is about what was claimed, not a list of everything the
+// battery could one day check.
+func TestNoCapabilitiesNoExtraCases(t *testing.T) {
+	r := newRecorder(t)
+	run(r, fakeTransport(nil))
+
+	if len(r.cases) != 9 {
+		t.Errorf("cases = %v, want the battery alone", r.cases)
 	}
 }

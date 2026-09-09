@@ -58,9 +58,13 @@ type Caps struct {
 	// every message arrives or that order is kept.
 	Ordered bool
 
-	// TLS and MutualTLS gate the transport-security cases. Bearer gates the
-	// token cases, which only the HTTP family can carry: tcp and udp have no
-	// application layer to put a header in.
+	// TLS, MutualTLS and Bearer declare transport security and token
+	// carriage. There is no case for any of them yet, so declaring one
+	// obliges nothing — but it is REPORTED at the end of the run
+	// rather than passing in silence, because a capability nobody
+	// checks reads as one that was checked. Declare what the entry's
+	// own Conn can actually do: a plain socket that claims TLS claims
+	// something nothing behind it can honour.
 	TLS       bool
 	MutualTLS bool
 	Bearer    bool
@@ -97,6 +101,7 @@ type Transport struct {
 // enclosing test.
 type reporter interface {
 	Helper()
+	Logf(format string, args ...any)
 	Error(args ...any)
 	Errorf(format string, args ...any)
 	Fatal(args ...any)
@@ -142,6 +147,39 @@ func run(t reporter, tr Transport) {
 	t.run("use after close fails", func(t reporter) { testUseAfterClose(t, tr) })
 	t.run("concurrent senders", func(t reporter) { testConcurrent(t, tr) })
 	t.run("no goroutine leak", func(t reporter) { testNoGoroutineLeak(t, tr) })
+
+	// A capability this battery has no case for yet is REPORTED, not
+	// ignored. The package's rule is that a case which does not apply
+	// is skipped with a reason; a capability nothing checks at all is
+	// the same silence one level up, and it is the silence that makes
+	// a green run read as proof of something it never looked at.
+	for _, name := range unexercised(tr.Caps) {
+		capability := name
+		t.run(capability, func(t reporter) {
+			t.Logf("%s declares %s: %v", tr.Caps.Name, capability, ErrSkipped)
+		})
+	}
+}
+
+// unexercised lists the capabilities a transport declares that no case
+// above examines. Kept next to Run so adding a case and forgetting to
+// remove its name here is a compile-time neighbour rather than a
+// discovery months later.
+func unexercised(c Caps) []string {
+	var out []string
+	for _, d := range []struct {
+		on   bool
+		name string
+	}{
+		{c.TLS, "tls"},
+		{c.MutualTLS, "mutual tls"},
+		{c.Bearer, "bearer token"},
+	} {
+		if d.on {
+			out = append(out, d.name)
+		}
+	}
+	return out
 }
 
 // payload builds a message this transport will accept, padded to MinPayload
