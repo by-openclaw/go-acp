@@ -115,6 +115,11 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 	}
 
 	p.publishExcept(context.Background(), s, prt.number, stored)
+
+	// A router's state is published on two nodes and a write to either has to
+	// move both, or the panel and the tables disagree with nothing on the wire
+	// to say which is right.
+	p.syncRouterWrite(context.Background(), s, prt, stored)
 	return stored, nil
 }
 

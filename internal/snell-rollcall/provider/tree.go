@@ -31,6 +31,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/router"
 )
 
 // line is one menu entry the provider serves.
@@ -553,6 +554,15 @@ func (p *port) setValue(command uint32, mode codec.Mode, num int32, text string)
 
 	i, ok := p.byCmd[command]
 	if !ok {
+		// A node that publishes tables rather than a menu has no line behind
+		// a command, and the menu is what the check above is made of. The
+		// tables are still writable where the specification says they are:
+		// setting a destination's routed source is how a structural client
+		// routes, and refusing it would leave the whole Full Control interface
+		// readable and inert.
+		if p.router != nil {
+			return p.setTableValue(command, mode, num)
+		}
 		return codec.Value{}, fmt.Errorf("no command %d on port %d", command, p.number)
 	}
 	l := p.lines[i]
@@ -616,4 +626,33 @@ func (p *port) displayLine(n int16) (string, bool) {
 	defer p.mu.RUnlock()
 	s, ok := p.display[n]
 	return s, ok
+}
+
+// setTableValue writes one field of the Full Control tables.
+//
+// A node that publishes tables rather than a menu has no line behind a
+// command, and a menu line is what the writability check is made of. The
+// tables are still writable where the specification says they are: setting a
+// destination's routed source is how a structural client routes, and refusing
+// it would leave the whole Full Control interface readable and inert.
+//
+// Only the two fields that carry state may be written. A name or a base says
+// what the plant is rather than what it is doing, and a client able to
+// overwrite a table's own base could make the interface undescribable.
+//
+// The lock is already held by setValue, which is the only caller.
+func (p *port) setTableValue(command uint32, mode codec.Mode, num int32) (codec.Value, error) {
+	_, _, field, ok := p.router.destinationFor(router.Command(command))
+	if !ok || (field != router.OffDestRoutedSrc && field != router.OffDestProtect) {
+		return codec.Value{}, fmt.Errorf("command %d is read-only", command)
+	}
+	// Both fields are packed words. A string write to one is a client
+	// confusing a name with a state.
+	if mode.Has(codec.ModeString) {
+		return codec.Value{}, fmt.Errorf("command %d takes a number", command)
+	}
+
+	v := codec.Value{Command: command, Mode: codec.ModeValue, Val: num}
+	p.values[command] = v
+	return v, nil
 }

@@ -42,6 +42,13 @@ type routerLevel struct {
 	sources []string
 	dests   []routerDest
 
+	// matrixNumber and levelNumber are where this level sits in the plant,
+	// counting from one. A crosspoint made on this node is a local route, and
+	// a local route is one whose source names this same matrix and level; the
+	// two numbers are what let it say so.
+	matrixNumber uint8
+	levelNumber  uint8
+
 	srcTable router.Table
 	dstTable router.Table
 }
