@@ -40,6 +40,12 @@ var unicastReresolveInterval = 60 * time.Second
 // the two discovery modes must yield the same failover behaviour.
 const unicastDisqualifyTTL = 30 * time.Second
 
+// resolveUnicast is the DNS-SD lookup this watcher runs, behind a package
+// var: a unicast lookup needs an authoritative DNS server, which a unit
+// test has no business standing up, so a test scripts the zone's answers
+// here instead. Production never reassigns it.
+var resolveUnicast = dnssdsession.ResolveUnicast
+
 // UnicastRegistryWatcher resolves `_nmos-register._tcp.<domain>` (and
 // the pre-v1.2 legacy name) against one DNS resolver on an interval.
 type UnicastRegistryWatcher struct {
@@ -110,7 +116,7 @@ func (w *UnicastRegistryWatcher) Close() error {
 // v1.2 transition may carry both.
 func (w *UnicastRegistryWatcher) resolveOnce(ctx context.Context) {
 	for _, service := range []string{dnssdcodec.ServiceRegister, dnssdcodec.ServiceRegisterLegacy} {
-		instances, err := dnssdsession.ResolveUnicast(ctx, w.resolver, service, w.domain, 0)
+		instances, err := resolveUnicast(ctx, w.resolver, service, w.domain, 0)
 		if err != nil {
 			// One name failing must not hide the other: a zone with no
 			// legacy records answers NXDOMAIN, which is normal, not an
