@@ -46,27 +46,27 @@ func TestNewCSRReportsAKeyItCannotGenerate(t *testing.T) {
 	}
 }
 
-// The CSR is signed from the same source. A signature that could not
-// be produced is a refusal, never an unsigned request on the wire.
+// A CSR that could not be built is a refusal, never an unsigned request
+// on the wire.
 //
-// How many reads the key generation itself takes is a crypto
-// implementation detail, so the test walks the budget up until the
-// failure lands on the signing stage instead of pinning a number that
-// a Go release would quietly change.
+// Driven through the createCertificateRequest seam rather than by
+// starving the shared entropy source after some number of reads: both
+// stages draw on the same reader, so a byte budget only lands on the
+// signing stage for as long as key generation keeps spending the number
+// of reads it happened to spend when the budget was written.
+// randutil.MaybeReadByte moves that number by one at random, which is
+// what made this test fail on Linux and pass here.
 func TestNewCSRReportsACSRItCannotSign(t *testing.T) {
-	for budget := 1; budget < 64; budget++ {
-		func() {
-			starveAfter(t, budget)
-			_, _, err := NewCSR(CSROptions{CommonName: "node.local", Algorithm: KeyECDSAP256})
-			if err != nil && strings.Contains(err.Error(), "create CSR") {
-				budget = 1 << 30 // found it
-			}
-		}()
-		if budget == 1<<30 {
-			return
-		}
+	prev := createCertificateRequest
+	createCertificateRequest = func(io.Reader, *x509.CertificateRequest, any) ([]byte, error) {
+		return nil, errors.New("no entropy")
 	}
-	t.Fatal("no entropy budget made the signing stage the one that fails")
+	t.Cleanup(func() { createCertificateRequest = prev })
+
+	_, _, err := NewCSR(CSROptions{CommonName: "node.local", Algorithm: KeyECDSAP256})
+	if err == nil || !strings.Contains(err.Error(), "create CSR") {
+		t.Fatalf("= %v, want the signing failure reported", err)
+	}
 }
 
 var _ io.Reader = readerFunc(nil)

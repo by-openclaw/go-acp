@@ -131,6 +131,16 @@ var oidSerialNumber = asn1.ObjectIdentifier{2, 5, 4, 5}
 // key we cannot vouch for. Production never reassigns it.
 var randReader io.Reader = rand.Reader
 
+// createCertificateRequest is x509.CreateCertificateRequest behind a
+// package variable. It is the second of the two stages NewCSR has to be
+// able to refuse at, and the only way to make THAT stage the one that
+// fails: both stages draw on the same entropy source, so starving it by
+// a byte count means guessing how many reads a Go release spends
+// generating a key — a number that has changed, and that
+// randutil.MaybeReadByte deliberately makes non-deterministic.
+// Production never reassigns it.
+var createCertificateRequest = x509.CreateCertificateRequest
+
 // NewCSR generates a FRESH key pair (mandated per CSR) and a PKCS#10
 // request in DER. The signature uses SHA-256-family algorithms —
 // MD5/SHA-1 are forbidden.
@@ -170,7 +180,7 @@ func NewCSR(opts CSROptions) (csrDER []byte, key crypto.Signer, err error) {
 	}
 	// SignatureAlgorithm zero value lets x509 pick the SHA-256 family
 	// for the key type (never SHA-1 with these key types).
-	csrDER, err = x509.CreateCertificateRequest(randReader, &tmpl, key)
+	csrDER, err = createCertificateRequest(randReader, &tmpl, key)
 	if err != nil {
 		return nil, nil, fmt.Errorf("est: create CSR: %w", err)
 	}
