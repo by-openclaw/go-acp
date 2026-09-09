@@ -653,7 +653,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	if !ok {
 		return fmt.Errorf("registry plugin %q not registered", "nmos")
 	}
-	r := f.New(logger)
+	r := f.New(pluginDeps(logger))
 
 	opts := registryslot.ServeOptions{
 		BindAddrs:        []string{*bind},

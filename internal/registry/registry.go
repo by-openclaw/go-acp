@@ -14,8 +14,9 @@ package registry
 
 import (
 	"context"
-	"log/slog"
 	"time"
+
+	"dhs/internal/plugin"
 )
 
 // Registry is the runtime contract a plugin satisfies.
@@ -135,5 +136,9 @@ type Meta struct {
 // package-level Factory{} value and register it from init().
 type Factory interface {
 	Meta() Meta
-	New(logger *slog.Logger) Registry
+	// New builds a registry from the injected dependency set — the same
+	// plugin.Deps every consumer and provider is constructed with, so the
+	// third role shares the one DI contract (logger, transport, clock,
+	// metrics) instead of taking a logger alone.
+	New(deps plugin.Deps) Registry
 }

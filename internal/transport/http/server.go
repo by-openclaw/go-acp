@@ -11,17 +11,21 @@ package http
 // internal/amwa/session/http, which wires this server and adds them.
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	stdhttp "net/http"
 	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
+
+	"dhs/internal/metrics"
 )
 
 // readHeaderTimeout bounds how long a client may take to send its headers.
@@ -99,6 +103,14 @@ type Server struct {
 	// HTTP — one or the other on a listener, never both. Responses then
 	// carry Strict-Transport-Security.
 	TLS *tls.Config
+
+	// Metrics, when non-nil, counts every request and response this server
+	// handles: request bytes (Content-Length) as rx, response bytes as tx
+	// with the handler's elapsed time as the footprint — the same
+	// ObserveRx/ObserveTx contract every raw-socket connector reports
+	// through, so an HTTP connector (NMOS, CCM) is scraped like the rest.
+	// Raw handlers (WebSocket upgrades) are counted up to the hijack.
+	Metrics *metrics.Connector
 
 	mu       sync.RWMutex
 	routes   map[routeKey]HandlerFunc
@@ -247,6 +259,19 @@ func (s *Server) writeError(w stdhttp.ResponseWriter, status int, errStr, debug 
 
 // dispatch walks the route table and emits the response — or a 404/405/500.
 func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	// Metrics wrap everything, including the panic barrier's 500: what the
+	// client received is what gets counted. Registered first so it runs
+	// last.
+	if s.Metrics != nil {
+		start := time.Now()
+		cw := &countingWriter{ResponseWriter: w}
+		w = cw
+		defer func() {
+			s.Metrics.ObserveRx(int(max(r.ContentLength, 0)))
+			s.Metrics.ObserveTx(cw.n, time.Since(start))
+		}()
+	}
+
 	// The panic barrier is the outermost layer on purpose: a handler that
 	// panics must still produce a response, or the client sees a dropped
 	// connection and retries into the same panic.
@@ -367,6 +392,36 @@ func (s *Server) dispatch(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		status = stdhttp.StatusOK
 	}
 	s.writeJSON(w, status, body)
+}
+
+// countingWriter counts the bytes a response carries so Metrics can report
+// them as tx. It forwards Hijack and Flush so a raw handler (a WebSocket
+// upgrade) sees the same connection semantics as without metrics.
+type countingWriter struct {
+	stdhttp.ResponseWriter
+	n int
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.ResponseWriter.Write(p)
+	c.n += n
+	return n, err
+}
+
+// Hijack hands the connection to a raw handler; a writer that cannot be
+// hijacked reports so instead of panicking.
+func (c *countingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := c.ResponseWriter.(stdhttp.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, stdhttp.ErrNotSupported
+}
+
+// Flush forwards streaming flushes (SSE, long polls) when supported.
+func (c *countingWriter) Flush() {
+	if f, ok := c.ResponseWriter.(stdhttp.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // RawBody lets a handler return a non-JSON response — SDP text, a certificate,

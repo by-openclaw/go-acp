@@ -27,6 +27,8 @@ import (
 	"dhs/internal/amwa/session/certmgr"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	registryslot "dhs/internal/registry"
 )
 
@@ -52,9 +54,19 @@ func (Factory) Meta() registryslot.Meta {
 	}
 }
 
-// New constructs an unstarted Registry. Logger may be nil.
-func (Factory) New(logger *slog.Logger) registryslot.Registry {
-	return &Registry{logger: logger}
+// New constructs an unstarted Registry from the injected dependency set.
+func (Factory) New(deps plugin.Deps) registryslot.Registry {
+	deps = deps.WithDefaults()
+	return &Registry{logger: deps.Logger, met: deps.Metrics}
+}
+
+// Metrics returns the registry's counter set: every Registration and Query
+// API request and response, counted by the shared HTTP server. Never nil.
+func (r *Registry) Metrics() *metrics.Connector {
+	if r.met == nil {
+		r.met = metrics.NewConnector()
+	}
+	return r.met
 }
 
 // Registry implements registryslot.Registry. Serves the IS-04
@@ -64,6 +76,7 @@ func (Factory) New(logger *slog.Logger) registryslot.Registry {
 // supported minor comma-separated.
 type Registry struct {
 	logger *slog.Logger
+	met    *metrics.Connector
 
 	mu        sync.Mutex
 	responder session.Responder
@@ -134,6 +147,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	// HTTP routes — Registration + Query API installed in parallel
 	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
+	srv.Metrics = r.Metrics() // both faces counted through the shared server
 	// BCP-003-01/-03: TLS serving for both faces (manual pair or EST
 	// enrollment). ws_href minting + the api_proto TXT follow.
 	apiProto := "http"
