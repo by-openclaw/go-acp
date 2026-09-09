@@ -80,11 +80,31 @@ type RegistryWatcher struct {
 }
 
 // newDNSSDBrowser is the mDNS browser constructor the watchers open. A
-// package var so a test can hand the watcher a scripted Browser: the
-// real one joins 224.0.0.251 on every interface, which is neither
-// deterministic nor permitted on a CI runner. Production never
-// reassigns it.
-var newDNSSDBrowser = dnssdsession.NewBrowser
+// seam so a test can hand the watcher a scripted Browser: the real one
+// joins 224.0.0.251 on every interface, which is neither deterministic
+// nor permitted on a CI runner.
+//
+// Read under the same lock as the other seams (see node.go): Serve's
+// background IS-09 fetch opens a browser from its own goroutine, so a
+// test swapping a bare global while any Node was still running raced.
+// Production never reassigns it.
+var newDNSSDBrowserFn = dnssdsession.NewBrowser
+
+func newDNSSDBrowser(l *slog.Logger) (dnssdsession.Browser, error) {
+	seamMu.RLock()
+	fn := newDNSSDBrowserFn
+	seamMu.RUnlock()
+	return fn(l)
+}
+
+// setDNSSDBrowser installs a seam and returns the previous one.
+func setDNSSDBrowser(fn func(*slog.Logger) (dnssdsession.Browser, error)) func(*slog.Logger) (dnssdsession.Browser, error) {
+	seamMu.Lock()
+	defer seamMu.Unlock()
+	prev := newDNSSDBrowserFn
+	newDNSSDBrowserFn = fn
+	return prev
+}
 
 // NewRegistryWatcher opens an mDNS browser for `_nmos-register._tcp`.
 // preferAPIVer (e.g. "v1.3") is used as the highest-mutual selection

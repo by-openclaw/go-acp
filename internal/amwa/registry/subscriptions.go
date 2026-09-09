@@ -187,6 +187,19 @@ type SubscriptionManager struct {
 	mu   sync.Mutex
 	subs map[string]*subscription
 
+	// grain is the renderer every push path goes through. It is a
+	// field rather than a package variable because the push paths run
+	// on the subscriber's own goroutines: a test that swapped a global
+	// while a socket was live raced against the server reading it, and
+	// -race said so on Linux while Windows stayed quiet. Set once at
+	// construction, and by a test BEFORE the manager takes traffic.
+	//
+	// It exists at all so a grain that cannot be rendered can be shown
+	// to be reported and skipped rather than sent half-formed — the
+	// store's own documents always marshal, so the arm is otherwise
+	// unreachable.
+	grain func(source string, changes []Change, now time.Time) ([]byte, error)
+
 	// wsPing / wsIdle keep subscriber sockets honest. Unlike every other
 	// reaper in the tree these default ON, because here we supply the
 	// traffic that makes silence meaningful: the Registry pings, the
@@ -230,6 +243,7 @@ func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, ap
 		apiVer:        apiVer,
 		wsScheme:      "ws",
 		subs:          make(map[string]*subscription),
+		grain:         buildBatchGrain,
 	}
 	store.AddListener(m.onChange)
 	return m
@@ -553,7 +567,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			byTopic[topic] = append(byTopic[topic], c)
 		}
 		for _, topic := range order {
-			frame, err := buildGrain(sub.source, byTopic[topic], now)
+			frame, err := m.grain(sub.source, byTopic[topic], now)
 			if err != nil {
 				m.logger.Warn("registry/subs: build sync grain", "err", err)
 				continue
@@ -686,7 +700,7 @@ func (m *SubscriptionManager) onChange(c Change) {
 func (m *SubscriptionManager) enqueue(s *subscription, c Change) {
 	if s.MaxUpdateRate <= 0 {
 		now := time.Now()
-		frame, err := buildGrain(s.source, []Change{c}, now)
+		frame, err := m.grain(s.source, []Change{c}, now)
 		if err != nil {
 			return
 		}
@@ -733,7 +747,7 @@ func (m *SubscriptionManager) flush(s *subscription) {
 		byTopic[topic] = append(byTopic[topic], c)
 	}
 	for _, topic := range order {
-		frame, err := buildGrain(s.source, byTopic[topic], now)
+		frame, err := m.grain(s.source, byTopic[topic], now)
 		if err != nil {
 			continue
 		}
@@ -1084,13 +1098,6 @@ func grainRow(c Change) GrainDataRow {
 	}
 	return row
 }
-
-// buildGrain is the grain renderer every push path goes through,
-// behind a package var so a test can prove that a grain which cannot
-// be built is reported and skipped rather than sent half-formed —
-// the store's own documents always marshal, so the arm is otherwise
-// unreachable. Production never reassigns it.
-var buildGrain = buildBatchGrain
 
 // buildBatchGrain wraps one or more Changes that share a topic into a
 // single IS-04 §5.2 grain envelope. IS-04 lets a grain's `data` array

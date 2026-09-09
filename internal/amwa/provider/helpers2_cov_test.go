@@ -222,9 +222,8 @@ func TestScheduledTimeLocked(t *testing.T) {
 // stale endpoint riding in from a bundle file would otherwise point
 // every href at a dead address.
 func TestControlHost(t *testing.T) {
-	prev := osHostname
-	osHostname = func() (string, error) { return "node-host", nil }
-	t.Cleanup(func() { osHostname = prev })
+	prev := setOSHostname(func() (string, error) { return "node-host", nil })
+	t.Cleanup(func() { setOSHostname(prev) })
 
 	for name, tc := range map[string]struct {
 		cfg  IS04NodeConfig

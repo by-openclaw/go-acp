@@ -40,10 +40,51 @@ import (
 //     IS-04 §4.2.1 be asserted without a link.
 //   - osHostname: the hostname-lookup failure arms fall back to a
 //     fixed identity, and os.Hostname does not fail on demand.
+//
+// They are read through accessors under a lock rather than as bare
+// variables because a SERVED Node reads them from its own goroutines:
+// the registration client calls back into the announce path when it
+// gains or loses a Registry, and Serve's background IS-09 fetch opens
+// a browser of its own. A test swapping a bare global while another
+// test's Node was still running is a data race, and -race said so on
+// Linux while Windows stayed quiet.
 var (
-	newDNSSDResponder = dnssdsession.NewResponder
-	osHostname        = os.Hostname
+	seamMu              sync.RWMutex
+	newDNSSDResponderFn = dnssdsession.NewResponder
+	osHostnameFn        = os.Hostname
 )
+
+func newDNSSDResponder(l *slog.Logger) (dnssdsession.Responder, error) {
+	seamMu.RLock()
+	fn := newDNSSDResponderFn
+	seamMu.RUnlock()
+	return fn(l)
+}
+
+func osHostname() (string, error) {
+	seamMu.RLock()
+	fn := osHostnameFn
+	seamMu.RUnlock()
+	return fn()
+}
+
+// setDNSSDResponder and setOSHostname install a seam and return the
+// previous one, so a test restores what it found.
+func setDNSSDResponder(fn func(*slog.Logger) (dnssdsession.Responder, error)) func(*slog.Logger) (dnssdsession.Responder, error) {
+	seamMu.Lock()
+	defer seamMu.Unlock()
+	prev := newDNSSDResponderFn
+	newDNSSDResponderFn = fn
+	return prev
+}
+
+func setOSHostname(fn func() (string, error)) func() (string, error) {
+	seamMu.Lock()
+	defer seamMu.Unlock()
+	prev := osHostnameFn
+	osHostnameFn = fn
+	return prev
+}
 
 // encodeOne wraps a per-resource codec Encode method into a
 // json.RawMessage suitable for handing back to the HTTP framework.

@@ -126,7 +126,11 @@ func TestEnqueueUnratedSendsInlineAndReportsFailure(t *testing.T) {
 func TestFlushBuffersAndRefusals(t *testing.T) {
 	ws, conn := wsPair(t)
 	m := NewSubscriptionManager(nil, NewStore(), "127.0.0.1:0", "v1.3")
-	sub := pushSub(ws, 50)
+	// A rate long enough that only the explicit flush below can fire
+	// it. At 50ms a slow CI machine descheduled this goroutine between
+	// the two enqueues and the timer flushed the first change on its
+	// own, which is the buffering working rather than failing.
+	sub := pushSub(ws, 60_000)
 
 	m.enqueue(sub, nodeChange(t, ChangeCreated, fxNode))
 	m.enqueue(sub, nodeChange(t, ChangeCreated, fxDevice))
@@ -301,14 +305,13 @@ func TestSubscriptionPostWithoutEntropy(t *testing.T) {
 // push path — the socket stays open and the next change still gets
 // through, rather than the subscriber receiving a half-formed frame.
 func TestGrainThatCannotBeBuiltIsSkipped(t *testing.T) {
-	prev := buildGrain
-	buildGrain = func(string, []Change, time.Time) ([]byte, error) {
+	refuse := func(string, []Change, time.Time) ([]byte, error) {
 		return nil, errors.New("scripted grain failure")
 	}
-	t.Cleanup(func() { buildGrain = prev })
 
 	ws, _ := wsPair(t)
 	m := NewSubscriptionManager(nil, NewStore(), "127.0.0.1:0", "v1.3")
+	m.grain = refuse
 
 	// The inline path.
 	m.enqueue(pushSub(ws, 0), nodeChange(t, ChangeCreated, fxNode))
@@ -320,7 +323,7 @@ func TestGrainThatCannotBeBuiltIsSkipped(t *testing.T) {
 
 	// The sync path: a fresh subscriber whose snapshot cannot be
 	// rendered still gets a socket, and the server does not fall over.
-	addr, store, _ := wsFixture(t)
+	addr, store, _ := wsFixtureWith(t, func(m *SubscriptionManager) { m.grain = refuse })
 	if err := store.PutNode(validNode("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")); err != nil {
 		t.Fatal(err)
 	}

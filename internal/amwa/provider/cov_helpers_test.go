@@ -153,14 +153,13 @@ var _ dnssdsession.Browser = (*fakeBrowser)(nil)
 // "no multicast socket could be opened" is produced on demand.
 func useFakeBrowser(t *testing.T, fb *fakeBrowser) {
 	t.Helper()
-	prev := newDNSSDBrowser
-	newDNSSDBrowser = func(*slog.Logger) (dnssdsession.Browser, error) {
+	prev := setDNSSDBrowser(func(*slog.Logger) (dnssdsession.Browser, error) {
 		if fb == nil {
 			return nil, errors.New("mdns: multicast group unavailable (scripted)")
 		}
 		return fb, nil
-	}
-	t.Cleanup(func() { newDNSSDBrowser = prev })
+	})
+	t.Cleanup(func() { setDNSSDBrowser(prev) })
 }
 
 // scriptedResponder is a Responder whose Announce / Update outcomes a
@@ -225,22 +224,20 @@ var _ dnssdsession.Responder = (*scriptedResponder)(nil)
 // responder makes the constructor fail.
 func useResponder(t *testing.T, r *scriptedResponder) {
 	t.Helper()
-	prev := newDNSSDResponder
-	newDNSSDResponder = func(*slog.Logger) (dnssdsession.Responder, error) {
+	prev := setDNSSDResponder(func(*slog.Logger) (dnssdsession.Responder, error) {
 		if r == nil {
 			return nil, errors.New("mdns: responder socket unavailable (scripted)")
 		}
 		return r, nil
-	}
-	t.Cleanup(func() { newDNSSDResponder = prev })
+	})
+	t.Cleanup(func() { setDNSSDResponder(prev) })
 }
 
 // useHostname scripts osHostname for the test's lifetime.
 func useHostname(t *testing.T, name string, err error) {
 	t.Helper()
-	prev := osHostname
-	osHostname = func() (string, error) { return name, err }
-	t.Cleanup(func() { osHostname = prev })
+	prev := setOSHostname(func() (string, error) { return name, err })
+	t.Cleanup(func() { setOSHostname(prev) })
 }
 
 // registryInstance is one `_nmos-register._tcp` advertisement as the

@@ -186,8 +186,20 @@ func grainRows(t *testing.T, raw []byte) (string, []map[string]json.RawMessage) 
 // populated store.
 func wsFixture(t *testing.T) (string, *Store, *SubscriptionManager) {
 	t.Helper()
+	return wsFixtureWith(t, nil)
+}
+
+// wsFixtureWith is wsFixture with a hook to configure the manager
+// BEFORE it takes traffic. Anything a test wants to change about the
+// manager has to be changed here: once the listener is up, the push
+// paths run on subscriber goroutines and a later write is a race.
+func wsFixtureWith(t *testing.T, tweak func(*SubscriptionManager)) (string, *Store, *SubscriptionManager) {
+	t.Helper()
 	store := populated(t)
 	mgr := NewSubscriptionManager(nil, store, "127.0.0.1:0", "v1.3")
+	if tweak != nil {
+		tweak(mgr)
+	}
 	addr, stop := startRegistryHTTP(t, store, mgr)
 	t.Cleanup(stop)
 	return addr, store, mgr
