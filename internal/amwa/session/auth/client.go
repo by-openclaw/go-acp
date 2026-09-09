@@ -275,13 +275,21 @@ func (k *KeyCache) FetchIssuer(ctx context.Context, issuer string) error {
 // hour, jittered by 0–60 s so a fleet of resource servers does not
 // synchronise its fetches. Failures keep the stale set. Blocks until
 // ctx is done.
+// refreshInterval is how often Run re-fetches the JWKS (plus up to a
+// minute of jitter). A package var so a test drives the loop without
+// waiting an hour; never reassigned in production.
+var refreshInterval = time.Hour
+
 func (k *KeyCache) Run(ctx context.Context) {
 	for {
 		jitter := time.Duration(rand.Intn(60)) * time.Second
+		if refreshInterval < time.Minute {
+			jitter = 0 // a test-driven cadence must stay test-driven
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Hour + jitter):
+		case <-time.After(refreshInterval + jitter):
 		}
 		if err := k.Fetch(ctx); err != nil {
 			k.logger.Warn("nmos/auth: JWKS refresh failed; keeping cached keys", "err", err)
