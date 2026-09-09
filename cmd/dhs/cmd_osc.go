@@ -32,6 +32,7 @@ import (
 	"dhs/internal/osc/codec"
 	osccons "dhs/internal/osc/consumer"
 	oscprov "dhs/internal/osc/provider"
+	"dhs/internal/plugin"
 )
 
 // runOSCConsumer dispatches `dhs consumer osc-vXX <verb> [args]`.
@@ -156,7 +157,7 @@ func runOSCSend(ctx context.Context, proto string, args []string) error {
 
 	logger, logClean := producerLogger(ctx)
 	defer logClean()
-	srv := newOSCServer(proto, logger)
+	srv := newOSCServer(proto, pluginDeps(logger))
 
 	switch *transport {
 	case "udp":
@@ -213,7 +214,7 @@ func runOSCFader(ctx context.Context, proto string, args []string) error {
 	// shared flags say (syslog by default), so nothing fights the display.
 	logger, logClean := producerLogger(ctx)
 	defer logClean()
-	srv := newOSCServer(proto, logger)
+	srv := newOSCServer(proto, pluginDeps(logger))
 
 	useUDP := *transport == "udp"
 	if useUDP {
@@ -356,11 +357,13 @@ func newOSCConsumer(proto string, logger *slog.Logger) *osccons.Plugin {
 	return osccons.NewPluginV10(logger)
 }
 
-func newOSCServer(proto string, logger *slog.Logger) *oscprov.Server {
+// newOSCServer builds the producer from the injected dependency set, the
+// same way the provider registry does, so the CLI never bypasses DI.
+func newOSCServer(proto string, deps plugin.Deps) *oscprov.Server {
 	if proto == "osc-v11" {
-		return oscprov.NewServerV11(logger)
+		return oscprov.NewServer(oscprov.V11, deps)
 	}
-	return oscprov.NewServerV10(logger)
+	return oscprov.NewServer(oscprov.V10, deps)
 }
 
 func requireVersion(proto, transport string) error {

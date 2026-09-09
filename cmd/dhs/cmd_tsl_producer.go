@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 	tslprov "dhs/internal/tsl/provider"
 )
@@ -148,7 +149,11 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 		return fmt.Errorf("producer %s %s: at least one --dest is required for UDP", proto, verbName)
 	}
 
-	srv := newTSLServer(version, logger)
+	// --keepalive reaches the socket through the injected transport: the
+	// server opens its TCP connections via Base.Dial on this Net.
+	deps := pluginDeps(logger)
+	deps.Net = transport.New(transport.Config{KeepalivePeriod: f.keepalive})
+	srv := newTSLServer(version, deps)
 	defer func() { _ = srv.Stop() }()
 
 	if !f.tcp {
@@ -469,14 +474,12 @@ func defaultTSLProducerPort(v tslprov.Version) int {
 	return 0
 }
 
-func newTSLServer(v tslprov.Version, logger *slog.Logger) *tslprov.Server {
+// newTSLServer builds the producer from the injected dependency set, the
+// same way the provider registry does, so the CLI never bypasses DI.
+func newTSLServer(v tslprov.Version, deps plugin.Deps) *tslprov.Server {
 	switch v {
-	case tslprov.V31:
-		return tslprov.NewServerV31(logger)
-	case tslprov.V40:
-		return tslprov.NewServerV40(logger)
-	case tslprov.V50:
-		return tslprov.NewServerV50(logger)
+	case tslprov.V31, tslprov.V40, tslprov.V50:
+		return tslprov.NewServer(v, deps)
 	}
 	return nil
 }

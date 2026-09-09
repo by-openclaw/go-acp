@@ -3,6 +3,7 @@ package osc
 import (
 	"context"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	"errors"
 	"io"
 	"log/slog"
@@ -785,7 +786,7 @@ func TestTCPDialer_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix, nil)
+	d := newTCPDialer(framerLenPrefix, nil, transport.New(transport.Config{}).Dial)
 	defer func() { _ = d.close() }()
 	m := codec.Message{Address: "/a", Args: []codec.Arg{codec.Int32(1)}}
 	if err := d.sendMessage(host, port, m); err != nil {
@@ -836,7 +837,7 @@ func TestTCPDialer_SendBundle_SLIP_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerSLIP, nil)
+	d := newTCPDialer(framerSLIP, nil, transport.New(transport.Config{}).Dial)
 	defer func() { _ = d.close() }()
 	b := codec.Bundle{Timetag: 1, Elements: []codec.Packet{codec.Message{Address: "/a"}}}
 	if err := d.sendBundle(host, port, b); err != nil {
@@ -875,7 +876,7 @@ func TestTCPDialer_CloseError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix, nil)
+	d := newTCPDialer(framerLenPrefix, nil, transport.New(transport.Config{}).Dial)
 	c, err := d.dial(host, port)
 	if err != nil {
 		t.Fatalf("dial: %v", err)

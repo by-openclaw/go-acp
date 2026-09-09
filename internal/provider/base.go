@@ -149,6 +149,26 @@ func (b *Base[S]) Listen(ctx context.Context, network, addr string) (net.Listene
 	return ln, nil
 }
 
+// Dial opens an outbound connection through the injected transport — the
+// push providers' half of Listen. A provider that pushes to peers (osc, tsl
+// over TCP) opens every socket here, so the process owns the socket
+// posture (keepalive, TLS, source address) and a test substitutes a fake
+// Net; the connector never decides how a socket is made.
+func (b *Base[S]) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	b.mu.Lock()
+	n := b.net
+	if n == nil {
+		n = transport.New(transport.Config{})
+		b.net = n
+	}
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return nil, net.ErrClosed
+	}
+	return n.Dial(ctx, network, addr)
+}
+
 // listenUDPAddr is transport.ListenUDPAddr, indirected through a package
 // var so a test can drive the Stop-races-the-bind branch deterministically
 // (the same reason transport itself indirects its raw-socket calls). It is
