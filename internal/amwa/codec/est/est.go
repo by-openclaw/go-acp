@@ -11,6 +11,7 @@ import (
 	"encoding/asn1"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -123,6 +124,13 @@ type CSROptions struct {
 // §4.1.2.2 standard attribute set).
 var oidSerialNumber = asn1.ObjectIdentifier{2, 5, 4, 5}
 
+// randReader is the entropy source for key generation and CSR
+// signing, behind a package variable so a test can starve it. The
+// platform reader does not fail in practice, but the two arms below
+// are the difference between refusing to enrol and enrolling with a
+// key we cannot vouch for. Production never reassigns it.
+var randReader io.Reader = rand.Reader
+
 // NewCSR generates a FRESH key pair (mandated per CSR) and a PKCS#10
 // request in DER. The signature uses SHA-256-family algorithms —
 // MD5/SHA-1 are forbidden.
@@ -137,9 +145,9 @@ func NewCSR(opts CSROptions) (csrDER []byte, key crypto.Signer, err error) {
 	}
 	switch opts.Algorithm {
 	case KeyRSA2048:
-		key, err = rsa.GenerateKey(rand.Reader, 2048)
+		key, err = rsa.GenerateKey(randReader, 2048)
 	case KeyECDSAP256:
-		key, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		key, err = ecdsa.GenerateKey(elliptic.P256(), randReader)
 	default:
 		return nil, nil, fmt.Errorf("est: unknown key algorithm %d", opts.Algorithm)
 	}
@@ -162,7 +170,7 @@ func NewCSR(opts CSROptions) (csrDER []byte, key crypto.Signer, err error) {
 	}
 	// SignatureAlgorithm zero value lets x509 pick the SHA-256 family
 	// for the key type (never SHA-1 with these key types).
-	csrDER, err = x509.CreateCertificateRequest(rand.Reader, &tmpl, key)
+	csrDER, err = x509.CreateCertificateRequest(randReader, &tmpl, key)
 	if err != nil {
 		return nil, nil, fmt.Errorf("est: create CSR: %w", err)
 	}

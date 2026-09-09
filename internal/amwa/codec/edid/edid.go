@@ -134,8 +134,7 @@ func Parse(raw []byte) (Result, error) {
 	// 0x36..0x7D; §3.10. The FIRST is the Preferred Timing Mode.
 	for d := 0; d < 4; d++ {
 		off := 0x36 + d*18
-		desc := base[off : off+18]
-		if m, ok := detailedTiming(desc); ok {
+		if m, ok := detailedTiming([18]byte(base[off : off+18])); ok {
 			m.Native = d == 0 // Preferred Timing Mode
 			video = append(video, m)
 		}
@@ -149,13 +148,12 @@ func Parse(raw []byte) (Result, error) {
 	// CTA-861 extension blocks (tag 0x02); §7.
 	numExt := int(base[0x7E])
 	ctaSampling := []string(nil)
-	for e := 1; e <= numExt && e*blockLen+blockLen <= len(raw)+0; e++ {
-		start := e * blockLen
-		if start+blockLen > len(raw) {
-			break
-		}
-		ext := raw[start : start+blockLen]
-		if len(ext) < blockLen || ext[0] != 0x02 {
+	// Parse rejected any length that is not a whole number of blocks,
+	// so the bound below is the only thing standing between numExt —
+	// a byte the peer wrote — and the end of the blob.
+	for e := 1; e <= numExt && (e+1)*blockLen <= len(raw); e++ {
+		ext := raw[e*blockLen : (e+1)*blockLen]
+		if ext[0] != 0x02 {
 			continue
 		}
 		if err := validateBlock(ext, false); err != nil {
