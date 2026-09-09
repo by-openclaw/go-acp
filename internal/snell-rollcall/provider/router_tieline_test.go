@@ -1,9 +1,11 @@
 package rollcall
 
 import (
+	"strings"
 	"testing"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/codec/router"
 )
 
@@ -339,5 +341,224 @@ func TestACrossedRouteNamingALevelTheSourceMatrixDoesNotHave(t *testing.T) {
 		Levels: levels(2),
 	}); got != router.RouteBadParameters {
 		t.Errorf("a route across a level the source matrix lacks answered %s", got)
+	}
+}
+
+// servedTwoMatrices is a plant with cables, served as a device.
+func servedTwoMatrices(t *testing.T) *served {
+	t.Helper()
+	return newServed(t, &canonical.Export{Root: &canonical.Node{
+		Header: canonical.Header{
+			Number: 1, Identifier: "frame",
+			Children: []canonical.Element{
+				plantWithLevels([]string{"Video"},
+					[]string{"CAM 1", "CAM 2", "CAM 3", "CAM 4", "CAM 5", "CAM 6"},
+					[]string{"MON 1", "MON 2", "MON 3", "MON 4", "MON 5", "MON 6"}),
+				plantWithLevels([]string{"Video"},
+					[]string{"VTR 1", "VTR 2", "VTR 3", "VTR 4", "VTR 5", "VTR 6"},
+					[]string{"REC 1", "REC 2", "REC 3", "REC 4", "REC 5", "REC 6"}),
+			},
+		},
+	}})
+}
+
+// tielinePort finds the node the cables are managed from.
+func tielinePort(t *testing.T, s *served) *port {
+	t.Helper()
+	for _, n := range s.p.model.portNumbers() {
+		if prt := s.p.model.port(n); prt != nil && prt.id.TypeID == codec.TypeIDTielines {
+			return prt
+		}
+	}
+	t.Fatal("no tieline node is served")
+	return nil
+}
+
+func TestAPlantWithCablesServesANodeForThem(t *testing.T) {
+	// A tieline that cannot be seen cannot be diagnosed: the whole complaint
+	// about a plant that will not route across matrices is "which cable is
+	// stuck", and nothing else answers it.
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+
+	if prt.id.Name != "TIELINES" {
+		t.Errorf("the node is called %q", prt.id.Name)
+	}
+
+	var list *line
+	lines := prt.menu(true)
+	for i := range lines {
+		if lines[i].Text == "Tielines" {
+			list = &lines[i]
+		}
+	}
+	if list == nil || list.Param != "#SEL:" {
+		t.Fatal("the cables are not published as a list")
+	}
+	if int(list.Step) != len(prt.router.tielines) {
+		t.Errorf("the list spans %d lines for %d cables", list.Step, len(prt.router.tielines))
+	}
+
+	// Every command the menu names answers, or a panel treats the node as
+	// broken rather than as empty.
+	for _, l := range lines {
+		if l.Command == 0 {
+			continue
+		}
+		if _, ok := prt.value(l.Command); !ok {
+			t.Errorf("command %d (%q) has no value", l.Command, l.Text)
+		}
+	}
+}
+
+func TestAPlantWithNoCablesServesNoNodeForThem(t *testing.T) {
+	// A page offering an empty list is one an operator opens once.
+	s := newServed(t, routerTree(4, 4))
+	for _, n := range s.p.model.portNumbers() {
+		if prt := s.p.model.port(n); prt != nil && prt.id.TypeID == codec.TypeIDTielines {
+			t.Fatal("a plant of one matrix served a tieline node")
+		}
+	}
+}
+
+func TestChoosingACableSaysWhatIsHoldingIt(t *testing.T) {
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+	sess := s.open(prt.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	// Free to begin with, and it says where it runs.
+	if _, err := s.p.applyWrite(sess, prt, cmdTLSelect, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	v, _ := prt.value(cmdTLUsedBy)
+	if !strings.Contains(v.Text, "free") {
+		t.Errorf("an unused cable says %q", v.Text)
+	}
+
+	// Take it with a route across, and it says what is holding it.
+	up, _ := prt.router.levelOf(1, 1)
+	down, _ := prt.router.levelOf(2, 1)
+	if result, _ := prt.router.routeAcross(up, down, 2, 3); !result.OK() {
+		t.Fatalf("route across: %s", result)
+	}
+	if _, err := s.p.applyWrite(sess, prt, cmdTLSelect, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	v, _ = prt.value(cmdTLUsedBy)
+	if !strings.Contains(v.Text, "destination 3") {
+		t.Errorf("a held cable says %q", v.Text)
+	}
+	if !strings.Contains(v.Text, "source 2") {
+		t.Errorf("a held cable does not say what it carries: %q", v.Text)
+	}
+}
+
+func TestClearingACablePutsItBack(t *testing.T) {
+	// Clearing is an admission that the pool and the plant have drifted apart,
+	// not an instruction to unroute anything: an operator clearing a stuck
+	// cable wants it available, not a destination going black.
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+	sess := s.open(prt.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	up, _ := prt.router.levelOf(1, 1)
+	down, _ := prt.router.levelOf(2, 1)
+	if result, _ := prt.router.routeAcross(up, down, 2, 1); !result.OK() {
+		t.Fatal("the route was refused")
+	}
+	before := down.dests[0].routed
+
+	if _, err := s.p.applyWrite(sess, prt, cmdTLSelect, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	if _, err := s.p.applyWrite(sess, prt, cmdTLClear, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+
+	if heldCables(prt.router) != 0 {
+		t.Errorf("%d cables still held after clearing", heldCables(prt.router))
+	}
+	if v, _ := prt.value(cmdTLStatus); !strings.Contains(v.Text, "freed") {
+		t.Errorf("clearing said %q", v.Text)
+	}
+	if down.dests[0].routed != before {
+		t.Error("clearing a cable changed what its destination was carrying")
+	}
+
+	// Clearing it again says so rather than pretending it did something.
+	if _, err := s.p.applyWrite(sess, prt, cmdTLClear, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if v, _ := prt.value(cmdTLStatus); !strings.Contains(v.Text, "already free") {
+		t.Errorf("clearing a free cable said %q", v.Text)
+	}
+}
+
+func TestACableThatIsNotThere(t *testing.T) {
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+	r := prt.router
+
+	if got := r.tielineUsedBy(999); got != "no such tieline" {
+		t.Errorf("a cable that is not there says %q", got)
+	}
+	if got := r.clearTieline(999); got != "no such tieline" {
+		t.Errorf("clearing a cable that is not there says %q", got)
+	}
+	if _, ok := r.tielineAt(0); ok {
+		t.Error("cable zero was found")
+	}
+}
+
+func TestMakeRouteSaysWhereRoutesAreMade(t *testing.T) {
+	// A tieline is taken by the controller when a route needs it. A client
+	// that could route one directly could strand a signal on a cable nobody
+	// is watching, so the button says where routing happens instead.
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+	sess := s.open(prt.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	if _, err := s.p.applyWrite(sess, prt, cmdTLMakeRoute, 0, codec.ModeValue, 1, "", nil); err != nil {
+		t.Fatalf("make route: %v", err)
+	}
+	if v, _ := prt.value(cmdTLStatus); !strings.Contains(v.Text, "a cable is taken") {
+		t.Errorf("Make Route said %q", v.Text)
+	}
+}
+
+func TestACableWhoseUpstreamEndIsGone(t *testing.T) {
+	// The cables are built from the plant so they always fit it, and one that
+	// did not would read a destination that is not there.
+	s := servedTwoMatrices(t)
+	r := s.p.model.routerModel()
+	r.tielines[0].upDest = 999
+	r.tielines[0].heldFor = 1
+
+	if got := r.sourceOnCable(&r.tielines[0]); got != 0 {
+		t.Errorf("a cable running off the end of its matrix carries source %d", got)
+	}
+	r.tielines[0].upMatrix = 99
+	if got := r.sourceOnCable(&r.tielines[0]); got != 0 {
+		t.Errorf("a cable on a matrix that is not there carries source %d", got)
+	}
+}
+
+func TestTheNodeSaysHowManyCablesAreInUse(t *testing.T) {
+	// The first thing an operator wants from this page is how many are left,
+	// which is what the status line carries before anything is chosen.
+	s := servedTwoMatrices(t)
+	prt := tielinePort(t, s)
+
+	if v, _ := prt.value(cmdTLStatus); !strings.Contains(v.Text, "0 in use") {
+		t.Errorf("an idle plant reports %q", v.Text)
+	}
+
+	up, _ := prt.router.levelOf(1, 1)
+	down, _ := prt.router.levelOf(2, 1)
+	if result, _ := prt.router.routeAcross(up, down, 1, 1); !result.OK() {
+		t.Fatal("the route was refused")
+	}
+	if got := heldTielines(prt.router); got != 1 {
+		t.Errorf("%d cables in use after one route across", got)
 	}
 }

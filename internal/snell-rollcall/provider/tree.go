@@ -174,6 +174,14 @@ func buildModel(tree *canonical.Export, name string) *model {
 		// describes are already in the port list a client just enumerated.
 		if next < int(firstClientPort) {
 			m.addPort(newXYPanelPort(uint8(next), name, r))
+			next++
+		}
+
+		// And one for the cables between the matrices, when there are any. A
+		// plant of one matrix has nowhere for a cable to go, and a node
+		// offering an empty list is a page an operator opens once.
+		if len(r.tielines) > 0 && next < int(firstClientPort) {
+			m.addPort(newTielinePort(uint8(next), r))
 		}
 	}
 

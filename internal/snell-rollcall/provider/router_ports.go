@@ -207,22 +207,21 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 	// what it selects, which is the whole of what a category does.
 	for i := range r.categories {
 		c := &r.categories[i]
-		outer := len(p.lines)
 		path := fmt.Sprintf("menu.category.%d", i+1)
-		p.lines = append(p.lines, line{
-			Index: uint32(outer), Style: codec.StyleTiled | codec.StyleCacheable,
-			Text: c.name, path: path,
-		})
 
+		// Flat, beside the salvos, rather than nested under a container of
+		// its own. The vendor's panel draws the salvo list and would not draw
+		// this one until the two had the same shape, and one list is one list
+		// whatever it is a list of.
 		groups := len(p.lines)
 		p.lines = append(p.lines, line{
 			Index: uint32(groups), Style: codec.StyleList | codec.StyleCacheable,
-			Text: "Groups", Param: "#SEL:", path: path + ".groups",
+			Text: c.name, Param: "#SEL:", path: path,
 		})
 		selectCmd := uint32(cmdXYGroupSelect + i)
 		for j := range c.groups {
 			idx := len(p.lines)
-			gpath := fmt.Sprintf("%s.groups.%d", path, j+1)
+			gpath := fmt.Sprintf("%s.%d", path, j+1)
 			p.lines = append(p.lines, line{
 				Index: uint32(idx), Style: codec.StyleButton | codec.StyleCacheable,
 				Command: selectCmd, MinRange: int32(j + 1),
@@ -248,8 +247,6 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 		p.values[matchCmd] = codec.Value{
 			Command: matchCmd, Mode: codec.ModeString, Text: c.selects(r, 1),
 		}
-
-		p.lines[outer].Step = uint32(len(p.lines) - outer - 1)
 	}
 
 	// The root spans everything under it.

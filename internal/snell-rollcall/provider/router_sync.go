@@ -38,6 +38,8 @@ func (p *Provider) syncRouterWrite(ctx context.Context, s *session.Session, prt 
 		p.fireSalvo(ctx, s, prt, v)
 	case prt.router != nil && isGroupSelect(v.Command):
 		p.showWhatAGroupSelects(ctx, s, prt, v)
+	case prt.id.TypeID == codec.TypeIDTielines:
+		p.tielineAction(ctx, s, prt, v)
 	case prt.level != nil:
 		p.levelWriteToTables(ctx, s, prt, v)
 	case prt.router != nil:
@@ -412,4 +414,29 @@ func (p *Provider) publishText(ctx context.Context, s *session.Session,
 	v := codec.Value{Command: cmd, Mode: codec.ModeString, Text: text}
 	prt.seed(cmd, v)
 	p.publishExcept(ctx, s, prt.number, v)
+}
+
+// tielineAction answers the node the cables are managed from.
+//
+// Choosing a cable says what is holding it; clearing one puts it back. Neither
+// routes anything: a tieline is taken by the controller when a route needs it
+// and given back when the destination it feeds is fed by something nearer, and
+// a client that could route one directly could strand a signal on a cable
+// nobody is watching.
+func (p *Provider) tielineAction(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
+	r := prt.router
+
+	switch v.Command {
+	case cmdTLSelect:
+		p.publishText(ctx, s, prt, cmdTLUsedBy, r.tielineUsedBy(uint32(v.Val)))
+
+	case cmdTLClear:
+		sel, _ := prt.value(cmdTLSelect)
+		p.publishText(ctx, s, prt, cmdTLStatus, r.clearTieline(uint32(sel.Val)))
+		p.publishText(ctx, s, prt, cmdTLUsedBy, r.tielineUsedBy(uint32(sel.Val)))
+
+	case cmdTLMakeRoute:
+		p.publishText(ctx, s, prt, cmdTLStatus,
+			"routes are made on a level or through the tables; a cable is taken for them")
+	}
 }

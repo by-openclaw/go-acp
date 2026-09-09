@@ -354,3 +354,44 @@ func categoriesOf(prt *port) []routerCategory {
 	}
 	return prt.router.categories
 }
+
+// writeTielinePage renders the node the cables are managed from.
+//
+// A list of the cables, what is holding the chosen one, a Clear button to put
+// it back, and a status line. A list selects and a button acts, as everywhere
+// else: a list that cleared on selection would free a cable an operator was
+// only looking at.
+func writeTielinePage(body *bytes.Buffer, prt *port) {
+	cables := 0
+	if prt.router != nil {
+		cables = len(prt.router.tielines)
+	}
+	listHeight := cables*14 + 10
+	if listHeight > 300 {
+		listHeight = 300
+	}
+
+	fmt.Fprintf(body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
+	fmt.Fprintf(body, "[%d:%d:%d:0]%s", prt.id.TypeID, prt.id.Version.CmdSet, templateAllLevels, nl)
+	fmt.Fprintf(body, "Size=0,0,420,%d%s", listHeight+120, nl)
+
+	n := 0
+	ctl := func(caption string, command int64, flags, typ, x, y, w, h int) {
+		fmt.Fprintf(body, "Ctl%d=%s,%d,%d,%d,%d,%d,%d,%d%s",
+			n, caption, command, flags, typ, x, y, w, h, nl)
+		n++
+	}
+
+	ctl("Tielines", -1, 0, ctlGroupBox, 8, 8, 400, listHeight+58)
+	ctl("New Listbox", cmdTLSelect, 0, ctlListbox, 14, 22, 150, listHeight)
+	ctl("Used By", -1, 0, ctlLabel, 174, 22, 50, 10)
+	ctl("New Displaytext", cmdTLUsedBy, 0, ctlValueText, 174, 34, 228, listHeight-24)
+	ctl("Clear", cmdTLClear, 1, ctlPushBtn, 174, listHeight+30, 76, 24)
+
+	y := listHeight + 74
+	ctl("Actions", -1, 0, ctlGroupBox, 8, y, 400, 40)
+	ctl("Status", -1, 0, ctlLabel, 14, y+16, 50, 10)
+	ctl("New Displaytext", cmdTLStatus, 0, ctlValueText, 70, y+16, 332, 10)
+
+	body.WriteString(nl)
+}

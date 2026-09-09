@@ -471,7 +471,7 @@ func TestACategorySaysWhatItSelects(t *testing.T) {
 	var groups, selects *line
 	for i := range lines {
 		switch lines[i].Text {
-		case "Groups":
+		case "Type":
 			groups = &lines[i]
 		case "Selects":
 			selects = &lines[i]

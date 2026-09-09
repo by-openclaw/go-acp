@@ -94,6 +94,8 @@ func buildTemplate(prt *port) []byte {
 		writeRouterLevelPages(&body, prt)
 	case prt.matrix != nil:
 		writeRouterMatrixPage(&body, prt)
+	case prt.id.TypeID == codec.TypeIDTielines:
+		writeTielinePage(&body, prt)
 	case prt.router != nil:
 		writeXYPanelPage(&body, prt)
 	default:
