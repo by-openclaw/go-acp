@@ -692,9 +692,14 @@ func TestRunRenewalLoop(t *testing.T) {
 			t.Fatal(err)
 		}
 		first := m.Certificate().Leaf.SerialNumber.Int64()
-		runUntil(t, m, &instantAfter{}, func() bool { return mk.reenrolls.Load() >= 1 })
-		if m.Certificate().Leaf.SerialNumber.Int64() == first {
-			t.Fatal("the loop reported a renewal but the live certificate did not change")
+		// Wait for the INSTALLED certificate to change, not for the mock's
+		// request counter: the counter ticks inside the EST handler, before
+		// the client has stored the reply (the race CI caught under -race).
+		runUntil(t, m, &instantAfter{}, func() bool {
+			return m.Certificate().Leaf.SerialNumber.Int64() != first
+		})
+		if mk.reenrolls.Load() < 1 {
+			t.Fatal("the certificate changed without a re-enrollment being served")
 		}
 	})
 }
