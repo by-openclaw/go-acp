@@ -157,6 +157,7 @@ jobs:
           check internal/wiretrace 100
           check internal/logging 100
           check internal/scenario 100
+          check internal/amwa/session/http 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
