@@ -121,6 +121,7 @@ func runNMOSSet(ctx context.Context, args []string) error {
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
 		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

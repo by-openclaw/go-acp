@@ -24,6 +24,7 @@ import (
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	"dhs/internal/lldp"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 
 	"dhs/internal/amwa/codec/est"
@@ -94,6 +95,13 @@ type IS04NodeConfig struct {
 	DiscoveryMode string // "mdns" | "static" | "unicast"
 	Priority      int
 	APIVer        string // default "v1.3"
+
+	// Deps is the injected dependency set (transport, clock, metrics) the
+	// Node is built from — the same plugin.Deps every connector takes. A
+	// zero value means the production defaults. The logger comes from the
+	// constructor's parameter for compatibility; Deps.Logger fills in when
+	// that is nil.
+	Deps plugin.Deps
 
 	// UnicastResolver + UnicastDomain drive Registry discovery over
 	// unicast DNS-SD (DiscoveryMode "unicast"): the resolver is the
@@ -226,7 +234,12 @@ type IS04NodeConfig struct {
 type IS04NodeServer struct {
 	logger *slog.Logger
 	cfg    IS04NodeConfig
-	bundle *NodeConfig
+
+	// met counts every Node/Connection API request through the shared
+	// HTTP server; supplied by cfg.Deps, created on first use otherwise.
+	met     *metrics.Connector
+	metOnce sync.Once
+	bundle  *NodeConfig
 	// codec encodes every Node-API response in the wire shape for the
 	// configured api_ver. Without this downcast, GET /x-nmos/node/v1.0/...
 	// would return the canonical (v1.3) JSON shape, which carries fields
@@ -329,7 +342,19 @@ type IS04NodeServer struct {
 
 // NewIS04NodeServer validates the Node bundle and prepares (but does
 // not start) the server.
+// Metrics returns the Node's counter set — every Node API and Connection
+// API request and response, counted by the shared HTTP server — so
+// --metrics-addr scrapes an NMOS Node like any raw-socket provider. Never
+// nil.
+func (s *IS04NodeServer) Metrics() *metrics.Connector {
+	s.metOnce.Do(func() { s.met = s.cfg.Deps.WithDefaults().Metrics })
+	return s.met
+}
+
 func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConfig) (*IS04NodeServer, error) {
+	if logger == nil {
+		logger = cfg.Deps.Logger
+	}
 	logger = plugin.LoggerOrDefault(logger)
 	if bundle == nil {
 		return nil, errors.New("provider/node: nil bundle")
@@ -490,6 +515,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	}
 
 	srv := httpsession.NewServer(s.logger)
+	srv.Metrics = s.Metrics()
 	// BCP-003-01/-03: TLS serving. A manual pair or EST enrollment
 	// arms the HTTPS/WSS listener; without either the Node speaks
 	// plain HTTP (and never both — the spec forbids mixing).

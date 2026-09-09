@@ -42,6 +42,7 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/session/query"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 )
 
@@ -78,8 +79,11 @@ type MirrorOptions struct {
 	// version-fidelity comment on Run — and forwards each document
 	// unchanged (no minor translation of the payloads themselves).
 	APIVer string
-	// Logger receives operational events. nil = slog.Default().
+	// Logger receives operational events. nil = the process default.
 	Logger *slog.Logger
+	// Deps is the injected dependency set (transport, clock, metrics), the
+	// same plugin.Deps every connector takes; zero = defaults.
+	Deps plugin.Deps
 	// AuditPath, when set, appends one JSONL AuditEvent per external-
 	// registry observation — the evidence trail (mirror_audit.go).
 	AuditPath string
@@ -151,6 +155,9 @@ type Mirror struct {
 	logger *slog.Logger
 	http   *stdhttp.Client
 
+	met     *metrics.Connector
+	metOnce sync.Once
+
 	// sourceClients holds one Query API client per subscribed wire
 	// minor — the WS legs dial through them, and resync re-fetches the
 	// per-minor exact-match REST views through the same set. Assigned
@@ -206,6 +213,13 @@ type Mirror struct {
 const mirrorResyncDebounce = 750 * time.Millisecond
 
 // NewMirror validates options and builds an unstarted mirror.
+// Metrics returns the mirror's counter set: every request on the served
+// Query face, counted by the shared HTTP server. Never nil.
+func (m *Mirror) Metrics() *metrics.Connector {
+	m.metOnce.Do(func() { m.met = m.opts.Deps.WithDefaults().Metrics })
+	return m.met
+}
+
 func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	if opts.Source == "" || opts.Target == "" {
 		return nil, errors.New("registry/mirror: source and target are required")

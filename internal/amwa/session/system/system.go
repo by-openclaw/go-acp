@@ -33,6 +33,7 @@ import (
 	"dhs/internal/amwa/codec/spec"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // IS09FetchOptions configures a single Fetch call.
@@ -40,6 +41,11 @@ type IS09FetchOptions struct {
 	// Logger to emit progress messages (mDNS bind, selection
 	// outcome). May be nil for quiet mode.
 	Logger *slog.Logger
+
+	// Deps is the injected dependency set (transport, clock, metrics), the
+	// same plugin.Deps every connector takes; zero = defaults. Its metrics
+	// connector counts the fetch when no HTTPClient is supplied.
+	Deps plugin.Deps
 
 	// APIVer is the IS-09 wire version requested. Default v1.0.
 	APIVer string
@@ -92,6 +98,7 @@ func Fetch(ctx context.Context, opts IS09FetchOptions) (*FetchResult, error) {
 	client := opts.HTTPClient
 	if client == nil {
 		client = httpsession.NewClient()
+		client.Metrics = opts.Deps.WithDefaults().Metrics
 	}
 
 	// Direct override — skip discovery entirely.

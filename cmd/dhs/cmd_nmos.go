@@ -391,6 +391,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		TLSKeyFile:        tlsKeys.String(),
 		TLSCAFile:         *tlsCA,
 		TLSDataDir:        *tlsDir,
+		Deps:              pluginDeps(logger),
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -441,6 +442,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 	if *direct != "" {
 		res, err := consumer.Fetch(ctx, consumer.IS09FetchOptions{
 			Logger:   logger,
+			Deps:     pluginDeps(logger),
 			APIVer:   *apiVer,
 			APIProto: *apiProto,
 			Direct:   *direct,
@@ -502,6 +504,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 
 	res, err := consumer.Fetch(ctx, consumer.IS09FetchOptions{
 		Logger:     logger,
+		Deps:       pluginDeps(logger),
 		APIVer:     *apiVer,
 		APIProto:   *apiProto,
 		Discovered: insts,
@@ -590,6 +593,7 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 	cfg := provider.IS09Config{
+		Deps:          pluginDeps(logger),
 		Bind:          *bind,
 		AdvertiseHost: *advertise,
 		DiscoveryMode: mode,
@@ -957,6 +961,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		Target:             *targetURL,
 		APIVer:             *apiVer,
 		Logger:             logger,
+		Deps:               pluginDeps(logger),
 		AuditPath:          *auditLog,
 		StatusAddr:         *statusAddr,
 		ServeAddr:          *serveAddr,
@@ -1030,6 +1035,7 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
 		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
@@ -1191,6 +1197,7 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
 		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

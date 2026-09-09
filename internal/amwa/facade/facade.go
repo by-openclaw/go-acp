@@ -31,9 +31,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"dhs/internal/amwa/consumer"
+	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 )
 
@@ -86,6 +88,10 @@ type Reply struct {
 type Options struct {
 	Logger *slog.Logger
 
+	// Deps is the injected dependency set (transport, clock, metrics), the
+	// same plugin.Deps every connector takes; zero = defaults.
+	Deps plugin.Deps
+
 	// Bind is the listen address, e.g. ":5001".
 	Bind string
 
@@ -101,6 +107,17 @@ type Server struct {
 	logger *slog.Logger
 	opts   Options
 	client *http.Client
+
+	met     *metrics.Connector
+	metOnce sync.Once
+}
+
+// Metrics returns the facade's counter set from its injected Deps. Never
+// nil. (The facade still serves through its own http.Server — see the
+// transport gate allowlist — so its requests are not yet counted.)
+func (s *Server) Metrics() *metrics.Connector {
+	s.metOnce.Do(func() { s.met = s.opts.Deps.WithDefaults().Metrics })
+	return s.met
 }
 
 // New builds a facade Server.

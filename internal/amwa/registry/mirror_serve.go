@@ -130,6 +130,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	store := NewStore()
 	apiVers := pickAPIVersions("")
 	srv := httpsession.NewServer(m.logger)
+	srv.Metrics = m.Metrics()
 	// BCP-003-02 gate on the SERVED face only (issue #946) — the same
 	// KeyCache + AuthGate wiring Registry.Serve arms with --auth-url.
 	// The route table is covered via srv.Auth; the dispatcher branches

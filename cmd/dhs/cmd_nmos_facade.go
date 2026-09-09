@@ -52,6 +52,7 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 
 	srv, err := facade.New(facade.Options{
 		Logger: logger,
+		Deps:   pluginDeps(logger),
 		Bind:   *bind,
 		// A fresh Controller per question, not one held across the run:
 		// the tool re-registers resources between tests, and IS-04-04
@@ -60,6 +61,7 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 		Controller: func(qctx context.Context) (*consumer.Controller, error) {
 			return consumer.NewController(qctx, consumer.ControllerOptions{
 				Logger:           logger,
+				Deps:             pluginDeps(logger),
 				Reporter:         spec.NopReporter{},
 				RegistryURL:      *registry,
 				DiscoveryMode:    mode,
