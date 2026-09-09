@@ -182,6 +182,14 @@ func (r *scriptedResponder) Close() error {
 	return nil
 }
 
+// counts reports what the responder has been asked to do. Locked: a
+// server announces from its own goroutine while the test watches.
+func (r *scriptedResponder) counts() (announced, updated, closed int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.announced), len(r.updated), r.closed
+}
+
 func (r *scriptedResponder) lastAnnounce(t *testing.T) dnssdcodec.Instance {
 	t.Helper()
 	r.mu.Lock()

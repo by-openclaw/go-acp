@@ -58,24 +58,24 @@ func TestNodeMDNSAnnounceFollowsRegistration(t *testing.T) {
 	if ins := r.lastAnnounce(t); ins.Service != dnssdcodec.ServiceNode || ins.Host != "node.local" {
 		t.Errorf("announced %+v, want the Node's own instance", ins)
 	}
-	if len(r.announced) != 1 {
-		t.Errorf("announced %d times, want once", len(r.announced))
+	if n, _, _ := r.counts(); n != 1 {
+		t.Errorf("announced %d times, want once", n)
 	}
 
 	// Registered: the advertisement stops.
 	s.onRegistrationStateChanged(true)
-	if r.closed != 1 {
-		t.Errorf("responder closed %d times, want 1 on registration", r.closed)
+	if _, _, closed := r.counts(); closed != 1 {
+		t.Errorf("responder closed %d times, want 1 on registration", closed)
 	}
 	s.onRegistrationStateChanged(true) // idempotent
-	if r.closed != 1 {
-		t.Errorf("a second registration must not close again (%d)", r.closed)
+	if _, _, closed := r.counts(); closed != 1 {
+		t.Errorf("a second registration must not close again (%d)", closed)
 	}
 
 	// Registry lost: the advertisement comes back.
 	s.onRegistrationStateChanged(false)
-	if len(r.announced) != 2 {
-		t.Errorf("announced %d times, want a re-announce on losing the Registry", len(r.announced))
+	if n, _, _ := r.counts(); n != 2 {
+		t.Errorf("announced %d times, want a re-announce on losing the Registry", n)
 	}
 
 	// Stopping without a responder is a no-op.
@@ -93,8 +93,8 @@ func TestNodeMDNSAnnounceIgnoredInStaticMode(t *testing.T) {
 	s := announcingNode(t, "static")
 	s.onRegistrationStateChanged(false)
 	s.onRegistrationStateChanged(true)
-	if len(r.announced) != 0 || r.closed != 0 {
-		t.Errorf("static mode touched the responder: announced=%d closed=%d", len(r.announced), r.closed)
+	if n, _, closed := r.counts(); n != 0 || closed != 0 {
+		t.Errorf("static mode touched the responder: announced=%d closed=%d", n, closed)
 	}
 }
 
@@ -119,8 +119,8 @@ func TestNodeMDNSAnnounceFailures(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "announce") {
 		t.Errorf("refused announce = %v", err)
 	}
-	if refusing.closed != 1 {
-		t.Errorf("a refused announce must close the responder (%d)", refusing.closed)
+	if _, _, closed := refusing.counts(); closed != 1 {
+		t.Errorf("a refused announce must close the responder (%d)", closed)
 	}
 
 	// The warn path: a re-announce that fails on losing the Registry is
@@ -154,7 +154,10 @@ func TestSystemServerAnnounceAndFailure(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(ctx) }()
 	until := time.Now().Add(5 * time.Second)
-	for len(r.announced) == 0 && time.Now().Before(until) {
+	for {
+		if n, _, _ := r.counts(); n > 0 || !time.Now().Before(until) {
+			break
+		}
 		time.Sleep(5 * time.Millisecond)
 	}
 	if ins := r.lastAnnounce(t); ins.Service != dnssdcodec.ServiceSystem ||
@@ -166,7 +169,7 @@ func TestSystemServerAnnounceAndFailure(t *testing.T) {
 	if err := srv.Stop(); err != nil {
 		t.Errorf("Stop: %v", err)
 	}
-	if r.closed == 0 {
+	if _, _, closed := r.counts(); closed == 0 {
 		t.Error("Stop must close the responder")
 	}
 
