@@ -54,6 +54,11 @@ type routerLevel struct {
 	sources []string
 	dests   []routerDest
 
+	// filter says whether the plant offers categories to narrow itself down
+	// with. A panel draws the filter only when told to, and telling it so with
+	// nothing behind it gives an operator a control that finds nothing.
+	filter bool
+
 	// matrixNumber and levelNumber are where this level sits in the plant,
 	// counting from one. A crosspoint made on this node is a local route, and
 	// a local route is one whose source names this same matrix and level; the
@@ -142,6 +147,15 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 		r.categories = buildCategories(lv.sources, lv.dests)
 	}
 	r.catTable = alloc(uint32(len(r.categories)), router.CategoryTableSize)
+
+	// Every level is told whether there is anything to filter by, because the
+	// filter is drawn from the level's own template and the categories are
+	// published on the node that serves the tables.
+	for i := range r.matrices {
+		for j := range r.matrices[i].levels {
+			r.matrices[i].levels[j].filter = len(r.categories) > 0
+		}
+	}
 	for i := range r.categories {
 		r.categories[i].table = alloc(uint32(len(r.categories[i].groups)), router.GroupTableSize)
 	}

@@ -236,7 +236,10 @@ func writeXYPanelSection(body *bytes.Buffer, prt *port) {
 	kv("DestCount", len(prt.level.dests))
 	kv("DestPanelColumns", xyPanelColumns)
 	kv("DestPanelRows", xyPanelRows)
-	kv("FilterFunction", false)
+	// The switch that draws the category filter at all. A plant with nothing
+	// to narrow itself down by leaves it off, because a filter that finds
+	// nothing is worse than no filter.
+	kv("FilterFunction", prt.level.filter)
 	// The whole interface counts from one — a source is 1..n and a protect is
 	// off at 1 — and this is where the panel is told so.
 	kv("OneBased", true)
