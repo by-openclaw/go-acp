@@ -13,15 +13,34 @@ import (
 // TestConnect_AutoFallback drives TransportAuto: the TCP probe to a port with
 // no TCP listener fails, so Connect falls back to UDP and records the resolved
 // transport.
+//
+// The port is one this test just released, not the ACP1 default: a
+// developer running a provider on 2071 must not turn the fallback
+// into a TCP success and fail a test about the fallback.
 func TestConnect_AutoFallback(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
 	p.SetTransport(TransportAuto)
-	if err := p.Connect(context.Background(), "127.0.0.1", 0); err != nil {
+	if err := p.Connect(context.Background(), "127.0.0.1", freeTCPPortRefused(t)); err != nil {
 		t.Fatalf("Connect auto: %v", err)
 	}
 	t.Cleanup(func() { _ = p.Disconnect() })
 	if p.Transport() != TransportUDP {
 		t.Errorf("auto resolved to %v, want udp fallback", p.Transport())
+	}
+}
+
+// A caller that names no port gets the ACP1 default. UDP is the arm
+// to check it on: it needs no peer, so the assertion is about the
+// port the plugin chose and nothing else.
+func TestConnect_PortZeroTakesTheDefault(t *testing.T) {
+	p := &Plugin{logger: slog.Default()}
+	p.SetTransport(TransportUDP)
+	if err := p.Connect(context.Background(), "127.0.0.1", 0); err != nil {
+		t.Fatalf("Connect udp: %v", err)
+	}
+	t.Cleanup(func() { _ = p.Disconnect() })
+	if p.port != codec.DefaultPort {
+		t.Errorf("port = %d, want the ACP1 default %d", p.port, codec.DefaultPort)
 	}
 }
 

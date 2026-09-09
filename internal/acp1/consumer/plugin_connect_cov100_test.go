@@ -5,8 +5,11 @@ import (
 	"log/slog"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
+	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/transport"
 )
@@ -80,17 +83,25 @@ func TestConnect_AutoUDPFallbackDialError(t *testing.T) {
 	}
 }
 
-// TestConnect_AN2DefaultPort: AN2 with port 0 defaults to AN2DefaultPort
-// (drives the port==DefaultPort → AN2DefaultPort branch). The connect to a
-// dead port still errors, which is fine — we only need the branch.
+// TestConnect_AN2DefaultPort: AN2 remaps the ACP1 default port to its
+// own, because Mode C listens on 2072 and not on 2071.
+//
+// Whether anything answers there is the developer's business — a real
+// Neuron on this desk listens on 2072 — so the assertion is the remap
+// itself, taken from whichever way the connect went.
 func TestConnect_AN2DefaultPort(t *testing.T) {
 	p := &Plugin{logger: slog.Default()}
 	p.SetTransport(TransportAN2)
-	// port 0 → defaulted to codec.DefaultPort upstream, then remapped to
-	// AN2DefaultPort inside the AN2 case. Nothing is listening → error.
-	if err := p.Connect(context.Background(), "127.0.0.1", 0); err == nil {
-		_ = p.Disconnect()
-		t.Fatal("AN2 connect to default (dead) port: want error")
+	err := p.Connect(context.Background(), "127.0.0.1", codec.DefaultPort)
+	if err != nil {
+		if !strings.Contains(err.Error(), strconv.Itoa(AN2DefaultPort)) {
+			t.Fatalf("= %v, want the AN2 port %d named", err, AN2DefaultPort)
+		}
+		return
+	}
+	t.Cleanup(func() { _ = p.Disconnect() })
+	if p.port != AN2DefaultPort {
+		t.Errorf("port = %d, want the AN2 default %d", p.port, AN2DefaultPort)
 	}
 }
 
