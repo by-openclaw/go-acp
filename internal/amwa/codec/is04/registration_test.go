@@ -153,7 +153,7 @@ func TestEncodeRegistrationSurfacesEnvelopeFailure(t *testing.T) {
 // read strictly. Broken JSON and an unknown envelope key are errors.
 func TestDecodeRegistrationIsStrict(t *testing.T) {
 	cases := map[string]string{
-		"broken json":         `{"type":`,
+		"broken json":          `{"type":`,
 		"unknown envelope key": `{"type":"node","data":{},"extra":1}`,
 	}
 	for name, body := range cases {
