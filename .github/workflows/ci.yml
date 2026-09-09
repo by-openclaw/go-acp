@@ -155,6 +155,8 @@ jobs:
           check internal/identity 100
           check internal/metrics 100
           check internal/wiretrace 100
+          check internal/logging 100
+          check internal/scenario 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
