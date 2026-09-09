@@ -586,20 +586,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 
 		stopPing := make(chan struct{})
 		if ping > 0 {
-			go func() {
-				t := time.NewTicker(ping)
-				defer t.Stop()
-				for {
-					select {
-					case <-stopPing:
-						return
-					case <-t.C:
-						if err := ws.SendPing(nil); err != nil {
-							return // socket gone; the reader will finish up
-						}
-					}
-				}
-			}()
+			go pingUntil(ws, ping, stopPing)
 		}
 
 		go func() {
@@ -611,6 +598,25 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 				}
 			}
 		}()
+	}
+}
+
+// pingUntil pings the subscriber on its interval until the socket
+// refuses one or the caller stops it. A ping that fails needs no
+// handling of its own: the reader is already unblocking on the same
+// dead socket and owns the teardown.
+func pingUntil(ws *httpsession.WebSocket, every time.Duration, stop <-chan struct{}) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-t.C:
+			if err := ws.SendPing(nil); err != nil {
+				return
+			}
+		}
 	}
 }
 

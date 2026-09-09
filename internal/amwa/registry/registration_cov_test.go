@@ -395,3 +395,27 @@ func (l *registryLogTap) has(substr string) bool {
 	}
 	return false
 }
+
+// A path that names no single resource is a 404 on the write verbs
+// too — the read verbs are not the only ones that must refuse it.
+func TestRegistrationWriteVerbsRefuseABadTarget(t *testing.T) {
+	base, _ := registrationBase(t)
+
+	for _, path := range []string{
+		"/resource/nodes/" + fxNode + "/extra", // more than one segment
+		"/resource/widgets/" + fxNode,          // a collection IS-04 does not define
+	} {
+		if status, body := doRequest(t, stdhttp.MethodDelete, base+path); status != stdhttp.StatusNotFound {
+			t.Errorf("DELETE %s = %d: %s", path, status, body)
+		}
+	}
+
+	resp, err := stdhttp.Post(base+"/health/nodes/"+fxNode+"/extra", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != stdhttp.StatusNotFound {
+		t.Errorf("a heartbeat naming more than an id = %d", resp.StatusCode)
+	}
+}

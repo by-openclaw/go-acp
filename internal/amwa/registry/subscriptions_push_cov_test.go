@@ -398,3 +398,37 @@ func TestSubscriberThatDiesAtTheUpgrade(t *testing.T) {
 		t.Errorf("the registry must keep serving after a peer vanished: %d", status)
 	}
 }
+
+// The keep-alive stops on its own when the socket refuses a ping —
+// the reader is unblocking on the same dead socket and owns the
+// teardown, so the pinger must not spin on a peer that is gone.
+func TestPingUntilStopsOnADeadSocket(t *testing.T) {
+	ws, conn := wsPair(t)
+	_ = conn.Close()
+
+	done := make(chan struct{})
+	go func() {
+		pingUntil(ws, time.Millisecond, make(chan struct{}))
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the pinger must stop when the socket refuses a ping")
+	}
+
+	// And it stops when the caller says so, on a live socket.
+	live, _ := wsPair(t)
+	stop := make(chan struct{})
+	done = make(chan struct{})
+	go func() {
+		pingUntil(live, time.Millisecond, stop)
+		close(done)
+	}()
+	close(stop)
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the pinger must stop when it is told to")
+	}
+}

@@ -346,9 +346,19 @@ func TestSubscriberRateLimitCoalescesABurst(t *testing.T) {
 // another minor (IS-04 §6.1.5) — the same rule the REST face applies.
 func TestSubscriberVersionGate(t *testing.T) {
 	addr, store, _ := wsFixture(t)
+
+	// One resource registered at another minor BEFORE the socket
+	// opens: the snapshot must leave it out.
+	const seeded = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+	if err := store.IngestRegistrationVersioned(
+		envelope(t, is04.ResourceNode, validNode(seeded)), "v1.0"); err != nil {
+		t.Fatal(err)
+	}
+
 	peer, _ := openSubscription(t, addr, SubscriptionRequest{ResourcePath: "/nodes"})
-	if _, rows := grainRows(t, peer.nextGrain(t)); len(rows) != 1 {
-		t.Fatalf("sync grain = %d rows", len(rows))
+	_, rows := grainRows(t, peer.nextGrain(t))
+	if len(rows) != 1 {
+		t.Fatalf("sync grain = %d rows, want the v1.3 resource alone", len(rows))
 	}
 
 	const v10 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -363,7 +373,7 @@ func TestSubscriberVersionGate(t *testing.T) {
 		envelope(t, is04.ResourceNode, validNode(v13)), "v1.3"); err != nil {
 		t.Fatal(err)
 	}
-	_, rows := grainRows(t, peer.nextGrain(t))
+	_, rows = grainRows(t, peer.nextGrain(t))
 	var post map[string]any
 	if err := json.Unmarshal(rows[0]["post"], &post); err != nil {
 		t.Fatal(err)
@@ -506,5 +516,25 @@ func TestSubscriberAncestryFilter(t *testing.T) {
 	_, rows = grainRows(t, peer.nextGrain(t))
 	if _, hasPost := rows[0]["post"]; hasPost {
 		t.Errorf("leaving the ancestry set is a removal: %v", rows[0])
+	}
+
+	// A source outside the set on both sides is not reported at all —
+	// the next grain is the one for a source that IS in it.
+	outsider := validSource("dddddddd-dddd-4ddd-8ddd-dddddddddddd", fxDevice)
+	if err := store.PutSource(outsider); err != nil {
+		t.Fatal(err)
+	}
+	back := validSource(child, fxDevice)
+	back.Parents = []string{fxSource}
+	if err := store.PutSource(back); err != nil {
+		t.Fatal(err)
+	}
+	_, rows = grainRows(t, peer.nextGrain(t))
+	var post map[string]any
+	if err := json.Unmarshal(rows[0]["post"], &post); err != nil {
+		t.Fatal(err)
+	}
+	if post["id"] != child {
+		t.Errorf("a source outside the ancestry set was reported: %v", post["id"])
 	}
 }
