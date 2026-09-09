@@ -193,30 +193,37 @@ func (p *Plugin) SetProtect(ctx context.Context, r *RouterInterface,
 	return Protect{On: st.Protected, ID: st.DeviceID, By: v.Text}, nil
 }
 
-// FireSalvo asks the controller to run a salvo, counting from one.
-func (p *Plugin) FireSalvo(ctx context.Context, r *RouterInterface, salvo uint32) error {
+// FireSalvo asks the controller to run a salvo, counting from one, and reports
+// how many routes it made.
+//
+// The count is the whole of the answer: the specification says "number of
+// routes made or 0 on error" and does not distinguish an empty salvo from one
+// whose routes were all refused. It was previously thrown away, which made a
+// salvo that did nothing indistinguishable from one that worked.
+func (p *Plugin) FireSalvo(ctx context.Context, r *RouterInterface, salvo uint32) (uint32, error) {
 	if r.Version < router.VersionSalvos {
-		return fmt.Errorf("rollcall: this router's interface is version %d; salvos arrived at %d",
+		return 0, fmt.Errorf("rollcall: this router's interface is version %d; salvos arrived at %d",
 			r.Version, router.VersionSalvos)
 	}
 	if salvo < 1 || salvo > r.Salvos {
-		return fmt.Errorf("rollcall: salvo %d is outside the %d this router holds", salvo, r.Salvos)
+		return 0, fmt.Errorf("rollcall: salvo %d is outside the %d this router holds", salvo, r.Salvos)
 	}
 
-	// One number, in data mode: neither encode has a way to fail.
-	payload, _ := dtp.Encode(dtp.Params{dtp.Uint(salvo)}, false)
-	req, _ := codec.Value{
-		Command: uint32(router.CmdFireSalvo), Mode: codec.ModeData, Data: payload,
-	}.AppendTo(nil)
+	// One number, in data mode: the encode has no way to fail.
+	body, _ := router.FireSalvo{Salvo: salvo}.AppendTo(nil)
 
-	s, err := p.session(ctx, r.Slot)
+	v, err := p.writeData(ctx, r.Slot, uint32(router.CmdFireSalvo), body)
 	if err != nil {
-		return err
+		return 0, fmt.Errorf("rollcall: fire salvo %d: %w", salvo, err)
 	}
-	if _, err := s.Do(ctx, codec.MsgSetValue, req); err != nil {
-		return fmt.Errorf("rollcall: fire salvo %d: %w", salvo, err)
+
+	// A controller that answers with something other than a salvo result has
+	// still fired it; the count is what is unknown, not the firing.
+	fired, err := router.DecodeSalvoFired(v.Data)
+	if err != nil {
+		return 0, fmt.Errorf("rollcall: fire salvo %d: %w", salvo, err)
 	}
-	return nil
+	return fired.Routes, nil
 }
 
 // destCommand finds the command at an offset in a destination's own table.

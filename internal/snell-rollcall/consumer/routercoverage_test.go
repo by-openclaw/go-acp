@@ -207,7 +207,7 @@ func TestRoutingWhenTheDeviceHasGoneAway(t *testing.T) {
 	if _, err := h.plugin.SetProtect(ctx, r, 1, 1, 1, true, 4, false); err == nil {
 		t.Error("setting a protect without a connection should fail")
 	}
-	if err := h.plugin.FireSalvo(ctx, r, 1); err == nil {
+	if _, err := h.plugin.FireSalvo(ctx, r, 1); err == nil {
 		t.Error("firing a salvo without a connection should fail")
 	}
 	if err := h.plugin.WatchRoutes(ctx, r, func(Crosspoint) {}); err == nil {
@@ -274,7 +274,7 @@ func TestASalvoTheControllerRefuses(t *testing.T) {
 		f.refuse[uint32(router.CmdFireSalvo)] = true
 	})
 
-	if err := h.plugin.FireSalvo(context.Background(), r, 1); err == nil {
+	if _, err := h.plugin.FireSalvo(context.Background(), r, 1); err == nil {
 		t.Error("a refused salvo should reach the caller")
 	}
 }

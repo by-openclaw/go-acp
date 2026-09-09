@@ -14,6 +14,7 @@ import (
 	"dhs/internal/plugin"
 	"dhs/internal/provider"
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/router"
 	"dhs/internal/snell-rollcall/session"
 	"dhs/internal/transport"
 )
@@ -76,6 +77,15 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 	p.refreshGateway()
 	for _, n := range append([]uint8{0}, p.model.portNumbers()...) {
 		p.templates[n] = buildTemplate(p.model.port(n))
+	}
+
+	// Everything countable on the routing interface is named in a file rather
+	// than in commands: a plant with a thousand salvos would otherwise need a
+	// thousand commands to say what they are called. The command publishes the
+	// filename and a checksum; the file service serves the file.
+	if r := p.model.routerModel(); r != nil {
+		p.files[cleanPath(salvoNames8File)] = r.salvoNames(router.NameWidth8)
+		p.files[cleanPath(salvoNames32File)] = r.salvoNames(router.NameWidth32)
 	}
 	return p
 }

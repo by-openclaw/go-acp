@@ -326,7 +326,7 @@ func TestRoutingByAssociationIsPublishedOnBothViews(t *testing.T) {
 
 	base, _ := lv.dstTable.Command(2)
 	v, _ := xy.value(uint32(base + router.OffDestRoutedSrc))
-	if pin := router.UnpackSourcePin(uint32(v.Val)); pin.Source != 1 {
+	if pin, _ := decodeRoutedSource(v); pin.Source != 1 {
 		t.Errorf("the tables report source %d on destination 2", pin.Source)
 	}
 }

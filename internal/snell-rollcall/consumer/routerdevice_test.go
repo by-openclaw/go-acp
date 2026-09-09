@@ -21,6 +21,9 @@ import (
 
 // fakeRouter is a routing interface served on one port.
 type fakeRouter struct {
+	// salvoRoutes is how many routes this controller's salvos report making.
+	salvoRoutes uint32
+
 	// catBase and grpBase are where the category and group tables were laid
 	// out, so a test can take one of their commands away.
 	catBase uint32
@@ -86,18 +89,19 @@ type fakeLevel struct {
 // command space.
 func newFakeRouter(port uint8, matrices []fakeMatrix) *fakeRouter {
 	r := &fakeRouter{
-		port:     port,
-		version:  router.VersionRouteErrors,
-		name:     "Fake Router",
-		matrices: matrices,
-		salvos:   4,
-		devices:  8,
-		values:   make(map[uint32]codec.Value),
-		routed:   make(map[uint32]router.SourcePin),
-		tieline:  make(map[uint32]uint32),
-		refuse:   make(map[uint32]bool),
-		garble:   make(map[uint32]bool),
-		files:    make(map[string][]byte),
+		port:        port,
+		version:     router.VersionRouteErrors,
+		name:        "Fake Router",
+		matrices:    matrices,
+		salvos:      4,
+		salvoRoutes: 12,
+		devices:     8,
+		values:      make(map[uint32]codec.Value),
+		routed:      make(map[uint32]router.SourcePin),
+		tieline:     make(map[uint32]uint32),
+		refuse:      make(map[uint32]bool),
+		garble:      make(map[uint32]bool),
+		files:       make(map[string][]byte),
 	}
 	r.layout()
 	return r
@@ -145,9 +149,21 @@ func (r *fakeRouter) layout() {
 	}
 
 	r.num(uint32(router.CmdNumSalvos), int32(r.salvos))
-	r.file(uint32(router.CmdSalvoNames8File), `RC_Files\SalvoNames_8.dat`, 0x1111)
-	r.file(uint32(router.CmdSalvoNames32File), `RC_Files\SalvoNames_32.dat`, 0x2222)
-	r.data(uint32(router.CmdFireSalvo), nil)
+	// Salvo names are a list rather than a pair of lists: the collated format
+	// carries sources then destinations, and a salvo is neither, so they go in
+	// the source half with nothing after it.
+	salvoNames := router.NamesFile{Srcs: make([]string, r.salvos)}
+	for i := range salvoNames.Srcs {
+		salvoNames.Srcs[i] = fmt.Sprintf("Salvo %d", i+1)
+	}
+	r.names(uint32(router.CmdSalvoNames8File), `RC_Files\SalvoNames_8.dat`,
+		router.NameWidth8, salvoNames)
+	r.names(uint32(router.CmdSalvoNames32File), `RC_Files\SalvoNames_32.dat`,
+		router.NameWidth32, salvoNames)
+	// A controller answers a fire with the salvo and how many routes it made,
+	// which is the whole of the result: there is no separate code.
+	fired, _ := router.SalvoFired{}.AppendTo(nil)
+	r.data(uint32(router.CmdFireSalvo), fired)
 	r.num(uint32(router.CmdNumDevices), int32(r.devices))
 	r.file(uint32(router.CmdDeviceNamesFile), `RC_Files\DeviceNames.dat`, 0x3333)
 
@@ -408,6 +424,22 @@ func (r *fakeRouter) set(v codec.Value) (reply codec.Value, push *codec.Value, m
 		}
 		pushed := r.values[v.Command]
 		return reply, &pushed, true
+	}
+
+	// Firing a salvo is a request, not a setting: the reply says which salvo
+	// and how many routes it made, rather than echoing what was asked.
+	if v.Command == uint32(router.CmdFireSalvo) {
+		req, err := router.DecodeFireSalvo(v.Data)
+		if err != nil {
+			return codec.Value{}, nil, true
+		}
+		body, _ := router.SalvoFired{Salvo: req.Salvo, Routes: r.salvoRoutes}.AppendTo(nil)
+		if r.badReply[v.Command] {
+			body = []byte{0xFF, 0xFF}
+		}
+		stored := codec.Value{Command: v.Command, Mode: codec.ModeData, Data: body}
+		r.values[v.Command] = stored
+		return stored, nil, true
 	}
 
 	if _, ok := r.values[v.Command]; !ok {

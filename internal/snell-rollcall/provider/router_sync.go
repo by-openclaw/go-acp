@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/dtp"
 	"dhs/internal/snell-rollcall/codec/router"
 	"dhs/internal/snell-rollcall/session"
 )
@@ -32,6 +33,8 @@ func (p *Provider) syncRouterWrite(ctx context.Context, s *session.Session, prt 
 	switch {
 	case prt.router != nil && v.Command == uint32(router.CmdAssocMakeRoute):
 		p.routeByAssociation(ctx, s, prt, v)
+	case prt.router != nil && v.Command == uint32(router.CmdFireSalvo):
+		p.fireSalvo(ctx, s, prt, v)
 	case prt.level != nil:
 		p.levelWriteToTables(ctx, s, prt, v)
 	case prt.router != nil:
@@ -62,8 +65,6 @@ func (p *Provider) levelWriteToTables(ctx context.Context, s *session.Session, p
 		return
 	}
 
-	var field router.Command
-	var packed uint32
 	if isRoute {
 		// A level names a source by its number alone: everything on this node
 		// is one matrix and one level, so the pin's other two fields are the
@@ -73,13 +74,13 @@ func (p *Provider) levelWriteToTables(ctx context.Context, s *session.Session, p
 			Level:  lv.levelNumber,
 			Source: uint16(v.Val),
 		}
-		field, packed = router.OffDestRoutedSrc, router.PackSourcePin(d.routed)
-	} else {
-		d.protect = router.ProtectState{Protected: v.Val == router.ProtectOn}
-		field, packed = router.OffDestProtect, router.PackProtectState(d.protect)
+		p.publishRoutedSource(ctx, s, p.model.tablePort(), base+router.OffDestRoutedSrc, d.routed)
+		return
 	}
 
-	p.publishRouterValue(ctx, s, p.model.tablePort(), base+field, int32(packed))
+	d.protect = router.ProtectState{Protected: v.Val == router.ProtectOn}
+	p.publishRouterValue(ctx, s, p.model.tablePort(),
+		base+router.OffDestProtect, int32(router.PackProtectState(d.protect)))
 }
 
 // tableWriteToLevel carries a structural write into the level a panel watches.
@@ -94,7 +95,11 @@ func (p *Provider) tableWriteToLevel(ctx context.Context, s *session.Session, pr
 	var val int32
 	switch field {
 	case router.OffDestRoutedSrc:
-		d.routed = router.UnpackSourcePin(uint32(v.Val))
+		pin, ok := decodeRoutedSource(v)
+		if !ok {
+			return
+		}
+		d.routed = pin
 		cmd, val = router.LvlRoute(dest), int32(d.routed.Source)
 	case router.OffDestProtect:
 		d.protect = router.UnpackProtectState(uint32(v.Val))
@@ -164,6 +169,14 @@ func (m *model) tablePort() *port {
 	return nil
 }
 
+// routerModel returns the router this device serves, if it serves one.
+func (m *model) routerModel() *routerModel {
+	if prt := m.tablePort(); prt != nil {
+		return prt.router
+	}
+	return nil
+}
+
 // levelPort returns the node serving one level, if one is served.
 func (m *model) levelPort(lv *routerLevel) *port {
 	m.mu.RLock()
@@ -215,7 +228,108 @@ func (p *Provider) republishCrosspoint(ctx context.Context, s *session.Session, 
 	p.publishRouterValue(ctx, s, p.model.levelPort(lv), router.LvlRoute(dest), int32(d.routed.Source))
 
 	if base, ok := lv.dstTable.Command(uint32(dest)); ok {
-		p.publishRouterValue(ctx, s, p.model.tablePort(),
-			base+router.OffDestRoutedSrc, int32(router.PackSourcePin(d.routed)))
+		p.publishRoutedSource(ctx, s, p.model.tablePort(),
+			base+router.OffDestRoutedSrc, d.routed)
 	}
+}
+
+// fireSalvo makes every route in a salvo and answers with how many it made.
+//
+// There is no result code, only the count. The specification says "number of
+// routes made or 0 on error" and does not distinguish an empty salvo from one
+// that does not exist, so neither does this.
+func (p *Provider) fireSalvo(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
+	req, err := router.DecodeFireSalvo(v.Data)
+	var made uint32
+	var moved []routedChange
+	if err == nil {
+		made, moved = prt.router.fireSalvo(req.Salvo)
+	}
+
+	body, _ := router.SalvoFired{Salvo: req.Salvo, Routes: made}.AppendTo(nil)
+	prt.seed(uint32(router.CmdFireSalvo), codec.Value{
+		Command: uint32(router.CmdFireSalvo), Mode: codec.ModeData, Data: body,
+	})
+
+	for _, c := range moved {
+		p.republishCrosspoint(ctx, s, c.level, c.dest)
+	}
+}
+
+// publishRoutedSource stores what is routed to a destination and tells its
+// watchers.
+//
+// A routed source is carried as Data Transfer Params rather than as a number,
+// which is what the specification says and what a client reads: it has room
+// for the result of the last set beside the pin, and a bare number has not.
+// Publishing it as a number made every read report a destination with nothing
+// routed to it, whatever had been routed.
+func (p *Provider) publishRoutedSource(ctx context.Context, s *session.Session,
+	prt *port, cmd router.Command, pin router.SourcePin) {
+
+	if prt == nil {
+		return
+	}
+	v := routedSourceValue(cmd, pin)
+	prt.seed(uint32(cmd), v)
+	p.publishExcept(ctx, s, prt.number, v)
+}
+
+// routedSourceValue renders a routed source as the parameters a client reads.
+func routedSourceValue(cmd router.Command, pin router.SourcePin) codec.Value {
+	// One number as parameters: the encode has no way to fail.
+	body, _ := dtp.Append(nil, dtp.Params{dtp.Uint(router.PackSourcePin(pin))}, false)
+	return codec.Value{Command: uint32(cmd), Mode: codec.ModeData, Data: body}
+}
+
+// routedValue seeds a routed source into a value map being built.
+func routedValue(out map[uint32]codec.Value, cmd router.Command, pin router.SourcePin) {
+	out[uint32(cmd)] = routedSourceValue(cmd, pin)
+}
+
+// decodeRoutedSource reads the pin out of a write to a destination.
+//
+// A client sends the pin in a uint array, with a protect id after it when the
+// route is a temporary override. A bare uint is accepted too: it is what a
+// reply carries, and a client that echoes one back is asking for the same
+// thing in a form that cannot be misread.
+func decodeRoutedSource(v codec.Value) (router.SourcePin, bool) {
+	items, err := dtp.Decode(v.Data)
+	if err != nil || len(items) == 0 {
+		return router.SourcePin{}, false
+	}
+	switch {
+	case items[0].Type == dtp.TypeUintArray && len(items[0].Uints) > 0:
+		return router.UnpackSourcePin(items[0].Uints[0]), true
+	case items[0].Type == dtp.TypeUint:
+		return router.UnpackSourcePin(items[0].Uint), true
+	}
+	return router.SourcePin{}, false
+}
+
+// routedSourceReply builds what a crosspoint write is answered with.
+//
+// Specification: the reply carries the pin routed before the change, and a
+// second parameter holding the result — "It is always returned when setting a
+// new crosspoint." A client that reads the reply as the new state is reading
+// the old one, which is why the new one arrives separately as a push.
+func routedSourceReply(prt *port, command uint32, before codec.Value) (codec.Value, bool) {
+	if prt.router == nil {
+		return codec.Value{}, false
+	}
+	_, _, field, ok := prt.router.destinationFor(router.Command(command))
+	if !ok || field != router.OffDestRoutedSrc {
+		return codec.Value{}, false
+	}
+
+	// A destination nothing had been routed to answers with a zeroed pin,
+	// which is what "nothing was there" looks like on this interface.
+	pin, _ := decodeRoutedSource(before)
+
+	// Two numbers as parameters: the encode has no way to fail.
+	body, _ := dtp.Append(nil, dtp.Params{
+		dtp.Uint(router.PackSourcePin(pin)),
+		dtp.Uint(uint32(router.RouteOK)),
+	}, false)
+	return codec.Value{Command: command, Mode: codec.ModeData, Data: body}, true
 }

@@ -471,6 +471,33 @@ func (p *Plugin) readValue(ctx context.Context, slot int, command uint32) (codec
 	return v, nil
 }
 
+// writeData sends a data command and returns what the controller answered.
+//
+// The commands that carry Data Transfer Params are requests rather than
+// settings: firing a salvo and routing by association both send parameters and
+// are answered with a result, so the reply is the point rather than an
+// acknowledgement.
+func (p *Plugin) writeData(ctx context.Context, slot int, command uint32, body []byte) (codec.Value, error) {
+	s, err := p.session(ctx, slot)
+	if err != nil {
+		return codec.Value{}, err
+	}
+
+	// The only way encoding a value fails is a text field that will not fit,
+	// and a data command carries no text.
+	req, _ := codec.Value{Command: command, Mode: codec.ModeData, Data: body}.AppendTo(nil)
+
+	reply, err := s.Do(ctx, codec.MsgSetValue, req)
+	if err != nil {
+		return codec.Value{}, fmt.Errorf("rollcall: command %d: %w", command, err)
+	}
+	v, err := codec.DecodeValue(reply.Payload)
+	if err != nil {
+		return codec.Value{}, fmt.Errorf("rollcall: command %d: %w", command, err)
+	}
+	return v, nil
+}
+
 func (p *Plugin) readUint(ctx context.Context, slot int, command uint32) (uint32, error) {
 	n, err := p.readInt(ctx, slot, command)
 	if err != nil {

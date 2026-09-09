@@ -147,6 +147,27 @@ func (p *Plugin) AssociationNames(ctx context.Context, r *RouterInterface,
 		int(m.SrcAssocs.Count), int(m.DstAssocs.Count))
 }
 
+// SalvoNames fetches what a controller's salvos are called.
+//
+// A salvo's contents are never on the wire — only its name and, when it is
+// fired, how many routes it made — so this is the whole of what a client can
+// know about one before firing it.
+func (p *Plugin) SalvoNames(ctx context.Context, r *RouterInterface, width int) (Names, error) {
+	file := r.SalvoNames
+	if width == router.NameWidth8 {
+		file = r.SalvoNames8
+	}
+	if file.Empty() {
+		return Names{}, fmt.Errorf(
+			"rollcall: this controller publishes no %d-character salvo names file", width)
+	}
+
+	// Salvo names are a list rather than a pair of lists: the collated format
+	// carries sources then destinations, and a salvo is neither, so they are
+	// read as the source half with nothing after it.
+	return p.namesFile(ctx, r.Slot, file, width, int(r.Salvos), 0)
+}
+
 // Mappings fetches which entity each association reaches on each level.
 func (p *Plugin) Mappings(ctx context.Context, r *RouterInterface,
 	matrix uint32) (router.MappingsFile, error) {

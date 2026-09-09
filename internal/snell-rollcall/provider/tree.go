@@ -672,7 +672,7 @@ func (p *port) setTableValue(command uint32, mode codec.Mode, num int32, data []
 	// Routing by association is a data command rather than a field: it names
 	// two associations and the levels to carry across, so there is no single
 	// destination for it to be a field of.
-	if command == uint32(router.CmdAssocMakeRoute) {
+	if command == uint32(router.CmdAssocMakeRoute) || command == uint32(router.CmdFireSalvo) {
 		v := codec.Value{Command: command, Mode: codec.ModeData, Data: data}
 		p.values[command] = v
 		return v, nil
@@ -682,10 +682,24 @@ func (p *port) setTableValue(command uint32, mode codec.Mode, num int32, data []
 	if !ok || (field != router.OffDestRoutedSrc && field != router.OffDestProtect) {
 		return codec.Value{}, fmt.Errorf("command %d is read-only", command)
 	}
-	// Both fields are packed words. A string write to one is a client
-	// confusing a name with a state.
+	// Neither field is a name. A string write to one is a client confusing
+	// what a destination is called with what is routed to it.
 	if mode.Has(codec.ModeString) {
 		return codec.Value{}, fmt.Errorf("command %d takes a number", command)
+	}
+
+	// A routed source is carried as Data Transfer Params, because it has room
+	// for the result of the last set beside the pin. What is stored is the
+	// pin; the reply is built by the caller, which knows whether the route was
+	// made and what was there before.
+	if field == router.OffDestRoutedSrc {
+		pin, ok := decodeRoutedSource(codec.Value{Data: data})
+		if !ok {
+			return codec.Value{}, fmt.Errorf("command %d takes a routed source", command)
+		}
+		v := routedSourceValue(router.Command(command), pin)
+		p.values[command] = v
+		return v, nil
 	}
 
 	v := codec.Value{Command: command, Mode: codec.ModeValue, Val: num}

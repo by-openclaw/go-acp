@@ -234,8 +234,6 @@ type canonicalizer interface {
 	Canonicalize(ctx context.Context) (*canonical.Export, error)
 }
 
-
-
 // writeEmberplusCapture dumps glow.json (lossless decoded Glow tree)
 // and tree.json (canonical Export) into dir alongside the raw frame
 // log. No-op when plug isn't the Ember+ plugin. Mode flags on cf

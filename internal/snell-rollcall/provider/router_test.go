@@ -123,7 +123,11 @@ func TestTheTablesDescribeTheMatrix(t *testing.T) {
 		if !ok {
 			t.Fatalf("destination %d has no routed source", n)
 		}
-		if !router.UnpackSourcePin(uint32(v.Val)).IsUnrouted() {
+		pin, ok := decodeRoutedSource(v)
+		if !ok {
+			t.Fatalf("destination %d carries a routed source that is not one", n)
+		}
+		if !pin.IsUnrouted() {
 			t.Errorf("destination %d starts routed", n)
 		}
 	}

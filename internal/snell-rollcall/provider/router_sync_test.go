@@ -6,6 +6,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/dtp"
 	"dhs/internal/snell-rollcall/codec/router"
 )
 
@@ -52,7 +53,12 @@ func TestRoutingOnALevelShowsInTheTables(t *testing.T) {
 	if !ok {
 		t.Fatal("the tables carry no routed source for destination 2")
 	}
-	pin := router.UnpackSourcePin(uint32(v.Val))
+	// A routed source is carried as Data Transfer Params, not as a number: the
+	// form has room for the result of the last set beside the pin.
+	pin, ok := decodeRoutedSource(v)
+	if !ok {
+		t.Fatalf("the tables carry a routed source that is not one: %v", v)
+	}
 	if pin.Source != 4 {
 		t.Errorf("the tables report source %d", pin.Source)
 	}
@@ -73,11 +79,16 @@ func TestRoutingThroughTheTablesShowsOnTheLevel(t *testing.T) {
 	sess := s.open(firstCardPort+2, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
 
 	base, _ := lv.level.dstTable.Command(3)
-	pin := router.PackSourcePin(router.SourcePin{
+	// A client sends the pin in a uint array, with a protect id after it when
+	// the route is a temporary override.
+	body, err := dtp.Append(nil, dtp.Params{dtp.Uints(router.PackSourcePin(router.SourcePin{
 		Matrix: lv.level.matrixNumber, Level: lv.level.levelNumber, Source: 7,
-	})
-	_, err := s.p.applyWrite(sess, xy, uint32(base+router.OffDestRoutedSrc), 0,
-		codec.ModeValue, int32(pin), "", nil)
+	}))}, false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	_, err = s.p.applyWrite(sess, xy, uint32(base+router.OffDestRoutedSrc), 0,
+		codec.ModeData, 0, "", body)
 	if err != nil {
 		t.Fatalf("route through the tables: %v", err)
 	}
@@ -231,6 +242,11 @@ func TestTheTablesRefuseWhatIsNotState(t *testing.T) {
 	if _, err := xy.setValue(uint32(base+router.OffDestRoutedSrc), codec.ModeString, 0, "SRC 1", nil); err == nil {
 		t.Error("a string write to the routed source was accepted")
 	}
+	// And a data write that carries no pin says so rather than routing to
+	// whatever a zeroed structure decodes as.
+	if _, err := xy.setValue(uint32(base+router.OffDestRoutedSrc), codec.ModeData, 0, "", []byte{0xFF}); err == nil {
+		t.Error("a write with no routed source in it was accepted")
+	}
 }
 
 func TestAServedFrameWithNoRouterHasNoTablesNode(t *testing.T) {
@@ -263,8 +279,141 @@ func TestATableSmallerThanTheLevelItDescribes(t *testing.T) {
 	}
 
 	s.p.syncRouterWrite(context.Background(), nil, xy,
-		codec.Value{Command: uint32(base + router.OffDestRoutedSrc), Mode: codec.ModeValue, Val: 2})
+		routedSourceValue(base+router.OffDestRoutedSrc, router.SourcePin{Source: 2}))
 	if v, _ := lv.value(uint32(router.LvlRoute(4))); v.Val == 2 {
 		t.Error("a table write reached a destination the tables no longer describe")
+	}
+}
+
+func TestAWriteToTheTablesThatCarriesNoPin(t *testing.T) {
+	// A routed source arrives as parameters. A write whose parameters hold
+	// something else is refused rather than routed to whatever a zeroed
+	// structure decodes as — which would be source zero on matrix zero.
+	s := newServed(t, routerTree(4, 4))
+	lv, xy := routerNodes(t, s)
+	base, _ := lv.level.dstTable.Command(1)
+
+	notAPin, err := dtp.Append(nil, dtp.Params{dtp.String("CAM 1")}, false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	s.p.syncRouterWrite(context.Background(), nil, xy, codec.Value{
+		Command: uint32(base + router.OffDestRoutedSrc),
+		Mode:    codec.ModeData,
+		Data:    notAPin,
+	})
+
+	if v, _ := lv.value(uint32(router.LvlRoute(1))); v.Val != 1 {
+		t.Errorf("the level was moved to source %d by a write carrying no pin", v.Val)
+	}
+}
+
+func TestAPinSentAsABareNumber(t *testing.T) {
+	// A client that echoes a reply back is asking for the same thing in a form
+	// that cannot be misread, so the bare number a reply carries is accepted
+	// alongside the array a set normally uses.
+	pin := router.SourcePin{Matrix: 1, Level: 1, Source: 4}
+	body, err := dtp.Append(nil, dtp.Params{dtp.Uint(router.PackSourcePin(pin))}, false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	got, ok := decodeRoutedSource(codec.Value{Data: body})
+	if !ok || got.Source != 4 {
+		t.Errorf("a bare number decoded as %+v, %v", got, ok)
+	}
+
+	// And an empty array says nothing, which is not a pin.
+	empty, err := dtp.Append(nil, dtp.Params{dtp.Uints()}, false)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if _, ok := decodeRoutedSource(codec.Value{Data: empty}); ok {
+		t.Error("an empty array was read as a routed source")
+	}
+}
+
+func TestPublishingARoutedSourceToANodeThatIsNotServed(t *testing.T) {
+	s := newServed(t, routerTree(4, 4))
+	s.p.publishRoutedSource(context.Background(), nil, nil, 100, router.SourcePin{Source: 1})
+}
+
+func TestACrosspointWriteAnswersWithWhatWasThereBefore(t *testing.T) {
+	// Specification: the reply carries the pin routed before the change and a
+	// result saying whether the change worked — "It is always returned when
+	// setting a new crosspoint." A client reading the reply as the new state
+	// is reading the old one, which is why the new one arrives as a push.
+	s := newServed(t, routerTree(4, 4))
+	lv, xy := routerNodes(t, s)
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	base, _ := lv.level.dstTable.Command(2)
+	set := func(source uint16) codec.Value {
+		t.Helper()
+		body, err := dtp.Append(nil, dtp.Params{dtp.Uints(router.PackSourcePin(router.SourcePin{
+			Matrix: lv.level.matrixNumber, Level: lv.level.levelNumber, Source: source,
+		}))}, false)
+		if err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		v, err := s.p.applyWrite(sess, xy, uint32(base+router.OffDestRoutedSrc), 0,
+			codec.ModeData, 0, "", body)
+		if err != nil {
+			t.Fatalf("route: %v", err)
+		}
+		return v
+	}
+
+	// Nothing was routed, so the first reply says so — and still says the
+	// route was made.
+	first := set(3)
+	items, err := dtp.Decode(first.Data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("the reply carries %d parameters, want the pin and the result", len(items))
+	}
+	if pin := router.UnpackSourcePin(items[0].Uint); !pin.IsUnrouted() {
+		t.Errorf("the first reply says %s was there before", pin)
+	}
+	if got := router.RouteResult(items[1].Uint); got != router.RouteOK {
+		t.Errorf("the route answered %s", got)
+	}
+
+	// The second says what the first put there.
+	second := set(4)
+	items, err = dtp.Decode(second.Data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if pin := router.UnpackSourcePin(items[0].Uint); pin.Source != 3 {
+		t.Errorf("the second reply says source %d was there before, want 3", pin.Source)
+	}
+
+	// And what the node now holds is the new one, which is what a read and a
+	// push both carry.
+	v, _ := xy.value(uint32(base + router.OffDestRoutedSrc))
+	if pin, _ := decodeRoutedSource(v); pin.Source != 4 {
+		t.Errorf("the destination now carries source %d, want 4", pin.Source)
+	}
+}
+
+func TestOnlyACrosspointAnswersWithWhatWasBefore(t *testing.T) {
+	// Every other command answers with what it now holds, which is the
+	// ordinary contract: a write that was clamped says so in the reply.
+	s := newServed(t, routerTree(4, 4))
+	lv, xy := routerNodes(t, s)
+
+	if _, ok := routedSourceReply(lv, uint32(router.LvlRoute(1)), codec.Value{}); ok {
+		t.Error("a level's own routing command was answered as a table write")
+	}
+	base, _ := lv.level.dstTable.Command(1)
+	if _, ok := routedSourceReply(xy, uint32(base+router.OffDestProtect), codec.Value{}); ok {
+		t.Error("a protect was answered as a routed source")
+	}
+	if _, ok := routedSourceReply(xy, uint32(router.CmdRouterName), codec.Value{}); ok {
+		t.Error("a name was answered as a routed source")
 	}
 }

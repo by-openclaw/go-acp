@@ -109,6 +109,10 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 		}
 	}
 
+	// What was there before, which a routed source answers with rather than
+	// with what it now holds.
+	before, _ := prt.value(command)
+
 	stored, err := prt.setValue(command, mode, num, text, data)
 	if err != nil {
 		return codec.Value{}, session.RefuseNack(err.Error())
@@ -128,6 +132,14 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 	// associations and the reply is the result of trying.
 	if v, ok := prt.value(command); ok {
 		stored = v
+	}
+
+	// A crosspoint answers with the pin that was routed before the change and
+	// the result of making it, not with what it now holds. That is what lets a
+	// client tell a route it made from one that was already there, and it is
+	// the reason a panel subscribes rather than believing the reply.
+	if reply, ok := routedSourceReply(prt, command, before); ok {
+		return reply, nil
 	}
 	return stored, nil
 }

@@ -367,13 +367,13 @@ func TestFiringASalvo(t *testing.T) {
 	h, r := routerHarness(t, nil)
 	ctx := context.Background()
 
-	if err := h.plugin.FireSalvo(ctx, r, 2); err != nil {
+	if _, err := h.plugin.FireSalvo(ctx, r, 2); err != nil {
 		t.Fatalf("FireSalvo: %v", err)
 	}
-	if err := h.plugin.FireSalvo(ctx, r, 0); err == nil {
+	if _, err := h.plugin.FireSalvo(ctx, r, 0); err == nil {
 		t.Error("salvo zero is not one of them")
 	}
-	if err := h.plugin.FireSalvo(ctx, r, r.Salvos+1); err == nil {
+	if _, err := h.plugin.FireSalvo(ctx, r, r.Salvos+1); err == nil {
 		t.Error("a salvo past the end should be refused")
 	}
 
@@ -381,7 +381,7 @@ func TestFiringASalvo(t *testing.T) {
 	// that does not have the command at all.
 	old := *r
 	old.Version = router.VersionSalvos - 1
-	if err := h.plugin.FireSalvo(ctx, &old, 1); err == nil {
+	if _, err := h.plugin.FireSalvo(ctx, &old, 1); err == nil {
 		t.Error("an older interface has no salvos")
 	}
 }
@@ -546,5 +546,93 @@ func TestACategoryThatWillNotAnswer(t *testing.T) {
 				t.Errorf("a category that would not say %s was read anyway", tc.name)
 			}
 		})
+	}
+}
+
+func TestReadingWhatTheSalvosAreCalled(t *testing.T) {
+	// A salvo's contents are never on the wire — only its name and, when it is
+	// fired, how many routes it made — so this is the whole of what a client
+	// can know about one before firing it.
+	h, r := routerHarness(t, nil)
+	ctx := context.Background()
+
+	for _, width := range []int{router.NameWidth8, router.NameWidth32} {
+		names, err := h.plugin.SalvoNames(ctx, r, width)
+		if err != nil {
+			t.Fatalf("SalvoNames(%d): %v", width, err)
+		}
+		if len(names.Srcs) != int(r.Salvos) {
+			t.Errorf("%d names for %d salvos", len(names.Srcs), r.Salvos)
+		}
+		if names.Srcs[0] != "Salvo 1" {
+			t.Errorf("salvo 1 is called %q", names.Srcs[0])
+		}
+		// A salvo is neither a source nor a destination; the collated format
+		// has only those two halves, so they travel in the first with nothing
+		// after it.
+		if len(names.Dsts) != 0 {
+			t.Errorf("%d destination names in a salvo names file", len(names.Dsts))
+		}
+	}
+}
+
+func TestASalvoNamesFileThatIsNotPublished(t *testing.T) {
+	h, r := routerHarness(t, nil)
+
+	bare := *r
+	bare.SalvoNames8 = RouterFile{}
+	bare.SalvoNames = RouterFile{}
+
+	for _, width := range []int{router.NameWidth8, router.NameWidth32} {
+		if _, err := h.plugin.SalvoNames(context.Background(), &bare, width); err == nil {
+			t.Errorf("a controller publishing no %d-character names file was read anyway", width)
+		}
+	}
+}
+
+func TestFiringASalvoSaysHowManyRoutesItMade(t *testing.T) {
+	// The count was previously thrown away, which made a salvo that did
+	// nothing indistinguishable from one that worked.
+	h, r := routerHarness(t, nil)
+
+	made, err := h.plugin.FireSalvo(context.Background(), r, 2)
+	if err != nil {
+		t.Fatalf("FireSalvo: %v", err)
+	}
+	if made != 12 {
+		t.Errorf("the salvo made %d routes, want the twelve the controller reported", made)
+	}
+}
+
+func TestASalvoAnsweredWithSomethingElse(t *testing.T) {
+	// A controller that answers with something other than a salvo result has
+	// still fired it; what is unknown is the count, not the firing.
+	h, r := routerHarness(t, func(f *fakeRouter) {
+		f.badReply = map[uint32]bool{uint32(router.CmdFireSalvo): true}
+	})
+
+	if _, err := h.plugin.FireSalvo(context.Background(), r, 1); err == nil {
+		t.Error("an answer that does not decode was taken for a count")
+	}
+}
+
+func TestFiringWhenThereIsNoConnection(t *testing.T) {
+	// Every request needs a session, and a plugin nobody connected has none.
+	p := New(testDeps())
+	r := &RouterInterface{Slot: 2, Version: router.VersionRouteErrors, Salvos: 4}
+
+	if _, err := p.FireSalvo(context.Background(), r, 1); err == nil {
+		t.Error("a salvo was fired without a connection")
+	}
+}
+
+func TestASalvoAnsweredWithSomethingThatIsNotAValue(t *testing.T) {
+	// A reply too short to be a value is a different fault from one that
+	// decodes and says nothing useful, and both reach the caller.
+	h, r := routerHarness(t, nil)
+	h.device.garble[codec.MsgSetValue] = true
+
+	if _, err := h.plugin.FireSalvo(context.Background(), r, 1); err == nil {
+		t.Error("a reply that is not a value was taken for one")
 	}
 }

@@ -190,6 +190,7 @@ var commands = []command{
 	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
 	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
 	{"tally", "print a level's crosspoints and follow them live (RollCall only)", helpRollcallTally, runRollcallTally},
+	{"salvo", "list a controller's salvos, or fire one (RollCall only)", helpRollcallSalvo, runRollcallSalvo},
 }
 
 func helpBench() {

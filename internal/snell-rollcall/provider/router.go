@@ -3,6 +3,7 @@ package rollcall
 import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/dtp"
 	"dhs/internal/snell-rollcall/codec/router"
 )
 
@@ -28,6 +29,10 @@ type routerModel struct {
 	// from the names in it rather than configured: see router_category.go.
 	categories []routerCategory
 	catTable   router.Table
+
+	// salvos are sets of routes made together. What is in them is this
+	// provider's own choice: a canonical tree has no field for a salvo.
+	salvos []routerSalvo
 
 	// base and step are what command 102 to 104 publish. Every table below
 	// carries its own pair, because a client walks them the same way.
@@ -140,6 +145,8 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 		r.matrices = append(r.matrices, rm)
 	}
 
+	r.salvos = buildSalvos(r.matrices)
+
 	// Categories, then their groups. They come before the matrices because a
 	// client reads the root block first and the categories are named in it.
 	if named && len(r.matrices) > 0 && len(r.matrices[0].levels) > 0 {
@@ -224,10 +231,24 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	num(router.CmdGetTrackTemplate, 0)
 	num(router.CmdNumAudioGroups, 0)
 	num(router.CmdGetAudioGroup, 0)
-	num(router.CmdNumSalvos, 0)
-	str(router.CmdSalvoNames8File, "")
-	str(router.CmdSalvoNames32File, "")
-	num(router.CmdFireSalvo, 0)
+	num(router.CmdNumSalvos, int32(len(r.salvos)))
+	file := func(c router.Command, name string, crc uint32) {
+		// A filename and its checksum, as Data Transfer Params. Encoding a
+		// string and a number cannot fail.
+		b, _ := dtp.Append(nil, dtp.Params{dtp.String(name), dtp.Uint(crc)}, false)
+		out[uint32(c)] = codec.Value{Command: uint32(c), Mode: codec.ModeData, Data: b}
+	}
+	file(router.CmdSalvoNames8File, salvoNames8File, r.salvoNamesCRC(router.NameWidth8))
+	file(router.CmdSalvoNames32File, salvoNames32File, r.salvoNamesCRC(router.NameWidth32))
+
+	// Firing is a data command in both directions: the request names a salvo,
+	// the reply says how many routes it made. Its resting value is the last
+	// firing, so a client reading it before firing anything is told what
+	// happened last rather than refused.
+	fired, _ := router.SalvoFired{}.AppendTo(nil)
+	out[uint32(router.CmdFireSalvo)] = codec.Value{
+		Command: uint32(router.CmdFireSalvo), Mode: codec.ModeData, Data: fired,
+	}
 	num(router.CmdNumDevices, 0)
 	str(router.CmdDeviceNamesFile, "")
 	num(router.CmdGetAHPNode, 0)
@@ -314,7 +335,7 @@ func (r *routerModel) values() map[uint32]codec.Value {
 				db, _ := l.dstTable.Command(uint32(k) + 1)
 				str(db+router.OffDestName8, d.name)
 				str(db+router.OffDestName32, d.name)
-				num(db+router.OffDestRoutedSrc, int32(d.routed.Pack()))
+				routedValue(out, db+router.OffDestRoutedSrc, d.routed)
 				str(db+router.OffDestAltName, d.name)
 				num(db+router.OffDestProtect, int32(d.protect.Pack()))
 				num(db+router.OffDestMCSrcs, 0)
