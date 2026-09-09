@@ -137,7 +137,23 @@ dhs consumer emberplus walk localhost:9092 --capture out/emberplus/
 | RollCall crosspoints         | `dhs_snell_rollcall.source_pin`                           |
 | RollCall tally, not replies  | `dhs_snell_rollcall.flags.back_channel == 1`              |
 | RollCall routing interface   | `dhs_snell_rollcall.router_command`                       |
+| RollCall one matrix          | `dhs_snell_rollcall.matrix == 1`                          |
+| RollCall one level           | `dhs_snell_rollcall.matrix == 1 && dhs_snell_rollcall.level == 2` |
+| RollCall one destination     | `dhs_snell_rollcall.destination == 40`                    |
+| RollCall route refusals      | `dhs_snell_rollcall.route_result > 0`                     |
+| RollCall levels + panels     | `dhs_snell_rollcall.router_node`                          |
 | RollCall refusals            | `dhs_snell_rollcall.type in {0 14 15 23}`                 |
+
+RollCall's command numbers mean nothing on their own: 100 is the interface
+version on the panel node and the selected destination on a level, and
+everything above 119 is addressed by bases and steps the controller publishes
+at run time. The dissector reads both out of the capture — each node's type
+from the RETID it answers with, the tables from the replies that carry them —
+so `dhs_snell_rollcall.matrix`, `.level`, `.source` and `.destination` are
+filled in for any command that resolves. **Start the capture before the
+client connects.** A capture that joins a session already in progress has
+missed the identities and the tables, and those commands then read as
+unresolved rather than as a plant.
 
 ### Non-default ports
 
