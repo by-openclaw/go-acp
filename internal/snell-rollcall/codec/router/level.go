@@ -69,6 +69,13 @@ const (
 const (
 	LvlRouteBase   Command = 10000
 	LvlProtectBase Command = 20000
+
+	// LvlRefSourceBase carries what each source is, as against what it is
+	// called: a name is what an operator types and a reference is where the
+	// signal comes from. A panel draws it beside the name when its Show Source
+	// Reference option is on, and it is wired by the CMDReferenceSourceBase
+	// key of the panel's own section in the template.
+	LvlRefSourceBase Command = 30000
 )
 
 // LvlRoute is the command carrying what is routed to a destination.
@@ -76,6 +83,18 @@ func LvlRoute(dest int) Command { return LvlRouteBase + Command(dest) }
 
 // LvlProtect is the command carrying a destination's protect state.
 func LvlProtect(dest int) Command { return LvlProtectBase + Command(dest) }
+
+// LvlRefSource is the command carrying a source's reference.
+func LvlRefSource(source int) Command { return LvlRefSourceBase + Command(source) }
+
+// IsLevelRefSource reports whether c is a source reference, and for which
+// source.
+func IsLevelRefSource(c Command) (source int, ok bool) {
+	if c > LvlRefSourceBase && c < LvlRefSourceBase+maxLevelDests {
+		return int(c - LvlRefSourceBase), true
+	}
+	return 0, false
+}
 
 // Monitor outputs. Four of them, five readouts each, laid out as one base per
 // readout and the monitor number added to it.

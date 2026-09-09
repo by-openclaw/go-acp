@@ -137,3 +137,36 @@ func TestTheTwoStateConventions(t *testing.T) {
 		t.Errorf("take mode is %d/%d, want 0/1", TakeImmediate, TakeOnButton)
 	}
 }
+
+func TestTellingTheThreePerEntityBlocksApart(t *testing.T) {
+	// A level carries three blocks keyed by entity: what is routed to a
+	// destination, whether it is protected, and where a source comes from. A
+	// command falling into the wrong one would move a crosspoint when a panel
+	// asked for a label.
+	if got := LvlRefSource(1); got != 30001 {
+		t.Errorf("source 1's reference is on %d, want 30001", got)
+	}
+	if got := LvlRefSource(1450); got != 31450 {
+		t.Errorf("source 1450's reference is on %d, want 31450", got)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		cmd    Command
+		source int
+		ok     bool
+	}{
+		{"the first reference", 30001, 1, true},
+		{"a reference far up the block", 31450, 1450, true},
+		{"the base itself is no source", LvlRefSourceBase, 0, false},
+		{"a route is not a reference", 10001, 0, false},
+		{"a protect is not a reference", 20001, 0, false},
+		{"past the block", LvlRefSourceBase + maxLevelDests, 0, false},
+	} {
+		src, ok := IsLevelRefSource(tc.cmd)
+		if ok != tc.ok || src != tc.source {
+			t.Errorf("%s: IsLevelRefSource(%d) = %d, %v; want %d, %v",
+				tc.name, tc.cmd, src, ok, tc.source, tc.ok)
+		}
+	}
+}

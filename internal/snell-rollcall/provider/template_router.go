@@ -226,6 +226,8 @@ func writeXYPanelSection(body *bytes.Buffer, prt *port) {
 	kv("CMDDestProtect", router.LvlDestProtect)
 	kv("CMDDestRouteIndex", router.LvlDestSelect)
 	kv("CMDProtectDestBase", router.LvlProtect(1))
+	// Where each source comes from, which is what Show Source Reference draws.
+	kv("CMDReferenceSourceBase", router.LvlRefSource(1))
 	kv("CMDRoutingDestBase", router.LvlRoute(1))
 	kv("CMDSourceCount", router.LvlSourceCount)
 	kv("CMDSourceName", router.LvlSrcName)
@@ -243,9 +245,12 @@ func writeXYPanelSection(body *bytes.Buffer, prt *port) {
 	// The whole interface counts from one — a source is 1..n and a protect is
 	// off at 1 — and this is where the panel is told so.
 	kv("OneBased", true)
-	kv("ShowPorts", false)
+	// The index a source sits at, which the panel has already and needs no
+	// command for; its protect, which the level publishes; and its reference,
+	// which it does now.
+	kv("ShowPorts", true)
 	kv("ShowProtect", true)
-	kv("ShowReference", false)
+	kv("ShowReference", true)
 	kv("SourceButtonHeight", 50)
 	kv("SourceButtonWidth", 100)
 	kv("SourceCount", len(prt.level.sources))

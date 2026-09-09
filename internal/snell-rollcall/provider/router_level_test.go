@@ -233,3 +233,57 @@ func TestManyCardsAlsoStopAtTheClientPorts(t *testing.T) {
 		}
 	}
 }
+
+func TestALevelSaysWhereItsSourcesComeFrom(t *testing.T) {
+	// A name is what an operator types; a reference is where the signal comes
+	// from. The panel draws it beside the name when Show Source Reference is
+	// on, and it is wired by CMDReferenceSourceBase in the panel's own section
+	// of the template — so a block that is not published leaves the option on
+	// and the column empty.
+	prt := levelPort(t, 8, 6)
+
+	for n := 1; n <= 6; n++ {
+		v, ok := prt.value(uint32(router.LvlRefSource(n)))
+		if !ok {
+			t.Fatalf("source %d has no reference", n)
+		}
+		if v.Text == "" {
+			t.Errorf("source %d has an empty reference", n)
+		}
+	}
+
+	// And it is a walkable line like everything else the level publishes.
+	var found bool
+	for _, l := range prt.menu(true) {
+		if l.Command == uint32(router.LvlRefSource(1)) {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("the source references are not in the menu")
+	}
+}
+
+func TestTellingASourceReferenceApartFromARoute(t *testing.T) {
+	// Three per-entity blocks share the level's command space, and a command
+	// that fell into the wrong one would move a crosspoint when a panel asked
+	// for a label.
+	for _, tc := range []struct {
+		name   string
+		cmd    router.Command
+		source int
+		ok     bool
+	}{
+		{"the first reference", router.LvlRefSource(1), 1, true},
+		{"a reference far up the block", router.LvlRefSource(1450), 1450, true},
+		{"the base itself is no source", router.LvlRefSourceBase, 0, false},
+		{"a route is not a reference", router.LvlRoute(1), 0, false},
+		{"a protect is not a reference", router.LvlProtect(1), 0, false},
+	} {
+		src, ok := router.IsLevelRefSource(tc.cmd)
+		if ok != tc.ok || src != tc.source {
+			t.Errorf("%s: IsLevelRefSource(%d) = %d, %v; want %d, %v",
+				tc.name, tc.cmd, src, ok, tc.source, tc.ok)
+		}
+	}
+}

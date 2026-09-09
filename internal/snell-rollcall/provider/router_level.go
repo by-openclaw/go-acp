@@ -146,6 +146,16 @@ func buildLevelMenu(p *port, lv *routerLevel) {
 					num, router.LvlRoute(i+1), 1, nsrc, "%0.0f"), 1)
 			}
 		})
+		// What each source is, as against what it is called. A name is what an
+		// operator types; a reference is where the signal comes from, and a
+		// panel draws it beside the name when Show Source Reference is on.
+		b.group("Source Reference", "routing.reference", "", func() {
+			for i := range lv.sources {
+				b.add(fmt.Sprintf("Ref Source %d", i+1),
+					fmt.Sprintf("routing.reference.%d", i+1),
+					disp, router.LvlRefSource(i+1), 0, 0, "")
+			}
+		})
 		b.group("Direct Protect", "routing.protect", "", func() {
 			for i := range lv.dests {
 				b.add(fmt.Sprintf("Protect Dest %d", i+1),
@@ -234,6 +244,15 @@ func seedLevelValues(p *port, lv *routerLevel) {
 		str(router.LvlDstName, "")
 	}
 
+	// A source's reference says where in the plant it is, which is the only
+	// thing this provider can say truthfully: a real controller carries the
+	// upstream device, and nothing in a canonical tree pairs a matrix source
+	// with the card that feeds it. When a tree grows that pairing, it lands
+	// here and the panel needs no change to draw it.
+	for i := range lv.sources {
+		str(router.LvlRefSource(i+1), lv.reference(i+1))
+	}
+
 	for i := range lv.dests {
 		d := &lv.dests[i]
 		// A destination nothing has been routed to yet carries source one
@@ -273,4 +292,9 @@ func identifierToken(s string) string {
 		}
 	}
 	return string(out)
+}
+
+// reference is where a source sits in the plant, counting from one.
+func (lv *routerLevel) reference(source int) string {
+	return fmt.Sprintf("M%d L%d S%d", lv.matrixNumber, lv.levelNumber, source)
 }
