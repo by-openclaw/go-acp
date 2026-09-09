@@ -1,9 +1,12 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -436,5 +439,53 @@ func TestConfig_LocalAddress(t *testing.T) {
 	}
 	if got.Index != codec.IndexUnknown {
 		t.Errorf("index = %d, want %d before any session", got.Index, codec.IndexUnknown)
+	}
+}
+
+func TestTracingEveryFrame(t *testing.T) {
+	// A session log names the services a client negotiated and says nothing
+	// about what was then said on them, which is enough to see that a client
+	// is slow and never enough to see why. The trace is the view that is, and
+	// it is off unless the log is turned up to ask for it.
+	var buf bytes.Buffer
+	lvl := &slog.LevelVar{}
+	lvl.Set(LevelTrace)
+
+	ours, theirs := net.Pipe()
+	t.Cleanup(func() { _ = theirs.Close() })
+
+	l := NewLink(ours, Config{}, deps.Deps{
+		Logger: slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: lvl})),
+	})
+	t.Cleanup(func() { _ = l.Close() })
+
+	go func() {
+		buf := make([]byte, 512)
+		for {
+			if _, err := theirs.Read(buf); err != nil {
+				return
+			}
+		}
+	}()
+
+	if err := l.send(codec.Frame{Type: codec.MsgKeepAlive}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if !strings.Contains(buf.String(), "rollcall: frame") {
+		t.Error("nothing was traced at the trace level")
+	}
+	if !strings.Contains(buf.String(), "dir=tx") {
+		t.Error("a sent frame was not traced")
+	}
+
+	// And silent at debug, because one line per frame is thousands of lines
+	// for a single walk of a large node.
+	buf.Reset()
+	lvl.Set(slog.LevelDebug)
+	if err := l.send(codec.Frame{Type: codec.MsgKeepAlive}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if strings.Contains(buf.String(), "rollcall: frame") {
+		t.Error("frames were traced at debug level")
 	}
 }

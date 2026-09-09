@@ -3,6 +3,7 @@ package rollcall
 import (
 	"context"
 	"testing"
+	"time"
 
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/codec/router"
@@ -191,5 +192,41 @@ func TestFlushingToASessionWithNoValuesToSend(t *testing.T) {
 	case msg := <-subs[0].queue:
 		t.Errorf("a session that asked for the map was sent %v", msg)
 	default:
+	}
+}
+
+func TestEndingASessionIsAcknowledged(t *testing.T) {
+	// Specification 9.4: the valid replies to SP_TERM are SP_ACK, "session
+	// terminated", and SP_INVSESS — "An SP_ACK command is expected from the
+	// receiver."
+	//
+	// This answered nothing, and a vendor Control Panel waited three seconds
+	// for the acknowledgement before giving up, on every node an operator
+	// closed. It is the whole of the delay closing a card.
+	s := newServed(t, routerTree(4, 4))
+	sess := s.open(firstCardPort, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	payload, err := codec.TermSess{Code: codec.TermUser}.AppendTo(nil)
+	if err != nil {
+		t.Fatalf("term payload: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	reply, err := sess.Do(ctx, codec.MsgTerm, payload)
+	if err != nil {
+		t.Fatalf("a session ending was not answered: %v", err)
+	}
+	if reply.Type != codec.MsgAck {
+		t.Errorf("a session ending was answered with %s, want ACK", reply.Type)
+	}
+
+	// And the session really is gone: the acknowledgement is not a promise to
+	// keep it, and a server that kept its half is how a unit runs out.
+	if s.p.sessionState(sess) != nil {
+		if got := len(s.p.slotSubscribers(firstCardPort, 0)); got != 0 {
+			t.Errorf("%d subscriber(s) survived the session that owned them", got)
+		}
 	}
 }

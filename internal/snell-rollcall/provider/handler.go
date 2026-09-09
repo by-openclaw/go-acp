@@ -119,9 +119,25 @@ func generationName(s codec.Service) string {
 // Request answers a message on an established session.
 func (p *Provider) Request(s *session.Session, req codec.Frame) {
 	if req.Type == codec.MsgTerm {
-		// The client is finished. Ending our half without sending Term back
-		// is the point: it has stopped listening, and a server that keeps its
-		// half is how a unit runs out of sessions.
+		// The client is finished, and it is waiting to be told we heard.
+		//
+		// Specification 9.4: the valid replies to SP_TERM are SP_ACK, "session
+		// terminated", and SP_INVSESS, "session number invalid" — "An SP_ACK
+		// command is expected from the receiver."
+		//
+		// This answered nothing, on the belief recorded here that a client
+		// sending Term "has stopped listening". It has not. Measured against a
+		// vendor Control Panel: it sends Term when a node is closed and waits
+		// three seconds for the acknowledgement before giving up, every time,
+		// on every node — which is the whole of the delay an operator sees
+		// closing a card.
+		//
+		// The acknowledgement goes first and the teardown second, because a
+		// session that has been torn down has nothing left to answer on.
+		if err := s.Answer(codec.MsgAck, nil); err != nil {
+			p.log.Debug("rollcall: could not acknowledge a session ending",
+				"session", s.LocalIndex(), "err", err)
+		}
 		p.endSession(s)
 		return
 	}

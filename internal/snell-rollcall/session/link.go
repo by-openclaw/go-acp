@@ -242,7 +242,38 @@ func (l *Link) send(f codec.Frame) error {
 	}
 	l.txFrames.Add(1)
 	l.met.ObserveTx(len(buf), 0)
+	l.trace("tx", f)
 	return nil
+}
+
+// LevelTrace is the level a per-frame log records at.
+//
+// Below debug, because it is a different kind of thing: debug says what the
+// connector decided, trace says what crossed the wire. A session log names the
+// services a client negotiated and nothing about what was then said on them,
+// which is enough to see that a client is slow and never enough to see why.
+const LevelTrace = slog.LevelDebug - 4
+
+// trace records one frame when the log is turned up far enough to want it.
+//
+// A session log says which services were negotiated and nothing about what was
+// then said on them, which is enough to see that a client is slow and never
+// enough to see why. The three seconds a vendor Control Panel spent opening a
+// node was invisible until every frame had a timestamp beside it.
+//
+// It is behind the trace level rather than debug because one frame per line is
+// a great many lines: a menu walk of a large node is thousands of them.
+func (l *Link) trace(dir string, f codec.Frame) {
+	if !l.log.Enabled(context.Background(), LevelTrace) {
+		return
+	}
+	l.log.Log(context.Background(), LevelTrace, "rollcall: frame",
+		"dir", dir,
+		"type", f.Type.String(),
+		"src", f.Src.String(),
+		"dst", f.Dst.String(),
+		"bytes", len(f.Payload),
+	)
 }
 
 // exchange sends a request on a channel and waits for its reply, holding the
@@ -287,6 +318,7 @@ func (l *Link) readLoop() {
 		// until its caller wakes. Copying here is what makes all of them safe
 		// at the cost of one short-lived allocation per frame.
 		f.Payload = append([]byte(nil), f.Payload...)
+		l.trace("rx", f)
 		l.dispatch(f)
 	}
 }

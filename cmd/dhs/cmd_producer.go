@@ -27,6 +27,8 @@ import (
 
 	acp1provider "dhs/internal/acp1/provider"
 	acp2provider "dhs/internal/acp2/provider"
+
+	rcsession "dhs/internal/snell-rollcall/session"
 )
 
 // metricsExposer is the optional interface provider servers implement
@@ -536,6 +538,11 @@ func loadTree(path string) (*canonical.Export, error) {
 
 func parseLogLevel(level string) slog.Level {
 	switch level {
+	case "trace":
+		// Every frame, both directions. A menu walk of a large node is
+		// thousands of lines, which is the point: it is the only view that
+		// shows where the time in a slow one goes.
+		return rcsession.LevelTrace
 	case "debug":
 		return slog.LevelDebug
 	case "warn":
