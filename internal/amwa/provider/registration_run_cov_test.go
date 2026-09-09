@@ -248,12 +248,13 @@ func TestRegistrationRepublish(t *testing.T) {
 	before, _ := reg.snapshot()
 
 	c.Republish(is04.ResourceDevice, &c.bundle.Devices[0])
+	// The counter is the last step of the republish, so waiting on it also
+	// waits for the POST that precedes it.
 	waitUntil(t, "the republished device", func() bool {
-		posted, _ := reg.snapshot()
-		return len(posted) > len(before)
+		return atomic.LoadUint64(&c.reregister) > 0
 	})
-	if atomic.LoadUint64(&c.reregister) == 0 {
-		t.Error("a republish must be counted")
+	if posted, _ := reg.snapshot(); len(posted) <= len(before) {
+		t.Errorf("republish counted but nothing was posted (%d, was %d)", len(posted), len(before))
 	}
 }
 
