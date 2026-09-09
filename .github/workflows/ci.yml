@@ -244,6 +244,9 @@ jobs:
           check internal/transport/ws 100
           check internal/transport/http 100
           check internal/transport/conformance 100
+          check tools/mibcheck 100
+          check tools/gencli 100
+          check tools/gen-probel-tree 100
           check internal/auth 100
           check internal/plugin 100
           check internal/ccm/codec 100
