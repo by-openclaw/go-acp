@@ -149,6 +149,10 @@ jobs:
           check internal/acp2/provider 100
           check internal/provider 100
           check internal/consumer 100
+          check internal/registry 100
+          check internal/errcode 100
+          check internal/clock 100
+          check internal/identity 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
