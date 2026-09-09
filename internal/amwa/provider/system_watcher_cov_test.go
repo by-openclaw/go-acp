@@ -19,9 +19,9 @@ import (
 // systemAPI is an IS-09 System API that serves /global — or refuses to,
 // when the test says so — and reports how often it was read.
 type systemAPI struct {
-	ts    *httptest.Server
-	fail  bool
-	hits  chan struct{}
+	ts     *httptest.Server
+	fail   bool
+	hits   chan struct{}
 	global is09.Global
 }
 

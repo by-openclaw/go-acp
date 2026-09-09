@@ -696,8 +696,7 @@ func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceTy
 		// Stale data on the Registry — DELETE then re-POST.
 		id := resourceID(t, data)
 		c.deleteResource(ctx, t, id)
-		status, err = c.postResourceOnce(ctx, t, data)
-		if err != nil {
+		if _, err := c.postResourceOnce(ctx, t, data); err != nil {
 			return err
 		}
 	}

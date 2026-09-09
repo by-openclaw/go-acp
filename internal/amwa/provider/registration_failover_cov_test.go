@@ -30,6 +30,7 @@ type typedRegistry struct {
 	second   map[string]int // type -> status for the second attempt on
 	health   int
 	beats    int
+	deletes  int
 	blockHB  chan struct{}
 }
 
@@ -59,6 +60,9 @@ func newTypedRegistry(t *testing.T) *typedRegistry {
 		w.WriteHeader(code)
 	})
 	mux.HandleFunc("/x-nmos/registration/v1.3/resource/", func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
+		r.mu.Lock()
+		r.deletes++
+		r.mu.Unlock()
 		w.WriteHeader(stdhttp.StatusNoContent)
 	})
 	mux.HandleFunc("/x-nmos/registration/v1.3/health/nodes/", func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
@@ -86,6 +90,12 @@ func (r *typedRegistry) seen(typ string) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.attempts[typ]
+}
+
+func (r *typedRegistry) deregistrations() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.deletes
 }
 
 func (r *typedRegistry) heartbeats() int {
