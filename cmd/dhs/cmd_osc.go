@@ -19,7 +19,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log/slog"
 	"math"
 	"math/rand/v2"
@@ -155,7 +154,8 @@ func runOSCSend(ctx context.Context, proto string, args []string) error {
 	}
 	msg := codec.Message{Address: *address, Args: cargs}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger, logClean := producerLogger(ctx)
+	defer logClean()
 	srv := newOSCServer(proto, logger)
 
 	switch *transport {
@@ -209,7 +209,10 @@ func runOSCFader(ctx context.Context, proto string, args []string) error {
 		return fmt.Errorf("--rate must be positive")
 	}
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
+	// The fader's live readout owns stdout; the log stream goes where the
+	// shared flags say (syslog by default), so nothing fights the display.
+	logger, logClean := producerLogger(ctx)
+	defer logClean()
 	srv := newOSCServer(proto, logger)
 
 	useUDP := *transport == "udp"

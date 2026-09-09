@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -52,9 +53,7 @@ type AN2Client struct {
 // NewAN2Client wraps an already-connected raw TCP socket, starts the reader
 // goroutine, and sends EnableProtocolEvents([ACP1]) so announces flow.
 func NewAN2Client(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {
 		cfg.MaxRetries = dc.MaxRetries

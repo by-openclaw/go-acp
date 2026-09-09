@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"crypto/rand"
+	"dhs/internal/plugin"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -218,9 +219,7 @@ func (m *SubscriptionManager) setWSLifecycleHooks(open, closed func(resourcePath
 // NewSubscriptionManager builds the manager + wires it to the store.
 // advertiseHost is the host:port we use to construct ws_href.
 func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, apiVer string) *SubscriptionManager {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = is04.APIVersion
 	}

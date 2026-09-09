@@ -18,7 +18,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
 	"net"
 	"os"
 	"sort"
@@ -928,6 +927,10 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "mirror")
+	defer logClean()
 	if len(serveTLSCerts) != len(serveTLSKeys) {
 		return fmt.Errorf("nmos mirror: %d --serve-tls-cert but %d --serve-tls-key — every certificate needs its private key, given in the same order", len(serveTLSCerts), len(serveTLSKeys))
 	}
@@ -935,7 +938,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		Source:             *source,
 		Target:             *targetURL,
 		APIVer:             *apiVer,
-		Logger:             slog.Default(),
+		Logger:             logger,
 		AuditPath:          *auditLog,
 		StatusAddr:         *statusAddr,
 		ServeAddr:          *serveAddr,
@@ -987,6 +990,10 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "watch")
+	defer logClean()
 	if *registry == "" && !*mdns && !*unicast {
 		return fmt.Errorf("nmos watch: pick exactly one of --registry / --mdns / --unicast")
 	}
@@ -1004,7 +1011,7 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
 		Reporter:         rep,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
@@ -1142,6 +1149,10 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "walk")
+	defer logClean()
 	if *node == "" && *registry == "" && !*mdns && !*unicast {
 		return fmt.Errorf("nmos walk: pick one of --node / --registry / --mdns / --unicast")
 	}
@@ -1161,7 +1172,7 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

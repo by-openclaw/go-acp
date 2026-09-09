@@ -3,6 +3,7 @@ package acp2
 import (
 	"context"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"time"
@@ -101,9 +102,7 @@ func RunDiagnostics(ctx context.Context, host string, port int, slot uint8, logg
 }
 
 func runDiagnostics(ctx context.Context, host string, port int, slot uint8, logger *slog.Logger, timings diagTimings) ([]DiagResult, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 
 	sess := NewSession(nil, logger)
 	if err := sess.Connect(ctx, host, port); err != nil {

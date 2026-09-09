@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -81,9 +82,7 @@ func NewPublisher(opts PublisherOptions) *Publisher {
 		c = is07.Default()
 	}
 	logger := opts.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	// 0 means OFF, exactly as the field documents.
 	//
 	// It used to mean "off" in the comment and "5 seconds" in the code,

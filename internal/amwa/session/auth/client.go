@@ -22,6 +22,7 @@ package auth
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -106,9 +107,7 @@ type TokenClient struct {
 
 // NewTokenClient builds a client; nothing is fetched until Token.
 func NewTokenClient(opts TokenClientOptions) *TokenClient {
-	if opts.Logger == nil {
-		opts.Logger = slog.Default()
-	}
+	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	return &TokenClient{opts: opts, hc: &stdhttp.Client{Timeout: httpTimeout}}
 }
 
@@ -193,9 +192,7 @@ type KeyCache struct {
 
 // NewKeyCache builds a cache for one Authorization Server.
 func NewKeyCache(metadataURL string, logger *slog.Logger) *KeyCache {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &KeyCache{metadataURL: metadataURL, logger: logger,
 		hc: &stdhttp.Client{Timeout: httpTimeout}}
 }

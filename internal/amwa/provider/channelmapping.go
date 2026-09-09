@@ -36,6 +36,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -138,9 +139,7 @@ func NewIS08ChannelMappingServer(logger *slog.Logger, bundle *NodeConfig, cfg IS
 		action := bundle.ChannelMapping.BootMap
 		if err := validateAction(s.io, action); err != nil {
 			log := logger
-			if log == nil {
-				log = slog.Default()
-			}
+			log = plugin.LoggerOrDefault(log)
 			log.Error("provider/channelmapping: boot_map rejected", "err", err)
 		} else {
 			s.applyLocked(action)

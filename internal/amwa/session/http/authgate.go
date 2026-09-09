@@ -25,6 +25,7 @@ package http
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"log/slog"
 	stdhttp "net/http"
 	"strings"
@@ -100,9 +101,7 @@ func bearerToken(r *stdhttp.Request) string {
 // empty on the token-less always-readable paths.
 func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]string, body ErrorBody, clientID string, ok bool) {
 	log := g.Logger
-	if log == nil {
-		log = slog.Default()
-	}
+	log = plugin.LoggerOrDefault(log)
 	leeway := g.Leeway
 	if leeway == 0 {
 		leeway = 30 * time.Second

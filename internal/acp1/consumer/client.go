@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -83,9 +84,7 @@ type Client struct {
 // chosen at random per spec §"ACP Header" p. 11: "A client randomly
 // generates an initial MTID at power-up. An MTID must not be zero."
 func NewClient(tr Transport, logger *slog.Logger, cfg ClientConfig) *Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	// Populate missing fields with defaults.
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {

@@ -10,6 +10,7 @@ package mqtt
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
@@ -80,9 +81,7 @@ func New(opts Options) (*Client, error) {
 		opts.KeepAlive = 30 * time.Second
 	}
 	log := opts.Logger
-	if log == nil {
-		log = slog.Default()
-	}
+	log = plugin.LoggerOrDefault(log)
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{
 		opts:     opts,

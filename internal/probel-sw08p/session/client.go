@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/transport"
 	"errors"
@@ -264,9 +265,7 @@ type ClientConfig struct {
 // package decides what to say over a socket, not how one is made. A nil Net
 // falls back to a default transport so a direct caller still works.
 func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger, cfg ClientConfig) (*Client, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.DialTimeout <= 0 {
 		cfg.DialTimeout = DefaultDialTimeout
 	}
@@ -297,9 +296,7 @@ func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger
 // NewClientFromConn wraps an already-connected net.Conn in a Client. Used
 // by loopback tests where the caller supplies both ends of a net.Pipe.
 func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.ReadBufferSize <= 0 {
 		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}

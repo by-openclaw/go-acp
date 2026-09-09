@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -56,9 +57,7 @@ func NewSubscriber(opts SubscriberOptions) *Subscriber {
 		c = is07.Default()
 	}
 	logger := opts.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	hb := opts.HeartbeatInterval
 	if hb == 0 {
 		hb = 5 * time.Second

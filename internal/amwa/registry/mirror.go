@@ -29,6 +29,7 @@ package registry
 import (
 	"bytes"
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -228,9 +229,7 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	if opts.APIVer == "" {
 		opts.APIVer = is04.APIVersion
 	}
-	if opts.Logger == nil {
-		opts.Logger = slog.Default()
-	}
+	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	cache := make(map[string]map[string]json.RawMessage, len(mirrorTopics))
 	cacheVer := make(map[string]map[string]string, len(mirrorTopics))
 	for _, tp := range mirrorTopics {

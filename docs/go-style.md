@@ -89,3 +89,10 @@ linter set plus `depguard` (layering) — and the pre-commit hook runs
 `staticcheck`, so style debates end at the hook, not in review.
 A linter is only enabled when the whole tree already passes it:
 the config describes the code, not an aspiration.
+
+`forbidigo` pins one cross-cutting rule: `slog.Default()` is called in
+exactly one place, `plugin.LoggerOrDefault` (`internal/plugin/deps.go`).
+A constructor that accepts an optional `*slog.Logger` writes
+`logger = plugin.LoggerOrDefault(logger)`, never its own fallback, so the
+default log sink for the whole tree (syslog by default, epic #987) is
+decided once. Test files are exempt.

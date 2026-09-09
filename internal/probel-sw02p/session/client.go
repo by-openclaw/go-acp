@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/transport"
 	"errors"
@@ -132,9 +133,7 @@ type ClientConfig struct {
 // A nil Net is the plain-socket default, so a test that does not care about
 // transport still calls Dial with one argument fewer in spirit.
 func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger, cfg ClientConfig) (*Client, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.DialTimeout <= 0 {
 		cfg.DialTimeout = DefaultDialTimeout
 	}
@@ -162,9 +161,7 @@ func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger
 // NewClientFromConn wraps an already-connected net.Conn in a Client. Used
 // by loopback tests where the caller supplies both ends of a net.Pipe.
 func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.ReadBufferSize <= 0 {
 		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}

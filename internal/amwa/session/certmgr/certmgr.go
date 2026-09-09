@@ -19,6 +19,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"dhs/internal/plugin"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -82,9 +83,7 @@ func New(opts Options) (*Manager, error) {
 	if opts.ESTBase != "" && len(opts.Hostnames) == 0 {
 		return nil, fmt.Errorf("certmgr: EST mode requires at least one hostname")
 	}
-	if opts.Logger == nil {
-		opts.Logger = slog.Default()
-	}
+	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil {
 		return nil, fmt.Errorf("certmgr: create data dir: %w", err)
 	}

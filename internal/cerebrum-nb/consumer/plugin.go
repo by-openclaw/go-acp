@@ -94,9 +94,7 @@ type Plugin struct {
 // NewPlugin constructs a Plugin with the given logger. Credentials
 // must be set on the returned Plugin before Connect.
 func NewPlugin(logger *slog.Logger) *Plugin {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	// No connector to create here any more: Base supplies one on demand,
 	// which is what NewPlugin needed. The CLI builds this plugin directly
 	// rather than through the factory, so a field that only the factory

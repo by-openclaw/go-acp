@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -62,9 +63,7 @@ type SubHandle int
 // usage: port = acp1.DefaultPort (2071). The listener is not running
 // until Start is called.
 func NewListener(logger *slog.Logger, port int) (*Listener, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	conn, err := transport.ListenUDP(context.Background(), port)
 	if err != nil {
 		return nil, err

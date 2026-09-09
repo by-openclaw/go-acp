@@ -20,6 +20,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"log/slog"
 	"sync"
 	"time"
@@ -55,9 +56,7 @@ type UnicastRegistryWatcher struct {
 
 // NewUnicastRegistryWatcher builds the watcher. It does not resolve.
 func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIVer string) *UnicastRegistryWatcher {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if preferAPIVer == "" {
 		preferAPIVer = "v1.3"
 	}

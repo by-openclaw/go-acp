@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"dhs/internal/amwa/codec/spec"
@@ -34,6 +33,10 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "facade")
+	defer logClean()
 	if *registry == "" && *resolver == "" && !*mdns {
 		return fmt.Errorf("nmos facade: pick one of --registry / --resolver / --mdns")
 	}
@@ -48,7 +51,7 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 	}
 
 	srv, err := facade.New(facade.Options{
-		Logger: slog.Default(),
+		Logger: logger,
 		Bind:   *bind,
 		// A fresh Controller per question, not one held across the run:
 		// the tool re-registers resources between tests, and IS-04-04
@@ -56,7 +59,7 @@ func runNMOSFacade(ctx context.Context, args []string) error {
 		// cached discovery would answer from memory and fail it.
 		Controller: func(qctx context.Context) (*consumer.Controller, error) {
 			return consumer.NewController(qctx, consumer.ControllerOptions{
-				Logger:           slog.Default(),
+				Logger:           logger,
 				Reporter:         spec.NopReporter{},
 				RegistryURL:      *registry,
 				DiscoveryMode:    mode,

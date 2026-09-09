@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -145,9 +146,7 @@ type republishItem struct {
 // IS-04 wire version (e.g. "v1.3"); registryURL must NOT include the
 // `/x-nmos/registration/...` path — we append it.
 func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bundle *NodeConfig) *RegistrationClient {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = is04.APIVersion
 	}

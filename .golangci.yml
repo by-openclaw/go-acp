@@ -14,7 +14,25 @@ linters:
     - misspell
     - unconvert
     - wastedassign
+    # One default logger for the whole tree: constructors that accept an
+    # optional *slog.Logger go through plugin.LoggerOrDefault, so the
+    # default sink is chosen in exactly one place (internal/plugin/deps.go).
+    - forbidigo
+  exclusions:
+    rules:
+      - path: internal/plugin/deps\.go
+        linters:
+          - forbidigo
+      # Tests may pin the process default explicitly; the rule guards the
+      # production default sink, not test fixtures.
+      - path: _test\.go
+        linters:
+          - forbidigo
   settings:
+    forbidigo:
+      forbid:
+        - pattern: 'slog\.Default\('
+          msg: "call plugin.LoggerOrDefault(l) — the default logger is decided once, in internal/plugin/deps.go"
     depguard:
       rules:
         # Layer 1 — codec stays stdlib-only. The package compiles

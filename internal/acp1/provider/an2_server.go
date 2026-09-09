@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -312,9 +313,7 @@ type an2Session struct {
 }
 
 func newAN2SessionRegistry(logger *slog.Logger) *an2SessionRegistry {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &an2SessionRegistry{
 		logger:   logger,
 		sessions: map[uint64]*an2Session{},

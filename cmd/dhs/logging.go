@@ -89,6 +89,31 @@ func withLogFlags(ctx context.Context, lf *logFlags) context.Context {
 	return context.WithValue(ctx, logFlagsKey{}, lf)
 }
 
+// producerLogger builds the operational logger for a producer verb (send,
+// serve) from the log flags on the context — the same --log-format /
+// --log-level / --syslog-addr contract `dhs producer <proto> serve` honours
+// in cmd_producer.go, so every producer entry point logs identically
+// (epic #987). Without flags on the context it is the uniform default
+// (syslog format on stderr, info). cleanup closes the syslog forwarder.
+func producerLogger(ctx context.Context) (logger *slog.Logger, cleanup func()) {
+	lf, _ := ctx.Value(logFlagsKey{}).(*logFlags)
+	if lf == nil {
+		lf = &logFlags{format: DefaultLogFormat, level: "info", path: "auto"}
+	}
+	logger = newLogger(lf.level, lf.format)
+	cleanup = func() {}
+	if lf.syslogAddr != "" {
+		udp, err := dialSyslogUDP(lf.syslogAddr)
+		if err != nil {
+			logger.Warn("--syslog-addr unusable, logging locally only", slog.String("err", err.Error()))
+			return logger, cleanup
+		}
+		logger = slog.New(teeHandler{logger.Handler(), udp.Handler(parseLogLevel(lf.level))})
+		cleanup = udp.Close
+	}
+	return logger, cleanup
+}
+
 // consumerLogger builds the Model B loggers for a connector that stashed its
 // log flags on ctx (via stripLogFlags + withLogFlags). op is the operational
 // logger (human stderr + structured sinks); event is the sink-only event

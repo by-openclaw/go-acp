@@ -21,6 +21,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"log/slog"
 	"net"
 	"sync"
@@ -64,9 +65,7 @@ type SystemWatcher struct {
 
 // NewSystemWatcher opens the browser. It does not start browsing.
 func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, url string)) (*SystemWatcher, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = "v1.0"
 	}

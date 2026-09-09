@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -83,9 +84,7 @@ type RegistryWatcher struct {
 // preference when a Registry advertises multiple comma-separated
 // versions in TXT.api_ver.
 func NewRegistryWatcher(logger *slog.Logger, preferAPIVer string) (*RegistryWatcher, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if preferAPIVer == "" {
 		preferAPIVer = "v1.3"
 	}

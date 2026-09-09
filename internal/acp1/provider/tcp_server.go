@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -219,9 +220,7 @@ type tcpSession struct {
 }
 
 func newTCPSessionRegistry(logger *slog.Logger) *tcpSessionRegistry {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &tcpSessionRegistry{
 		logger:   logger,
 		sessions: map[uint64]*tcpSession{},

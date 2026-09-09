@@ -16,6 +16,7 @@
 package provider
 
 import (
+	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -75,9 +76,7 @@ type ncpConn struct {
 
 // NewIS12NCPServer wires the NCP endpoint to the shared device model.
 func NewIS12NCPServer(logger *slog.Logger, config *IS14ConfigurationServer) *IS12NCPServer {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	s := &IS12NCPServer{logger: logger, config: config, conns: map[*ncpConn]struct{}{}}
 	config.SetOnPropertyChanged(s.notifyPropertyChanged)
 	return s

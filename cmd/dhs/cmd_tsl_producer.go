@@ -30,6 +30,10 @@ func runTSLProducer(ctx context.Context, proto string, args []string) error {
 		printTSLProducerHelp(os.Stdout, proto)
 		return nil
 	}
+	// Shared log flags are stripped here and read back by producerLogger,
+	// so `producer tsl-* send|serve` logs like every other producer (#987).
+	lf, args := stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
@@ -137,7 +141,8 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger, logClean := producerLogger(ctx)
+	defer logClean()
 
 	if !f.tcp && len(f.dests) == 0 {
 		return fmt.Errorf("producer %s %s: at least one --dest is required for UDP", proto, verbName)
@@ -178,7 +183,7 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 			return nil
 		case <-t.C:
 			if err := emit(); err != nil {
-				slog.Default().Error("tsl serve refresh emit failed", "err", err)
+				logger.Error("tsl serve refresh emit failed", "err", err)
 			}
 		}
 	}

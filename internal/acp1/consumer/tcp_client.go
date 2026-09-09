@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -73,9 +74,7 @@ func (c *TCPClient) IdleTimeout() time.Duration { return c.idle.Get() }
 // multiplexing reader goroutine. The caller retains ownership of the
 // conn until Close is called.
 func NewTCPClient(conn *transport.TCPConn, logger *slog.Logger, cfg ClientConfig) *TCPClient {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {
 		cfg.MaxRetries = dc.MaxRetries

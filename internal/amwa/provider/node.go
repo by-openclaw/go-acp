@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -329,9 +330,7 @@ type IS04NodeServer struct {
 // NewIS04NodeServer validates the Node bundle and prepares (but does
 // not start) the server.
 func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConfig) (*IS04NodeServer, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if bundle == nil {
 		return nil, errors.New("provider/node: nil bundle")
 	}

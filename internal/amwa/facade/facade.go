@@ -27,6 +27,7 @@ package facade
 import (
 	"bytes"
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -107,9 +108,7 @@ func New(opts Options) (*Server, error) {
 	if opts.Controller == nil {
 		return nil, fmt.Errorf("nmos/facade: Controller factory is required")
 	}
-	if opts.Logger == nil {
-		opts.Logger = slog.Default()
-	}
+	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	if opts.Bind == "" {
 		opts.Bind = ":5001"
 	}
