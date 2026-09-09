@@ -180,9 +180,12 @@ func TestARouterIsServedAsThreeKindsOfNode(t *testing.T) {
 	// It is not menuless. The Centra publishes a Status line on command 99 and
 	// the node's template binds its only control to it; without the line the
 	// panel draws an empty box.
+	// The vendor's own is three lines — the root, the way out, and a status
+	// display — and ours adds the salvos, which nothing in the routing
+	// interface makes visible to a panel.
 	xyLines := xy.menu(true)
-	if len(xyLines) != 3 {
-		t.Fatalf("the tables node served %d menu lines, want the vendor's three", len(xyLines))
+	if len(xyLines) < 3 {
+		t.Fatalf("the tables node served %d menu lines", len(xyLines))
 	}
 	if xyLines[2].Command != cmdXYStatus || xyLines[2].Text != "Status" {
 		t.Errorf("its third line is %q on command %d, want Status on %d",

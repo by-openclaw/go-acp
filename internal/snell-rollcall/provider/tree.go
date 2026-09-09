@@ -611,6 +611,13 @@ func (p *port) setValue(command uint32, mode codec.Mode, num int32, text string,
 		v.Mode = codec.ModeString
 		v.Text = text
 
+	case mode.Has(codec.ModeData):
+		// A command whose value is a structure keeps it. The numeric field of
+		// a data write is the length of what follows, not a value, so storing
+		// it as a number would replace the structure with its own size.
+		v.Mode = codec.ModeData
+		v.Data = data
+
 	default:
 		v.Mode = codec.ModeValue
 		v.Val = num
@@ -672,7 +679,13 @@ func (p *port) setTableValue(command uint32, mode codec.Mode, num int32, data []
 	// Routing by association is a data command rather than a field: it names
 	// two associations and the levels to carry across, so there is no single
 	// destination for it to be a field of.
-	if command == uint32(router.CmdAssocMakeRoute) || command == uint32(router.CmdFireSalvo) {
+	if command == uint32(router.CmdAssocMakeRoute) {
+		v := codec.Value{Command: command, Mode: codec.ModeData, Data: data}
+		p.values[command] = v
+		return v, nil
+	}
+
+	if command == uint32(router.CmdFireSalvo) {
 		v := codec.Value{Command: command, Mode: codec.ModeData, Data: data}
 		p.values[command] = v
 		return v, nil

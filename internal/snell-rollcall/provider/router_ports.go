@@ -1,7 +1,10 @@
 package rollcall
 
 import (
+	"fmt"
+
 	"dhs/internal/snell-rollcall/codec"
+	"dhs/internal/snell-rollcall/codec/router"
 )
 
 // A router reaches the wire as three kinds of node, not one.
@@ -125,7 +128,7 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 	}
 
 	p.lines = []line{
-		{Index: 0, Style: codec.StyleList, Step: 2, Text: "Menu", path: "menu"},
+		{Index: 0, Style: codec.StyleList, Text: "Menu", path: "menu"},
 		{Index: 1, Style: codec.StylePartial | codec.StyleHidden, Text: "RETURN", path: "menu.return"},
 		{
 			Index: 2, Style: codec.StyleDisplay | codec.StyleCacheable,
@@ -135,5 +138,35 @@ func newXYPanelPort(number uint8, name string, r *routerModel) *port {
 	}
 	p.byCmd[cmdXYStatus] = 2
 	p.byPath["menu.status"] = 2
+
+	// The salvos, as a list a panel can press.
+	//
+	// Nothing in the routing interface makes salvos visible to a panel: the XY
+	// grid understands names, counts, routing, protect and reference, and
+	// salvos are none of those. But a menu is drawn by every client there is,
+	// and a list whose parameter is "#SEL:" with a button per entry is how the
+	// vendor publishes any set of choices — so that is how these are offered.
+	if len(r.salvos) > 0 {
+		group := len(p.lines)
+		p.lines = append(p.lines, line{
+			Index: uint32(group), Style: codec.StyleList | codec.StyleCacheable,
+			Text: "Salvos", Param: "#SEL:", path: "menu.salvos",
+		})
+		for i := range r.salvos {
+			idx := len(p.lines)
+			path := fmt.Sprintf("menu.salvos.%d", i+1)
+			p.lines = append(p.lines, line{
+				Index: uint32(idx), Style: codec.StyleButton | codec.StyleCacheable,
+				Command: uint32(router.CmdFireSalvo), MinRange: int32(i + 1),
+				Text: r.salvos[i].name, path: path,
+			})
+			p.byPath[path] = idx
+		}
+		p.lines[group].Step = uint32(len(p.lines) - group - 1)
+		p.byCmd[uint32(router.CmdFireSalvo)] = group + 1
+	}
+
+	// The root spans everything under it.
+	p.lines[0].Step = uint32(len(p.lines) - 1)
 	return p
 }

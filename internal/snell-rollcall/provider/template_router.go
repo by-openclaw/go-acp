@@ -277,8 +277,25 @@ const (
 func writeXYPanelPage(body *bytes.Buffer, prt *port) {
 	fmt.Fprintf(body, "[Version]%sversion=%d%s", nl, templateFormatVersion, nl)
 	fmt.Fprintf(body, "[%d:%d:%d:0]%s", prt.id.TypeID, prt.id.Version.CmdSet, templateAllLevels, nl)
-	fmt.Fprintf(body, "Size=0,0,350,100%s", nl)
+	// A page tall enough for the salvo list when there is one. The vendor's
+	// own is a hundred high and holds nothing but the status line, because its
+	// controller offers a panel nothing else here.
+	height := 100
+	if prt.router != nil && len(prt.router.salvos) > 0 {
+		height = 300
+	}
+	fmt.Fprintf(body, "Size=0,0,350,%d%s", height, nl)
 	fmt.Fprintf(body, "Ctl0=Initialising...,%d,0,%d,8,10,330,20%s", cmdXYStatus, ctlValueText, nl)
+
+	// The salvos, as a list a panel can press. Nothing in the routing
+	// interface makes them visible to one: the XY grid understands names,
+	// counts, routing, protect and reference, and a salvo is none of those.
+	if prt.router != nil && len(prt.router.salvos) > 0 {
+		fmt.Fprintf(body, "Ctl1=Salvos,-1,0,%d,8,40,330,240%s", ctlGroupBox, nl)
+		fmt.Fprintf(body, "Ctl2=New Listbox,%d,0,%d,14,54,318,220%s",
+			router.CmdFireSalvo, ctlListbox, nl)
+	}
+
 	fmt.Fprintf(body, "SaveSet=%d,%d%s", cmdXYDestSelect, cmdXYStatus, nl)
 	body.WriteString(nl)
 }

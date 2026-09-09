@@ -239,14 +239,14 @@ func (p *Provider) republishCrosspoint(ctx context.Context, s *session.Session, 
 // routes made or 0 on error" and does not distinguish an empty salvo from one
 // that does not exist, so neither does this.
 func (p *Provider) fireSalvo(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
-	req, err := router.DecodeFireSalvo(v.Data)
+	salvo, ok := salvoAsked(v)
 	var made uint32
 	var moved []routedChange
-	if err == nil {
-		made, moved = prt.router.fireSalvo(req.Salvo)
+	if ok {
+		made, moved = prt.router.fireSalvo(salvo)
 	}
 
-	body, _ := router.SalvoFired{Salvo: req.Salvo, Routes: made}.AppendTo(nil)
+	body, _ := router.SalvoFired{Salvo: salvo, Routes: made}.AppendTo(nil)
 	prt.seed(uint32(router.CmdFireSalvo), codec.Value{
 		Command: uint32(router.CmdFireSalvo), Mode: codec.ModeData, Data: body,
 	})
@@ -332,4 +332,24 @@ func routedSourceReply(prt *port, command uint32, before codec.Value) (codec.Val
 		dtp.Uint(uint32(router.RouteOK)),
 	}, false)
 	return codec.Value{Command: command, Mode: codec.ModeData, Data: body}, true
+}
+
+// salvoAsked reads which salvo a client asked for, in either form it may ask.
+//
+// The specification carries the request as parameters, and a client that reads
+// the tables sends those. A menu button cannot: it sends the number in its own
+// minimum-range field and nothing else, and the salvo list this node publishes
+// is the only way a panel sees salvos at all. They are the same request.
+func salvoAsked(v codec.Value) (uint32, bool) {
+	if len(v.Data) > 0 {
+		req, err := router.DecodeFireSalvo(v.Data)
+		if err != nil {
+			return 0, false
+		}
+		return req.Salvo, true
+	}
+	if v.Val > 0 {
+		return uint32(v.Val), true
+	}
+	return 0, false
 }

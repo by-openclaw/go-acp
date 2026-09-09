@@ -252,3 +252,109 @@ func TestASalvoNamingRoutesThatAreNotThere(t *testing.T) {
 		t.Errorf("a salvo of impossible routes made %d of them", made)
 	}
 }
+
+func TestFiringASalvoFromAMenuButton(t *testing.T) {
+	// Nothing in the routing interface makes salvos visible to a panel: the XY
+	// grid understands names, counts, routing, protect and reference, and a
+	// salvo is none of those. A menu is drawn by every client there is, so the
+	// salvos are published as a list of buttons — and a button sends the
+	// number in its own minimum-range field rather than as parameters.
+	s := salvoRouter(t)
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	var group, first *line
+	for i, l := range xy.menu(true) {
+		if l.Text == "Salvos" {
+			group = &xy.menu(true)[i]
+		}
+		if l.Command == uint32(router.CmdFireSalvo) && first == nil {
+			first = &xy.menu(true)[i]
+		}
+	}
+	if group == nil || group.Param != "#SEL:" {
+		t.Fatal("the salvos are not published as a list a panel can press")
+	}
+	if first == nil {
+		t.Fatal("no salvo button carries the fire command")
+	}
+	if int(group.Step) != len(xy.router.salvos) {
+		t.Errorf("the list spans %d lines for %d salvos", group.Step, len(xy.router.salvos))
+	}
+
+	// Pressing the third one, the way a panel does.
+	stored, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeValue, 3, "", nil)
+	if err != nil {
+		t.Fatalf("press: %v", err)
+	}
+	fired, err := router.DecodeSalvoFired(stored.Data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if fired.Salvo != 3 || fired.Routes != 4 {
+		t.Errorf("salvo %d made %d routes, want 3 and 4", fired.Salvo, fired.Routes)
+	}
+
+	m := &xy.router.matrices[0]
+	if got := m.levels[0].dests[0].routed.Source; got != 3 {
+		t.Errorf("destination 1 carries source %d, want the third salvo's", got)
+	}
+}
+
+func TestAPressThatNamesNoSalvo(t *testing.T) {
+	// A button carries its number; zero is not one, and neither is a request
+	// whose parameters hold something else.
+	if _, ok := salvoAsked(codec.Value{Mode: codec.ModeValue}); ok {
+		t.Error("a press naming salvo zero was taken for a salvo")
+	}
+	if _, ok := salvoAsked(codec.Value{Mode: codec.ModeData, Data: []byte{0xFF, 0xFF}}); ok {
+		t.Error("parameters that are not a fire were taken for one")
+	}
+	got, ok := salvoAsked(codec.Value{Mode: codec.ModeValue, Val: 2})
+	if !ok || got != 2 {
+		t.Errorf("a press of salvo 2 read as %d, %v", got, ok)
+	}
+}
+
+func TestATablesNodeWithNoSalvosOffersNoList(t *testing.T) {
+	// A plant with no salvos publishes no list: an empty one is a control that
+	// does nothing.
+	s := newServed(t, routerTree(0, 0))
+	xy := s.p.model.tablePort()
+	if xy == nil {
+		t.Fatal("no tables node")
+	}
+	for _, l := range xy.menu(true) {
+		if l.Text == "Salvos" {
+			t.Error("a plant with no salvos published a salvo list")
+		}
+	}
+}
+
+func TestFiringThroughTheTablesWhenNoListIsPublished(t *testing.T) {
+	// A plant with no salvos publishes no list, so the command is not in the
+	// menu — and a client that read the tables may still send it, because the
+	// tables say how many salvos there are and zero is an answer.
+	s := newServed(t, routerTree(0, 0))
+	xy := s.p.model.tablePort()
+	sess := s.open(xy.number, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
+
+	body, err := router.FireSalvo{Salvo: 1}.AppendTo(nil)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	stored, err := s.p.applyWrite(sess, xy, uint32(router.CmdFireSalvo), 0,
+		codec.ModeData, 0, "", body)
+	if err != nil {
+		t.Fatalf("fire: %v", err)
+	}
+	fired, err := router.DecodeSalvoFired(stored.Data)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if fired.Routes != 0 {
+		t.Errorf("a plant with no salvos made %d routes", fired.Routes)
+	}
+}
