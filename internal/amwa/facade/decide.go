@@ -305,7 +305,7 @@ func (s *Server) awaitNewSender(ctx context.Context) error {
 	for _, x := range before.Senders {
 		known[x.ID] = true
 	}
-	return s.pollUntil(ctx, 100*time.Second, func(snap *consumer.CatalogueSnapshot) bool {
+	return s.pollUntil(ctx, monitorWindow, func(snap *consumer.CatalogueSnapshot) bool {
 		for _, x := range snap.Senders {
 			if !known[x.ID] {
 				s.logger.Info("nmos/facade: sender back online", "id", x.ID)
@@ -340,7 +340,7 @@ func (s *Server) awaitDeactivation(ctx context.Context, watch string) error {
 	if len(active) == 0 {
 		return nil // nothing to watch; acknowledge rather than hang
 	}
-	return s.pollUntil(ctx, 100*time.Second, func(snap *consumer.CatalogueSnapshot) bool {
+	return s.pollUntil(ctx, monitorWindow, func(snap *consumer.CatalogueSnapshot) bool {
 		for _, r := range snap.Receivers {
 			if active[r.ID] && (!r.Subscription.Active || r.Subscription.SenderID == nil) {
 				s.logger.Info("nmos/facade: receiver deactivated", "id", r.ID)
@@ -351,12 +351,21 @@ func (s *Server) awaitDeactivation(ctx context.Context, watch string) error {
 	})
 }
 
-// pollUntil re-walks the registry every two seconds until cond holds.
-// Two seconds keeps the detection latency well inside the 30-second
-// answer windows without hammering the registry.
+// pollInterval and monitorWindow are the monitors' cadence and ceiling.
+// Two seconds keeps the detection latency well inside the tool's
+// 30-second answer windows without hammering the registry; 100s covers
+// the tool's up-to-60s background delay plus that window. Package vars
+// only so a test can run a monitor in milliseconds — the production
+// values are minutes, which no unit test may wait for.
+var (
+	pollInterval  = 2 * time.Second
+	monitorWindow = 100 * time.Second
+)
+
+// pollUntil re-walks the registry every pollInterval until cond holds.
 func (s *Server) pollUntil(ctx context.Context, max time.Duration, cond func(*consumer.CatalogueSnapshot) bool) error {
 	deadline := time.Now().Add(max)
-	t := time.NewTicker(2 * time.Second)
+	t := time.NewTicker(pollInterval)
 	defer t.Stop()
 	for {
 		select {
