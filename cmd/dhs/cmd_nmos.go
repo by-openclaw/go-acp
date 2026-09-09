@@ -333,6 +333,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
 	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
 	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -412,6 +413,10 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		// hard-coded default (#855); a discovered IS-09 System API can
 		// still override it live.
 		fmt.Printf("Registering against %s + heartbeat every %s (IS-09 may override).\n", *registry, *heartbeat)
+	}
+	if *metricsAddr != "" {
+		serveMetricsEndpoint(ctx, logger, *metricsAddr, srv.Metrics(),
+			map[string]string{"proto": "nmos", "role": "node", "addr": *bind})
 	}
 	return srv.Serve(ctx)
 }
@@ -566,6 +571,7 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version exposed under /x-nmos/system/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
 	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -614,6 +620,10 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	} else {
 		fmt.Println("DNS-SD announce disabled — caller publishes records (e.g. pfSense Unbound, see docs/dns-sd-unbound.md).")
 	}
+	if *metricsAddr != "" {
+		serveMetricsEndpoint(ctx, logger, *metricsAddr, srv.Metrics(),
+			map[string]string{"proto": "nmos", "role": "system", "addr": *bind})
+	}
 	return srv.Serve(ctx)
 }
 
@@ -638,6 +648,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	fs.Var(&regTLSCerts, "tls-cert", "manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client")
 	fs.Var(&regTLSKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this registry on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -689,6 +700,12 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
 	}
 
+	if *metricsAddr != "" {
+		if mp, ok := r.(metricsExposer); ok {
+			serveMetricsEndpoint(ctx, logger, *metricsAddr, mp.Metrics(),
+				map[string]string{"proto": "nmos", "role": "registry", "addr": *bind})
+		}
+	}
 	return r.Serve(ctx, opts)
 }
 
@@ -817,6 +834,7 @@ func printNMOSProducerHelp() {
 
   --role node|system    Producer role (default: node)
   --pidfile PATH        write the PID on start (removed on exit) for stop / ensure
+  --metrics-addr ADDR   serve Prometheus /metrics + /snapshot.json for this instance (status reads it)
 
 Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
   Loads a Node bundle JSON (node + devices + sources + flows + senders +
@@ -855,6 +873,7 @@ subscriptions on the configured --bind, plus the optional mDNS
 announce of _nmos-register._tcp + _nmos-query._tcp.
 
   --bind ADDR              HTTP listen address (default :8235)
+  --metrics-addr ADDR      serve Prometheus /metrics + /snapshot.json for this registry
   --advertise-host H:P     host:port placed in SRV / ws_href records
                            (default: derived from --bind + hostname)
   --mdns / --no-mdns       Toggle mDNS announce (default on)

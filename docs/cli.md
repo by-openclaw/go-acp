@@ -258,6 +258,8 @@ Usage of serve:
     	heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value (default 5s)
   -mdns
     	advertise via mDNS (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address
   -no-connection-api
     	do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device
   -no-mdns
@@ -314,6 +316,8 @@ Usage of serve:
     	DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)
   -mdns
     	advertise via mDNS (Mode A) (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this registry on this address
   -no-mdns
     	disable mDNS announce (Modes B / C)
   -page-limit-default int
