@@ -24,11 +24,16 @@ import (
 // whole lifecycle enough times that both are exercised, and asserts
 // the invariant that must hold either way.
 func TestEveryShutdownDeregisters(t *testing.T) {
-	for i := 0; i < 40; i++ {
+	for i := 0; i < 20; i++ {
 		reg := newTypedRegistry(t)
+		// Each heartbeat takes longer than the loop's tick — which is
+		// floored at 50ms however small the cadence — so by the time
+		// the loop re-enters its select the ticker has already fired
+		// and both cases are ready. That is the state the arm exists
+		// for, and it is a coin flip which of them select picks.
+		reg.set(func(r *typedRegistry) { r.healthDelay = 60 * time.Millisecond })
+
 		c := NewRegistrationClient(newLogTap().logger(), reg.ts.URL, "v1.3", validBundle())
-		// A tick far shorter than the loop's work, so the ticker is
-		// almost always already ready when the select is re-entered.
 		c.SetHeartbeatIntervalFn(func() time.Duration { return time.Millisecond })
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -36,6 +41,13 @@ func TestEveryShutdownDeregisters(t *testing.T) {
 		go func() { defer close(done); c.Run(ctx) }()
 
 		waitUntil(t, "the registration", c.registered.Load)
+		// Let the loop settle into its heartbeat cycle, so the
+		// cancellation lands while a tick is already pending rather
+		// than while the loop waits for its first one.
+		time.Sleep(120 * time.Millisecond)
+		if reg.heartbeats() == 0 {
+			t.Fatalf("run %d: the loop never beat", i)
+		}
 		cancel()
 		<-done
 

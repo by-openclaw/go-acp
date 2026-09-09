@@ -233,9 +233,12 @@ func TestRegistrationHeartbeatFailureUnregisters(t *testing.T) {
 
 	reg.set(func(r *fakeRegistry) { r.healthCode = stdhttp.StatusInternalServerError })
 	tap.wait(t, "heartbeat failed")
-	if atomic.LoadUint64(&c.failures) == 0 {
-		t.Error("a failed heartbeat must be counted")
-	}
+	// The counter is incremented after the line is logged, so waiting
+	// on the log and reading the counter in the same breath is a race
+	// with the loop's own goroutine.
+	waitUntil(t, "the failure to be counted", func() bool {
+		return atomic.LoadUint64(&c.failures) > 0
+	})
 }
 
 // Republish re-POSTs a changed resource while registered, and is dropped

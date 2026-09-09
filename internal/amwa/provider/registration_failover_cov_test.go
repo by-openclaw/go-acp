@@ -24,14 +24,15 @@ import (
 type typedRegistry struct {
 	ts *httptest.Server
 
-	mu       sync.Mutex
-	byType   map[string]int // type -> status to answer
-	attempts map[string]int // type -> POSTs seen
-	second   map[string]int // type -> status for the second attempt on
-	health   int
-	beats    int
-	deletes  int
-	blockHB  chan struct{}
+	mu          sync.Mutex
+	byType      map[string]int // type -> status to answer
+	attempts    map[string]int // type -> POSTs seen
+	second      map[string]int // type -> status for the second attempt on
+	health      int
+	healthDelay time.Duration
+	beats       int
+	deletes     int
+	blockHB     chan struct{}
 }
 
 func newTypedRegistry(t *testing.T) *typedRegistry {
@@ -68,8 +69,11 @@ func newTypedRegistry(t *testing.T) *typedRegistry {
 	mux.HandleFunc("/x-nmos/registration/v1.3/health/nodes/", func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
 		r.mu.Lock()
 		r.beats++
-		block, code := r.blockHB, r.health
+		block, code, delay := r.blockHB, r.health, r.healthDelay
 		r.mu.Unlock()
+		if delay > 0 {
+			time.Sleep(delay)
+		}
 		if block != nil {
 			<-block
 		}

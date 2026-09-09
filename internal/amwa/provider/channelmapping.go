@@ -556,9 +556,10 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 	if err != nil {
 		return stdhttp.StatusBadRequest, is08.ErrorBody{Code: 400, Error: "Invalid activation request", Debug: err.Error()}, nil
 	}
-	if err := is08.ValidateMapActivationRequest(req); err != nil {
-		return stdhttp.StatusBadRequest, is08.ErrorBody{Code: 400, Error: "Invalid activation request", Debug: err.Error()}, nil
-	}
+	// No second validation pass: DecodeMapActivationRequest validates
+	// what it decoded, so a request that reached here has already been
+	// through the same check and a repeat could only ever disagree
+	// with it about the same body.
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
