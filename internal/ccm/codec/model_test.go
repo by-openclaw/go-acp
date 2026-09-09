@@ -8,6 +8,7 @@ package codec
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -81,5 +82,41 @@ func TestDecodeStreamsUUIDKeyed(t *testing.T) {
 	}
 	if n := len(d.StreamsByKind(KindSender)); n != len(snd) {
 		t.Errorf("StreamsByKind(sender) = %d, want %d", n, len(snd))
+	}
+}
+
+// A /self body the decoder cannot read is refused rather than
+// answered with an empty identity: a Device with no product name is
+// indistinguishable from one nobody asked about.
+func TestDecodeSelfRefusesWhatItCannotRead(t *testing.T) {
+	if _, err := DecodeSelf([]byte(`{`)); err == nil {
+		t.Fatal("a body that is not JSON must be refused")
+	}
+}
+
+// A stream tree that is not an array of streams is refused, and a
+// stream with no UUID is skipped with its reason attached — a device
+// reporting one is describing a resource nothing else in the plant can
+// refer to.
+func TestDecodeStreamsRefusalsAndSkips(t *testing.T) {
+	if _, _, err := DecodeStreams([]byte(`{"not":"an array"}`), KindSender, EssenceVideo); err == nil {
+		t.Fatal("a body that is not a stream array must be refused")
+	}
+
+	streams, skipped, err := DecodeStreams([]byte(`[
+		{"name":"nameless"},
+		{"uuid":"11111111-1111-1111-1111-111111111111","name":"cam-1"}
+	]`), KindSender, EssenceVideo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(streams) != 1 || streams[0].Name != "cam-1" {
+		t.Fatalf("streams = %+v, want only the one that can be keyed", streams)
+	}
+	if len(skipped) != 1 || !strings.Contains(skipped[0], "no uuid") {
+		t.Fatalf("skipped = %v, want the nameless stream reported by name", skipped)
+	}
+	if !strings.Contains(skipped[0], "nameless") {
+		t.Errorf("the reason must name what was skipped: %q", skipped[0])
 	}
 }
