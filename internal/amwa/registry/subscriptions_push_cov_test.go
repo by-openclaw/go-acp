@@ -126,11 +126,14 @@ func TestEnqueueUnratedSendsInlineAndReportsFailure(t *testing.T) {
 func TestFlushBuffersAndRefusals(t *testing.T) {
 	ws, conn := wsPair(t)
 	m := NewSubscriptionManager(nil, NewStore(), "127.0.0.1:0", "v1.3")
-	// A rate long enough that only the explicit flush below can fire
-	// it. At 50ms a slow CI machine descheduled this goroutine between
-	// the two enqueues and the timer flushed the first change on its
-	// own, which is the buffering working rather than failing.
-	sub := pushSub(ws, 60_000)
+	sub := pushSub(ws, 50)
+	// Inside the rate window. A FRESH subscription has a zero
+	// nextFlushAllowed, so its first enqueue arms the timer with a
+	// delay of zero and the flush fires immediately — leading-edge
+	// rate limiting, which is what a first update should get. This
+	// test is about the window, so it starts inside one; without this
+	// the two enqueues raced the timer and Linux lost.
+	sub.nextFlushAllowed = time.Now().Add(time.Hour)
 
 	m.enqueue(sub, nodeChange(t, ChangeCreated, fxNode))
 	m.enqueue(sub, nodeChange(t, ChangeCreated, fxDevice))

@@ -67,6 +67,13 @@ func TestStartServeRefusesAnOccupiedAddress(t *testing.T) {
 // TLS material the served face cannot use is a startup failure, not a
 // silent fallback to plaintext under an https advertisement.
 func TestStartServeRefusesUnusableTLSMaterial(t *testing.T) {
+	// certmgr's working directory is made BEFORE the material is
+	// read, so even the refusal paths below create it: unstubbed they
+	// leave a 0700 .cache/ in the package directory, which on the
+	// container CI jobs is root-owned and stops the runner's own
+	// hashFiles() from walking the workspace afterwards.
+	stubServeTLSDataDir(t)
+
 	certPath, keyPath := selfSignedPair(t)
 	blocker := filepath.Join(t.TempDir(), "not-a-directory")
 	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {

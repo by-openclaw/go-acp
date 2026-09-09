@@ -56,6 +56,11 @@ type UnicastRegistryWatcher struct {
 	disqualifyTTL time.Duration
 
 	cancel context.CancelFunc
+	// done is closed when the resolve loop has exited, so Close can
+	// say the loop has STOPPED rather than only that it has been asked
+	// to. Without the join a caller — or a test asserting no further
+	// lookups — races an in-flight resolve that is on its way out.
+	done chan struct{}
 
 	mu           sync.Mutex
 	byFull       map[string]RegistryCandidate
@@ -85,7 +90,10 @@ func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIV
 func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
+	done := make(chan struct{})
+	w.done = done
 	go func() {
+		defer close(done)
 		w.resolveOnce(loopCtx)
 		t := time.NewTicker(unicastReresolveInterval)
 		defer t.Stop()
@@ -100,11 +108,20 @@ func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	}()
 }
 
-// Close stops the resolve loop. Idempotent.
+// Close stops the resolve loop and waits for it. Idempotent, and safe
+// on a watcher that was never Run.
+//
+// It waits because "stopped" and "asked to stop" are different facts
+// to the caller: a Node tearing down still has a goroutine resolving
+// against a zone if Close only cancelled.
 func (w *UnicastRegistryWatcher) Close() error {
 	if w.cancel != nil {
 		w.cancel()
 		w.cancel = nil
+	}
+	if w.done != nil {
+		<-w.done
+		w.done = nil
 	}
 	return nil
 }
