@@ -66,3 +66,14 @@ the oracle device changes. Examples:
 | osc `watch` | decode each type-tag from mock frames | `watch --listen udp:8000` binds | vs osc.js peer → message received, line shape matches dissector |
 | tsl `listen` | decode v3.1/v4.0/v5.0 frames (expected bytes) | `listen --bind :4000` binds | vs Miranda TSL emulator → tally frame decoded |
 | cerebrum `route` | encode ROUTE XML (golden) | `route --dest 60 --srce 60 --level 1` exit 0 | vs Cerebrum NB → route applied (consumer-only; no provider) |
+| rollcall `router` | table arithmetic from published base/step (expected commands) | `router --output json` names a version, matrices, levels | vs Centra → interface on the panel node, not on a matrix |
+| rollcall `route` | pack/unpack a source pin; decode the reply's prior pin + result | `route --matrix 1 --level 1 --dest 4` exit 0 | vs Centra → take, then read back; `changed` false on the second take |
+| rollcall `tally` | decode a routed-source push from the back channel | `tally --matrix 1 --level 1` dumps before it follows | vs Centra → a take made elsewhere arrives unsolicited |
+| rollcall `salvo` | decode the names file + the fired reply (salvo, count) | `salvo` lists; `--fire N` reports routes made | vs Centra → crosspoints move together |
+
+RollCall's verbs are split across node types, so a test that does not say which
+node it asked is not reproducible: command 100 is the interface version on the
+panel node and the selected destination on a level. Integration asserts the
+node type it drove, and the dissector play
+(`ansible/playbooks/snell-rollcall-dissector.yml`) asserts that one capture
+resolves that number both ways.
