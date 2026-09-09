@@ -84,9 +84,9 @@ func TestUnicastWatcherResolvesAndReResolves(t *testing.T) {
 		t.Fatal(err)
 	}
 	tap.wait(t, "registry discovered (unicast DNS-SD)")
-	if !tap.has("unicast registry rejected") {
-		t.Error("a registry advertising no mutual api_ver must be reported as rejected")
-	}
+	// The rejection is logged while walking the same answer, so it can
+	// land either side of the line above.
+	tap.until(t, "unicast registry rejected")
 
 	best, ok := w.Best()
 	if !ok || best.FullName != "reg-a."+dnssdcodec.ServiceRegister+".example.arpa" {
@@ -107,9 +107,7 @@ func TestUnicastWatcherResolvesAndReResolves(t *testing.T) {
 	if counts.get(dnssdcodec.ServiceRegisterLegacy) == 0 {
 		t.Error("the pre-v1.2 legacy service name must be asked too")
 	}
-	if !tap.has("unicast DNS-SD resolve failed") {
-		t.Error("a zone that answers NXDOMAIN must be logged, not fatal")
-	}
+	tap.until(t, "unicast DNS-SD resolve failed") // NXDOMAIN is logged, not fatal
 
 	if err := w.Close(); err != nil {
 		t.Errorf("Close: %v", err)

@@ -67,6 +67,25 @@ func (l *logTap) wait(t *testing.T, substr string) {
 	}
 }
 
+// until blocks until a message containing substr HAS been logged,
+// polling what was recorded rather than reading the channel — a line
+// emitted before the call still counts, and an earlier wait cannot
+// have consumed it. Use this whenever the line races with one another
+// test step already waited for.
+func (l *logTap) until(t *testing.T, substr string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if l.has(substr) {
+			return
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatalf("log line containing %q never appeared; seen:\n  %s", substr, strings.Join(l.snapshot(), "\n  "))
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
 func (l *logTap) snapshot() []string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
