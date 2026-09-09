@@ -25,11 +25,18 @@ type wsPeer struct {
 // returning the peer and the subscription's id.
 func openSubscription(t *testing.T, addr string, req SubscriptionRequest) (*wsPeer, string) {
 	t.Helper()
+	return openSubscriptionAt(t, addr, "v1.3", req)
+}
+
+// openSubscriptionAt is openSubscription against a named wire minor —
+// the mirror's served face mounts its own set.
+func openSubscriptionAt(t *testing.T, addr, apiVer string, req SubscriptionRequest) (*wsPeer, string) {
+	t.Helper()
 	body, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := stdhttp.Post("http://"+addr+"/x-nmos/query/v1.3/subscriptions",
+	resp, err := stdhttp.Post("http://"+addr+"/x-nmos/query/"+apiVer+"/subscriptions",
 		"application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST subscription: %v", err)

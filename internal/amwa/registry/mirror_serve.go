@@ -27,7 +27,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	stdhttp "net/http"
@@ -35,7 +34,6 @@ import (
 	"strings"
 	"time"
 
-	"log/slog"
 	"strconv"
 
 	codec "dhs/internal/amwa/codec/dnssd"
@@ -267,9 +265,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 // their responder through it, so a unit test injects a recording fake
 // for either without joining 224.0.0.251 (same seam pattern as
 // osHostnameFn).
-var newServeResponder = func(logger *slog.Logger) (session.Responder, error) {
-	return session.NewResponder(logger)
-}
+var newServeResponder = session.NewResponder
 
 // announceServe announces the served Query face as _nmos-query._tcp
 // via the same Responder machinery Registry.Serve uses and keeps the
@@ -462,12 +458,11 @@ func (m *Mirror) applyServeRow(topic, ver string, row is04.GrainDataRow, allowRe
 			}
 		}
 	case is04.ChangeRemoved:
-		// ErrNotFound is fine: a node delete cascades in the store, so
-		// the source's follow-up child-removal rows find nothing left.
-		if err := m.serve.store.DeleteResource(t, row.Path); err != nil && !errors.Is(err, ErrNotFound) {
-			m.logger.Warn("registry/mirror: serve: store delete failed",
-				"topic", topic, "id", row.Path, "err", err)
-		}
+		// The only refusal DeleteResource can give here is ErrNotFound
+		// — the type came from singularFromPlural above — and that one
+		// is expected: a node delete cascades in the store, so the
+		// source's follow-up child-removal rows find nothing left.
+		_ = m.serve.store.DeleteResource(t, row.Path)
 	}
 }
 
@@ -525,10 +520,9 @@ func (m *Mirror) serveReplay() {
 	}
 	m.mu.Unlock()
 	for _, topic := range mirrorTopics {
-		t, ok := singularFromPlural(topic)
-		if !ok {
-			continue
-		}
+		// Every mirrored topic is an IS-04 collection by construction,
+		// so the lookup cannot miss.
+		t, _ := singularFromPlural(topic)
 		for _, vd := range snapshot[topic] {
 			env := &is04.RegistrationRequest{Type: t, Data: vd.doc}
 			// Re-stamp at the minor the row originally arrived on —
