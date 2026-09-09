@@ -135,37 +135,62 @@ func TestNodeBaseFallsBackToLoopback(t *testing.T) {
 // ---------------------------------------------------------------
 
 // The fault worker's arguments are named in its class descriptor, and
-// each one that is missing or of the wrong shape is refused by name —
-// an Ansible play that mistypes one gets told which.
+// each one that is missing is refused by name — an Ansible play that
+// mistypes one is told which.
 func TestFaultMethodArgumentRefusals(t *testing.T) {
 	s, rx := monitorFixture(t)
+	role := `"monitorRole":"` + rx.role + `"`
 
 	for _, tc := range []struct {
-		name string
-		args string
-		want string
+		method string
+		args   string
+		want   string
 	}{
-		{"no arguments at all", `{}`, "monitorRole"},
-		{"arguments that are not JSON", `{`, ""},
-		{"a clear with no domain", `{"monitorRole":"` + rx.role + `"}`, ""},
-		{"a sync source with no id", `{"monitorRole":"` + rx.role + `"}`, ""},
-		{"a counter with no kind", `{"monitorRole":"` + rx.role + `"}`, ""},
+		{"InjectMonitorFault", `{}`, "monitorRole"},
+		{"InjectMonitorFault", `{` + role + `}`, "domain"},
+		{"InjectMonitorFault", `{` + role + `,"domain":"linkStatus"}`, "status"},
+		{"ClearMonitorFault", `{` + role + `}`, "domain"},
+		{"SetMonitorSyncSource", `{` + role + `}`, "sourceId"},
+		{"AddMonitorPacketCounters", `{` + role + `}`, "counter must be"},
+		{"AddMonitorPacketCounters", `{` + role + `,"counter":"lost"}`, "name"},
+		{"NotAMethodAtAll", `{` + role + `}`, "no DhsFaultControl method"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			for _, method := range []string{
-				"InjectMonitorFault", "ClearMonitorFault",
-				"SetMonitorSyncSource", "AddMonitorPacketCounters",
-			} {
-				err := s.invokeFaultMethod(method, []byte(tc.args))
-				if err == nil {
-					continue // some methods accept fewer arguments
-				}
-				if tc.want != "" && strings.Contains(err.Error(), tc.want) {
-					return
-				}
-			}
-		})
+		err := s.invokeFaultMethod(tc.method, []byte(tc.args))
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s %s = %v, want %q named", tc.method, tc.args, err, tc.want)
+		}
 	}
+
+	// Arguments that are not JSON at all are refused before any of
+	// that.
+	if err := s.invokeFaultMethod("InjectMonitorFault", []byte(`{`)); err == nil {
+		t.Error("arguments that are not JSON must be refused")
+	}
+
+	// And each one, given what it asks for, does its work.
+	for _, tc := range []struct{ method, args string }{
+		{"ClearMonitorFault", `{` + role + `,"domain":"linkStatus"}`},
+		{"SetMonitorSyncSource", `{` + role + `,"sourceId":"ptp-gm-1"}`},
+		{"AddMonitorPacketCounters", `{` + role + `,"counter":"lost","name":"leg-0","increment":2}`},
+	} {
+		if err := s.invokeFaultMethod(tc.method, []byte(tc.args)); err != nil {
+			t.Errorf("%s = %v, want it accepted", tc.method, err)
+		}
+	}
+}
+
+// A compiled-in vendor model that will not go into the catalogue is a
+// build defect, and the process stops rather than serving a device
+// model with a hole where a class should be.
+func TestVendorRegistrationRefusal(t *testing.T) {
+	defer func() {
+		r := recover()
+		msg, _ := r.(string)
+		if !strings.Contains(msg, "registration") {
+			t.Fatalf("recovered %v, want the build defect named", r)
+		}
+	}()
+	mustRegister("a test model", errTest("refused"))
 }
 
 // A method name the fault worker does not declare is not one of its
