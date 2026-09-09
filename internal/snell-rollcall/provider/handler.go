@@ -360,6 +360,19 @@ func (p *Provider) deviceInfoFor(slot uint8) []byte {
 // deviceList answers the map and port enumerations, which is how a client
 // discovers what is in the frame.
 func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
+	// A port list is scoped to the node it was asked of.
+	//
+	// Only the gateway has ports. A card is a leaf, and answering a card's
+	// port enquiry with the whole frame tells a client that every card
+	// contains every card — which is what we did, and what a vendor Control
+	// Panel walked into when it asked our matrix node what was inside it.
+	//
+	// The empty list is the honest answer and the specification's: a unit with
+	// nothing below it reports nothing below it.
+	if req.Dst.Port != 0 {
+		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, nil)
+	}
+
 	// The gateway first, then its cards.
 	//
 	// Measured: both devices we can read put themselves at the head of their

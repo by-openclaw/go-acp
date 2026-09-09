@@ -41,10 +41,18 @@ func newRouterMatrixPort(number uint8, name string, mx *routerMatrix) *port {
 	p := &port{
 		number: number,
 		id: codec.ID{
-			// Ports, because the vendor's matrix advertises it: its levels are
-			// its own ports, and that is how a client is meant to find them.
+			// Not Ports, though the vendor's matrix advertises it.
+			//
+			// On a Centra a matrix is a unit of its own and its levels are
+			// literally its ports — 0000-11-01 and 0000-11-02 under
+			// 0000-11-00 — so the claim is honoured there. This provider
+			// serves one unit, so our levels are siblings of the matrix
+			// rather than children of it, and there is nothing behind a port
+			// enquiry here. Advertising the service anyway invites a client
+			// to ask a question we can only answer with a lie or with
+			// nothing; it is claimed again when the levels are really ports.
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcFile |
-				codec.SvcPorts | codec.SvcLongStr,
+				codec.SvcLongStr,
 			TypeID:  codec.TypeIDRouterMatrix,
 			Version: codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
 			Name:    codec.TruncateFixed(name, codec.MaxTextSize),

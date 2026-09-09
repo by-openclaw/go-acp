@@ -169,7 +169,11 @@ func (p *Provider) publish(ctx context.Context, slot uint8, v codec.Value) {
 // The one that wrote already has the answer in its reply, and pushing the same
 // change back to it makes a client that echoes what it hears loop.
 func (p *Provider) publishExcept(_ context.Context, except *session.Session, slot uint8, v codec.Value) {
-	for _, sub := range p.slotSubscribers(slot) {
+	// A value belongs to the control service. Pushing one at a session that
+	// asked for the map, or for files, sends it a message it has no reason to
+	// understand: measured against a vendor Control Panel, which answers
+	// SETPARAM on its map session with INVSESS every time.
+	for _, sub := range p.slotSubscribers(slot, codec.SvcControl) {
 		if except != nil && sub.s == except {
 			continue
 		}
@@ -179,14 +183,20 @@ func (p *Provider) publishExcept(_ context.Context, except *session.Session, slo
 
 // pushToSlot sends an already-encoded message to a slot's subscribers, which
 // is what a display line is: the same bytes whichever generation is listening.
-func (p *Provider) pushToSlot(_ context.Context, slot uint8, typ codec.PacketType, payload []byte) {
-	for _, sub := range p.slotSubscribers(slot) {
+func (p *Provider) pushToSlot(_ context.Context, slot uint8, typ codec.PacketType, need codec.Service, payload []byte) {
+	for _, sub := range p.slotSubscribers(slot, need) {
 		p.enqueue(sub, pending{typ: typ, payload: payload})
 	}
 }
 
-// slotSubscribers returns the subscribers listening to one slot.
-func (p *Provider) slotSubscribers(slot uint8) []*subscriber {
+// slotSubscribers returns the subscribers listening to one slot that hold the
+// service a message belongs to.
+//
+// Enabling the back channel is not itself a claim to be told everything. A
+// session is told what its own services cover and nothing else, because a
+// client that negotiated one service and is sent another has no way to place
+// the message except to refuse it.
+func (p *Provider) slotSubscribers(slot uint8, need codec.Service) []*subscriber {
 	p.mu.RLock()
 	states := make([]*linkState, 0, len(p.links))
 	for _, st := range p.links {
@@ -197,9 +207,13 @@ func (p *Provider) slotSubscribers(slot uint8) []*subscriber {
 	var out []*subscriber
 	for _, st := range states {
 		for _, sub := range st.subscribers() {
-			if sub.s.LocalAddress().Port == slot {
-				out = append(out, sub)
+			if sub.s.LocalAddress().Port != slot {
+				continue
 			}
+			if need != 0 && !sub.s.Services().Has(need) {
+				continue
+			}
+			out = append(out, sub)
 		}
 	}
 	return out
@@ -219,6 +233,11 @@ func (p *Provider) flush(sub *subscriber) {
 
 	prt := p.model.port(sub.s.LocalAddress().Port)
 	if prt == nil {
+		return
+	}
+	// The flush is a burst of values, so it goes only to a session that asked
+	// for values. Without the control service there is nothing here to send.
+	if !sub.s.Services().Has(codec.SvcControl) {
 		return
 	}
 	for _, l := range prt.menu(sub.s.Uses32Bit()) {

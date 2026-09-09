@@ -143,8 +143,11 @@ func TestARouterIsServedAsThreeKindsOfNode(t *testing.T) {
 	if mx.id.TypeID != codec.TypeIDRouterMatrix {
 		t.Errorf("matrix type id = %d, want the router matrix id", mx.id.TypeID)
 	}
-	if mx.id.Services&codec.SvcPorts == 0 {
-		t.Error("a matrix advertises Ports: its levels are its own ports")
+	// Not Ports. The vendor's matrix advertises it because its levels really
+	// are its ports; ours are siblings, so there is nothing behind a port
+	// enquiry and claiming the service invites a question we cannot answer.
+	if mx.id.Services&codec.SvcPorts != 0 {
+		t.Error("a matrix claims Ports it cannot serve")
 	}
 	// Three lines, as the vendor's matrix publishes: the root, the way back
 	// out, and a notice. It controls nothing.

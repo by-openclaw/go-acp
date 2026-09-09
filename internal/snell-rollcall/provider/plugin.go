@@ -499,7 +499,7 @@ func (p *Provider) SetDisplay(ctx context.Context, slot int, n int16, text strin
 
 	// Cut to the field first, so the encode cannot refuse it.
 	payload, _ := codec.Disp{Line: n, Text: codec.TruncateFixed(text, codec.MaxTextSize)}.AppendTo(nil)
-	p.pushToSlot(ctx, uint8(slot), codec.MsgDispData, payload)
+	p.pushToSlot(ctx, uint8(slot), codec.MsgDispData, codec.SvcDisplay, payload)
 	return nil
 }
 

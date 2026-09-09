@@ -502,25 +502,52 @@ func (p *port) menu(longStrings bool) []line {
 			// here rather than continuing with lines it cannot fetch.
 			break
 		}
-		if l.Command > 0xFFFF || l.Step > 0xFFFF {
-			l.Style = codec.StyleDisplay | codec.StyleDisabled
-			l.Command = 0
-			l.Step = 0
-		}
-		l.Text = codec.TruncateFixed(l.Text, codec.MaxTextSize)
-		l.Param = codec.TruncateFixed(l.Param, codec.MaxTextSize)
-
-		// A string's range is its length, and the older generation carries a
-		// string in a fixed field. Reporting the long-string ceiling to a
-		// client that will be handed nineteen bytes promises what this
-		// generation cannot store: the write is truncated and answered
-		// honestly with the stored value, but the menu said otherwise.
-		if l.Style.Kind() == codec.StyleEditString && l.MaxRange > codec.MaxTextSize-1 {
-			l.MaxRange = codec.MaxTextSize - 1
-		}
-		out = append(out, l)
+		out = append(out, project16(l))
 	}
 	return out
+}
+
+// lineAt returns one line as a generation of client sees it.
+//
+// A 32-bit walk asks for lines one at a time, by index, so this is the hot
+// path of every walk there is: a Centra-sized level is five and a half
+// thousand lines and a panel asks for each of them. Copying the whole menu to
+// answer for one line made that walk allocate two and a half gigabytes and
+// spend over a second copying, which is most of what a panel waits for.
+//
+// The index is the position, which is what lets this be a lookup at all. Every
+// builder assigns it that way, and menuLen depends on the same thing.
+func (p *port) lineAt(index uint32, longStrings bool) (line, bool) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if index >= uint32(len(p.lines)) {
+		return line{}, false
+	}
+	l := p.lines[index]
+	if longStrings {
+		return l, true
+	}
+	if l.Index > 0xFFFF {
+		return line{}, false
+	}
+	return project16(l), true
+}
+
+// menuLen returns how many lines a generation of client can see.
+func (p *port) menuLen(longStrings bool) int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if longStrings {
+		return len(p.lines)
+	}
+	for i := range p.lines {
+		if p.lines[i].Index > 0xFFFF {
+			return i
+		}
+	}
+	return len(p.lines)
 }
 
 // value returns what a command currently holds.
@@ -655,4 +682,30 @@ func (p *port) setTableValue(command uint32, mode codec.Mode, num int32) (codec.
 	v := codec.Value{Command: command, Mode: codec.ModeValue, Val: num}
 	p.values[command] = v
 	return v, nil
+}
+
+// project16 rewrites one line as the older generation sees it.
+//
+// A command that will not fit is withheld rather than truncated, because a
+// truncated number addresses a different command; the line is served as a
+// disabled display line so the tree still has the right shape and a client can
+// see that something is there.
+func project16(l line) line {
+	if l.Command > 0xFFFF || l.Step > 0xFFFF {
+		l.Style = codec.StyleDisplay | codec.StyleDisabled
+		l.Command = 0
+		l.Step = 0
+	}
+	l.Text = codec.TruncateFixed(l.Text, codec.MaxTextSize)
+	l.Param = codec.TruncateFixed(l.Param, codec.MaxTextSize)
+
+	// A string's range is its length, and the older generation carries a
+	// string in a fixed field. Reporting the long-string ceiling to a client
+	// that will be handed nineteen bytes promises what this generation cannot
+	// store: the write is truncated and answered honestly with the stored
+	// value, but the menu said otherwise.
+	if l.Style.Kind() == codec.StyleEditString && l.MaxRange > codec.MaxTextSize-1 {
+		l.MaxRange = codec.MaxTextSize - 1
+	}
+	return l
 }

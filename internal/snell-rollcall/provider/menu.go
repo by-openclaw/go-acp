@@ -108,10 +108,10 @@ func (p *Provider) menuCount(s *session.Session, prt *port, req codec.Frame) err
 		return session.RefuseNack("malformed menu request")
 	}
 
-	lines := prt.menu(true)
+	n := prt.menuLen(true)
 	count := uint32(0)
-	if int(r.MenuIndex) < len(lines) {
-		count = uint32(len(lines)) - r.MenuIndex
+	if int(r.MenuIndex) < n {
+		count = uint32(n) - r.MenuIndex
 	}
 
 	size := codec.MenuSize{MenuIndex: r.MenuIndex, MenuCount: count}
@@ -125,13 +125,16 @@ func (p *Provider) menuItem(s *session.Session, prt *port, req codec.Frame) erro
 		return session.RefuseNack("malformed menu request")
 	}
 
-	lines := prt.menu(true)
-	if int(r.MenuIndex) >= len(lines) {
+	// One line, not the whole menu: a walk asks for every line in turn, and
+	// copying the menu to answer for one of them is what made a walk of a
+	// large level cost gigabytes.
+	l, ok := prt.lineAt(r.MenuIndex, true)
+	if !ok {
 		return session.RefuseNack("past the end of the menu")
 	}
 
 	// The label was cut to the long-string ceiling when the model was built,
 	// so the only encode this could refuse cannot arise.
-	payload, _ := lines[r.MenuIndex].menuItem().AppendTo(nil)
+	payload, _ := l.menuItem().AppendTo(nil)
 	return s.Answer(codec.MsgRetMenuItem, payload)
 }
