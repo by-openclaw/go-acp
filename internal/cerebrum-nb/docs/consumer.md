@@ -159,8 +159,11 @@ Every spec deviation surfaces as a named event. Sample names:
 | `cerebrum_response_too_large` | RX frame exceeded the 16 MiB cap |
 | `cerebrum_nack_<code>` | One per §6 NACK code (0..13) |
 
-Counts available via `Plugin.Compliance().Counts()` — surfaced in
-`--debug` mode and via the future metrics endpoint.
+Counts available via `Plugin.Compliance().Snapshot()` — surfaced in
+`--debug` mode and via the future metrics endpoint. The profile is the
+shared `internal/consumer/compliance.Profile`, the same type every
+connector records into, so a plant's counts can be compared across
+protocols rather than only within one.
 
 ---
 

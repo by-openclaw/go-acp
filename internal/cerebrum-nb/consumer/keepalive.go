@@ -184,7 +184,7 @@ func (s *Session) keepAliveLoop(ka *keepAlive, interval time.Duration, clk clock
 			if err != nil {
 				s.logger.Warn("keepalive ping failed — session lost",
 					slog.String("err", err.Error()))
-				s.compliance.Event("cerebrum_keepalive_failed")
+				s.compliance.Note("cerebrum_keepalive_failed")
 				s.markLost(fmt.Errorf("%w: keepalive ping: %v",
 					transport.ErrConnectionLost, err))
 				return

@@ -365,7 +365,7 @@ func TestKeepAliveLoopMarksLostWhenPingWriteFails(t *testing.T) {
 	if err := s.Err(); !errors.Is(err, transport.ErrConnectionLost) {
 		t.Fatalf("Err = %v, want it to wrap transport.ErrConnectionLost", err)
 	}
-	if n := s.compliance.Counts()["cerebrum_keepalive_failed"]; n != 1 {
+	if n := s.compliance.Snapshot()["cerebrum_keepalive_failed"]; n != 1 {
 		t.Errorf("cerebrum_keepalive_failed fired %d times, want 1", n)
 	}
 }

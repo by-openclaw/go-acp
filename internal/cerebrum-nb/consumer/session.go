@@ -16,6 +16,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/clock"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"dhs/internal/transport/ws"
@@ -130,35 +131,15 @@ type Subscription struct {
 	fn   EventFunc
 }
 
-// Profile is the cerebrum-nb compliance profile. Each Event() call
-// records a named deviation; CLI surfaces them in --debug mode.
-type Profile struct {
-	mu     sync.Mutex
-	counts map[string]int
-}
-
-// Event records one deviation by name + optional details. Counts are
-// kept; a name maps to its first detail string only (for log brevity).
-func (p *Profile) Event(name string, details ...any) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.counts == nil {
-		p.counts = make(map[string]int)
-	}
-	p.counts[name]++
-	_ = details // logging happens at the call site; profile keeps counts
-}
-
-// Counts returns a copy of the count map.
-func (p *Profile) Counts() map[string]int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	out := make(map[string]int, len(p.counts))
-	for k, v := range p.counts {
-		out[k] = v
-	}
-	return out
-}
+// Profile is the compliance profile every connector shares — this
+// connector used to carry its own, with a different verb (Event
+// rather than Note), a different container, and no summary or
+// verdict. One concept with two implementations is one concept whose
+// counts cannot be compared across protocols, which is the whole
+// point of collecting them.
+//
+// The name stays so this package's callers keep the one they know.
+type Profile = compliance.Profile
 
 // newSession dials the Cerebrum WebSocket and starts the RX goroutine.
 // Login is performed by the caller via session.login. rec may be nil
@@ -266,7 +247,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 	s.mu.Lock()
 	if _, dup := s.pending[mtidStr]; dup {
 		s.mu.Unlock()
-		s.compliance.Event("cerebrum_mtid_reused")
+		s.compliance.Note("cerebrum_mtid_reused")
 		return nil, fmt.Errorf("cerebrum-nb: mtid %s already in flight", mtidStr)
 	}
 	s.pending[mtidStr] = ch
@@ -301,7 +282,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 			s.recordNack(f.Nack)
 			return f, f.Nack
 		case codec.KindBusy:
-			s.compliance.Event("cerebrum_busy_received")
+			s.compliance.Note("cerebrum_busy_received")
 		}
 		return f, nil
 	case <-ctx.Done():
@@ -318,7 +299,7 @@ func (s *Session) recordNack(n *codec.NackError) {
 	if n.ID >= 0 {
 		name = "cerebrum_nack_" + strings.ToLower(n.Code)
 	}
-	s.compliance.Event(name)
+	s.compliance.Note(name)
 }
 
 // login sends <login>, waits for login_reply / nack, and stores api_ver.
@@ -356,7 +337,7 @@ func (s *Session) Poll(ctx context.Context) (*codec.PollReply, error) {
 		return nil, fmt.Errorf("cerebrum-nb: poll: unexpected %s", f.Kind)
 	}
 	if !f.PollReply.ConnectedServerActive {
-		s.compliance.Event("cerebrum_server_inactive")
+		s.compliance.Note("cerebrum_server_inactive")
 	}
 	return f.PollReply, nil
 }
@@ -496,11 +477,11 @@ func (s *Session) readLoop() {
 			s.logger.Warn("decode failed",
 				slog.String("err", err.Error()),
 				slog.Int("len", len(payload)))
-			s.compliance.Event("cerebrum_decode_failed")
+			s.compliance.Note("cerebrum_decode_failed")
 			continue
 		}
 		if f.CaseChanged {
-			s.compliance.Event("cerebrum_case_normalized")
+			s.compliance.Note("cerebrum_case_normalized")
 		}
 		s.dispatch(f)
 	}
@@ -552,7 +533,7 @@ func (s *Session) dispatch(f *codec.Frame) {
 		// may resume sending. Log + continue (no client-side throttle is
 		// modelled today); subscribers may react.
 		s.logger.Debug("flow-control: CONTINUE (resume after BUSY)", slog.String("mtid", f.MTID))
-		s.compliance.Event("cerebrum_continue_received")
+		s.compliance.Note("cerebrum_continue_received")
 	case codec.KindWildcardComplete:
 		// End of an OBTAIN/SUBSCRIBE wildcard snapshot — every matching
 		// row has been sent. Subscribers use this as the "snapshot
@@ -562,7 +543,7 @@ func (s *Session) dispatch(f *codec.Frame) {
 
 	// 3. Fan out to OnEvent subscribers.
 	if f.Kind == codec.KindUnknown {
-		s.compliance.Event("cerebrum_unknown_notification")
+		s.compliance.Note("cerebrum_unknown_notification")
 		return
 	}
 	s.mu.Lock()
