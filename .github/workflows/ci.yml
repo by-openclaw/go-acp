@@ -170,6 +170,7 @@ jobs:
           check internal/amwa/profile 100
           check internal/amwa/audit 99
           check internal/amwa/facade 100
+          check internal/amwa/provider 87
           check internal/amwa/registry 95
           check internal/amwa/codec/dnssd 99
           check internal/amwa/codec/edid 99
