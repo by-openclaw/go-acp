@@ -575,7 +575,7 @@ func (p *port) seed(command uint32, v codec.Value) {
 // A numeric write is clamped to the line's own range, which is what a device
 // does: the reply carries the stored value, so a client that asked for
 // something out of range learns what it got without a second read.
-func (p *port) setValue(command uint32, mode codec.Mode, num int32, text string) (codec.Value, error) {
+func (p *port) setValue(command uint32, mode codec.Mode, num int32, text string, data []byte) (codec.Value, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -588,7 +588,7 @@ func (p *port) setValue(command uint32, mode codec.Mode, num int32, text string)
 		// routes, and refusing it would leave the whole Full Control interface
 		// readable and inert.
 		if p.router != nil {
-			return p.setTableValue(command, mode, num)
+			return p.setTableValue(command, mode, num, data)
 		}
 		return codec.Value{}, fmt.Errorf("no command %d on port %d", command, p.number)
 	}
@@ -668,7 +668,16 @@ func (p *port) displayLine(n int16) (string, bool) {
 // overwrite a table's own base could make the interface undescribable.
 //
 // The lock is already held by setValue, which is the only caller.
-func (p *port) setTableValue(command uint32, mode codec.Mode, num int32) (codec.Value, error) {
+func (p *port) setTableValue(command uint32, mode codec.Mode, num int32, data []byte) (codec.Value, error) {
+	// Routing by association is a data command rather than a field: it names
+	// two associations and the levels to carry across, so there is no single
+	// destination for it to be a field of.
+	if command == uint32(router.CmdAssocMakeRoute) {
+		v := codec.Value{Command: command, Mode: codec.ModeData, Data: data}
+		p.values[command] = v
+		return v, nil
+	}
+
 	_, _, field, ok := p.router.destinationFor(router.Command(command))
 	if !ok || (field != router.OffDestRoutedSrc && field != router.OffDestProtect) {
 		return codec.Value{}, fmt.Errorf("command %d is read-only", command)

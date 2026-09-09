@@ -31,7 +31,7 @@ func TestRoutingOnALevelShowsInTheTables(t *testing.T) {
 	sess := s.open(firstCardPort+1, codec.SvcMenus|codec.SvcControl|codec.SvcLongStr)
 
 	// Route source 4 to destination 2, the way a panel does it.
-	_, err := s.p.applyWrite(sess, lv, uint32(router.LvlRoute(2)), 0, codec.ModeValue, 4, "")
+	_, err := s.p.applyWrite(sess, lv, uint32(router.LvlRoute(2)), 0, codec.ModeValue, 4, "", nil)
 	if err != nil {
 		t.Fatalf("route: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestRoutingThroughTheTablesShowsOnTheLevel(t *testing.T) {
 		Matrix: lv.level.matrixNumber, Level: lv.level.levelNumber, Source: 7,
 	})
 	_, err := s.p.applyWrite(sess, xy, uint32(base+router.OffDestRoutedSrc), 0,
-		codec.ModeValue, int32(pin), "")
+		codec.ModeValue, int32(pin), "", nil)
 	if err != nil {
 		t.Fatalf("route through the tables: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestProtectingOnALevelShowsInTheTables(t *testing.T) {
 
 	// A checkbox on this interface counts from one: on is two.
 	_, err := s.p.applyWrite(sess, lv, uint32(router.LvlProtect(5)), 0,
-		codec.ModeValue, router.ProtectOn, "")
+		codec.ModeValue, router.ProtectOn, "", nil)
 	if err != nil {
 		t.Fatalf("protect: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestProtectingOnALevelShowsInTheTables(t *testing.T) {
 	// And back off again, because a protect that cannot be cleared is a fault
 	// an operator meets at the worst moment.
 	if _, err := s.p.applyWrite(sess, lv, uint32(router.LvlProtect(5)), 0,
-		codec.ModeValue, router.ProtectOff, ""); err != nil {
+		codec.ModeValue, router.ProtectOff, "", nil); err != nil {
 		t.Fatalf("unprotect: %v", err)
 	}
 	v, _ = xy.value(uint32(base + router.OffDestProtect))
@@ -128,7 +128,7 @@ func TestProtectingThroughTheTablesShowsOnTheLevel(t *testing.T) {
 	base, _ := lv.level.dstTable.Command(1)
 	packed := router.PackProtectState(router.ProtectState{Protected: true})
 	if _, err := s.p.applyWrite(sess, xy, uint32(base+router.OffDestProtect), 0,
-		codec.ModeValue, int32(packed), ""); err != nil {
+		codec.ModeValue, int32(packed), "", nil); err != nil {
 		t.Fatalf("protect through the tables: %v", err)
 	}
 
@@ -150,7 +150,7 @@ func TestWritesThatAreNotRoutingChangeNothingElsewhere(t *testing.T) {
 	for _, cmd := range []router.Command{
 		router.LvlSrcSelect, router.LvlDestSelect, router.LvlTakeMode,
 	} {
-		if _, err := s.p.applyWrite(sess, lv, uint32(cmd), 0, codec.ModeValue, 1, ""); err != nil {
+		if _, err := s.p.applyWrite(sess, lv, uint32(cmd), 0, codec.ModeValue, 1, "", nil); err != nil {
 			t.Fatalf("write %d: %v", cmd, err)
 		}
 	}
@@ -221,14 +221,14 @@ func TestTheTablesRefuseWhatIsNotState(t *testing.T) {
 		{"a table's own base", router.CmdMatrixBase, codec.ModeValue},
 		{"a command in no table at all", 999999, codec.ModeValue},
 	} {
-		if _, err := xy.setValue(uint32(tc.cmd), tc.mode, 1, "x"); err == nil {
+		if _, err := xy.setValue(uint32(tc.cmd), tc.mode, 1, "x", nil); err == nil {
 			t.Errorf("%s was accepted as a write", tc.name)
 		}
 	}
 
 	// And a packed word is a number: writing a string to one is a client
 	// confusing a name with a state.
-	if _, err := xy.setValue(uint32(base+router.OffDestRoutedSrc), codec.ModeString, 0, "SRC 1"); err == nil {
+	if _, err := xy.setValue(uint32(base+router.OffDestRoutedSrc), codec.ModeString, 0, "SRC 1", nil); err == nil {
 		t.Error("a string write to the routed source was accepted")
 	}
 }

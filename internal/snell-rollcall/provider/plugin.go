@@ -427,7 +427,7 @@ func (p *Provider) SetValue(ctx context.Context, path string, val any) (any, err
 	}
 
 	mode, num, text := encodeAny(port, command, val)
-	stored, err := port.setValue(command, mode, num, text)
+	stored, err := port.setValue(command, mode, num, text, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: set %q: %w", path, err)
 	}

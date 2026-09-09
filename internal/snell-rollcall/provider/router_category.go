@@ -162,12 +162,17 @@ func boolValue(b bool) int32 {
 // sits and nothing about what it is, and grouping by "SRC" separates sources
 // from destinations, which a panel already does.
 func matrixLabels(labels map[string]map[string]string, count int, prefix string) ([]string, bool) {
+	return applyLabels(firstLevel(labels), count, prefix)
+}
+
+// applyLabels names each entity from one level's label set, falling back to
+// its position.
+func applyLabels(level map[string]string, count int, prefix string) ([]string, bool) {
 	out := make([]string, count)
 	for i := range out {
 		out[i] = fmt.Sprintf("%s %d", prefix, i+1)
 	}
 
-	level := firstLevel(labels)
 	if level == nil {
 		return out, false
 	}

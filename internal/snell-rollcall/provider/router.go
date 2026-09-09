@@ -1,8 +1,6 @@
 package rollcall
 
 import (
-	"fmt"
-
 	"dhs/internal/export/canonical"
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/codec/router"
@@ -40,6 +38,15 @@ type routerMatrix struct {
 	name   string
 	levels []routerLevel
 	table  router.Table
+
+	// srcAssocs and dstAssocs are the logical entities of this matrix: one
+	// name gathering the same thing across every level, which is what a panel
+	// takes when it takes a camera rather than four crosspoints.
+	srcAssocs    []routerAssoc
+	dstAssocs    []routerAssoc
+	srcAssocTbl  router.Table
+	dstAssocTbl  router.Table
+	assocMembers int
 }
 
 type routerLevel struct {
@@ -92,25 +99,39 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 	for _, m := range matrices {
 		rm := routerMatrix{name: m.Common().Identifier}
 
-		// One level per matrix for now, named after it. A canonical matrix
-		// carries its levels as label sets, and mapping those onto RollCall
-		// levels is its own piece of work: what is here is the shape a client
-		// walks, not a claim about multi-level naming.
-		lv := routerLevel{
-			name:  fmt.Sprintf("Level %d", len(rm.levels)+1),
-			dests: make([]routerDest, m.TargetCount),
+		// One RollCall level per label set the tree carries.
+		//
+		// A canonical matrix keys its labels by the level they belong to —
+		// "Video", "Audio 1", "Audio 2" — which is the same thing this
+		// protocol calls a level: a plane of crosspoints with its own
+		// numbering. A tree that names one set has one level; a tree that
+		// names none has one level called Level 1, because a matrix with no
+		// levels has nowhere to put a crosspoint.
+		for _, name := range levelNames(m) {
+			lv := routerLevel{
+				name:         name,
+				dests:        make([]routerDest, m.TargetCount),
+				matrixNumber: uint8(len(r.matrices) + 1),
+				levelNumber:  uint8(len(rm.levels) + 1),
+			}
+			srcNames, srcNamed := levelLabels(m.SourceLabels, name, int(m.SourceCount), "SRC")
+			dstNames, dstNamed := levelLabels(m.TargetLabels, name, int(m.TargetCount), "DST")
+			lv.sources = srcNames
+			for i := range lv.dests {
+				lv.dests[i].name = dstNames[i]
+			}
+			named = named || srcNamed || dstNamed
+			rm.levels = append(rm.levels, lv)
 		}
-		// Names come from the tree when it carries them. A plant's own names
-		// are the only evidence of how it is organised, and the categories
-		// below are derived from nothing else.
-		srcNames, srcNamed := matrixLabels(m.SourceLabels, int(m.SourceCount), "SRC")
-		dstNames, dstNamed := matrixLabels(m.TargetLabels, int(m.TargetCount), "DST")
-		lv.sources = srcNames
-		for i := range lv.dests {
-			lv.dests[i].name = dstNames[i]
-		}
-		named = named || srcNamed || dstNamed
-		rm.levels = append(rm.levels, lv)
+
+		// Associations: one logical thing per entity, gathering the same
+		// number on every level. A plant that numbers its levels alike is the
+		// ordinary case, and it is the only one a tree of label sets can
+		// describe — a tree that pairs video 4 with audio 7 is carrying a
+		// mapping this format has no field for.
+		rm.srcAssocs = buildAssocs(rm.levels, true)
+		rm.dstAssocs = buildAssocs(rm.levels, false)
+
 		r.matrices = append(r.matrices, rm)
 	}
 
@@ -130,6 +151,14 @@ func buildRouter(name string, matrices []*canonical.Matrix) *routerModel {
 	for i := range r.matrices {
 		m := &r.matrices[i]
 		m.table = alloc(uint32(len(m.levels)), router.LevelTableSize)
+
+		// An association's table is as long as the matrix has levels: three
+		// names and then one member per level.
+		m.assocMembers = len(m.levels)
+		size := router.AssocTableSize(m.assocMembers)
+		m.srcAssocTbl = alloc(uint32(len(m.srcAssocs)), size)
+		m.dstAssocTbl = alloc(uint32(len(m.dstAssocs)), size)
+
 		for j := range m.levels {
 			l := &m.levels[j]
 			l.srcTable = alloc(uint32(len(l.sources)), router.SrcTableSize)
@@ -168,7 +197,15 @@ func (r *routerModel) values() map[uint32]codec.Value {
 	num(router.CmdNumCategories, int32(r.catTable.Count))
 	num(router.CmdCategoryBase, int32(r.catTable.Base))
 	num(router.CmdCategoryStep, int32(r.catTable.Step))
-	num(router.CmdAssocMakeRoute, 0)
+	// Routing by association is a data command in both directions: the request
+	// carries the two associations and the levels to carry across, the reply
+	// the result. Its resting value is the result of the last route made, so a
+	// client that reads it before making one is told the last thing that
+	// happened rather than refused.
+	makeRouteResult, _ := router.AppendRouteResult(nil, router.RouteOK)
+	out[uint32(router.CmdAssocMakeRoute)] = codec.Value{
+		Command: uint32(router.CmdAssocMakeRoute), Mode: codec.ModeData, Data: makeRouteResult,
+	}
 	num(router.CmdNumTrackTemplates, 0)
 	num(router.CmdGetTrackTemplate, 0)
 	num(router.CmdNumAudioGroups, 0)
@@ -206,17 +243,34 @@ func (r *routerModel) values() map[uint32]codec.Value {
 		num(base+router.OffNumLevels, int32(m.table.Count))
 		num(base+router.OffLevelBase, int32(m.table.Base))
 		num(base+router.OffLevelStep, int32(m.table.Step))
-		num(base+router.OffNumSrcAssocs, 0)
-		num(base+router.OffSrcAssocBase, 0)
-		num(base+router.OffSrcAssocStep, 0)
-		num(base+router.OffNumDstAssocs, 0)
-		num(base+router.OffDstAssocBase, 0)
-		num(base+router.OffDstAssocStep, 0)
+		num(base+router.OffNumSrcAssocs, int32(m.srcAssocTbl.Count))
+		num(base+router.OffSrcAssocBase, int32(m.srcAssocTbl.Base))
+		num(base+router.OffSrcAssocStep, int32(m.srcAssocTbl.Step))
+		num(base+router.OffNumDstAssocs, int32(m.dstAssocTbl.Count))
+		num(base+router.OffDstAssocBase, int32(m.dstAssocTbl.Base))
+		num(base+router.OffDstAssocStep, int32(m.dstAssocTbl.Step))
 		str(base+router.OffAssocNames8File, "")
 		str(base+router.OffAssocNames32File, "")
 		str(base+router.OffAssocNamesAltFile, "")
 		num(base+router.OffControllerNumber, 1)
 		str(base+router.OffAssocMappingsFile, "")
+
+		// The associations themselves: a name at each width and then the
+		// entity this association holds on every level.
+		for k := range m.srcAssocs {
+			ab, ok := m.srcAssocTbl.Command(uint32(k) + 1)
+			if !ok {
+				continue
+			}
+			m.srcAssocs[k].values(ab, num, str)
+		}
+		for k := range m.dstAssocs {
+			ab, ok := m.dstAssocTbl.Command(uint32(k) + 1)
+			if !ok {
+				continue
+			}
+			m.dstAssocs[k].values(ab, num, str)
+		}
 
 		for j := range m.levels {
 			l := &m.levels[j]

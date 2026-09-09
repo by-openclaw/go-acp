@@ -30,6 +30,8 @@ import (
 // and what arrives here is a value the node accepted.
 func (p *Provider) syncRouterWrite(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
 	switch {
+	case prt.router != nil && v.Command == uint32(router.CmdAssocMakeRoute):
+		p.routeByAssociation(ctx, s, prt, v)
 	case prt.level != nil:
 		p.levelWriteToTables(ctx, s, prt, v)
 	case prt.router != nil:
@@ -172,4 +174,48 @@ func (m *model) levelPort(lv *routerLevel) *port {
 		}
 	}
 	return nil
+}
+
+// routeByAssociation applies a route made across levels at once.
+//
+// The request names a source association, a destination association and which
+// of the source's levels to carry across; a camera taken to a monitor without
+// its audio is one request with two bits set rather than two requests. What is
+// stored on the command afterwards is the result, which is what a client reads
+// back.
+func (p *Provider) routeByAssociation(ctx context.Context, s *session.Session, prt *port, v codec.Value) {
+	req, err := router.DecodeMakeRoute(v.Data)
+	result := router.RouteBadParameters
+	var moved []routedChange
+	if err == nil {
+		result, moved = prt.router.makeRoute(req)
+	}
+
+	// Encoding one number as parameters cannot fail, and a result that could
+	// not be stored would leave the client reading the previous one as though
+	// it were this one.
+	body, _ := router.AppendRouteResult(nil, result)
+	prt.seed(uint32(router.CmdAssocMakeRoute), codec.Value{
+		Command: uint32(router.CmdAssocMakeRoute), Mode: codec.ModeData, Data: body,
+	})
+	// Every crosspoint the route moved is published on both views, because a
+	// route made this way is the same fact as a route made one destination at
+	// a time and a panel watching either has to see it. Only what moved is
+	// published: a plant of a thousand destinations has no business sending a
+	// thousand messages because three of them changed.
+	for _, c := range moved {
+		p.republishCrosspoint(ctx, s, c.level, c.dest)
+	}
+}
+
+// republishCrosspoint tells both views what a destination now carries.
+func (p *Provider) republishCrosspoint(ctx context.Context, s *session.Session, lv *routerLevel, dest int) {
+	d := &lv.dests[dest-1]
+
+	p.publishRouterValue(ctx, s, p.model.levelPort(lv), router.LvlRoute(dest), int32(d.routed.Source))
+
+	if base, ok := lv.dstTable.Command(uint32(dest)); ok {
+		p.publishRouterValue(ctx, s, p.model.tablePort(),
+			base+router.OffDestRoutedSrc, int32(router.PackSourcePin(d.routed)))
+	}
 }

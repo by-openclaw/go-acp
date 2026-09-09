@@ -65,7 +65,7 @@ func (p *Provider) writeValue(s *session.Session, prt *port, req codec.Frame) er
 		if err != nil {
 			return session.RefuseNack("malformed value write")
 		}
-		stored, err := p.applyWrite(s, prt, w.Command, w.MatchID, w.Mode, w.Val, w.Text)
+		stored, err := p.applyWrite(s, prt, w.Command, w.MatchID, w.Mode, w.Val, w.Text, w.Data)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func (p *Provider) writeValue(s *session.Session, prt *port, req codec.Frame) er
 	if err != nil {
 		return session.RefuseNack("malformed parameter write")
 	}
-	stored, err := p.applyWrite(s, prt, uint32(w.Command), w.MatchID, w.Mode, w.Value, w.Text)
+	stored, err := p.applyWrite(s, prt, uint32(w.Command), w.MatchID, w.Mode, w.Value, w.Text, w.Data)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (p *Provider) writeValue(s *session.Session, prt *port, req codec.Frame) er
 // to know which slots hold which cards: the cards it does not mean ignore it
 // and answer with what they already had.
 func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
-	matchID uint16, mode codec.Mode, num int32, text string) (codec.Value, error) {
+	matchID uint16, mode codec.Mode, num int32, text string, data []byte) (codec.Value, error) {
 
 	if mode.Has(codec.ModeMatchID) && matchID != 0 && matchID != prt.id.TypeID {
 		v, ok := prt.value(command)
@@ -109,7 +109,7 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 		}
 	}
 
-	stored, err := prt.setValue(command, mode, num, text)
+	stored, err := prt.setValue(command, mode, num, text, data)
 	if err != nil {
 		return codec.Value{}, session.RefuseNack(err.Error())
 	}
@@ -120,6 +120,15 @@ func (p *Provider) applyWrite(s *session.Session, prt *port, command uint32,
 	// move both, or the panel and the tables disagree with nothing on the wire
 	// to say which is right.
 	p.syncRouterWrite(context.Background(), s, prt, stored)
+
+	// What the node holds now is what the reply carries, which is the whole
+	// point of answering with a value rather than an acknowledgement: a write
+	// the device did something else with says so in the reply. Routing by
+	// association is the case that needs it — the request names two
+	// associations and the reply is the result of trying.
+	if v, ok := prt.value(command); ok {
+		stored = v
+	}
 	return stored, nil
 }
 

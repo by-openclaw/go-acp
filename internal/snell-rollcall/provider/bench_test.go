@@ -57,7 +57,7 @@ func BenchmarkWriteOneCrosspoint(b *testing.B) {
 
 	b.ReportAllocs()
 	for range b.N {
-		if _, err := prt.setValue(cmd, codec.ModeValue, 42, ""); err != nil {
+		if _, err := prt.setValue(cmd, codec.ModeValue, 42, "", nil); err != nil {
 			b.Fatal(err)
 		}
 	}

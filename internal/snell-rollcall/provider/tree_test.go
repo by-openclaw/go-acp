@@ -249,12 +249,12 @@ func TestSetValueOnAPortRefusesWhatItCannot(t *testing.T) {
 	m := buildModel(testTree(), "gateway")
 	prt := m.port(1)
 
-	if _, err := prt.setValue(9999, codec.ModeValue, 0, ""); err == nil {
+	if _, err := prt.setValue(9999, codec.ModeValue, 0, "", nil); err == nil {
 		t.Error("writing a command that does not exist should fail")
 	}
 
 	_, status := commandOf(t, &Provider{model: m}, "frame.card1.status")
-	if _, err := prt.setValue(status, codec.ModeValue, 1, ""); err == nil {
+	if _, err := prt.setValue(status, codec.ModeValue, 1, "", nil); err == nil {
 		t.Error("writing a read-only line should fail")
 	}
 }
