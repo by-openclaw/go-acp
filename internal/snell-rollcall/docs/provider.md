@@ -19,7 +19,7 @@ as that card's menu.
 | Port | What answers | Notes |
 |---|---|---|
 | `0x00` | the gateway itself | identity, status, the local device map |
-| `0x01` … `0xDF` | the cards, in tree order | one per child of the root |
+| `0x01` … `0xDF` | the cards | on the slots a `--manifest` names, with the identity each DM was filed under; from a `--tree`, one per child of the root, in order |
 | `0xE0` … | the clients | ports the gateway stamps into a client's address |
 
 Port zero is not a card. A client's first message is a device enquiry addressed

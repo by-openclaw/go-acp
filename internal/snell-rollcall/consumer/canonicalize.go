@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"dhs/internal/consumer"
 	"dhs/internal/export/canonical"
@@ -261,29 +260,9 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 		return "", fmt.Errorf("rollcall: identity of slot %d: %w", slot, err)
 	}
 
-	// A type the vendor's table does not list still names itself by its
-	// number, which identifies the model just as well and is better than
-	// inventing a word for it.
-	product := codec.UnitTypeName(id.TypeID)
-
-	return fmt.Sprintf("%s@%d.%d.cs%d",
-		identityToken(product), id.Version.Major, id.Version.Minor, id.Version.CmdSet), nil
-}
-
-// identityToken makes a vendor type name safe to use as a filename.
-//
-// The names in the vendor's table carry spaces, dots and slashes — "4929 AES
-// O/P card" is one of them — and the identity becomes a path under .cache/dm.
-func identityToken(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
-			r == '-', r == '_':
-			b.WriteRune(r)
-		default:
-			b.WriteRune('-')
-		}
-	}
-	return strings.Trim(b.String(), "-")
+	// The key is written by the codec, beside the function that reads it
+	// back: a provider serving this DM turns the key into the identity the
+	// card gave, and the two halves cannot drift when they sit together. A
+	// type the vendor's table does not list is filed by its number.
+	return codec.DMKey(id.TypeID, id.Version), nil
 }

@@ -108,6 +108,14 @@ type model struct {
 // because a client that finds a gateway with no cards has nothing to walk and
 // no way to tell that from a fault.
 func buildModel(tree *canonical.Export, name string) *model {
+	return buildModelAt(tree, name, nil)
+}
+
+// buildModelAt is buildModel with the cards on the ports a manifest names:
+// ports[i] is where the i-th card in the tree answers. A card with no port
+// named takes the next one after the highest before it, counting from one,
+// and the router nodes follow the highest card port either way.
+func buildModelAt(tree *canonical.Export, name string, ports []uint8) *model {
 	m := &model{
 		frame: codec.ID{
 			Services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
@@ -138,6 +146,7 @@ func buildModel(tree *canonical.Export, name string) *model {
 	// and two of them built separately would each claim to be the whole thing.
 	next := int(firstCardPort)
 	var matrices []*canonical.Matrix
+	card := 0
 
 	for _, child := range children {
 		if next >= int(firstClientPort) {
@@ -149,8 +158,18 @@ func buildModel(tree *canonical.Export, name string) *model {
 			matrices = append(matrices, mx)
 			continue
 		}
-		m.addPort(newPort(uint8(next), identifierOf(child), []canonical.Element{child}))
-		next++
+		n := next
+		if card < len(ports) {
+			// Where the manifest put it. A real frame does not number its
+			// cards consecutively — the IQ frame answers on 01, 03, 05 … —
+			// and a client addresses a card by the port it is really on.
+			n = int(ports[card])
+		}
+		card++
+		m.addPort(newPort(uint8(n), identifierOf(child), []canonical.Element{child}))
+		if n >= next {
+			next = n + 1
+		}
 	}
 
 	if len(matrices) > 0 {

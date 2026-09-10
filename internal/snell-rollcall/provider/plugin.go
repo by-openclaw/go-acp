@@ -55,7 +55,7 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 		clk:   deps.Clock,
 		met:   deps.Metrics,
 		deps:  deps,
-		model: buildModel(tree, "dhs rollcall"),
+		tree:  tree,
 		files: make(map[string][]byte),
 		links: make(map[*session.Link]*linkState),
 		done:  make(chan struct{}),
@@ -66,6 +66,16 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 		longStrings:   true,
 		longStringsAt: make(map[uint8]bool),
 	}
+
+	p.installModel(buildModel(tree, gatewayName))
+	return p
+}
+
+// installModel makes m the device this provider serves, with everything
+// derived from it: the per-card templates, the names files and the gateway's
+// own page.
+func (p *Provider) installModel(m *model) {
+	p.model = m
 
 	// The Control Panel will not render a device without this. It reads the
 	// archive over the file service before it draws anything, which the menu
@@ -83,11 +93,101 @@ func New(deps plugin.Deps, tree *canonical.Export) *Provider {
 	// than in commands: a plant with a thousand salvos would otherwise need a
 	// thousand commands to say what they are called. The command publishes the
 	// filename and a checksum; the file service serves the file.
+	delete(p.files, cleanPath(salvoNames8File))
+	delete(p.files, cleanPath(salvoNames32File))
 	if r := p.model.routerModel(); r != nil {
 		p.files[cleanPath(salvoNames8File)] = r.salvoNames(router.NameWidth8)
 		p.files[cleanPath(salvoNames32File)] = r.salvoNames(router.NameWidth32)
 	}
-	return p
+}
+
+// gatewayName is what this gateway calls itself.
+const gatewayName = "dhs rollcall"
+
+// SetCards places each card on the port a manifest names, with the identity
+// its DM was filed under.
+//
+// A client addresses a card by its port and reads what it is from the identity
+// it answers with, so a frame that renumbered its cards, or called every one of
+// them by the provider's own name, would not be the frame it emulates: a vendor
+// Control Panel looking for the Nodal card at 0C-03 would find something else
+// there, or pick the wrong manual and template for what it found. The real IQ
+// frame answers its cards on 01, 03, 05, 07, 09, 0B, 0C and 0D, as type 562 or
+// 389 with the version each was built at, and this is how that is reproduced.
+//
+// ports[i] and dmKeys[i] describe the i-th card in the tree, in the order the
+// manifest lists them. It refuses rather than serves something else: a port
+// used twice, the gateway's port or a client's, a key this connector cannot
+// read back into an identity, or a count that does not match the cards. It is
+// called before Serve, because a client that has walked the frame has already
+// been told where everything is.
+func (p *Provider) SetCards(ports []uint8, dmKeys []string) error {
+	p.mu.RLock()
+	serving := p.listener != nil
+	p.mu.RUnlock()
+	if serving {
+		return fmt.Errorf("rollcall: cards are placed before the frame is served")
+	}
+	if len(ports) != len(dmKeys) {
+		return fmt.Errorf("rollcall: %d ports for %d cards", len(ports), len(dmKeys))
+	}
+	if cards := cardCount(p.tree); cards != len(ports) {
+		return fmt.Errorf("rollcall: the tree holds %d cards and %d were placed", cards, len(ports))
+	}
+	if len(ports) == 0 {
+		return nil
+	}
+
+	ids := make([]codec.ID, len(ports))
+	seen := make(map[uint8]bool, len(ports))
+	for i, n := range ports {
+		switch {
+		case n == 0:
+			return fmt.Errorf("rollcall: card %d is on port 0, which is the gateway", i+1)
+		case n >= firstClientPort:
+			return fmt.Errorf("rollcall: card %d is on port 0x%02X, where clients are given ports", i+1, n)
+		case seen[n]:
+			return fmt.Errorf("rollcall: two cards are on port %d", n)
+		}
+		seen[n] = true
+
+		typeID, v, ok := codec.ParseDMKey(dmKeys[i])
+		if !ok {
+			return fmt.Errorf("rollcall: card %d: %q is not a device model this connector can name",
+				i+1, dmKeys[i])
+		}
+		ids[i] = codec.ID{
+			TypeID:  typeID,
+			Version: v,
+			Name:    codec.TruncateFixed(codec.UnitTypeName(typeID), codec.MaxTextSize),
+		}
+	}
+
+	m := buildModelAt(p.tree, gatewayName, ports)
+	for i, n := range ports {
+		// Services stay what the port was built to serve. Which generation a
+		// card speaks is chosen per frame and per card, and a DM does not
+		// record it.
+		prt := m.port(n)
+		prt.id.TypeID, prt.id.Version, prt.id.Name = ids[i].TypeID, ids[i].Version, ids[i].Name
+	}
+	p.installModel(m)
+	return nil
+}
+
+// cardCount is how many of the tree's children become card ports: everything
+// but the matrices, which become router nodes of their own.
+func cardCount(tree *canonical.Export) int {
+	if tree == nil || tree.Root == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range tree.Root.Common().Children {
+		if _, ok := c.(*canonical.Matrix); !ok {
+			n++
+		}
+	}
+	return n
 }
 
 // Provider serves a tree as a RollCall gateway.
@@ -99,6 +199,10 @@ type Provider struct {
 	deps plugin.Deps
 
 	model *model
+
+	// tree is what the model was built from, kept so the cards can be placed
+	// on the ports a manifest names after construction.
+	tree *canonical.Export
 
 	// longStrings says whether this frame advertises SV_LONGSTR by default,
 	// and longStringsAt overrides it for one card.

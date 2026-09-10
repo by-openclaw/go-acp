@@ -244,7 +244,7 @@ func TestIdentityProbeNamesTheCardTypeNotTheLabel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IdentityProbe: %v", err)
 	}
-	want := identityToken(codec.UnitTypeName(623)) + "@2.4.cs7"
+	want := codec.DMKey(623, codec.Version{Major: 2, Minor: 4, Alpha: ' ', CmdSet: 7})
 	if got != want {
 		t.Errorf("identity = %q, want %q", got, want)
 	}
@@ -286,22 +286,5 @@ func TestIdentityProbeWhenTheDeviceWillNotSay(t *testing.T) {
 	p := New(testDeps())
 	if _, err := p.IdentityProbe(context.Background(), 1); err == nil {
 		t.Error("an identity probe without a connection should fail")
-	}
-}
-
-func TestIdentityTokenIsSafeInAPath(t *testing.T) {
-	// The vendor's own type names carry spaces, dots and slashes — "4929 AES
-	// O/P card" is one of them — and the identity becomes a path under
-	// .cache/dm.
-	for _, tc := range []struct{ in, want string }{
-		{"4929 AES O/P card", "4929-AES-O-P-card"},
-		{"RC32 Rout. IPSh Cli", "RC32-Rout--IPSh-Cli"},
-		{"plain", "plain"},
-		{"--edges--", "edges"},
-		{"", ""},
-	} {
-		if got := identityToken(tc.in); got != tc.want {
-			t.Errorf("identityToken(%q) = %q, want %q", tc.in, got, tc.want)
-		}
 	}
 }

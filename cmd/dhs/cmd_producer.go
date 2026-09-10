@@ -201,6 +201,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			}
 		}
 	}
+	if err := placeManifestCards(srv, mf, logger); err != nil {
+		return err
+	}
 	// Initialise the rack-controller frame-status from the served tree so a
 	// multi-card frame (via --tree OR --manifest) reports its populated slots
 	// as present from the first walk, instead of an empty rack. Derived from
@@ -576,4 +579,34 @@ func newLoggerWithLevel(level, format string) (*slog.Logger, *slog.LevelVar) {
 	// consumer pick the log FORMAT identically. Sinks (stderr here, +file/
 	// +syslog-addr) are layered by the caller.
 	return newLoggerTo(os.Stderr, v, format), v
+}
+
+// placeManifestCards tells a provider where each card sits and what it is,
+// when the provider answers each card at an address of its own.
+//
+// The tree says what a card is made of; the manifest says which slot it is in
+// and which model it was walked from. A RollCall client addresses a card by
+// that slot and reads its model from the identity it answers with, so without
+// this an emulated frame renumbers its cards from one and calls each of them
+// by the provider's own name.
+func placeManifestCards(srv any, mf *manifest.Manifest, logger *slog.Logger) error {
+	o, ok := srv.(interface{ SetCards([]uint8, []string) error })
+	if !ok || mf == nil {
+		return nil
+	}
+	slots := mf.SlotDMs()
+	ports := make([]uint8, 0, len(slots))
+	dms := make([]string, 0, len(slots))
+	for _, s := range slots {
+		if s.Slot < 1 || s.Slot > 0xFF {
+			return fmt.Errorf("manifest slot %d (%s): a card slot is a number from 1", s.Slot, s.DM)
+		}
+		ports = append(ports, uint8(s.Slot))
+		dms = append(dms, s.DM)
+	}
+	if err := o.SetCards(ports, dms); err != nil {
+		return fmt.Errorf("place cards from the manifest: %w", err)
+	}
+	logger.Info("cards placed from manifest", slog.Int("cards", len(ports)))
+	return nil
 }
