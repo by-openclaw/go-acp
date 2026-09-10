@@ -51,6 +51,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		generation     = fs.String("generation", "32", "snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree.")
+		unitAddr       = fs.Int("unit", -1, "snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1.")
 		gen16Slots     = fs.String("generation-16-slots", "", "snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.")
 		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
@@ -187,6 +188,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			o.SetLongStringsAt(uint8(n), false)
 			logger.Info("card serves the 16-bit generation", slog.Int("slot", n))
 		}
+	}
+	if err := applyUnit(srv, *unitAddr); err != nil {
+		return err
 	}
 	// Manifest slots may declare per-slot GetSlotInfo proto lists
 	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]
@@ -608,5 +612,31 @@ func placeManifestCards(srv any, mf *manifest.Manifest, logger *slog.Logger) err
 		return fmt.Errorf("place cards from the manifest: %w", err)
 	}
 	logger.Info("cards placed from manifest", slog.Int("cards", len(ports)))
+	return nil
+}
+
+// applyUnit sets the unit address a gateway answers as, when one was asked
+// for.
+//
+// Every card address a client sees carries the unit. The IQ frame is unit
+// 0x0C, so its first Nodal card is 0000-0C-01, and an emulation answering as
+// unit 1 would put every one of its cards somewhere else.
+//
+// Zero is refused rather than served: it is the address a client uses before
+// it knows anything, so a gateway answering as unit zero tells every client
+// that its address was never assigned. That is the only value the provider
+// itself rules out, and it is the only one refused here.
+func applyUnit(srv any, unit int) error {
+	if unit == -1 {
+		return nil
+	}
+	if unit < 1 || unit > 0xFF {
+		return fmt.Errorf("--unit %d: a unit address is 1 to 255", unit)
+	}
+	o, ok := srv.(interface{ SetUnit(uint8) })
+	if !ok {
+		return fmt.Errorf("--unit: this protocol has no unit address")
+	}
+	o.SetUnit(uint8(unit))
 	return nil
 }

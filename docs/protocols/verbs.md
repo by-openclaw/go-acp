@@ -218,7 +218,7 @@ slot/matrix protocol below): `serve · tree · status · stop · ensure · valid
 | emberplus | common | `serve --tree --port` (+ `--mdns`, `--stream-ttl`, `--admin`) |
 | probel-sw08p | common | `serve --tree matrix.json --port 2008` |
 | probel-sw02p | common | reaches the generic dispatch; `serve` needs the sw02p provider plugin |
-| snell-rollcall | common | `serve --tree` or `--manifest --cache-dir`; `--generation 16\|32` picks the wire generation, `--generation-16-slots` makes named cards speak the older one |
+| snell-rollcall | common | `serve --tree` or `--manifest --cache-dir`; `--generation 16\|32` picks the wire generation, `--generation-16-slots` makes named cards speak the older one; `--unit N` sets the unit address every card is reached at |
 | osc-v10 / osc-v11 | `send`, `fader`, `serve` | push model (own dispatch): emit / high-rate fader / bind+log |
 | tsl-v31/v40/v50 | `serve`, `send` | push model (own dispatch, `runTSLProducer`) — not the generic lifecycle set |
 | cerebrum-nb | ❌ none | consumer-only by design |
