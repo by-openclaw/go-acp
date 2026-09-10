@@ -1,0 +1,167 @@
+Frame 1: Packet, 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.6.255.113, Dst: 10.6.250.200
+Transmission Control Protocol, Src Port: 2050, Dst Port: 50000, Seq: 1, Ack: 1, Len: 22
+Snell RollCall: GETFUNC
+    TX flags: 12
+    TX length: 18
+    Destination: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 4
+    Type: 8 (GETFUNC)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0000
+
+Frame 2: Packet, 82 bytes on wire (656 bits), 82 bytes captured (656 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.6.250.200, Dst: 10.6.255.113
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2050, Seq: 1, Ack: 23, Len: 28
+Snell RollCall: BLOCKHEADER 167 items of GETFUNC
+    TX flags: 12
+    TX length: 24
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    RollCall length: 10
+    Type: 39 (BLOCKHEADER)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 080000a7003a0000
+        Block of: 8 (GETFUNC)
+        Items: 167
+        Max item size: 58
+
+Frame 3: Packet, 78 bytes on wire (624 bits), 78 bytes captured (624 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.6.255.113, Dst: 10.6.250.200
+Transmission Control Protocol, Src Port: 2050, Dst Port: 50000, Seq: 23, Ack: 29, Len: 24
+Snell RollCall: GETNEXTPKT item 0 of GETFUNC
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 6
+    Type: 35 (GETNEXTPKT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00000800
+        Item: 0
+        Block of: 8 (GETFUNC)
+
+Frame 4: Packet, 132 bytes on wire (1056 bits), 132 bytes captured (1056 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.6.250.200, Dst: 10.6.255.113
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2050, Seq: 29, Ack: 47, Len: 78
+Snell RollCall: RETFUNC line 0 cmd=0 List+hidden "Menu"
+    TX flags: 12
+    TX length: 74
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    RollCall length: 60
+    Type: 9 (RETFUNC)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 000000100000000000000000000000a800004d656e75000000000000000000000000000000000000000000000000000000000000000000000000
+        Menu index: 0
+        Style: 0x0010 (List+hidden)
+        Command: 0
+        Minimum: 0
+        Maximum: 0
+        Step: 168
+        Divisor: 0
+        Text: Menu
+
+Frame 5: Packet, 78 bytes on wire (624 bits), 78 bytes captured (624 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.6.255.113, Dst: 10.6.250.200
+Transmission Control Protocol, Src Port: 2050, Dst Port: 50000, Seq: 47, Ack: 107, Len: 24
+Snell RollCall: GETNEXTPKT item 1 of GETFUNC
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 6
+    Type: 35 (GETNEXTPKT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00010800
+        Item: 1
+        Block of: 8 (GETFUNC)
+
+Frame 6: Packet, 132 bytes on wire (1056 bits), 132 bytes captured (1056 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.6.250.200, Dst: 10.6.255.113
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2050, Seq: 107, Ack: 71, Len: 78
+Snell RollCall: RETFUNC line 1 cmd=0 VLevel+hidden+disabled "RETURN"
+    TX flags: 12
+    TX length: 74
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-0C-01:4
+        Net: 0x0000
+        Unit: 0x0c
+        Port: 0x01
+        Session index: 4
+    RollCall length: 60
+    Type: 9 (RETFUNC)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 000100b8000000000000000000000000000052455455524e00000000000000000000000000000000000000000000000000000000000000000000
+        Menu index: 1
+        Style: 0x00b8 (VLevel+hidden+disabled)
+        Command: 0
+        Minimum: 0
+        Maximum: 0
+        Step: 0
+        Divisor: 0
+        Text: RETURN
+
