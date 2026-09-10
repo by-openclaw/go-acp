@@ -235,7 +235,7 @@ slot/matrix protocol below): `serve · tree · status · stop · ensure · valid
 3. **`set` validation exit code** — returns 1, should be 2 (error-codes.md); no client-side ValueValidator on acp1 (emberplus has it).
 4. **`tree`** — acp1 now nests sub-group sections (DOWN CONV / TRANSPARENT / …) as parents (2026-06-12); other Tree/DM connectors still render shallow.
 5. **producer wiring** — tsl producer is CLI-wired via its own dispatch (`runTSLProducer`); probel-sw02p reaches the generic lifecycle dispatch (`serve` gated on its provider plugin).
-6. **`-h` help** — `producer -h` now lists the lifecycle VERBS; `consumer -h` still omits tsl + probel-sw02p. `list-protocols` is authoritative.
+6. **`-h` help** — `producer -h` lists the lifecycle VERBS; `consumer -h` now lists every registered protocol from the registry rather than a hardcoded catalogue, so tsl, probel-sw02p and snell-rollcall are discoverable (they were registered and working, just unmentioned). `list-protocols` prints the full descriptions.
 7. **ADR-0002 uniformity vs reality** — only Tree/DM implements the canonical set; Matrix/Push/Bridge diverge (see §1 open decision).
 
 ---

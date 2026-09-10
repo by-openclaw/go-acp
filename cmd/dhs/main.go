@@ -572,15 +572,15 @@ func printConsumerHelp() {
 USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
-PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+PROTOCOLS`)
 
+	// From the registry, never from a list kept here. A hardcoded catalogue
+	// goes stale the moment a plugin is added and nobody notices, because the
+	// protocol still works — it is only undiscoverable. Three had accumulated
+	// before this was noticed: rollcall, probel-sw02p and the TSL versions.
+	printRegisteredProtocols()
+
+	fmt.Println(`
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
 		fmt.Printf("  %-10s %s\n", c.name, c.short)
