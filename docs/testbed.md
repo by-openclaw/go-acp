@@ -264,14 +264,32 @@ from) and a generic sub-tree beside it. The frame-level objects are in
 `SNELL-WILCOX-MODULAR-GATEWAY.mib` and `SNELL-WILCOX-UNIT.mib`; the
 per-card MIBs are one file each under `IQ_Modular_MIBs/`.
 
-The MIB set the codeowner supplied — 232 files, including the SMI, the
-textual conventions, the product registry, the modular-gateway and unit
-MIBs, and per-card MIBs for the IQ range — is **not in this repo**. Per
-`internal/snmp/CLAUDE.md` MIBs live in `github.com/by-protocol/mib` and
-are compiled OFFLINE into Go OID tables; the runtime knows numbers and
-types only. Until that repository has them, the source set is at
-`Downloads/acp/internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`
-on the codeowner's workstation.
+The MIB set — 232 files, including the SMI, the textual conventions, the
+product registry, the modular-gateway and unit MIBs, and per-card MIBs
+for the IQ range — is **already tracked in this repository** at
+`internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`, alongside
+`assets/Tools/SNMP_Support_Tools`. It does NOT need fetching from
+anywhere.
+
+With them, the tree the frame serves decodes. `SNELL-WILCOX-SMI.mib`
+gives the roots — `snellWilcoxProductReg 1`, `snellWilcoxGeneric 2`,
+`snellWilcoxProducts 3`, `snellWilcoxCapabilities 4`,
+`snellWilcoxExperimental 5`, `snellWilcoxMibReg 6` — and
+`SNELL-WILCOX-GATEWAY-LOGGING.mib` puts `snellWilcoxGatewayLogging` at
+`snellWilcoxGeneric 6`. So the branch that dominates the walk,
+
+    1.3.6.1.4.1.7995.2.6.2.1.1.13.76.79.71.71.73.78.71.95.83.84.65.84.69
+
+is the gateway event-log table, column 1, indexed by a **length-prefixed
+ASCII string**: `13` then thirteen bytes spelling `LOGGING_STATE`. The
+MIB says the index is "a fixed length 19 char field ... The underscore
+character is used to pad out all fields to equal length", which is why
+the keys read as they do. `swCardEventLogTable` is the per-slot twin at
+`snellWilcoxGatewayLogging 1`, sixteen columns for sixteen physical
+slots.
+
+Per `internal/snmp/CLAUDE.md` these are compiled OFFLINE into Go OID
+tables; the runtime knows numbers and types only.
 
 > The trap destination is `0.0.0.0` on every enabled row, so this frame
 > currently emits traps to nobody — the same defect the IRDs have with

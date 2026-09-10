@@ -163,13 +163,15 @@ func (o *scriptedObject) Go(string, dbus.Flags, chan *dbus.Call, ...any) *dbus.C
 func (o *scriptedObject) GoWithContext(context.Context, string, dbus.Flags, chan *dbus.Call, ...any) *dbus.Call {
 	return nil
 }
-func (o *scriptedObject) AddMatchSignal(string, string, ...dbus.MatchOption) *dbus.Call    { return nil }
-func (o *scriptedObject) RemoveMatchSignal(string, string, ...dbus.MatchOption) *dbus.Call { return nil }
-func (o *scriptedObject) GetProperty(string) (dbus.Variant, error)                         { return dbus.Variant{}, nil }
-func (o *scriptedObject) StoreProperty(string, any) error                                  { return nil }
-func (o *scriptedObject) SetProperty(string, any) error                                    { return nil }
-func (o *scriptedObject) Destination() string                                              { return avahiBusName }
-func (o *scriptedObject) Path() dbus.ObjectPath                                            { return o.path }
+func (o *scriptedObject) AddMatchSignal(string, string, ...dbus.MatchOption) *dbus.Call { return nil }
+func (o *scriptedObject) RemoveMatchSignal(string, string, ...dbus.MatchOption) *dbus.Call {
+	return nil
+}
+func (o *scriptedObject) GetProperty(string) (dbus.Variant, error) { return dbus.Variant{}, nil }
+func (o *scriptedObject) StoreProperty(string, any) error          { return nil }
+func (o *scriptedObject) SetProperty(string, any) error            { return nil }
+func (o *scriptedObject) Destination() string                      { return avahiBusName }
+func (o *scriptedObject) Path() dbus.ObjectPath                    { return o.path }
 
 // itemNew is the signal Avahi raises when a browser sees an instance.
 func itemNew(path dbus.ObjectPath, name string) *dbus.Signal {
@@ -1045,10 +1047,25 @@ func TestDispatchStopsWhenTheBusGoesAway(t *testing.T) {
 		t.Fatalf("Browse: %v", err)
 	}
 
+	// Take the subscription BEFORE the bus goes away, so the exit can be
+	// waited for rather than raced. The context is still live at this
+	// point, so the only way dispatch can return is the closed-channel
+	// arm — waiting here is what makes that deterministic instead of a
+	// coin flip against Close cancelling the context first.
+	b.mu.Lock()
+	sub := b.subs[0]
+	b.mu.Unlock()
+
 	bus.closeSignals()
 
-	// The subscription is over, and Close still tears down cleanly
-	// rather than blocking on a goroutine that never noticed.
+	select {
+	case <-sub.done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("dispatch did not notice the bus going away")
+	}
+
+	// And Close still tears down cleanly rather than blocking on a
+	// goroutine that has already gone.
 	if err := b.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}

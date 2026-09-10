@@ -77,10 +77,17 @@ standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
 `modules 3`. A product hangs off `modules` — `tt1260 ::= { modules 200 }`
 — which is how `sysObjectID 1.3.6.1.4.1.1773.1.3.200` decodes.
 
-**The Snell set is NOT in this repository yet.** It is 232 files on the
-codeowner's workstation under
-`Downloads/acp/internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`
-and belongs here beside `ird/`. Per
+**The Snell set is already in THIS tree**, not in `by-protocol/mib`: 232
+files at `internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`, with
+vendor tools beside them under `assets/Tools/SNMP_Support_Tools`. They
+arrived with the snell-rollcall connector's asset drop and are tracked.
+
+So the compiler has to take **two** source roots, not one: a checkout of
+`by-protocol/mib` for the IRDs, and that in-tree directory for the Snell
+frames. Whether the Snell set should later move to `by-protocol/mib` for
+ADR-0015's single-source rule is the codeowner's call; it is not a
+blocker, and moving 232 tracked files is a separate change from
+compiling them. Per
 device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
 six IETF base modules every vendor MIB imports and no vendor ships.
 
