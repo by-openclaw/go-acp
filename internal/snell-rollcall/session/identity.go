@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"dhs/internal/snell-rollcall/codec"
@@ -34,7 +35,13 @@ type Identity struct {
 type Announcer struct {
 	link *Link
 	id   Identity
-	sent uint64
+
+	// sent is written by the announcing goroutine and read by whoever asks,
+	// which is two goroutines and therefore atomic. A plain counter here is
+	// a data race in shipped code rather than only in a test: Sent is a
+	// public accessor and the loop that increments it starts in the
+	// constructor, so any caller that polls it races from the first tick.
+	sent atomic.Uint64
 }
 
 // NewAnnouncer starts announcing until ctx ends or the link closes.
@@ -58,7 +65,7 @@ func (a *Announcer) Interval() time.Duration {
 }
 
 // Sent reports how many announcements have gone out.
-func (a *Announcer) Sent() uint64 { return a.sent }
+func (a *Announcer) Sent() uint64 { return a.sent.Load() }
 
 func (a *Announcer) loop(ctx context.Context) {
 	// Once on joining, before the first interval elapses. A unit is not in
@@ -94,7 +101,7 @@ func (a *Announcer) Announce() error {
 	if err != nil {
 		return err
 	}
-	a.sent++
+	a.sent.Add(1)
 	return a.link.send(codec.Frame{
 		Dst:     codec.Broadcast(),
 		Src:     addrWithIndex(a.id.Info.Address, codec.IndexUnknown),

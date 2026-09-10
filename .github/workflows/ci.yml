@@ -22,13 +22,20 @@ on:
       - CHANGELOG.md
       - .release-please-manifest.json
 
-# One live run per ref: a new push to a PR branch cancels the in-progress
-# run on the outdated commit (no more two same-titled rows per PR). Runs on
-# main are NEVER cancelled — every merge commit keeps its own complete
-# verification (a cancelled main run would hide a real red).
+# One live run per ref. A new run on a ref supersedes the one already going,
+# because the older commit's answer is no longer the question anybody is
+# asking. Runs on main are NEVER cancelled — every merge commit keeps its own
+# complete verification (a cancelled main run would hide a real red).
+#
+# This used to cancel only `pull_request` runs, which left `workflow_dispatch`
+# to pile up: one run is seven concurrent jobs (three OSes, two containers,
+# lint, cross-compile), a public repository gets twenty job slots, and three
+# live runs saturate the account so everything else queues behind them. Thirty
+# six dispatches on one branch went to completion this way while nobody was
+# reading any but the last.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -82,12 +89,20 @@ jobs:
       # the old 3-attempt loop were root-caused and fixed deterministically
       # (acp2 waiter-death protocol, probel-sw02p pre-bound listener). A red
       # here is a real problem in this commit.
+      # Ubuntu measures coverage in the same pass. It used to run the whole
+      # suite twice — once for the race detector, once for the profile — which
+      # is one entire test run per CI run spent re-learning what the first one
+      # had just proved. The two flags compose, and the profile a raced run
+      # writes is the same profile: statement coverage does not depend on the
+      # scheduler, which is what ADR-0029's "no racy select arms, injectable
+      # timings" test design buys.
       - name: Unit tests
+        if: matrix.os != 'ubuntu-latest'
         run: go test -count=1 -race ./...
 
       - name: Unit tests (coverage)
         if: matrix.os == 'ubuntu-latest'
-        run: go test -count=1 -coverprofile=coverage.out ./...
+        run: go test -count=1 -race -coverprofile=coverage.out ./...
 
       # Per-package coverage floor for the gold-template connectors. Fails
       # the build if a package drops below its locked-in level (no-regression).
