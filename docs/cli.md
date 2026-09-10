@@ -709,7 +709,32 @@ Usage of walk:
 `dhs consumer snmp set --help`
 
 ```text
-Usage of set:
+dhs consumer snmp set — write one object
+
+A SET needs the WRITE community in --community, which is NOT the read
+one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+agent drops a request it will not serve (RFC 1157 §4.1) rather than
+explaining, so it looks exactly like a device that is switched off.
+Theirs is "private".
+
+Most agents also gate CONTROL separately from reads, so a device that
+answers every GET can still refuse every write. On the Tandberg IRDs
+that gate is an object you can write:
+
+  controlMode  1.3.6.1.4.1.1773.1.3.200.1.11.0
+               fp(1) serial(2) ncp(3) snmp(4) web(5)
+
+and its MIB says it "may always be written to using SNMP" — so a
+receiver left on the front panel can be taken back over the network,
+without a trip to the rack:
+
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+
+The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
+page instead. Either way a readOnly, notWritable or noSuchName from a
+device that reads fine is the DEVICE, not this tool.
+
+FLAGS
   -community set
     	read community (write community for set) (default "public")
   -max-repetitions walk

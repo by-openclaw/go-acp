@@ -203,6 +203,14 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 }
 
 // runSNMPSet writes.
+//
+// A refused SET is usually the DEVICE rather than the request. Most
+// agents gate control separately from reads — the Tandberg IRDs and the
+// Snell frames both do — so a device that answers every GET can still
+// refuse every write until somebody enables it on the front panel or the
+// management page. The help below says so, because that is the first
+// thing anyone hitting this needs to check and the last thing the error
+// text can tell them.
 func runSNMPSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ContinueOnError)
 	var f snmpFlags
@@ -210,6 +218,35 @@ func runSNMPSet(ctx context.Context, args []string) error {
 	oid := fs.String("oid", "", "the object to write, by standard name or dotted number")
 	typ := fs.String("type", "s", "value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
 	value := fs.String("value", "", "the value to write")
+	fs.Usage = func() {
+		_, _ = fmt.Fprintln(fs.Output(), `dhs consumer snmp set — write one object
+
+A SET needs the WRITE community in --community, which is NOT the read
+one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+agent drops a request it will not serve (RFC 1157 §4.1) rather than
+explaining, so it looks exactly like a device that is switched off.
+Theirs is "private".
+
+Most agents also gate CONTROL separately from reads, so a device that
+answers every GET can still refuse every write. On the Tandberg IRDs
+that gate is an object you can write:
+
+  controlMode  1.3.6.1.4.1.1773.1.3.200.1.11.0
+               fp(1) serial(2) ncp(3) snmp(4) web(5)
+
+and its MIB says it "may always be written to using SNMP" — so a
+receiver left on the front panel can be taken back over the network,
+without a trip to the rack:
+
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+
+The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
+page instead. Either way a readOnly, notWritable or noSuchName from a
+device that reads fine is the DEVICE, not this tool.
+
+FLAGS`)
+		fs.PrintDefaults()
+	}
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -334,7 +371,7 @@ func printBinds(binds []codec.VarBind) {
 // describe. Silent when it did nothing — a clean run should look clean.
 func printSNMPCompliance(p *compliance.Profile) {
 	if line := p.SummaryLine(); line != "" {
-		fmt.Fprintf(os.Stderr, "compliance: %s (%s)\n", line, p.Classification())
+		_, _ = fmt.Fprintf(os.Stderr, "compliance: %s (%s)\n", line, p.Classification())
 	}
 }
 

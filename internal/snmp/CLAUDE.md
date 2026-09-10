@@ -56,7 +56,31 @@ put bytes on the wire.
 
 ## Where the MIBs live
 
-**`github.com/by-protocol/mib`** — its own repository, not this tree. Per
+**`github.com/by-protocol/mib`** — its own repository, not this tree.
+**It exists and is populated** (confirmed 2026-09-10; private, reachable
+with the `gh` CLI from the desk — a plain `git clone` from the fleet has
+no credentials). Layout:
+
+```
+ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
+              RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
+ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
+              RX1290-MIB · Types · ip-RX1290 · rxDualGigE
+ird/RX8200/   ~20 files, one per functional area
+standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
+              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC
+```
+
+`Base.mib` is the root every product MIB imports:
+`mibEricssonTelevision ::= { enterprises 1773 }`,
+`elementManagementMIB ::= { 1773 1 }`, then `general 1` / `content 2` /
+`modules 3`. A product hangs off `modules` — `tt1260 ::= { modules 200 }`
+— which is how `sysObjectID 1.3.6.1.4.1.1773.1.3.200` decodes.
+
+**The Snell set is NOT in this repository yet.** It is 232 files on the
+codeowner's workstation under
+`Downloads/acp/internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`
+and belongs here beside `ird/`. Per
 device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
 six IETF base modules every vendor MIB imports and no vendor ships.
 

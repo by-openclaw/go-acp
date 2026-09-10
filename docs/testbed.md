@@ -79,6 +79,113 @@ Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
   `.1.1.3.1` carrying per-slot type, firmware and card names), and
   `1773.1.3.200.x` is the product branch — 299 of the TT1260's objects.
 
+### controlMode — the OID that decides who may drive an IRD
+
+`1.3.6.1.4.1.1773.1.3.200.1.11.0`, from `ird/TT1260/TT1260-MIB.mib` in
+`github.com/by-protocol/mib`:
+
+```
+controlMode OBJECT-TYPE
+    SYNTAX  INTEGER { fp(1), serial(2), ncp(3), snmp(4), web(5) }
+    ACCESS  read-write
+    "The source of remote control of the TT1260 ...
+     This mode may always be written to using SNMP"
+    ::= { configuration 11 }
+```
+
+`tt1260 ::= { modules 200 }` → `configuration ::= { tt1260 1 }`, so the
+branch decodes as:
+
+| OID | object | read on TT1260 |
+| --- | --- | --- |
+| `…200.1.6.0` | `unitId` (electronic serial number) | `16763` |
+| `…200.1.8.0` | `serviceHealth` (bitfield; 0 = every task healthy) | `0` |
+| `…200.1.9.0` | `serialRemoteType` `ttv232(1)/nds232(2)/nds485(3)` | `1` |
+| `…200.1.10.0` | `serialRemoteAddress` | `0` |
+| `…200.1.11.0` | **`controlMode`** | **`4` = snmp** |
+| `…200.1.12.0` | `serviceTrackingMode` `monitor(1)/hunt(2)/flush(3)` | `2` |
+
+**The last line of that DESCRIPTION is the operationally important one.**
+`controlMode` may ALWAYS be written over SNMP, whatever it currently
+says — so a receiver left on `fp` or `serial` can be taken back over the
+network without a trip to the rack. It is the recovery path, not only
+the gate.
+
+Both IRDs read `controlMode = 4` and accept a write of it, confirmed
+2026-09-10. The RX1290 serves the same `…1.3.200` branch as the TT1260 —
+they report the same `sysObjectID`.
+
+### The write community is `private`, and a wrong one is SILENCE
+
+This is the trap. A SET carrying `public`:
+
+```
+$ dhs consumer snmp set --version 1 --community public --oid sysContact.0 ...
+error: snmp: no response after 3 attempt(s)
+```
+
+**No response at all** — RFC 1157 §4.1 says an agent drops a request it
+will not serve rather than explaining, and these devices do. On a
+manager that is indistinguishable from a device that is switched off, so
+"the IRD is down" and "you used the read community for a write" look
+identical. With `private` the same SET is accepted and echoed.
+
+### Proven live, 2026-09-10 — read AND write
+
+| | TT1260 `10.6.255.110` | RX1290 `10.6.255.111` |
+| --- | --- | --- |
+| GET / walk, v1, `public` | ✅ | ✅ |
+| `controlMode` reads | `4` (snmp) | `4` (snmp) |
+| SET `controlMode=4`, `private` | ✅ accepted | ✅ accepted |
+| SET `sysLocation.0`, `private` | ✅ `Unknown` → `TEC RACK 23` | ✅ `Unknown` → `TEC RACK 23` |
+
+Writeability of the chassis branch, established by writing each object
+back to its OWN current value (which changes nothing):
+
+- **writable**: `1773.1.1.1.5.0`, `.8.0`, `.9.0`
+- **read-only**: `.6.0`, `.7.0` (device name), `.10.0`, `.11.0` — the
+  agent answers `readOnly`, which is v1's word for it
+
+### The IRDs need SNMP Control enabled before a SET does anything
+
+**Read works; write does not, until the device is told to allow it.**
+Both IRDs answer GET and GETNEXT with `public` out of the box, but
+control over SNMP is a separate device-side gate — the same shape as the
+"SNMP Control" checkboxes on the Snell frame's RollCall page. Until it is
+enabled the device refuses writes, and a refusal looks like a bug in the
+manager rather than a setting on the device.
+
+Codeowner set it from the front panel on 2026-09-10, and the write path
+is now proven (see above). Note that the front panel was not strictly
+necessary: `controlMode` may always be written over SNMP, so the same
+change can be made remotely.
+
+`dhs consumer snmp set` says so in its `-h`, because that is where
+somebody will be standing when they hit it.
+
+### What a read-only walk of the IRDs established (2026-09-10)
+
+Live, via `dhs consumer snmp walk --version 1`:
+
+| branch | what is there |
+| --- | --- |
+| `1773.1.1.1.x` | network config — TT1260 reports `10.6.255.110`, mask `255.255.240.0`, gateway `10.6.255.254`, MAC `0020AA15417B`, name `TT1260` |
+| `1773.1.1.2.1` | trap destinations — **TT1260 has one row, `1773.1.1.2.1.2.1 = 192.168.0.229`**, confirming the stale address; **the RX1290 has NO trap-destination table at all** (the whole branch is empty) |
+| `1773.1.1.3.1` | the card table — per-slot type, firmware, part and name |
+
+Card inventory as read:
+
+- **TT1260**, slots 1 / 4 / 5: `QPSK Input Card`, `TT1260 CA module`,
+  `TT1260 Decoder module`. All at firmware `5.2.0 (1)`, part `16763`,
+  hardware `2.33`.
+- **RX1290**, slots 0–4: `Motherboard (S14212)`, `RX1290 ASI Input`,
+  `S2 Input Card V0`, `RX1290 CA module`, `RX1290 Decoder module`.
+
+That the two differ on the trap table matters: a trap-destination fix
+written against the TT1260's shape has nothing to write to on the
+RX1290, so the RX1290's destination is presumably front-panel or HTTP
+only. Do not assume one procedure covers both.
+
 Two things to fix on the devices before trap work starts:
 
 1. **The trap destination is stale.** `.1.1.2.1.2.1` still reads
