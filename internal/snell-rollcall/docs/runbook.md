@@ -111,7 +111,7 @@ Install it per [docs/wireshark.md](../../../docs/wireshark.md), then:
 | Routes that were refused | `dhs_snell_rollcall.route_result > 0` |
 | Which nodes are router nodes | `dhs_snell_rollcall.router_node` |
 | Tally, not replies | `dhs_snell_rollcall.flags.back_channel == 1` |
-| Refusals | `dhs_snell_rollcall.type in {0 14 15 23}` |
+| Refusals | `dhs_snell_rollcall.type in {0,14,15,23}` |
 
 A refusal type says which kind: `NACK` is "I understood and will not",
 `INVCMD` is "I do not know this message", `INVSESS` is "not on this session",

@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -207,16 +208,81 @@ func TestDissectorReplay_TheRoutingInterfaceIsNamed(t *testing.T) {
 
 func TestDissectorReplay_ACrosspointIsDecoded(t *testing.T) {
 	// The routing interface carries a crosspoint as Data Transfer Params
-	// holding a packed source pin. Decoding it is the difference between a
-	// readable capture and a wall of hex.
-	pins := fields(t, "dhs_snell_rollcall.source_pin", "dhs_snell_rollcall.source_pin")
-	if len(pins) == 0 {
-		t.Fatal("no source pin was decoded; the capture sets a route")
+	// holding a packed source pin and a result. Decoding it is the difference
+	// between a readable capture and a wall of hex.
+	//
+	// What this fixture cannot show is the pin NAMED as a crosspoint. The
+	// command that carries it is 316, and 316 means nothing without the level
+	// table it belongs to — a controller publishes the bases and steps once,
+	// as a client connects, and this capture holds five TCP streams of which
+	// none carries them. The client had them already.
+	//
+	// So the dissector says it cannot name the command, which is true, and
+	// offers the reading it would have if it could, which is useful. Asserting
+	// a named pin here would be asserting that the dissector guesses — a
+	// protect word is the same width and the same shape as a pin, and there is
+	// nothing in these bytes to tell them apart.
+	//
+	// The resolved path — where the tables ARE on the wire and the pin becomes
+	// a fact in dhs_snell_rollcall.source_pin — is proved against a complete
+	// capture by ansible/playbooks/snell-rollcall-dissector.yml.
+	//
+	// The capture holds one whole crosspoint transaction, and it is the
+	// specification's sequence written in a vendor's own bytes:
+	//
+	//   SETVALUE          0x01010004   take m1/l1/s4
+	//   RETVALUE          0x01010006, 0   the pin from BEFORE, plus the result
+	//   RETVALUE [back]   0x01010004   the tally: s4 is on it now
+	//
+	// The middle one is the part everybody gets wrong. A reply to a route
+	// carries the crosspoint as it was before the change, not after — what was
+	// actually routed arrives afterwards on the back channel. Our provider had
+	// this backwards once; this is the vendor evidence that settles it.
+	const (
+		took   = "16842756" // 0x01010004 — m1/l1/s4, the source asked for
+		before = "16842758" // 0x01010006 — m1/l1/s6, what was on it beforehand
+	)
+
+	set := fields(t, "dhs_snell_rollcall.type == 70 && dhs_snell_rollcall.dtp.uint",
+		"dhs_snell_rollcall.dtp.uint")
+	if len(set) == 0 {
+		t.Fatal("the crosspoint set decoded no parameters; the capture sets a route")
 	}
-	for _, p := range pins {
-		if !strings.HasPrefix(p, "m") || !strings.Contains(p, "/l") || !strings.Contains(p, "/s") {
-			t.Errorf("source pin %q does not name a matrix, level and source", p)
-		}
+	if !slices.Contains(set, took) {
+		t.Errorf("the set carried %v, want %s (m1/l1/s4) — the packing is what makes "+
+			"a crosspoint one integer, so the integer is what has to be checked", set, took)
+	}
+
+	// fields() splits a frame's repeated values, so the reply arrives as the
+	// two parameters it carries: the pin, then the result.
+	reply := fields(t, "dhs_snell_rollcall.type == 71 && dhs_snell_rollcall.command == 316"+
+		" && dhs_snell_rollcall.flags.back_channel == 0", "dhs_snell_rollcall.dtp.uint")
+	if len(reply) != 2 {
+		t.Fatalf("the reply carried %v, want a pin and a result", reply)
+	}
+	if reply[0] != before {
+		t.Errorf("the reply carried %s, want %s — a route is answered with the "+
+			"crosspoint from before it, not after", reply[0], before)
+	}
+	if reply[1] != "0" {
+		t.Errorf("the reply's result was %s, want 0 (ok)", reply[1])
+	}
+
+	tally := fields(t, "dhs_snell_rollcall.command == 316"+
+		" && dhs_snell_rollcall.flags.back_channel == 1", "dhs_snell_rollcall.dtp.uint")
+	if !slices.Contains(tally, took) {
+		t.Errorf("the back channel reported %v, want %s — what was actually routed "+
+			"arrives there rather than in the reply", tally, took)
+	}
+
+	// And the reading is offered, hedged, rather than withheld: a capture that
+	// joined a session late is the ordinary case, not a broken one.
+	out := runTshark(t, "-Y", "dhs_snell_rollcall.command == 316", "-V")
+	if !strings.Contains(out, "m1/l1/s6") {
+		t.Error("the crosspoint's source was not offered as a reading")
+	}
+	if !strings.Contains(out, "unconfirmed") {
+		t.Error("a reading the dissector cannot confirm was not marked as one")
 	}
 }
 

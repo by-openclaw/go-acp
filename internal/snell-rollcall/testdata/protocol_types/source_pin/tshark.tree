@@ -1,0 +1,98 @@
+Frame 1: Packet, 83 bytes on wire (664 bits), 83 bytes captured (664 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51243, Dst Port: 2057, Seq: 1, Ack: 1, Len: 39
+Snell RollCall: SETVALUE cmd=316 [1]=16842756
+    TX flags: 12
+    TX length: 35
+    Destination: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    Source: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    RollCall length: 21
+    Type: 70 (SETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0000013c000000040000000701010184808408
+        Command: 316
+        Match unit type: 0
+        Mode: 0x0004 (DATA)
+        Value: 7
+        Data (7 bytes)
+        Data Transfer Params
+            Items: 1
+            uint-array: 1 values
+                [1]: 16842756
+
+Frame 2: Packet, 84 bytes on wire (672 bits), 84 bytes captured (672 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51243, Seq: 127, Ack: 120, Len: 40
+Snell RollCall: RETVALUE cmd=316 16842758 0
+    TX flags: 12
+    TX length: 36
+    Destination: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    Source: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    RollCall length: 22
+    Type: 71 (RETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0000013c00000004000000080205868084080500
+        Command: 316
+        Match unit type: 0
+        Mode: 0x0004 (DATA)
+        Value: 8
+        Data (8 bytes)
+        Data Transfer Params
+            Items: 2
+            uint: 16842758 (0x01010006)
+            uint: 0 (0x00000000)
+
+Frame 3: Packet, 82 bytes on wire (656 bits), 82 bytes captured (656 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51243, Seq: 167, Ack: 120, Len: 38
+Snell RollCall: RETVALUE cmd=316 16842756
+    TX flags: 12
+    TX length: 34
+    Destination: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    Source: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    RollCall length: 20
+    Type: 71 (RETVALUE)
+    Flags: 0x80
+        1... .... = Back channel: True
+        .0.. .... = Wide area: False
+    Payload: 0000013c0000000400000006010584808408
+        Command: 316
+        Match unit type: 0
+        Mode: 0x0004 (DATA)
+        Value: 6
+        Data (6 bytes)
+        Data Transfer Params
+            Items: 1
+            uint: 16842756 (0x01010004)
+

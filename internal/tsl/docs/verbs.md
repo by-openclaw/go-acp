@@ -280,7 +280,7 @@ v3.1 UDP 4000, v4.0 UDP 4004, v5.0 UDP 8901, v5.0 TCP 8902.
 ```
 # copy the dissector, then filter on the dhs proto:
 #   display filter:  dhs_tsl
-#   port decode:     udp.port in {4000 4004 8901} || tcp.port == 8902
+#   port decode:     udp.port in {4000,4004,8901} || tcp.port == 8902
 tshark -r capture.pcapng -O dhs_tsl -Y dhs_tsl
 ```
 

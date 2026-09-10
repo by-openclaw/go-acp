@@ -142,7 +142,7 @@ dhs consumer emberplus walk localhost:9092 --capture out/emberplus/
 | RollCall one destination     | `dhs_snell_rollcall.destination == 40`                    |
 | RollCall route refusals      | `dhs_snell_rollcall.route_result > 0`                     |
 | RollCall levels + panels     | `dhs_snell_rollcall.router_node`                          |
-| RollCall refusals            | `dhs_snell_rollcall.type in {0 14 15 23}`                 |
+| RollCall refusals            | `dhs_snell_rollcall.type in {0,14,15,23}`                 |
 
 RollCall's command numbers mean nothing on their own: 100 is the interface
 version on the panel node and the selected destination on a level, and

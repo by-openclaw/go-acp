@@ -1,0 +1,106 @@
+Frame 1: Packet, 108 bytes on wire (864 bits), 108 bytes captured (864 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 1, Ack: 1, Len: 64
+Snell RollCall: CALL Map 16-bit level=Supervisor from dhs rollcall
+    TX flags: 12
+    TX length: 60
+    Destination: 0000-08-00:none
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 255 (unconnected)
+    Source: 0000-00-00:1
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 1
+    RollCall length: 46
+    Type: 2 (CALL)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0040000200030000000000ff800701e30100200164687320726f6c6c63616c6c00000000000000000000000a
+        Services: 0x0040 (Map)
+        User level: 2 (Supervisor)
+        Services: 0x8007 (Menus|Control|Display|LongStr)
+        Unit type: 483
+        Version: 1.0 cs1
+        Name: dhs rollcall
+
+Frame 2: Packet, 64 bytes on wire (512 bits), 64 bytes captured (512 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 1, Ack: 65, Len: 20
+Snell RollCall: ACK
+    TX flags: 12
+    TX length: 16
+    Destination: 0000-00-00:1
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 1
+    Source: 0000-08-00:1
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 1
+    RollCall length: 2
+    Type: 1 (ACK)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+
+Frame 3: Packet, 108 bytes on wire (864 bits), 108 bytes captured (864 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 447, Ack: 949, Len: 64
+Snell RollCall: CALL Menus|Control|LongStr 32-bit level=Supervisor from dhs rollcall
+    TX flags: 12
+    TX length: 60
+    Destination: 0000-08-00:none
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 255 (unconnected)
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 46
+    Type: 2 (CALL)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 8003000200030000000000ff800701e30100200164687320726f6c6c63616c6c00000000000000000000000a
+        Services: 0x8003 (Menus|Control|LongStr)
+        User level: 2 (Supervisor)
+        Services: 0x8007 (Menus|Control|Display|LongStr)
+        Unit type: 483
+        Version: 1.0 cs1
+        Name: dhs rollcall
+
+Frame 4: Packet, 64 bytes on wire (512 bits), 64 bytes captured (512 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 949, Ack: 511, Len: 20
+Snell RollCall: ACK
+    TX flags: 12
+    TX length: 16
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-08-00:2
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 2
+    RollCall length: 2
+    Type: 1 (ACK)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+

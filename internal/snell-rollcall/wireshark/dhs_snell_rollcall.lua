@@ -638,21 +638,31 @@ local function addr_key(a)
 end
 
 -- Which types name the node in Src rather than in Dst: everything a device
--- answers with. A capture may hold two plants, and unit 11 in one is not unit
--- 11 in the other, so what is learned is filed per TCP conversation as well as
--- per address. The key is the same read from either direction.
+-- answers with.
 local node_is_src = {
     [5] = true, [7] = true, [9] = true, [12] = true, [20] = true, [33] = true,
     [66] = true, [68] = true, [71] = true,
 }
 
-local function conv_key(pinfo)
-    local a = string.format("%s:%s", tostring(pinfo.src), tostring(pinfo.src_port))
-    local b = string.format("%s:%s", tostring(pinfo.dst), tostring(pinfo.dst_port))
-    if a < b then
-        return a .. "|" .. b
+-- device_key is where what has been learned is filed: the device, not the
+-- connection.
+--
+-- A RollCall client opens a connection per thing it wants — the vendor's own
+-- clients do it and so does ours — and a capture of one session is therefore
+-- a capture of several TCP streams to the same box. The command space belongs
+-- to the device, so what one stream published about it holds on the next; the
+-- Centra capture in tests/fixtures has five streams and the tables go past on
+-- one of them.
+--
+-- A capture may still hold two plants, and unit 11 in one is not unit 11 in
+-- the other, so the device's own address and port are part of the key. Which
+-- end of the frame that is depends on the direction: a device answers from
+-- its own address and is asked at it.
+local function device_key(pinfo, ptype)
+    if node_is_src[ptype] then
+        return string.format("%s:%s", tostring(pinfo.src), tostring(pinfo.src_port))
     end
-    return b .. "|" .. a
+    return string.format("%s:%s", tostring(pinfo.dst), tostring(pinfo.dst_port))
 end
 
 local function node_state(ctx, a)
@@ -1093,6 +1103,11 @@ local function dtp_dissect(tvb, tree, spec)
     local off = safe and 0 or 1
     local parts = {}
     local slot = 0
+    -- The first integer in the block, returned to the caller. On a command
+    -- whose table was never published it is the only thing left to say
+    -- anything about, and saying it as a possibility is worth more than
+    -- silence.
+    local first_uint = nil
 
     local function label_of()
         slot = slot + 1
@@ -1119,6 +1134,7 @@ local function dtp_dissect(tvb, tree, spec)
                 break
             end
             off = off + used
+            if first_uint == nil then first_uint = v end
             local shown = want and want.fmt and dtp_format(want.fmt, v) or tostring(v)
             local item = subtree:add(f.dtp_uint, body(start, off - start), v)
             item:set_text(string.format("%s: %s (0x%08X)",
@@ -1160,6 +1176,7 @@ local function dtp_dissect(tvb, tree, spec)
                 table.insert(vals, v)
             end
             if not ok then break end
+            if first_uint == nil and #vals > 0 then first_uint = vals[1] end
 
             local array = subtree:add(p_rc, body(start, off - start),
                 string.format("%s: %d values", want and want.name or "uint-array", n))
@@ -1253,7 +1270,7 @@ local function dtp_dissect(tvb, tree, spec)
     if #parts == 0 then
         return nil
     end
-    return table.concat(parts, " ")
+    return table.concat(parts, " "), first_uint
 end
 
 -------------------------------------------------------------------------------
@@ -1497,9 +1514,31 @@ local function dissect_value_tail(tvb, tree, off, mode, value, res, reply, info)
 
             -- Data on the routing interface is Data Transfer Params, and a
             -- crosspoint read is the commonest frame on a busy router.
-            local summary = dtp_dissect(data:tvb(), tree, dtp_meaning(res, reply))
+            local summary, first = dtp_dissect(data:tvb(), tree, dtp_meaning(res, reply))
             if summary then
                 table.insert(info, summary)
+            end
+
+            -- A command whose table was never published, carrying an integer.
+            --
+            -- On this interface that is usually a crosspoint: the busiest
+            -- command on a router is a destination's routed source, and it
+            -- travels as a packed pin. But usually is not always — a protect
+            -- word is the same width and the same shape — so what the pin
+            -- would be is offered as a reading rather than recorded as one.
+            -- source_pin stays a fact and is not set here, so a filter for
+            -- crosspoints never matches a guess.
+            --
+            -- This is what an operator gets for opening Wireshark in the
+            -- middle of a session. The tables go past once, when the client
+            -- connects; a capture that started later cannot resolve anything
+            -- addressed by them, and saying nothing at all would make that
+            -- capture useless rather than merely incomplete.
+            if res and res.unresolved and first and first ~= 0 then
+                tree:add(p_rc, data, string.format(
+                    "If this is a crosspoint, the source is %s " ..
+                    "(unconfirmed: this command belongs to no table this capture carries)",
+                    (pin_string(first))))
             end
         end
     end
@@ -1824,7 +1863,7 @@ local function dissect_message(tvb, pinfo, tree)
     -- names the node in Src and a request names it in Dst.
     local node_addr = node_is_src[ptype] and address_fields(tvb, 10) or address_fields(tvb, 4)
     local ctx = {
-        conv = conv_key(pinfo),
+        conv = device_key(pinfo, ptype),
         frame = pinfo.number,
         learning = not pinfo.visited,
     }
