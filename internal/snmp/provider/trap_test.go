@@ -646,7 +646,7 @@ func TestConnForRefusesAfterClose(t *testing.T) {
 // against our engine ID and the receiver has to know it.
 func trapEngine(t *testing.T, u usm.User) *usm.Engine {
 	t.Helper()
-	id, err := usm.NewEngineID(usm.ExampleEnterprise, "dhs-agent")
+	id, err := usm.NewEngineID(usm.Enterprise, "dhs-agent")
 	if err != nil {
 		t.Fatal(err)
 	}

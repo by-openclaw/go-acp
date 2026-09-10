@@ -224,7 +224,7 @@ func buildTrapEngine(engineName string, boots int, user,
 	if user == "" {
 		return nil, fmt.Errorf("snmp trap: a v3 destination needs --user")
 	}
-	id, err := usm.NewEngineID(usm.ExampleEnterprise, engineName)
+	id, err := usm.NewEngineID(usm.Enterprise, engineName)
 	if err != nil {
 		return nil, err
 	}

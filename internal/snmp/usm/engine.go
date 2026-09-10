@@ -17,12 +17,16 @@ import (
 // salts begin at zero. Production never reassigns it.
 var randRead = rand.Read
 
-// ExampleEnterprise is IANA's enterprise number reserved for
-// documentation and examples (RFC 5612). It is the default only so that
-// a lab rig works out of the box; a plant that puts two of these on one
-// network has two devices claiming one identity, and an engine ID is the
-// thing every localised key on both is derived from.
-const ExampleEnterprise uint32 = 32473
+// Enterprise is BY-SYSTEMS SPRL's IANA Private Enterprise Number, 54981
+// (iana.org/assignments/enterprise-numbers). Every engine ID this
+// implementation builds starts from it, and it is the root of the DHS
+// sub-tree in internal/snmp/mib.
+//
+// A real number rather than RFC 5612's example (32473) on purpose: an
+// engine ID is what every localised USM key is derived from, and two
+// products on one network claiming the example number would be two
+// devices claiming one identity.
+const Enterprise uint32 = 54981
 
 // NewEngineID builds an RFC 3411 §5 engine ID in the
 // administratively-assigned-text format (format 5).

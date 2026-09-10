@@ -32,6 +32,25 @@ first for cross-cutting rules; this file holds the SNMP-specific scope.
 
 ---
 
+## Identity numbers
+
+- **IANA Private Enterprise Number: 54981**, BY-SYSTEMS SPRL (contact
+  Boujraf Youssef), found 2026-09-10 in
+  `https://www.iana.org/assignments/enterprise-numbers.txt`. It is
+  `usm.Enterprise` and the root of `mib.DHS` (`1.3.6.1.4.1.54981`): every
+  engine ID and the `sysObjectID` our agent answers are built from it.
+  Arcs under it are ours to assign — in the generated DHS MIB, never ad
+  hoc in code.
+- **IEEE MAC address block: none.** BY-SYSTEMS appears in none of the five
+  IEEE registries (MA-L, MA-M, MA-S, IAB, CID) as of 2026-09-10. Blocks
+  come from the IEEE Registration Authority
+  (`https://standards.ieee.org/products-programs/regauth/`) and, unlike a
+  PEN, are paid. Software does not need one: an emulated device or a
+  container can use locally-administered addresses (the second-lowest
+  bit of the first octet set, e.g. `02:…`), which are free and can never
+  collide with a vendor's burned-in address. A block is only needed for
+  hardware that ships with its own MAC.
+
 ## Scope — both roles, like every other connector
 
 | Role | What it does |

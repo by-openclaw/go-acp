@@ -82,7 +82,7 @@ func alarm() provider.Notification {
 
 func trapEngine(t *testing.T, u usm.User) *usm.Engine {
 	t.Helper()
-	id, err := usm.NewEngineID(usm.ExampleEnterprise, "dhs-sender")
+	id, err := usm.NewEngineID(usm.Enterprise, "dhs-sender")
 	if err != nil {
 		t.Fatal(err)
 	}

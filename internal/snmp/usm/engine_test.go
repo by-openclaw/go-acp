@@ -18,7 +18,7 @@ import (
 
 func testEngine(t *testing.T, users ...User) (*Engine, *clock.Fake) {
 	t.Helper()
-	id, err := NewEngineID(ExampleEnterprise, "dhs-test")
+	id, err := NewEngineID(Enterprise, "dhs-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func aTrap() codec.Message {
 // An engine ID has a structure — enterprise, format, payload — and a
 // peer that stores engine IDs by that structure rejects a bare string.
 func TestEngineIDFormat(t *testing.T) {
-	id, err := NewEngineID(ExampleEnterprise, "dhs-agent")
+	id, err := NewEngineID(Enterprise, "dhs-agent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,10 +70,10 @@ func TestEngineIDFormat(t *testing.T) {
 		t.Errorf("payload = %q", id[5:])
 	}
 
-	if _, err := NewEngineID(ExampleEnterprise, ""); err == nil {
+	if _, err := NewEngineID(Enterprise, ""); err == nil {
 		t.Error("an engine ID needs a name")
 	}
-	if _, err := NewEngineID(ExampleEnterprise, strings.Repeat("x", 28)); err == nil ||
+	if _, err := NewEngineID(Enterprise, strings.Repeat("x", 28)); err == nil ||
 		!strings.Contains(err.Error(), "32-octet") {
 		t.Errorf("= %v, want the length refusal", err)
 	}
@@ -277,7 +277,7 @@ func TestAMessageForAnotherEngineIsRefused(t *testing.T) {
 	u := User{Name: "operator", Auth: HMACSHA256, AuthPass: "p"}
 	a, _ := testEngine(t, u)
 
-	otherID, err := NewEngineID(ExampleEnterprise, "somebody-else")
+	otherID, err := NewEngineID(Enterprise, "somebody-else")
 	if err != nil {
 		t.Fatal(err)
 	}

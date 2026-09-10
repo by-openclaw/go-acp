@@ -854,7 +854,7 @@ Usage of trap:
   -engine-id string
     	name in this sender's RFC 3411 engine ID; v3 keys every localised key on it (default "dhs-agent")
   -enterprise string
-    	the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (default "1.3.6.1.4.1.32473")
+    	the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (default "1.3.6.1.4.1.54981")
   -generic int
     	RFC 1157 generic trap 0..6; 6 means look at --specific (default 6)
   -priv string

@@ -97,10 +97,11 @@ var (
 )
 
 // DHS is the enterprise sub-tree this implementation's own objects hang
-// off, using IANA's example number (RFC 5612) until a real one is
-// assigned. It is deliberately the same number usm.ExampleEnterprise
-// defaults an engine ID to, so a lab rig is consistent with itself.
-var DHS = oid("1.3.6.1.4.1.32473")
+// off: BY-SYSTEMS SPRL's IANA Private Enterprise Number, 54981. It is the
+// number usm.Enterprise builds engine IDs from, so an agent's
+// sysObjectID and its engine identity name the same organisation. Arcs
+// under it are assigned in the generated DHS MIB, never ad hoc in code.
+var DHS = oid("1.3.6.1.4.1.54981")
 
 // Name returns the standard name for an OID this package knows, and the
 // dotted form for one it does not.

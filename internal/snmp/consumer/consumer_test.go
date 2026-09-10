@@ -34,16 +34,16 @@ func agentUnder(t *testing.T, communities provider.Communities) string {
 	var stored int64 = 1
 	objs := provider.SystemGroup(provider.SystemInfo{
 		Descr:    "dhs SNMP agent under test",
-		ObjectID: oid("1.3.6.1.4.1.32473.1"),
+		ObjectID: oid("1.3.6.1.4.1.54981.1"),
 		Contact:  "ops@example.invalid",
 		Name:     "agent-under-test",
 		Location: "TEC RACK 23",
 	}, nil)
 	objs = append(objs,
-		provider.Object{OID: oid("1.3.6.1.4.1.32473.2"), Access: provider.NotAccessible},
-		provider.Scalar(oid("1.3.6.1.4.1.32473.2.1.1"), codec.Int(10)),
-		provider.Scalar(oid("1.3.6.1.4.1.32473.2.1.2"), codec.Int(20)),
-		provider.Writable(oid("1.3.6.1.4.1.32473.3.0"), codec.TypeInteger,
+		provider.Object{OID: oid("1.3.6.1.4.1.54981.2"), Access: provider.NotAccessible},
+		provider.Scalar(oid("1.3.6.1.4.1.54981.2.1.1"), codec.Int(10)),
+		provider.Scalar(oid("1.3.6.1.4.1.54981.2.1.2"), codec.Int(20)),
+		provider.Writable(oid("1.3.6.1.4.1.54981.3.0"), codec.TypeInteger,
 			func() codec.Value { return codec.Int(stored) },
 			func(v codec.Value) error { stored = v.Int; return nil }),
 	)
@@ -106,7 +106,7 @@ func TestGetTheSystemGroup(t *testing.T) {
 	if got := binds[1].Value.String(); got != "agent-under-test" {
 		t.Errorf("sysName.0 = %q", got)
 	}
-	if got := binds[2].Value.OID.String(); got != "1.3.6.1.4.1.32473.1" {
+	if got := binds[2].Value.OID.String(); got != "1.3.6.1.4.1.54981.1" {
 		t.Errorf("sysObjectID.0 = %s", got)
 	}
 }
@@ -233,7 +233,7 @@ func TestSetWritesAndEchoes(t *testing.T) {
 	addr := agentUnder(t, provider.Communities{Read: "public", Write: "private"})
 	s := dial(t, addr, Options{Version: codec.Version2c, Community: "private"})
 
-	target := oid("1.3.6.1.4.1.32473.3.0")
+	target := oid("1.3.6.1.4.1.54981.3.0")
 	binds, err := s.Set(context.Background(), codec.VarBind{Name: target, Value: codec.Int(42)})
 	if err != nil {
 		t.Fatalf("Set: %v", err)
