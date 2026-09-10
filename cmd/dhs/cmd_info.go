@@ -47,6 +47,7 @@ func runInfo(ctx context.Context, args []string) error {
 				s.Error = serr.Error()
 			} else {
 				s.Status, s.Online = si.Status.String(), si.IsOnline
+				s.Identity = si.Identity
 			}
 			out.SlotStatus = append(out.SlotStatus, s)
 		}
@@ -94,4 +95,15 @@ type slotInfoJSON struct {
 	Status string `json:"status,omitempty"`
 	Online bool   `json:"online"`
 	Error  string `json:"error,omitempty"`
+
+	// Identity is what the slot says it is, when the plugin knows: a label,
+	// a product, and on the protocols that have one, the node's own address.
+	//
+	// A slot number alone names a different node on a different topology, so
+	// two readings of the same plant — direct, through a proxy, through a
+	// bridge — can only be compared by what each node calls itself. The
+	// domain type has carried this since the beginning and this shape used
+	// to drop it on the floor, which left the field the runbooks tell
+	// operators to read, and an Ansible contract asserts on, absent.
+	Identity map[string]string `json:"identity,omitempty"`
 }
