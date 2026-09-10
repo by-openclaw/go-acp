@@ -207,9 +207,10 @@ with the evidence.
 - **No logging, streaming or drawing services.** They are advertised by neither
   the gateway nor its cards, so a call asking for one is refused rather than
   half-granted.
-- **No router node yet.** A RollCall router serves its routing and its names as
-  control variables rather than menu lines, so serving one is a different model
-  from this one. It is the next unit.
+- **One unit only.** A vendor Centra serves each matrix as a unit of its own,
+  with that matrix's levels as its ports. This provider serves every
+  matrix, level, tieline and panel node as a port of one gateway, so a client
+  walking the plant finds the same nodes at different addresses.
 
 ---
 

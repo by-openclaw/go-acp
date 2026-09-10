@@ -52,7 +52,7 @@ gateway** (spec 7.6) rather than as units of their own:
 | `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
 | `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
 | `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
-| `0000-0C-8E` | — | listed by the gateway and refuses a session; carried as that slot's error |
+| `0000-0C-8E` | 483 RC32 Routing IPShare Client | **our own client**: the port the gateway stamped for the connection asking (`dhs rollcall`, services `0x8007`), read from the frame's own device list. Calling it is calling ourselves, which is why a session there is refused |
 
 It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
 the 16-bit generation — the one a proxy also speaks, and the one the emulator
