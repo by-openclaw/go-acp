@@ -672,6 +672,8 @@ Usage of get:
     	read community (write community for set) (default "public")
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
   -retries int
@@ -694,6 +696,8 @@ Usage of walk:
     	stop after this many objects; a device whose table grows while it is walked would otherwise never end (default 20000)
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
   -retries int
@@ -739,6 +743,8 @@ FLAGS
     	read community (write community for set) (default "public")
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	the object to write, by standard name or dotted number
   -retries int

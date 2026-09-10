@@ -103,8 +103,9 @@ var (
 // under it are assigned in the generated DHS MIB, never ad hoc in code.
 var DHS = oid("1.3.6.1.4.1.54981")
 
-// Name returns the standard name for an OID this package knows, and the
-// dotted form for one it does not.
+// Name returns the name for an OID: the standard one when this package
+// defines it, else the deepest compiled name that covers it with the
+// remaining arcs, else the dotted form.
 //
 // It exists for output, not for dispatch: a CLI column that says
 // "sysDescr.0" is readable and one that says "1.3.6.1.2.1.1.1.0" is a
@@ -113,7 +114,22 @@ func Name(o codec.OID) string {
 	if n, ok := names[o.String()]; ok {
 		return n
 	}
-	return o.String()
+	return Compiled().Name(o)
+}
+
+// Describe is [Name] for a caller that knows which device it is talking
+// to: prefer lists the modules to name from first where two devices name
+// one OID differently. It also returns the compiled object, nil when
+// nothing covers o, so an enumerated value can be labelled.
+func Describe(o codec.OID, prefer ...string) (string, *Object) {
+	obj, rest := Compiled().Lookup(o, prefer...)
+	if n, ok := names[o.String()]; ok {
+		return n, obj
+	}
+	if obj == nil {
+		return o.String(), nil
+	}
+	return withSuffix(obj.Name, rest), obj
 }
 
 // names is the reverse index for [Name]. Built from the variables above
@@ -156,15 +172,20 @@ func Standard() map[string]codec.OID {
 	}
 }
 
-// Resolve turns what an operator typed into an OID: a standard name, or
-// a dotted numeric form.
+// Resolve turns what an operator typed into an OID: a standard name, a
+// dotted numeric form, or a name from the compiled MIBs — controlMode.0,
+// or ETV-TT1260-MIB::controlMode.0 where a bare name is ambiguous.
 //
-// Both, because both are what gets typed. A manager's own documentation
-// says sysDescr.0 and a vendor's says 1.3.6.1.4.1.7995.1.2.3.4, and an
-// operator pasting either should not have to know which this tool wants.
+// All of them, because all of them get typed. A manager's own
+// documentation says sysDescr.0, a vendor's says 1.3.6.1.4.1.7995.1.2.3.4,
+// and the vendor's MIB says controlMode, and an operator pasting any of
+// them should not have to know which this tool wants.
 func Resolve(s string) (codec.OID, error) {
 	if o, ok := Standard()[s]; ok {
 		return o, nil
 	}
-	return codec.ParseOID(s)
+	if s == "" || s[0] == '.' || (s[0] >= '0' && s[0] <= '9') {
+		return codec.ParseOID(s)
+	}
+	return Compiled().Resolve(s)
 }

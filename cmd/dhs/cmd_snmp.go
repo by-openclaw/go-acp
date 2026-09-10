@@ -11,6 +11,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -79,6 +80,7 @@ type snmpFlags struct {
 	timeout   time.Duration
 	retries   int
 	bulk      int
+	prefer    string
 }
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
@@ -87,6 +89,18 @@ func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
 	fs.IntVar(&f.bulk, "max-repetitions", snmpcons.DefaultMaxRepetitions, "GETBULK window for `walk` (v2c only)")
+	fs.StringVar(&f.prefer, "mib", "", "comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)")
+}
+
+// modules is --mib as a list.
+func (f *snmpFlags) modules() []string {
+	var out []string
+	for _, m := range strings.Split(f.prefer, ",") {
+		if m = strings.TrimSpace(m); m != "" {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // options builds the session options, refusing a version this manager
@@ -155,7 +169,7 @@ func runSNMPGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	printBinds(binds)
+	printBinds(binds, f.modules())
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -188,9 +202,10 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	n := 0
+	prefer := f.modules()
 	walkErr := s.Walk(ctx, start, func(vb codec.VarBind) error {
 		n++
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", mib.Name(vb.Name), vb.Value.Type, vb.Value)
+		writeBind(w, vb, prefer)
 		if n >= *limit {
 			return fmt.Errorf("snmp: stopped at the --limit of %d objects", *limit)
 		}
@@ -279,7 +294,7 @@ FLAGS`)
 	}
 	// The echo is what the device actually took, which is not always
 	// what was asked for.
-	printBinds(binds)
+	printBinds(binds, f.modules())
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -359,12 +374,26 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 
 // printBinds renders a result the way snmpget does: one object a line,
 // name, type, value.
-func printBinds(binds []codec.VarBind) {
+func printBinds(binds []codec.VarBind, prefer []string) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, vb := range binds {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", mib.Name(vb.Name), vb.Value.Type, vb.Value)
+		writeBind(w, vb, prefer)
 	}
 	_ = w.Flush()
+}
+
+// writeBind is one line of printBinds or walk. An enumerated INTEGER is
+// shown as its MIB label with the number, snmp(4), the way net-snmp
+// shows it: the number alone is what an operator then has to look up.
+func writeBind(w io.Writer, vb codec.VarBind, prefer []string) {
+	name, obj := mib.Describe(vb.Name, prefer...)
+	val := vb.Value.String()
+	if obj != nil && vb.Value.Type == codec.TypeInteger {
+		if label, ok := obj.EnumName(vb.Value.Int); ok {
+			val = fmt.Sprintf("%s(%d)", label, vb.Value.Int)
+		}
+	}
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, val)
 }
 
 // printSNMPCompliance reports what the peer did that the RFCs do not

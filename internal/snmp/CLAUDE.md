@@ -146,11 +146,29 @@ This is the load-bearing decision. Parsing MIB source is a compiler problem —
 lexer, grammar, IMPORTS resolution across files — and dragging that into the
 shipped binary is how a connector acquires a dependency tail.
 
-Instead: a tool under `tools/` compiles the MIBs from a checkout of
-`by-protocol/mib` into committed Go OID tables, and the connector reads the
-generated tables. The compile is a development step whose output is reviewed
-in a PR; the runtime knows only numbers and types, and this repo never
-vendors the MIB source.
+Instead: `tools/mibc` (front end in `internal/snmp/smi`) compiles the MIBs
+into one committed table, `internal/snmp/mib/tables.tsv.gz`, and the
+connector reads that. The compile is a development step whose output is
+reviewed in a PR; the runtime knows only numbers, names and types. The roots
+are a checkout of `by-protocol/mib` (the IRDs and the IETF standard modules)
+and the Snell set already in this repo:
+
+    go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
+        <by-protocol/mib>/ird <by-protocol/mib>/standard \
+        internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
+
+Findings (duplicate modules and which copy won, names that did not resolve)
+are expected and listed with `-v`; they are not failures. Two rules decide
+between copies: the newest LAST-UPDATED wins, and `-pin` overrides it where
+the codeowner chose (IP-MIB is the RX1290's, the newest product). A vendor
+defect only the vendor's own files can prove is corrected in
+`tools/mibc/patches.txt`, each line with its evidence. Symbols no MIB anywhere
+defines (the Snell QUASAR/IQDLY21 registrations) stay unresolved and
+reported, never invented.
+
+One OID can carry two names: the TT1260 and RX1290 report the same
+sysObjectID and differ at 34 OIDs. Both rows are kept; `--mib MODULE` on the
+consumer verbs (or `prefer` in `mib.Describe`) picks the device's.
 
 Measured for the fork set the codeowner already made under
 `github.com/by-protocol` (per ADR-0005's build-graph rule — what enters OUR

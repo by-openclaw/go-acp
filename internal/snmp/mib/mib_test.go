@@ -82,13 +82,17 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-// Names are for output, and an OID with no standard name renders as its
-// numbers rather than as nothing.
+// Names are for output. A standard OID gets its standard name, one the
+// compiled MIBs cover gets the deepest name over it and the arcs left,
+// and one nothing covers renders as its numbers rather than as nothing.
 func TestName(t *testing.T) {
 	if got := Name(SysDescr); got != "sysDescr.0" {
 		t.Errorf("= %q", got)
 	}
-	if got := Name(oid("1.3.6.1.4.1.7995.9.9")); got != "1.3.6.1.4.1.7995.9.9" {
+	if got := Name(oid("1.3.6.1.4.1.7995.9.9")); got != "snellWilcoxRoot.9.9" {
+		t.Errorf("= %q, want the Snell root and the rest", got)
+	}
+	if got := Name(oid("2.999.1")); got != "2.999.1" {
 		t.Errorf("= %q, want the dotted form", got)
 	}
 }
