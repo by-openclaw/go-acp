@@ -167,11 +167,23 @@ func (l *Listener) Listen(ctx context.Context, fn func(Trap)) error {
 	if addr == "" {
 		addr = fmt.Sprintf(":%d", TrapPort)
 	}
+	// Checked BEFORE the bind as well as after: a listener that was
+	// already closed must not take a privileged port for the length of
+	// one syscall, and on a host that refuses the bind the caller would
+	// otherwise be told about the port rather than about the Close.
+	l.mu.Lock()
+	closed := l.closed
+	l.mu.Unlock()
+	if closed {
+		return net.ErrClosed
+	}
+
 	conn, err := l.listen(ctx, "udp4", addr)
 	if err != nil {
 		return fmt.Errorf("snmp: listen %q: %w", addr, err)
 	}
 
+	// And again, for a Close that arrived while the bind was in flight.
 	l.mu.Lock()
 	if l.closed {
 		l.mu.Unlock()

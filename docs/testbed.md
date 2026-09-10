@@ -39,9 +39,9 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` (consumer, pending) |
-| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` (consumer, pending) |
-| **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP `:161` · 8 trap destinations `:162` | `snmp` (consumer, pending) |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
+| **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP v1 **and** v2c `:161` · 8 trap destinations `:162` | `snmp` ✅ polled live |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
@@ -93,8 +93,11 @@ Scope, per the codeowner:
 
 Scope, per the codeowner:
 
-- **SNMP + MIB** — the whole reason these are in the testbed. This is what
-  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **SNMP + MIB** — the whole reason these are in the testbed, and now the
+  live oracle: both answer `dhs consumer snmp get --version 1`. Confirmed
+  2026-09-10 that **v2c gets no reply at all** from either — a v2c poll of
+  one of these looks exactly like a device that is down, which is why the
+  CLI's `--version` help says so.
 - **HTTP management page** — expected to work. Useful for reading the device's
   own view of a value while checking ours, and for setting the SNMP community
   and trap destination. Not a connector target.
@@ -119,6 +122,24 @@ So one connector serves these devices, and it is the SNMP one.
 | Trap destinations | **eight** rows, each with its own IP, port (`162`) and community (`public`); only the first is enabled today, at `0.0.0.0` — i.e. pointing nowhere |
 | Slot trap enable | gateway + slots 1–16, all on |
 | SNMP control | gateway + slots 1–16, all on |
+
+**Measured live, 2026-09-10**, with `dhs consumer snmp` from `dhs-tools`:
+
+| | value |
+| --- | --- |
+| `sysDescr.0` | `IQH3UM4-S` |
+| `sysObjectID.0` | `1.3.6.1.4.1.7995.1.3.1` — under `snellWilcoxProductReg`, as the SMI says |
+| `sysContact` / `sysName` / `sysLocation` | exactly what the RollCall page shows |
+| **objects under 7995** | **9 867** — an order of magnitude more than the IRDs |
+| bulk walk of the whole vendor tree | 2m16s at `--max-repetitions 25` |
+| versions | **v1 AND v2c both answer**, which is what "Legacy SNMP enabled alongside" means |
+
+The tables are indexed by length-prefixed ASCII, so an instance OID reads
+as `...2.6.2.1.1.13.76.79.71.71.73.78.71.95.83.84.65.84.69` for the key
+`LOGGING_STATE`. Live values seen include `TEMP_1_CELSIUS 29`,
+`TEMP_2_CELSIUS 33`, `VOLTAGE_1 +7.5`, `VOLTAGE_2 -7.6`,
+`LAN_PORT_1 100 Mbit/s Full Duplex` and `HARDWARE_VERSION RCIF3U2C` —
+the same figures the RollCall Unit Status panel shows.
 
 Two things follow for `internal/snmp`.
 

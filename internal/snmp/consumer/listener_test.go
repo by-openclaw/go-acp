@@ -424,7 +424,9 @@ func TestABindThatCannotHappen(t *testing.T) {
 
 // Close is idempotent and safe on a listener that never bound.
 func TestListenerCloseIsIdempotent(t *testing.T) {
-	l := NewListener(ListenerOptions{}, plugin.Deps{Logger: quiet()})
+	// An ephemeral port on loopback: the default is 162, which needs
+	// privilege on Linux, and this test is not about the port.
+	l := NewListener(ListenerOptions{Addr: "127.0.0.1:0"}, plugin.Deps{Logger: quiet()})
 	if l.Addr() != nil {
 		t.Error("a listener that never bound is bound to nothing")
 	}
@@ -436,6 +438,34 @@ func TestListenerCloseIsIdempotent(t *testing.T) {
 	}
 	// And a Listen after Close does not bind.
 	if err := l.Listen(context.Background(), func(Trap) {}); !errors.Is(err, net.ErrClosed) {
+		t.Errorf("= %v, want net.ErrClosed", err)
+	}
+}
+
+// A Close that arrives while the bind is in flight is honoured, and the
+// socket it raced is not left open.
+func TestACloseThatRacesTheBind(t *testing.T) {
+	l := NewListener(ListenerOptions{Addr: "127.0.0.1:0"}, plugin.Deps{Logger: quiet()})
+
+	inBind := make(chan struct{})
+	release := make(chan struct{})
+	real := l.listen
+	l.listen = func(ctx context.Context, network, addr string) (net.PacketConn, error) {
+		close(inBind)
+		<-release
+		return real(ctx, network, addr)
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- l.Listen(context.Background(), func(Trap) {}) }()
+
+	<-inBind
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+
+	if err := <-done; !errors.Is(err, net.ErrClosed) {
 		t.Errorf("= %v, want net.ErrClosed", err)
 	}
 }

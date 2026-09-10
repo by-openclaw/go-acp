@@ -3,11 +3,32 @@
 Atomic per-protocol context for the SNMP connector. Read the root `CLAUDE.md`
 first for cross-cutting rules; this file holds the SNMP-specific scope.
 
-> **STATUS: PARKED — do not start implementing without an explicit go from
-> the codeowner.** What exists today is this file and `assets/`, so MIBs and
-> vendor documentation have somewhere to land. No codec, no consumer, no
-> provider. The park is a scheduling decision, not a design gap: the shape
-> below is agreed, the peers exist, the go does not.
+> **STATUS: STARTED 2026-09-10 on the codeowner's go.** The park is lifted.
+> What exists now, all at 100% with CI floors:
+>
+> | package | what it is |
+> | --- | --- |
+> | `codec` | the wire: v1/v2c/v3 envelopes, every PDU, the v1 Trap-PDU, the USM parameters blob |
+> | `usm` | RFC 3414 + RFC 7860 + RFC 3826 — key derivation (published vectors asserted), digests, DES and AES, the authoritative engine |
+> | `mib` | the OID vocabulary: the standard groups, and BOTH vendor roots |
+> | `provider` | the agent: a served MIB, the request rules, trap emission in any version |
+> | `consumer` | the manager: get / getnext / getbulk / set / walk, and the trap receiver |
+>
+> CLI: `dhs consumer snmp get|walk|set|trap-listen` and
+> `dhs producer snmp serve|trap`.
+>
+> **Ours, not gosnmp.** The codeowner's call, and the reasoning is worth
+> keeping: gosnmp and k-sone/snmpgo are both MANAGER libraries with no
+> agent — no MIB tree, no GETNEXT to serve, no SET handling — so the
+> agent half is ours whichever way the PDU goes; and neither exposes its
+> marshalling as a codec, so "buy the PDU, build the agent" is not on the
+> menu. See the measured dependency assessment further down, which
+> stands.
+>
+> **Still open**: v3 POLLING (a manager is authoritative for nothing, so
+> it must discover the agent's engine first — its own unit); InformRequest
+> in both directions; and the offline MIB compiler under `tools/`, which
+> is what turns the 232-file Snell set into committed Go tables.
 
 ---
 
@@ -39,7 +60,18 @@ put bytes on the wire.
 device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
 six IETF base modules every vendor MIB imports and no vendor ships.
 
-The vendor is **Ericsson Television Limited** (formerly Tandberg Television),
+There are **TWO** vendor trees in this plant, not one — code that assumed a
+single vendor root would work against the IRDs and quietly mis-address the
+Snell frames:
+
+- **Ericsson Television Limited** (formerly Tandberg Television), IANA
+  enterprise **1773** — the IRDs.
+- **Snell & Wilcox**, IANA enterprise **7995** — the RollCall frames.
+  `SNELL-WILCOX-SMI.mib` puts `snellWilcoxProductReg` at `7995.1` and a
+  shared generic sub-tree beside it. The frame at 10.6.255.113 answers
+  `sysObjectID 1.3.6.1.4.1.7995.1.3.1` and serves 9 867 objects.
+
+For the IRDs, the vendor is **Ericsson Television Limited**,
 IANA enterprise **1773**. `ETV-Base-MIB` defines
 `mibEricssonTelevision ::= { enterprises 1773 }` and
 `elementManagementMIB ::= { mibEricssonTelevision 1 }`, which is exactly the
