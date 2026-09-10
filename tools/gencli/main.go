@@ -63,6 +63,16 @@ var matrix = []helpEntry{
 	{"NMOS live probe", []string{"consumer", "nmos", "probe", "--help"}},
 	{"NMOS parameter registers", []string{"consumer", "nmos", "registers", "--help"}},
 
+	// SNMP — both roles, and the notification path in both directions.
+	{"SNMP consumer", []string{"consumer", "snmp", "--help"}},
+	{"SNMP: get", []string{"consumer", "snmp", "get", "--help"}},
+	{"SNMP: walk", []string{"consumer", "snmp", "walk", "--help"}},
+	{"SNMP: set", []string{"consumer", "snmp", "set", "--help"}},
+	{"SNMP: trap-listen", []string{"consumer", "snmp", "trap-listen", "--help"}},
+	{"SNMP producer", []string{"producer", "snmp", "--help"}},
+	{"SNMP agent: serve", []string{"producer", "snmp", "serve", "--help"}},
+	{"SNMP agent: trap", []string{"producer", "snmp", "trap", "--help"}},
+
 	// The generic consumer verb set (shape shared by acp1/acp2/emberplus).
 	{"consumer info", []string{"consumer", "acp1", "info", "--help"}},
 	{"consumer walk", []string{"consumer", "acp1", "walk", "--help"}},
