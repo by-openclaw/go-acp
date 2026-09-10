@@ -104,9 +104,12 @@
           and decode on a host that has it, the way playbooks/acp1-capture.yml
           relays an ACP1 pcap. Nothing below this can run.
 
+    # -G comes first. Wireshark 4.0 rejects it anywhere else — "tshark: -G
+    # only valid as first option" — while 4.6 accepts either order, so the
+    # wrong order works on a developer's desk and fails on the control node.
     - name: The dissector loads without error
       ansible.builtin.shell:
-        cmd: tshark -X lua_script:{{ lua }} -G protocols | grep -c dhs_snell_rollcall
+        cmd: tshark -G protocols -X lua_script:{{ lua }} | grep -c dhs_snell_rollcall
       register: registered
       changed_when: false
       failed_when: registered.stdout | int < 1
