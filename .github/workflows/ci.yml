@@ -22,13 +22,17 @@ on:
       - CHANGELOG.md
       - .release-please-manifest.json
 
-# One live run per ref: a new push to a PR branch cancels the in-progress
-# run on the outdated commit (no more two same-titled rows per PR). Runs on
-# main are NEVER cancelled — every merge commit keeps its own complete
-# verification (a cancelled main run would hide a real red).
+# One live run per ref: a new run on a ref supersedes the one still going on
+# it, whether it came from a push to a PR or a manual dispatch. Runs on main
+# are NEVER cancelled: every merge commit keeps its own complete verification,
+# and a cancelled main run would hide a real red.
+#
+# This used to cancel pull_request runs only, so dispatches piled up: 36 on one
+# branch ran to completion, each holding seven job slots, while nobody read any
+# but the last.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -39,7 +43,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Every OS on main, where each merge commit is verified in full.
+        # Everywhere else, Linux only: an iteration on a branch asks whether
+        # the change works, and the Cross-compile job below still builds it
+        # for every OS at Linux cost. Windows and macOS runners are what made
+        # a branch run expensive, and each one repeated what Linux had just
+        # proved.
+        os: ${{ fromJSON(github.ref == 'refs/heads/main' && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -82,12 +92,17 @@ jobs:
       # the old 3-attempt loop were root-caused and fixed deterministically
       # (acp2 waiter-death protocol, probel-sw02p pre-bound listener). A red
       # here is a real problem in this commit.
+      # Linux measures coverage in the same pass. It used to run the whole
+      # suite twice, once for the race detector and once for the profile; the
+      # two flags compose, and statement coverage does not depend on the
+      # scheduler.
       - name: Unit tests
+        if: matrix.os != 'ubuntu-latest'
         run: go test -count=1 -race ./...
 
       - name: Unit tests (coverage)
         if: matrix.os == 'ubuntu-latest'
-        run: go test -count=1 -coverprofile=coverage.out ./...
+        run: go test -count=1 -race -coverprofile=coverage.out ./...
 
       # Per-package coverage floor for the gold-template connectors. Fails
       # the build if a package drops below its locked-in level (no-regression).
@@ -184,6 +199,10 @@ jobs:
 
   test-rhel:
     name: Test (${{ matrix.distro }})
+    # The RHEL-family containers run on main only, with the full OS matrix:
+    # they re-run the Linux suite in another userland, which a branch
+    # iteration does not need to know before merge.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -309,6 +328,10 @@ jobs:
     name: Cross-compile
     runs-on: ubuntu-latest
     needs: [test, test-rhel, lint]
+    # Runs when test-rhel was skipped as well as when it passed. A job whose
+    # dependency is skipped is skipped too by default, which would drop the
+    # one job that still builds every OS on a branch.
+    if: ${{ !failure() && !cancelled() }}
     steps:
       - uses: actions/checkout@v7
         with:
