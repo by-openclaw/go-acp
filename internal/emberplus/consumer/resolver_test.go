@@ -3,7 +3,6 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
 
@@ -20,7 +19,7 @@ import (
 //   - labels_absorbed fires once (per matrix, not per level)
 func TestResolveMatrixLabels_MultiLevel(t *testing.T) {
 	m, elements := buildMultiLevelMatrixTree()
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	p.resolveMatrixLabels(m, elements, modeInline)
 
@@ -53,7 +52,7 @@ func TestResolveMatrixLabels_MultiLevel(t *testing.T) {
 	}
 
 	// Compliance event should fire exactly once per matrix.
-	snap := p.profile.Snapshot()
+	snap := p.ComplianceProfile().Snapshot()
 	if got := snap[LabelsAbsorbed]; got != 1 {
 		t.Errorf("labels_absorbed count = %d, want 1", got)
 	}
@@ -65,7 +64,7 @@ func TestResolveMatrixLabels_MultiLevel(t *testing.T) {
 func TestResolveMatrixLabels_Pointer(t *testing.T) {
 	m, elements := buildMultiLevelMatrixTree()
 	beforeCount := len(elements)
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	p.resolveMatrixLabels(m, elements, modePointer)
 
@@ -78,7 +77,7 @@ func TestResolveMatrixLabels_Pointer(t *testing.T) {
 	if len(elements) != beforeCount {
 		t.Errorf("pointer mode must not mutate elements; before=%d after=%d", beforeCount, len(elements))
 	}
-	if got := p.profile.Snapshot()[LabelsAbsorbed]; got != 0 {
+	if got := p.ComplianceProfile().Snapshot()[LabelsAbsorbed]; got != 0 {
 		t.Errorf("pointer mode must not fire labels_absorbed; got %d", got)
 	}
 }
@@ -89,7 +88,7 @@ func TestResolveMatrixLabels_Pointer(t *testing.T) {
 func TestResolveMatrixLabels_Both(t *testing.T) {
 	m, elements := buildMultiLevelMatrixTree()
 	beforeCount := len(elements)
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	p.resolveMatrixLabels(m, elements, modeBoth)
 
@@ -99,7 +98,7 @@ func TestResolveMatrixLabels_Both(t *testing.T) {
 	if len(elements) != beforeCount {
 		t.Errorf("both mode must keep source subtrees; before=%d after=%d", beforeCount, len(elements))
 	}
-	if got := p.profile.Snapshot()[LabelsAbsorbed]; got != 0 {
+	if got := p.ComplianceProfile().Snapshot()[LabelsAbsorbed]; got != 0 {
 		t.Errorf("both mode must not fire labels_absorbed; got %d", got)
 	}
 }
@@ -116,7 +115,7 @@ func TestResolveMatrixLabels_BasepathUnresolved(t *testing.T) {
 		BasePath:    "9.9.9",
 		Description: &brokenDesc,
 	})
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	p.resolveMatrixLabels(m, elements, modeInline)
 
@@ -126,7 +125,7 @@ func TestResolveMatrixLabels_BasepathUnresolved(t *testing.T) {
 	if len(m.TargetLabels) != 2 {
 		t.Errorf("other two levels must still resolve; got %d", len(m.TargetLabels))
 	}
-	if got := p.profile.Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
 		t.Errorf("matrix_label_basepath_unresolved = %d, want 1", got)
 	}
 }
@@ -138,7 +137,7 @@ func TestResolveMatrixLabels_DescriptionEmpty(t *testing.T) {
 	m, elements := buildMultiLevelMatrixTree()
 	// Clear the Primary level's description — simulate a wire defect.
 	m.Labels[0].Description = nil
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 
 	p.resolveMatrixLabels(m, elements, modeInline)
 
@@ -147,7 +146,7 @@ func TestResolveMatrixLabels_DescriptionEmpty(t *testing.T) {
 	if _, ok := m.TargetLabels["1.2"]; !ok {
 		t.Errorf("empty-description level must key by basePath; got keys %v", keysOf(m.TargetLabels))
 	}
-	if got := p.profile.Snapshot()[MatrixLabelDescriptionEmpty]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelDescriptionEmpty]; got != 1 {
 		t.Errorf("matrix_label_description_empty = %d, want 1", got)
 	}
 }

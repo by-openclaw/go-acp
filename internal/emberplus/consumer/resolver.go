@@ -68,9 +68,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 	}
 
 	if len(m.Labels) == 0 {
-		if p.profile != nil {
-			p.profile.Note(MatrixLabelNone)
-		}
+		p.ComplianceProfile().Note(MatrixLabelNone)
 		return
 	}
 
@@ -84,23 +82,17 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 			key = *lbl.Description
 		} else {
 			key = lbl.BasePath
-			if p.profile != nil {
-				p.profile.Note(MatrixLabelDescriptionEmpty)
-			}
+			p.ComplianceProfile().Note(MatrixLabelDescriptionEmpty)
 		}
 
 		base, ok := elements[lbl.BasePath]
 		if !ok {
-			if p.profile != nil {
-				p.profile.Note(MatrixLabelBasepathUnresolved)
-			}
+			p.ComplianceProfile().Note(MatrixLabelBasepathUnresolved)
 			continue
 		}
 		baseNode, ok := base.(*canonical.Node)
 		if !ok {
-			if p.profile != nil {
-				p.profile.Note(MatrixLabelBasepathUnresolved)
-			}
+			p.ComplianceProfile().Note(MatrixLabelBasepathUnresolved)
 			continue
 		}
 
@@ -122,9 +114,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 	}
 
 	if mismatched(targetLabels) || mismatched(sourceLabels) {
-		if p.profile != nil {
-			p.profile.Note(MatrixLabelLevelMismatch)
-		}
+		p.ComplianceProfile().Note(MatrixLabelLevelMismatch)
 	}
 
 	if len(targetLabels) > 0 {
@@ -136,9 +126,7 @@ func (p *Plugin) resolveMatrixLabels(m *canonical.Matrix, elements map[string]ca
 
 	if mode == modeInline && len(absorb) > 0 {
 		removeFromTree(elements, absorb)
-		if p.profile != nil {
-			p.profile.Note(LabelsAbsorbed)
-		}
+		p.ComplianceProfile().Note(LabelsAbsorbed)
 	}
 }
 
@@ -161,16 +149,12 @@ func (p *Plugin) resolveMatrixGain(m *canonical.Matrix, elements map[string]cano
 
 	base, ok := elements[*m.ParametersLocation]
 	if !ok {
-		if p.profile != nil {
-			p.profile.Note(MatrixParametersLocationUnresolved)
-		}
+		p.ComplianceProfile().Note(MatrixParametersLocationUnresolved)
 		return
 	}
 	baseNode, ok := base.(*canonical.Node)
 	if !ok {
-		if p.profile != nil {
-			p.profile.Note(MatrixParametersLocationUnresolved)
-		}
+		p.ComplianceProfile().Note(MatrixParametersLocationUnresolved)
 		return
 	}
 
@@ -193,9 +177,7 @@ func (p *Plugin) resolveMatrixGain(m *canonical.Matrix, elements map[string]cano
 
 	if mode == modeInline {
 		removeFromTree(elements, []string{*m.ParametersLocation})
-		if p.profile != nil {
-			p.profile.Note(GainAbsorbed)
-		}
+		p.ComplianceProfile().Note(GainAbsorbed)
 	}
 }
 
@@ -238,20 +220,14 @@ func (p *Plugin) resolveTemplates(elements map[string]canonical.Element, templat
 		}
 		t, ok := index[*ref]
 		if !ok || t == nil || t.Template == nil {
-			if p.profile != nil {
-				p.profile.Note(TemplateReferenceUnresolved)
-			}
+			p.ComplianceProfile().Note(TemplateReferenceUnresolved)
 			continue
 		}
 		if !inflateTemplate(el, t.Template) {
-			if p.profile != nil {
-				p.profile.Note(TemplateReferenceUnresolved)
-			}
+			p.ComplianceProfile().Note(TemplateReferenceUnresolved)
 			continue
 		}
-		if p.profile != nil {
-			p.profile.Note(TemplateAbsorbed)
-		}
+		p.ComplianceProfile().Note(TemplateAbsorbed)
 	}
 }
 

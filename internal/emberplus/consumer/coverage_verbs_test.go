@@ -27,7 +27,6 @@ func freshPlugin() *Plugin {
 		streamSubs:   map[string][]int32{},
 		streamIndex:  map[int64][]string{},
 		templates:    map[string]*glow.Template{},
-		profile:      &compliance.Profile{},
 		pendingSets:  newPendingSetRegistry(),
 	}
 }

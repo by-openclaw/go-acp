@@ -26,13 +26,13 @@ func TestPluginExposesMetrics(t *testing.T) {
 // timestamp identically; whichever one a session resolves to, the counters
 // mean the same thing.
 func TestClientHooksCountAndTimestampBothWays(t *testing.T) {
-	p := &Plugin{tsSink: &timestampSink{}, met: metrics.NewConnector()}
+	p := &Plugin{tsSink: &timestampSink{}}
 	cfg := p.clientHooks()
 
 	cfg.OnRx(41)
 	cfg.OnTx(7)
 
-	snap := p.met.Snapshot()
+	snap := p.Metrics().Snapshot()
 	if snap.RxFrames != 1 || snap.RxBytes != 41 {
 		t.Errorf("rx = %d frames / %d bytes, want 1 / 41", snap.RxFrames, snap.RxBytes)
 	}

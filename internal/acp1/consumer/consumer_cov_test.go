@@ -70,8 +70,11 @@ func TestTransportKind_String(t *testing.T) {
 
 func TestPlugin_Accessors(t *testing.T) {
 	p := &Plugin{}
-	if p.ComplianceProfile() != nil {
-		t.Error("ComplianceProfile before connect should be nil")
+	// Never nil: the profile is connector-scoped and exists from the start,
+	// so a deviation cannot be dropped for want of a Connect, and callers
+	// like cmd/dhs/cmd_profile.go need no nil check.
+	if p.ComplianceProfile() == nil {
+		t.Error("ComplianceProfile must never be nil")
 	}
 	p.SetRecorder(nil) // exercises the setter
 	p.SetTransport(TransportTCPDirect)

@@ -3,7 +3,6 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
 
@@ -61,7 +60,7 @@ func TestResolveMatrixGain(t *testing.T) {
 	elements := map[string]canonical.Element{"1.2.1": m, "1.2.2": base}
 	walk(base, func(el canonical.Element) { elements[el.Common().OID] = el })
 
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixGain(m, elements, modeInline)
 
 	if got := m.TargetParams["0"]["gain"]; got != int64(3) {
@@ -77,7 +76,7 @@ func TestResolveMatrixGain(t *testing.T) {
 	if _, still := elements["1.2.2"]; still {
 		t.Error("inline mode must absorb parametersLocation base node")
 	}
-	if got := p.profile.Snapshot()[GainAbsorbed]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[GainAbsorbed]; got != 1 {
 		t.Errorf("gain_absorbed = %d, want 1", got)
 	}
 }
@@ -87,7 +86,7 @@ func TestResolveMatrixGain(t *testing.T) {
 func TestResolveMatrixGain_EdgeCases(t *testing.T) {
 	// pointer mode: no-op.
 	m := &canonical.Matrix{ParametersLocation: sp("1.2.2")}
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixGain(m, map[string]canonical.Element{}, modePointer)
 	if m.TargetParams != nil {
 		t.Error("pointer mode must not populate")
@@ -100,7 +99,7 @@ func TestResolveMatrixGain_EdgeCases(t *testing.T) {
 	// unresolved pointer (not in map): warn event.
 	m3 := &canonical.Matrix{ParametersLocation: sp("9.9.9")}
 	p.resolveMatrixGain(m3, map[string]canonical.Element{}, modeInline)
-	if got := p.profile.Snapshot()[MatrixParametersLocationUnresolved]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixParametersLocationUnresolved]; got != 1 {
 		t.Errorf("unresolved (missing) = %d, want 1", got)
 	}
 
@@ -108,7 +107,7 @@ func TestResolveMatrixGain_EdgeCases(t *testing.T) {
 	bad := &canonical.Parameter{Header: canonical.Header{OID: "1.2.2"}}
 	m4 := &canonical.Matrix{ParametersLocation: sp("1.2.2")}
 	p.resolveMatrixGain(m4, map[string]canonical.Element{"1.2.2": bad}, modeInline)
-	if got := p.profile.Snapshot()[MatrixParametersLocationUnresolved]; got != 2 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixParametersLocationUnresolved]; got != 2 {
 		t.Errorf("unresolved (wrong type) = %d, want 2", got)
 	}
 }
@@ -184,7 +183,7 @@ func TestResolveTemplates(t *testing.T) {
 		{Number: 3, OID: "", Identifier: "no-oid", Template: paramTpl},
 	}
 
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveTemplates(elements, templates, modeInline)
 
 	if referrerParam.Type != canonical.ParamInteger || referrerParam.Unit == nil || *referrerParam.Unit != "dB" {
@@ -197,7 +196,7 @@ func TestResolveTemplates(t *testing.T) {
 		t.Errorf("node inflate failed: children=%d desc=%v", len(referrerNode.Children), referrerNode.Description)
 	}
 
-	snap := p.profile.Snapshot()
+	snap := p.ComplianceProfile().Snapshot()
 	if got := snap[TemplateAbsorbed]; got != 2 {
 		t.Errorf("template_absorbed = %d, want 2", got)
 	}
@@ -207,7 +206,7 @@ func TestResolveTemplates(t *testing.T) {
 	}
 
 	// pointer mode is a no-op.
-	p2 := &Plugin{profile: &compliance.Profile{}}
+	p2 := &Plugin{}
 	pn := &canonical.Parameter{Header: canonical.Header{OID: "1.1"}, TemplateReference: sp("10.1")}
 	els := map[string]canonical.Element{"1.1": pn}
 	p2.resolveTemplates(els, templates, modePointer)

@@ -1,59 +1,96 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+
+	"dhs/internal/consumer"
 )
 
-// The machine shape of `info` is what a play reads, so its fields are a
-// contract rather than an implementation detail.
-func TestInfoJSONCarriesTheSlotIdentity(t *testing.T) {
-	// A slot number alone names a different node on a different topology, so
-	// the address a node gives for itself is the only thing two readings of
-	// one plant can be compared by. This shape used to drop it: the domain
-	// type carried it, the runbooks told operators to read it, an Ansible
-	// contract asserted on it, and it was never marshalled.
-	out := deviceInfoJSON{
-		Device: "10.6.250.105:2050",
-		Slots:  1,
-		SlotStatus: []slotInfoJSON{{
-			Slot:   0,
-			Status: "present",
-			Online: true,
-			Identity: map[string]string{
-				"address": "0000-81-00:0FF",
-				"name":    "XY Panel",
-			},
-		}},
+// slotSource answers GetSlotInfo from a canned table, so a test can describe a
+// frame without one existing.
+type slotSource struct {
+	fakePlugin
+	slots map[int]consumer.SlotInfo
+	errs  map[int]error
+}
+
+func (s *slotSource) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
+	if err := s.errs[slot]; err != nil {
+		return consumer.SlotInfo{}, err
+	}
+	return s.slots[slot], nil
+}
+
+func TestInfoJSONCarriesTheIdentityAPluginFilledIn(t *testing.T) {
+	// On a controller a slot number is a position in a list rather than a place
+	// in a frame, and the address behind it is the only thing that names the
+	// node. The runbook tells operators to read it out of this JSON.
+	src := &slotSource{
+		slots: map[int]consumer.SlotInfo{
+			0: {Slot: 0, Status: consumer.SlotPresent, IsOnline: true,
+				Identity: map[string]string{"type": "Vega Controller", "address": "0000-81-00:007"}},
+			1: {Slot: 1, Status: consumer.SlotPresent, IsOnline: true},
+		},
 	}
 
+	out := buildInfoJSON(context.Background(), src,
+		consumer.DeviceInfo{IP: "10.6.250.105", Port: 2050, NumSlots: 2, ProtocolVersion: 3}, "rollcall")
+
+	if len(out.SlotStatus) != 2 {
+		t.Fatalf("%d slots described, want 2", len(out.SlotStatus))
+	}
+	if got := out.SlotStatus[0].Identity["address"]; got != "0000-81-00:007" {
+		t.Errorf("slot 0 address = %q; the identity is what names a node", got)
+	}
+	if got := out.SlotStatus[0].Identity["type"]; got != "Vega Controller" {
+		t.Errorf("slot 0 type = %q", got)
+	}
+
+	// A plugin that fills nothing in leaves the key out entirely, so every
+	// protocol without the notion keeps the shape it had.
 	b, err := json.Marshal(out)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if !strings.Contains(string(b), `"identity"`) {
-		t.Fatalf("the identity did not reach the JSON: %s", b)
+	var decoded struct {
+		SlotStatus []map[string]any `json:"slot_status"`
 	}
-
-	var back deviceInfoJSON
-	if err := json.Unmarshal(b, &back); err != nil {
+	if err := json.Unmarshal(b, &decoded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got := back.SlotStatus[0].Identity["address"]; got != "0000-81-00:0FF" {
-		t.Errorf("address round-tripped as %q", got)
+	if _, ok := decoded.SlotStatus[1]["identity"]; ok {
+		t.Error("a slot with no identity should carry no identity key")
+	}
+	if _, ok := decoded.SlotStatus[0]["identity"]; !ok {
+		t.Error("a slot with an identity should carry one")
 	}
 }
 
-func TestInfoJSONOmitsAnIdentityNobodyKnows(t *testing.T) {
-	// A plugin that does not know what a slot is says nothing rather than
-	// an empty object: `identity: {}` reads as "it has none", which is a
-	// different claim from "this protocol cannot tell you".
-	b, err := json.Marshal(slotInfoJSON{Slot: 3, Online: true})
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+func TestInfoJSONKeepsASlotThatWouldNotAnswer(t *testing.T) {
+	// A frame with one unreadable card still describes the rest, and the one
+	// that failed says why rather than disappearing.
+	src := &slotSource{
+		slots: map[int]consumer.SlotInfo{0: {Slot: 0, Status: consumer.SlotPresent, IsOnline: true}},
+		errs:  map[int]error{1: errors.New("reply timeout")},
 	}
-	if strings.Contains(string(b), "identity") {
-		t.Errorf("an unknown identity was emitted anyway: %s", b)
+
+	out := buildInfoJSON(context.Background(), src,
+		consumer.DeviceInfo{IP: "h", Port: 1, NumSlots: 2}, "rollcall")
+
+	if len(out.SlotStatus) != 2 {
+		t.Fatalf("%d slots described, want both", len(out.SlotStatus))
+	}
+	if !strings.Contains(out.SlotStatus[1].Error, "reply timeout") {
+		t.Errorf("slot 1 error = %q", out.SlotStatus[1].Error)
+	}
+	if out.SlotStatus[1].Status != "" || out.SlotStatus[1].Identity != nil {
+		t.Error("a slot that did not answer describes nothing but its error")
+	}
+	if out.Device != "h:1" || out.Protocol != "rollcall" {
+		t.Errorf("device = %q protocol = %q", out.Device, out.Protocol)
 	}
 }

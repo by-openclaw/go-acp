@@ -57,22 +57,24 @@ func TestDisconnectBeforeConnect(t *testing.T) {
 	}
 }
 
-// TestMetricsNilBeforeConnect pins the contract: Metrics() is nil
-// until Connect fires. Wired via Connect, preserved across Disconnect.
-func TestMetricsNilBeforeConnect(t *testing.T) {
+// TestMetricsExistsBeforeConnect pins the contract: Metrics() is never nil.
+// It used to be, until Connect installed a copy of the injected connector,
+// which meant --metrics-addr on a plugin that had not connected scraped
+// nothing and every caller carried a nil check.
+func TestMetricsExistsBeforeConnect(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	p := &Plugin{logger: logger}
-	if m := p.Metrics(); m != nil {
-		t.Errorf("Metrics() = %v before Connect; want nil", m)
+	if p.Metrics() == nil {
+		t.Error("Metrics() = nil; it must never be")
 	}
 }
 
-// TestComplianceProfileNilBeforeConnect: accessing ComplianceProfile
-// on a fresh plugin returns nil (the session profile is installed at
-// Connect time).
-func TestComplianceProfileNilBeforeConnect(t *testing.T) {
+// TestComplianceProfileExistsBeforeConnect: the profile is connector-scoped
+// and available immediately, so a deviation is never dropped for want of a
+// Connect.
+func TestComplianceProfileExistsBeforeConnect(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	if p.ComplianceProfile() != nil {
-		t.Error("ComplianceProfile() = non-nil; want nil before Connect")
+	if p.ComplianceProfile() == nil {
+		t.Error("ComplianceProfile() = nil; it must never be")
 	}
 }

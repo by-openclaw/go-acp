@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
-	"dhs/internal/metrics"
 )
 
 func init() {
@@ -91,8 +90,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New instantiates a Plugin for this version.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{version: f.version, logger: deps.Logger, met: deps.Metrics}
-	p.Configure(deps.Net, tslStaleAfter)
+	p := &Plugin{version: f.version, logger: deps.Logger}
+	p.Init(deps, tslStaleAfter)
 	return p
 }
 
@@ -131,11 +130,7 @@ type Plugin struct {
 	// there is no remote to probe, and probing our own bound port would
 	// report a reachability that means nothing. Liveness comes from packets
 	// actually arriving, stamped through RecordRx.
-	consumer.Health
-
-	// met counts every packet received. Supplied rather than created, so
-	// the process scrapes every connector from one place.
-	met *metrics.Connector
+	consumer.Base
 
 	version Version
 	logger  *slog.Logger
@@ -334,15 +329,7 @@ func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 // metrics connector. One function so UDP and TCP report identically.
 func (p *Plugin) noteRx(n int) {
 	p.RecordRx()
-	if p.met != nil {
-		p.met.ObserveRx(n)
+	if p.Metrics() != nil {
+		p.Metrics().ObserveRx(n)
 	}
 }
-
-// Metrics returns the connector's counter set. Satisfies the optional
-// interface the CLI type-asserts for --metrics-addr.
-//
-// Only rx is counted: TSL is one-way by spec (§1.0, "for one way
-// communication only"), so a consumer never writes to the wire and a tx
-// series would be a permanent zero pretending to mean something.
-func (p *Plugin) Metrics() *metrics.Connector { return p.met }

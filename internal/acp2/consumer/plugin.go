@@ -2,7 +2,6 @@ package acp2
 
 import (
 	"context"
-	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 	"encoding/binary"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 
 	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/transport"
 )
 
@@ -38,8 +36,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, net: deps.Net, metrics: deps.Metrics}
-	p.Configure(deps.Net, acp2StaleAfter)
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, acp2StaleAfter)
 	return p
 }
 
@@ -47,18 +45,16 @@ func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 // device. Internally it holds an AN2 Session for transport, a Walker for
 // tree traversal, and per-slot caches of walked trees.
 type Plugin struct {
-	// Health supplies SessionHealth. Inherited, not reimplemented:
-	// what is ACP2-specific is only the stale window and the time
-	// source, which Connect hands over.
-	consumer.Health
+	// Base supplies health, metrics, the compliance profile and the
+	// capture recorder — the four concerns that are not ACP2's. What is
+	// ACP2-specific is only the stale window and the time source, which
+	// Connect hands over.
+	consumer.Base
 
 	logger *slog.Logger
 
 	// net is the only way this plugin reaches a socket. Injected.
 	net transport.Net
-
-	// metrics is supplied rather than created.
-	metrics *metrics.Connector
 
 	mu      sync.Mutex
 	session *Session
@@ -83,16 +79,8 @@ type Plugin struct {
 	// and after Disconnect; non-nil between.
 	rc *reconnectState
 
-	// Optional traffic capture.
-	recorder *transport.Recorder
-
 	// Optional walk progress callback.
 	walkProgress WalkProgressFunc
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
 
 	// kaCfg captures the operator's --keepalive / --keepalive-timeout
 	// choice (set via SetKeepAlive). Zero values mean "use plugin
@@ -215,15 +203,6 @@ func decodeStringlyOptionsMap(v any) map[uint32]string {
 	return nil
 }
 
-// ComplianceProfile returns the session-scoped compliance profile.
-// Returns nil if Connect hasn't been called yet. Safe to call from
-// any goroutine.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
 // subKey canonicalises a ValueRequest for map lookup.
 type subKey struct {
 	slot  int
@@ -245,13 +224,6 @@ type activeSubscription struct {
 	sessionID int
 }
 
-// SetRecorder attaches a traffic recorder. Call before Connect.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
-}
-
 // SetWalkProgress sets a callback invoked for each object during Walk.
 // Allows the CLI to print objects as they're discovered (streaming output).
 func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
@@ -261,16 +233,6 @@ func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
 	}
 	p.walkProgress = fn
 	p.mu.Unlock()
-}
-
-// Metrics returns the connector's counter set — frames and bytes in and out
-// attributed by AN2 Type, plus errors and latency. Satisfies the optional
-// interface the CLI type-asserts for --metrics-addr. Always non-nil, because
-// plugin.Deps.WithDefaults fills it.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.metrics
 }
 
 // Connect establishes the AN2/TCP connection and runs the full handshake:
@@ -284,9 +246,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	s := NewSession(p.net, p.logger)
-	s.SetMetrics(p.metrics)
-	if p.recorder != nil {
-		s.SetRecorder(p.recorder)
+	s.SetMetrics(p.Metrics())
+	if rec := p.Recorder(); rec != nil {
+		s.SetRecorder(rec)
 	}
 	if err := s.Connect(ctx, ip, port); err != nil {
 		return err
@@ -310,8 +272,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if p.activeSubs == nil {
 		p.activeSubs = make(map[subKey]*activeSubscription)
 	}
-	p.profile = &compliance.Profile{}
-	s.SetProfile(p.profile)
+	// The profile is connector-scoped, not per-session: it used to be
+	// replaced on every Connect, which threw away every deviation observed
+	// before a reconnect. probel already kept its own across Disconnect for
+	// exactly that reason.
+	s.SetProfile(p.ComplianceProfile())
 	// Start the keep-alive prober + watchdog (mirrors ACP1).
 	// context.Background() is intentional: the keepalive lives for the
 	// life of the session, not the caller's Connect ctx — we cancel
@@ -343,9 +308,7 @@ func (p *Plugin) Disconnect() error {
 	// One-line session summary, the same shape probel has emitted since the
 	// metrics work landed. Most consumer verbs are one-shot, so this is
 	// where the counters become visible at all.
-	if p.metrics != nil {
-		p.logger.Info("acp2 session metrics", slog.String("summary", p.metrics.Summary()))
-	}
+	p.logger.Info("acp2 session metrics", slog.String("summary", p.Metrics().Summary()))
 	if p.trees != nil {
 		p.trees.Clear()
 	}

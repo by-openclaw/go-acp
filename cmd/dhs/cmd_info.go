@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
+	"dhs/internal/consumer"
 )
 
 func runInfo(ctx context.Context, args []string) error {
@@ -35,23 +37,7 @@ func runInfo(ctx context.Context, args []string) error {
 		return err
 	}
 	if jsonOut {
-		out := deviceInfoJSON{
-			Device: fmt.Sprintf("%s:%d", info.IP, info.Port), Protocol: cf.protocol,
-			ProtocolVersion: info.ProtocolVersion, DtdVersion: info.DtdVersion,
-			Slots: info.NumSlots,
-		}
-		for slot := 0; slot < info.NumSlots; slot++ {
-			si, serr := plug.GetSlotInfo(opCtx, slot)
-			s := slotInfoJSON{Slot: slot}
-			if serr != nil {
-				s.Error = serr.Error()
-			} else {
-				s.Status, s.Online = si.Status.String(), si.IsOnline
-				s.Identity = si.Identity
-			}
-			out.SlotStatus = append(out.SlotStatus, s)
-		}
-		return emitReadJSON(out)
+		return emitReadJSON(buildInfoJSON(opCtx, plug, info, cf.protocol))
 	}
 	fmt.Printf("device       %s:%d\n", info.IP, info.Port)
 	fmt.Printf("protocol     %s v%d\n", cf.protocol, info.ProtocolVersion)
@@ -79,6 +65,28 @@ func runInfo(ctx context.Context, args []string) error {
 	return nil
 }
 
+// buildInfoJSON assembles the machine shape of `info` by asking the plugin
+// about every slot. A slot that cannot be read carries its error rather than
+// disappearing: a frame with one unreadable card still describes the rest.
+func buildInfoJSON(ctx context.Context, plug consumer.Protocol, info consumer.DeviceInfo, protocol string) deviceInfoJSON {
+	out := deviceInfoJSON{
+		Device: fmt.Sprintf("%s:%d", info.IP, info.Port), Protocol: protocol,
+		ProtocolVersion: info.ProtocolVersion, DtdVersion: info.DtdVersion,
+		Slots: info.NumSlots,
+	}
+	for slot := 0; slot < info.NumSlots; slot++ {
+		si, err := plug.GetSlotInfo(ctx, slot)
+		s := slotInfoJSON{Slot: slot}
+		if err != nil {
+			s.Error = err.Error()
+		} else {
+			s.Status, s.Online, s.Identity = si.Status.String(), si.IsOnline, si.Identity
+		}
+		out.SlotStatus = append(out.SlotStatus, s)
+	}
+	return out
+}
+
 // deviceInfoJSON / slotInfoJSON are the machine shape of `info`
 // (#751 G1c). Per-slot errors are carried, never swallowed.
 type deviceInfoJSON struct {
@@ -96,14 +104,11 @@ type slotInfoJSON struct {
 	Online bool   `json:"online"`
 	Error  string `json:"error,omitempty"`
 
-	// Identity is what the slot says it is, when the plugin knows: a label,
-	// a product, and on the protocols that have one, the node's own address.
-	//
-	// A slot number alone names a different node on a different topology, so
-	// two readings of the same plant — direct, through a proxy, through a
-	// bridge — can only be compared by what each node calls itself. The
-	// domain type has carried this since the beginning and this shape used
-	// to drop it on the floor, which left the field the runbooks tell
-	// operators to read, and an Ansible contract asserts on, absent.
+	// Identity is whatever the plugin knows about what is in the slot. On a
+	// frame a slot number names a place and the identity is a convenience; on
+	// a controller a slot number is a position in a list and the identity —
+	// the node's address above all — is the only thing that names the node.
+	// Omitted when the plugin fills nothing in, so protocols without the
+	// notion keep the shape they had.
 	Identity map[string]string `json:"identity,omitempty"`
 }

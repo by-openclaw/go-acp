@@ -12,8 +12,6 @@ import (
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
-	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
@@ -37,8 +35,8 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, met: deps.Metrics}
-	p.Configure(deps.Net, acp1StaleAfter)
+	p := &Plugin{logger: deps.Logger}
+	p.Init(deps, acp1StaleAfter)
 	return p
 }
 
@@ -108,13 +106,9 @@ type Plugin struct {
 	// ACP1 contributes only the stale window, the time source and —
 	// the part that used to be wrong — which network it is actually
 	// talking over.
-	consumer.Health
+	consumer.Base
 
 	logger *slog.Logger
-
-	// met counts every frame in and out. Supplied rather than created, so
-	// the process scrapes every connector from one place. Always non-nil.
-	met *metrics.Connector
 
 	mu        sync.Mutex
 	transport TransportKind
@@ -146,17 +140,9 @@ type Plugin struct {
 
 	subHandles map[subKey]SubHandle
 
-	// Optional traffic capture for unit test data generation.
-	recorder *transport.Recorder
-
 	// dialer opens the AN2 (Mode C) socket. Injected rather than built
 	// inline so the pipe is substitutable — see dial() for the default.
 	dialer transport.Dialer
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
 
 	// tsSink tracks the most-recent rx/tx wire timestamps so
 	// SessionHealth() can compute Live without blocking. Nil until
@@ -175,23 +161,6 @@ type Plugin struct {
 	// failure on the connected port can't be forced cross-platform with
 	// SO_REUSEADDR enabled).
 	newListener func(logger *slog.Logger, port int) (*Listener, error)
-}
-
-// ComplianceProfile returns the session-scoped compliance profile.
-// Returns nil if Connect hasn't been called yet. Safe to call from
-// any goroutine.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a traffic recorder to this plugin.
-// Call before Connect. All sent and received frames are recorded.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
 }
 
 // SetTransport selects UDP or TCP for subsequent Connect calls. Must be
@@ -282,12 +251,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	cfg := defaultCacheConfig()
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
-	p.profile = &compliance.Profile{}
 	// p.tsSink is guaranteed non-nil here: every transport path
 	// (connectUDP/connectTCP/connectAN2 above) allocates it before
 	// returning, so the former `if p.tsSink == nil` guard was unreachable.
 	p.walker = NewWalker(p.client)
-	p.walker.SetProfile(p.profile)
+	p.walker.SetProfile(p.ComplianceProfile())
 	p.logger.Info("acp1 connected",
 		"host", ip, "port", port, "transport", p.transport)
 
@@ -309,15 +277,6 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
-// Metrics returns the connector's counter set — frames and bytes in and
-// out, plus errors and latency. Satisfies the optional interface the CLI
-// type-asserts for --metrics-addr. Always non-nil.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.met
-}
-
 // clientHooks is the one place the rx/tx taps are built, so all three
 // transports (UDP, TCP direct, AN2) count and timestamp identically.
 //
@@ -325,7 +284,7 @@ func (p *Plugin) Metrics() *metrics.Connector {
 // count, not a decoded message, and ACP1's command axis (MCODE) is inside
 // the frame. Frames and bytes are what the scrape was missing entirely.
 func (p *Plugin) clientHooks() ClientConfig {
-	sink, met := p.tsSink, p.met
+	sink, met := p.tsSink, p.Metrics()
 	return ClientConfig{
 		OnRx: func(n int) {
 			if sink != nil {
@@ -356,15 +315,15 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	}
 	p.udpConn = conn
 	var tr Transport = conn
-	if p.recorder != nil {
-		tr = p.recorder.WrapTransport(conn, "acp1")
+	if rec := p.Recorder(); rec != nil {
+		tr = rec.WrapTransport(conn, "acp1")
 	}
 	// Wrap with timestamp tap so SessionHealth (#266) sees rx/tx
 	// activity without each call needing to probe the wire.
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	tr = &timestampingTransport{inner: tr, sink: p.tsSink, met: p.met}
+	tr = &timestampingTransport{inner: tr, sink: p.tsSink, met: p.Metrics()}
 	p.client = NewClient(tr, p.logger, ClientConfig{})
 
 	mkListener := p.newListener
@@ -470,9 +429,7 @@ func (p *Plugin) Disconnect() error {
 	// One-line session summary, the same shape probel has emitted since the
 	// metrics work landed. Most consumer verbs are one-shot, so this is
 	// where the counters become visible at all.
-	if p.met != nil {
-		p.logger.Info("acp1 session metrics", slog.String("summary", p.met.Summary()))
-	}
+	p.logger.Info("acp1 session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.walker = nil
 	p.trees = nil
 	p.subHandles = nil
