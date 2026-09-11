@@ -59,6 +59,26 @@ the 16-bit generation — the one a proxy also speaks, and the one the emulator
 does not exercise. Its cards advertise `Menus|Control|File` only: no
 `SV_LOC1`, so no thumbnails from this frame (they are audio cards).
 
+**When the frame stops answering RollCall** (TCP on 2050 still accepts, but
+`GETDEVINFO` times out), restart the gateway board over SNMP, which is out of
+band and keeps working. The command is Restart Unit in the gateway command set,
+cmdID 16706 (`iqh3aSystemSetupRestartUnit` in `SNELL-IQH3A-CMD-MIB`), at
+instance 256: the row whose Unit Name (16388) reads `FRAME_12 EMB`.
+
+```
+# prove the write community first: the MIB defines 0 as noAction, so this changes nothing
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 0
+# then restart the gateway board; the set times out because the board reboots before replying
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 1
+```
+
+Measured 2026-09-11 from `dhs-tools`, the only fleet host with net-snmp: SNMP
+answered 35 s later with a fresh uptime; RollCall did not answer within 2.5
+minutes and did within 4. Only the gateway board restarts; every card is a unit
+of its own and keeps running. SNMP read community `public`, write `private`.
+The vendor RollCall Control Panel on `win11` holds a connection to this frame
+of its own.
+
 Drive it with `ROLLCALL_TEST_HOST=10.6.255.113`. It is **read-only** in the
 play, like every real device.
 
