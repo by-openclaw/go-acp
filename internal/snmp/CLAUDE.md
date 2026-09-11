@@ -41,6 +41,18 @@ first for cross-cutting rules; this file holds the SNMP-specific scope.
   engine ID and the `sysObjectID` our agent answers are built from it.
   Arcs under it are ours to assign — in the generated DHS MIB, never ad
   hoc in code.
+- **DHS-MIB** is that module: `internal/snmp/mib/DHS-MIB.mib`, written by
+  `dhs producer snmp mib` (`internal/snmp/mibgen` from
+  `provider.DHSModule`) and kept current by `TestDHSMIBIsCurrent`. Arcs:
+  `54981.1` dhsProducts; `54981.1.1` dhsAgent — the agent's sysObjectID and
+  its v1 trap enterprise, with notifications at `dhsAgent.0.n` so the RFC
+  3584 mapping lands on a defined name; `54981.2` dhsMIB, objects at `.2.1`,
+  conformance at `.2.2`. A published arc is never reused; a changed
+  definition is a new REVISION in `provider/dhsmib.go`. Checked by our own
+  compiler (round-trip test) and by net-snmp `snmptranslate` on the tools
+  host (needs SNMPv2-SMI/TC/CONF beside it; Debian ships none).
+- **IEEE MAC block: none.** OUIs are sold by the IEEE Registration
+  Authority; software here uses locally administered addresses (`02:…`).
 - **IEEE MAC address block: none.** BY-SYSTEMS appears in none of the five
   IEEE registries (MA-L, MA-M, MA-S, IAB, CID) as of 2026-09-10. Blocks
   come from the IEEE Registration Authority
@@ -155,7 +167,10 @@ and the Snell set already in this repo:
 
     go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
         <by-protocol/mib>/ird <by-protocol/mib>/standard \
-        internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
+        internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
+        internal/snmp/mib
+
+(the last root is our own DHS-MIB, so the agent's names resolve too)
 
 Findings (duplicate modules and which copy won, names that did not resolve)
 are expected and listed with `-v`; they are not failures. Two rules decide

@@ -103,6 +103,27 @@ var (
 // under it are assigned in the generated DHS MIB, never ad hoc in code.
 var DHS = oid("1.3.6.1.4.1.54981")
 
+// The arcs under [DHS], as DHS-MIB (internal/snmp/mib/DHS-MIB.mib, written
+// by `dhs producer snmp mib`) defines them. Published arcs are permanent:
+// a manager that loaded the module keeps resolving these numbers, so an
+// arc is never reused for something else — a retired one stays retired.
+var (
+	// DHSProducts is 54981.1, the branch sysObjectID values come from.
+	DHSProducts = oid("1.3.6.1.4.1.54981.1")
+	// DHSAgent is 54981.1.1, the sysObjectID `dhs producer snmp serve`
+	// reports and the enterprise its v1 traps carry. Notifications are
+	// defined under DHSAgent.0 so the RFC 3584 §3.1 v1↔v2 mapping —
+	// enterprise, 0, specific — lands on a defined name both ways.
+	DHSAgent = oid("1.3.6.1.4.1.54981.1.1")
+	// DHSMIB is 54981.2, DHS-MIB's MODULE-IDENTITY. Its objects are at
+	// DHSObjects (.2.1) and its conformance statements at .2.2.
+	DHSMIB     = oid("1.3.6.1.4.1.54981.2")
+	DHSObjects = oid("1.3.6.1.4.1.54981.2.1")
+	// DHSTestNotification is DHSAgent.0.1: what `dhs producer snmp trap`
+	// sends by default, generic 6 / specific 1 in v1 terms.
+	DHSTestNotification = oid("1.3.6.1.4.1.54981.1.1.0.1")
+)
+
 // Name returns the name for an OID: the standard one when this package
 // defines it, else the deepest compiled name that covers it with the
 // remaining arcs, else the dotted form.

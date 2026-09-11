@@ -34,6 +34,7 @@ Ansible templates render the same shape.
 - [SNMP producer](#snmp-producer)
 - [SNMP agent: serve](#snmp-agent-serve)
 - [SNMP agent: trap](#snmp-agent-trap)
+- [SNMP agent: mib](#snmp-agent-mib)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -795,6 +796,8 @@ dhs producer snmp — BE an agent, and emit notifications
 VERBS
   serve   answer polls against a served MIB
   trap    send one notification to one or more receivers
+  mib     write DHS-MIB, the module defining what the agent serves and sends
+          under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
   status  runtime snapshot of a serving instance (--url)
   stop    stop one keyed on --pidfile
   ensure  converge to --state present|absent
@@ -810,6 +813,9 @@ EXAMPLES
   dhs producer snmp trap --to 10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # the module a receiver loads to name what it gets from us
+  dhs producer snmp mib --out DHS-MIB.mib
 
 NOTE
   Every trap destination on the devices in docs/testbed.md currently
@@ -860,7 +866,7 @@ Usage of trap:
   -engine-id string
     	name in this sender's RFC 3411 engine ID; v3 keys every localised key on it (default "dhs-agent")
   -enterprise string
-    	the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (default "1.3.6.1.4.1.54981")
+    	the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (the default with --specific 1 is dhsTestNotification in DHS-MIB) (default "1.3.6.1.4.1.54981.1.1")
   -generic int
     	RFC 1157 generic trap 0..6; 6 means look at --specific (default 6)
   -priv string
@@ -875,6 +881,18 @@ Usage of trap:
     	sysUpTime in CENTISECONDS at the event; 0 means now-since-start (which for a one-shot is 0)
   -user string
     	USM user name for v3 destinations
+```
+
+## SNMP agent: mib
+
+`dhs producer snmp mib --help`
+
+```text
+Usage of mib:
+  -contact string
+    	the module's CONTACT-INFO (default: BY-SYSTEMS SPRL)
+  -out string
+    	file to write (default: standard output)
 ```
 
 ## consumer info

@@ -69,8 +69,10 @@ func runSNMPProducer(ctx context.Context, args []string) error {
 		return runSNMPServe(ctx, rest)
 	case "trap":
 		return runSNMPTrapSend(ctx, rest)
+	case "mib":
+		return runSNMPMIB(ctx, rest)
 	}
-	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap)", verb)
+	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap | mib)", verb)
 }
 
 // snmpFlags are what every consumer verb needs to reach an agent.
@@ -382,18 +384,29 @@ func printBinds(binds []codec.VarBind, prefer []string) {
 	_ = w.Flush()
 }
 
-// writeBind is one line of printBinds or walk. An enumerated INTEGER is
-// shown as its MIB label with the number, snmp(4), the way net-snmp
-// shows it: the number alone is what an operator then has to look up.
+// writeBind is one line of printBinds or walk.
 func writeBind(w io.Writer, vb codec.VarBind, prefer []string) {
 	name, obj := mib.Describe(vb.Name, prefer...)
-	val := vb.Value.String()
-	if obj != nil && vb.Value.Type == codec.TypeInteger {
-		if label, ok := obj.EnumName(vb.Value.Int); ok {
-			val = fmt.Sprintf("%s(%d)", label, vb.Value.Int)
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, displayValue(vb.Value, obj, prefer))
+}
+
+// displayValue renders a value the way net-snmp does: an enumerated
+// INTEGER as its MIB label with the number, snmp(4), and an OBJECT
+// IDENTIFIER by name, sysObjectID.0 = dhsAgent. The bare number is what an
+// operator would otherwise have to look up.
+func displayValue(v codec.Value, obj *mib.Object, prefer []string) string {
+	switch v.Type {
+	case codec.TypeInteger:
+		if obj != nil {
+			if label, ok := obj.EnumName(v.Int); ok {
+				return fmt.Sprintf("%s(%d)", label, v.Int)
+			}
 		}
+	case codec.TypeOID:
+		name, _ := mib.Describe(v.OID, prefer...)
+		return name
 	}
-	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, val)
+	return v.String()
 }
 
 // printSNMPCompliance reports what the peer did that the RFCs do not
@@ -450,6 +463,8 @@ func printSNMPProducerHelp() {
 VERBS
   serve   answer polls against a served MIB
   trap    send one notification to one or more receivers
+  mib     write DHS-MIB, the module defining what the agent serves and sends
+          under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
   status  runtime snapshot of a serving instance (--url)
   stop    stop one keyed on --pidfile
   ensure  converge to --state present|absent
@@ -465,6 +480,9 @@ EXAMPLES
   dhs producer snmp trap --to 10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # the module a receiver loads to name what it gets from us
+  dhs producer snmp mib --out DHS-MIB.mib
 
 NOTE
   Every trap destination on the devices in docs/testbed.md currently

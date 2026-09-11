@@ -16,11 +16,13 @@ import (
 	"syscall"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/plugin"
 	"dhs/internal/snmp/codec"
 	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/snmp/mib"
+	"dhs/internal/snmp/mibgen"
 	snmpprov "dhs/internal/snmp/provider"
 	"dhs/internal/snmp/usm"
 )
@@ -62,14 +64,14 @@ func runSNMPServe(ctx context.Context, args []string) error {
 		}
 	}
 
-	tree := snmpprov.NewMIB()
-	if err := tree.Register(snmpprov.SystemGroup(snmpprov.SystemInfo{
+	tree, err := snmpServedTree(snmpprov.SystemInfo{
 		Descr:    *descr,
-		ObjectID: mib.DHS,
+		ObjectID: mib.DHSAgent,
 		Contact:  *contact,
 		Name:     *name,
 		Location: *location,
-	}, deps.Clock)...); err != nil {
+	}, deps.Clock)
+	if err != nil {
 		return err
 	}
 
@@ -93,6 +95,45 @@ func runSNMPServe(ctx context.Context, args []string) error {
 	return srv.Serve(ctx, *bind)
 }
 
+// snmpServedTree is the tree `serve` answers from. `mib` documents the
+// same tree, so the module it writes cannot drift from the agent.
+func snmpServedTree(info snmpprov.SystemInfo, clk clock.Clock) (*snmpprov.MIB, error) {
+	tree := snmpprov.NewMIB()
+	if err := tree.Register(snmpprov.SystemGroup(info, clk)...); err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+// runSNMPMIB writes DHS-MIB: the module that defines what the agent
+// serves and sends under BY-SYSTEMS' enterprise number, for loading into
+// a manager.
+func runSNMPMIB(_ context.Context, args []string) error {
+	fs := flag.NewFlagSet("mib", flag.ContinueOnError)
+	out := fs.String("out", "", "file to write (default: standard output)")
+	contact := fs.String("contact", "", "the module's CONTACT-INFO (default: "+snmpprov.DHSOrganization+")")
+	if err := parseVerbFlags(fs, args); err != nil {
+		return err
+	}
+	tree, err := snmpServedTree(snmpprov.SystemInfo{}, nil)
+	if err != nil {
+		return err
+	}
+	module, err := snmpprov.DHSModule(tree, *contact)
+	if err != nil {
+		return err
+	}
+	text, err := mibgen.Render(module)
+	if err != nil {
+		return err
+	}
+	if *out == "" {
+		_, err = fmt.Print(text)
+		return err
+	}
+	return os.WriteFile(*out, []byte(text), 0o600)
+}
+
 // runSNMPTrapSend emits one notification.
 //
 // It exists so a trap destination can be PROVEN before anything depends
@@ -102,7 +143,7 @@ func runSNMPServe(ctx context.Context, args []string) error {
 func runSNMPTrapSend(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("trap", flag.ContinueOnError)
 	to := fs.String("to", "", "comma-separated receivers as ADDR[:PORT][/VERSION[/COMMUNITY-OR-USER]] — e.g. 10.6.250.5,10.6.255.9:162/1/public,10.6.250.7/3/operator")
-	enterprise := fs.String("enterprise", mib.DHS.String(), "the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity")
+	enterprise := fs.String("enterprise", mib.DHSAgent.String(), "the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (the default with --specific 1 is dhsTestNotification in DHS-MIB)")
 	generic := fs.Int("generic", int(codec.EnterpriseSpecific), "RFC 1157 generic trap 0..6; 6 means look at --specific")
 	specific := fs.Int("specific", 1, "enterprise-specific trap number, meaningful when --generic is 6")
 	agentAddr := fs.String("agent-addr", "", "the v1 agent-address field (default: this host's outbound address). v2c and v3 have no such field.")
@@ -292,6 +333,18 @@ func parseIPArg(s string) net.IP {
 	return ip.To4()
 }
 
+// trapLine is the listener's summary of one notification, with the
+// notification's MIB name after its number when the compiled MIBs know it
+// — dhsTestNotification, coldStart, a vendor's alarm. The number stays:
+// it is what a receiver's filter is written against.
+func trapLine(t snmpcons.Trap) string {
+	line := t.String()
+	if name := mib.Name(t.TrapOID); name != t.TrapOID.String() {
+		line += " " + name
+	}
+	return line
+}
+
 // runSNMPTrapListen receives notifications until interrupted.
 func runSNMPTrapListen(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("trap-listen", flag.ContinueOnError)
@@ -342,9 +395,10 @@ func runSNMPTrapListen(ctx context.Context, args []string) error {
 	defer cancel()
 
 	err := l.Listen(ctx, func(t snmpcons.Trap) {
-		fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339), t)
+		fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339), trapLine(t))
 		for _, vb := range t.VarBinds {
-			fmt.Printf("    %s = %s\n", mib.Name(vb.Name), vb.Value)
+			name, obj := mib.Describe(vb.Name)
+			fmt.Printf("    %s = %s\n", name, displayValue(vb.Value, obj, nil))
 		}
 	})
 	if prof, ok := opts.Compliance.(*compliance.Profile); ok {

@@ -134,8 +134,10 @@ func TestTheDefaults(t *testing.T) {
 		t.Errorf("sysServices.0 = %s, want the application-layer default", obj.Get())
 	}
 	obj, _ = m.Get(mib.SysObjectID)
-	if obj.Get().OID.Compare(mib.DHS) != 0 {
-		t.Errorf("sysObjectID.0 = %s, want our own sub-tree", obj.Get())
+	// The product under our enterprise, not the enterprise itself:
+	// sysObjectID names what the device is, and DHS-MIB defines it.
+	if obj.Get().OID.Compare(mib.DHSAgent) != 0 {
+		t.Errorf("sysObjectID.0 = %s, want dhsAgent", obj.Get())
 	}
 
 	// A nil clock is the system clock, not a panic on the first read.

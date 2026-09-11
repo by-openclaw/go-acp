@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/mibgen"
 )
 
 // Access is what a manager may do with an object.
@@ -77,6 +78,13 @@ type Object struct {
 	// Set applies a write. Required when Access is ReadWrite, ignored
 	// otherwise. An error here becomes the response's error-status.
 	Set func(codec.Value) error
+
+	// Name and Description are the object's MIB definition: what
+	// `dhs producer snmp mib` writes for it. The agent answers without
+	// them, but an object served under our own enterprise (mib.DHS) needs
+	// both, or the MIB that documents it cannot be generated.
+	Name        string
+	Description string
 }
 
 // MIB is the ordered set of objects an agent serves.
@@ -177,6 +185,40 @@ func (m *MIB) Next(oid codec.OID) (Object, bool) {
 // First returns the first accessible object in the tree, which is where
 // a walk of the whole agent starts.
 func (m *MIB) First() (Object, bool) { return m.Next(nil) }
+
+// Definitions returns the MIB definitions of every accessible object
+// served under root, which is what a generated module is written from.
+//
+// It refuses rather than guesses: an object with no Name cannot be
+// defined, and one whose OID does not end in .0 is a table cell, which the
+// generator does not write yet. Either would produce a module that did not
+// describe what the agent serves, and a manager would believe the module.
+func (m *MIB) Definitions(root codec.OID) ([]mibgen.Object, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []mibgen.Object
+	for _, o := range m.objects {
+		if !o.OID.HasPrefix(root) || o.Access == NotAccessible {
+			continue
+		}
+		n := len(o.OID)
+		switch {
+		case o.Name == "":
+			return nil, fmt.Errorf("snmp: %s is served under %s with no Name, so no MIB can define it", o.OID, root)
+		case o.OID[n-1] != 0:
+			return nil, fmt.Errorf("snmp: %s (%s) is not a scalar instance ending in .0; tables are not generated yet", o.Name, o.OID)
+		}
+		access := mibgen.ReadOnly
+		if o.Access == ReadWrite {
+			access = mibgen.ReadWrite
+		}
+		out = append(out, mibgen.Object{
+			Name: o.Name, OID: append(codec.OID(nil), o.OID[:n-1]...),
+			Syntax: o.Type, Access: access, Description: o.Description,
+		})
+	}
+	return out, nil
+}
 
 // indexOf finds an exact OID. Caller holds the lock.
 func (m *MIB) indexOf(oid codec.OID) int {

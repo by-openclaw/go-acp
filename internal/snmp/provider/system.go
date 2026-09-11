@@ -75,7 +75,9 @@ func SystemGroup(info SystemInfo, clk clock.Clock) []Object {
 	}
 	objectID := info.ObjectID
 	if len(objectID) == 0 {
-		objectID = mib.DHS
+		// The product, not the organisation: sysObjectID names what the
+		// device IS, and 54981 alone says only who made it.
+		objectID = mib.DHSAgent
 	}
 
 	return []Object{

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"dhs/internal/snmp/codec"
+	snmpcons "dhs/internal/snmp/consumer"
+	"dhs/internal/snmp/mib"
 )
 
 func TestWriteBind(t *testing.T) {
@@ -29,6 +31,11 @@ func TestWriteBind(t *testing.T) {
 			"userLsdPid.0\tINTEGER\t1\n"},
 		{"nothing covers it", codec.VarBind{Name: codec.MustParseOID("2.999.1"), Value: codec.Int(1)}, nil,
 			"2.999.1\tINTEGER\t1\n"},
+		// The agent's own identity, named from DHS-MIB.
+		{"an OID value is named", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(mib.DHSAgent)}, nil,
+			"sysObjectID.0\t" + codec.TypeOID.String() + "\tdhsAgent\n"},
+		{"an OID value nothing names stays dotted", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(codec.MustParseOID("2.999"))}, nil,
+			"sysObjectID.0\t" + codec.TypeOID.String() + "\t2.999\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var b bytes.Buffer
@@ -37,6 +44,18 @@ func TestWriteBind(t *testing.T) {
 				t.Errorf("= %q, want %q", b.String(), tc.want)
 			}
 		})
+	}
+}
+
+// A received notification is named from the MIBs, after its number.
+func TestTrapLine(t *testing.T) {
+	named := snmpcons.Trap{Version: codec.Version2c, Community: "public", TrapOID: mib.DHSTestNotification}
+	if got, want := trapLine(named), named.String()+" dhsTestNotification"; got != want {
+		t.Errorf("= %q, want %q", got, want)
+	}
+	unnamed := snmpcons.Trap{Version: codec.Version2c, Community: "public", TrapOID: codec.MustParseOID("2.999.1")}
+	if got := trapLine(unnamed); got != unnamed.String() {
+		t.Errorf("= %q, want the line unchanged", got)
 	}
 }
 
