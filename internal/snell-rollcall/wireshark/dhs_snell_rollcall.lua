@@ -167,10 +167,15 @@ local term_code = {
 }
 
 -- Menu styles (spec 12.7). The kind is the low nibble; the rest are flags.
+-- Menu line styles (spec 12.6). The high nibble of rStyle is the line kind;
+-- the low nibble carries flags; bit 15 defers a redraw on a back-channel
+-- update. This table used to take the kind from the low nibble and the flags
+-- from bits 0x10 to 0x40, which named every menu line in every capture wrongly.
 local style_kind = {
-    [0] = "List", [1] = "Number", [2] = "EditString", [3] = "Checkbox",
-    [4] = "Display", [5] = "Button", [6] = "VGraph", [7] = "HGraph",
-    [8] = "VLevel", [9] = "HLevel", [10] = "Tiled", [11] = "Partial",
+    [0x00] = "Tiled", [0x10] = "List", [0x20] = "Display", [0x30] = "Button",
+    [0x40] = "Checkbox", [0x50] = "Number", [0x60] = "VGraph", [0x70] = "HGraph",
+    [0x80] = "EditString", [0x90] = "VLevel", [0xA0] = "HLevel", [0xB0] = "Partial",
+    [0xC0] = "Data", [0xD0] = "Link",
 }
 
 local mode_bits = {
@@ -529,11 +534,14 @@ local function bits_string(value, bits)
 end
 
 local function style_string(v)
-    local kind = style_kind[bit.band(v, 0x0F)] or string.format("kind%d", bit.band(v, 0x0F))
+    local k = bit.band(v, 0x00F0)
+    local kind = style_kind[k] or string.format("kind0x%02X", k)
     local flags = {}
-    if bit.band(v, 0x0010) ~= 0 then table.insert(flags, "hidden") end
-    if bit.band(v, 0x0020) ~= 0 then table.insert(flags, "disabled") end
-    if bit.band(v, 0x0040) ~= 0 then table.insert(flags, "cacheable") end
+    if bit.band(v, 0x0008) ~= 0 then table.insert(flags, "hidden") end
+    if bit.band(v, 0x0004) ~= 0 then table.insert(flags, "disabled") end
+    if bit.band(v, 0x0002) ~= 0 then table.insert(flags, "wraps") end
+    if bit.band(v, 0x0001) ~= 0 then table.insert(flags, "cacheable") end
+    if bit.band(v, 0x8000) ~= 0 then table.insert(flags, "deferred") end
     if #flags == 0 then
         return kind
     end

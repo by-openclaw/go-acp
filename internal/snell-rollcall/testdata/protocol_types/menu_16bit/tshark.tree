@@ -79,7 +79,7 @@ Frame 4: Packet, 132 bytes on wire (1056 bits), 132 bytes captured (1056 bits) o
 Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
 Internet Protocol Version 4, Src: 10.6.250.200, Dst: 10.6.255.113
 Transmission Control Protocol, Src Port: 50000, Dst Port: 2050, Seq: 29, Ack: 47, Len: 78
-Snell RollCall: RETFUNC line 0 cmd=0 List+hidden "Menu"
+Snell RollCall: RETFUNC line 0 cmd=0 List "Menu"
     TX flags: 12
     TX length: 74
     Destination: 0000-00-00:2
@@ -99,7 +99,7 @@ Snell RollCall: RETFUNC line 0 cmd=0 List+hidden "Menu"
         .0.. .... = Wide area: False
     Payload: 000000100000000000000000000000a800004d656e75000000000000000000000000000000000000000000000000000000000000000000000000
         Menu index: 0
-        Style: 0x0010 (List+hidden)
+        Style: 0x0010 (List)
         Command: 0
         Minimum: 0
         Maximum: 0
@@ -137,7 +137,7 @@ Frame 6: Packet, 132 bytes on wire (1056 bits), 132 bytes captured (1056 bits) o
 Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
 Internet Protocol Version 4, Src: 10.6.250.200, Dst: 10.6.255.113
 Transmission Control Protocol, Src Port: 50000, Dst Port: 2050, Seq: 107, Ack: 71, Len: 78
-Snell RollCall: RETFUNC line 1 cmd=0 VLevel+hidden+disabled "RETURN"
+Snell RollCall: RETFUNC line 1 cmd=0 Partial+hidden "RETURN"
     TX flags: 12
     TX length: 74
     Destination: 0000-00-00:2
@@ -157,7 +157,7 @@ Snell RollCall: RETFUNC line 1 cmd=0 VLevel+hidden+disabled "RETURN"
         .0.. .... = Wide area: False
     Payload: 000100b8000000000000000000000000000052455455524e00000000000000000000000000000000000000000000000000000000000000000000
         Menu index: 1
-        Style: 0x00b8 (VLevel+hidden+disabled)
+        Style: 0x00b8 (Partial+hidden)
         Command: 0
         Minimum: 0
         Maximum: 0

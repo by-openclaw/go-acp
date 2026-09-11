@@ -18,9 +18,9 @@ The 32-bit generation carries the same information in `MENUITEM_STR` with a
     GETFUNC     0000-00-00:2 -> 0000-0C-01:4
     BLOCKHEADER 0000-0C-01:4 -> 0000-00-00:2   167 items of GETFUNC
     GETNEXTPKT  0000-00-00:2 -> 0000-0C-01:4   item 0 of GETFUNC
-    RETFUNC     0000-0C-01:4 -> 0000-00-00:2   line 0 cmd=0 List+hidden "Menu"
+    RETFUNC     0000-0C-01:4 -> 0000-00-00:2   line 0 cmd=0 List "Menu"
     GETNEXTPKT  0000-00-00:2 -> 0000-0C-01:4   item 1 of GETFUNC
-    RETFUNC     0000-0C-01:4 -> 0000-00-00:2   line 1 cmd=0 VLevel+hidden+disabled "RETURN"
+    RETFUNC     0000-0C-01:4 -> 0000-00-00:2   line 1 cmd=0 Partial+hidden "RETURN"
 
 `0000-0C-01` is an IQDBE00 Nodal card, reached as port 1 of the IQ frame's
 gateway (unit `0x0C`). A card of 167 lines costs 167 round trips in this

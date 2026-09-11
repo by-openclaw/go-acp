@@ -78,7 +78,7 @@ Frame 4: Packet, 92 bytes on wire (736 bits), 92 bytes captured (736 bits) on in
 Null/Loopback
 Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
 Transmission Control Protocol, Src Port: 2057, Dst Port: 51246, Seq: 29, Ack: 49, Len: 48
-Snell RollCall: RETMENUITEM line 0 cmd=0 List+hidden "Menu"
+Snell RollCall: RETMENUITEM line 0 cmd=0 List "Menu"
     TX flags: 12
     TX length: 44
     Destination: 0000-00-00:2
@@ -98,7 +98,7 @@ Snell RollCall: RETMENUITEM line 0 cmd=0 List+hidden "Menu"
         .0.. .... = Wide area: False
     Payload: 000000000010000000000000000000000000000200004d656e750000
         Menu index: 0
-        Style: 0x0010 (List+hidden)
+        Style: 0x0010 (List)
         Command: 0
         Minimum: 0
         Maximum: 0

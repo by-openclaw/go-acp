@@ -17,7 +17,7 @@ command and fixed-width text (section 11.4.1).
     GETMENUCOUNT  0000-00-00:2 -> 0000-11-00:50   from 0
     RETMENUCOUNT  0000-11-00:50 -> 0000-00-00:2   3 lines from 0
     GETMENUITEM   0000-00-00:2 -> 0000-11-00:50   from 0
-    RETMENUITEM   0000-11-00:50 -> 0000-00-00:2   line 0 cmd=0 List+hidden "Menu"
+    RETMENUITEM   0000-11-00:50 -> 0000-00-00:2   line 0 cmd=0 List "Menu"
 
 `0000-11-00` is a Router Matrix, and three lines is its whole menu: a root, a
 way back out, and a notice. That is not a truncated read — a matrix node
