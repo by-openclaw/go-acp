@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -219,9 +220,7 @@ type tcpSession struct {
 }
 
 func newTCPSessionRegistry(logger *slog.Logger) *tcpSessionRegistry {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &tcpSessionRegistry{
 		logger:   logger,
 		sessions: map[uint64]*tcpSession{},

@@ -8,6 +8,7 @@ import (
 	"dhs/internal/metrics"
 	"dhs/internal/osc/codec"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 )
 
 // The provider exposed no metrics at all, so `producer osc-v10 serve
@@ -109,7 +110,7 @@ func TestTCPDialerCountsFramedBytes(t *testing.T) {
 	}()
 
 	met := metrics.NewConnector()
-	d := newTCPDialer(framerLenPrefix, met)
+	d := newTCPDialer(framerLenPrefix, met, transport.New(transport.Config{}).Dial)
 	t.Cleanup(func() { _ = d.close() })
 
 	host, portStr, _ := net.SplitHostPort(ln.Addr().String())

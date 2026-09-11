@@ -12,12 +12,15 @@ import (
 	"dhs/internal/tsl/codec"
 )
 
-// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
-// to dialed TCP connections. TSL v5.0 over TCP carries no in-protocol
-// keep-alive (verified empirically against VSM 2026-04-26 — 77 s of
-// data flow with zero keep-alive frames), so the OS-layer probe is the
-// dead-socket detector when the consumer goes away without sending FIN.
-const DefaultTCPKeepalivePeriod = 30 * time.Second
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period on dialed
+// TCP connections. TSL v5.0 over TCP carries no in-protocol keep-alive
+// (verified empirically against VSM 2026-04-26 — 77 s of data flow with
+// zero keep-alive frames), so the OS-layer probe is the dead-socket
+// detector when the consumer goes away without sending FIN. It is the
+// transport's default: the dialer opens sockets through the injected
+// transport, so the period is the process's transport.Config (the
+// `--keepalive` flag), not a value this package applies.
+const DefaultTCPKeepalivePeriod = transport.DefaultTCPKeepalivePeriod
 
 // tcpDialer maintains outbound TCP connections to v5.0 consumers (MVs).
 // Per the TallyArbiter reference + Miranda emulator convention, the
@@ -32,21 +35,22 @@ type tcpDialer struct {
 	mu    sync.Mutex
 	conns map[string]net.Conn // keyed by "host:port"
 
-	// dialer opens each outbound connection. Injected rather than calling
-	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
-	// applied by the shared dialer instead of by a separate call here.
-	dialer transport.Dialer
+	// open opens each outbound connection: the owning provider's Base.Dial,
+	// i.e. the injected transport, so the process owns the socket posture
+	// (keepalive at transport.DefaultTCPKeepalivePeriod, TLS, source
+	// address) and a test substitutes a fake Net. The connector never
+	// decides how a socket is made.
+	open dialFunc
 }
 
-func newTCPDialer(met *metrics.Connector) *tcpDialer {
+// dialFunc is the shape of provider.Base.Dial / transport.Net.Dial.
+type dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
+
+func newTCPDialer(met *metrics.Connector, dial dialFunc) *tcpDialer {
 	return &tcpDialer{
 		met:   met,
 		conns: map[string]net.Conn{},
-		dialer: transport.TCPDialer{
-			Options: transport.SocketOptions{
-				KeepalivePeriod: DefaultTCPKeepalivePeriod,
-			},
-		},
+		open:  dial,
 	}
 }
 
@@ -63,7 +67,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
+	c, err := d.open(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("tsl v5.0 TCP dial %s: %w", key, err)
 	}
@@ -75,6 +79,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 // On write error the connection is closed and dropped so the next send
 // redials.
 func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
+	start := time.Now() // send footprint: encode + dial + write
 	packet, err := p.Encode()
 	if err != nil {
 		return fmt.Errorf("tsl v5.0 encode: %w", err)
@@ -87,7 +92,7 @@ func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
 	}
 	if _, werr := c.Write(wrapped); werr == nil {
 		if d.met != nil {
-			d.met.ObserveTx(len(wrapped), 0)
+			d.met.ObserveTx(len(wrapped), time.Since(start))
 		}
 	} else {
 		// Close + forget on write failure.

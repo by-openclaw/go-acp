@@ -83,13 +83,13 @@ func standardTiming(b0, b1 byte) (VideoMode, bool) {
 	}, true
 }
 
-// detailedTiming decodes an 18-byte Detailed Timing Descriptor
-// (E-EDID §3.10.2). A zero pixel clock (bytes 0-1) means the slot is
-// a monitor descriptor, not a timing — ok=false.
-func detailedTiming(d []byte) (VideoMode, bool) {
-	if len(d) < 18 {
-		return VideoMode{}, false
-	}
+// detailedTiming decodes a Detailed Timing Descriptor (E-EDID
+// §3.10.2). The descriptor is exactly 18 bytes, and taking an array
+// rather than a slice makes that the caller's problem at compile
+// time instead of a length check no caller can fail. A zero pixel
+// clock (bytes 0-1) means the slot is a monitor descriptor, not a
+// timing — ok=false.
+func detailedTiming(d [18]byte) (VideoMode, bool) {
 	pclk := int(d[0]) | int(d[1])<<8 // ×10 kHz, little-endian
 	if pclk == 0 {
 		return VideoMode{}, false

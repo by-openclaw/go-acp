@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/plugin"
 	stdhttp "net/http"
 
 	"dhs/internal/amwa/codec/is04"
@@ -186,6 +187,19 @@ type SubscriptionManager struct {
 	mu   sync.Mutex
 	subs map[string]*subscription
 
+	// grain is the renderer every push path goes through. It is a
+	// field rather than a package variable because the push paths run
+	// on the subscriber's own goroutines: a test that swapped a global
+	// while a socket was live raced against the server reading it, and
+	// -race said so on Linux while Windows stayed quiet. Set once at
+	// construction, and by a test BEFORE the manager takes traffic.
+	//
+	// It exists at all so a grain that cannot be rendered can be shown
+	// to be reported and skipped rather than sent half-formed — the
+	// store's own documents always marshal, so the arm is otherwise
+	// unreachable.
+	grain func(source string, changes []Change, now time.Time) ([]byte, error)
+
 	// wsPing / wsIdle keep subscriber sockets honest. Unlike every other
 	// reaper in the tree these default ON, because here we supply the
 	// traffic that makes silence meaningful: the Registry pings, the
@@ -218,9 +232,7 @@ func (m *SubscriptionManager) setWSLifecycleHooks(open, closed func(resourcePath
 // NewSubscriptionManager builds the manager + wires it to the store.
 // advertiseHost is the host:port we use to construct ws_href.
 func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, apiVer string) *SubscriptionManager {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = is04.APIVersion
 	}
@@ -231,6 +243,7 @@ func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, ap
 		apiVer:        apiVer,
 		wsScheme:      "ws",
 		subs:          make(map[string]*subscription),
+		grain:         buildBatchGrain,
 	}
 	store.AddListener(m.onChange)
 	return m
@@ -554,7 +567,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			byTopic[topic] = append(byTopic[topic], c)
 		}
 		for _, topic := range order {
-			frame, err := buildBatchGrain(sub.source, byTopic[topic], now)
+			frame, err := m.grain(sub.source, byTopic[topic], now)
 			if err != nil {
 				m.logger.Warn("registry/subs: build sync grain", "err", err)
 				continue
@@ -587,20 +600,7 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 
 		stopPing := make(chan struct{})
 		if ping > 0 {
-			go func() {
-				t := time.NewTicker(ping)
-				defer t.Stop()
-				for {
-					select {
-					case <-stopPing:
-						return
-					case <-t.C:
-						if err := ws.SendPing(nil); err != nil {
-							return // socket gone; the reader will finish up
-						}
-					}
-				}
-			}()
+			go pingUntil(ws, ping, stopPing)
 		}
 
 		go func() {
@@ -612,6 +612,25 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 				}
 			}
 		}()
+	}
+}
+
+// pingUntil pings the subscriber on its interval until the socket
+// refuses one or the caller stops it. A ping that fails needs no
+// handling of its own: the reader is already unblocking on the same
+// dead socket and owns the teardown.
+func pingUntil(ws *httpsession.WebSocket, every time.Duration, stop <-chan struct{}) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-t.C:
+			if err := ws.SendPing(nil); err != nil {
+				return
+			}
+		}
 	}
 }
 
@@ -681,7 +700,7 @@ func (m *SubscriptionManager) onChange(c Change) {
 func (m *SubscriptionManager) enqueue(s *subscription, c Change) {
 	if s.MaxUpdateRate <= 0 {
 		now := time.Now()
-		frame, err := buildBatchGrain(s.source, []Change{c}, now)
+		frame, err := m.grain(s.source, []Change{c}, now)
 		if err != nil {
 			return
 		}
@@ -728,7 +747,7 @@ func (m *SubscriptionManager) flush(s *subscription) {
 		byTopic[topic] = append(byTopic[topic], c)
 	}
 	for _, topic := range order {
-		frame, err := buildBatchGrain(s.source, byTopic[topic], now)
+		frame, err := m.grain(s.source, byTopic[topic], now)
 		if err != nil {
 			continue
 		}
@@ -1114,13 +1133,18 @@ func buildBatchGrain(source string, changes []Change, now time.Time) ([]byte, er
 	return json.Marshal(g)
 }
 
+// randRead is the entropy source behind newUUIDLike, kept as a
+// package var so a test can prove the failure path answers 500
+// rather than minting a subscription with an empty id.
+var randRead = rand.Read
+
 // newUUIDLike returns a v4-shaped UUID built from crypto/rand. We
 // don't need RFC 4122 strictness here — Subscription IDs are opaque
 // to clients — but the v4 shape keeps every IS-04 id pattern check
 // happy.
 func newUUIDLike() (string, error) {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return "", err
 	}
 	b[6] = (b[6] & 0x0f) | 0x40 // version 4

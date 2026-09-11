@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,6 +134,87 @@ func TestProductYAML_AbsentFile(t *testing.T) {
 	}
 	if !os.IsNotExist(unwrapPathErr(err)) {
 		t.Fatalf("err = %v, want os.ErrNotExist underneath", err)
+	}
+}
+
+// TestProductYAML_LoadRejects pins the reader's two refusals: bytes
+// that are not the JSON-as-YAML envelope, and an envelope missing the
+// (model, sw_rev) key — a product.yaml that cannot say which schema it
+// describes is worse than none.
+func TestProductYAML_LoadRejects(t *testing.T) {
+	cases := []struct {
+		name, content, wantErr string
+	}{
+		{"not JSON", "product:\n  model: RRS18\n", "dmlib: decode "},
+		{"model missing", `{"product":{"sw_rev":"1601"}}`, "missing model or sw_rev"},
+		{"sw_rev missing", `{"product":{"model":"RRS18"}}`, "missing model or sw_rev"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "product.yaml")
+			if err := os.WriteFile(path, []byte(tc.content), 0o644); err != nil {
+				t.Fatalf("write: %v", err)
+			}
+			pm, ip, wm, sp, err := LoadProductYAML(path)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want containing %q", err, tc.wantErr)
+			}
+			if pm != nil || ip != nil || wm != nil || sp != nil {
+				t.Fatalf("failed load must return nothing: %v %v %v %v", pm, ip, wm, sp)
+			}
+		})
+	}
+}
+
+// TestProductYAML_SaveFailures pins the writer: nil metadata is refused,
+// a walk timestamp JSON cannot represent is an encode error, and each
+// I/O step (mkdir through a file, write onto a directory, rename onto
+// a directory) is named in the error with no .tmp left behind.
+func TestProductYAML_SaveFailures(t *testing.T) {
+	meta := &ProductMeta{Model: "RRS18", SwRev: "1601"}
+	cases := []struct {
+		name    string
+		path    func(t *testing.T) string
+		meta    *ProductMeta
+		walk    *WalkMetadata
+		wantErr string
+	}{
+		{"nil metadata", func(t *testing.T) string { return filepath.Join(t.TempDir(), "product.yaml") }, nil, nil, "missing model or sw_rev"},
+		{"unencodable walk timestamp", func(t *testing.T) string { return filepath.Join(t.TempDir(), "product.yaml") }, meta,
+			&WalkMetadata{WalkedAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)}, "dmlib: encode "},
+		{"parent is a file", func(t *testing.T) string {
+			parent := filepath.Join(t.TempDir(), "RRS18-1601")
+			if err := os.WriteFile(parent, []byte("x"), 0o644); err != nil {
+				t.Fatalf("plant: %v", err)
+			}
+			return filepath.Join(parent, "product.yaml")
+		}, meta, nil, "dmlib: mkdir "},
+		{"tmp is a directory", func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "product.yaml")
+			if err := os.MkdirAll(path+".tmp", 0o755); err != nil {
+				t.Fatalf("plant: %v", err)
+			}
+			return path
+		}, meta, nil, "dmlib: write "},
+		{"destination is a directory", func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "product.yaml")
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				t.Fatalf("plant: %v", err)
+			}
+			return path
+		}, meta, nil, "dmlib: rename "},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := tc.path(t)
+			err := SaveProductYAML(path, tc.meta, nil, tc.walk, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want containing %q", err, tc.wantErr)
+			}
+			if st, serr := os.Stat(path + ".tmp"); serr == nil && !st.IsDir() {
+				t.Fatal("leftover .tmp after failure")
+			}
+		})
 	}
 }
 

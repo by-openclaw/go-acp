@@ -2,6 +2,8 @@ package dnssd
 
 import (
 	"log/slog"
+
+	"dhs/internal/plugin"
 )
 
 // tryDaemonBrowserFn / tryDaemonResponderFn indirect the build-tagged daemon
@@ -30,9 +32,7 @@ var (
 // daemon should still register against an mDNS Registry, just without
 // the sub-millisecond cascade-timing precision a daemon would provide.
 func NewBrowser(logger *slog.Logger) (Browser, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if br, ok := tryDaemonBrowserFn(logger); ok {
 		return br, nil
 	}
@@ -43,9 +43,7 @@ func NewBrowser(logger *slog.Logger) (Browser, error) {
 // NewResponder returns the best [Responder] implementation for the host
 // using the same selection rule as [NewBrowser].
 func NewResponder(logger *slog.Logger) (Responder, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if rs, ok := tryDaemonResponderFn(logger); ok {
 		return rs, nil
 	}

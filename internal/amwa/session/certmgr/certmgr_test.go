@@ -33,20 +33,30 @@ type mockEST struct {
 	caCert *x509.Certificate
 	caKey  *ecdsa.PrivateKey
 	serial int64
+	// signCert / signKey are what issued certificates chain to. They
+	// are the CA above unless a test swaps in a rogue issuer, which is
+	// how "the EST server handed back a certificate that does not
+	// chain to the CA it bootstrapped" is produced.
+	signCert *x509.Certificate
+	signKey  *ecdsa.PrivateKey
 
 	enrolls      atomic.Int32
 	reenrolls    atomic.Int32
 	retryFirst   bool
 	sawPeerCert  atomic.Bool
 	lastReenroll atomic.Value // string CN of the peer cert on reenroll
+	// override replaces the handler for one EST path, so a test can
+	// script exactly one misbehaving exchange.
+	override map[string]stdhttp.HandlerFunc
 }
 
-func newMockEST(t *testing.T) *mockEST {
+// newCA mints a self-signed CA.
+func newCA(t *testing.T, cn string) (*x509.Certificate, *ecdsa.PrivateKey) {
 	t.Helper()
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tmpl := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "dhs Mock EST CA"},
+		Subject:               pkix.Name{CommonName: cn},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(48 * time.Hour),
 		IsCA:                  true,
@@ -58,7 +68,16 @@ func newMockEST(t *testing.T) *mockEST {
 		t.Fatalf("mock CA: %v", err)
 	}
 	cert, _ := x509.ParseCertificate(der)
-	return &mockEST{caCert: cert, caKey: key, serial: 100}
+	return cert, key
+}
+
+func newMockEST(t *testing.T) *mockEST {
+	t.Helper()
+	cert, key := newCA(t, "dhs Mock EST CA")
+	return &mockEST{
+		caCert: cert, caKey: key, signCert: cert, signKey: key, serial: 100,
+		override: map[string]stdhttp.HandlerFunc{},
+	}
 }
 
 func (mk *mockEST) sign(t *testing.T, req *x509.CertificateRequest, life time.Duration) *x509.Certificate {
@@ -75,7 +94,7 @@ func (mk *mockEST) sign(t *testing.T, req *x509.CertificateRequest, life time.Du
 		// renewals too).
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, mk.caCert, req.PublicKey, mk.caKey)
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, mk.signCert, req.PublicKey, mk.signKey)
 	if err != nil {
 		t.Fatalf("mock sign: %v", err)
 	}
@@ -83,7 +102,43 @@ func (mk *mockEST) sign(t *testing.T, req *x509.CertificateRequest, life time.Du
 	return c
 }
 
+// server is the mock over TLS, presenting a certificate from its own
+// CA — the configuration the explicit-trust bootstrap is designed for.
 func (mk *mockEST) server(t *testing.T, leafLife time.Duration) *httptest.Server {
+	t.Helper()
+	ts := httptest.NewUnstartedServer(mk.handler(t, leafLife))
+	// The mock EST server presents a cert signed by ITS OWN CA — that
+	// is what the client verifies against after bootstrap (the spec's
+	// explicit-trust flow), so httptest's default self-signed cert
+	// would be rejected exactly as a rogue server should be.
+	srvKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	mk.serial++
+	srvTmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(mk.serial),
+		Subject:      pkix.Name{CommonName: "est.test.local"},
+		DNSNames:     []string{"est.test.local", "localhost"},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	srvDER, err := x509.CreateCertificate(rand.Reader, srvTmpl, mk.caCert, &srvKey.PublicKey, mk.caKey)
+	if err != nil {
+		t.Fatalf("mock server cert: %v", err)
+	}
+	ts.TLS = &tls.Config{
+		ClientAuth:   tls.RequestClientCert,
+		Certificates: []tls.Certificate{{Certificate: [][]byte{srvDER}, PrivateKey: srvKey}},
+	}
+	ts.StartTLS()
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// handler is the EST surface: /cacerts + /simpleenroll +
+// /simplereenroll, with per-path overrides consulted first.
+func (mk *mockEST) handler(t *testing.T, leafLife time.Duration) stdhttp.Handler {
 	t.Helper()
 	mux := stdhttp.NewServeMux()
 	readCSR := func(r *stdhttp.Request) *x509.CertificateRequest {
@@ -116,48 +171,27 @@ func (mk *mockEST) server(t *testing.T, leafLife time.Duration) *httptest.Server
 			w.WriteHeader(stdhttp.StatusServiceUnavailable)
 			return
 		}
-		if len(r.TLS.PeerCertificates) > 0 {
+		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
 			mk.sawPeerCert.Store(true)
 		}
 		respond(w, mk.sign(t, readCSR(r), leafLife), mk.caCert)
 	})
 	mux.HandleFunc("/.well-known/est/simplereenroll", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		mk.reenrolls.Add(1)
-		if len(r.TLS.PeerCertificates) == 0 {
+		if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 			w.WriteHeader(stdhttp.StatusUnauthorized)
 			return
 		}
 		mk.lastReenroll.Store(r.TLS.PeerCertificates[0].Subject.CommonName)
 		respond(w, mk.sign(t, readCSR(r), leafLife), mk.caCert)
 	})
-	ts := httptest.NewUnstartedServer(mux)
-	// The mock EST server presents a cert signed by ITS OWN CA — that
-	// is what the client verifies against after bootstrap (the spec's
-	// explicit-trust flow), so httptest's default self-signed cert
-	// would be rejected exactly as a rogue server should be.
-	srvKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	mk.serial++
-	srvTmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(mk.serial),
-		Subject:      pkix.Name{CommonName: "est.test.local"},
-		DNSNames:     []string{"est.test.local", "localhost"},
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-	}
-	srvDER, err := x509.CreateCertificate(rand.Reader, srvTmpl, mk.caCert, &srvKey.PublicKey, mk.caKey)
-	if err != nil {
-		t.Fatalf("mock server cert: %v", err)
-	}
-	ts.TLS = &tls.Config{
-		ClientAuth:   tls.RequestClientCert,
-		Certificates: []tls.Certificate{{Certificate: [][]byte{srvDER}, PrivateKey: srvKey}},
-	}
-	ts.StartTLS()
-	t.Cleanup(ts.Close)
-	return ts
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if h, ok := mk.override[r.URL.Path]; ok {
+			h(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
 }
 
 func newManager(t *testing.T, ts *httptest.Server) *Manager {

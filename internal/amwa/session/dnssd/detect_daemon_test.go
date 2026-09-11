@@ -53,3 +53,16 @@ func TestNewResponderPrefersTheDaemonBackend(t *testing.T) {
 		t.Errorf("NewResponder returned %T, want the daemon responder when the probe succeeds", rs)
 	}
 }
+
+// noDaemon makes the constructors take the stdlib path for one test,
+// whatever this host happens to be running. Without it a test about the
+// stdlib backend passes or fails according to whether avahi-daemon is
+// installed on the machine running it, which is not a property of the
+// code under test.
+func noDaemon(t *testing.T) {
+	t.Helper()
+	prevB, prevR := tryDaemonBrowserFn, tryDaemonResponderFn
+	tryDaemonBrowserFn = func(*slog.Logger) (Browser, bool) { return nil, false }
+	tryDaemonResponderFn = func(*slog.Logger) (Responder, bool) { return nil, false }
+	t.Cleanup(func() { tryDaemonBrowserFn, tryDaemonResponderFn = prevB, prevR })
+}

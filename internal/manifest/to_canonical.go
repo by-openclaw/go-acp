@@ -48,6 +48,15 @@ type dmObject struct {
 	Value     json.RawMessage `json:"value,omitempty"`
 }
 
+// buildSlot is the flat-DM slot assembler BuildExport calls. Test seam
+// in the encodeManifest/closeFile mould (write.go): buildSlotNode's
+// error return is reserved for a flat-DM shape that cannot be
+// assembled, and no object list provokes it today (every object
+// either hangs off an existing parent or gets synthetic ancestors), so
+// BuildExport's per-slot error wrapping is only reachable by
+// overriding this. Production behaviour is the default.
+var buildSlot = buildSlotNode
+
 // loadDM reads `.cache/dm/<proto>/<Model@SwRev>.json`.
 func loadDM(path string) (*dmFile, error) {
 	data, err := os.ReadFile(path)
@@ -137,7 +146,7 @@ func BuildExport(m *Manifest, cacheDir string) (*canonical.Export, error) {
 			if !slotOK {
 				slotNum = len(root.Children)
 			}
-			slotNode, err := buildSlotNode(slotNum, sl, dm, m.Device.Name)
+			slotNode, err := buildSlot(slotNum, sl, dm, m.Device.Name)
 			if err != nil {
 				return nil, fmt.Errorf("manifest frame=%q slot=%d: %w", fr.Name, slotNum, err)
 			}

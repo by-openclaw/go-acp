@@ -222,7 +222,7 @@ func (Codec) ValidateReceiver(r is04.Receiver) error {
 // The schema check is FATAL here. Emitting a payload AMWA would
 // reject is our bug, and the AMWA test suite fails the Node for it.
 func encode(kind string, x any) ([]byte, error) {
-	raw, err := json.Marshal(x)
+	raw, err := marshal(x)
 	if err != nil {
 		return nil, fmt.Errorf("is04 %s: marshal %s: %w", APIVer, kind, err)
 	}
@@ -243,6 +243,14 @@ func encode(kind string, x any) ([]byte, error) {
 	}
 	return json.MarshalIndent(json.RawMessage(raw), "", "  ")
 }
+
+// marshal is json.Marshal behind a package variable. The strip and
+// dropEmpty stages in encode only fail on bytes that are not JSON, and
+// json.Marshal never produces those, so their error branches cannot be
+// reached by any input. A test swaps this to hand encode such bytes
+// and prove the failures are reported, not swallowed. Production never
+// reassigns it.
+var marshal = json.Marshal
 
 // reportDeviations checks a peer's payload against AMWA's v1.0.3 schema
 // and records every failure as a compliance event.
@@ -338,7 +346,7 @@ func dropEmpty(raw []byte, keys ...string) ([]byte, error) {
 			delete(m, k)
 		}
 	}
-	return json.Marshal(m)
+	return marshal(m)
 }
 
 func init() {

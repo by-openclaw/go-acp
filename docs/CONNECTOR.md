@@ -163,7 +163,11 @@ each connector writes only its protocol, not the plumbing:
 listener and shutdown. That is a genuine transport difference, not a
 carve-out — forcing an HTTP server onto a raw-accept loop would be a
 regression. Both contracts still expose the same `Metrics()`, `slog`
-logging, and injected `plugin.Deps` (DI).
+logging, and injected `plugin.Deps` (DI): the shared
+`internal/transport/http` Server and Client count every request and
+response (bytes + footprint) into the connector's `Metrics()` connector,
+so an NMOS Node, System API, Registry, Mirror or Controller is scraped
+exactly like a raw-socket connector.
 
 ### Providers
 
@@ -176,6 +180,7 @@ logging, and injected `plugin.Deps` (DI).
 | probel-sw02p | TCP | `Base[*session]` | |
 | osc | UDP + TCP | `Base[*NoConn]` | Push-only; outbound socket in `udpSender`, bound through the shared transport primitive (SO_REUSEADDR + SO_BROADCAST). |
 | tsl | UDP + TCP | `Base[*NoConn]` | Push-only; same as osc. |
+| nmos (Node / System / Registry / Mirror) | HTTP(S) + WS(S) | none — `transport/http` Server | HTTP connector by design (see above): `plugin.Deps` via the config/option struct, `Metrics()` fed by the shared HTTP server. |
 | amwa (NMOS) | HTTP/HTTPS (+ WebSocket) | — (`net/http`) | Served via `internal/amwa/session` httpsession.Server; HTTP is its transport contract, not raw sockets. |
 
 ### Consumers

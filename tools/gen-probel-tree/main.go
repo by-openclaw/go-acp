@@ -12,12 +12,28 @@
 // (canonical.Export → canonical.Matrix[]). All source + destination names
 // get labelled positionally ("SRC_NNNNN" / "TGT_NNNNN"), so the tree
 // doubles as an exerciser of the name/label RX command paths.
+//
+// # Contract
+//
+// The tree goes to stdout when no -out is given, so it can be piped;
+// with -out it is written to the file and a one-line summary goes to
+// stderr instead. Nothing but the tree ever reaches stdout.
+//
+//	0  the tree was written
+//	1  the bounds were wrong, or the file could not be written
+//
+// The bounds are the protocol's, not this tool's: SW-P-08 addresses a
+// matrix and a level in one byte each and a source or destination in
+// two, so a tree outside 1..255 / 1..65535 describes a router the
+// protocol cannot express — and the producer would serve it happily
+// right up to the first command that could not name a crosspoint.
 package main
 
 import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"time"
@@ -25,33 +41,51 @@ import (
 	"dhs/internal/export/canonical"
 )
 
-func main() {
-	var (
-		matrices = flag.Int("matrices", 2, "number of matrices")
-		size     = flag.Int("size", 65535, "target/source count per (matrix, level)")
-		levels   = flag.Int("levels", 1, "levels per matrix")
-		out      = flag.String("out", "", "output path (default stdout)")
-	)
-	flag.Parse()
+// osExit is os.Exit behind a package variable, so main itself can be
+// exercised rather than only the function under it.
+// Production never reassigns it.
+var osExit = os.Exit
 
-	if *matrices <= 0 || *matrices > 255 {
-		fatal("matrices must be 1..255")
+func main() { osExit(run(os.Args[1:], os.Stdout, os.Stderr)) }
+
+func run(argv []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("gen-probel-tree", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var (
+		matrices = fs.Int("matrices", 2, "number of matrices")
+		size     = fs.Int("size", 65535, "target/source count per (matrix, level)")
+		levels   = fs.Int("levels", 1, "levels per matrix")
+		out      = fs.String("out", "", "output path (default stdout)")
+	)
+	if err := fs.Parse(argv); err != nil {
+		return 1
 	}
-	if *size <= 0 || *size > 65535 {
-		fatal("size must be 1..65535")
-	}
-	if *levels <= 0 || *levels > 255 {
-		fatal("levels must be 1..255")
+
+	// The bounds are SW-P-08's own address widths; see the package doc.
+	for _, b := range []struct {
+		name  string
+		value int
+		max   int
+	}{
+		{"matrices", *matrices, 255},
+		{"size", *size, 65535},
+		{"levels", *levels, 255},
+	} {
+		if b.value <= 0 || b.value > b.max {
+			_, _ = fmt.Fprintf(stderr, "gen-probel-tree: %s must be 1..%d\n", b.name, b.max)
+			return 1
+		}
 	}
 
 	start := time.Now()
 	exp := buildExport(*matrices, *size, *levels)
 
-	w := os.Stdout
+	w := stdout
 	if *out != "" {
 		f, err := os.Create(*out)
 		if err != nil {
-			fatal(err.Error())
+			_, _ = fmt.Fprintln(stderr, "gen-probel-tree:", err)
+			return 1
 		}
 		defer func() { _ = f.Close() }()
 		w = f
@@ -60,17 +94,24 @@ func main() {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(exp); err != nil {
-		fatal(err.Error())
+		_, _ = fmt.Fprintln(stderr, "gen-probel-tree:", err)
+		return 1
 	}
 
 	if *out != "" {
-		st, _ := os.Stat(*out)
-		fmt.Fprintf(os.Stderr,
+		// Size from the file rather than the encoder: what matters to
+		// somebody about to load this into a producer is what landed
+		// on disk.
+		var mb float64
+		if st, err := os.Stat(*out); err == nil {
+			mb = float64(st.Size()) / (1024 * 1024)
+		}
+		_, _ = fmt.Fprintf(stderr,
 			"wrote %s: %d matrices × %d levels × %d×%d, %.1f MB, elapsed %s\n",
-			*out, *matrices, *levels, *size, *size,
-			float64(st.Size())/(1024*1024),
+			*out, *matrices, *levels, *size, *size, mb,
 			time.Since(start).Round(time.Millisecond))
 	}
+	return 0
 }
 
 func buildExport(nMatrices, size, nLevels int) *canonical.Export {
@@ -149,9 +190,4 @@ func buildMatrix(matrixIdx, size, nLevels int) *canonical.Matrix {
 		TargetLabels: targetLabels,
 		SourceLabels: sourceLabels,
 	}
-}
-
-func fatal(msg string) {
-	fmt.Fprintln(os.Stderr, "gen-probel-tree:", msg)
-	os.Exit(1)
 }

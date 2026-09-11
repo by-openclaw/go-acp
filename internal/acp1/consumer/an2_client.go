@@ -12,6 +12,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	an2 "dhs/internal/acp2/codec"
+	"dhs/internal/plugin"
 )
 
 // AN2DefaultPort is the ACP1 Mode C (AN2/TCP) port per spec p.10.
@@ -52,9 +53,7 @@ type AN2Client struct {
 // NewAN2Client wraps an already-connected raw TCP socket, starts the reader
 // goroutine, and sends EnableProtocolEvents([ACP1]) so announces flow.
 func NewAN2Client(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {
 		cfg.MaxRetries = dc.MaxRetries
@@ -93,10 +92,11 @@ func (c *AN2Client) enableProtocolEvents() {
 	}
 	// unreachable error: EncodeAN2Frame only fails on a nil frame or a
 	// payload > MaxPayload (65536); this 2-byte control frame is neither.
+	start := time.Now()
 	b, _ := an2.EncodeAN2Frame(frame)
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
 	if _, err := c.conn.Write(b); err == nil && c.cfg.OnTx != nil {
-		c.cfg.OnTx(len(b))
+		c.cfg.OnTx(len(b), time.Since(start))
 	}
 }
 
@@ -138,6 +138,7 @@ func (c *AN2Client) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 	// unreachable error: payload came from req.Encode() which caps MDATA at
 	// 134 bytes (≤141 total) — far below AN2 MaxPayload (65536) — and the
 	// frame is non-nil, the only two EncodeAN2Frame failure modes.
+	start := time.Now()
 	wire, _ := an2.EncodeAN2Frame(frame)
 
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
@@ -145,7 +146,7 @@ func (c *AN2Client) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		return nil, fmt.Errorf("acp1 an2 send: %w", err)
 	}
 	if c.cfg.OnTx != nil {
-		c.cfg.OnTx(len(wire))
+		c.cfg.OnTx(len(wire), time.Since(start))
 	}
 
 	select {

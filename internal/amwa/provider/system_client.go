@@ -35,6 +35,12 @@ import (
 // within a couple of seconds.
 const systemDiscoveryTimeout = 2 * time.Second
 
+// discoverSystemMDNS is the one-shot `_nmos-system._tcp` browse. A
+// package var so a test can script what the link advertised instead
+// of joining the real multicast group and sitting out the discovery
+// timeout; production never reassigns it.
+var discoverSystemMDNS = systemsession.DiscoverMDNS
+
 // fetchSystemGlobal discovers a System API and reads its global
 // resource, applying what it finds. Returns the Global, or nil when
 // none was found.
@@ -70,7 +76,7 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 				"plugin", "amwa", "api", "is-09")
 			return nil
 		}
-		found, err := systemsession.DiscoverMDNS(ctx, systemDiscoveryTimeout, s.logger)
+		found, err := discoverSystemMDNS(ctx, systemDiscoveryTimeout, s.logger)
 		if err != nil || len(found) == 0 {
 			// Not an error, and not the end of it. The System API may
 			// simply not be advertised yet -- the config server can be

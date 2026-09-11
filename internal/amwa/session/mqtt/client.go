@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -80,9 +81,7 @@ func New(opts Options) (*Client, error) {
 		opts.KeepAlive = 30 * time.Second
 	}
 	log := opts.Logger
-	if log == nil {
-		log = slog.Default()
-	}
+	log = plugin.LoggerOrDefault(log)
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{
 		opts:     opts,
@@ -145,9 +144,14 @@ func (c *Client) Close() {
 	<-c.done
 }
 
+// reconnectBackoff is the first wait between broker sessions; it doubles
+// up to 30 s. A package var so a test drives the reconnect loop in
+// milliseconds; never reassigned in production.
+var reconnectBackoff = time.Second
+
 func (c *Client) run(ctx context.Context) {
 	defer close(c.done)
-	backoff := time.Second
+	backoff := reconnectBackoff
 	for {
 		if ctx.Err() != nil {
 			return

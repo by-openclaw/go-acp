@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -181,57 +180,11 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	// haven't landed metrics wiring yet silently skip with a warn.
 	if *metricsAddr != "" {
 		if mp, ok := srv.(metricsExposer); ok {
-			proc := metrics.NewProcess()
-			go proc.Run(5*time.Second, srvCtx.Done())
-			reg := metrics.NewPromRegistry()
-			if err := reg.Attach(mp.Metrics(), map[string]string{
+			serveMetricsEndpoint(srvCtx, logger, *metricsAddr, mp.Metrics(), map[string]string{
 				"proto": protoName,
 				"role":  "provider",
 				"addr":  addr,
-			}); err != nil {
-				logger.Warn("metrics attach failed", slog.String("err", err.Error()))
-			}
-			if err := reg.AttachProcess(proc); err != nil {
-				logger.Warn("metrics attach process failed", slog.String("err", err.Error()))
-			}
-			connSnap := mp.Metrics()
-			mux := http.NewServeMux()
-			mux.Handle("/metrics", reg.Handler())
-			// /snapshot.json returns the Connector + Process snapshots
-			// as JSON so `dhs metrics export` can convert to CSV/MD
-			// without parsing Prom text.
-			mux.HandleFunc("/snapshot.json", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				payload := map[string]any{
-					"connector": connSnap.Snapshot(),
-					"process":   proc.Snapshot(),
-					"labels": map[string]string{
-						"proto": protoName,
-						"role":  "provider",
-						"addr":  addr,
-					},
-				}
-				_ = json.NewEncoder(w).Encode(payload)
 			})
-			metricsSrv := &http.Server{
-				Addr:              *metricsAddr,
-				Handler:           mux,
-				ReadHeaderTimeout: 5 * time.Second,
-			}
-			go func() {
-				logger.Info("metrics endpoint serving",
-					slog.String("addr", *metricsAddr),
-					slog.String("path", "/metrics"))
-				if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.Error("metrics server failed", slog.String("err", err.Error()))
-				}
-			}()
-			go func() {
-				<-srvCtx.Done()
-				shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 2*time.Second)
-				defer cancelShutdown()
-				_ = metricsSrv.Shutdown(shutdownCtx)
-			}()
 		} else {
 			logger.Warn("--metrics-addr set but provider does not expose Metrics() — skipping",
 				slog.String("protocol", protoName))

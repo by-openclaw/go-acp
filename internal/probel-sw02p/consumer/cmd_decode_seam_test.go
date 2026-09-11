@@ -465,7 +465,7 @@ func TestObserveBytesNonFrameFallback(t *testing.T) {
 	short := []byte{0x01} // < 3 bytes, no SOM → probelCmdFromBytes returns false
 
 	observeRxBytes(met, short)
-	observeTxBytes(met, short)
+	observeTxBytes(met, short, 0)
 
 	snap := met.Snapshot()
 	if snap.RxFrames != 1 || snap.TxFrames != 1 {

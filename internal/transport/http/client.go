@@ -8,6 +8,8 @@ import (
 	stdhttp "net/http"
 	"strings"
 	"time"
+
+	"dhs/internal/metrics"
 )
 
 // DefaultMaxBody caps a single response body. NMOS payloads are
@@ -22,6 +24,11 @@ const DefaultTimeout = 5 * time.Second
 type Client struct {
 	HTTP    *stdhttp.Client
 	MaxBody int64
+
+	// Metrics, when non-nil, counts every request (tx, round-trip time as
+	// the footprint) and response (rx bytes read) — the same connector
+	// contract the raw-socket consumers report through.
+	Metrics *metrics.Connector
 
 	// TokenSource, when non-nil, supplies a BCP-003-02 Bearer token
 	// attached to every request (Authorization header). Errors abort
@@ -55,6 +62,48 @@ func NewClient() *Client {
 	}
 }
 
+// do sends one request and, when Metrics is set, counts it: the request as
+// tx (its body bytes, with the round-trip time as the footprint — what the
+// consumer waited for the peer) and the response as rx once its body has
+// been read and closed. Every GET path funnels through here so an HTTP
+// consumer (NMOS controller, CCM) reports like a raw-socket one.
+func (c *Client) do(req *stdhttp.Request) (*stdhttp.Response, error) {
+	if c.Metrics == nil {
+		return c.HTTP.Do(req)
+	}
+	start := time.Now()
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	c.Metrics.ObserveTx(int(max(req.ContentLength, 0)), time.Since(start))
+	resp.Body = &countingBody{ReadCloser: resp.Body, met: c.Metrics}
+	return resp, nil
+}
+
+// countingBody counts the response bytes actually read and reports them as
+// one rx frame when the body is closed.
+type countingBody struct {
+	io.ReadCloser
+	met  *metrics.Connector
+	n    int
+	done bool
+}
+
+func (b *countingBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	b.n += n
+	return n, err
+}
+
+func (b *countingBody) Close() error {
+	if !b.done {
+		b.done = true
+		b.met.ObserveRx(b.n)
+	}
+	return b.ReadCloser.Close()
+}
+
 // GetJSON issues a GET against url, validates Content-Type is
 // application/json, reads up to MaxBody bytes, then decodes into dst
 // (a non-nil pointer). dst is decoded with DisallowUnknownFields so
@@ -71,7 +120,7 @@ func (c *Client) GetJSON(ctx context.Context, url string, dst any) error {
 	if err := c.applyAuth(ctx, req); err != nil {
 		return err
 	}
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return fmt.Errorf("http: GET %s: %w", url, err)
 	}
@@ -128,7 +177,7 @@ func (c *Client) GetBytes(ctx context.Context, url string) ([]byte, error) {
 	if err := c.applyAuth(ctx, req); err != nil {
 		return nil, err
 	}
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http: GET %s: %w", url, err)
 	}
@@ -172,7 +221,7 @@ func (c *Client) GetJSONPage(ctx context.Context, url string, dst any) (string, 
 	if err := c.applyAuth(ctx, req); err != nil {
 		return "", err
 	}
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return "", fmt.Errorf("http: GET %s: %w", url, err)
 	}
@@ -222,7 +271,7 @@ func (c *Client) GetJSONPageLinks(ctx context.Context, url string, dst any) (nex
 	if err := c.applyAuth(ctx, req); err != nil {
 		return "", "", err
 	}
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return "", "", fmt.Errorf("http: GET %s: %w", url, err)
 	}

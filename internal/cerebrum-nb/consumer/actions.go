@@ -162,7 +162,7 @@ func (s *Session) DeviceConfig(ctx context.Context, dc *codec.DeviceConfiguratio
 		// device_configuration root (the <RESULT> child may be absent, in
 		// which case Value is empty and Accepted is false).
 		if !f.DeviceConfig.Accepted {
-			s.compliance.Event("cerebrum_device_config_failed")
+			s.compliance.Note("cerebrum_device_config_failed")
 		}
 		return f.DeviceConfig, nil
 	case codec.KindBusy:

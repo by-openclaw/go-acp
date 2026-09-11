@@ -68,6 +68,13 @@ func ParseCertsOnlyPKCS7(der []byte) ([]*x509.Certificate, error) {
 	return certs, nil
 }
 
+// asn1Marshal is encoding/asn1.Marshal behind a package variable.
+// The two structures below hold only types asn1 can encode, so
+// neither call fails in production; the variable lets a test prove
+// that a refusal would be reported rather than half a document
+// shipped. Production never reassigns it.
+var asn1Marshal = asn1.Marshal
+
 // EncodeCertsOnlyPKCS7 builds a DER certs-only SignedData.
 func EncodeCertsOnlyPKCS7(certs []*x509.Certificate) ([]byte, error) {
 	if len(certs) == 0 {
@@ -87,7 +94,7 @@ func EncodeCertsOnlyPKCS7(certs []*x509.Certificate) ([]byte, error) {
 		},
 		SignerInfos: emptySet,
 	}
-	sdDER, err := asn1.Marshal(sd)
+	sdDER, err := asn1Marshal(sd)
 	if err != nil {
 		return nil, fmt.Errorf("est: pkcs7 marshal SignedData: %w", err)
 	}
@@ -95,7 +102,7 @@ func EncodeCertsOnlyPKCS7(certs []*x509.Certificate) ([]byte, error) {
 		ContentType: oidSignedData,
 		Content:     asn1.RawValue{Class: asn1.ClassContextSpecific, Tag: 0, IsCompound: true, Bytes: sdDER},
 	}
-	out, err := asn1.Marshal(ci)
+	out, err := asn1Marshal(ci)
 	if err != nil {
 		return nil, fmt.Errorf("est: pkcs7 marshal ContentInfo: %w", err)
 	}

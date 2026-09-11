@@ -310,6 +310,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "nmos" {
 		return runNMOSConsumer(ctx, rest)
 	}
+	if proto == "snmp" {
+		return runSNMPConsumer(ctx, rest)
+	}
 
 	// Catalogue help ONLY when help is asked in place of a verb — a help
 	// flag AFTER the verb belongs to the verb (#462: hasHelpFlag over the
@@ -348,6 +351,23 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	proto := args[0]
 	rest := args[1:]
 
+	// The canonical lifecycle verbs — ADR-0007 `ensure`, `stop`, `status` —
+	// are the same for every producer: they key on --pidfile / the metrics
+	// endpoint, not on the protocol. They are answered HERE, before any
+	// per-protocol dispatcher, so a connector that owns its own verb table
+	// (osc, tsl, nmos) cannot lose them; the Ansible role talks to one
+	// contract whatever the protocol.
+	if len(rest) > 0 {
+		switch rest[0] {
+		case "status":
+			return runMetricsShow(ctx, rest[1:])
+		case "stop":
+			return runProducerStop(ctx, proto, rest[1:])
+		case "ensure":
+			return runProducerEnsure(ctx, proto, rest[1:])
+		}
+	}
+
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCProducer(ctx, proto, rest)
 	}
@@ -356,6 +376,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	}
 	if proto == "nmos" {
 		return runNMOSProducer(ctx, rest)
+	}
+	if proto == "snmp" {
+		return runSNMPProducer(ctx, rest)
 	}
 	// Same rule as dispatchConsumer (#462): help IN PLACE of a verb =
 	// catalogue; help after the verb belongs to the verb's own FlagSet.
@@ -574,6 +597,7 @@ PROTOCOLS
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
   osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
   osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
 
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
@@ -589,6 +613,10 @@ CEREBRUM VERBS
 OSC VERBS
   watch  bind a port and print every received message
   run 'dhs consumer osc-v10 -h' (or osc-v11) for full flags.
+
+SNMP VERBS
+  get | walk | set | trap-listen
+  run 'dhs consumer snmp -h' for the verb catalogue and examples.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.`)
 }
@@ -610,6 +638,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)

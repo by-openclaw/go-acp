@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net"
 	stdhttp "net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +26,8 @@ import (
 	"dhs/internal/amwa/session/certmgr"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	registryslot "dhs/internal/registry"
 )
 
@@ -52,9 +53,19 @@ func (Factory) Meta() registryslot.Meta {
 	}
 }
 
-// New constructs an unstarted Registry. Logger may be nil.
-func (Factory) New(logger *slog.Logger) registryslot.Registry {
-	return &Registry{logger: logger}
+// New constructs an unstarted Registry from the injected dependency set.
+func (Factory) New(deps plugin.Deps) registryslot.Registry {
+	deps = deps.WithDefaults()
+	return &Registry{logger: deps.Logger, met: deps.Metrics}
+}
+
+// Metrics returns the registry's counter set: every Registration and Query
+// API request and response, counted by the shared HTTP server. Never nil.
+func (r *Registry) Metrics() *metrics.Connector {
+	if r.met == nil {
+		r.met = metrics.NewConnector()
+	}
+	return r.met
 }
 
 // Registry implements registryslot.Registry. Serves the IS-04
@@ -64,6 +75,7 @@ func (Factory) New(logger *slog.Logger) registryslot.Registry {
 // supported minor comma-separated.
 type Registry struct {
 	logger *slog.Logger
+	met    *metrics.Connector
 
 	mu        sync.Mutex
 	responder session.Responder
@@ -134,6 +146,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 	// HTTP routes — Registration + Query API installed in parallel
 	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
+	srv.Metrics = r.Metrics() // both faces counted through the shared server
 	// BCP-003-01/-03: TLS serving for both faces (manual pair or EST
 	// enrollment). ws_href minting + the api_proto TXT follow.
 	apiProto := "http"
@@ -146,7 +159,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		if host != "" && net.ParseIP(host) == nil {
 			idents = append(idents, host)
 		}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			idents = append(idents, hn, hn+".local")
 		}
 		if len(idents) == 0 {
@@ -198,7 +211,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		}
 		go kc.Run(ctx)
 		gateHosts := []string{host}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: r.logger}
@@ -278,12 +291,13 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			Addr:              bindAddr,
 			Handler:           dispatcher,
 			ReadHeaderTimeout: 5 * time.Second,
+			TLSConfig:         srv.TLS,
 		}
 		httpErrCh <- runHTTPServer(httpCtx, s)
 	}()
 
 	if mode == "mdns" {
-		resp, err := session.NewResponder(r.logger)
+		resp, err := newServeResponder(r.logger)
 		if err != nil {
 			return fmt.Errorf("registry/nmos: open mDNS responder: %w", err)
 		}
@@ -372,10 +386,24 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 
 // runHTTPServer adapts a stdhttp.Server to ctx-cancel semantics —
 // returns when the server exits.
+//
+// A server carrying a TLS config is served over TLS, never alongside a
+// plain listener: BCP-003-01 says a secured API SHALL NOT accept plain
+// HTTP, and the announce already told peers `api_proto=https` and
+// minted `wss://` ws_hrefs. Serving plaintext under that advertisement
+// leaves every conforming controller unable to connect at all.
 func runHTTPServer(ctx context.Context, srv *stdhttp.Server) error {
 	errCh := make(chan error, 1)
 	go func() {
-		err := srv.ListenAndServe()
+		var err error
+		if srv.TLSConfig != nil {
+			// The pair rides in the config (Certificates, or
+			// GetCertificate for the enrolled path), so the file
+			// arguments stay empty.
+			err = srv.ListenAndServeTLS("", "")
+		} else {
+			err = srv.ListenAndServe()
+		}
 		if err == stdhttp.ErrServerClosed {
 			err = nil
 		}
@@ -431,11 +459,21 @@ func (r *Registry) Stats() registryslot.Stats {
 //   - Empty override + no codecs registered — fall back to "v1.3" so
 //     unit tests that don't blank-import is04/vXX still exercise the
 //     route installer.
+//
+// supportedVersions and interfaceAddrs are the two OS/registry
+// lookups Serve depends on, behind package vars so a unit test can
+// script "no codecs registered" and "no addresses to advertise"
+// without touching the process or the host.
+var (
+	supportedVersions = is04.SupportedVersions
+	interfaceAddrs    = net.InterfaceAddrs
+)
+
 func pickAPIVersions(override string) []string {
 	if override != "" {
 		return []string{override}
 	}
-	if vs := is04.SupportedVersions(); len(vs) > 0 {
+	if vs := supportedVersions(); len(vs) > 0 {
 		return vs
 	}
 	return []string{"v1.3"}
@@ -476,7 +514,7 @@ func localIPv4Candidates(host string) []net.IP {
 	if ip := net.ParseIP(strings.TrimSuffix(host, ".")); ip != nil && ip.To4() != nil {
 		return []net.IP{ip.To4()}
 	}
-	ifs, err := net.InterfaceAddrs()
+	ifs, err := interfaceAddrs()
 	if err != nil {
 		return nil
 	}

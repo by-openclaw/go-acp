@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"dhs/internal/acp1/codec"
-	"dhs/internal/acp1/consumer"
+	acp1 "dhs/internal/acp1/consumer"
 	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )

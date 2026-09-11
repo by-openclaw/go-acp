@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -37,6 +38,20 @@ const HeartbeatGracePeriod = 12 * time.Second
 // answers 404 — the Node has been GC'd and must re-register from
 // scratch.
 var ErrRegistryNotFound = errors.New("provider/node: registry returned 404 — re-registration required")
+
+// Test seams. Each is the real implementation in production and is
+// swapped only by a test that needs a branch no real input reaches
+// (the same transparent pattern as session/certmgr):
+//
+//   - deregisterWait: Close's bound on the shutdown DELETEs is two
+//     grace periods, a wall-clock wait a test cannot sit through.
+//   - tlsClientConfig: transport.TLSOptions.Client fails only while
+//     reading a CA or client-certificate FILE, and SetTLSRoots passes
+//     neither — its guard is unreachable from a real pool.
+var (
+	deregisterWait  = 2 * HeartbeatGracePeriod
+	tlsClientConfig = transport.TLSOptions.Client
+)
 
 // RegistrationClient drives the Node-side registration loop:
 //
@@ -145,9 +160,7 @@ type republishItem struct {
 // IS-04 wire version (e.g. "v1.3"); registryURL must NOT include the
 // `/x-nmos/registration/...` path — we append it.
 func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bundle *NodeConfig) *RegistrationClient {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = is04.APIVersion
 	}
@@ -406,6 +419,19 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 	lastHeartbeat := time.Time{}
 
 	for {
+		// A tick, a republish and a cancellation can all be ready in
+		// the same iteration, and select picks between ready cases at
+		// random — so the context is re-checked here, where every
+		// branch comes back to, rather than inside one of them.
+		// Proceeding with a dead context runs the heartbeat against
+		// it, reads the resulting error as a Registry failure, clears
+		// `registered`, and makes the shutdown deregistration
+		// early-return: every DELETE skipped, and the Node left in the
+		// Registry until its heartbeat times out.
+		if loopCtx.Err() != nil {
+			c.deregisterAll()
+			return
+		}
 		select {
 		case <-loopCtx.Done():
 			c.deregisterAll()
@@ -424,19 +450,6 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 			}
 			atomic.AddUint64(&c.reregister, 1)
 		case <-ticker.C:
-			// A ticker tick and loopCtx.Done() can be ready in the same
-			// iteration; select picks at random, so we can land here with
-			// the context already cancelled. If we proceed, the heartbeat
-			// + cascade below run against the dead context, fail with
-			// "context canceled", and flip registered→false — which makes
-			// the subsequent deregisterAll() early-return and skip every
-			// shutdown DELETE (the flaky-test symptom). Bail straight to
-			// shutdown instead so the unregister still runs while we're
-			// still marked registered.
-			if loopCtx.Err() != nil {
-				c.deregisterAll()
-				return
-			}
 			// IS-04 v1.3.3 §3.1 — Node selects the highest-priority
 			// Registry from those *currently* advertised. If a
 			// higher-priority one appeared after we registered, switch:
@@ -570,7 +583,7 @@ func (c *RegistrationClient) Close() error {
 	c.mu.Unlock()
 	select {
 	case <-c.closed:
-	case <-time.After(2 * HeartbeatGracePeriod):
+	case <-time.After(deregisterWait):
 		return errors.New("provider/node: deregistration timed out")
 	}
 	return nil
@@ -649,12 +662,13 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 	// Built by the transport layer so every dhs client shares one posture;
 	// this was already the strictest of the four hand-rolled configs, and
 	// it is now the only one.
-	cfg, err := transport.TLSOptions{Enable: true, RootCAs: roots}.Client()
+	cfg, err := tlsClientConfig(transport.TLSOptions{Enable: true, RootCAs: roots})
 	if err != nil {
-		// Unreachable: no CA or client-certificate FILE is configured here,
-		// and those are Client's only failure modes. Leaving the transport
-		// alone keeps the verifying stdlib default rather than installing a
-		// half-built config.
+		// Not reachable from here: no CA or client-certificate FILE is
+		// configured, and those are the builder's only failure modes.
+		// Leaving the transport alone keeps the verifying stdlib default
+		// rather than installing a half-built config, which is the one
+		// outcome that would be worse than not installing the roots.
 		return
 	}
 	c.http.Transport = &stdhttp.Transport{TLSClientConfig: cfg}
@@ -682,14 +696,14 @@ func (c *RegistrationClient) postResource(ctx context.Context, t is04.ResourceTy
 		// Stale data on the Registry — DELETE then re-POST.
 		id := resourceID(t, data)
 		c.deleteResource(ctx, t, id)
-		status, err = c.postResourceOnce(ctx, t, data)
-		if err != nil {
+		if _, err := c.postResourceOnce(ctx, t, data); err != nil {
 			return err
 		}
 	}
-	if status != stdhttp.StatusOK && status != stdhttp.StatusCreated {
-		return fmt.Errorf("provider/node: POST resource (%s): unexpected HTTP %d", t, status)
-	}
+	// No status check here: postResourceOnce already refuses anything
+	// that is not 200 or 201, so reaching this line means the Registry
+	// accepted the resource. A second check would only ever disagree
+	// with the first about what the same response meant.
 	atomic.AddUint64(&c.registrations, 1)
 	return nil
 }

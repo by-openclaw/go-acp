@@ -96,3 +96,22 @@ func TestCheckSDPConformanceEmpty(t *testing.T) {
 		t.Errorf("no SDPs must yield no findings, got %+v", fs)
 	}
 }
+
+// A single-path SDP with no a=group at all: nothing to be incomplete.
+const singlePathSDP = `v=0
+o=- 1 1 IN IP4 198.51.100.10
+s=single
+t=0 0
+m=video 5004 RTP/AVP 96
+c=IN IP4 233.252.0.10/64
+a=rtpmap:96 raw/90000
+`
+
+// TestDupLegsOnlyJudgesDUPGroups: a sender that never claimed ST 2022-7
+// redundancy cannot fail to carry it.
+func TestDupLegsOnlyJudgesDUPGroups(t *testing.T) {
+	h := &Harvest{Target: "198.51.100.99:3212", SDP: map[string][]byte{"is05/aaaa.sdp": []byte(singlePathSDP)}}
+	if fs := checkSDPConformance(h); len(fs) != 0 {
+		t.Errorf("a clean single-path SDP produced %+v", fs)
+	}
+}

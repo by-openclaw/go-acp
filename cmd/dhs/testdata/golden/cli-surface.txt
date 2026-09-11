@@ -3340,6 +3340,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -3446,6 +3447,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -3552,6 +3554,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -3644,8 +3647,13 @@ Usage of producer emberplus serve:
 $ dhs producer nmos --help
 Usage:
   dhs producer nmos serve [flags]
+  dhs producer nmos status --url http://HOST:PORT/snapshot.json   live runtime snapshot of a serving instance
+  dhs producer nmos stop   --pidfile PATH                           stop a serving instance
+  dhs producer nmos ensure --state present|absent --pidfile PATH   converge a serving instance (ADR-0007, Ansible)
 
   --role node|system    Producer role (default: node)
+  --pidfile PATH        write the PID on start (removed on exit) for stop / ensure
+  --metrics-addr ADDR   serve Prometheus /metrics + /snapshot.json for this instance (status reads it)
 
 Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
   Loads a Node bundle JSON (node + devices + sources + flows + senders +
@@ -3703,12 +3711,16 @@ Usage of serve:
     	heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value (default 5s)
   -mdns
     	advertise via mDNS (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address
   -no-connection-api
     	do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device
   -no-mdns
     	disable mDNS announce (Mode B / static)
   -no-registry
     	stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node
+  -pidfile dhs producer nmos stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer nmos stop|ensure --pidfile PATH can manage it
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
   -registry string
@@ -3749,11 +3761,14 @@ VERBS
   send    emit one OSC message and exit
   fader   continuous high-rate fader simulator (perf measurement)
   serve   bind a port and log incoming messages (act-as-OSC-device, no echo)
+  status  live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop    stop a serving instance (--pidfile PATH)
+  ensure  converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 USAGE
   dhs producer osc-v10 send  --to HOST:PORT --transport KIND --address /A --types TAGS [args...]
   dhs producer osc-v10 fader --to HOST:PORT --transport KIND --address /A [--rate N] [--duration D] [--min --max] [--pattern ramp|sine|random]
-  dhs producer osc-v10 serve --bind <transport>:<port>
+  dhs producer osc-v10 serve --bind <transport>:<port> [--pidfile PATH]
 
 TRANSPORTS
   udp        UDP datagrams (default; both versions)
@@ -3818,6 +3833,8 @@ Usage of serve:
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
     	OSC address pattern to log (empty = log all)
+  -pidfile dhs producer osc-v10 stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer osc-v10 stop|ensure --pidfile PATH can manage it
 
 ========== producer/osc-v11/<dispatcher-help> ==========
 $ dhs producer osc-v11 --help
@@ -3827,11 +3844,14 @@ VERBS
   send    emit one OSC message and exit
   fader   continuous high-rate fader simulator (perf measurement)
   serve   bind a port and log incoming messages (act-as-OSC-device, no echo)
+  status  live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop    stop a serving instance (--pidfile PATH)
+  ensure  converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 USAGE
   dhs producer osc-v11 send  --to HOST:PORT --transport KIND --address /A --types TAGS [args...]
   dhs producer osc-v11 fader --to HOST:PORT --transport KIND --address /A [--rate N] [--duration D] [--min --max] [--pattern ramp|sine|random]
-  dhs producer osc-v11 serve --bind <transport>:<port>
+  dhs producer osc-v11 serve --bind <transport>:<port> [--pidfile PATH]
 
 TRANSPORTS
   udp        UDP datagrams (default; both versions)
@@ -3896,6 +3916,8 @@ Usage of serve:
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
     	OSC address pattern to log (empty = log all)
+  -pidfile dhs producer osc-v11 stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer osc-v11 stop|ensure --pidfile PATH can manage it
 
 ========== producer/probel-sw02p/<dispatcher-help> ==========
 $ dhs producer probel-sw02p --help
@@ -3915,6 +3937,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -4021,6 +4044,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -4120,11 +4144,15 @@ USAGE
 VERBS
   send            encode one frame from the flags and push once
   serve           encode + push, then re-emit every --refresh DURATION until Ctrl-C
+  status          live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop            stop a serving instance (--pidfile PATH)
+  ensure          converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 COMMON FLAGS
   --bind HOST:PORT       local egress bind (default 0.0.0.0:0 ephemeral)
   --dest HOST:PORT       destination MV (repeatable; required for UDP)
   --refresh DURATION     periodic re-emit (serve only; e.g. 1s)
+  --pidfile PATH         serve only: PID file for stop / ensure (removed on exit)
   --text "STR"           UMD label
   --brightness 0..3      0=off 1=1/7 2=1/2 3=full
 
@@ -4165,6 +4193,8 @@ Usage of tsl-v31-send:
     	brightness 0=off 1=1/7 2=1/2 3=full (default 3)
   -dest value
     	destination MV host:port (repeatable; required for UDP)
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -tally1
@@ -4191,6 +4221,8 @@ Usage of tsl-v31-serve:
     	brightness 0=off 1=1/7 2=1/2 3=full (default 3)
   -dest value
     	destination MV host:port (repeatable; required for UDP)
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -tally1
@@ -4217,11 +4249,15 @@ USAGE
 VERBS
   send            encode one frame from the flags and push once
   serve           encode + push, then re-emit every --refresh DURATION until Ctrl-C
+  status          live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop            stop a serving instance (--pidfile PATH)
+  ensure          converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 COMMON FLAGS
   --bind HOST:PORT       local egress bind (default 0.0.0.0:0 ephemeral)
   --dest HOST:PORT       destination MV (repeatable; required for UDP)
   --refresh DURATION     periodic re-emit (serve only; e.g. 1s)
+  --pidfile PATH         serve only: PID file for stop / ensure (removed on exit)
   --text "STR"           UMD label
   --brightness 0..3      0=off 1=1/7 2=1/2 3=full
 
@@ -4266,6 +4302,8 @@ Usage of tsl-v40-send:
     	v4.0 XDATA Display L LH:Text:RH (off|red|green|amber) (default "off:off:off")
   -display-right string
     	v4.0 XDATA Display R LH:Text:RH (off|red|green|amber) (default "off:off:off")
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -tally1
@@ -4296,6 +4334,8 @@ Usage of tsl-v40-serve:
     	v4.0 XDATA Display L LH:Text:RH (off|red|green|amber) (default "off:off:off")
   -display-right string
     	v4.0 XDATA Display R LH:Text:RH (off|red|green|amber) (default "off:off:off")
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -tally1
@@ -4322,11 +4362,15 @@ USAGE
 VERBS
   send            encode one frame from the flags and push once
   serve           encode + push, then re-emit every --refresh DURATION until Ctrl-C
+  status          live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop            stop a serving instance (--pidfile PATH)
+  ensure          converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 COMMON FLAGS
   --bind HOST:PORT       local egress bind (default 0.0.0.0:0 ephemeral)
   --dest HOST:PORT       destination MV (repeatable; required for UDP)
   --refresh DURATION     periodic re-emit (serve only; e.g. 1s)
+  --pidfile PATH         serve only: PID file for stop / ensure (removed on exit)
   --text "STR"           UMD label
   --brightness 0..3      0=off 1=1/7 2=1/2 3=full
 
@@ -4375,6 +4419,8 @@ Usage of tsl-v50-send:
     	TCP SO_KEEPALIVE period (default 30s; --tcp only) (default 30s)
   -lh string
     	LH tally colour (off|red|green|amber) (default "off")
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -rh string
@@ -4409,6 +4455,8 @@ Usage of tsl-v50-serve:
     	TCP SO_KEEPALIVE period (default 30s; --tcp only) (default 30s)
   -lh string
     	LH tally colour (off|red|green|amber) (default "off")
+  -pidfile dhs producer <proto> stop|ensure --pidfile PATH
+    	serve only: write this process's PID to PATH on start (removed on exit) so dhs producer <proto> stop|ensure --pidfile PATH can manage it
   -refresh duration
     	if >0 (serve only), re-emit the frame every DURATION
   -rh string
@@ -4434,6 +4482,7 @@ subscriptions on the configured --bind, plus the optional mDNS
 announce of _nmos-register._tcp + _nmos-query._tcp.
 
   --bind ADDR              HTTP listen address (default :8235)
+  --metrics-addr ADDR      serve Prometheus /metrics + /snapshot.json for this registry
   --advertise-host H:P     host:port placed in SRV / ws_href records
                            (default: derived from --bind + hostname)
   --mdns / --no-mdns       Toggle mDNS announce (default on)
@@ -4500,6 +4549,8 @@ Usage of serve:
     	DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)
   -mdns
     	advertise via mDNS (Mode A) (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this registry on this address
   -no-mdns
     	disable mDNS announce (Modes B / C)
   -page-limit-default int

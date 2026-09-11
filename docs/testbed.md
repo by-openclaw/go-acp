@@ -39,8 +39,9 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
-| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
-| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
+| **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP v1 **and** v2c `:161` · 8 trap destinations `:162` | `snmp` ✅ polled live |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
@@ -78,6 +79,113 @@ Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
   `.1.1.3.1` carrying per-slot type, firmware and card names), and
   `1773.1.3.200.x` is the product branch — 299 of the TT1260's objects.
 
+### controlMode — the OID that decides who may drive an IRD
+
+`1.3.6.1.4.1.1773.1.3.200.1.11.0`, from `ird/TT1260/TT1260-MIB.mib` in
+`github.com/by-protocol/mib`:
+
+```
+controlMode OBJECT-TYPE
+    SYNTAX  INTEGER { fp(1), serial(2), ncp(3), snmp(4), web(5) }
+    ACCESS  read-write
+    "The source of remote control of the TT1260 ...
+     This mode may always be written to using SNMP"
+    ::= { configuration 11 }
+```
+
+`tt1260 ::= { modules 200 }` → `configuration ::= { tt1260 1 }`, so the
+branch decodes as:
+
+| OID | object | read on TT1260 |
+| --- | --- | --- |
+| `…200.1.6.0` | `unitId` (electronic serial number) | `16763` |
+| `…200.1.8.0` | `serviceHealth` (bitfield; 0 = every task healthy) | `0` |
+| `…200.1.9.0` | `serialRemoteType` `ttv232(1)/nds232(2)/nds485(3)` | `1` |
+| `…200.1.10.0` | `serialRemoteAddress` | `0` |
+| `…200.1.11.0` | **`controlMode`** | **`4` = snmp** |
+| `…200.1.12.0` | `serviceTrackingMode` `monitor(1)/hunt(2)/flush(3)` | `2` |
+
+**The last line of that DESCRIPTION is the operationally important one.**
+`controlMode` may ALWAYS be written over SNMP, whatever it currently
+says — so a receiver left on `fp` or `serial` can be taken back over the
+network without a trip to the rack. It is the recovery path, not only
+the gate.
+
+Both IRDs read `controlMode = 4` and accept a write of it, confirmed
+2026-09-10. The RX1290 serves the same `…1.3.200` branch as the TT1260 —
+they report the same `sysObjectID`.
+
+### The write community is `private`, and a wrong one is SILENCE
+
+This is the trap. A SET carrying `public`:
+
+```
+$ dhs consumer snmp set --version 1 --community public --oid sysContact.0 ...
+error: snmp: no response after 3 attempt(s)
+```
+
+**No response at all** — RFC 1157 §4.1 says an agent drops a request it
+will not serve rather than explaining, and these devices do. On a
+manager that is indistinguishable from a device that is switched off, so
+"the IRD is down" and "you used the read community for a write" look
+identical. With `private` the same SET is accepted and echoed.
+
+### Proven live, 2026-09-10 — read AND write
+
+| | TT1260 `10.6.255.110` | RX1290 `10.6.255.111` |
+| --- | --- | --- |
+| GET / walk, v1, `public` | ✅ | ✅ |
+| `controlMode` reads | `4` (snmp) | `4` (snmp) |
+| SET `controlMode=4`, `private` | ✅ accepted | ✅ accepted |
+| SET `sysLocation.0`, `private` | ✅ `Unknown` → `TEC RACK 23` | ✅ `Unknown` → `TEC RACK 23` |
+
+Writeability of the chassis branch, established by writing each object
+back to its OWN current value (which changes nothing):
+
+- **writable**: `1773.1.1.1.5.0`, `.8.0`, `.9.0`
+- **read-only**: `.6.0`, `.7.0` (device name), `.10.0`, `.11.0` — the
+  agent answers `readOnly`, which is v1's word for it
+
+### The IRDs need SNMP Control enabled before a SET does anything
+
+**Read works; write does not, until the device is told to allow it.**
+Both IRDs answer GET and GETNEXT with `public` out of the box, but
+control over SNMP is a separate device-side gate — the same shape as the
+"SNMP Control" checkboxes on the Snell frame's RollCall page. Until it is
+enabled the device refuses writes, and a refusal looks like a bug in the
+manager rather than a setting on the device.
+
+Codeowner set it from the front panel on 2026-09-10, and the write path
+is now proven (see above). Note that the front panel was not strictly
+necessary: `controlMode` may always be written over SNMP, so the same
+change can be made remotely.
+
+`dhs consumer snmp set` says so in its `-h`, because that is where
+somebody will be standing when they hit it.
+
+### What a read-only walk of the IRDs established (2026-09-10)
+
+Live, via `dhs consumer snmp walk --version 1`:
+
+| branch | what is there |
+| --- | --- |
+| `1773.1.1.1.x` | network config — TT1260 reports `10.6.255.110`, mask `255.255.240.0`, gateway `10.6.255.254`, MAC `0020AA15417B`, name `TT1260` |
+| `1773.1.1.2.1` | trap destinations — **TT1260 has one row, `1773.1.1.2.1.2.1 = 192.168.0.229`**, confirming the stale address; **the RX1290 has NO trap-destination table at all** (the whole branch is empty) |
+| `1773.1.1.3.1` | the card table — per-slot type, firmware, part and name |
+
+Card inventory as read:
+
+- **TT1260**, slots 1 / 4 / 5: `QPSK Input Card`, `TT1260 CA module`,
+  `TT1260 Decoder module`. All at firmware `5.2.0 (1)`, part `16763`,
+  hardware `2.33`.
+- **RX1290**, slots 0–4: `Motherboard (S14212)`, `RX1290 ASI Input`,
+  `S2 Input Card V0`, `RX1290 CA module`, `RX1290 Decoder module`.
+
+That the two differ on the trap table matters: a trap-destination fix
+written against the TT1260's shape has nothing to write to on the
+RX1290, so the RX1290's destination is presumably front-panel or HTTP
+only. Do not assume one procedure covers both.
+
 Two things to fix on the devices before trap work starts:
 
 1. **The trap destination is stale.** `.1.1.2.1.2.1` still reads
@@ -92,8 +200,11 @@ Scope, per the codeowner:
 
 Scope, per the codeowner:
 
-- **SNMP + MIB** — the whole reason these are in the testbed. This is what
-  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **SNMP + MIB** — the whole reason these are in the testbed, and now the
+  live oracle: both answer `dhs consumer snmp get --version 1`. Confirmed
+  2026-09-10 that **v2c gets no reply at all** from either — a v2c poll of
+  one of these looks exactly like a device that is down, which is why the
+  CLI's `--version` help says so.
 - **HTTP management page** — expected to work. Useful for reading the device's
   own view of a value while checking ours, and for setting the SNMP community
   and trap destination. Not a connector target.
@@ -102,6 +213,88 @@ Scope, per the codeowner:
   Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
 
 So one connector serves these devices, and it is the SNMP one.
+
+### Snell RollCall frame — the second SNMP vendor tree
+
+`10.6.255.113`, an **IQH3UM4-S** modular frame reporting itself as
+`FRAME_12 EMB`. Read off its RollCall SNMP page:
+
+| Setting | Value |
+| --- | --- |
+| SNMP | enabled, **and "Legacy SNMP" enabled alongside** |
+| Read / write port | `161` |
+| Read community | `public` |
+| Write community | `private` |
+| `sysContact` / `sysName` / `sysLocation` | `www.snellgroup.com` / `FRAME 12` / `TEC RACK 23` |
+| Trap destinations | **eight** rows, each with its own IP, port (`162`) and community (`public`); only the first is enabled today, at `0.0.0.0` — i.e. pointing nowhere |
+| Slot trap enable | gateway + slots 1–16, all on |
+| SNMP control | gateway + slots 1–16, all on |
+
+**Measured live, 2026-09-10**, with `dhs consumer snmp` from `dhs-tools`:
+
+| | value |
+| --- | --- |
+| `sysDescr.0` | `IQH3UM4-S` |
+| `sysObjectID.0` | `1.3.6.1.4.1.7995.1.3.1` — under `snellWilcoxProductReg`, as the SMI says |
+| `sysContact` / `sysName` / `sysLocation` | exactly what the RollCall page shows |
+| **objects under 7995** | **9 867** — an order of magnitude more than the IRDs |
+| bulk walk of the whole vendor tree | 2m16s at `--max-repetitions 25` |
+| versions | **v1 AND v2c both answer**, which is what "Legacy SNMP enabled alongside" means |
+
+The tables are indexed by length-prefixed ASCII, so an instance OID reads
+as `...2.6.2.1.1.13.76.79.71.71.73.78.71.95.83.84.65.84.69` for the key
+`LOGGING_STATE`. Live values seen include `TEMP_1_CELSIUS 29`,
+`TEMP_2_CELSIUS 33`, `VOLTAGE_1 +7.5`, `VOLTAGE_2 -7.6`,
+`LAN_PORT_1 100 Mbit/s Full Duplex` and `HARDWARE_VERSION RCIF3U2C` —
+the same figures the RollCall Unit Status panel shows.
+
+Two things follow for `internal/snmp`.
+
+**"Legacy SNMP" alongside SNMP means the frame answers more than one
+version at once**, which is exactly the shape the trap sender is built
+for: one event, a per-destination version. Eight destination rows on the
+device says the same thing from the other side — a plant here fans one
+alarm out to several managers that do not agree on a version.
+
+**The vendor tree is Snell & Wilcox, IANA enterprise 7995** — a second
+one beside Tandberg's 1773, so nothing may assume a single vendor root.
+`SNELL-WILCOX-SMI.mib` defines `snellWilcoxRoot ::= { enterprises 7995 }`
+with `snellWilcoxProductReg` at `.1` (the branch `sysObjectID` values come
+from) and a generic sub-tree beside it. The frame-level objects are in
+`SNELL-WILCOX-MODULAR-GATEWAY.mib` and `SNELL-WILCOX-UNIT.mib`; the
+per-card MIBs are one file each under `IQ_Modular_MIBs/`.
+
+The MIB set — 232 files, including the SMI, the textual conventions, the
+product registry, the modular-gateway and unit MIBs, and per-card MIBs
+for the IQ range — is **already tracked in this repository** at
+`internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs`, alongside
+`assets/Tools/SNMP_Support_Tools`. It does NOT need fetching from
+anywhere.
+
+With them, the tree the frame serves decodes. `SNELL-WILCOX-SMI.mib`
+gives the roots — `snellWilcoxProductReg 1`, `snellWilcoxGeneric 2`,
+`snellWilcoxProducts 3`, `snellWilcoxCapabilities 4`,
+`snellWilcoxExperimental 5`, `snellWilcoxMibReg 6` — and
+`SNELL-WILCOX-GATEWAY-LOGGING.mib` puts `snellWilcoxGatewayLogging` at
+`snellWilcoxGeneric 6`. So the branch that dominates the walk,
+
+    1.3.6.1.4.1.7995.2.6.2.1.1.13.76.79.71.71.73.78.71.95.83.84.65.84.69
+
+is the gateway event-log table, column 1, indexed by a **length-prefixed
+ASCII string**: `13` then thirteen bytes spelling `LOGGING_STATE`. The
+MIB says the index is "a fixed length 19 char field ... The underscore
+character is used to pad out all fields to equal length", which is why
+the keys read as they do. `swCardEventLogTable` is the per-slot twin at
+`snellWilcoxGatewayLogging 1`, sixteen columns for sixteen physical
+slots.
+
+Per `internal/snmp/CLAUDE.md` these are compiled OFFLINE into Go OID
+tables; the runtime knows numbers and types only.
+
+> The trap destination is `0.0.0.0` on every enabled row, so this frame
+> currently emits traps to nobody — the same defect the IRDs have with
+> their stale `192.168.0.229`. Point row 1 at the receiver before any
+> trap work is expected to show anything.
 
 ### Cerebrum is a multi-protocol peer, not only the NB API
 

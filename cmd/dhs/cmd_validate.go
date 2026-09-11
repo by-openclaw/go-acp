@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"sort"
 
@@ -52,7 +51,9 @@ func runValidate(ctx context.Context, args []string) error {
 		return err
 	}
 
-	plug := factory.New(pluginDeps(slog.Default()))
+	// Offline validation has no log sink of its own: nil lets plugin.Deps
+	// pick the one process default (WithDefaults).
+	plug := factory.New(pluginDeps(nil))
 
 	validator, ok := plug.(consumer.Validator)
 	if !ok {

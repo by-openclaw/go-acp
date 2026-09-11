@@ -10,6 +10,7 @@ import (
 
 	"dhs/internal/amwa/codec/is07"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // MessageHandler receives every IS-07 sender-to-receiver wire frame
@@ -56,9 +57,7 @@ func NewSubscriber(opts SubscriberOptions) *Subscriber {
 		c = is07.Default()
 	}
 	logger := opts.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	hb := opts.HeartbeatInterval
 	if hb == 0 {
 		hb = 5 * time.Second
@@ -94,7 +93,7 @@ func (s *Subscriber) Subscribe(sources []string) error {
 	if ws == nil {
 		return errors.New("nmos/is07/subscriber: not connected")
 	}
-	cmd := is07.CommandSubscription{Sources: append([]string{}, sources...)}
+	cmd := is07.CommandSubscription{Sources: append([]string(nil), sources...)}
 	if cmd.Sources == nil {
 		cmd.Sources = []string{}
 	}

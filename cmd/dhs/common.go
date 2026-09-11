@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -11,12 +10,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"dhs/internal/acp1/consumer"
+	acp1 "dhs/internal/acp1/consumer"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/datastore"
 	"dhs/internal/logging"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -26,8 +28,17 @@ import (
 // later is a change here rather than in ten connectors. WithDefaults fills
 // whatever this does not set, so a connector always receives a usable set.
 func pluginDeps(logger *slog.Logger) plugin.Deps {
-	return plugin.Deps{Logger: logger}
+	return plugin.Deps{Logger: logger, Net: processNet(), Clock: clock.System()}
 }
+
+// processNet is the ONE transport every connector in this process opens
+// sockets through. Built once from the process posture (today the plain
+// default; TLS, keepalive and source-address policy land here, not in a
+// connector), so a connector never decides how a socket is made and the
+// whole binary changes posture in one place.
+var processNet = sync.OnceValue(func() transport.Net {
+	return transport.New(transport.Config{})
+})
 
 // treeStore is the global file-backed tree store, initialized once.
 // Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json

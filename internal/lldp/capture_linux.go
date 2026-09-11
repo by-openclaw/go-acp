@@ -25,6 +25,57 @@ type Capture struct {
 	// link legitimately returns nothing; the neighbour is not gone, it just
 	// has not spoken yet. Zero means 2s.
 	Window time.Duration
+
+	// sys is the operating-system surface Neighbors sits on. Nil means
+	// the real calls, which is what production always leaves it as.
+	sys *osCalls
+}
+
+// osCalls is the AF_PACKET socket and the interface table, behind
+// function values.
+//
+// It exists because everything worth testing in Neighbors — which frames
+// are kept, which are skipped, which errors are explained and which are
+// returned bare — sits ABOVE a socket that needs CAP_NET_RAW to open.
+// Without this seam that whole body is unreachable on any unprivileged
+// machine, which is every CI runner we have, so the decode-and-dispatch
+// rules would be pinned by nothing.
+//
+// A struct of functions rather than an interface: each member has one
+// real implementation and one test double, so an interface would only
+// add a name. A FIELD on Capture rather than a package variable: a
+// package variable read inside Neighbors is shared by every test in the
+// package, and this tree has already paid for that shape once under
+// -race.
+type osCalls struct {
+	socket     func(domain, typ, proto int) (int, error)
+	bind       func(fd int, sa syscall.Sockaddr) error
+	setTimeout func(fd int, tv *syscall.Timeval) error
+	recvfrom   func(fd int, p []byte) (int, syscall.Sockaddr, error)
+	close      func(fd int) error
+	interfaces func() ([]net.Interface, error)
+}
+
+// realOS is the kernel. The only value production ever uses.
+var realOS = osCalls{
+	socket: syscall.Socket,
+	bind:   syscall.Bind,
+	setTimeout: func(fd int, tv *syscall.Timeval) error {
+		return syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, tv)
+	},
+	recvfrom: func(fd int, p []byte) (int, syscall.Sockaddr, error) {
+		return syscall.Recvfrom(fd, p, 0)
+	},
+	close:      syscall.Close,
+	interfaces: net.Interfaces,
+}
+
+// os resolves the seam. Absent means the kernel.
+func (c Capture) os() osCalls {
+	if c.sys != nil {
+		return *c.sys
+	}
+	return realOS
 }
 
 const (
@@ -47,14 +98,16 @@ func htons(v uint16) uint16 {
 // Frames that fail to decode are SKIPPED, not fatal: a malformed LLDPDU from
 // one misbehaving switch must not hide the four that are fine.
 func (c Capture) Neighbors(ctx context.Context) (map[string]Neighbor, error) {
-	byIndex, wantIdx, err := interfaceIndex(c.Iface)
+	sys := c.os()
+
+	byIndex, wantIdx, err := interfaceIndex(sys.interfaces, c.Iface)
 	if err != nil {
 		return nil, err
 	}
 
 	// SOCK_DGRAM, not SOCK_RAW: the kernel strips the Ethernet header and
 	// hands over the LLDPDU, which is exactly what Decode wants.
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, int(htons(EtherType)))
+	fd, err := sys.socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, int(htons(EtherType)))
 	if err != nil {
 		if errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EACCES) {
 			return nil, fmt.Errorf("lldp: AF_PACKET socket needs CAP_NET_RAW "+
@@ -62,10 +115,10 @@ func (c Capture) Neighbors(ctx context.Context) (map[string]Neighbor, error) {
 		}
 		return nil, fmt.Errorf("lldp: AF_PACKET socket: %w", err)
 	}
-	defer func() { _ = syscall.Close(fd) }()
+	defer func() { _ = sys.close(fd) }()
 
 	if c.Iface != "" {
-		if err := syscall.Bind(fd, &syscall.SockaddrLinklayer{
+		if err := sys.bind(fd, &syscall.SockaddrLinklayer{
 			Protocol: htons(EtherType),
 			Ifindex:  wantIdx,
 		}); err != nil {
@@ -93,10 +146,10 @@ func (c Capture) Neighbors(ctx context.Context) (map[string]Neighbor, error) {
 			return out, err
 		}
 		tv := syscall.NsecToTimeval(int64(min(remaining, readTick)))
-		if err := syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv); err != nil {
+		if err := sys.setTimeout(fd, &tv); err != nil {
 			return out, fmt.Errorf("lldp: set read timeout: %w", err)
 		}
-		n, from, err := syscall.Recvfrom(fd, buf, 0)
+		n, from, err := sys.recvfrom(fd, buf)
 		if err != nil {
 			if errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EINTR) {
 				continue
@@ -130,8 +183,8 @@ func (c Capture) Neighbors(ctx context.Context) (map[string]Neighbor, error) {
 // A name that does not exist is an ERROR rather than an empty result: a typo
 // would otherwise present as "no neighbours", which looks identical to an
 // unplugged cable and sends the operator to the wrong end of the link.
-func interfaceIndex(want string) (map[int]string, int, error) {
-	ifs, err := net.Interfaces()
+func interfaceIndex(list func() ([]net.Interface, error), want string) (map[int]string, int, error) {
+	ifs, err := list()
 	if err != nil {
 		return nil, 0, fmt.Errorf("lldp: list interfaces: %w", err)
 	}

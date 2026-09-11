@@ -4,11 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strings"
 
-	"dhs/internal/acp2/consumer"
+	acp2 "dhs/internal/acp2/consumer"
 )
 
 func runDiag(ctx context.Context, args []string) error {
@@ -22,8 +20,10 @@ func runDiag(ctx context.Context, args []string) error {
 	_ = parseVerbFlags(fs, rest)
 	_ = cf
 
-	lvl := slog.LevelDebug
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
+	// The shared consumer logger: honours --log-format / --syslog-addr /
+	// --debug like every other verb instead of a private stderr handler.
+	logger, _, logClean, _ := consumerLogger(ctx, "acp2", host, "diag")
+	defer logClean()
 
 	port := 2072
 	results, err := acp2.RunDiagnostics(ctx, host, port, uint8(*slot), logger)

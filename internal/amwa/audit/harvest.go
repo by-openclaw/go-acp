@@ -136,9 +136,16 @@ func isHarvestDir(p string) bool {
 	return false
 }
 
+// walkDir is filepath.WalkDir behind a variable so a test can make the
+// scan fail. An unreadable folder inside an export is a Linux-only
+// condition (chmod 000; Windows ACLs do not reproduce it from Go), and
+// the branch it exercises is the one that keeps a half-scanned export
+// from auditing as a complete plant.
+var walkDir = filepath.WalkDir
+
 func findHarvestDirs(dir string) ([]string, error) {
 	var hits []string
-	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+	err := walkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -235,10 +242,11 @@ func loadOne(dir string) (*Harvest, error) {
 			return nil //nolint:nilerr // a missing sdp dir is not an error
 		}
 		if b, rerr := os.ReadFile(p); rerr == nil {
-			rel, relErr := filepath.Rel(sdpDir, p)
-			if relErr != nil {
-				rel = d.Name()
-			}
+			// WalkDir hands back paths under the root it was given, so
+			// the key is that root trimmed off — no second opinion from
+			// filepath.Rel, which can only disagree about paths this
+			// walk cannot produce.
+			rel := strings.TrimPrefix(p, sdpDir+string(filepath.Separator))
 			h.SDP[filepath.ToSlash(rel)] = b
 		}
 		return nil

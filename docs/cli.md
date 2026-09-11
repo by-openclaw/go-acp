@@ -26,6 +26,15 @@ Ansible templates render the same shape.
 - [NMOS plant audit](#nmos-plant-audit)
 - [NMOS live probe](#nmos-live-probe)
 - [NMOS parameter registers](#nmos-parameter-registers)
+- [SNMP consumer](#snmp-consumer)
+- [SNMP: get](#snmp-get)
+- [SNMP: walk](#snmp-walk)
+- [SNMP: set](#snmp-set)
+- [SNMP: trap-listen](#snmp-trap-listen)
+- [SNMP producer](#snmp-producer)
+- [SNMP agent: serve](#snmp-agent-serve)
+- [SNMP agent: trap](#snmp-agent-trap)
+- [SNMP agent: mib](#snmp-agent-mib)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -133,6 +142,7 @@ PROTOCOLS
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
   osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
   osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -173,6 +183,10 @@ OSC VERBS
   watch  bind a port and print every received message
   run 'dhs consumer osc-v10 -h' (or osc-v11) for full flags.
 
+SNMP VERBS
+  get | walk | set | trap-listen
+  run 'dhs consumer snmp -h' for the verb catalogue and examples.
+
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.
 ```
 
@@ -197,6 +211,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -258,12 +273,16 @@ Usage of serve:
     	heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value (default 5s)
   -mdns
     	advertise via mDNS (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address
   -no-connection-api
     	do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device
   -no-mdns
     	disable mDNS announce (Mode B / static)
   -no-registry
     	stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node
+  -pidfile dhs producer nmos stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer nmos stop|ensure --pidfile PATH can manage it
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
   -registry string
@@ -312,6 +331,8 @@ Usage of serve:
     	DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)
   -mdns
     	advertise via mDNS (Mode A) (default true)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this registry on this address
   -no-mdns
     	disable mDNS announce (Modes B / C)
   -page-limit-default int
@@ -596,6 +617,282 @@ usage: dhs consumer nmos registers <list|show> [urn] [--json]
   list          every parameter, URN-sorted
   show <urn>    one parameter's typed constraint
   --json        machine-readable output
+```
+
+## SNMP consumer
+
+`dhs consumer snmp --help`
+
+```text
+dhs consumer snmp — poll an agent, and listen for what it sends unasked
+
+VERBS
+  get           read named objects (default: the RFC 1213 system group)
+  walk          discover a subtree; GETBULK under v2c, GETNEXT under v1
+  set           write one object
+  trap-listen   receive notifications, in any version
+  validate      decode a captured frames.jsonl offline
+
+VERSIONS
+  --version 1 | 2c. The Tandberg IRDs in this lab answer v1 ONLY — v2c
+  gets no reply at all from them, which looks exactly like a device that
+  is down. v3 POLLING needs engine discovery and is not wired yet; v3
+  notifications are, in both directions.
+
+EXAMPLES
+  # what a device says it is
+  dhs consumer snmp get 10.6.255.113
+
+  # the Snell frame's own tree (enterprise 7995)
+  dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
+
+  # an IRD, which is v1-only
+  dhs consumer snmp get --version 1 --oid sysDescr.0 10.6.255.110
+
+  # Cerebrum's agent, which answers on 1161 rather than 161
+  dhs consumer snmp walk 10.6.250.5:1161
+
+  # name the device from the NMS
+  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113
+
+  # listen for alarms from anything, then narrow it
+  dhs consumer snmp trap-listen --bind :1162
+  dhs consumer snmp trap-listen --bind :1162 --community public
+
+  # and for v3 notifications, as the sender's engine
+  dhs consumer snmp trap-listen --bind :1162 --user operator       --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+```
+
+## SNMP: get
+
+`dhs consumer snmp get --help`
+
+```text
+Usage of get:
+  -community set
+    	read community (write community for set) (default "public")
+  -max-repetitions walk
+    	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+  -oid string
+    	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
+  -retries int
+    	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
+  -timeout duration
+    	per-request timeout (default 2s)
+  -version string
+    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+```
+
+## SNMP: walk
+
+`dhs consumer snmp walk --help`
+
+```text
+Usage of walk:
+  -community set
+    	read community (write community for set) (default "public")
+  -limit int
+    	stop after this many objects; a device whose table grows while it is walked would otherwise never end (default 20000)
+  -max-repetitions walk
+    	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+  -oid string
+    	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
+  -retries int
+    	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
+  -timeout duration
+    	per-request timeout (default 2s)
+  -version string
+    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+```
+
+## SNMP: set
+
+`dhs consumer snmp set --help`
+
+```text
+dhs consumer snmp set — write one object
+
+A SET needs the WRITE community in --community, which is NOT the read
+one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+agent drops a request it will not serve (RFC 1157 §4.1) rather than
+explaining, so it looks exactly like a device that is switched off.
+Theirs is "private".
+
+Most agents also gate CONTROL separately from reads, so a device that
+answers every GET can still refuse every write. On the Tandberg IRDs
+that gate is an object you can write:
+
+  controlMode  1.3.6.1.4.1.1773.1.3.200.1.11.0
+               fp(1) serial(2) ncp(3) snmp(4) web(5)
+
+and its MIB says it "may always be written to using SNMP" — so a
+receiver left on the front panel can be taken back over the network,
+without a trip to the rack:
+
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+
+The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
+page instead. Either way a readOnly, notWritable or noSuchName from a
+device that reads fine is the DEVICE, not this tool.
+
+FLAGS
+  -community set
+    	read community (write community for set) (default "public")
+  -max-repetitions walk
+    	GETBULK window for walk (v2c only) (default 25)
+  -mib string
+    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+  -oid string
+    	the object to write, by standard name or dotted number
+  -retries int
+    	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
+  -timeout duration
+    	per-request timeout (default 2s)
+  -type string
+    	value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
+  -value string
+    	the value to write
+  -version string
+    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+```
+
+## SNMP: trap-listen
+
+`dhs consumer snmp trap-listen --help`
+
+```text
+Usage of trap-listen:
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password
+  -bind string
+    	address to listen on. Port 162 needs privilege on Linux. (default ":162")
+  -community string
+    	comma-separated v1/v2c communities to accept. EMPTY ACCEPTS ANY, which is what a diagnostic listener wants and a production one must not have.
+  -engine-boots int
+    	the sender's engine boot count (default 1)
+  -engine-id string
+    	name in the SENDER's engine ID; a v3 notification is authenticated as the sender's engine, so this must match what it uses (default "dhs-agent")
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password
+  -user string
+    	USM user name to accept v3 notifications as
+```
+
+## SNMP producer
+
+`dhs producer snmp --help`
+
+```text
+dhs producer snmp — BE an agent, and emit notifications
+
+VERBS
+  serve   answer polls against a served MIB
+  trap    send one notification to one or more receivers
+  mib     write DHS-MIB, the module defining what the agent serves and sends
+          under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
+  status  runtime snapshot of a serving instance (--url)
+  stop    stop one keyed on --pidfile
+  ensure  converge to --state present|absent
+
+EXAMPLES
+  # an agent on a high port, which needs no privilege
+  dhs producer snmp serve --bind 0.0.0.0:1161 --location "TEC RACK 23"
+
+  # writable, deliberately: an empty --write-community refuses every SET
+  dhs producer snmp serve --bind 0.0.0.0:1161 --write-community private
+
+  # prove a receiver is listening, in whichever version it speaks
+  dhs producer snmp trap --to 10.6.250.5/2c/public
+  dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
+  dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # the module a receiver loads to name what it gets from us
+  dhs producer snmp mib --out DHS-MIB.mib
+
+NOTE
+  Every trap destination on the devices in docs/testbed.md currently
+  points at an address that no longer exists, so they emit to nobody.
+  `trap` is how a receiver is proven before anything depends on it.
+```
+
+## SNMP agent: serve
+
+`dhs producer snmp serve --help`
+
+```text
+Usage of serve:
+  -bind string
+    	address to serve on. Port 161 needs privilege on Linux; use a high port for a dev rig, as Cerebrum's own agent does on 1161. (default "0.0.0.0:161")
+  -contact string
+    	sysContact.0
+  -descr string
+    	sysDescr.0 (default: this build's version line)
+  -location string
+    	sysLocation.0
+  -metrics-addr string
+    	serve /snmp.json and /snapshot.json on this address
+  -name string
+    	sysName.0 (default: this host's name)
+  -pidfile dhs producer snmp stop|ensure --pidfile PATH
+    	write this process's PID to PATH so dhs producer snmp stop|ensure --pidfile PATH can manage it
+  -read-community string
+    	community that admits GET, GETNEXT and GETBULK (default "public")
+  -write-community string
+    	community that admits SET. EMPTY REFUSES EVERY SET, including one carrying the read community — a plant where one password does both is one typo from a re-route.
+```
+
+## SNMP agent: trap
+
+`dhs producer snmp trap --help`
+
+```text
+Usage of trap:
+  -agent-addr string
+    	the v1 agent-address field (default: this host's outbound address). v2c and v3 have no such field.
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password
+  -engine-boots int
+    	this engine's restart count. It MUST be persisted and incremented across restarts, or a device accepts messages recorded before its last reboot. (default 1)
+  -engine-id string
+    	name in this sender's RFC 3411 engine ID; v3 keys every localised key on it (default "dhs-agent")
+  -enterprise string
+    	the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (the default with --specific 1 is dhsTestNotification in DHS-MIB) (default "1.3.6.1.4.1.54981.1.1")
+  -generic int
+    	RFC 1157 generic trap 0..6; 6 means look at --specific (default 6)
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password
+  -specific int
+    	enterprise-specific trap number, meaningful when --generic is 6 (default 1)
+  -to string
+    	comma-separated receivers as ADDR[:PORT][/VERSION[/COMMUNITY-OR-USER]] — e.g. 10.6.250.5,10.6.255.9:162/1/public,10.6.250.7/3/operator
+  -uptime uint
+    	sysUpTime in CENTISECONDS at the event; 0 means now-since-start (which for a one-shot is 0)
+  -user string
+    	USM user name for v3 destinations
+```
+
+## SNMP agent: mib
+
+`dhs producer snmp mib --help`
+
+```text
+Usage of mib:
+  -contact string
+    	the module's CONTACT-INFO (default: BY-SYSTEMS SPRL)
+  -out string
+    	file to write (default: standard output)
 ```
 
 ## consumer info
@@ -1197,6 +1494,7 @@ PROTOCOLS
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
   osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
   osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1236,6 +1534,10 @@ CEREBRUM VERBS
 OSC VERBS
   watch  bind a port and print every received message
   run 'dhs consumer osc-v10 -h' (or osc-v11) for full flags.
+
+SNMP VERBS
+  get | walk | set | trap-listen
+  run 'dhs consumer snmp -h' for the verb catalogue and examples.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.
 ```
@@ -1258,6 +1560,7 @@ PROTOCOLS
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
   osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
   osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1297,6 +1600,10 @@ CEREBRUM VERBS
 OSC VERBS
   watch  bind a port and print every received message
   run 'dhs consumer osc-v10 -h' (or osc-v11) for full flags.
+
+SNMP VERBS
+  get | walk | set | trap-listen
+  run 'dhs consumer snmp -h' for the verb catalogue and examples.
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.
 ```

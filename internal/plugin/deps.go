@@ -57,10 +57,21 @@ type Deps struct {
 //
 // Called once at the top of a connector's constructor. It returns a copy;
 // the caller's Deps is untouched.
-func (d Deps) WithDefaults() Deps {
-	if d.Logger == nil {
-		d.Logger = slog.Default()
+// LoggerOrDefault returns l, or the process default logger when l is nil.
+// It is the ONE place in the tree that decides what "no logger given"
+// means: every constructor that accepts an optional *slog.Logger routes
+// through it instead of calling slog.Default() itself, so changing the
+// default sink (e.g. syslog by default, epic #987) is a one-line change
+// and the forbidigo rule in .golangci.yml keeps it that way.
+func LoggerOrDefault(l *slog.Logger) *slog.Logger {
+	if l == nil {
+		return slog.Default()
 	}
+	return l
+}
+
+func (d Deps) WithDefaults() Deps {
+	d.Logger = LoggerOrDefault(d.Logger)
 	if d.Net == nil {
 		d.Net = transport.New(transport.Config{})
 	}

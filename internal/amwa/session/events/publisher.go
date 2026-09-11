@@ -12,6 +12,7 @@ import (
 
 	"dhs/internal/amwa/codec/is07"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // Publisher is the IS-07 WebSocket server attached to a Node. One
@@ -81,9 +82,7 @@ func NewPublisher(opts PublisherOptions) *Publisher {
 		c = is07.Default()
 	}
 	logger := opts.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	// 0 means OFF, exactly as the field documents.
 	//
 	// It used to mean "off" in the comment and "5 seconds" in the code,

@@ -148,6 +148,78 @@ jobs:
           check internal/acp2/consumer 100
           check internal/acp2/provider 100
           check internal/provider 100
+          check internal/consumer 100
+          check internal/registry 100
+          check internal/errcode 100
+          check internal/clock 100
+          check internal/identity 100
+          check internal/metrics 100
+          check internal/wiretrace 100
+          check internal/logging 100
+          check internal/scenario 100
+          check internal/amwa/session/http 100
+          check internal/amwa/session/auth 100
+          check internal/manifest 100
+          check internal/datastore 100
+          check internal/devicemodel 100
+          check internal/transport 100
+          check internal/amwa/session/mqtt 100
+          check internal/diff 100
+          check internal/export 100
+          check internal/export/canonical 100
+          check internal/amwa/profile 100
+          check internal/amwa/audit 100
+          check internal/amwa/facade 100
+          check internal/amwa/provider 100
+          check internal/amwa/registry 100
+          check internal/amwa/codec/dnssd 100
+          check internal/amwa/codec/edid 100
+          check internal/amwa/codec/est 100
+          check internal/amwa/codec/is07 100
+          check internal/amwa/codec/ms05 100
+          check internal/amwa/codec/sdp 100
+          check internal/amwa/codec/ms05/v10 100
+          check internal/amwa/codec/is07/v10 100
+          check internal/amwa/codec/is08 100
+          check internal/amwa/codec/is12 100
+          check internal/amwa/codec/is08/v10 100
+          check internal/amwa/session/events 100
+          check internal/amwa/session/certmgr 100
+          check internal/amwa/session/dnssd 100
+          check internal/amwa/session/system 100
+          check internal/lldp 100
+          check internal/amwa/session/export 100
+          check internal/amwa/codec/bcp 100
+          check internal/amwa/codec/bcp/bcp00201 100
+          check internal/amwa/codec/bcp/bcp00202 100
+          check internal/amwa/codec/bcp/bcp00401 100
+          check internal/amwa/codec/bcp/bcp00402 100
+          check internal/amwa/codec/bcp/bcp00601 100
+          check internal/amwa/codec/bcp/bcp00604 100
+          check internal/amwa/codec/bcp/bcp00801 100
+          check internal/amwa/codec/bcp/bcp00802 100
+          check internal/amwa/codec/is04 100
+          check internal/amwa/codec/is04/schemas 100
+          check internal/amwa/codec/is04/v10 100
+          check internal/amwa/codec/is04/v11 100
+          check internal/amwa/codec/is04/v12 100
+          check internal/amwa/codec/is04/v13 100
+          check internal/amwa/codec/is05 100
+          check internal/amwa/codec/is05/v10 100
+          check internal/amwa/codec/is05/v11 100
+          check internal/amwa/codec/is05/v12 100
+          check internal/amwa/codec/is09 100
+          check internal/amwa/codec/is09/v10 100
+          check internal/amwa/codec/is10 100
+          check internal/amwa/codec/is10/v10 100
+          check internal/amwa/codec/is11 100
+          check internal/amwa/codec/is11/v10 100
+          check internal/amwa/codec/is12/v10 100
+          check internal/amwa/codec/is14 100
+          check internal/amwa/codec/is14/v10 100
+          check internal/amwa/codec/registers 100
+          check internal/amwa/codec/spec 100
+          check internal/amwa/codec/jsonschema 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
@@ -171,8 +243,26 @@ jobs:
           check internal/cerebrum-nb/codec 100
           check internal/transport/ws 100
           check internal/transport/http 100
+          check internal/transport/conformance 100
+          check tools/mibcheck 100
+          check tools/gencli 100
+          check tools/gen-probel-tree 100
           check internal/auth 100
           check internal/plugin 100
+          check internal/ccm/codec 100
+          check internal/ccm/consumer 100
+          check internal/consumer/compliance 100
+          # SNMP wire format. Floor verified on the Linux tools host as well
+          # as this desk: the package is stdlib-only with no build tags, so
+          # the two agree, but the check is what says so.
+          check internal/snmp/codec 100
+          check internal/snmp/provider 100
+          check internal/snmp/usm 100
+          check internal/snmp/mib 100
+          check internal/snmp/consumer 100
+          check internal/snmp/smi 100
+          check internal/snmp/mibgen 100
+          check tools/mibc 100
           check internal/cerebrum-nb/consumer 100
           # AMWA NMOS controller path — gold-template gated. dnssd is not
           # listed: its Linux-only avahi/DBus and unix multicast-loop files

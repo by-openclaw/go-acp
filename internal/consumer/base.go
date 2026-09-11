@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
@@ -41,6 +42,20 @@ type Base struct {
 	profile  *compliance.Profile
 	metrics  *metrics.Connector
 	recorder *transport.Recorder
+	clk      clock.Clock
+}
+
+// Clock returns the injected clock — keepalive probers, poll loops and
+// settle timers take their time from it so a test drives time instead of
+// sleeping. Never nil: a Base that was never Init'ed answers with the
+// system clock.
+func (b *Base) Clock() clock.Clock {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.clk == nil {
+		b.clk = clock.System()
+	}
+	return b.clk
 }
 
 // Init wires the cross-cutting concerns from the injected dependency set.
@@ -57,6 +72,7 @@ func (b *Base) Init(deps plugin.Deps, stale time.Duration) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.metrics = deps.Metrics
+	b.clk = deps.Clock
 	if b.profile == nil {
 		b.profile = &compliance.Profile{}
 	}

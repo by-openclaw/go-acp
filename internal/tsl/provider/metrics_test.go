@@ -7,6 +7,7 @@ import (
 
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 )
 
@@ -104,7 +105,7 @@ func TestTCPDialerCountsWrappedBytes(t *testing.T) {
 	}()
 
 	met := metrics.NewConnector()
-	d := newTCPDialer(met)
+	d := newTCPDialer(met, transport.New(transport.Config{}).Dial)
 	t.Cleanup(func() { _ = d.close() })
 
 	host, portStr, _ := net.SplitHostPort(ln.Addr().String())

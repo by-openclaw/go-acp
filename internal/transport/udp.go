@@ -49,7 +49,7 @@ func DialUDP(ctx context.Context, host string, port int) (*UDPConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: udp dial %s:%d: %v", classifyDialError(err), host, port, err)
 	}
-	udp, ok := netConn.(*net.UDPConn)
+	udp, ok := dialUDPAssert(netConn)
 	if !ok {
 		_ = netConn.Close()
 		return nil, fmt.Errorf("%w: udp dial %s:%d: not a *net.UDPConn (%T)", ErrWrongConnType, host, port, netConn)
@@ -80,7 +80,7 @@ func (c *UDPConn) Send(ctx context.Context, payload []byte) error {
 		_ = c.conn.SetWriteDeadline(time.Time{})
 	}
 
-	n, err := c.conn.Write(payload)
+	n, err := udpWrite(c.conn, payload)
 	if err != nil {
 		return fmt.Errorf("%w: udp write: %v", ErrWriteFailed, err)
 	}
@@ -119,7 +119,7 @@ func (c *UDPConn) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 	// a longer datagram we detect truncation instead of silently accepting
 	// a malformed packet.
 	buf := make([]byte, maxSize+1)
-	n, err := c.conn.Read(buf)
+	n, err := udpRead(c.conn, buf)
 	if err != nil {
 		if cerr := cancelledReadErr(ctx, err); cerr != nil {
 			return nil, cerr
@@ -157,7 +157,7 @@ func (c *UDPConn) Close() error {
 	// writing the field here would race that read (go test -race). The
 	// underlying net.Conn.Close is safe alongside Read; tolerate the
 	// already-closed error so a repeat Close stays a no-op.
-	if err := c.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+	if err := closeConn(c.conn); err != nil && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("%w: udp close: %v", ErrCloseFailed, err)
 	}
 	return nil
@@ -206,9 +206,9 @@ func ListenUDP(ctx context.Context, port int) (*UDPListener, error) {
 	// creation but before bind. That is exactly the window we need to
 	// set SO_REUSEADDR — setting it post-bind has no effect.
 	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
+		Control: func(_, _ string, c syscall.RawConn) error {
 			var opErr error
-			if err := c.Control(func(fd uintptr) {
+			if err := udpRawControl(c, func(fd uintptr) {
 				opErr = setReuseAddr(fd)
 			}); err != nil {
 				return err
@@ -220,7 +220,7 @@ func ListenUDP(ctx context.Context, port int) (*UDPListener, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: udp listen :%d: %v", ErrListenFailed, port, err)
 	}
-	udpConn, ok := pc.(*net.UDPConn)
+	udpConn, ok := udpAssertConn(pc)
 	if !ok {
 		_ = pc.Close()
 		return nil, fmt.Errorf("%w: udp listen :%d: unexpected conn type %T", ErrWrongConnType, port, pc)
@@ -252,7 +252,7 @@ func (l *UDPListener) Receive(ctx context.Context, maxSize int) ([]byte, net.Add
 	defer stop()
 
 	buf := make([]byte, maxSize+1)
-	n, addr, err := l.conn.ReadFromUDP(buf)
+	n, addr, err := udpReadFromUDP(l.conn, buf)
 	if err != nil {
 		if cerr := cancelledReadErr(ctx, err); cerr != nil {
 			return nil, nil, cerr
@@ -280,7 +280,7 @@ func (l *UDPListener) Close() error {
 		return nil
 	}
 	// See UDPConn.Close: don't nil the field — it races the receive loop.
-	if err := l.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+	if err := closeConn(l.conn); err != nil && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("%w: udp listener close: %v", ErrCloseFailed, err)
 	}
 	return nil
@@ -293,3 +293,27 @@ func (l *UDPListener) LocalAddr() net.Addr {
 	}
 	return l.conn.LocalAddr()
 }
+
+// Test seams for the UDP arms a live socket cannot reach — same pattern and
+// same rules as the block in tcp.go (closeConn lives there and is shared).
+// ListenUDP reuses udpRawControl and udpAssertConn from listen_udp.go rather
+// than growing copies of them.
+//
+// Why each arm is unreachable on a real socket:
+//   - dialUDPAssert: a "udp" dial always yields a *net.UDPConn.
+//   - udpWrite: a datagram either leaves whole or fails; the kernel never
+//     reports a short write on a connected UDP socket.
+//   - udpRead / udpReadFromUDP: the oversized-datagram contract has ONE
+//     reachable arm per OS. Unix truncates (n > maxSize fires, EMSGSIZE
+//     never does); Windows fails the read with WSAEMSGSIZE (the reverse). A
+//     fleet that runs on both needs both arms proven on both, and only a
+//     seam can take the arm the host OS will never produce.
+var (
+	dialUDPAssert = func(c net.Conn) (*net.UDPConn, bool) {
+		uc, ok := c.(*net.UDPConn)
+		return uc, ok
+	}
+	udpWrite       = (*net.UDPConn).Write
+	udpRead        = (*net.UDPConn).Read
+	udpReadFromUDP = (*net.UDPConn).ReadFromUDP
+)
