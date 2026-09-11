@@ -489,17 +489,23 @@ func (d *device) menuNext(f codec.Frame) {
 	d.reply(f, typ, payload)
 }
 
-// menuBlock answers the 16-bit menu request.
+// menuBlock answers the 16-bit menu request. The payload is the base index of
+// the partial to load; zero is the home menu (spec 7.2.2.12).
 func (d *device) menuBlock(f codec.Frame) {
 	port := d.port(f)
 
+	var base uint32
+	if len(f.Payload) >= 2 {
+		base = uint32(f.Payload[0])<<8 | uint32(f.Payload[1])
+	}
+
 	d.mu.Lock()
-	items := d.menus[port]
+	items := d.menuAt(port, base)
 	odd := d.oddMenuItem
 	d.mu.Unlock()
 
 	d.block(f, codec.MsgGetFunc, len(items), func(i int) (codec.PacketType, []byte) {
-		if i == odd {
+		if base == 0 && i == odd {
 			// Not a menu line at all. A walker should skip it and keep the
 			// rest of the menu.
 			return codec.MsgAck, nil
@@ -519,15 +525,16 @@ func (d *device) menuBlock(f codec.Frame) {
 func (d *device) menuCount(f codec.Frame) {
 	port := d.port(f)
 
-	d.mu.Lock()
-	items := d.menus[port]
-	d.mu.Unlock()
-
 	req, err := codec.DecodeMenuReq(f.Payload)
 	if err != nil {
 		d.reply(f, codec.MsgNack, nil)
 		return
 	}
+
+	d.mu.Lock()
+	items := d.menuAt(port, req.MenuIndex)
+	d.mu.Unlock()
+
 	size := codec.MenuSize{MenuIndex: req.MenuIndex, MenuCount: uint32(len(items))}
 	d.reply(f, codec.MsgRetMenuCount, size.AppendTo(nil))
 }
@@ -542,14 +549,14 @@ func (d *device) menuItem(f codec.Frame) {
 	}
 
 	d.mu.Lock()
-	items := d.menus[port]
+	item, ok := d.menuItemAt(port, req.MenuIndex)
 	d.mu.Unlock()
 
-	if int(req.MenuIndex) >= len(items) {
+	if !ok {
 		d.reply(f, codec.MsgNack, nil)
 		return
 	}
-	payload, err := items[req.MenuIndex].AppendTo(nil)
+	payload, err := item.AppendTo(nil)
 	if err != nil {
 		d.fail("device: encode menu item: %v", err)
 		return
@@ -932,4 +939,24 @@ func (d *device) fileRead(f codec.Frame) {
 	}
 	hdr := codec.File{SrcHandle: req.SrcHandle, FileHandle: req.FileHandle, Offset: int32(count)}
 	d.reply(f, codec.MsgRetFileRead, append(hdr.AppendTo(nil), chunk...))
+}
+
+// menuItemAt finds a line by its absolute menu index, across the home menu and
+// every registered partial. In the 32-bit generation an item is fetched by its
+// index rather than by an offset into a block, so following a partial means
+// resolving indexes that belong to it.
+func (d *device) menuItemAt(port uint8, index uint32) (codec.MenuItem, bool) {
+	for _, m := range d.menus[port] {
+		if m.MenuIndex == index {
+			return m, true
+		}
+	}
+	for _, block := range d.partials[port] {
+		for _, m := range block {
+			if m.MenuIndex == index {
+				return m, true
+			}
+		}
+	}
+	return codec.MenuItem{}, false
 }

@@ -104,36 +104,35 @@ func (p *Plugin) walkTree(ctx context.Context, slot int) (*slotTree, error) {
 // happen on one session with nothing interleaved, which the session layer's
 // one-in-flight rule already guarantees.
 func (p *Plugin) walk16(ctx context.Context, s *session.Session) ([]menuLine, error) {
-	var lines []menuLine
-
-	err := session.Walk(ctx, s, codec.MsgGetFunc, []byte{0, 0},
-		func(_ int, f codec.Frame) error {
-			if f.Type != codec.MsgRetFunc {
-				// A server may answer an item with something else; skip it
-				// rather than abandon the menu.
+	return p.walkPartials(func(base uint32) ([]menuLine, error) {
+		var lines []menuLine
+		payload := []byte{byte(base >> 8), byte(base)}
+		err := session.Walk(ctx, s, codec.MsgGetFunc, payload,
+			func(_ int, f codec.Frame) error {
+				if f.Type != codec.MsgRetFunc {
+					// A server may answer an item with something else; skip it
+					// rather than abandon the menu.
+					return nil
+				}
+				fn, err := codec.DecodeFunc(f.Payload)
+				if err != nil {
+					return err
+				}
+				lines = append(lines, menuLine{
+					Index:    uint32(fn.MenuIndex),
+					Style:    fn.Style,
+					Command:  uint32(fn.Command),
+					MinRange: fn.MinRange,
+					MaxRange: fn.MaxRange,
+					Step:     uint32(fn.Step),
+					DivScale: fn.DivScale,
+					Text:     fn.Text,
+					Param:    fn.Param,
+				})
 				return nil
-			}
-			fn, err := codec.DecodeFunc(f.Payload)
-			if err != nil {
-				return err
-			}
-			lines = append(lines, menuLine{
-				Index:    uint32(fn.MenuIndex),
-				Style:    fn.Style,
-				Command:  uint32(fn.Command),
-				MinRange: fn.MinRange,
-				MaxRange: fn.MaxRange,
-				Step:     uint32(fn.Step),
-				DivScale: fn.DivScale,
-				Text:     fn.Text,
-				Param:    fn.Param,
 			})
-			return nil
-		})
-	if err != nil {
-		return nil, fmt.Errorf("rollcall: walk menu: %w", err)
-	}
-	return lines, nil
+		return lines, err
+	})
 }
 
 // walk32 reads a menu in the long-string generation.
@@ -143,26 +142,79 @@ func (p *Plugin) walk16(ctx context.Context, s *session.Session) ([]menuLine, er
 // a menu is a tree written depth-first and the spans only mean anything read
 // that way.
 func (p *Plugin) walk32(ctx context.Context, s *session.Session) ([]menuLine, error) {
-	var lines []menuLine
-
-	err := session.WalkMenu32(ctx, s, 0, func(m codec.MenuItem) error {
-		lines = append(lines, menuLine{
-			Index:    m.MenuIndex,
-			Style:    m.Style,
-			Command:  m.Command,
-			MinRange: m.MinRange,
-			MaxRange: m.MaxRange,
-			Step:     m.Step,
-			DivScale: m.DivScale,
-			Text:     m.Text,
-			Param:    m.Param,
+	return p.walkPartials(func(base uint32) ([]menuLine, error) {
+		var lines []menuLine
+		err := session.WalkMenu32(ctx, s, base, func(m codec.MenuItem) error {
+			lines = append(lines, menuLine{
+				Index:    m.MenuIndex,
+				Style:    m.Style,
+				Command:  m.Command,
+				MinRange: m.MinRange,
+				MaxRange: m.MaxRange,
+				Step:     m.Step,
+				DivScale: m.DivScale,
+				Text:     m.Text,
+				Param:    m.Param,
+			})
+			return nil
 		})
-		return nil
+		return lines, err
 	})
-	if err != nil {
-		return nil, fmt.Errorf("rollcall: walk menu: %w", err)
+}
+
+// walkPartials loads the home partial and every partial reachable from it.
+//
+// A menu can be split into separately loadable partials (spec 7.2.1). A
+// CM_PARTIAL line is a link to one, and its rCommand is the menu index the
+// partial starts at; the home partial starts at zero. Loading only the home
+// partial, which is what this used to do, walks a device that pages its menu
+// to its top level and no further — a gateway's whole menu is seven partial
+// links, so a walk of it returned seven objects (measured on the real IQ
+// frame, unit 0x0C).
+//
+// load fetches one partial by its base index, in whichever generation the
+// caller speaks. This follows every non-disabled link and never invents the
+// tree shape: it loads exactly the partials the device published links to.
+//
+// The RETURN backlink a sub-partial carries (spec 7.2.2.12) needs no special
+// case. It points at an ancestor, which was loaded first and is therefore
+// already seen; the home partial's own backlink points at zero, which is
+// loaded before anything. A base is loaded once, so a cycle cannot form and a
+// shared partial is not fetched twice.
+func (p *Plugin) walkPartials(load func(base uint32) ([]menuLine, error)) ([]menuLine, error) {
+	var out []menuLine
+	seenLine := map[uint32]bool{}
+	seenBase := map[uint32]bool{0: false} // 0 is queued below, not yet loaded
+	queue := []uint32{0}
+
+	for len(queue) > 0 {
+		base := queue[0]
+		queue = queue[1:]
+		if seenBase[base] {
+			continue
+		}
+		seenBase[base] = true
+
+		lines, err := load(base)
+		if err != nil {
+			return nil, fmt.Errorf("rollcall: walk menu partial %d: %w", base, err)
+		}
+
+		for _, ln := range lines {
+			if ln.Style.Kind() == codec.StylePartial && !ln.Style.Disabled() {
+				if b := ln.Command; b != 0 && !seenBase[b] {
+					queue = append(queue, b)
+				}
+			}
+			// A menu index is unique across the whole menu, so a line already
+			// collected is a partial reached by two links; keep the first.
+			if !seenLine[ln.Index] {
+				seenLine[ln.Index] = true
+				out = append(out, ln)
+			}
+		}
 	}
-	return lines, nil
+	return out, nil
 }
 
 // buildTree turns a flat menu into a tree and an object list.

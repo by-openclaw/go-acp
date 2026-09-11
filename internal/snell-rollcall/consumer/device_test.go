@@ -38,8 +38,13 @@ type device struct {
 	// generation the consumer will ask for.
 	services codec.Service
 
-	// menus is the menu each port serves.
+	// menus is the home menu each port serves (the partial at base 0).
 	menus map[uint8][]codec.MenuItem
+
+	// partials is a port's separately loadable partials, keyed by the menu
+	// index each starts at. A device that pages its menu is walked by
+	// following CM_PARTIAL links into these (spec 7.2.1).
+	partials map[uint8]map[uint32][]codec.MenuItem
 
 	// values is the current value of each command, per port.
 	values map[uint8]map[uint32]codec.Value
@@ -203,6 +208,7 @@ func newDevice(t *testing.T, conn net.Conn) *device {
 		services: codec.SvcMenus | codec.SvcControl | codec.SvcDisplay |
 			codec.SvcFile | codec.SvcMap | codec.SvcLongStr,
 		menus:           make(map[uint8][]codec.MenuItem),
+		partials:        make(map[uint8]map[uint32][]codec.MenuItem),
 		values:          make(map[uint8]map[uint32]codec.Value),
 		files:           make(map[string][]byte),
 		identity:        make(map[uint8]codec.ID),
@@ -254,6 +260,44 @@ func (d *device) setMenu(port uint8, items []codec.MenuItem) {
 			Val:     m.MinRange,
 		}
 	}
+}
+
+// setPartial registers a separately loadable partial at a base index, and
+// seeds a value for every command in it, so a walk that follows a CM_PARTIAL
+// link finds a block to load there.
+func (d *device) setPartial(port uint8, base uint32, items []codec.MenuItem) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.partials[port] == nil {
+		d.partials[port] = make(map[uint32][]codec.MenuItem)
+	}
+	d.partials[port][base] = items
+	if d.values[port] == nil {
+		d.values[port] = make(map[uint32]codec.Value)
+	}
+	for _, m := range items {
+		if m.Command == 0 || m.Style.Container() {
+			continue
+		}
+		if _, seen := d.values[port][m.Command]; !seen {
+			d.values[port][m.Command] = codec.Value{Command: m.Command, Mode: codec.ModeValue}
+		}
+	}
+}
+
+// menuAt is the block a port serves at a base index: the registered partial if
+// there is one, else the home menu at base zero, else nothing.
+func (d *device) menuAt(port uint8, base uint32) []codec.MenuItem {
+	if p := d.partials[port]; p != nil {
+		if items, ok := p[base]; ok {
+			return items
+		}
+	}
+	if base == 0 {
+		return d.menus[port]
+	}
+	return nil
 }
 
 func (d *device) setValue(port uint8, v codec.Value) {
