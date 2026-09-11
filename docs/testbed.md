@@ -52,7 +52,7 @@ gateway** (spec 7.6) rather than as units of their own:
 | `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
 | `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
 | `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
-| `0000-0C-8E` | 483 RC32 Routing IPShare Client | **our own client**: the port the gateway stamped for the connection asking (`dhs rollcall`, services `0x8007`), read from the frame's own device list. Calling it is calling ourselves, which is why a session there is refused |
+| `0000-0C-8E` and up | the connected clients | **client ports, stamped by the gateway from `0x8E` upward, one per RollCall client connected at the time**. Measured: on 2026-09-09 `8E` was our own `dhs rollcall` (type 483) because it was alone; on 2026-09-11 `8E` was the vendor ControlPanel (type 500) on `win11` and ours was `8F`. A session asked of one is refused, since it is a client and not a node. Our provider stamps clients from `0xE0` instead |
 
 It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
 the 16-bit generation — the one a proxy also speaks, and the one the emulator
