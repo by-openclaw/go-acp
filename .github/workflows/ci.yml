@@ -10,7 +10,14 @@ on:
   # Release Please job, which recovers a missed release cut.
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    # No base-branch filter, so a PR in a stack — based on the PR below it
+    # rather than on main — is verified too. Stacked PRs used to report no
+    # checks at all: CI only fired when the base was main, so 23 of a 24-PR
+    # rollcall stack got nothing until each was retargeted. The cost of
+    # widening this is held down by the same file: a run on any ref but main
+    # is Linux-only and supersedes the previous run on that ref, so a stacked
+    # PR run is three jobs and an amended push cancels the run it replaced.
+    #
     # The release-please PR touches ONLY these two bot-owned files and is
     # re-force-pushed on every merge to main; each force-push spawned a CI
     # run that parked at action_required (bot-authored PR + workflow
