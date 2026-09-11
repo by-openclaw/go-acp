@@ -408,3 +408,26 @@ func TestUnsolicitedPayloadSurvives(t *testing.T) {
 		}
 	}
 }
+
+// TestPushArrivingAsTheSessionClosesIsDropped covers the window the race
+// detector found: acknowledging a push can tear the session down — the reply
+// rides a link that has just gone — so a push arriving from the read loop at
+// that instant must be turned away, not sent onto the closing queue. Before
+// the guard this was a send on a closed channel; here it is a no-op.
+func TestPushArrivingAsTheSessionClosesIsDropped(t *testing.T) {
+	h := newHarness(t, Config{PushQueue: 1})
+	s := bareSession(h.link)
+	if err := h.link.register(s); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+
+	s.shutdown(ErrSessionClosed)
+
+	// The read loop delivers a push after the session has shut down. It must
+	// neither panic nor be queued.
+	s.receivePush(codec.Frame{Type: codec.MsgDispData, Flags: 0x80})
+
+	if _, ok := <-s.pushes; ok {
+		t.Error("a push was queued onto a closed session")
+	}
+}

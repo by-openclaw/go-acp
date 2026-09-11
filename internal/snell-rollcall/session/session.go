@@ -287,6 +287,17 @@ func (s *Session) receive(f codec.Frame) {
 // letting it run ahead of a reader that cannot keep up.
 func (s *Session) receivePush(f codec.Frame) {
 	p := Push{Frame: f, ack: func() error { return s.Reply(codec.MsgAck, nil) }}
+
+	// Under the lock, because shutdown closes this channel and the read loop
+	// pushes to it. Acknowledging one push can tear the session down — the
+	// reply travels on a link that has just gone — so a push arriving as the
+	// session closes would otherwise send on a closed channel. The send is
+	// non-blocking, so holding the lock across it cannot stall.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
 	select {
 	case s.pushes <- p:
 	default:
@@ -388,14 +399,17 @@ func (s *Session) linkClosed(err error) {
 }
 
 func (s *Session) shutdown(err error) {
+	// Mark closed and close the push queue together, so a push arriving on the
+	// read loop at this instant is turned away rather than sent onto a channel
+	// being closed. beginClose makes shutdown run once, so this closes once.
 	s.mu.Lock()
 	s.closed = true
+	close(s.pushes)
 	s.mu.Unlock()
 
 	s.front.closeWith(err)
 	s.back.closeWith(err)
 	s.link.removeSession(s.localIndex)
-	close(s.pushes)
 }
 
 func (s *Session) isClosed() bool {
