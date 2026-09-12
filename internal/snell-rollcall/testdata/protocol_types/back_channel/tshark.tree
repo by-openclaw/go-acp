@@ -1,0 +1,81 @@
+Frame 1: Packet, 65 bytes on wire (520 bits), 65 bytes captured (520 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51243, Dst Port: 2057, Seq: 1, Ack: 1, Len: 21
+Snell RollCall: BKCHNREADY open and flush
+    TX flags: 12
+    TX length: 17
+    Destination: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    Source: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    RollCall length: 3
+    Type: 27 (BKCHNREADY)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 01
+        Back channel: 1 (open and flush)
+
+Frame 2: Packet, 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51243, Dst Port: 2057, Seq: 22, Ack: 21, Len: 22
+Snell RollCall: REPFCHG
+    TX flags: 12
+    TX length: 18
+    Destination: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    Source: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    RollCall length: 4
+    Type: 36 (REPFCHG)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: ffff
+
+Frame 3: Packet, 82 bytes on wire (656 bits), 82 bytes captured (656 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51243, Seq: 249, Ack: 163, Len: 38
+Snell RollCall: RETVALUE cmd=316 16842756
+    TX flags: 12
+    TX length: 34
+    Destination: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    Source: 0000-81-00:48
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 48
+    RollCall length: 20
+    Type: 71 (RETVALUE)
+    Flags: 0x80
+        1... .... = Back channel: True
+        .0.. .... = Wide area: False
+    Payload: 0000013c0000000400000006010584808408
+        Command: 316
+        Match unit type: 0
+        Mode: 0x0004 (DATA)
+        Value: 6
+        Data (6 bytes)
+        Data Transfer Params
+            Items: 1
+            uint: 16842756 (0x01010004)
+

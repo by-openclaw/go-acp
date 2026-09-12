@@ -53,14 +53,14 @@ func syslogSeverity(l slog.Level) int {
 type syslogHandler struct {
 	mu       *sync.Mutex
 	w        io.Writer
-	min      slog.Level
+	min      slog.Leveler
 	hostname string
 	pid      int
 	attrs    []slog.Attr
 	group    string
 }
 
-func newSyslogHandler(w io.Writer, min slog.Level) *syslogHandler {
+func newSyslogHandler(w io.Writer, min slog.Leveler) *syslogHandler {
 	host, err := os.Hostname()
 	if err != nil || host == "" {
 		host = "-"
@@ -68,7 +68,7 @@ func newSyslogHandler(w io.Writer, min slog.Level) *syslogHandler {
 	return &syslogHandler{mu: &sync.Mutex{}, w: w, min: min, hostname: host, pid: os.Getpid()}
 }
 
-func (h *syslogHandler) Enabled(_ context.Context, l slog.Level) bool { return l >= h.min }
+func (h *syslogHandler) Enabled(_ context.Context, l slog.Level) bool { return l >= h.min.Level() }
 
 func (h *syslogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	c := *h

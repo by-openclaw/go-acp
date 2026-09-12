@@ -66,9 +66,10 @@ func loadDM(path string) (*dmFile, error) {
 // tree)`. Each manifest slot becomes a child node under the root,
 // containing the DM's object tree.
 //
-// Slot order is the manifest's `frames[].slots[]` order. Each slot's
-// `addr` is preserved as a description annotation but does not affect
-// tree shape.
+// Slot order is the manifest's `frames[].slots[]` order. `addr` does not
+// affect tree shape, and a canonical-shape DM is grafted as it is, so the
+// tree does not say where each card sits: a provider that needs to know reads
+// Manifest.SlotDMs beside it.
 //
 // The conversion is lossy by design — we surface what the ACP1/ACP2
 // providers need to answer walks (obj-id, label, kind, value, access)

@@ -83,3 +83,32 @@ func (m *Manifest) SlotProtos() map[uint8][]uint8 {
 	}
 	return out
 }
+
+// SlotDM is one slot's DM reference and the numeric slot it was placed at.
+type SlotDM struct {
+	// Slot is the numeric slot from Addr, or -1 when the address is not a
+	// number.
+	Slot int
+	DM   string
+}
+
+// SlotDMs lists every slot's DM reference in manifest order, which is the
+// order BuildExport places them under the root.
+//
+// A provider that answers each card at an address of its own — a RollCall
+// gateway answers each card on a port, and a client addresses it there —
+// reads this beside the tree: the tree says what each card is made of, and
+// this says where each one sits and which model it was walked from.
+func (m *Manifest) SlotDMs() []SlotDM {
+	var out []SlotDM
+	for _, fr := range m.Frames {
+		for _, sl := range fr.Slots {
+			n, ok := slotIndex(sl.Addr)
+			if !ok {
+				n = -1
+			}
+			out = append(out, SlotDM{Slot: n, DM: sl.DM})
+		}
+	}
+	return out
+}

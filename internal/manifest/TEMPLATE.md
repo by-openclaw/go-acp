@@ -40,6 +40,7 @@ Run it: `dhs producer <proto> serve --manifest <…/manifest/<device>.json> --ca
 |---|---|---|
 | acp1 / acp2 | `{ "slot": N }` | slot 0 = rack controller card |
 | emberplus | `{ "oid": "1.4.2" }` | grafts the DM subtree at that OID |
+| rollcall | `{ "slot": N }` | N is the port the card answers on; port 0 is the gateway and is made by the provider, so slots count from 1 |
 | probel-sw08p / sw02p | `{ "matrix": M, "level": L }` | matrix entity (ADR-0023) |
 
 ### `dm` reference

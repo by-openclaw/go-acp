@@ -29,6 +29,12 @@ func pluginDeps(logger *slog.Logger) plugin.Deps {
 	return plugin.Deps{Logger: logger}
 }
 
+// pluginDepsWithLevel is pluginDeps for a caller that kept the level it built
+// the logger with, so a connector can offer its own logging as a control.
+func pluginDepsWithLevel(logger *slog.Logger, level *slog.LevelVar) plugin.Deps {
+	return plugin.Deps{Logger: logger, LogLevel: level}
+}
+
 // treeStore is the global file-backed tree store, initialized once.
 // Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json
 // (gitignored, regeneratable; separate from manual captures under captures/).

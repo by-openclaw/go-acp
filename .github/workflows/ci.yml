@@ -182,6 +182,12 @@ jobs:
           check internal/osc/codec 100
           check internal/osc/consumer 100
           check internal/osc/provider 100
+          check internal/snell-rollcall/codec 100
+          check internal/snell-rollcall/codec/dtp 100
+          check internal/snell-rollcall/codec/router 100
+          check internal/snell-rollcall/session 100
+          check internal/snell-rollcall/consumer 100
+          check internal/snell-rollcall/provider 100
           check internal/cerebrum-nb/codec 100
           check internal/transport/ws 100
           check internal/transport/http 100

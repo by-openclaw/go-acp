@@ -1,0 +1,418 @@
+---
+# Snell RollCall convergence contract (ADR-0007, ADR-0025 deliverable 6).
+#
+# Three things converge on this connector and they are not the same thing:
+#
+#   * a VALUE on a card — gain, a name, an enable — reached by slot and label,
+#     converged by the canonical `ensure` verb every connector shares;
+#   * a CROSSPOINT on a router — reached by matrix, level and destination,
+#     converged by `route`, because a crosspoint has no slot and no label and
+#     never did;
+#   * the PRODUCER itself, present or absent, converged by `producer ensure`
+#     against the pidfile it wrote.
+#
+# All three are held to the same three-step contract, which is the whole of
+# ADR-0007 and the part of ADR-0025 that says a play proves run-twice is zero
+# changes:
+#
+#   1. converge  -> changed=true        (it did something)
+#   2. converge  -> changed=false       (it did nothing the second time)
+#   3. --check   -> would_change=false  (and sent nothing to find out)
+#
+# and both answer in the same shape — {changed | would_change, previous,
+# current, target, diff[]} — so one play reads either.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ensure.yml
+#
+# Everything it starts is ephemeral and torn down in `always`, so the play
+# itself is idempotent: a second run of the play finds the same empty room the
+# first one did.
+#
+# To drive a device instead of our own producers, give it an address:
+#
+#   ROLLCALL_ENSURE_HOST=10.6.250.105 ROLLCALL_ENSURE_ROUTER=1 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ensure.yml
+#
+# That writes to whatever is at that address. Nothing here defaults to it.
+
+- name: Snell RollCall convergence contract (value and crosspoint)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    dhs_bin_given: "{{ lookup('env', 'DHS_BIN') | default('', true) }}"
+    dhs_bin: "{{ repo_root }}/bin/dhs"
+
+    card_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/frame_tree.json"
+    router_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/router_two_matrices.json"
+
+    host: "127.0.0.1"
+    card_port: 22053
+    router_port: 22054
+    card_log: "/tmp/dhs-rollcall-ensure-card.log"
+    router_log: "/tmp/dhs-rollcall-ensure-router.log"
+
+    # A producer that wrote a pidfile can be converged to absent by name
+    # rather than hunted for with a pattern, which is what ADR-0007 gives a
+    # producer for. It is also how this play tears itself down.
+    card_pid: "/tmp/dhs-rollcall-ensure-card.pid"
+    router_pid: "/tmp/dhs-rollcall-ensure-router.pid"
+
+    # A value that is not the default, so the first converge has something to
+    # do. gain is an integer scaled by its factor, in dB, range -600..60.
+    card_slot: 1
+    card_label: gain
+    card_value: -12
+
+    # A crosspoint nothing has touched, so the same is true of it.
+    xpt_matrix: 1
+    xpt_level: 1
+    xpt_dest: 6
+    xpt_source: 3
+
+    # An address to drive instead of our own producers. Empty means ours.
+    given_host: "{{ lookup('env', 'ROLLCALL_ENSURE_HOST') | default('', true) }}"
+    given_port: "{{ lookup('env', 'ROLLCALL_ENSURE_PORT') | default('2050', true) }}"
+
+  tasks:
+    - name: Use the binary that was handed to us
+      ansible.builtin.set_fact:
+        dhs_bin: "{{ dhs_bin_given }}"
+      when: dhs_bin_given | length > 0
+
+    - name: Build the dhs binary under test
+      ansible.builtin.command:
+        cmd: go build -o "{{ dhs_bin }}" ./cmd/dhs
+        chdir: "{{ repo_root }}"
+      changed_when: false
+      when: dhs_bin_given | length == 0
+
+    - name: Converge, twice, and check
+      block:
+        # -------------------------------------------------------------------
+        # A value on a card.
+        # -------------------------------------------------------------------
+
+        - name: Serve a frame of cards
+          ansible.builtin.shell:
+            cmd: >-
+              nohup "{{ dhs_bin }}" producer rollcall serve
+              --tree "{{ card_fixture }}"
+              --host {{ host }} --port {{ card_port }}
+              --pidfile "{{ card_pid }}"
+              > {{ card_log }} 2>&1 &
+              echo $!
+            executable: /bin/bash
+          changed_when: false
+          when: given_host | length == 0
+
+        - name: Wait for it
+          ansible.builtin.wait_for:
+            host: "{{ host }}"
+            port: "{{ card_port }}"
+            timeout: 20
+          when: given_host | length == 0
+
+        - name: Where the value lives
+          ansible.builtin.set_fact:
+            card_addr: >-
+              {{ (given_host ~ ':' ~ given_port) if given_host | length > 0
+                 else (host ~ ':' ~ card_port) }}
+
+        # A dry run first, so that if the play is pointed at a real device the
+        # operator sees what it is about to do before it does it.
+        - name: "value — what would change"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
+              --slot {{ card_slot }} --label {{ card_label }}
+              --value {{ card_value }} --check --output json
+          register: v_check
+          changed_when: false
+
+        - name: "value — converge (first run does something)"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
+              --slot {{ card_slot }} --label {{ card_label }}
+              --value {{ card_value }} --output json
+          register: v_first
+          changed_when: (v_first.stdout | from_json).changed | bool
+
+        - name: "value — converge again (run-twice, the proof)"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
+              --slot {{ card_slot }} --label {{ card_label }}
+              --value {{ card_value }} --output json
+          register: v_second
+          changed_when: (v_second.stdout | from_json).changed | bool
+
+        - name: "value — and a dry run then agrees"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
+              --slot {{ card_slot }} --label {{ card_label }}
+              --value {{ card_value }} --check --output json
+          register: v_after
+          changed_when: false
+
+        - name: "value — the three-step contract holds"
+          ansible.builtin.assert:
+            that:
+              - (v_check.stdout | from_json).would_change | bool
+              - (v_first.stdout | from_json).changed | bool
+              - not ((v_second.stdout | from_json).changed | bool)
+              - not ((v_after.stdout | from_json).would_change | bool)
+            success_msg: "rollcall value ensure: converge, no-op, dry-run agree"
+            fail_msg: >-
+              Value convergence is not idempotent.
+              check={{ v_check.stdout }} first={{ v_first.stdout }}
+              second={{ v_second.stdout }} after={{ v_after.stdout }}
+
+        - name: "value — the diff says what moved, and is always there"
+          ansible.builtin.assert:
+            that:
+              - (v_first.stdout | from_json).diff | length == 1
+              - (v_first.stdout | from_json).diff[0].field == 'value'
+              - (v_first.stdout | from_json).diff[0].to == card_value | string
+              - (v_second.stdout | from_json).diff | length == 0
+            fail_msg: >-
+              ADR-0007 requires diff to be emitted even when empty, so a play
+              never has to tell "nothing changed" from "this verb forgot to
+              say". A missing diff is the second, and unreadable.
+
+        - name: "value — a converged read agrees with the target"
+          ansible.builtin.assert:
+            that:
+              - (v_second.stdout | from_json).current ==
+                (v_second.stdout | from_json).previous
+            fail_msg: >-
+              The second converge reported a previous different from its
+              current while claiming nothing changed. One of the two is wrong.
+
+        # -------------------------------------------------------------------
+        # A crosspoint on a router.
+        # -------------------------------------------------------------------
+
+        - name: Serve a router plant
+          ansible.builtin.shell:
+            cmd: >-
+              nohup "{{ dhs_bin }}" producer rollcall serve
+              --tree "{{ router_fixture }}"
+              --host {{ host }} --port {{ router_port }}
+              --pidfile "{{ router_pid }}"
+              > {{ router_log }} 2>&1 &
+              echo $!
+            executable: /bin/bash
+          changed_when: false
+          when: given_host | length == 0
+
+        - name: Wait for it
+          ansible.builtin.wait_for:
+            host: "{{ host }}"
+            port: "{{ router_port }}"
+            timeout: 20
+          when: given_host | length == 0
+
+        - name: Where the crosspoint lives
+          ansible.builtin.set_fact:
+            xpt_addr: >-
+              {{ (given_host ~ ':' ~ given_port) if given_host | length > 0
+                 else (host ~ ':' ~ router_port) }}
+
+        - name: "crosspoint — what would change"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ xpt_addr }}
+              --matrix {{ xpt_matrix }} --level {{ xpt_level }}
+              --dest {{ xpt_dest }} --source {{ xpt_source }}
+              --check --output json
+          register: x_check
+          changed_when: false
+
+        - name: "crosspoint — converge (first run does something)"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ xpt_addr }}
+              --matrix {{ xpt_matrix }} --level {{ xpt_level }}
+              --dest {{ xpt_dest }} --source {{ xpt_source }} --output json
+          register: x_first
+          changed_when: (x_first.stdout | from_json).changed | bool
+
+        - name: "crosspoint — converge again (run-twice, the proof)"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ xpt_addr }}
+              --matrix {{ xpt_matrix }} --level {{ xpt_level }}
+              --dest {{ xpt_dest }} --source {{ xpt_source }} --output json
+          register: x_second
+          changed_when: (x_second.stdout | from_json).changed | bool
+
+        - name: "crosspoint — and a dry run then agrees"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ xpt_addr }}
+              --matrix {{ xpt_matrix }} --level {{ xpt_level }}
+              --dest {{ xpt_dest }} --source {{ xpt_source }}
+              --check --output json
+          register: x_after
+          changed_when: false
+
+        - name: "crosspoint — the same three-step contract holds"
+          ansible.builtin.assert:
+            that:
+              - (x_check.stdout | from_json).would_change | bool
+              - (x_first.stdout | from_json).changed | bool
+              - not ((x_second.stdout | from_json).changed | bool)
+              - not ((x_after.stdout | from_json).would_change | bool)
+            success_msg: "rollcall crosspoint ensure: converge, no-op, dry-run agree"
+            fail_msg: >-
+              Crosspoint convergence is not idempotent.
+              check={{ x_check.stdout }} first={{ x_first.stdout }}
+              second={{ x_second.stdout }} after={{ x_after.stdout }}
+
+        - name: "crosspoint — changed is measured, not predicted"
+          ansible.builtin.assert:
+            that:
+              - (x_first.stdout | from_json).diff | length == 1
+              - (x_first.stdout | from_json).diff[0].field == 'source'
+              - (x_second.stdout | from_json).diff | length == 0
+              - (x_second.stdout | from_json).current ==
+                (x_second.stdout | from_json).previous
+            fail_msg: >-
+              changed is a comparison of the destination read before the take
+              with the destination read after it. It has to be, because a
+              route across a tieline reads back as the far end of the cable
+              rather than as the source that was asked for — so a rule
+              comparing the request with the reading would call a converged
+              route unconverged and take it again for ever.
+
+        - name: "crosspoint — the route actually landed"
+          ansible.builtin.assert:
+            that:
+              - (x_second.stdout | from_json).routed
+              - (x_second.stdout | from_json).destination | int == xpt_dest | int
+            fail_msg: >-
+              The destination reports nothing routed after two takes that both
+              claimed success.
+
+        # -------------------------------------------------------------------
+        # The producer itself.
+        #
+        # A serve that wrote a pidfile is a thing with a desired state, and
+        # ADR-0007 gives it the same verb as everything else. This is also how
+        # the play tears itself down: converging a producer to absent by the
+        # pidfile it wrote beats hunting for it with a process pattern, which
+        # is a guess about somebody else's command line.
+        # -------------------------------------------------------------------
+
+        - name: "producer — it is already present"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ card_pid }} --state present --output json
+          register: p_present
+          changed_when: (p_present.stdout | from_json).changed | bool
+          when: given_host | length == 0
+
+        - name: "producer — converging a running producer to present does nothing"
+          ansible.builtin.assert:
+            that:
+              - not ((p_present.stdout | from_json).changed | bool)
+              - (p_present.stdout | from_json).diff | length == 0
+            fail_msg: >-
+              Converging an already-running producer to present reported a
+              change. present means "there is one serving", and there was.
+          when: given_host | length == 0
+
+        - name: "producer — what stopping it would do"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ card_pid }} --state absent --check --output json
+          register: p_check
+          changed_when: false
+          when: given_host | length == 0
+
+        - name: "producer — converge to absent"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ card_pid }} --state absent --output json
+          register: p_absent
+          changed_when: (p_absent.stdout | from_json).changed | bool
+          when: given_host | length == 0
+
+        - name: "producer — converge to absent again (run-twice, the proof)"
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ card_pid }} --state absent --output json
+          register: p_absent_again
+          changed_when: (p_absent_again.stdout | from_json).changed | bool
+          when: given_host | length == 0
+
+        - name: "producer — the same three-step contract holds"
+          ansible.builtin.assert:
+            that:
+              - (p_check.stdout | from_json).would_change | bool
+              - (p_absent.stdout | from_json).changed | bool
+              - not ((p_absent_again.stdout | from_json).changed | bool)
+              - (p_absent_again.stdout | from_json).diff | length == 0
+            success_msg: "rollcall producer ensure: present, absent, no-op agree"
+            fail_msg: >-
+              Producer convergence is not idempotent.
+              check={{ p_check.stdout }} absent={{ p_absent.stdout }}
+              again={{ p_absent_again.stdout }}
+          when: given_host | length == 0
+
+        - name: "producer — and the port it held is free"
+          ansible.builtin.wait_for:
+            host: "{{ host }}"
+            port: "{{ card_port }}"
+            state: stopped
+            timeout: 15
+          when: given_host | length == 0
+
+        - name: What converged
+          ansible.builtin.debug:
+            msg:
+              - "value:      {{ v_first.stdout | trim }}"
+              - "value 2nd:  {{ v_second.stdout | trim }}"
+              - "crosspoint: {{ x_first.stdout | trim }}"
+              - "xpoint 2nd: {{ x_second.stdout | trim }}"
+              - "producer:   {{ p_absent.stdout | default('(not ours)') | trim }}"
+
+      always:
+        # Converge, do not kill. Both are named by the pidfile they wrote, and
+        # converging one that has already gone is a no-op rather than an error
+        # — which is what makes this safe to run after a failure anywhere
+        # above, including before the producers existed.
+        - name: Stop whichever producers are still running
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ item }} --state absent
+          loop:
+            - "{{ card_pid }}"
+            - "{{ router_pid }}"
+          changed_when: false
+          failed_when: false
+          when: given_host | length == 0
+
+        - name: The producers' own logs, when something went wrong
+          ansible.builtin.command: "cat {{ item }}"
+          loop:
+            - "{{ card_log }}"
+            - "{{ router_log }}"
+          register: ensure_logs
+          changed_when: false
+          failed_when: false
+
+        - name: Producer logs
+          ansible.builtin.debug:
+            var: ensure_logs
+            verbosity: 1

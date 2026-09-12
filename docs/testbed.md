@@ -25,7 +25,7 @@ same PR — and the inventory wins on any disagreement.
 | `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
 | `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
-| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` (guest static unconfirmed post-migration) |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and a Centra emulator (`:2057`). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
 | `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
 ## Physical devices under test
@@ -39,9 +39,48 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
 | **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
 | ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
+| **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
 | **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
 | **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
+
+The IQ frame is unit `0x0C` and carries nine cards, reached as **ports of the
+gateway** (spec 7.6) rather than as units of their own:
+
+| Address | Type | Name |
+| --- | --- | --- |
+| `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
+| `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
+| `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
+| `0000-0C-8E` and up | the connected clients | **client ports, stamped by the gateway from `0x8E` upward, one per RollCall client connected at the time**. Measured: on 2026-09-09 `8E` was our own `dhs rollcall` (type 483) because it was alone; on 2026-09-11 `8E` was the vendor ControlPanel (type 500) on `win11` and ours was `8F`. A session asked of one is refused, since it is a client and not a node. Our provider stamps clients from `0xE0` instead |
+
+It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
+the 16-bit generation — the one a proxy also speaks, and the one the emulator
+does not exercise. Its cards advertise `Menus|Control|File` only: no
+`SV_LOC1`, so no thumbnails from this frame (they are audio cards).
+
+**When the frame stops answering RollCall** (TCP on 2050 still accepts, but
+`GETDEVINFO` times out), restart the gateway board over SNMP, which is out of
+band and keeps working. The command is Restart Unit in the gateway command set,
+cmdID 16706 (`iqh3aSystemSetupRestartUnit` in `SNELL-IQH3A-CMD-MIB`), at
+instance 256: the row whose Unit Name (16388) reads `FRAME_12 EMB`.
+
+```
+# prove the write community first: the MIB defines 0 as noAction, so this changes nothing
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 0
+# then restart the gateway board; the set times out because the board reboots before replying
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 1
+```
+
+Measured 2026-09-11 from `dhs-tools`, the only fleet host with net-snmp: SNMP
+answered 35 s later with a fresh uptime; RollCall did not answer within 2.5
+minutes and did within 4. Only the gateway board restarts; every card is a unit
+of its own and keeps running. SNMP read community `public`, write `private`.
+The vendor RollCall Control Panel on `win11` holds a connection to this frame
+of its own.
+
+Drive it with `ROLLCALL_TEST_HOST=10.6.255.113`. It is **read-only** in the
+play, like every real device.
 
 Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four

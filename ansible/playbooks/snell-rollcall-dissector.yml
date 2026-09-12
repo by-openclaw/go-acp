@@ -1,0 +1,408 @@
+---
+# Snell RollCall dissector verification (ADR-0025 deliverable 5).
+#
+# The dissector is the byte-exact reference for the protocol: when the spec,
+# the device and the codec disagree, it breaks the tie. A reference nobody
+# runs is a reference nobody can trust, so this play captures real traffic and
+# decodes it — no hand-written pcap, no golden text file that drifts.
+#
+# What makes RollCall worth this trouble is that its command numbers mean
+# nothing on their own. Command 100 is the interface version on the node
+# serving the Full Control tables and the selected destination on a level, and
+# only the type of the node it was asked of tells them apart. Everything above
+# 119 is addressed by bases and steps the controller publishes at run time. So
+# the dissector has to learn both from the capture, and this play asserts that
+# it did: the same number resolving two different ways in one file is the
+# proof, and nothing short of a real conversation produces it.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-dissector.yml
+#
+# Everything it starts is ephemeral — a producer on a high port and a capture
+# in a temporary directory, both torn down in `always`. Run-twice is the same
+# result because the run leaves nothing behind.
+
+- name: Snell RollCall dissector verification (capture, decode, assert)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    repo_root: "{{ playbook_dir }}/../.."
+    dhs_bin_given: "{{ lookup('env', 'DHS_BIN') | default('', true) }}"
+    dhs_bin: "{{ repo_root }}/bin/dhs"
+    lua: "{{ repo_root }}/internal/snell-rollcall/wireshark/dhs_snell_rollcall.lua"
+    router_fixture: "{{ repo_root }}/internal/snell-rollcall/testdata/exports/router_two_matrices.json"
+
+    # A high port so a developer's own device on 2050 is never in the way, and
+    # so the capture filter catches this play's traffic and nothing else.
+    port: 22052
+    host: "127.0.0.1"
+
+    # The loopback interface. Named rather than guessed because it is not `lo`
+    # everywhere, and a capture on the wrong interface is an empty file rather
+    # than an error.
+    iface: "{{ lookup('env', 'ROLLCALL_CAPTURE_IFACE') | default('lo', true) }}"
+
+    workdir: "{{ lookup('env', 'ROLLCALL_ARTIFACTS') | default('/tmp/dhs-rollcall', true) }}"
+    pcap: "{{ workdir }}/dissector.pcap"
+    producer_log: "/tmp/dhs-rollcall-dissector-producer.log"
+    producer_pid: "/tmp/dhs-rollcall-dissector-producer.pid"
+    capture_log: "/tmp/dhs-rollcall-dissector-capture.log"
+
+    # How long to let the capture settle before and after driving the verbs.
+    # A capture started after the client has connected has missed the
+    # identities and the tables, and every command then reads as unresolved —
+    # which is the dissector being honest, and this play being wrong.
+    settle: 3
+
+  tasks:
+    - name: Somewhere to put the capture
+      ansible.builtin.file:
+        path: "{{ workdir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Use the binary that was handed to us
+      ansible.builtin.set_fact:
+        dhs_bin: "{{ dhs_bin_given }}"
+      when: dhs_bin_given | length > 0
+
+    - name: Build the dhs binary under test
+      ansible.builtin.command:
+        cmd: go build -o "{{ dhs_bin }}" ./cmd/dhs
+        chdir: "{{ repo_root }}"
+      changed_when: false
+      when: dhs_bin_given | length == 0
+
+    - name: The dissector is where it is supposed to be
+      ansible.builtin.stat:
+        path: "{{ lua }}"
+      register: lua_stat
+
+    - name: Every connector ships a dissector (root CLAUDE.md, ADR-0025 §5)
+      ansible.builtin.assert:
+        that:
+          - lua_stat.stat.exists
+        fail_msg: "No dissector at {{ lua }}."
+
+    - name: Ask tshark whether it can load Lua at all
+      ansible.builtin.command:
+        cmd: tshark -v
+      register: tshark_v
+      changed_when: false
+      failed_when: false
+
+    - name: tshark is present and built with Lua
+      ansible.builtin.assert:
+        that:
+          - tshark_v.rc == 0
+          - tshark_v.stdout is search('(?i)lua')
+        fail_msg: >-
+          tshark here cannot load a Lua dissector
+          ({{ 'not installed' if tshark_v.rc != 0 else 'built without Lua' }}).
+          RHEL and Rocky ship Wireshark without Lua; capture there with dumpcap
+          and decode on a host that has it, the way playbooks/acp1-capture.yml
+          relays an ACP1 pcap. Nothing below this can run.
+
+    # -G comes first. Wireshark 4.0 rejects it anywhere else — "tshark: -G
+    # only valid as first option" — while 4.6 accepts either order, so the
+    # wrong order works on a developer's desk and fails on the control node.
+    - name: The dissector loads without error
+      ansible.builtin.shell:
+        cmd: tshark -G protocols -X lua_script:{{ lua }} | grep -c dhs_snell_rollcall
+      register: registered
+      changed_when: false
+      failed_when: registered.stdout | int < 1
+
+    - name: Capture and decode
+      block:
+        - name: Serve the committed router plant
+          ansible.builtin.shell:
+            cmd: >-
+              nohup "{{ dhs_bin }}" producer rollcall serve
+              --tree "{{ router_fixture }}"
+              --host {{ host }} --port {{ port }}
+              --pidfile "{{ producer_pid }}"
+              > {{ producer_log }} 2>&1 &
+              echo $!
+            executable: /bin/bash
+          changed_when: false
+
+        - name: Wait for the producer to accept a connection
+          ansible.builtin.wait_for:
+            host: "{{ host }}"
+            port: "{{ port }}"
+            timeout: 20
+
+        # The capture starts before the client does, deliberately. The node
+        # identities and the command tables go past once, at the beginning of
+        # a session, and a capture that joins later cannot resolve anything
+        # addressed by them.
+        - name: Start capturing, before anything connects
+          ansible.builtin.shell:
+            cmd: >-
+              nohup dumpcap -i {{ iface }} -f "tcp port {{ port }}"
+              -w {{ pcap }} > {{ capture_log }} 2>&1 &
+              echo $!
+            executable: /bin/bash
+          changed_when: false
+
+        - name: Let the capture get going
+          ansible.builtin.pause:
+            seconds: "{{ settle }}"
+
+        - name: Read the routing interface
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall router {{ host }}:{{ port }}"
+          changed_when: false
+
+        - name: Take a crosspoint, so the capture holds a route
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} consumer rollcall route {{ host }}:{{ port }}
+              --matrix 1 --level 1 --dest 4 --source 6 --output json
+          register: took
+          changed_when: (took.stdout | from_json).changed | bool
+
+        - name: Fire a salvo, so the capture holds one
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall salvo {{ host }}:{{ port }} --fire 1"
+          changed_when: true
+
+        - name: Walk a level, so the capture holds a level's own menu
+          ansible.builtin.command:
+            cmd: "{{ dhs_bin }} consumer rollcall walk {{ host }}:{{ port }} --slot 4"
+          changed_when: false
+
+        - name: Let the last frames land
+          ansible.builtin.pause:
+            seconds: "{{ settle }}"
+
+        - name: Stop capturing
+          ansible.builtin.command:
+            cmd: pkill -f "[d]umpcap -i {{ iface }} -f tcp port {{ port }}"
+          changed_when: false
+          failed_when: false
+
+        - name: Let dumpcap finish the file
+          ansible.builtin.pause:
+            seconds: 2
+
+        - name: The capture caught something
+          ansible.builtin.command:
+            cmd: tshark -r {{ pcap }} -q -z io,stat,0
+          register: pcap_stat
+          changed_when: false
+
+        # ---------------------------------------------------------------
+        # What the dissector made of it.
+        # ---------------------------------------------------------------
+
+        - name: Decode every RollCall frame with our dissector
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y dhs_snell_rollcall
+              -T fields -e frame.number -e dhs_snell_rollcall.src
+              -e dhs_snell_rollcall.command -e dhs_snell_rollcall.router_command
+              -e dhs_snell_rollcall.matrix -e dhs_snell_rollcall.level
+              -e dhs_snell_rollcall.destination -e dhs_snell_rollcall.source_pin
+          register: decoded
+          changed_when: false
+
+        - name: The dissector decoded RollCall at all
+          ansible.builtin.assert:
+            that:
+              - decoded.stdout_lines | length > 100
+            fail_msg: >-
+              {{ decoded.stdout_lines | length }} frames decoded as RollCall.
+              A capture of a router walk is thousands; this few means the port
+              preference did not take, or the capture is of the wrong
+              interface — an empty capture is not an error to dumpcap.
+
+        - name: Collect the node types the dissector worked out
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y dhs_snell_rollcall.router_node
+              -T fields -e dhs_snell_rollcall.router_node
+          register: node_types
+          changed_when: false
+
+        # A router is four kinds of node and they share their numbers. If the
+        # dissector cannot tell them apart, everything it says above command
+        # 99 is a coin toss.
+        - name: Every kind of router node was identified
+          ansible.builtin.assert:
+            that:
+              - node_types.stdout is search('Router Level')
+              - node_types.stdout is search('Router Matrix')
+              - node_types.stdout is search('XY Panel')
+              - node_types.stdout is search('TIELINES')
+            fail_msg: >-
+              The dissector did not identify all four router node types. It
+              takes them from the RETID each node answers with; missing ones
+              mean the identities went past unread, and every command on those
+              nodes is then unnamed.
+
+        # THE PROOF. Command 100 is the interface version on the panel node and
+        # the selected destination on a level. One capture, one number, two
+        # meanings — and no bytes in the frame distinguish them.
+        - name: Collect what command 100 was called, on every node that served it
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y "dhs_snell_rollcall.command == 100 && dhs_snell_rollcall.router_command"
+              -T fields -e dhs_snell_rollcall.router_command
+          register: cmd100
+          changed_when: false
+
+        - name: Command 100 resolved by node type, not by number
+          ansible.builtin.assert:
+            that:
+              - cmd100.stdout is search('CMD_INTERFACE_VERSION')
+              - cmd100.stdout is search('SelectedDestination')
+            fail_msg: >-
+              Command 100 read the same way everywhere. It is the interface
+              version on the node serving the Full Control tables and the
+              selected destination on a level, and nothing in the bytes says
+              which — only the node's type does. One meaning for both is the
+              dissector guessing.
+
+        # The tables above 119 have no fixed numbers: they are addressed by
+        # bases and steps the controller publishes as the session opens.
+        - name: A crosspoint resolved to a place in the plant
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y "dhs_snell_rollcall.destination && dhs_snell_rollcall.command > 119"
+              -T fields -e dhs_snell_rollcall.command
+              -e dhs_snell_rollcall.matrix -e dhs_snell_rollcall.level
+              -e dhs_snell_rollcall.destination
+          register: xpoints
+          changed_when: false
+
+        - name: The learned tables named matrix, level and destination
+          ansible.builtin.assert:
+            that:
+              - xpoints.stdout_lines | length > 0
+            fail_msg: >-
+              No command above 119 resolved to a destination. Those numbers
+              are worked out from CMD_MATRIX_BASE, CMD_MATRIX_STEP and the
+              per-matrix and per-level tables below them, all of which go past
+              once at the start of a session — so this failing usually means
+              the capture started after the client did.
+
+        - name: The route that was taken decoded as a source pin
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y "dhs_snell_rollcall.type == 70 && dhs_snell_rollcall.destination"
+              -T fields -e dhs_snell_rollcall.command -e dhs_snell_rollcall.source_pin.source
+          register: setvalues
+          changed_when: false
+
+        - name: A crosspoint set carries the source that was routed
+          ansible.builtin.assert:
+            that:
+              - setvalues.stdout is search('6')
+            fail_msg: >-
+              The crosspoint set did not decode as source 6. A routed source
+              travels as Data Transfer Params — a uint array holding a packed
+              pin, not a plain integer — so a set that decodes as its own
+              array length is the array form being read as a scalar.
+
+        - name: Nothing in the capture confused the dissector
+          ansible.builtin.command:
+            cmd: >-
+              tshark -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y "dhs_snell_rollcall.bad_dtp || dhs_snell_rollcall.short_payload
+                  || dhs_snell_rollcall.unknown_type
+                  || dhs_snell_rollcall.length_mismatch
+                  || dhs_snell_rollcall.bad_tx_flags"
+              -T fields -e frame.number
+          register: experts
+          changed_when: false
+
+        - name: No frame raised an expert warning from this dissector
+          ansible.builtin.assert:
+            that:
+              - experts.stdout_lines | length == 0
+            fail_msg: >-
+              {{ experts.stdout_lines | length }} frame(s) raised an expert
+              warning: {{ experts.stdout_lines[:10] | join(', ') }}. Our own
+              producer wrote every byte in this capture, so a malformed frame
+              here is a disagreement between the provider and the dissector
+              about the same specification — one of the two is wrong.
+
+        # Wireshark dissects a frame more than once, and by the second pass the
+        # learned tables hold everything the whole file said. A frame must draw
+        # the same either way, or a capture reads differently depending on
+        # where the user clicked.
+        - name: Decode again, two-pass
+          ansible.builtin.command:
+            cmd: >-
+              tshark -2 -r {{ pcap }} -X lua_script:{{ lua }}
+              -o dhs_snell_rollcall.ports:{{ port }}
+              -Y dhs_snell_rollcall
+              -T fields -e frame.number -e dhs_snell_rollcall.src
+              -e dhs_snell_rollcall.command -e dhs_snell_rollcall.router_command
+              -e dhs_snell_rollcall.matrix -e dhs_snell_rollcall.level
+              -e dhs_snell_rollcall.destination -e dhs_snell_rollcall.source_pin
+          register: decoded2
+          changed_when: false
+
+        - name: A frame reads the same on the second pass as on the first
+          ansible.builtin.assert:
+            that:
+              - decoded2.stdout == decoded.stdout
+            fail_msg: >-
+              The two passes disagree. What a command means is learned as the
+              capture is read, so a frame must be drawn with what was knowable
+              when it arrived rather than with everything the file eventually
+              said — otherwise an early frame is named by a table published
+              after it.
+
+        - name: What the dissector made of the capture
+          ansible.builtin.debug:
+            msg:
+              - "{{ decoded.stdout_lines | length }} RollCall frames decoded"
+              - "node types: {{ node_types.stdout_lines | unique | join(', ') }}"
+              - "{{ xpoints.stdout_lines | length }} command(s) resolved to a destination"
+              - "capture kept at {{ pcap }}"
+
+      always:
+        - name: Stop the capture
+          ansible.builtin.command:
+            cmd: pkill -f "[d]umpcap -i {{ iface }} -f tcp port {{ port }}"
+          changed_when: false
+          failed_when: false
+
+        # Converged to absent by the pidfile it wrote, not hunted for with a
+        # process pattern. Converging one that has already gone is a no-op, so
+        # this is safe after a failure anywhere above — including before the
+        # producer existed.
+        - name: Stop the producer
+          ansible.builtin.command:
+            cmd: >-
+              {{ dhs_bin }} producer rollcall ensure
+              --pidfile {{ producer_pid }} --state absent
+          changed_when: false
+          failed_when: false
+
+        - name: The producer's own log, when something went wrong
+          ansible.builtin.command: "cat {{ producer_log }}"
+          register: prod_log
+          changed_when: false
+          failed_when: false
+
+        - name: Producer log
+          ansible.builtin.debug:
+            var: prod_log.stdout_lines
+            verbosity: 1

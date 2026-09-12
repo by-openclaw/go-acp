@@ -27,6 +27,8 @@ import (
 
 	acp1provider "dhs/internal/acp1/provider"
 	acp2provider "dhs/internal/acp2/provider"
+
+	rcsession "dhs/internal/snell-rollcall/session"
 )
 
 // metricsExposer is the optional interface provider servers implement
@@ -48,6 +50,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		port           = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")
 		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
+		generation     = fs.String("generation", "32", "snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree.")
+		unitAddr       = fs.Int("unit", -1, "snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1.")
+		gen16Slots     = fs.String("generation-16-slots", "", "snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.")
 		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
 		syslogAddr     = fs.String("syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)")
@@ -95,7 +100,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
-	logger := newLogger(*logLevel, *logFormat)
+	logger, logLevelVar := newLoggerWithLevel(*logLevel, *logFormat)
 	if *syslogAddr != "" {
 		udp, err := dialSyslogUDP(*syslogAddr)
 		if err != nil {
@@ -145,7 +150,48 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
-	srv := factory.New(pluginDeps(logger), tree)
+	srv := factory.New(pluginDepsWithLevel(logger, logLevelVar), tree)
+
+	// A frame that withholds SV_LONGSTR cannot be asked for the newer
+	// generation, so every client on it speaks 16-bit. Serving one tree twice,
+	// once each way, is how the two generations are compared without a second
+	// implementation to disagree with the first.
+	switch *generation {
+	case "16":
+		if o, ok := srv.(interface{ SetLongStrings(bool) }); ok {
+			o.SetLongStrings(false)
+			logger.Info("serving the 16-bit generation", slog.String("generation", "16"))
+		} else {
+			logger.Warn("this protocol has one generation; --generation ignored")
+		}
+	case "32", "":
+		// The default: advertise long strings and let a client choose.
+	default:
+		return fmt.Errorf("--generation %q: want 16 or 32", *generation)
+	}
+
+	// Per-card overrides. A rack is not one generation.
+	if *gen16Slots != "" {
+		o, ok := srv.(interface{ SetLongStringsAt(uint8, bool) })
+		if !ok {
+			return fmt.Errorf("--generation-16-slots: this protocol serves one generation")
+		}
+		for _, field := range strings.Split(*gen16Slots, ",") {
+			field = strings.TrimSpace(field)
+			if field == "" {
+				continue
+			}
+			n, err := strconv.Atoi(field)
+			if err != nil || n < 0 || n > 0xFF {
+				return fmt.Errorf("--generation-16-slots %q: %q is not a slot", *gen16Slots, field)
+			}
+			o.SetLongStringsAt(uint8(n), false)
+			logger.Info("card serves the 16-bit generation", slog.Int("slot", n))
+		}
+	}
+	if err := applyUnit(srv, *unitAddr); err != nil {
+		return err
+	}
 	// Manifest slots may declare per-slot GetSlotInfo proto lists
 	// (emulation fidelity — e.g. the real Neuron advertises [2,3,4]/[2,3]
 	// and Cerebrum's driver gates on it). Providers that support the
@@ -158,6 +204,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 					slog.Int("slots", len(sp)))
 			}
 		}
+	}
+	if err := placeManifestCards(srv, mf, logger); err != nil {
+		return err
 	}
 	// Initialise the rack-controller frame-status from the served tree so a
 	// multi-card frame (via --tree OR --manifest) reports its populated slots
@@ -496,6 +545,11 @@ func loadTree(path string) (*canonical.Export, error) {
 
 func parseLogLevel(level string) slog.Level {
 	switch level {
+	case "trace":
+		// Every frame, both directions. A menu walk of a large node is
+		// thousands of lines, which is the point: it is the only view that
+		// shows where the time in a slow one goes.
+		return rcsession.LevelTrace
 	case "debug":
 		return slog.LevelDebug
 	case "warn":
@@ -510,8 +564,79 @@ func parseLogLevel(level string) slog.Level {
 }
 
 func newLogger(level, format string) *slog.Logger {
+	lg, _ := newLoggerWithLevel(level, format)
+	return lg
+}
+
+// newLoggerWithLevel is newLogger, and hands back the level it is using so the
+// caller can move it while the process runs.
+//
+// A served device can then offer its own logging as a control: an operator
+// watching a frame misbehave turns its logging up from the panel rather than
+// restarting it, which on a gateway that does not reclaim sessions well is a
+// meaningful difference.
+func newLoggerWithLevel(level, format string) (*slog.Logger, *slog.LevelVar) {
+	v := new(slog.LevelVar)
+	v.Set(parseLogLevel(level))
+
 	// Delegate to the shared format chooser (epic #987) so producer and
 	// consumer pick the log FORMAT identically. Sinks (stderr here, +file/
 	// +syslog-addr) are layered by the caller.
-	return newLoggerTo(os.Stderr, parseLogLevel(level), format)
+	return newLoggerTo(os.Stderr, v, format), v
+}
+
+// placeManifestCards tells a provider where each card sits and what it is,
+// when the provider answers each card at an address of its own.
+//
+// The tree says what a card is made of; the manifest says which slot it is in
+// and which model it was walked from. A RollCall client addresses a card by
+// that slot and reads its model from the identity it answers with, so without
+// this an emulated frame renumbers its cards from one and calls each of them
+// by the provider's own name.
+func placeManifestCards(srv any, mf *manifest.Manifest, logger *slog.Logger) error {
+	o, ok := srv.(interface{ SetCards([]uint8, []string) error })
+	if !ok || mf == nil {
+		return nil
+	}
+	slots := mf.SlotDMs()
+	ports := make([]uint8, 0, len(slots))
+	dms := make([]string, 0, len(slots))
+	for _, s := range slots {
+		if s.Slot < 1 || s.Slot > 0xFF {
+			return fmt.Errorf("manifest slot %d (%s): a card slot is a number from 1", s.Slot, s.DM)
+		}
+		ports = append(ports, uint8(s.Slot))
+		dms = append(dms, s.DM)
+	}
+	if err := o.SetCards(ports, dms); err != nil {
+		return fmt.Errorf("place cards from the manifest: %w", err)
+	}
+	logger.Info("cards placed from manifest", slog.Int("cards", len(ports)))
+	return nil
+}
+
+// applyUnit sets the unit address a gateway answers as, when one was asked
+// for.
+//
+// Every card address a client sees carries the unit. The IQ frame is unit
+// 0x0C, so its first Nodal card is 0000-0C-01, and an emulation answering as
+// unit 1 would put every one of its cards somewhere else.
+//
+// Zero is refused rather than served: it is the address a client uses before
+// it knows anything, so a gateway answering as unit zero tells every client
+// that its address was never assigned. That is the only value the provider
+// itself rules out, and it is the only one refused here.
+func applyUnit(srv any, unit int) error {
+	if unit == -1 {
+		return nil
+	}
+	if unit < 1 || unit > 0xFF {
+		return fmt.Errorf("--unit %d: a unit address is 1 to 255", unit)
+	}
+	o, ok := srv.(interface{ SetUnit(uint8) })
+	if !ok {
+		return fmt.Errorf("--unit: this protocol has no unit address")
+	}
+	o.SetUnit(uint8(unit))
+	return nil
 }

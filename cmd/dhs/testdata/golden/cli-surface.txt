@@ -76,6 +76,7 @@ osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core typ
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)
 probel-sw08p port=2008  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+rollcall port=2050  Snell RollCall over IPShare, 16-bit and 32-bit generations
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
 tsl-v50  port=8901  TSL UMD v5.0 — UDP (≤2048 B) or TCP with DLE/STX wrapper; multi-DMSG; UTF-16LE
@@ -877,6 +878,85 @@ Example — 1000 connects on the integration demo's nToN matrix:
     --path dhs-emberplus-integration.nToN.matrix \
     --n 1000 --op connect
 
+========== consumer/acp1/router ==========
+$ dhs consumer acp1 router --help
+dhs consumer rollcall router <host> [--slot N] [--output text|json]
+
+Find the routing interface and print what it publishes: the matrices, their
+levels, and how many sources and destinations each level has.
+
+The interface lives on one node of a controller and nothing in a device list
+says which — on a Centra the matrices are their own nodes and neither serves
+it — so without --slot every node is probed. A node that is not a router
+refuses, which is how they are told apart.
+
+Examples:
+  dhs consumer rollcall router 10.6.250.105
+  dhs consumer rollcall router 10.6.250.105 --slot 14 --output json
+
+========== consumer/acp1/route ==========
+$ dhs consumer acp1 route --help
+dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
+                                   [--slot N] [--protect-id ID] [--check]
+                                   [--output text|json]
+
+Read a crosspoint, or make one when --source is given.
+
+Two things about this protocol are worth knowing before reading the output:
+
+  * The reply to a route carries the crosspoint from BEFORE the change. What
+    was actually routed arrives afterwards on the back channel, so this verb
+    reads the destination again and prints that.
+
+  * The tally follows tielines. Routing source 7 can read back as matrix 2
+    source 1, because the number reported is the final upstream source rather
+    than the one asked for. That is the router working.
+
+IDEMPOTENCY (ADR-0007)
+
+  A take reports "changed", and it is a measurement rather than a prediction:
+  the destination is read before the take and again after it, and changed says
+  whether those two differ. Nothing about it can be wrong, which matters here
+  because of the tieline behaviour above — a crosspoint that already carries
+  what was asked for reports the far end rather than the near one, and any
+  rule that compared the request with the reading would call a converged route
+  unconverged and take it again for ever.
+
+  --check reads and sends nothing, and reports would_change: whether the
+  destination already reads back as the source asked for. On a route within
+  one matrix that is the whole answer. Across matrices it can say true while
+  the route is already made, for the same reason — so --check across matrices
+  is a question about the reading, not about the plant.
+
+  With --output json a take answers in the shape every other convergence in
+  this repository answers in: {changed | would_change, previous, current,
+  target, diff[]}, with diff always present even when empty. The matrix,
+  level, destination and source fields come as well, because an operator
+  wants to see where the route went and a play wants changed.
+
+Examples:
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9 --check
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
+
+========== consumer/acp1/tally ==========
+$ dhs consumer acp1 tally --help
+dhs consumer rollcall tally <host> [--matrix M --level L] [--slot N] [--names]
+
+Print the crosspoints of a level and then follow them live; Ctrl+C to stop.
+
+The reading comes first because it has to: enabling the back channel does not
+replay the current state on a real controller, so a panel that only subscribes
+sees nothing until something moves.
+
+With --matrix and --level it reads that level first. Without them it subscribes
+to everything and prints only what changes.
+
+Examples:
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1 --names
+
 ========== consumer/emberplus/matrix ==========
 $ dhs consumer emberplus matrix --help
 acp matrix — set matrix crosspoint connections (Ember+ only)
@@ -1062,6 +1142,85 @@ DESCRIPTION
 EXAMPLES
   acp diag 10.41.40.195 --slot 0
   acp diag 10.41.40.195 --slot 1
+
+========== consumer/rollcall/router ==========
+$ dhs consumer rollcall router --help
+dhs consumer rollcall router <host> [--slot N] [--output text|json]
+
+Find the routing interface and print what it publishes: the matrices, their
+levels, and how many sources and destinations each level has.
+
+The interface lives on one node of a controller and nothing in a device list
+says which — on a Centra the matrices are their own nodes and neither serves
+it — so without --slot every node is probed. A node that is not a router
+refuses, which is how they are told apart.
+
+Examples:
+  dhs consumer rollcall router 10.6.250.105
+  dhs consumer rollcall router 10.6.250.105 --slot 14 --output json
+
+========== consumer/rollcall/route ==========
+$ dhs consumer rollcall route --help
+dhs consumer rollcall route <host> --matrix M --level L --dest D [--source S]
+                                   [--slot N] [--protect-id ID] [--check]
+                                   [--output text|json]
+
+Read a crosspoint, or make one when --source is given.
+
+Two things about this protocol are worth knowing before reading the output:
+
+  * The reply to a route carries the crosspoint from BEFORE the change. What
+    was actually routed arrives afterwards on the back channel, so this verb
+    reads the destination again and prints that.
+
+  * The tally follows tielines. Routing source 7 can read back as matrix 2
+    source 1, because the number reported is the final upstream source rather
+    than the one asked for. That is the router working.
+
+IDEMPOTENCY (ADR-0007)
+
+  A take reports "changed", and it is a measurement rather than a prediction:
+  the destination is read before the take and again after it, and changed says
+  whether those two differ. Nothing about it can be wrong, which matters here
+  because of the tieline behaviour above — a crosspoint that already carries
+  what was asked for reports the far end rather than the near one, and any
+  rule that compared the request with the reading would call a converged route
+  unconverged and take it again for ever.
+
+  --check reads and sends nothing, and reports would_change: whether the
+  destination already reads back as the source asked for. On a route within
+  one matrix that is the whole answer. Across matrices it can say true while
+  the route is already made, for the same reason — so --check across matrices
+  is a question about the reading, not about the plant.
+
+  With --output json a take answers in the shape every other convergence in
+  this repository answers in: {changed | would_change, previous, current,
+  target, diff[]}, with diff always present even when empty. The matrix,
+  level, destination and source fields come as well, because an operator
+  wants to see where the route went and a play wants changed.
+
+Examples:
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --source 9 --check
+  dhs consumer rollcall route 10.6.250.105 --matrix 1 --level 1 --dest 4 --output json
+
+========== consumer/rollcall/tally ==========
+$ dhs consumer rollcall tally --help
+dhs consumer rollcall tally <host> [--matrix M --level L] [--slot N] [--names]
+
+Print the crosspoints of a level and then follow them live; Ctrl+C to stop.
+
+The reading comes first because it has to: enabling the back channel does not
+replay the current state on a real controller, so a panel that only subscribes
+sees nothing until something moves.
+
+With --matrix and --level it reads that level first. Without them it subscribes
+to everything and prints only what changes.
+
+Examples:
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1
+  dhs consumer rollcall tally 10.6.250.105 --matrix 1 --level 1 --names
 
 ========== consumer/ccm/<dispatcher-help> ==========
 $ dhs consumer ccm --help
@@ -3393,6 +3552,10 @@ Usage of producer acp1 serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
+  -generation-16-slots string
+    	snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -3427,6 +3590,8 @@ Usage of producer acp1 serve:
     	acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag. (default "udp")
   -tree string
     	path to canonical tree.json (one of --tree | --manifest required)
+  -unit int
+    	snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1. (default -1)
 
 ========== producer/acp2/<dispatcher-help> ==========
 $ dhs producer acp2 --help
@@ -3499,6 +3664,10 @@ Usage of producer acp2 serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
+  -generation-16-slots string
+    	snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -3533,6 +3702,8 @@ Usage of producer acp2 serve:
     	acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag. (default "udp")
   -tree string
     	path to canonical tree.json (one of --tree | --manifest required)
+  -unit int
+    	snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1. (default -1)
 
 ========== producer/emberplus/<dispatcher-help> ==========
 $ dhs producer emberplus --help
@@ -3605,6 +3776,10 @@ Usage of producer emberplus serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
+  -generation-16-slots string
+    	snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -3639,6 +3814,8 @@ Usage of producer emberplus serve:
     	acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag. (default "udp")
   -tree string
     	path to canonical tree.json (one of --tree | --manifest required)
+  -unit int
+    	snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1. (default -1)
 
 ========== producer/nmos/<dispatcher-help> ==========
 $ dhs producer nmos --help
@@ -3968,6 +4145,10 @@ Usage of producer probel-sw02p serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
+  -generation-16-slots string
+    	snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -4002,6 +4183,8 @@ Usage of producer probel-sw02p serve:
     	acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag. (default "udp")
   -tree string
     	path to canonical tree.json (one of --tree | --manifest required)
+  -unit int
+    	snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1. (default -1)
 
 ========== producer/probel-sw08p/<dispatcher-help> ==========
 $ dhs producer probel-sw08p --help
@@ -4074,6 +4257,10 @@ Usage of producer probel-sw08p serve:
     	root of the cache tree (.cache/dm/<proto>/<Model@SwRev>.json lookup base; only used with --manifest) (default ".cache")
   -dm-library string
     	acp1 only: DM library root for admin slot.load (#260)
+  -generation string
+    	snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree. (default "32")
+  -generation-16-slots string
+    	snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.
   -host string
     	TCP/UDP listen host (alias: --bind) (default "0.0.0.0")
   -insert-timing string
@@ -4108,6 +4295,8 @@ Usage of producer probel-sw08p serve:
     	acp1 only: udp (Mode A), tcp (Mode B), an2 (Mode C, port 2072), udp+tcp (Mode A + Mode B, no AN2), or all (every transport). Other protocols ignore this flag. (default "udp")
   -tree string
     	path to canonical tree.json (one of --tree | --manifest required)
+  -unit int
+    	snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1. (default -1)
 
 ========== producer/tsl-v31/<dispatcher-help> ==========
 $ dhs producer tsl-v31 --help
