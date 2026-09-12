@@ -52,11 +52,33 @@ asserts every card answers at the real address with the real type.
 
 What it does not reproduce, and why:
 
-- **The gateway** is ours. The IQH3UM4-S serves a paged menu — seven page
-  entries over 619 commands — which this connector does not walk yet.
+- **The gateway on port 0** is ours by design — the connector's own honest
+  status page (see `provider/gateway.go`), not an impersonation of a controller.
+  The real IQH3UM4-S controller's 720-object menu is captured and served from
+  its own DM instead; see `iq-gateway.json` below.
 - **Instance names** such as `EMB.06 (Nodal)` are per-card data, which ADR-0022
   routes through a manifest `defaults` block that is not built yet. Cards are
   named after their model.
 - **Services**: our cards advertise Display, which the real ones do not. A DM
   does not record services.
+
+## `iq-gateway.json` — the real controller's own menu
+
+The IQ frame's controller is an `IQH3UM4-S` gateway board, unit type 429. Its
+menu is not the honest self-page the emulator serves on port 0 — it is a
+720-object control surface, walked off the real controller at `10.6.255.113` on
+2026-09-12 and filed as `IQH3UM4-S@5.25.cs21` (fingerprint `sha256:ee8f5260…`,
+raw capture in `../fixtures/iq-frame-IQH3UM4-S/`). This manifest serves that DM
+on one slot so a client walks the whole controller menu with no hardware in the
+room.
+
+    dhs producer rollcall serve --manifest manifest/iq-gateway.json \
+        --cache-dir internal/snell-rollcall/testdata/integration-test \
+        --generation 16 --unit 12
+
+`gateway_test.go` serves it this way and asserts the controller answers as type
+429 and serves all 720 objects it was walked with. The controller's own capture
+is replayed through the codec by `consumer/validate_test.go`
+(`TestTheControllerCaptureStillDecodes`), which is what exercises the paged
+`CM_PARTIAL` wire form the flattened loopback provider cannot reproduce.
 

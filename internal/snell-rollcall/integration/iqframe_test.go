@@ -9,9 +9,10 @@
 // uses, with no hardware in the room — and fails the day either the placement
 // or the identities drift.
 //
-// The gateway is still ours: the IQH3UM4-S serves a paged menu this connector
-// does not walk yet, and the instance names ("EMB.06 (Nodal)") are not in any
-// DM. Neither is asserted here.
+// The gateway on port 0 here is still ours — the connector's own honest status
+// page, by design (see provider/gateway.go). The real controller's 720-object
+// menu is served and walked from its own DM in gateway_test.go instead. The
+// instance names ("EMB.06 (Nodal)") are in no DM and are not asserted here.
 //
 // Run with:
 //

@@ -1,0 +1,26 @@
+{
+ "device": {
+  "name": "iq-gateway",
+  "protocol": "rollcall",
+  "endpoints": [
+   {
+    "ip": "0.0.0.0",
+    "port": 2050,
+    "transport": "tcp"
+   }
+  ]
+ },
+ "frames": [
+  {
+   "name": "iq-frame-12",
+   "slots": [
+    {
+     "addr": {
+      "slot": 1
+     },
+     "dm": "IQH3UM4-S@5.25.cs21"
+    }
+   ]
+  }
+ ]
+}
