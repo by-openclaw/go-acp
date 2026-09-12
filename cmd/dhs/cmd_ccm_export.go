@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -49,6 +50,13 @@ func runCCMExport(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("consumer ccm export: walk: %w", err)
 	}
+	// The full recursive DM — every node/resource, not just io/ip streams —
+	// is the artifact that makes the versioned firmware diff complete.
+	fullTree, treeDevs, treeErr := c.WalkTree(ctx)
+	if treeErr != nil {
+		return fmt.Errorf("consumer ccm export: walk-tree: %w", treeErr)
+	}
+	deviations = append(deviations, treeDevs...)
 	spec, specErr := c.FetchSpec(ctx)
 	if specErr != nil {
 		// The schema is the point of the diff, but a firmware that does
@@ -74,6 +82,9 @@ func runCCMExport(ctx context.Context, args []string) error {
 	if werr := os.WriteFile(filepath.Join(dir, "tree.yaml"), []byte(ccmTreeYAML(dev)), 0o644); werr != nil {
 		return fmt.Errorf("consumer ccm export: write tree.yaml: %w", werr)
 	}
+	if werr := writeDMTreeStable(filepath.Join(dir, "dm-tree.json"), fullTree); werr != nil {
+		return fmt.Errorf("consumer ccm export: write dm-tree.json: %w", werr)
+	}
 	self := map[string]any{
 		"productName": dev.ProductName, "productVersion": dev.ProductVersion,
 		"modelVersion": dev.ModelVersion, "streams": len(dev.Streams),
@@ -87,7 +98,8 @@ func runCCMExport(ctx context.Context, args []string) error {
 	if spec == nil {
 		specNote = "api.yml NOT served by this firmware"
 	}
-	fmt.Printf("  %d stream(s), %s\n", len(dev.Streams), specNote)
+	fmt.Printf("  %d stream(s), %d DM resource(s) across %d node(s), %s\n",
+		len(dev.Streams), fullTree.Len(), len(fullTree.Branches), specNote)
 	for _, d := range deviations {
 		fmt.Fprintf(os.Stderr, "  deviation: %s\n", d)
 	}
@@ -96,6 +108,34 @@ func runCCMExport(ctx context.Context, args []string) error {
 }
 
 // writeJSONFile is shared with cmd_walk.go.
+
+// writeDMTreeStable writes the full recursive DM as one indented JSON
+// object mapping resource path -> resource value, with EVERY object key
+// sorted recursively (each resource is unmarshaled then re-marshaled) so
+// two firmware captures diff line-by-line without spurious key-order
+// churn. This is the complete device model artifact (ADR-0022).
+func writeDMTreeStable(path string, tree *ccmcodec.DMTree) error {
+	out := make(map[string]any, tree.Len())
+	for _, p := range tree.SortedPaths() {
+		var v any
+		if err := json.Unmarshal(tree.Resources[p], &v); err != nil {
+			// A resource that isn't valid JSON is impossible here (the walk
+			// only stores classified bodies), but never lose it if so.
+			v = string(tree.Resources[p])
+		}
+		out[p] = v
+	}
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	b = append(b, '\n')
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
 
 // sanitizeKey makes an identity safe for a directory name.
 func sanitizeKey(s string) string {
