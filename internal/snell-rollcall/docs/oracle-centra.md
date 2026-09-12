@@ -4,7 +4,9 @@ What a real Snell router controller does on the wire, measured rather than
 read. Every claim below was produced by driving
 `assets/Emulator/RouterSimulator/Router2.zip` — the vendor's own
 `CentraController.exe`, run as a Sirius 800
-(`CENTRA_SIMULATED_ROUTER=3`) — with our own session layer.
+(`CENTRA_SIMULATED_ROUTER=3`) — with our own session layer. It answers as a
+`Nucleus 2`; §11 says why the id and the controller type are not the same
+question.
 
 This matters because the Full Control Command Set document lists the
 per-matrix, per-level and per-entity commands "in a similar fashion" without
@@ -330,13 +332,97 @@ So a panel cannot subscribe and wait for the picture to fill in. It has to read
 the crosspoints it wants to show, once, and then keep them current from the
 pushes. Our `Routes` does the reading; `WatchRoutes` does the keeping.
 
-## 9. Reproducing it
+## 11. What the router id actually selects
+
+`CENTRA_SIMULATED_ROUTER` picks the **chassis model**, and that decides whether
+the card simulation applies at all. Five clean copies of the same build, one
+per id, each on its own ports, all running at once:
+
+| id | Enum | Controller | Type id | Nodes | Cards |
+|---:|---|---|---:|---:|---:|
+| 0 | `eUnknownRouter` | Nucleus 2 | 605 | 15 | 12 |
+| 1 | `eCygnusRouter` | Nucleus 2 | 605 | 15 | 12 |
+| 2 | `ePyxisRouter` | Nucleus 2 | 605 | 15 | 12 |
+| 3 | `eSirius800Router` | Nucleus 2 | 605 | 15 | 12 |
+| 4 | `eVegaRouter` | **Vega Controller** | **705** | **6** | **0** |
+
+The node tables for 0, 1, 2 and 3 are byte-identical. Only 4 differs, and it
+differs completely:
 
 ```
-# Unpack the vendor simulator somewhere writable and run it as a Sirius 800.
-CENTRA_SIMULATED_ROUTER=3 CentraController.exe        # RollCall IPShare on 2057
-dhs consumer rollcall info 127.0.0.1:2057
+id 0-3 (Nucleus 2)                      id 4 (Vega)
+0    0000-08-00   Nucleus 2             0    0000-08-00   Vega Controller
+1    0000-11-00   Router Matrix         1    0000-0A-00   Vega 2RU
+2    0000-12-00   Router Matrix         2    0000-11-00   Router Matrix
+3-6  0000-41..44  4 input cards         3    0000-12-00   Router Matrix
+7-12 0000-61..66  6 output cards        4    0000-80-00   TIELINES
+13   0000-80-00   TIELINES              5    0000-81-00   XY Panel
+14   0000-81-00   XY Panel
 ```
+
+Three things follow, and each of them cost us a wrong conclusion once:
+
+1. **`CENTRA_SIMULATED_CARDS` is ignored by the Vega.** A Vega is a
+   self-contained 2RU router rather than a card frame, so it has no card slots
+   to simulate and the twenty-four-character string does nothing. Vary the id
+   and the cards together and neither variable can be read.
+
+2. **The unit address is stable where the slot number is not.** The XY Panel is
+   `0000-81-00` on both, but it is slot 14 on a Nucleus and slot 5 on a Vega.
+   Anything keyed on a slot number breaks between models. This is why a slot's
+   identity carries its address (#1037).
+
+3. **The router *model* does not come from the id at all.** Matrices, levels,
+   sizes, salvos and names are identical on every id — two matrices, five
+   levels, 10x10 each, four salvos, 100 devices — because they are read from
+   the persisted `LocalRouter.dat`, `Persistence_*.dat` and
+   `CentraController.dccp_config` that ship inside the zip. The id names the
+   chassis; persistence holds the plant.
+
+**The persistence is also the trap.** A folder that has already run keeps the
+model it wrote, so changing the id in place can change nothing observable. Our
+first comparison did exactly that — reused one folder, tried 2 against 3, and
+concluded the id changes nothing. Two errors at once: a stale folder, and a
+pair of ids that happen to be identical anyway. Unpack a fresh copy per id.
+
+## 12. Reproducing it
+
+One instance:
+
+```
+# Unpack the vendor simulator somewhere writable, one copy per configuration.
+CENTRA_SIMULATED_ROUTER=3 CentraController.exe        # RollCall IPShare on 2057
+dhs consumer rollcall info 127.0.0.1 --port 2057
+```
+
+Several at once, which is how the table above was measured. Nothing in the
+protocol or the controller objects to it; the ports simply have to differ, and
+there are four of them in `config.xml`, not one:
+
+| `config.xml` element | What it is | Must be unique |
+|---|---|---|
+| `RollCall/SharePort` | the IPShare port a client connects to | yes |
+| `RollCall/BridgePort` | RollCall bridging between controllers | yes |
+| `IP/Adapter/Port` | DCCP, the controller's own peer link | yes |
+| `Web/XPCPort` | the web UI | yes |
+
+Missing any one of them leaves the second instance up but silently crippled.
+`SharePort` alone is not enough.
+
+```
+# five instances, ids 0..4, one folder each
+simR0/config.xml: SharePort 2050  BridgePort 2650  IP/Adapter/Port 2020  XPCPort 8050
+...
+simR4/config.xml: SharePort 2054  BridgePort 2654  IP/Adapter/Port 2024  XPCPort 8054
+```
+
+**The IPShare wedges under connection churn.** Our CLI opens a fresh connection
+per verb, and roughly the third or fourth in quick succession gets accepted at
+TCP and then never answered: `handshake: reply timeout: GETDEVINFO after 3s`,
+repeatable, cleared only by restarting the controller. Leave several seconds
+between verbs against a simulator, or drive one connection through a script.
+This is a property of the vendor's gateway rather than of the protocol, but it
+shapes how the emulator tier is driven.
 
 The simulator writes `FCSendRetValue: WARNING - command not valid` to stdout
 for every routing command it refuses, which is a useful confirmation that a
