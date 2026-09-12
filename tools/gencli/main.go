@@ -46,6 +46,12 @@ var matrix = []helpEntry{
 	{"NMOS live probe", []string{"consumer", "nmos", "probe", "--help"}},
 	{"NMOS parameter registers", []string{"consumer", "nmos", "registers", "--help"}},
 
+	// EVS CCM (BRIDGE / Neuron REST) — the acp2 successor for Tree/DM device
+	// control. The producer replays a captured device model as a CCM device;
+	// the consumer walks and exports one.
+	{"CCM device (producer)", []string{"producer", "ccm", "serve", "--help"}},
+	{"CCM controller (consumer)", []string{"consumer", "ccm", "--help"}},
+
 	// The generic consumer verb set (shape shared by acp1/acp2/emberplus).
 	{"consumer info", []string{"consumer", "acp1", "info", "--help"}},
 	{"consumer walk", []string{"consumer", "acp1", "walk", "--help"}},

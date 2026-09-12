@@ -12,6 +12,37 @@ productName@productVersion for firmware diff). The acp2 connector
 stays regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 (mixed-firmware, multi-protocol box).
 
+**Unit 2 (PR #1065): the PROVIDER.** `dhs producer ccm serve` replays a
+captured device model (a dm-tree: resource path → resource JSON, the
+shape `ccm export` captures) so Cerebrum drives dhs as a CCM device —
+emulate before hardware. Compliance boundary, enforced by construction:
+`/api/v1` is the CCM protocol 100% to the device's own `api.yml`
+(self-describing tree, the OpenAPI at `/api/v1/docs/api.yml`, writes
+ONLY where and how that document declares them — the shipped document
+has 35 PUT answering 200 + the resource, no PATCH — §12
+`{code,message}`, `uuid`/`id` immutable). THE `api.yml` IS THE CONTRACT,
+not the 0v1 PDF (a proposal: PATCH, empty 202, `/state`); where they
+differ the document wins, and the emulator infers nothing beyond it; every dhs addition (landing, rendered README,
+capabilities) lives under `/x-dhs` via the one `HandleExtension` entry
+point and can never change what a controller observes. Matrix (§17) is
+**in scope** (owner reversed the 2026-08-22 exclusion on 2026-09-09 —
+it was made unaware matrix is in the protocol): 16 `/v1/matrix/...`
+paths, per-essence matrices, UUID-addressed; `main`/`backup` are two
+independent routing levels (main and backup source per destination —
+the FE has main and backup inputs and outputs; NOT ST 2022-7, which is
+the IP stream `legs` concept), `current` is the read-only effective
+route whose failover rule the spec does not define (ask EVS). LIVE-
+CONFIRMED (2026-09-09): state ids are NOT uuids — each info group
+`{template,type,path,children[]{id,subIds}}` renders `template` with
+`{idx}`/`{subIdsIdx}` to the state key (`IP000-05`), which resolves to
+`children[idx].id` at `path/{id}` (uuid, or integer for Delay Bank —
+schema deviation); `info` has no `levels` array (deviation; levels are
+endpoints). The emulator serves the matrix exactly as the document
+declares: `info`/`current` GET, `main`/`backup` GET+PUT (`MatrixState`:
+object of strings, stored and returned, 200) on the matrices that have
+them; no `current` recomputation (the document defines none). The
+`/ws` change stream is a later unit. Operate it per `docs/runbook.md`.
+
 **Firmware reality (BRIDGE 6.7.4, verified live on 10.6.255.102):**
 this build serves the CCM resource MODEL (UUID-addressed REST, `/self`,
 recursive `{uuid}` paths) but a SUBSET of the CCM 0v1 PROTOCOL — it has
@@ -32,11 +63,16 @@ internal/ccm/
 ├── assets/      ← DROP ZONE: everything EVS provides goes here
 │                  (OpenAPI/swagger JSON, PDFs, examples, postman
 │                  collections, firmware release notes)
-├── docs/        keys/endpoint catalogue + consumer.md (written
-│                  during spec review)
-├── codec/       (later) stdlib-only — likely thin: HTTP+JSON, the
-│                  "codec" is the OpenAPI schema types
-├── consumer/    (later) package ccm — implements consumer.Protocol
+├── docs/        spec review, keys/endpoint catalogue, runbook.md
+│                  (operate the provider), README index
+├── codec/       shipped — stdlib-only UUID-keyed model (Device,
+│                  Stream, Leg) + testdata/neuron-api-1.0.0.yml, the
+│                  device's real OpenAPI 3.1.2
+├── consumer/    shipped — package ccm: walk + export
+├── provider/    shipped (PR #1065) — package ccm: replays a captured
+│                  dm-tree as a CCM device. /api/v1 = the protocol,
+│                  100% to spec; /x-dhs = dhs additions only. Own
+│                  README.md served rendered at /x-dhs/readme
 └── wireshark/   (later) dhs_ccm.lua — HTTP/JSON dissection with
                    per-endpoint Info columns (repo rule: every
                    protocol ships a dissector, no exceptions)
