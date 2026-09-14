@@ -233,6 +233,14 @@ type Provider struct {
 	// unlike a client, because it is the one doing the stamping.
 	unit uint8
 
+	// proxy, when set, makes this provider present as a RollCall IP Proxy in
+	// front of the frame it serves: the connected unit is the proxy, and routed
+	// addresses resolve back to the frame's ports. frameUnit is the fronted
+	// frame's own unit, which its port list is stamped with. Both are nil/zero in
+	// the ordinary case of serving a frame directly.
+	proxy     *proxyTopology
+	frameUnit uint8
+
 	done     chan struct{}
 	doneOnce sync.Once
 	wg       sync.WaitGroup
@@ -416,6 +424,17 @@ func (p *Provider) serveConn(conn net.Conn) {
 // gatewayInfo is what this provider announces about itself: port zero of its
 // own unit, which is the gateway rather than any card in it.
 func (p *Provider) gatewayInfo() codec.DeviceInfo {
+	// In proxy mode what announces itself is the proxy, not the frame behind it:
+	// a client builds its map from these announcements, and it must find the
+	// RollProxy Service it connected to.
+	if p.proxy != nil {
+		return codec.DeviceInfo{
+			ProtocolVersion: codec.ProtocolVersion,
+			Address:         codec.Address{Unit: p.proxy.unit, Port: 0, Index: codec.IndexUnknown},
+			ID:              p.proxy.proxyID(),
+			Status:          proxyStatus(),
+		}
+	}
 	// Through identityOf so the announcement says the same about this frame
 	// as an enquiry does, including which generation it offers.
 	id, _ := p.identityOf(0)
@@ -441,6 +460,36 @@ func (p *Provider) SetUnit(u uint8) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.unit = u
+}
+
+// SetProxy makes this provider present as a RollCall IP Proxy fronting the frame
+// it serves, at the network address the config names.
+//
+// It is the emulator of the vendor RollProxy: a client sees the proxy unit, its
+// virtual routing nodes and, behind them, the frame this provider was built to
+// serve — the same chain the vendor box presents. The frame is unchanged; the
+// proxy is a routing layer in front of it. It must be called before Serve,
+// because a client that has walked the proxy has already been told where
+// everything is, and it sets the unit the proxy answers as.
+func (p *Provider) SetProxy(cfg ProxyConfig) error {
+	p.mu.RLock()
+	serving := p.listener != nil
+	p.mu.RUnlock()
+	if serving {
+		return fmt.Errorf("rollcall: the proxy is configured before the frame is served")
+	}
+
+	t, err := buildProxyTopology(cfg)
+	if err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.proxy = t
+	p.frameUnit = cfg.Frame
+	p.unit = cfg.Unit
+	return nil
 }
 
 // SetLongStrings chooses which generation this frame offers.
