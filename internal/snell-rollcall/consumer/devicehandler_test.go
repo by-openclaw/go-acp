@@ -213,6 +213,13 @@ func (d *device) answerCall(f codec.Frame) {
 		d.reply(f, codec.MsgNack, append([]byte("no net service"), 0))
 		return
 	}
+	if d.framePortsRefused[f.Dst.Device()] && conn.Services.Has(codec.SvcPorts) {
+		// A frame reached through a bridge that advertises the port service and
+		// then will not open a session for it.
+		d.mu.Unlock()
+		d.reply(f, codec.MsgNack, append([]byte("no port session"), 0))
+		return
+	}
 	if d.refusePorts && conn.Services.Has(codec.SvcPorts) {
 		d.mu.Unlock()
 		d.reply(f, codec.MsgNack, append([]byte("no port service"), 0))
@@ -398,8 +405,20 @@ func (d *device) deviceList(f codec.Frame) {
 	// rather than refusing it. A real IQ 3U frame does exactly this.
 	d.mu.Lock()
 	strict := d.silentUnlessPorts
+	// A frame reached through a bridge lists its own cards, keyed by the address
+	// the port session was opened to, so a far frame's ports differ from the
+	// connected gateway's.
+	frameCards, isFrame := d.cardsByFrame[f.Dst.Device()]
 	d.mu.Unlock()
 	if strict && !d.negotiated(f).Has(codec.SvcPorts) {
+		return
+	}
+	if isFrame {
+		cards := append([]codec.DeviceInfo(nil), frameCards...)
+		d.block(f, codec.MsgGetDevList, len(cards), func(i int) (codec.PacketType, []byte) {
+			payload, _ := cards[i].AppendTo(nil)
+			return codec.MsgRetDevInfo, payload
+		})
 		return
 	}
 

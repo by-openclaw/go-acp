@@ -96,6 +96,16 @@ type device struct {
 	// a bridge has no entry here the flat farSide answers instead.
 	farByBridge map[codec.Address][]codec.DeviceInfo
 
+	// cardsByFrame is the cards a frame reached through a bridge lists as its
+	// ports, keyed by the frame's device address. It models a real frame two hops
+	// out whose cards are enumerated over the port service.
+	cardsByFrame map[codec.Address][]codec.DeviceInfo
+
+	// framePortsRefused are the frame addresses that grant no port session, so a
+	// frame reached through a bridge can be made to advertise the port service
+	// and then refuse to list its cards.
+	framePortsRefused map[codec.Address]bool
+
 	// refuseNet refuses a call that names the net service at all, which is a
 	// unit advertising something it will not open.
 	refuseNet bool

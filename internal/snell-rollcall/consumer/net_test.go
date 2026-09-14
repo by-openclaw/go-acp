@@ -141,6 +141,114 @@ func TestABridgeBehindABridgeIsFollowed(t *testing.T) {
 	}
 }
 
+// frameCard is one card as a frame lists it: a port on the frame's own unit,
+// with no route, the way the vendor proxy relayed the IQ frame's cards.
+func frameCard(port uint8, typeID uint16, name string) codec.DeviceInfo {
+	return codec.DeviceInfo{
+		ProtocolVersion: codec.ProtocolVersion,
+		Address:         codec.Address{Unit: 0x0C, Port: port, Index: codec.IndexUnknown},
+		ID: codec.ID{
+			Services: codec.SvcMenus | codec.SvcControl | codec.SvcFile,
+			TypeID:   typeID,
+			Name:     name,
+		},
+		Status: codec.UnitStatus{Status: codec.StatusPresent},
+	}
+}
+
+func TestCardsBehindAFrameReachedThroughABridge(t *testing.T) {
+	// The bridge's far side lists the frame, not the cards inside it. The cards
+	// are ports of the frame, reached over the port service, and each is
+	// addressable at the frame's own route and unit with the card's port — which
+	// is how a client of the proxy walks a card two hops out.
+	frame := farDevice(0x1000, 0x0C, "the frame")
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcPorts
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {frame},
+		}
+		// Names are kept within the fixed field a card record carries. The last
+		// two entries exercise the skips: a repeat of an earlier port, and the
+		// frame itself answering at port zero.
+		d.cardsByFrame = map[codec.Address][]codec.DeviceInfo{
+			{Net: 0x1000, Unit: 0x0C, Index: codec.IndexUnknown}: {
+				frameCard(0x01, 562, "EMB.06"),
+				frameCard(0x03, 562, "EMB.07"),
+				frameCard(0x01, 562, "EMB.06 dup"), // deduped
+				frameCard(0x00, 429, "frame"),      // port zero, skipped
+			},
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var cards []codec.Address
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1000 && a.Unit == 0x0C && a.Port != 0 {
+			cards = append(cards, a)
+		}
+	}
+	// The two real cards, each once: the repeat, the port-zero entry and the
+	// entry with no address are all left out.
+	if len(cards) != 2 {
+		t.Fatalf("got %d cards, want 2 (01 and 03): %v", len(cards), cards)
+	}
+	var one, three bool
+	for _, a := range cards {
+		if a.Port == 0x01 {
+			one = true
+		}
+		if a.Port == 0x03 {
+			three = true
+		}
+	}
+	if !one || !three {
+		t.Errorf("the frame's cards were not reached at its route: %v", cards)
+	}
+}
+
+func TestAFrameThatWillNotListItsCards(t *testing.T) {
+	// A frame that advertises the port service and then refuses a session for it
+	// is kept as a node — a client still sees the frame — and the refusal is
+	// counted rather than swallowed.
+	frame := farDevice(0x1000, 0x0C, "a mute frame")
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcPorts
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {frame},
+		}
+		d.framePortsRefused = map[codec.Address]bool{
+			{Net: 0x1000, Unit: 0x0C, Index: codec.IndexUnknown}: true,
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var frameThere bool
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1000 && a.Unit == 0x0C && a.Port == 0 {
+			frameThere = true
+		}
+		if a.Port != 0 {
+			t.Errorf("a card was listed for a frame that refused its port list: %s", a)
+		}
+	}
+	if !frameThere {
+		t.Errorf("the frame itself was lost: %v", tbl.addrs)
+	}
+	if !hasEvent(h.plugin, EventFrameUnreadable) {
+		t.Error("a frame that would not list its cards went unrecorded")
+	}
+}
+
 func TestReachThrough(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
