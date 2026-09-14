@@ -230,9 +230,18 @@ func (d *device) answerCall(f codec.Frame) {
 	d.calls++
 	d.mu.Unlock()
 
+	// A far node answers a Call as itself, carrying the route it was reached by,
+	// so the session's peer is the bridge that was opened rather than the
+	// gateway. A near node names no route and is the gateway's own unit; the zero
+	// unit of a pre-assignment broadcast falls back to it too.
+	srcNet, srcUnit := f.Dst.Net, f.Dst.Unit
+	if srcUnit == 0 {
+		srcNet, srcUnit = 0, gatewayAddr.Unit
+	}
+
 	d.send(codec.Frame{
 		Dst:  f.Src,
-		Src:  codec.Address{Unit: gatewayAddr.Unit, Port: f.Dst.Port, Index: idx},
+		Src:  codec.Address{Net: srcNet, Unit: srcUnit, Port: f.Dst.Port, Index: idx},
 		Type: codec.MsgAck,
 	})
 }
@@ -344,7 +353,16 @@ func (d *device) getStat(f codec.Frame) {
 // all come back with the substitution address already set.
 func (d *device) netList(f codec.Frame) {
 	d.mu.Lock()
+	// A net session is opened on one bridge, so the far side it lists is that
+	// bridge's own, keyed by the address the request is addressed to. A device
+	// with no per-bridge map answers the flat farSide, which is one plant behind
+	// one bridge.
 	far := append([]codec.DeviceInfo(nil), d.farSide...)
+	if d.farByBridge != nil {
+		if list, ok := d.farByBridge[f.Dst.Device()]; ok {
+			far = append([]codec.DeviceInfo(nil), list...)
+		}
+	}
 	refuse := d.refuseNetList
 	d.mu.Unlock()
 
