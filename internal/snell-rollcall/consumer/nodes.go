@@ -59,6 +59,7 @@ func (p *Plugin) nodes(ctx context.Context) (*nodeTable, error) {
 
 	t := buildNodeTable(list, l.gateway)
 	p.appendFarSide(ctx, t)
+	p.appendFarPorts(ctx, l, t)
 
 	p.mu.Lock()
 	if p.nodeCache == nil {
@@ -155,20 +156,56 @@ func halfOf(ctx context.Context) (context.Context, context.CancelFunc) {
 // spec 9.31 requires of a bridge. So the addresses are used exactly as given —
 // a session opened on one of them reaches across, which is also measured.
 //
-// One hop. An rNet holds four, and a proxy behind a proxy is expressible, but
-// nothing measured needs it and recursion wants cycle protection of its own.
+// Many hops, with cycle protection. An rNet is four bridges deep (spec 5.1) and
+// a proxy behind a proxy is exactly what the vendor RollCall IP Proxy presents:
+// its map holds a virtual node whose far side holds another virtual node whose
+// far side holds the frame. So a bridge found behind a bridge is descended too,
+// as a queue rather than by recursion.
+//
+// The measured proxy also lists a far-side entry that routes straight back to
+// the bridge it was found behind. Without protection that is an unbounded list —
+// the same address appended and re-descended forever, which is what a live
+// discovery through the proxy actually did. Two guards stop it: an address
+// already in the table is the same node reached again and is not added, and a
+// bridge already descended is not descended again. A route deeper than four hops
+// has nowhere left to be forwarded and is left alone.
 //
 // A bridge that will not answer is absorbed rather than fatal: the near side of
 // the network is still worth having, and a gateway whose downstream chassis is
 // unplugged is a normal thing to meet — the proxy we measured has one of those
 // too, and it answers with an empty list.
 func (p *Plugin) appendFarSide(ctx context.Context, t *nodeTable) {
-	for i := 0; i < len(t.info); i++ {
-		info := t.info[i]
-		if !info.ID.Services.Has(codec.SvcNet) {
+	// Everything already listed is known: a far-side entry repeating a known
+	// address is the same node reached again, not a new one.
+	known := make(map[codec.Address]bool, len(t.addrs))
+	for _, a := range t.addrs {
+		known[a.Device()] = true
+	}
+
+	// The bridges still to descend, seeded with every one the near side listed.
+	// A far side may hold more, and those are queued as they are found. A bridge
+	// is queued only when it is first added to the table, so the known set that
+	// stops a node being added twice is also what stops one being descended twice:
+	// a cycle cannot re-enqueue an address it has already reached.
+	var queue []int
+	for i := range t.info {
+		if t.info[i].ID.Services.Has(codec.SvcNet) {
+			queue = append(queue, i)
+		}
+	}
+
+	for len(queue) > 0 {
+		i := queue[0]
+		queue = queue[1:]
+
+		bridge := t.addrs[i]
+
+		// A route fills from the top nibble down and holds four hops (spec 5.1).
+		// A bridge deeper than that has nowhere left to forward to, so it is not
+		// descended rather than chasing a route that cannot be expressed.
+		if bridge.HopCount() >= 4 {
 			continue
 		}
-		bridge := t.addrs[i]
 
 		far, err := p.netDevices(ctx, bridge)
 		if err != nil {
@@ -181,12 +218,131 @@ func (p *Plugin) appendFarSide(ctx context.Context, t *nodeTable) {
 			if d.Address == (codec.Address{}) {
 				continue
 			}
-			t.addrs = append(t.addrs, d.Address.Device())
+			dev := reachThrough(bridge, d.Address)
+			if known[dev] {
+				continue
+			}
+			known[dev] = true
+			// The address a client uses is the reachable one, not the local one
+			// the far segment knows the node by.
+			d.Address = dev
+			t.addrs = append(t.addrs, dev)
 			t.info = append(t.info, d)
+			if d.ID.Services.Has(codec.SvcNet) {
+				// A bridge behind a bridge: queue it so its own far side is read.
+				queue = append(queue, len(t.info)-1)
+			}
 		}
 		p.log.Debug("rollcall: read past a bridge",
 			"bridge", bridge.String(), "devices", len(far))
 	}
+}
+
+// reachThrough composes the address that reaches a far-side device from here.
+//
+// A bridge should fill in the route it relays by (spec 9.31), and the vendor
+// Centra does: its far-side entries come back already carrying the substitution
+// address — a non-zero route — and are used exactly as given. The vendor
+// RollCall IP Proxy does not: it returns the address the far segment knows the
+// node by, net zero, which collides with the bridge's own address and, taken at
+// face value, makes a node look like the bridge it sits behind. Measured on
+// 2026-09-14, a frame two hops behind the proxy came back as 0000-01-00, the
+// same address as the bridge in front of it.
+//
+// So a far entry with no route has one composed for it: the bridge's own route,
+// then the hop across the bridge, then the node on the far segment. A route
+// fills from the top nibble down (spec 5.3), so the bridge's unit is inserted at
+// the nibble after the hops already in the bridge's address. A bridge already at
+// the four-hop limit has no room for another and its far side is left as given.
+func reachThrough(bridge, far codec.Address) codec.Address {
+	if far.Net != 0 {
+		return far.Device()
+	}
+	h := bridge.HopCount()
+	if h >= 4 {
+		return far.Device()
+	}
+	far.Net = bridge.Net | (uint16(bridge.Unit&0x0F) << uint(12-4*h))
+	return far.Device()
+}
+
+// appendFarPorts adds the cards of every frame reached through a bridge.
+//
+// A bridge's far side lists frames, not the cards inside them: the cards are
+// ports of a frame (spec 7.6), reached through the port service the same way the
+// connected gateway's own cards are. The connected gateway's cards are already
+// enumerated before this runs, so only the frames behind a bridge — the ones
+// carrying a route — are asked here.
+//
+// A frame reached this way was measured to return its cards by the address its
+// own segment knows them by — port on unit 0x0C with no route — so each card's
+// reachable address is the frame's own route and unit with the card's port. A
+// frame that advertises the port service and then will not list its cards is
+// kept as a node without them rather than lost.
+func (p *Plugin) appendFarPorts(ctx context.Context, l *link, t *nodeTable) {
+	known := make(map[codec.Address]bool, len(t.addrs))
+	for _, a := range t.addrs {
+		known[a.Device()] = true
+	}
+
+	// The frames to ask, snapshot before the table grows: a card added below is
+	// not itself a frame whose ports are enumerated. A frame here is a node
+	// reached through a bridge (a routed address), at port zero (a frame, not one
+	// of its cards), that advertises the port service and is not itself a bridge.
+	// The measured IQ gateway behind the proxy advertises the port service; a far
+	// node that offers only the map service is not something measured here and is
+	// left as a node without cards rather than guessed at.
+	var frames []codec.Address
+	for i := range t.info {
+		a := t.addrs[i]
+		s := t.info[i].ID.Services
+		if a.Net != 0 && a.Port == 0 && s.Has(codec.SvcPorts) && !s.Has(codec.SvcNet) {
+			frames = append(frames, a)
+		}
+	}
+
+	for _, fr := range frames {
+		cards, err := p.portsAt(ctx, l, fr)
+		if err != nil {
+			p.fire(EventFrameUnreadable, fmt.Sprintf(
+				"%s is a frame reached through a bridge and would not list its cards: %v",
+				fr, err))
+			continue
+		}
+		for _, c := range cards {
+			// A card is a port of the frame: the frame's own route and unit, the
+			// card's port. The address the far segment gave it carries no route
+			// and would not come back. Port zero is the frame itself rather than a
+			// card — and an entry with no address at all lands here too, since its
+			// port is zero — so it is not added a second time.
+			card := codec.Address{Net: fr.Net, Unit: fr.Unit, Port: c.Address.Port, Index: codec.IndexUnknown}
+			if card.Port == 0 || known[card] {
+				continue
+			}
+			known[card] = true
+			c.Address = card
+			t.addrs = append(t.addrs, card)
+			t.info = append(t.info, c)
+		}
+		p.log.Debug("rollcall: read a frame's cards through a bridge",
+			"frame", fr.String(), "cards", len(cards))
+	}
+}
+
+// portsAt lists the cards of one frame, on a port session opened to it.
+//
+// Unlike the connected gateway's port session, this one is opened to a specific
+// node through the route its address carries, and closed when the list is read:
+// a far frame is enumerated once during discovery, and a session left open is
+// one the frame never reclaims.
+func (p *Plugin) portsAt(ctx context.Context, l *link, node codec.Address) ([]codec.DeviceInfo, error) {
+	s, err := session.Call(ctx, l.sess, node.Device(), codec.SvcPorts, codec.LevelSupervisor, p.identity())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = s.Close() }()
+
+	return walkDeviceList(ctx, s, codec.MsgGetDevList, []byte{node.Unit, 0})
 }
 
 // netDevices lists what one bridge can see on its other side.
@@ -195,9 +351,17 @@ func (p *Plugin) netDevices(ctx context.Context, bridge codec.Address) ([]codec.
 	if err != nil {
 		return nil, err
 	}
+	return walkDeviceList(ctx, s, codec.MsgGetLocDevMap, nil)
+}
 
+// walkDeviceList collects the device records a list or map walk returns. An item
+// that came back as something other than a device record is skipped — a server
+// may answer one packet of a block with an acknowledgement — and one that will
+// not decode stops the walk, so a garbled far side is reported rather than half
+// read.
+func walkDeviceList(ctx context.Context, s *session.Session, msg codec.PacketType, payload []byte) ([]codec.DeviceInfo, error) {
 	var out []codec.DeviceInfo
-	err = session.Walk(ctx, s, codec.MsgGetLocDevMap, nil, func(_ int, f codec.Frame) error {
+	err := session.Walk(ctx, s, msg, payload, func(_ int, f codec.Frame) error {
 		if f.Type != codec.MsgRetDevInfo {
 			return nil
 		}

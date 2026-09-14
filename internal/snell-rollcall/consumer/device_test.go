@@ -90,6 +90,22 @@ type device struct {
 	farSide       []codec.DeviceInfo
 	refuseNetList bool
 
+	// farByBridge is what each named bridge reports behind it, keyed by the
+	// bridge's device address. It models a plant of nested bridges — a proxy
+	// behind a proxy — where the far side depends on which bridge was asked. When
+	// a bridge has no entry here the flat farSide answers instead.
+	farByBridge map[codec.Address][]codec.DeviceInfo
+
+	// cardsByFrame is the cards a frame reached through a bridge lists as its
+	// ports, keyed by the frame's device address. It models a real frame two hops
+	// out whose cards are enumerated over the port service.
+	cardsByFrame map[codec.Address][]codec.DeviceInfo
+
+	// framePortsRefused are the frame addresses that grant no port session, so a
+	// frame reached through a bridge can be made to advertise the port service
+	// and then refuse to list its cards.
+	framePortsRefused map[codec.Address]bool
+
 	// refuseNet refuses a call that names the net service at all, which is a
 	// unit advertising something it will not open.
 	refuseNet bool

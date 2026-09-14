@@ -93,19 +93,7 @@ func (p *Plugin) Ports(ctx context.Context, unit uint8) ([]codec.DeviceInfo, err
 	}
 	_ = l
 
-	var out []codec.DeviceInfo
-	err = session.Walk(ctx, s, codec.MsgGetDevList, []byte{unit, 0},
-		func(_ int, f codec.Frame) error {
-			if f.Type != codec.MsgRetDevInfo {
-				return nil
-			}
-			info, err := codec.DecodeDeviceInfo(f.Payload)
-			if err != nil {
-				return err
-			}
-			out = append(out, info)
-			return nil
-		})
+	out, err := walkDeviceList(ctx, s, codec.MsgGetDevList, []byte{unit, 0})
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: port list for unit %02X: %w", unit, err)
 	}

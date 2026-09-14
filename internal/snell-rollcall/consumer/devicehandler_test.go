@@ -213,6 +213,13 @@ func (d *device) answerCall(f codec.Frame) {
 		d.reply(f, codec.MsgNack, append([]byte("no net service"), 0))
 		return
 	}
+	if d.framePortsRefused[f.Dst.Device()] && conn.Services.Has(codec.SvcPorts) {
+		// A frame reached through a bridge that advertises the port service and
+		// then will not open a session for it.
+		d.mu.Unlock()
+		d.reply(f, codec.MsgNack, append([]byte("no port session"), 0))
+		return
+	}
 	if d.refusePorts && conn.Services.Has(codec.SvcPorts) {
 		d.mu.Unlock()
 		d.reply(f, codec.MsgNack, append([]byte("no port service"), 0))
@@ -230,9 +237,18 @@ func (d *device) answerCall(f codec.Frame) {
 	d.calls++
 	d.mu.Unlock()
 
+	// A far node answers a Call as itself, carrying the route it was reached by,
+	// so the session's peer is the bridge that was opened rather than the
+	// gateway. A near node names no route and is the gateway's own unit; the zero
+	// unit of a pre-assignment broadcast falls back to it too.
+	srcNet, srcUnit := f.Dst.Net, f.Dst.Unit
+	if srcUnit == 0 {
+		srcNet, srcUnit = 0, gatewayAddr.Unit
+	}
+
 	d.send(codec.Frame{
 		Dst:  f.Src,
-		Src:  codec.Address{Unit: gatewayAddr.Unit, Port: f.Dst.Port, Index: idx},
+		Src:  codec.Address{Net: srcNet, Unit: srcUnit, Port: f.Dst.Port, Index: idx},
 		Type: codec.MsgAck,
 	})
 }
@@ -344,7 +360,16 @@ func (d *device) getStat(f codec.Frame) {
 // all come back with the substitution address already set.
 func (d *device) netList(f codec.Frame) {
 	d.mu.Lock()
+	// A net session is opened on one bridge, so the far side it lists is that
+	// bridge's own, keyed by the address the request is addressed to. A device
+	// with no per-bridge map answers the flat farSide, which is one plant behind
+	// one bridge.
 	far := append([]codec.DeviceInfo(nil), d.farSide...)
+	if d.farByBridge != nil {
+		if list, ok := d.farByBridge[f.Dst.Device()]; ok {
+			far = append([]codec.DeviceInfo(nil), list...)
+		}
+	}
 	refuse := d.refuseNetList
 	d.mu.Unlock()
 
@@ -380,8 +405,20 @@ func (d *device) deviceList(f codec.Frame) {
 	// rather than refusing it. A real IQ 3U frame does exactly this.
 	d.mu.Lock()
 	strict := d.silentUnlessPorts
+	// A frame reached through a bridge lists its own cards, keyed by the address
+	// the port session was opened to, so a far frame's ports differ from the
+	// connected gateway's.
+	frameCards, isFrame := d.cardsByFrame[f.Dst.Device()]
 	d.mu.Unlock()
 	if strict && !d.negotiated(f).Has(codec.SvcPorts) {
+		return
+	}
+	if isFrame {
+		cards := append([]codec.DeviceInfo(nil), frameCards...)
+		d.block(f, codec.MsgGetDevList, len(cards), func(i int) (codec.PacketType, []byte) {
+			payload, _ := cards[i].AppendTo(nil)
+			return codec.MsgRetDevInfo, payload
+		})
 		return
 	}
 

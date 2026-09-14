@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/session"
 )
@@ -33,9 +34,18 @@ func TestWhatIsBehindABridgeIsEnumerated(t *testing.T) {
 	h := newHarness(t, func(d *device) {
 		d.ports = 2
 		d.services |= codec.SvcNet
-		d.farSide = []codec.DeviceInfo{
-			farDevice(0x1000, 0x08, "Nucleus 2"),
-			farDevice(0x1000, 0x11, "Matrix 1"),
+		// Two near bridges, each publishing its own two devices — the realistic
+		// case, where a bridge fills in the route it relays by, so what is behind
+		// one carries a different address from what is behind the other.
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {
+				farDevice(0x1000, 0x08, "Nucleus 2"),
+				farDevice(0x1000, 0x11, "Matrix 1"),
+			},
+			{Unit: gatewayAddr.Unit, Port: 1, Index: codec.IndexUnknown}: {
+				farDevice(0x2000, 0x08, "Nucleus 3"),
+				farDevice(0x2000, 0x11, "Matrix 2"),
+			},
 		}
 	})
 
@@ -43,9 +53,355 @@ func TestWhatIsBehindABridgeIsEnumerated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDeviceInfo: %v", err)
 	}
-	// Two bridges, each publishing the same two devices behind it.
-	if info.NumSlots != 2+2*2 {
+	// Two bridges, each publishing its own two devices behind it.
+	if info.NumSlots != 2+2+2 {
 		t.Fatalf("%d nodes, want the near side and both far sides", info.NumSlots)
+	}
+}
+
+func TestASelfReferentialBridgeDoesNotLoop(t *testing.T) {
+	// Measured against the vendor RollCall IP Proxy: a bridge's far side listed
+	// an entry that routed straight back to itself, so descending it returned the
+	// same list again. The old one-hop walk re-appended and re-descended it until
+	// its deadline ran out — a live discovery through the proxy hung on exactly
+	// this. The far device advertises the net service, which is what makes the
+	// walk try to read past it in the first place.
+	loop := farDevice(0x1000, 0x08, "Loop")
+	loop.ID.Services |= codec.SvcNet
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farSide = []codec.DeviceInfo{loop}
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	done := make(chan struct{})
+	var info consumer.DeviceInfo
+	var err error
+	go func() {
+		info, err = h.plugin.GetDeviceInfo(ctx)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the far-side walk did not terminate on a self-referential bridge")
+	}
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	// The near bridge and the one node behind it, counted once.
+	if info.NumSlots != 2 {
+		t.Errorf("%d nodes, want the near side and the looping node once", info.NumSlots)
+	}
+}
+
+func TestABridgeBehindABridgeIsFollowed(t *testing.T) {
+	// The vendor proxy nests bridges: its map holds a virtual node whose far side
+	// holds another virtual node whose far side holds the frame. So a bridge
+	// found behind a bridge is descended too, and the node at the bottom is
+	// reached.
+	mid := farDevice(0x1000, 0x01, "mid bridge")
+	mid.ID.Services |= codec.SvcNet
+	leaf := farDevice(0x1100, 0x0C, "the frame")
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			// The near bridge (port 0 of the gateway) fronts the mid bridge.
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {mid},
+			// Which in turn fronts the frame.
+			{Net: 0x1000, Unit: 0x01, Index: codec.IndexUnknown}: {leaf},
+		}
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tbl, err := h.plugin.nodes(ctx)
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var foundMid, foundLeaf bool
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1000 && a.Unit == 0x01 {
+			foundMid = true
+		}
+		if a.Net == 0x1100 && a.Unit == 0x0C {
+			foundLeaf = true
+		}
+	}
+	if !foundMid {
+		t.Errorf("the mid bridge was not enumerated: %v", tbl.addrs)
+	}
+	if !foundLeaf {
+		t.Errorf("the frame two hops away was not reached: %v", tbl.addrs)
+	}
+}
+
+// frameCard is one card as a frame lists it: a port on the frame's own unit,
+// with no route, the way the vendor proxy relayed the IQ frame's cards.
+func frameCard(port uint8, typeID uint16, name string) codec.DeviceInfo {
+	return codec.DeviceInfo{
+		ProtocolVersion: codec.ProtocolVersion,
+		Address:         codec.Address{Unit: 0x0C, Port: port, Index: codec.IndexUnknown},
+		ID: codec.ID{
+			Services: codec.SvcMenus | codec.SvcControl | codec.SvcFile,
+			TypeID:   typeID,
+			Name:     name,
+		},
+		Status: codec.UnitStatus{Status: codec.StatusPresent},
+	}
+}
+
+func TestCardsBehindAFrameReachedThroughABridge(t *testing.T) {
+	// The bridge's far side lists the frame, not the cards inside it. The cards
+	// are ports of the frame, reached over the port service, and each is
+	// addressable at the frame's own route and unit with the card's port — which
+	// is how a client of the proxy walks a card two hops out.
+	frame := farDevice(0x1000, 0x0C, "the frame")
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcPorts
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {frame},
+		}
+		// Names are kept within the fixed field a card record carries. The last
+		// two entries exercise the skips: a repeat of an earlier port, and the
+		// frame itself answering at port zero.
+		d.cardsByFrame = map[codec.Address][]codec.DeviceInfo{
+			{Net: 0x1000, Unit: 0x0C, Index: codec.IndexUnknown}: {
+				frameCard(0x01, 562, "EMB.06"),
+				frameCard(0x03, 562, "EMB.07"),
+				frameCard(0x01, 562, "EMB.06 dup"), // deduped
+				frameCard(0x00, 429, "frame"),      // port zero, skipped
+			},
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var cards []codec.Address
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1000 && a.Unit == 0x0C && a.Port != 0 {
+			cards = append(cards, a)
+		}
+	}
+	// The two real cards, each once: the repeat, the port-zero entry and the
+	// entry with no address are all left out.
+	if len(cards) != 2 {
+		t.Fatalf("got %d cards, want 2 (01 and 03): %v", len(cards), cards)
+	}
+	var one, three bool
+	for _, a := range cards {
+		if a.Port == 0x01 {
+			one = true
+		}
+		if a.Port == 0x03 {
+			three = true
+		}
+	}
+	if !one || !three {
+		t.Errorf("the frame's cards were not reached at its route: %v", cards)
+	}
+}
+
+func TestAFrameThatWillNotListItsCards(t *testing.T) {
+	// A frame that advertises the port service and then refuses a session for it
+	// is kept as a node — a client still sees the frame — and the refusal is
+	// counted rather than swallowed.
+	frame := farDevice(0x1000, 0x0C, "a mute frame")
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcPorts
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {frame},
+		}
+		d.framePortsRefused = map[codec.Address]bool{
+			{Net: 0x1000, Unit: 0x0C, Index: codec.IndexUnknown}: true,
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var frameThere bool
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1000 && a.Unit == 0x0C && a.Port == 0 {
+			frameThere = true
+		}
+		if a.Port != 0 {
+			t.Errorf("a card was listed for a frame that refused its port list: %s", a)
+		}
+	}
+	if !frameThere {
+		t.Errorf("the frame itself was lost: %v", tbl.addrs)
+	}
+	if !hasEvent(h.plugin, EventFrameUnreadable) {
+		t.Error("a frame that would not list its cards went unrecorded")
+	}
+}
+
+func TestReachThrough(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		bridge codec.Address
+		far    codec.Address
+		want   codec.Address
+	}{
+		{
+			// The vendor Centra substitutes the route itself; a far address that
+			// already carries one is used exactly as given.
+			name:   "an address that carries a route is left alone",
+			bridge: codec.Address{Unit: 0x01, Index: codec.IndexUnknown},
+			far:    codec.Address{Net: 0x1000, Unit: 0x08, Index: codec.IndexUnknown},
+			want:   codec.Address{Net: 0x1000, Unit: 0x08, Index: codec.IndexUnknown},
+		},
+		{
+			// The vendor proxy does not: a far address with no route is reached by
+			// crossing the bridge, whose unit becomes the first hop.
+			name:   "an unrouted address behind a near bridge",
+			bridge: codec.Address{Unit: 0x01, Index: codec.IndexUnknown},
+			far:    codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
+			want:   codec.Address{Net: 0x1000, Unit: 0x0C, Index: codec.IndexUnknown},
+		},
+		{
+			// Behind a bridge that is itself one hop away, the new hop goes in the
+			// second nibble: the frame two hops back from the proxy.
+			name:   "an unrouted address behind a bridge one hop away",
+			bridge: codec.Address{Net: 0x1000, Unit: 0x01, Index: codec.IndexUnknown},
+			far:    codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
+			want:   codec.Address{Net: 0x1100, Unit: 0x0C, Index: codec.IndexUnknown},
+		},
+		{
+			// A route already four hops deep has no room for another, so the far
+			// address is left as given rather than shifted off the top.
+			name:   "an unrouted address behind a bridge at the hop limit",
+			bridge: codec.Address{Net: 0x1234, Unit: 0x05, Index: codec.IndexUnknown},
+			far:    codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
+			want:   codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reachThrough(tc.bridge, tc.far)
+			if got != tc.want {
+				t.Errorf("reachThrough(%s, %s) = %s, want %s", tc.bridge, tc.far, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAnUnroutedFarSideGetsItsRouteComposed(t *testing.T) {
+	// The vendor RollCall IP Proxy returns a far node by the address its own
+	// segment knows it by, net zero, which collides with the bridge in front of
+	// it. The route is composed here so the node is reachable and distinct.
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {
+				farDevice(0x0000, 0x0C, "the frame"),
+			},
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var found bool
+	for _, a := range tbl.addrs {
+		// The near bridge is unit 0x08, so crossing it puts 8 in the top nibble.
+		if a.Net == 0x8000 && a.Unit == 0x0C {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the unrouted far node was not given a reachable address: %v", tbl.addrs)
+	}
+}
+
+func TestARouteAtTheHopLimitIsNotDescended(t *testing.T) {
+	// A route is four bridges deep at most (spec 5.1). A bridge already that deep
+	// is left alone rather than chased past the end of the address.
+	deep := farDevice(0x1234, 0x05, "four hops out")
+	deep.ID.Services |= codec.SvcNet
+	behind := farDevice(0x1235, 0x06, "one hop too far")
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {deep},
+			{Net: 0x1234, Unit: 0x05, Index: codec.IndexUnknown}:         {behind},
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	var foundDeep, foundBehind bool
+	for _, a := range tbl.addrs {
+		if a.Net == 0x1234 && a.Unit == 0x05 {
+			foundDeep = true
+		}
+		if a.Net == 0x1235 && a.Unit == 0x06 {
+			foundBehind = true
+		}
+	}
+	if !foundDeep {
+		t.Errorf("the four-hop bridge was not enumerated: %v", tbl.addrs)
+	}
+	if foundBehind {
+		t.Errorf("a bridge at the hop limit was descended anyway: %v", tbl.addrs)
+	}
+}
+
+func TestTwoBridgesThatListEachOtherTerminate(t *testing.T) {
+	// A cycle need not be a self-loop: two bridges each naming the other is the
+	// same trap one hop wider. It must terminate with each counted once.
+	a := farDevice(0x1000, 0x01, "bridge A")
+	a.ID.Services |= codec.SvcNet
+	b := farDevice(0x1000, 0x02, "bridge B")
+	b.ID.Services |= codec.SvcNet
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {a},
+			{Net: 0x1000, Unit: 0x01, Index: codec.IndexUnknown}:         {b},
+			{Net: 0x1000, Unit: 0x02, Index: codec.IndexUnknown}:         {a},
+		}
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	done := make(chan struct{})
+	var tbl *nodeTable
+	var err error
+	go func() {
+		tbl, err = h.plugin.nodes(ctx)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("two bridges naming each other did not terminate")
+	}
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	// The near bridge plus A and B, each once.
+	if len(tbl.addrs) != 3 {
+		t.Errorf("%d nodes, want the near side and the two bridges once each: %v", len(tbl.addrs), tbl.addrs)
 	}
 }
 

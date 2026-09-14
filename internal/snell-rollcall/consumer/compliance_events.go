@@ -63,6 +63,11 @@ const (
 	// is slow, and on a large level it is very slow.
 	EventNamesFileUnreadable = "rollcall_names_file_unreadable"
 
+	// EventFrameUnreadable means a frame reached through a bridge advertised the
+	// port or map service and then would not list the cards behind it, so the
+	// frame is kept as a node but its cards are not reached.
+	EventFrameUnreadable = "rollcall_frame_unreadable"
+
 	// EventBridgeUnreadable means a node advertised the net service and then
 	// would not list what is behind it. The near side of the network is still
 	// worth having, so it is counted rather than fatal.
