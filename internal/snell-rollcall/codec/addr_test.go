@@ -191,3 +191,55 @@ func TestAddress_Route(t *testing.T) {
 		t.Error("a zero top nibble means the destination is on this segment")
 	}
 }
+
+func TestAddress_Compose(t *testing.T) {
+	// The two transitions measured behind the vendor RollCall IP Proxy on
+	// 2026-09-14, plus the pass-through and the hop-limit no-op. The session
+	// index is dropped: Compose names a device, never a session.
+	tests := []struct {
+		name   string
+		bridge Address
+		far    Address
+		want   Address
+	}{
+		{
+			// A far entry with no route is reached by crossing the bridge, whose
+			// unit becomes the first hop: 0000-01-00 behind bridge 0000-01-00.
+			name:   "unrouted behind a near bridge",
+			bridge: Address{Unit: 0x01, Index: IndexUnknown},
+			far:    Address{Unit: 0x01, Index: IndexUnknown},
+			want:   Address{Net: 0x1000, Unit: 0x01, Index: IndexUnknown},
+		},
+		{
+			// Behind a bridge already one hop out, the new hop goes in the second
+			// nibble: the frame gateway two hops back from the proxy.
+			name:   "unrouted behind a bridge one hop away",
+			bridge: Address{Net: 0x1000, Unit: 0x01, Index: IndexUnknown},
+			far:    Address{Unit: 0x0C, Index: IndexUnknown},
+			want:   Address{Net: 0x1100, Unit: 0x0C, Index: IndexUnknown},
+		},
+		{
+			// An address that already carries a route was substituted by the
+			// bridge and is used as given (the vendor Centra's behaviour).
+			name:   "already routed is left alone",
+			bridge: Address{Unit: 0x01, Index: IndexUnknown},
+			far:    Address{Net: 0x2000, Unit: 0x08, Index: IndexUnknown},
+			want:   Address{Net: 0x2000, Unit: 0x08, Index: IndexUnknown},
+		},
+		{
+			// A route already four hops deep has no room for another nibble, so
+			// the far address is returned unchanged rather than shifted off top.
+			name:   "at the hop limit is a no-op",
+			bridge: Address{Net: 0x1234, Unit: 0x05, Index: IndexUnknown},
+			far:    Address{Unit: 0x0C, Index: IndexUnknown},
+			want:   Address{Unit: 0x0C, Index: IndexUnknown},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.bridge.Compose(tc.far); got != tc.want {
+				t.Errorf("%s.Compose(%s) = %s, want %s", tc.bridge, tc.far, got, tc.want)
+			}
+		})
+	}
+}

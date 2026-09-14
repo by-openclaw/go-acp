@@ -148,6 +148,34 @@ func (a Address) ForwardSource(bridgeUnit uint8) Address {
 	return a
 }
 
+// Compose returns the address that reaches a far-side node from here, where the
+// receiver is the bridge the node was found behind.
+//
+// A bridge should fill in the route it relays by (spec 9.31), and a device that
+// does — the vendor Centra — hands back a far entry already carrying a non-zero
+// route, which is reachable as given and returned unchanged. A device that does
+// not — the vendor RollCall IP Proxy — hands back the address the far segment
+// knows the node by, net zero, which collides with the bridge in front of it. So
+// an unrouted entry has its route composed: the bridge's own route, then the hop
+// across the bridge inserted at the next free nibble (spec 5.3, routes fill from
+// the top nibble down). A bridge already four hops deep has no room for another
+// and its far side is returned as given.
+//
+// It is the single source of truth for this transform: the consumer composes a
+// far node's address as it enumerates, and the proxy provider resolves the same
+// composed address when a client dials it, so both must agree byte for byte.
+func (bridge Address) Compose(far Address) Address {
+	if far.Net != 0 {
+		return far.Device()
+	}
+	h := bridge.HopCount()
+	if h >= 4 {
+		return far.Device()
+	}
+	far.Net = bridge.Net | (uint16(bridge.Unit&0x0F) << uint(12-4*h))
+	return far.Device()
+}
+
 // AppendTo appends the 6-byte wire form of a to dst.
 func (a Address) AppendTo(dst []byte) []byte {
 	var b [AddrSize]byte
