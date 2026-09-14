@@ -21,6 +21,13 @@ import (
 
 const iqCapture = "../testdata/fixtures/iq-frame-IQDBE00/wire.jsonl"
 
+// The controller's own walk: 1489 frames taken off the IQH3UM4-S gateway at
+// 10.6.255.113 reading its whole 720-object menu. It is the paged generation —
+// the card capture above is one flat menu, this one follows CM_PARTIAL subtrees
+// — so replaying it is what keeps the decoder honest about the wire form the
+// loopback provider cannot reproduce, on a clean checkout with no device present.
+const gatewayCapture = "../testdata/fixtures/iq-frame-IQH3UM4-S/wire.jsonl"
+
 func TestTheCommittedCaptureStillDecodes(t *testing.T) {
 	f, err := os.Open(iqCapture)
 	if err != nil {
@@ -61,6 +68,49 @@ func TestTheCommittedCaptureStillDecodes(t *testing.T) {
 
 	// The device answered, so a session was opened; a trace with none would
 	// mean the walk never got past the handshake.
+	for _, inv := range report.Invariants {
+		t.Errorf("invariant: %s", inv)
+	}
+}
+
+func TestTheControllerCaptureStillDecodes(t *testing.T) {
+	f, err := os.Open(gatewayCapture)
+	if err != nil {
+		t.Fatalf("open the capture: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	trames, err := wiretrace.ReadTrames(f)
+	if err != nil {
+		t.Fatalf("read the capture: %v", err)
+	}
+	if len(trames) < 1400 {
+		t.Fatalf("the capture holds %d frames; it was committed with 1489", len(trames))
+	}
+
+	p := New(testDeps())
+	report, err := p.Validate(context.Background(), trames, consumer.ValidateOpts{})
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	if len(report.Errors) != 0 {
+		for _, e := range report.Errors[:min(3, len(report.Errors))] {
+			t.Errorf("frame %d (%s) did not decode: %s — %s",
+				e.TrameIndex, e.Direction, e.Err, e.HexPrefix)
+		}
+		t.Fatalf("%d frames the real controller sent no longer decode", len(report.Errors))
+	}
+	if report.TramesProcessed != len(trames) {
+		t.Errorf("%d of %d frames were processed", report.TramesProcessed, len(trames))
+	}
+
+	// Both directions, because a capture of one half is a capture of a
+	// monologue: what is being checked is a conversation with hardware.
+	if report.PerDirection[wiretrace.DirectionTx] == 0 || report.PerDirection[wiretrace.DirectionRx] == 0 {
+		t.Errorf("the capture is one-sided: %v", report.PerDirection)
+	}
+
 	for _, inv := range report.Invariants {
 		t.Errorf("invariant: %s", inv)
 	}
