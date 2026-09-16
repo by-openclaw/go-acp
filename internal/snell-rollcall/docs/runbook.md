@@ -362,7 +362,8 @@ cd ansible
 DHS_BIN=/root/acp/bin/dhs ROLLCALL_SIM_HOST=<emulator>   ROLLCALL_SIM_PORT=2050 ROLLCALL_PROXY_HOST=<proxy>    ROLLCALL_PROXY_PORT=2050 ROLLCALL_SETTLE_SECONDS=12   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
 ```
 
-`ROLLCALL_BRIDGE_HOST` adds our own bridge when there is one, and
+`ROLLCALL_BRIDGE_HOST=10.6.250.104 ROLLCALL_BRIDGE_PORT=2050` adds our own
+IPShare on `dhs-tools` (§9.6), and
 `ROLLCALL_TEST_HOST` adds real hardware, read-only — the IQ 3U frame at
 `10.6.255.113` is the one on the fabric today:
 
@@ -408,8 +409,23 @@ dhs producer rollcall serve --proxy-upstream 2100=10.6.255.113,3000=10.6.250.105
 ```
 
 It probes each frame at start; one that does not answer is listed with an
-empty far side and called again whenever a client asks for it. Then, from any
-host that reaches it:
+empty far side and called again whenever a client asks for it.
+
+The standing plant is Ansible-owned, per ADR-0025 §5 — no hand-run sessions:
+
+```
+cd /root/acp-plant/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml   # again -> changed=0
+```
+
+It runs the Sirius 800 emulator on `win11` as the scheduled task `dhs-centra`
+(at boot, restarted if it dies, unpacked from the committed zip if absent),
+and on `dhs-tools` the units `dhs-rollcall-router` (our router, `:2052`, unit
+`0x20`) and `dhs-rollcall-ipshare` (the proxy, `:2050`, fronting 2100 / 3000
+/ 4000). It then asserts the proxy lists one virtual node per frame and
+reports which frames answered. Measured 2026-09-17: second pass `changed=0`
+on both hosts, all three frames reached. Then, from any host that reaches it:
 
 ```
 dhs consumer rollcall info <our-host>:2050        # RollProxy Service, unit FF, Map
