@@ -11,13 +11,13 @@ import (
 	"dhs/internal/snell-rollcall/session"
 )
 
-// The proxy can front a real frame rather than the tree this provider serves:
+// The proxy can front real frames rather than the tree this provider serves:
 // our own IPShare, in the sense the vendor RollProxy is one. The proxy unit
 // and its virtual nodes are still answered here; everything a client sends to
-// the frame's route is carried to the frame over a connection of the client's
+// a frame's route is carried to that frame over a connection of the client's
 // own, and everything the frame sends comes back the same way.
 //
-// One connection to the frame per client, rather than one shared by all of
+// One connection to each frame per client, rather than one shared by all of
 // them. A shared connection is what the vendor box holds, and it is why the
 // vendor box has to renumber sessions: the frame allocates its indices per
 // connection, so two clients' sessions collide on one. A connection per client
@@ -51,20 +51,20 @@ import (
 // never rewritten as a message crosses a bridge (spec 11.3.4); a client
 // composes the route itself, which is what codec.Address.Compose is for.
 
-// relayDialTimeout bounds one attempt to reach the frame. It is a LAN peer,
-// and a client is waiting on its own three-second reply timer meanwhile.
+// relayDialTimeout bounds one attempt to reach a frame. It is a LAN peer, and
+// a client is waiting on its own three-second reply timer meanwhile.
 const relayDialTimeout = 5 * time.Second
 
 // errRelayClosed says the client this relay served has gone.
 var errRelayClosed = errors.New("rollcall: the client of this relay has gone")
 
-// relayLink carries one client's routed traffic to the frame and back.
+// relayLink carries one client's traffic for one frame to it and back.
 type relayLink struct {
-	p    *Provider
-	addr string
+	p     *Provider
+	chain *frameChain
 
 	mu sync.Mutex
-	// down is the client's link, learned from the first frame intercepted.
+	// down is the client's link, learned from the first frame carried.
 	down *session.Link
 	// up is the connection to the frame, dialed when first needed and dialed
 	// again if it goes away: a frame that dropped us is redialed on the next
@@ -73,22 +73,54 @@ type relayLink struct {
 	closed bool
 }
 
-// newRelayLink builds the relay for one client, before its link exists: the
-// intercept is part of the link's configuration, so the relay has to be.
-func newRelayLink(p *Provider, addr string) *relayLink {
-	return &relayLink{p: p, addr: addr}
+// newRelayLink builds the relay for one client and one frame, before the
+// client's link exists: the intercept is part of the link's configuration, so
+// the relay has to be.
+func newRelayLink(p *Provider, c *frameChain) *relayLink {
+	return &relayLink{p: p, chain: c}
 }
 
-// intercept takes every frame a client addresses to the frame's route.
-//
-// The proxy unit and its virtual nodes are left to the ordinary path: they are
-// served here. Only a resolved address on the frame's subnet is carried.
-func (r *relayLink) intercept(l *session.Link, f codec.Frame) bool {
-	role, _, _, _ := r.p.proxy.resolve(f.Dst)
-	if role != roleFrame {
+// relaySet is one client's relays, one per real frame behind the proxy,
+// indexed like the topology's frames; nil where a frame is the served tree.
+type relaySet struct {
+	p     *Provider
+	links []*relayLink
+}
+
+// newRelaySet builds a client's relays for every real frame.
+func newRelaySet(p *Provider) *relaySet {
+	set := &relaySet{p: p, links: make([]*relayLink, len(p.proxy.frames))}
+	for i, c := range p.proxy.frames {
+		if c.upstream != "" {
+			set.links[i] = newRelayLink(p, c)
+		}
+	}
+	return set
+}
+
+// intercept takes every frame a client addresses to a real frame's route and
+// carries it there. The proxy unit, its virtual nodes and a served tree are
+// left to the ordinary path.
+func (set *relaySet) intercept(l *session.Link, f codec.Frame) bool {
+	role, frame, _, _, _ := set.p.proxy.resolve(f.Dst)
+	if role != roleFrame || set.links[frame] == nil {
 		return false
 	}
+	set.links[frame].take(l, f)
+	return true
+}
 
+// close ends every relay with its client.
+func (set *relaySet) close() {
+	for _, r := range set.links {
+		if r != nil {
+			r.close()
+		}
+	}
+}
+
+// take carries one client frame to the frame, remembering the client.
+func (r *relayLink) take(l *session.Link, f codec.Frame) {
 	r.mu.Lock()
 	if r.down == nil {
 		r.down = l
@@ -96,7 +128,6 @@ func (r *relayLink) intercept(l *session.Link, f codec.Frame) bool {
 	r.mu.Unlock()
 
 	r.toFrame(l, f)
-	return true
 }
 
 // toFrame carries one client frame to the frame.
@@ -115,14 +146,14 @@ func (r *relayLink) toFrame(down *session.Link, f codec.Frame) {
 	}
 	if err != nil {
 		r.p.log.Warn("rollcall: the frame behind the proxy is unreachable",
-			"frame", r.addr, "type", f.Type.String(), "err", err)
+			"frame", r.chain.upstream, "type", f.Type.String(), "err", err)
 		r.refuse(down, f, "frame unreachable")
 		return
 	}
 
-	if err := up.SendFrame(r.p.proxy.outbound(f)); err != nil {
+	if err := up.SendFrame(r.chain.outbound(f)); err != nil {
 		r.p.log.Warn("rollcall: could not relay to the frame",
-			"frame", r.addr, "type", f.Type.String(), "err", err)
+			"frame", r.chain.upstream, "type", f.Type.String(), "err", err)
 		r.refuse(down, f, "frame connection lost")
 	}
 }
@@ -159,7 +190,7 @@ func (r *relayLink) fromFrame(_ *session.Link, f codec.Frame) bool {
 	}
 
 	// A client of the proxy has the zero address: the handshake assigned none.
-	if err := down.SendFrame(r.p.proxy.inbound(f, codec.Address{})); err != nil {
+	if err := down.SendFrame(r.chain.inbound(f, codec.Address{})); err != nil {
 		r.p.log.Debug("rollcall: could not relay to the client",
 			"type", f.Type.String(), "err", err)
 	}
@@ -191,9 +222,9 @@ func (r *relayLink) upstream() (*session.Link, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), relayDialTimeout)
 	defer cancel()
-	conn, err := r.p.net.Dial(ctx, "tcp", r.addr)
+	conn, err := r.p.net.Dial(ctx, "tcp", r.chain.upstream)
 	if err != nil {
-		return nil, fmt.Errorf("dial %s: %w", r.addr, err)
+		return nil, fmt.Errorf("dial %s: %w", r.chain.upstream, err)
 	}
 
 	// A frame does not probe its clients and this proxy does not probe the
@@ -204,7 +235,7 @@ func (r *relayLink) upstream() (*session.Link, error) {
 		KeepaliveInterval: -1,
 	}, r.p.deps)
 	r.up = up
-	r.p.log.Debug("rollcall: relay connected to the frame", "frame", r.addr)
+	r.p.log.Debug("rollcall: relay connected to the frame", "frame", r.chain.upstream)
 
 	r.p.wg.Add(1)
 	go func() {
@@ -216,7 +247,7 @@ func (r *relayLink) upstream() (*session.Link, error) {
 		}
 		r.mu.Unlock()
 		r.p.log.Debug("rollcall: relay connection to the frame ended",
-			"frame", r.addr, "err", up.Err())
+			"frame", r.chain.upstream, "err", up.Err())
 	}()
 	return up, nil
 }
@@ -239,8 +270,8 @@ func (r *relayLink) close() {
 // outbound rewrites a client's frame for the frame's own segment: the route is
 // consumed hop by hop, and the source device is zeroed the way an IPShare
 // client zeroes its own. The session indices at both ends are kept.
-func (t *proxyTopology) outbound(f codec.Frame) codec.Frame {
-	for range t.nodes {
+func (c *frameChain) outbound(f codec.Frame) codec.Frame {
+	for range c.nodes {
 		f.Dst = f.Dst.Forward()
 	}
 	f.Src.Net, f.Src.Unit, f.Src.Port = 0, 0, 0
@@ -253,9 +284,9 @@ func (t *proxyTopology) outbound(f codec.Frame) codec.Frame {
 // echo instead — is written back as the client's own address. A broadcast
 // keeps the broadcast address, because a client recognises an announcement by
 // it.
-func (t *proxyTopology) inbound(f codec.Frame, client codec.Address) codec.Frame {
-	for i := len(t.nodes) - 1; i >= 0; i-- {
-		f.Src = f.Src.ForwardSource(t.nodes[i].local.Unit)
+func (c *frameChain) inbound(f codec.Frame, client codec.Address) codec.Frame {
+	for i := len(c.nodes) - 1; i >= 0; i-- {
+		f.Src = f.Src.ForwardSource(c.nodes[i].local.Unit)
 	}
 	if !f.Type.Broadcastable() || !f.Dst.IsBroadcast() {
 		f.Dst.Net, f.Dst.Unit, f.Dst.Port = 0, client.Unit, client.Port
@@ -263,10 +294,9 @@ func (t *proxyTopology) inbound(f codec.Frame, client codec.Address) codec.Frame
 	return f
 }
 
-// probeFrame reaches the frame once to learn what it is: its unit, which is
-// what the route is stamped with, and its identity, which is what the last
-// virtual node lists as its far side. It is the vendor proxy's "Connected"
-// column, asked once at configuration rather than polled.
+// probeFrame reaches a frame once to learn what it is: its unit, which is what
+// the route is stamped with, and its identity, which is what the last virtual
+// node lists as its far side. It is the vendor proxy's "Connected" column.
 func (p *Provider) probeFrame(ctx context.Context, addr string) (codec.DeviceInfo, codec.Address, error) {
 	ctx, cancel := context.WithTimeout(ctx, relayDialTimeout)
 	defer cancel()

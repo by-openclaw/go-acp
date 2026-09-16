@@ -399,8 +399,17 @@ same rack at two routes and never confuses them:
 dhs producer rollcall serve --proxy-subnet 2100 --proxy-upstream 10.6.255.113 --port 2050 --log-level debug
 ```
 
-It probes the frame once at start and refuses to start if the frame does not
-answer. Then, from any host that reaches it:
+Or the whole plant at once — the rack, the Centra emulator on `win11` and our
+own router served on the same host — one subnet each:
+
+```
+dhs producer rollcall serve --tree router_tree.json --port 2052 --unit 32 &
+dhs producer rollcall serve --proxy-upstream 2100=10.6.255.113,3000=10.6.250.105:2057,4000=10.6.250.104:2052 --port 2050
+```
+
+It probes each frame at start; one that does not answer is listed with an
+empty far side and called again whenever a client asks for it. Then, from any
+host that reaches it:
 
 ```
 dhs consumer rollcall info <our-host>:2050        # RollProxy Service, unit FF, Map

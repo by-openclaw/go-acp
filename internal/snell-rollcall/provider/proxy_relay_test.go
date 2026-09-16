@@ -45,7 +45,7 @@ func TestRelayTransforms(t *testing.T) {
 			if err != nil {
 				t.Fatalf("buildProxyTopology: %v", err)
 			}
-			out := tp.outbound(codec.Frame{Dst: tc.clientDst, Src: tc.clientSrc, Type: codec.MsgGetID})
+			out := tp.frames[0].outbound(codec.Frame{Dst: tc.clientDst, Src: tc.clientSrc, Type: codec.MsgGetID})
 			if out.Dst != tc.wantDst {
 				t.Errorf("outbound dst = %s, want %s", out.Dst, tc.wantDst)
 			}
@@ -64,11 +64,12 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 	// A client of the proxy is the zero address: the vendor proxy assigns none
 	// and neither does this one.
 	client := codec.Address{}
+	chain := tp.frames[0]
 
 	// A reply: the frame zeroes the destination device and answers from its own
 	// net-zero address. The client sees it from the subnet route, to itself,
 	// with both session indices as they were.
-	in := tp.inbound(codec.Frame{
+	in := chain.inbound(codec.Frame{
 		Dst:  codec.Address{Index: 3},
 		Src:  codec.Address{Unit: 0x0C, Port: 0x01, Index: 7},
 		Type: codec.MsgRetID,
@@ -82,7 +83,7 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 
 	// A frame that echoes the spoofed source instead of zeroing is addressed
 	// the same way: whatever it wrote, the client's address goes back in.
-	in = tp.inbound(codec.Frame{
+	in = chain.inbound(codec.Frame{
 		Dst:  codec.Address{Unit: 0x0C, Port: 0x8E, Index: 3},
 		Src:  codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
 		Type: codec.MsgRetDevInfo,
@@ -93,7 +94,7 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 
 	// A broadcast keeps the broadcast address: that is how a client knows it
 	// for an announcement.
-	in = tp.inbound(codec.Frame{
+	in = chain.inbound(codec.Frame{
 		Dst:  codec.Broadcast(),
 		Src:  codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
 		Type: codec.MsgIam,
@@ -106,7 +107,7 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 	}
 
 	// A device behind the frame's own bridge keeps its route beneath ours.
-	in = tp.inbound(codec.Frame{
+	in = chain.inbound(codec.Frame{
 		Dst:  codec.Address{Index: 1},
 		Src:  codec.Address{Net: 0x1000, Unit: 0x20, Index: 2},
 		Type: codec.MsgRetID,
@@ -171,12 +172,13 @@ func newRelayServed(t *testing.T) (*served, *Provider) {
 
 func TestRelayLearnsTheFrameFromTheProbe(t *testing.T) {
 	s, frame := newRelayServed(t)
-	if s.p.frameUnit != 0x0C {
-		t.Errorf("the frame unit was learned as %02X, want 0C from the probe", s.p.frameUnit)
+	if unit := s.p.proxy.frames[0].unit; unit != 0x0C {
+		t.Errorf("the frame unit was learned as %02X, want 0C from the probe", unit)
 	}
 	gw, _ := frame.identityOf(0)
-	if s.p.frameIdentity().TypeID != gw.TypeID || s.p.frameIdentity().Name != gw.Name {
-		t.Errorf("the far side identity is %+v, want the frame's %+v", s.p.frameIdentity(), gw)
+	entry, ok := s.p.frameEntry(0)
+	if !ok || entry.ID.TypeID != gw.TypeID || entry.ID.Name != gw.Name {
+		t.Errorf("the far side identity is %+v, want the frame's %+v", entry, gw)
 	}
 
 	// The last virtual node lists the real frame's gateway as its far side.
@@ -322,8 +324,8 @@ func TestRelayClosesWithItsClient(t *testing.T) {
 	}
 }
 
-func TestSetProxyRefusesAnUnreachableFrame(t *testing.T) {
-	// A port nothing listens on.
+func TestAFrameThatIsNotThereYetIsCalledAgainWhenAskedFor(t *testing.T) {
+	// A port nothing listens on yet: the vendor box's "Calling" column.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -331,11 +333,170 @@ func TestSetProxyRefusesAnUnreachableFrame(t *testing.T) {
 	addr := ln.Addr().String()
 	_ = ln.Close()
 
-	p := New(testDeps(clock.NewFake(time.Time{})), nil)
+	clk := clock.NewFake(time.Time{})
+	deps := testDeps(clk)
+	p := New(deps, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: addr}); err == nil {
-		t.Error("a proxy was configured in front of a frame that does not answer")
+	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x3000, Upstream: addr}); err != nil {
+		t.Fatalf("a proxy in front of a frame that is not there yet was refused: %v", err)
+	}
+
+	ours, theirs := net.Pipe()
+	p.serveConn(theirs)
+	cl := session.NewLink(ours, session.Config{}, deps)
+	if _, err := cl.Handshake(ctx); err != nil {
+		t.Fatalf("handshake: %v", err)
+	}
+	s := &served{t: t, p: p, cl: cl, clk: clk}
+	t.Cleanup(func() {
+		_ = cl.Close()
+		_ = p.Stop()
+	})
+
+	// The chain is there; its far side is empty, and asking is what calls the
+	// frame again.
+	node := codec.Address{Unit: 0x03, Index: codec.IndexUnknown}
+	sess, err := s.openAddr(node, codec.SvcNet)
+	if err != nil {
+		t.Fatalf("open net session: %v", err)
+	}
+	if far := walkDevices(t, sess); len(far) != 0 {
+		t.Errorf("a frame nobody has reached is listed: %+v", far)
+	}
+	// That call fails, since nothing is there yet.
+	chain := p.proxy.frames[0]
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		chain.mu.Lock()
+		probing, known := chain.probing, chain.known
+		chain.mu.Unlock()
+		if !probing {
+			if known {
+				t.Fatal("a frame that is not there was reached")
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the call to the absent frame never ended")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// A session to the frame itself is refused, with a reason, not timed out.
+	if _, err := s.openAddr(codec.Address{Net: 0x3000, Unit: 0x0C, Index: codec.IndexUnknown}, codec.SvcPorts); err == nil {
+		t.Error("a session was opened on a frame that is not there")
+	}
+
+	// The frame appears where it was expected.
+	frame := New(testDeps(clock.NewFake(time.Time{})), testTree())
+	frame.SetUnit(0x0C)
+	errs := make(chan error, 1)
+	go func() { errs <- frame.Serve(context.Background(), addr) }()
+	t.Cleanup(func() {
+		_ = frame.Stop()
+		<-errs
+	})
+	deadline = time.Now().Add(5 * time.Second)
+	for frame.Addr() == "" {
+		if time.Now().After(deadline) {
+			t.Fatal("the frame never bound")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Asked again, the far side calls the frame and, once it has answered,
+	// lists it — routed, with its own identity.
+	var far []codec.DeviceInfo
+	deadline = time.Now().Add(5 * time.Second)
+	for len(far) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the frame came up and the far side never listed it")
+		}
+		time.Sleep(20 * time.Millisecond)
+		sess2, err := s.openAddr(node, codec.SvcNet)
+		if err != nil {
+			t.Fatalf("open net session: %v", err)
+		}
+		far = walkDevices(t, sess2)
+		_ = sess2.Close()
+	}
+	gw, _ := frame.identityOf(0)
+	if far[0].Address.Net != 0x3000 || far[0].Address.Unit != 0x0C || far[0].ID.TypeID != gw.TypeID {
+		t.Errorf("the far side lists %+v, want the frame at 3000-0C", far[0])
+	}
+	// And the frame is reached through the relay.
+	if _, err := s.openAddr(codec.Address{Net: 0x3000, Unit: 0x0C, Index: codec.IndexUnknown}, codec.SvcPorts); err != nil {
+		t.Errorf("the frame that came up is not reached: %v", err)
+	}
+}
+
+func TestTwoFramesBehindOneProxy(t *testing.T) {
+	// The served tree at 1100 as unit 0C, and a real frame at 3000 whose own
+	// unit is 0D: what the vendor box does with two chassis, one subnet each.
+	real, addr := serveFrame(t, 0x0D)
+
+	clk := clock.NewFake(time.Time{})
+	deps := testDeps(clk)
+	p := New(deps, testTree())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Frames: []ProxyFrame{
+		{Subnet: 0x1100, Unit: 0x0C},
+		{Subnet: 0x3000, Upstream: addr},
+	}})
+	if err != nil {
+		t.Fatalf("SetProxy: %v", err)
+	}
+
+	ours, theirs := net.Pipe()
+	p.serveConn(theirs)
+	cl := session.NewLink(ours, session.Config{}, deps)
+	if _, err := cl.Handshake(ctx); err != nil {
+		t.Fatalf("handshake: %v", err)
+	}
+	s := &served{t: t, p: p, cl: cl, clk: clk}
+	t.Cleanup(func() {
+		_ = cl.Close()
+		_ = p.Stop()
+	})
+
+	// The map lists one virtual node per frame.
+	m, err := s.openAddr(codec.Address{Unit: 0xFF, Index: codec.IndexUnknown}, codec.SvcMap)
+	if err != nil {
+		t.Fatalf("open map session: %v", err)
+	}
+	nodes := walkDevices(t, m)
+	if len(nodes) != 2 || nodes[0].Address.Unit != 0x01 || nodes[1].Address.Unit != 0x03 {
+		t.Fatalf("the map lists %+v, want the nodes 01 and 03", nodes)
+	}
+
+	// The served tree answers at its route from the model, as unit 0C.
+	gw, err := s.openAddr(codec.Address{Net: 0x1100, Unit: 0x0C, Index: codec.IndexUnknown}, codec.SvcPorts)
+	if err != nil {
+		t.Fatalf("open the served frame: %v", err)
+	}
+	if ports := walkDevices(t, gw); len(ports) == 0 || ports[0].Address.Unit != 0x0C {
+		t.Errorf("the served frame lists %+v", ports)
+	}
+
+	// The real frame answers at its route through its relay, as unit 0D, and
+	// another unit on that segment reaches the frame too — a controller puts
+	// every node on a unit of its own.
+	rg, err := s.openAddr(codec.Address{Net: 0x3000, Unit: 0x0D, Index: codec.IndexUnknown}, codec.SvcPorts)
+	if err != nil {
+		t.Fatalf("open the real frame: %v", err)
+	}
+	if ports := walkDevices(t, rg); len(ports) == 0 || ports[0].Address.Unit != 0x0D {
+		t.Errorf("the real frame lists %+v", ports)
+	}
+	if role, frame, _, _, ok := p.proxy.resolve(codec.Address{Net: 0x3000, Unit: 0x11}); !ok || role != roleFrame || frame != 1 {
+		t.Errorf("another unit on the real frame's segment resolved to role %d frame %d", role, frame)
+	}
+	if _, _, _, _, ok := p.proxy.resolve(codec.Address{Net: 0x1100, Unit: 0x11}); ok {
+		t.Error("another unit on the served tree's segment resolved to something")
+	}
+	if n := linkCount(real); n != 1 {
+		t.Errorf("the real frame holds %d connections, want the relay's one", n)
 	}
 }
 
@@ -360,7 +521,7 @@ func TestSetProxyRefusesAnUpstreamOnABadRoute(t *testing.T) {
 	}
 }
 
-func TestSetProxyRefusesAFrameThatAcceptsAndSaysNothing(t *testing.T) {
+func TestAFrameThatAcceptsAndSaysNothingIsStillCalling(t *testing.T) {
 	// The wedged frame: TCP accepts, RollCall never answers. Here the accept
 	// closes at once, which ends the handshake the same way without the wait.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -381,8 +542,12 @@ func TestSetProxyRefusesAFrameThatAcceptsAndSaysNothing(t *testing.T) {
 	p := New(testDeps(clock.NewFake(time.Time{})), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: ln.Addr().String()}); err == nil {
-		t.Error("a proxy was configured in front of a frame that never answered")
+	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: ln.Addr().String()}); err != nil {
+		t.Fatalf("a proxy in front of a frame that does not answer yet was refused: %v", err)
+	}
+	// Kept, but unknown: the vendor box's "Calling".
+	if _, ok := p.frameEntry(0); ok {
+		t.Error("a frame that never answered is listed as known")
 	}
 }
 
@@ -392,8 +557,8 @@ func relayOf(t *testing.T, p *Provider) (*relayLink, *session.Link) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	for l, st := range p.links {
-		if st.relay != nil {
-			return st.relay, l
+		if st.relays != nil && st.relays.links[0] != nil {
+			return st.relays.links[0], l
 		}
 	}
 	t.Fatal("the proxy has no relaying client")
@@ -404,7 +569,7 @@ func TestRelayCopesWithAClientThatIsNotThere(t *testing.T) {
 	s, _ := newRelayServed(t)
 
 	// A frame from the frame before any client frame set the relay's client.
-	r := &relayLink{p: s.p, addr: s.p.relay}
+	r := &relayLink{p: s.p, chain: s.p.proxy.frames[0]}
 	if !r.fromFrame(nil, codec.Frame{Type: codec.MsgIam}) {
 		t.Error("a frame with no client to go to was not taken")
 	}
@@ -488,7 +653,7 @@ func TestRelayRedialsAFrameThatDropped(t *testing.T) {
 	_ = theirs.Close()
 	dead := session.NewLink(ours, session.Config{KeepaliveInterval: -1}, s.p.deps)
 	<-dead.Done()
-	r := &relayLink{p: s.p, addr: s.p.relay, up: dead}
+	r := &relayLink{p: s.p, chain: s.p.proxy.frames[0], up: dead}
 	up, err := r.upstream()
 	if err != nil {
 		t.Fatalf("redial: %v", err)
@@ -522,5 +687,16 @@ func TestRelayRedialsAFrameThatDropped(t *testing.T) {
 			t.Fatal("the relay kept a frame connection the frame had ended")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestACallAlreadyInFlightIsNotDoubled(t *testing.T) {
+	p := New(testDeps(clock.NewFake(time.Time{})), nil)
+	c := &frameChain{upstream: "127.0.0.1:1", probing: true}
+	p.probeLater(c)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.probing {
+		t.Error("a second call was started while the first was still in flight")
 	}
 }

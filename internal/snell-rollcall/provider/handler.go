@@ -117,14 +117,14 @@ func (p *Provider) servedAtAddr(dst codec.Address) codec.Service {
 	if p.proxy == nil {
 		return p.servedAt(dst.Port)
 	}
-	role, hop, port, ok := p.proxy.resolve(dst)
+	role, frame, hop, port, ok := p.proxy.resolve(dst)
 	switch {
 	case !ok:
 		return 0
 	case role == roleProxy:
 		return p.proxy.proxyID().Services
 	case role == roleVirtual:
-		return p.proxy.virtualID(hop).Services
+		return p.proxy.virtualID(frame, hop).Services
 	default:
 		return p.servedAt(port)
 	}
@@ -193,15 +193,17 @@ func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 		// always names a node the proxy knows. The proxy unit and its virtual
 		// nodes answer for themselves; anything else is a port of the frame, which
 		// the ordinary path serves under the frame's own unit.
-		role, hop, port, _ := p.proxy.resolve(req.Dst)
+		role, frame, hop, port, _ := p.proxy.resolve(req.Dst)
 		switch role {
 		case roleProxy:
 			return p.answerProxyNode(s, req)
 		case roleVirtual:
-			return p.answerVirtualNode(s, req, hop)
+			return p.answerVirtualNode(s, req, frame, hop)
 		case roleFrame:
+			// A real frame's traffic never arrives here: its relay took it off
+			// the link. This is the served tree, under its own unit.
 			slot = port
-			stampUnit = p.frameUnit
+			stampUnit = p.proxy.frames[frame].unit
 		}
 	}
 

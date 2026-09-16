@@ -234,19 +234,11 @@ type Provider struct {
 	unit uint8
 
 	// proxy, when set, makes this provider present as a RollCall IP Proxy in
-	// front of the frame it serves: the connected unit is the proxy, and routed
-	// addresses resolve back to the frame's ports. frameUnit is the fronted
-	// frame's own unit, which its port list is stamped with. Both are nil/zero in
-	// the ordinary case of serving a frame directly.
-	proxy     *proxyTopology
-	frameUnit uint8
-
-	// relay, when set, is the real frame the proxy fronts (host:port): routed
-	// traffic is carried to it rather than served from the model. frameInfo is
-	// what that frame answered when it was probed, listed as the last virtual
-	// node's far side.
-	relay     string
-	frameInfo codec.DeviceInfo
+	// front of one or more frames: the connected unit is the proxy, and a
+	// routed address resolves to a frame — the tree this provider serves,
+	// whose ports the model answers, or a real one its traffic is carried to.
+	// Nil in the ordinary case of serving a frame directly.
+	proxy *proxyTopology
 
 	done     chan struct{}
 	doneOnce sync.Once
@@ -280,9 +272,9 @@ type linkState struct {
 	// queue and the goroutine that sends them.
 	subscribed map[int16]*subscriber
 
-	// relay carries this client's routed traffic to a real frame, when the
-	// proxy fronts one; nil otherwise.
-	relay *relayLink
+	// relays carry this client's routed traffic to the real frames the proxy
+	// fronts, one per frame; nil when it fronts none.
+	relays *relaySet
 }
 
 // setTransfer records the transfer a session has open.
@@ -389,12 +381,12 @@ func (p *Provider) serveConn(conn net.Conn) {
 		KeepaliveInterval: -1,
 	}
 
-	// Fronting a real frame, this client's routed traffic is carried there on
-	// a connection of its own, taken off the link before any session sees it.
-	var relay *relayLink
-	if p.relay != "" {
-		relay = newRelayLink(p, p.relay)
-		cfg.Intercept = relay.intercept
+	// Fronting real frames, this client's routed traffic is carried to them on
+	// connections of its own, taken off the link before any session sees it.
+	var relays *relaySet
+	if p.proxy != nil && p.proxy.hasRelay() {
+		relays = newRelaySet(p)
+		cfg.Intercept = relays.intercept
 	}
 
 	l := session.NewLink(conn, cfg, p.deps)
@@ -406,7 +398,7 @@ func (p *Provider) serveConn(conn net.Conn) {
 		open:       make(map[int16]*transfer),
 		subscribed: make(map[int16]*subscriber),
 		assigned:   firstClientPort,
-		relay:      relay,
+		relays:     relays,
 	}
 	p.mu.Unlock()
 
@@ -443,8 +435,8 @@ func (p *Provider) serveConn(conn net.Conn) {
 		delete(p.links, l)
 		p.mu.Unlock()
 
-		if relay != nil {
-			relay.close()
+		if relays != nil {
+			relays.close()
 		}
 		p.log.Debug("rollcall: client gone", "remote", conn.RemoteAddr().String())
 	}()
@@ -453,17 +445,6 @@ func (p *Provider) serveConn(conn net.Conn) {
 // gatewayInfo is what this provider announces about itself: port zero of its
 // own unit, which is the gateway rather than any card in it.
 func (p *Provider) gatewayInfo() codec.DeviceInfo {
-	// In proxy mode what announces itself is the proxy, not the frame behind it:
-	// a client builds its map from these announcements, and it must find the
-	// RollProxy Service it connected to.
-	if p.proxy != nil {
-		return codec.DeviceInfo{
-			ProtocolVersion: codec.ProtocolVersion,
-			Address:         p.proxy.proxyAddr(),
-			ID:              p.proxy.proxyID(),
-			Status:          proxyStatus(),
-		}
-	}
 	// Through identityOf so the announcement says the same about this frame
 	// as an enquiry does, including which generation it offers.
 	id, _ := p.identityOf(0)
@@ -491,17 +472,18 @@ func (p *Provider) SetUnit(u uint8) {
 	p.unit = u
 }
 
-// SetProxy makes this provider present as a RollCall IP Proxy fronting a frame
-// at the network address the config names.
+// SetProxy makes this provider present as a RollCall IP Proxy fronting frames
+// at the network addresses the config names.
 //
 // It is the emulator of the vendor RollProxy: a client sees the proxy unit, its
-// virtual routing nodes and, behind them, a frame — the same chain the vendor
-// box presents. The frame is the one this provider was built to serve, or,
-// with Upstream set, a real one reached over the network, probed here once to
-// learn its unit and identity. Either way the proxy is a routing layer in
-// front of it. It must be called before Serve, because a client that has
-// walked the proxy has already been told where everything is, and it sets the
-// unit the proxy answers as.
+// virtual routing nodes and, behind them, the frames — the same chains the
+// vendor box presents, one subnet per frame. A frame is the one this provider
+// was built to serve, or a real one reached over the network. Each real frame
+// is probed here to learn its unit and identity; one that does not answer is
+// kept and called again when a client asks for it, the way the vendor box
+// shows a chassis as "Calling" until it appears. It must be called before
+// Serve, because a client that has walked the proxy has already been told
+// where everything is, and it sets the unit the proxy answers as.
 func (p *Provider) SetProxy(ctx context.Context, cfg ProxyConfig) error {
 	p.mu.RLock()
 	serving := p.listener != nil
@@ -510,37 +492,24 @@ func (p *Provider) SetProxy(ctx context.Context, cfg ProxyConfig) error {
 		return fmt.Errorf("rollcall: the proxy is configured before the frame is served")
 	}
 
-	var info codec.DeviceInfo
-	if cfg.Upstream != "" {
-		probed, at, err := p.probeFrame(ctx, cfg.Upstream)
-		if err != nil {
-			return err
-		}
-		info = probed
-		if cfg.Frame == 0 {
-			cfg.Frame = at.Unit
-		}
-		p.log.Info("rollcall: proxy fronts a frame",
-			"frame", cfg.Upstream,
-			"unit", fmt.Sprintf("%02X", cfg.Frame),
-			"name", info.ID.Name,
-			"type", codec.UnitTypeName(info.ID.TypeID),
-			"services", info.ID.Services.String(),
-			"subnet", fmt.Sprintf("%04X", cfg.Subnet))
-	}
-
 	t, err := buildProxyTopology(cfg)
 	if err != nil {
 		return err
+	}
+	for _, c := range t.frames {
+		if c.upstream == "" {
+			continue
+		}
+		if err := p.probe(ctx, c); err != nil {
+			p.log.Warn("rollcall: the frame behind the proxy does not answer yet; it will be called again when asked for",
+				"frame", c.upstream, "subnet", fmt.Sprintf("%04X", c.subnet), "err", err)
+		}
 	}
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.proxy = t
-	p.frameUnit = cfg.Frame
 	p.unit = cfg.Unit
-	p.relay = cfg.Upstream
-	p.frameInfo = info
 	return nil
 }
 

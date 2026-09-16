@@ -46,19 +46,21 @@ func TestBuildProxyTopology(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProxyTopology: %v", err)
 	}
-	if len(tp.nodes) != 2 {
-		t.Fatalf("%d virtual nodes, want 2 for subnet 1100", len(tp.nodes))
+	if len(tp.frames) != 1 || len(tp.frames[0].nodes) != 2 {
+		t.Fatalf("%d frames, want 1 with 2 virtual nodes for subnet 1100", len(tp.frames))
 	}
+	nodes := tp.frames[0].nodes
 	// Node 0 is listed at its own net-zero address and reached there; node 1 is
-	// reached one hop out, its far side the frame gateway.
-	if got := tp.nodes[0].dialed; got.Net != 0 || got.Unit != 0x01 {
+	// reached one hop out. Each is named after the route as far as its hop, as
+	// the vendor names them (manual 3.4).
+	if got := nodes[0].dialed; got.Net != 0 || got.Unit != 0x01 {
 		t.Errorf("node 0 dialed at %s, want 0000-01", got)
 	}
-	if got := tp.nodes[1].dialed; got.Net != 0x1000 || got.Unit != 0x01 {
+	if got := nodes[1].dialed; got.Net != 0x1000 || got.Unit != 0x01 {
 		t.Errorf("node 1 dialed at %s, want 1000-01", got)
 	}
-	if got := tp.nodes[1].far; got.Net != 0 || got.Unit != 0x0C {
-		t.Errorf("node 1 far side at %s, want the gateway local 0000-0C", got)
+	if nodes[0].name != "Network(1000)" || nodes[1].name != "Network(1100)" {
+		t.Errorf("nodes named %q and %q, want Network(1000) and Network(1100)", nodes[0].name, nodes[1].name)
 	}
 }
 
@@ -73,6 +75,11 @@ func TestBuildProxyTopologyRejects(t *testing.T) {
 		{"zero frame unit", ProxyConfig{Unit: 0xFF, Subnet: 0x1100, Frame: 0x00}},
 		{"frame is the proxy", ProxyConfig{Unit: 0x0C, Subnet: 0x1100, Frame: 0x0C}},
 		{"proxy unit is a hop", ProxyConfig{Unit: 0x01, Subnet: 0x1100, Frame: 0x0C}},
+		{"no frame at all", ProxyConfig{Unit: 0xFF}},
+		{"two frames on one first hop", ProxyConfig{Unit: 0xFF, Frames: []ProxyFrame{
+			{Subnet: 0x1100, Unit: 0x0C}, {Subnet: 0x1200, Upstream: "h:1"}}}},
+		{"two served trees", ProxyConfig{Unit: 0xFF, Frames: []ProxyFrame{
+			{Subnet: 0x1100, Unit: 0x0C}, {Subnet: 0x2000, Unit: 0x0D}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := buildProxyTopology(tc.cfg); err == nil {
@@ -101,7 +108,7 @@ func TestProxyResolve(t *testing.T) {
 		{"unknown route", codec.Address{Net: 0x2200, Unit: 0x05, Index: codec.IndexUnknown}, roleNone, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			role, _, port, ok := tp.resolve(tc.dst)
+			role, _, _, port, ok := tp.resolve(tc.dst)
 			if role != tc.role {
 				t.Errorf("resolve(%s) role = %d, want %d", tc.dst, role, tc.role)
 			}

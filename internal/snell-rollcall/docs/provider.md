@@ -216,32 +216,60 @@ index 0, status present only, and a client composes the route as it descends
 is listed already routed with its own identity and status; and the proxy sends
 no `SP_IAM` at all.
 
-Two things can sit behind the route:
+Two things can sit behind a route, and a proxy fronts several frames at once,
+one subnet each — the vendor box exists "to enable connection to more than one
+Ethernet enabled IQ chassis", and this is the same shape:
 
 | Flags | Behind the route | What it proves |
 |---|---|---|
 | `--proxy-subnet 1100 --proxy-frame 0C` with `--tree` / `--manifest` | the served tree, as an emulated frame | a client walks our chain the way it walks the vendor's |
 | `--proxy-subnet 2100 --proxy-upstream 10.6.255.113:2050` | a **real frame** on the network — our own IPShare | a client reaches real hardware through our proxy |
+| `--proxy-upstream 2100=10.6.255.113,3000=10.6.250.105:2057,4000=10.6.250.104:2052` | several real frames, one subnet each; add `--proxy-subnet`/`--proxy-frame` for the served tree beside them | one connection list for a whole plant, as the vendor box gives |
 
 ```
 dhs producer rollcall serve --proxy-subnet 2100 --proxy-upstream 10.6.255.113 --port 2050
+dhs producer rollcall serve --proxy-upstream 2100=10.6.255.113,3000=10.6.250.105:2057,4000=10.6.250.104:2052 --port 2050
 ```
 
-Fronting a real frame, no tree is served: every request a client addresses to
-the route is carried to the frame and its answers carried back
-(`provider/proxy_relay.go`). The frame is probed once at start to learn its unit
-and identity; a frame that does not answer refuses the start rather than
-serving a route to nothing.
+Fronting real frames, no tree is served: every request a client addresses to
+a route is carried to that frame and its answers carried back
+(`provider/proxy_relay.go`). Each frame is probed at start to learn its unit
+and identity. One that does not answer is kept: its chain is listed, its far
+side is empty, and asking for the far side calls it again — the vendor box's
+"Calling" column, which turns to "Connected" when the chassis appears. Two
+frames may not share the first digit of their subnet, since the map lists one
+virtual node per frame.
 
-**One connection to the frame per client.** The vendor box multiplexes every
+Everything on a real frame's subnet is that frame's, whatever unit it is: a
+Centra puts every node on a unit of its own, and `3000-11-00` reaches its
+first matrix the way `3000-08-00` reaches its gateway. The served tree is one
+unit, so only its unit resolves on its subnet.
+
+**One connection to each frame per client.** The vendor box multiplexes every
 client over one connection and so has to renumber sessions; this proxy opens a
-connection of the client's own, so the frame's session indices and the client's
-are exactly what each chose, and the frame sees each client as a client. It
-costs one of the frame's connection slots per client, which is what a client
-costs it directly. The connection is dialed on the first routed request and
-redialed if the frame drops it; while the frame cannot be reached a routed
-request is refused with `SP_NACK "frame unreachable"` rather than left to time
-out, and the proxy unit and its nodes keep answering.
+connection of the client's own to each frame, so the frame's session indices
+and the client's are exactly what each chose, and the frame sees each client
+as a client. It costs one of the frame's connection slots per client, which is
+what a client costs it directly. The connection is dialed on the first routed
+request and redialed if the frame drops it; while the frame cannot be reached
+a routed request is refused with `SP_NACK "frame unreachable"` rather than
+left to time out, and the proxy unit and its nodes keep answering.
+
+**Where the time goes.** Measured 2026-09-16 with the vendor Control Panel
+opening a Nodal card through this proxy on dhs-tools (5 548 relayed requests):
+
+| Leg | p50 | p95 |
+|---|---|---|
+| relay, panel to frame (our overhead) | 0.18 ms | 0.22 ms |
+| relay, frame to panel (our overhead) | 0.18 ms | 0.24 ms |
+| the frame answering | 4.9 ms | 19.3 ms |
+| the panel before its next request | 1.3 ms | 4.0 ms |
+
+The proxy adds a third of a millisecond per round trip. What an operator feels
+is the protocol: one active message per session, so a menu of 4 200 lines is
+4 200 serial round trips of the frame's five milliseconds. The vendor box has
+the same shape. Answering menu lines and template reads from a cache at the
+proxy is the enhancement that would change it, and it is not implemented.
 
 **What crosses each leg is what the vendor library does** — read from
 `IPShare.c` and `IPShClient.c` under `assets/Protocol/Source`, not guessed:
@@ -257,9 +285,9 @@ out, and the proxy unit and its nodes keep answering.
   handshake. A broadcast keeps the broadcast address.
 - Nothing inside a payload is touched (spec 11.3.4).
 
-The route is one frame deep: an address beyond the frame's own subnet — a
-device behind a bridge the frame itself holds — is not resolved and its session
-is refused. The IQ frame holds none.
+A route is one frame deep: an address beyond a frame's own subnet — a device
+behind a bridge the frame itself holds — is not resolved and its session is
+refused. The IQ frame holds none.
 
 ---
 
