@@ -205,9 +205,16 @@ a `RollProxy Service` on unit `FF` offering the Map service, whose map lists
 a `Proxy Virtual Node` per hop of a network address, and behind the last hop a
 frame's gateway and its cards at that route (`provider/proxy.go`). The chain is
 derived from the subnet: `2100` is two hops, so two virtual nodes, and the
-frame's gateway sits at `2100-<unit>-00`. List entries carry no route, as the
-vendor box's do; a client composes it as it descends (`codec.Address.Compose`,
-shared with the consumer).
+frame's gateway sits at `2100-<unit>-00`. What a client sees is the vendor
+box's, byte for byte, measured on 2026-09-16
+([captures/vendor-proxy-walk-2026-09-16.txt](captures/vendor-proxy-walk-2026-09-16.txt)):
+the proxy answers the handshake from `0000-FF-01` as a `RollProxy Service`
+4.6 cs0 and assigns the client no address, so every client of a proxy stays
+`0000-00-00`; a virtual node is listed at its net-zero address with session
+index 0, status present only, and a client composes the route as it descends
+(`codec.Address.Compose`, shared with the consumer); the frame at the last hop
+is listed already routed with its own identity and status; and the proxy sends
+no `SP_IAM` at all.
 
 Two things can sit behind the route:
 

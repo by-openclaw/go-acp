@@ -41,10 +41,11 @@ import (
 //     the connection's port regardless. Only the session index survives, and
 //     it is the one the client chose.
 //   - A frame zeroes the destination device on everything it sends to an
-//     IPShare client, and the client end writes its own address back in. The
-//     address written back here is the one this proxy assigned the client at
-//     its handshake, so a reply reaches the client addressed to itself — a
-//     vendor Control Panel ignores one that is not.
+//     IPShare client, and the client end writes its own address back in. A
+//     client of this proxy is 0000-00-00, as a client of the vendor proxy is —
+//     neither assigns one — so what is written back is the zero device with
+//     the client's session index, which is what the vendor proxy's replies
+//     carry (measured 2026-09-16: every reply to 0000-00-00:<index>).
 //
 // Nothing inside a payload is touched. The address carried in a DeviceInfo is
 // never rewritten as a message crosses a bridge (spec 11.3.4); a client
@@ -157,18 +158,8 @@ func (r *relayLink) fromFrame(_ *session.Link, f codec.Frame) bool {
 		return true
 	}
 
-	// The address the frame's reply is written back to is the one this proxy
-	// assigned the client, which its link state remembers.
-	st := r.p.linkState(down)
-	if st == nil {
-		return true
-	}
-	st.mu.Lock()
-	port := st.assigned
-	st.mu.Unlock()
-
-	client := codec.Address{Unit: r.p.unit, Port: port}
-	if err := down.SendFrame(r.p.proxy.inbound(f, client)); err != nil {
+	// A client of the proxy has the zero address: the handshake assigned none.
+	if err := down.SendFrame(r.p.proxy.inbound(f, codec.Address{})); err != nil {
 		r.p.log.Debug("rollcall: could not relay to the client",
 			"type", f.Type.String(), "err", err)
 	}
@@ -258,9 +249,10 @@ func (t *proxyTopology) outbound(f codec.Frame) codec.Frame {
 
 // inbound rewrites the frame's frame for the client at client: the route is
 // composed hop by hop from the far end back, and the destination — which a
-// frame zeroes on everything it sends an IPShare client — is written back as
-// the client's own address. A broadcast keeps the broadcast address, because a
-// client recognises an announcement by it.
+// frame zeroes on everything it sends an IPShare client, and which some frames
+// echo instead — is written back as the client's own address. A broadcast
+// keeps the broadcast address, because a client recognises an announcement by
+// it.
 func (t *proxyTopology) inbound(f codec.Frame, client codec.Address) codec.Frame {
 	for i := len(t.nodes) - 1; i >= 0; i-- {
 		f.Src = f.Src.ForwardSource(t.nodes[i].local.Unit)

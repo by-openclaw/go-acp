@@ -25,11 +25,13 @@ import (
 // own gateway — so nothing about serving a frame changes; the proxy is a routing
 // layer in front of it that resolves a routed address back to a model port.
 //
-// Like the vendor proxy, the list entries it hands back carry no route (net
-// zero): a client composes the route as it descends, which is exactly the path
-// our own consumer takes against the vendor box. codec.Address.Compose is the
-// shared transform both sides use, so the addresses a client dials are the ones
-// this resolver knows.
+// The entries it hands back are the vendor box's, byte for byte, measured on
+// 2026-09-16 (docs/captures/vendor-proxy-walk-2026-09-16.txt): a virtual node
+// is listed at its net-zero address with session index 0, and a client composes
+// the route as it descends; the frame at the last hop is listed already routed
+// (1100-0C-00), with the frame's own identity and status. codec.Address.Compose
+// is the shared transform both sides use — it returns a routed entry as given —
+// so the addresses a client dials are the ones this resolver knows.
 
 // Proxy unit type ids, from the codec catalogue.
 const (
@@ -39,6 +41,16 @@ const (
 
 // proxyName is what the proxy unit calls itself.
 const proxyName = "dhs rollproxy"
+
+// proxyPort is the port the proxy unit answers at. The vendor RollProxy Service
+// answers the handshake from 0000-FF-01 and takes its map session there, not
+// at port zero (measured 2026-09-16).
+const proxyPort uint8 = 0x01
+
+// proxyVersion is what the proxy unit and its virtual nodes report: the vendor
+// RollProxy's 4.6, command set 0. A Control Panel keys what it knows about a
+// unit on type and command set, so the chain reports the vendor's.
+var proxyVersion = codec.Version{Major: 4, Minor: 6, Alpha: ' ', CmdSet: 0}
 
 // ProxyConfig fronts one frame behind a proxy at a network address.
 //
@@ -181,7 +193,7 @@ func (t *proxyTopology) proxyID() codec.ID {
 	return codec.ID{
 		Services: codec.SvcMap,
 		TypeID:   proxyTypeService,
-		Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
+		Version:  proxyVersion,
 		Name:     codec.TruncateFixed(proxyName, codec.MaxTextSize),
 	}
 }
@@ -192,14 +204,28 @@ func (t *proxyTopology) virtualID(hop int) codec.ID {
 	return codec.ID{
 		Services: codec.SvcNet,
 		TypeID:   proxyTypeNode,
-		Version:  codec.Version{Major: 1, Minor: 0, Alpha: ' ', CmdSet: 1},
+		Version:  proxyVersion,
 		Name:     codec.TruncateFixed(t.nodes[hop].name, codec.MaxTextSize),
 	}
 }
 
-// present is the status every node in the chain reports.
+// proxyStatus is the status the proxy unit and its virtual nodes report:
+// present, and only present, as the vendor's do. Online is a unit's word for
+// its own running state, and a routing node has none.
 func proxyStatus() codec.UnitStatus {
-	return codec.UnitStatus{Status: codec.StatusPresent | codec.StatusOnline}
+	return codec.UnitStatus{Status: codec.StatusPresent}
+}
+
+// proxyAddr is the address the proxy unit answers as.
+func (t *proxyTopology) proxyAddr() codec.Address {
+	return codec.Address{Unit: t.unit, Port: proxyPort, Index: codec.IndexUnknown}
+}
+
+// listed is how a virtual node appears in a list: its net-zero address with
+// session index zero, as the vendor proxy lists its own.
+func listed(a codec.Address) codec.Address {
+	a.Index = 0
+	return a
 }
 
 // mapItems is what the proxy's map service lists: the first virtual node, at its
@@ -207,7 +233,7 @@ func proxyStatus() codec.UnitStatus {
 func (t *proxyTopology) mapItems() [][]byte {
 	info := codec.DeviceInfo{
 		ProtocolVersion: codec.ProtocolVersion,
-		Address:         t.nodes[0].local,
+		Address:         listed(t.nodes[0].local),
 		ID:              t.virtualID(0),
 		Status:          proxyStatus(),
 	}
@@ -227,13 +253,30 @@ func (p *Provider) answerProxyNode(s *session.Session, req codec.Frame) error {
 	case codec.MsgGetStat:
 		return s.Answer(codec.MsgRetStat, proxyStatus().AppendTo(nil))
 	case codec.MsgGetDevInfo:
-		addr := codec.Address{Unit: p.proxy.unit, Port: req.Dst.Port, Index: codec.IndexUnknown}
-		return s.Answer(codec.MsgRetDevInfo, proxyInfoPayload(addr, p.proxy.proxyID()))
+		return s.Answer(codec.MsgRetDevInfo, proxyInfoPayload(p.proxy.proxyAddr(), p.proxy.proxyID()))
 	case codec.MsgGetDevList, codec.MsgGetLocDevMap:
 		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, p.proxy.mapItems())
+	case codec.MsgBkChnReady, codec.MsgRepFChg, codec.MsgStopRepFChg:
+		return chainBackChannel(s, req)
 	default:
 		return session.RefuseInvalidCommand()
 	}
+}
+
+// chainBackChannel answers a back-channel request on a proxy or virtual node.
+//
+// A connected map or net session carries updates: an entry that changes state
+// is pushed as SP_RETDEVINFO on the back channel (spec 7.5, 7.7; the vendor's
+// MapServer.c queues exactly the entries that changed). The chain served here
+// never changes, so enabling the channel queues nothing — but it must be
+// acknowledged. Measured 2026-09-16: the vendor Control Panel reads the map,
+// sends SP_BKCHNREADY on that session, and on InvCmd terminates the session and
+// gives up on the proxy without ever asking a virtual node for its far side.
+func chainBackChannel(s *session.Session, req codec.Frame) error {
+	if req.Type == codec.MsgBkChnReady && len(req.Payload) != 1 {
+		return session.RefuseNack("back channel state is one byte")
+	}
+	return s.Answer(codec.MsgAck, nil)
 }
 
 // answerVirtualNode answers a request addressed to one of the proxy's virtual
@@ -251,10 +294,12 @@ func (p *Provider) answerVirtualNode(s *session.Session, req codec.Frame, hop in
 	case codec.MsgGetDevInfo:
 		return s.Answer(codec.MsgRetDevInfo, proxyInfoPayload(p.proxy.nodes[hop].dialed, p.proxy.virtualID(hop)))
 	case codec.MsgGetDevList, codec.MsgGetLocDevMap:
-		// The far side carries the frame gateway's own identity on the last hop:
-		// what the fronted frame said it was, or what this provider serves for
-		// port zero.
-		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, p.proxy.farItems(hop, p.frameIdentity()))
+		// The far side carries the frame gateway itself on the last hop: what
+		// the fronted frame said it was, or what this provider serves for port
+		// zero.
+		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, p.proxy.farItems(hop, p.frameEntry()))
+	case codec.MsgBkChnReady, codec.MsgRepFChg, codec.MsgStopRepFChg:
+		return chainBackChannel(s, req)
 	default:
 		return session.RefuseInvalidCommand()
 	}
@@ -270,6 +315,22 @@ func (p *Provider) frameIdentity() codec.ID {
 	return id
 }
 
+// frameEntry is the frame gateway as the last virtual node lists it: at its
+// routed address, with its own identity and its own status — a real frame's as
+// it reported them to the probe, the served frame's as it reports them now.
+func (p *Provider) frameEntry() codec.DeviceInfo {
+	status := p.statusOf(0)
+	if p.relay != "" {
+		status = p.frameInfo.Status
+	}
+	return codec.DeviceInfo{
+		ProtocolVersion: codec.ProtocolVersion,
+		Address:         codec.Address{Net: p.proxy.subnet, Unit: p.proxy.frameUnit, Index: codec.IndexUnknown},
+		ID:              p.frameIdentity(),
+		Status:          status,
+	}
+}
+
 // proxyInfoPayload renders a DeviceInfo for a proxy-chain node at an address.
 func proxyInfoPayload(addr codec.Address, id codec.ID) []byte {
 	info := codec.DeviceInfo{
@@ -282,23 +343,16 @@ func proxyInfoPayload(addr codec.Address, id codec.ID) []byte {
 	return payload
 }
 
-// farItems is what one virtual node's net service lists: the next node's local
-// address, or — for the last node — the frame gateway's, carrying the gateway's
-// own identity. Both are net zero, so a client composes the route itself.
-func (t *proxyTopology) farItems(hop int, gateway codec.ID) [][]byte {
-	var info codec.DeviceInfo
+// farItems is what one virtual node's net service lists: the next node at its
+// net-zero address, for a client to compose the route to — or, for the last
+// node, the frame itself, already routed, exactly as the vendor proxy lists it.
+func (t *proxyTopology) farItems(hop int, frame codec.DeviceInfo) [][]byte {
+	info := frame
 	if hop+1 < len(t.nodes) {
 		info = codec.DeviceInfo{
 			ProtocolVersion: codec.ProtocolVersion,
-			Address:         t.nodes[hop+1].local,
+			Address:         listed(t.nodes[hop+1].local),
 			ID:              t.virtualID(hop + 1),
-			Status:          proxyStatus(),
-		}
-	} else {
-		info = codec.DeviceInfo{
-			ProtocolVersion: codec.ProtocolVersion,
-			Address:         codec.Address{Unit: t.frameUnit, Index: codec.IndexUnknown},
-			ID:              gateway,
 			Status:          proxyStatus(),
 		}
 	}

@@ -61,7 +61,9 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProxyTopology: %v", err)
 	}
-	client := codec.Address{Unit: 0xFF, Port: 0xE0}
+	// A client of the proxy is the zero address: the vendor proxy assigns none
+	// and neither does this one.
+	client := codec.Address{}
 
 	// A reply: the frame zeroes the destination device and answers from its own
 	// net-zero address. The client sees it from the subnet route, to itself,
@@ -74,7 +76,7 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 	if want := (codec.Address{Net: 0x2100, Unit: 0x0C, Port: 0x01, Index: 7}); in.Src != want {
 		t.Errorf("inbound src = %s, want %s", in.Src, want)
 	}
-	if want := (codec.Address{Unit: 0xFF, Port: 0xE0, Index: 3}); in.Dst != want {
+	if want := (codec.Address{Index: 3}); in.Dst != want {
 		t.Errorf("inbound dst = %s, want %s", in.Dst, want)
 	}
 
@@ -85,7 +87,7 @@ func TestRelayInboundComposesTheRouteAndAddressesTheClient(t *testing.T) {
 		Src:  codec.Address{Unit: 0x0C, Index: codec.IndexUnknown},
 		Type: codec.MsgRetDevInfo,
 	}, client)
-	if want := (codec.Address{Unit: 0xFF, Port: 0xE0, Index: 3}); in.Dst != want {
+	if want := (codec.Address{Index: 3}); in.Dst != want {
 		t.Errorf("inbound dst (echoed) = %s, want %s", in.Dst, want)
 	}
 
@@ -183,8 +185,11 @@ func TestRelayLearnsTheFrameFromTheProbe(t *testing.T) {
 		t.Fatalf("open net session to the last node: %v", err)
 	}
 	far := walkDevices(t, sess)
-	if len(far) != 1 || far[0].Address.Unit != 0x0C || far[0].ID.TypeID != gw.TypeID {
-		t.Errorf("the far side is %+v, want the frame gateway at 0000-0C", far)
+	if len(far) != 1 || far[0].Address.Net != 0x2100 || far[0].Address.Unit != 0x0C || far[0].ID.TypeID != gw.TypeID {
+		t.Errorf("the far side is %+v, want the frame gateway routed at 2100-0C", far)
+	}
+	if far[0].Status != frame.statusOf(0) {
+		t.Errorf("the far side status is %v, want the frame's own %v", far[0].Status, frame.statusOf(0))
 	}
 }
 
@@ -402,16 +407,6 @@ func TestRelayCopesWithAClientThatIsNotThere(t *testing.T) {
 	r := &relayLink{p: s.p, addr: s.p.relay}
 	if !r.fromFrame(nil, codec.Frame{Type: codec.MsgIam}) {
 		t.Error("a frame with no client to go to was not taken")
-	}
-
-	// A client the provider has already forgotten.
-	ours, theirs := net.Pipe()
-	t.Cleanup(func() { _ = ours.Close(); _ = theirs.Close() })
-	gone := session.NewLink(ours, session.Config{KeepaliveInterval: -1}, s.p.deps)
-	t.Cleanup(func() { _ = gone.Close() })
-	r = &relayLink{p: s.p, addr: s.p.relay, down: gone}
-	if !r.fromFrame(nil, codec.Frame{Type: codec.MsgIam}) {
-		t.Error("a frame for a forgotten client was not taken")
 	}
 }
 

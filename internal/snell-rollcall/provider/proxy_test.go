@@ -261,8 +261,13 @@ func TestProxyVirtualNodeFarSides(t *testing.T) {
 		t.Fatalf("node 1 far side listed %d, want the gateway", len(far))
 	}
 	gw, _ := s.p.identityOf(0)
-	if far[0].Address.Net != 0 || far[0].Address.Unit != 0x0C {
-		t.Errorf("the gateway far entry is at %s, want the net-zero 0000-0C", far[0].Address)
+	// Routed, as the vendor proxy lists the frame at its last hop.
+	if far[0].Address.Net != 0x1100 || far[0].Address.Unit != 0x0C {
+		t.Errorf("the gateway far entry is at %s, want the routed 1100-0C", far[0].Address)
+	}
+	// And the virtual node before it at net zero with index zero.
+	if near[0].Address.Net != 0 || near[0].Address.Index != 0 {
+		t.Errorf("the virtual node entry is at %s, want net zero with index 0", near[0].Address)
 	}
 	if far[0].ID.TypeID != gw.TypeID {
 		t.Errorf("the gateway far entry is type %d, want the frame's %d", far[0].ID.TypeID, gw.TypeID)
@@ -294,6 +299,17 @@ func TestProxyNodeIdentityAndStatus(t *testing.T) {
 	if reply := refused(t, proxy, codec.MsgGetValue, []byte{0, 0, 0, 1}); reply.Type != codec.MsgInvCmd {
 		t.Errorf("proxy answered a value read with %s, want InvCmd", reply.Type)
 	}
+	// The back channel on a map session is acknowledged: a Control Panel enables
+	// it after reading the map and gives up on InvCmd.
+	if reply := do(t, proxy, codec.MsgBkChnReady, []byte{codec.BackChannelEnable}); reply.Type != codec.MsgAck {
+		t.Errorf("proxy BkChnReady answered %s, want Ack", reply.Type)
+	}
+	if reply := do(t, proxy, codec.MsgRepFChg, []byte{0xFF, 0xFF}); reply.Type != codec.MsgAck {
+		t.Errorf("proxy RepFChg answered %s, want Ack", reply.Type)
+	}
+	if reply := refused(t, proxy, codec.MsgBkChnReady, nil); reply.Type != codec.MsgNack {
+		t.Errorf("proxy answered a malformed BkChnReady with %s, want Nack", reply.Type)
+	}
 
 	// A virtual node, in a session: identity, status, device info, keepalive and
 	// the same InvCmd for what it does not serve.
@@ -316,6 +332,9 @@ func TestProxyNodeIdentityAndStatus(t *testing.T) {
 	}
 	if reply := refused(t, v, codec.MsgGetValue, []byte{0, 0, 0, 1}); reply.Type != codec.MsgInvCmd {
 		t.Errorf("virtual answered a value read with %s, want InvCmd", reply.Type)
+	}
+	if reply := do(t, v, codec.MsgBkChnReady, []byte{codec.BackChannelEnable}); reply.Type != codec.MsgAck {
+		t.Errorf("virtual BkChnReady answered %s, want Ack", reply.Type)
 	}
 }
 

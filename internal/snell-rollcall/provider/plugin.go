@@ -422,9 +422,15 @@ func (p *Provider) serveConn(conn net.Conn) {
 	//
 	// Only the gateway announces. A frame's cards are ports of it and are
 	// found through the port service, not by announcing themselves (spec 7.6).
-	session.NewAnnouncer(context.Background(), l, session.Identity{
-		Info: p.gatewayInfo(),
-	})
+	//
+	// A proxy announces nothing. The vendor RollProxy sends a client no Iam at
+	// all (measured 2026-09-16, fifty-five seconds of a walk): a client reads
+	// its map, and what is behind the proxy is found through it.
+	if p.proxy == nil {
+		session.NewAnnouncer(context.Background(), l, session.Identity{
+			Info: p.gatewayInfo(),
+		})
+	}
 
 	p.log.Debug("rollcall: client connected", "remote", conn.RemoteAddr().String())
 
@@ -453,7 +459,7 @@ func (p *Provider) gatewayInfo() codec.DeviceInfo {
 	if p.proxy != nil {
 		return codec.DeviceInfo{
 			ProtocolVersion: codec.ProtocolVersion,
-			Address:         codec.Address{Unit: p.proxy.unit, Port: 0, Index: codec.IndexUnknown},
+			Address:         p.proxy.proxyAddr(),
 			ID:              p.proxy.proxyID(),
 			Status:          proxyStatus(),
 		}

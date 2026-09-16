@@ -346,18 +346,23 @@ func (p *Provider) handshake(l *session.Link, req codec.Frame) {
 	if req.Src.Index == codec.IndexUnknown {
 		dst = codec.Address{Unit: p.unit, Port: assigned, Index: codec.IndexUnknown}
 	}
+	src := codec.Address{Unit: p.unit, Port: req.Dst.Port, Index: codec.IndexUnknown}
+	payload := p.deviceInfoFor(req.Dst.Port)
 
 	// In proxy mode the connected unit is the proxy, not a frame: a client learns
 	// it is talking to a RollProxy Service and reads the frame through its map.
-	payload := p.deviceInfoFor(req.Dst.Port)
+	// The vendor proxy answers from 0000-FF-01 and assigns the client nothing —
+	// the reply goes back to the zero address it asked from, and every client of
+	// the proxy stays 0000-00-00 (measured 2026-09-16). So does this one.
 	if p.proxy != nil {
-		addr := codec.Address{Unit: p.proxy.unit, Port: req.Dst.Port, Index: codec.IndexUnknown}
-		payload = proxyInfoPayload(addr, p.proxy.proxyID())
+		dst = req.Src
+		src = p.proxy.proxyAddr()
+		payload = proxyInfoPayload(src, p.proxy.proxyID())
 	}
 
 	err := l.SendFrame(codec.Frame{
 		Dst:     dst,
-		Src:     codec.Address{Unit: p.unit, Port: req.Dst.Port, Index: codec.IndexUnknown},
+		Src:     src,
 		Type:    codec.MsgRetDevInfo,
 		Payload: payload,
 	})
