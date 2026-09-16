@@ -294,26 +294,79 @@ func (c *frameChain) inbound(f codec.Frame, client codec.Address) codec.Frame {
 	return f
 }
 
-// probeFrame reaches a frame once to learn what it is: its unit, which is what
-// the route is stamped with, and its identity, which is what the last virtual
-// node lists as its far side. It is the vendor proxy's "Connected" column.
-func (p *Provider) probeFrame(ctx context.Context, addr string) (codec.DeviceInfo, codec.Address, error) {
+// probeFrame reaches a frame once to learn what it is and what is on its
+// segment: its unit, which is what the route is stamped with; its identity;
+// and its map, the units the last virtual node lists as its far side. It is
+// the vendor proxy's "Connected" column.
+//
+// The map is read on one session of the same connection and the session is
+// ended: a frame does not reclaim a session left open, and a controller's
+// IPShare wedges under connection churn, so one connection does the whole
+// probe. A frame that offers no map service, or will not list one, is its
+// gateway alone; that is not a failure.
+func (p *Provider) probeFrame(ctx context.Context, addr string) (codec.DeviceInfo, codec.Address, []codec.DeviceInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, relayDialTimeout)
 	defer cancel()
 
 	conn, err := p.net.Dial(ctx, "tcp", addr)
 	if err != nil {
-		return codec.DeviceInfo{}, codec.Address{}, fmt.Errorf("rollcall: dial the frame at %s: %w", addr, err)
+		return codec.DeviceInfo{}, codec.Address{}, nil, fmt.Errorf("rollcall: dial the frame at %s: %w", addr, err)
 	}
 	l := session.NewLink(conn, session.Config{KeepaliveInterval: -1}, p.deps)
 	defer func() { _ = l.Close() }()
 
 	info, err := l.Handshake(ctx)
 	if err != nil {
-		return codec.DeviceInfo{}, codec.Address{}, fmt.Errorf("rollcall: handshake with the frame at %s: %w", addr, err)
+		return codec.DeviceInfo{}, codec.Address{}, nil, fmt.Errorf("rollcall: handshake with the frame at %s: %w", addr, err)
 	}
 	// The unit comes from the frame header, not the payload: a DeviceInfo's
 	// address is whatever the unit was built to say, the header's is what it
 	// answers as.
-	return info, l.RemoteAddress(), nil
+	at := l.RemoteAddress()
+
+	var units []codec.DeviceInfo
+	if info.ID.Services.Has(codec.SvcMap) {
+		units, err = p.readMap(ctx, l, at)
+		if err != nil {
+			p.log.Warn("rollcall: the frame behind the proxy would not list its map; its gateway alone is listed",
+				"frame", addr, "err", err)
+		}
+	}
+	return info, at, units, nil
+}
+
+// readMap lists the units on a frame's segment through its map service.
+//
+// Only network nodes are kept — port zero, as the vendor's own map keeps only
+// those (MapServer.c HandleSpIAM) — because a frame that answers its map with
+// its port list too would otherwise list its cards twice, once here and once
+// through the port service.
+func (p *Provider) readMap(ctx context.Context, l *session.Link, at codec.Address) ([]codec.DeviceInfo, error) {
+	caller := codec.DeviceInfo{
+		ProtocolVersion: codec.ProtocolVersion,
+		Address:         l.LocalAddress(),
+		ID:              p.proxy.proxyID(),
+		Status:          proxyStatus(),
+	}
+	s, err := session.Call(ctx, l, at.Device(), codec.SvcMap, codec.LevelSupervisor, caller)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = s.Close() }()
+
+	var units []codec.DeviceInfo
+	err = session.Walk(ctx, s, codec.MsgGetLocDevMap, nil, func(_ int, f codec.Frame) error {
+		if f.Type != codec.MsgRetDevInfo {
+			return nil
+		}
+		d, err := codec.DecodeDeviceInfo(f.Payload)
+		if err != nil {
+			return err
+		}
+		if d.Address.Port == 0 && d.Address.Unit != 0 {
+			units = append(units, d)
+		}
+		return nil
+	})
+	return units, err
 }

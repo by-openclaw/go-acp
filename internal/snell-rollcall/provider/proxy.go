@@ -121,14 +121,19 @@ type frameChain struct {
 	nodes    []virtualNode
 	upstream string // "" fronts the served tree
 
-	// What the frame is. For the served tree it is read from the model when
-	// asked. For a real frame it is what the probe answered, guarded by mu
-	// because a frame that was not there at start is probed again when a
-	// client asks for it — the vendor box's "Calling" column, which turns to
-	// "Connected" when the chassis appears.
+	// What is behind the route. For the served tree it is read from the model
+	// when asked. For a real frame it is what the probe found: the frame's
+	// identity, and its map — every unit on its segment, which is what the
+	// last virtual node lists (the vendor's net list is "a delegate list which
+	// reflects the SV_MAP list served by the remote device", MapServer.c). A
+	// frame is one unit; a Centra is fifteen. Guarded by mu because a frame
+	// that was not there at start is probed again when a client asks for it —
+	// the vendor box's "Calling" column, which turns to "Connected" when the
+	// chassis appears.
 	mu      sync.Mutex
 	unit    uint8
 	info    codec.DeviceInfo
+	units   []codec.DeviceInfo
 	known   bool
 	probing bool
 }
@@ -390,53 +395,67 @@ func (p *Provider) answerVirtualNode(s *session.Session, req codec.Frame, frame,
 
 // farItems is what one virtual node's net service lists: the next node at its
 // net-zero address, for a client to compose the route to — or, for the last
-// node, the frame itself, already routed, exactly as the vendor proxy lists it.
-// A real frame that has not answered yet is an empty far side, which is what
-// the vendor box lists for a chassis it is still calling; asking is what
+// node, the frame's segment, already routed, exactly as the vendor proxy lists
+// it. A real frame that has not answered yet is an empty far side, which is
+// what the vendor box lists for a chassis it is still calling; asking is what
 // prompts another call.
 func (p *Provider) farItems(frame, hop int) [][]byte {
 	c := p.proxy.frames[frame]
 	if hop+1 < len(c.nodes) {
 		return [][]byte{p.proxy.nodeEntry(frame, hop+1)}
 	}
-	entry, ok := p.frameEntry(frame)
+	entries, ok := p.frameEntries(frame)
 	if !ok {
 		p.probeLater(c)
 		return nil
 	}
-	payload, _ := entry.AppendTo(nil)
-	return [][]byte{payload}
+	items := make([][]byte, 0, len(entries))
+	for _, e := range entries {
+		payload, _ := e.AppendTo(nil)
+		items = append(items, payload)
+	}
+	return items
 }
 
-// frameEntry is the frame as the last virtual node lists it: at its routed
-// address, with its own identity and status — a real frame's as it reported
-// them to the probe, the served frame's as it reports them now. A real frame
-// that has never answered has no entry yet.
-func (p *Provider) frameEntry(frame int) (codec.DeviceInfo, bool) {
+// frameEntries is the frame's segment as the last virtual node lists it: every
+// unit of the frame's map at its routed address, with its own identity and
+// status. A real frame's map is what the probe read — one unit for an IQ
+// frame, fifteen for a Centra — and a frame that offers no map, or the served
+// tree, is its gateway alone. A real frame that has never answered has no
+// entries yet.
+func (p *Provider) frameEntries(frame int) ([]codec.DeviceInfo, bool) {
 	c := p.proxy.frames[frame]
 	c.mu.Lock()
-	unit, info, known := c.unit, c.info, c.known
+	unit, info, units, known := c.unit, c.info, c.units, c.known
 	c.mu.Unlock()
 
 	if c.upstream == "" {
 		id, _ := p.identityOf(0)
 		info = codec.DeviceInfo{ID: id, Status: p.statusOf(0)}
-		known = true
+		units, known = nil, true
 	}
 	if !known {
-		return codec.DeviceInfo{}, false
+		return nil, false
 	}
-	return codec.DeviceInfo{
-		ProtocolVersion: codec.ProtocolVersion,
-		Address:         codec.Address{Net: c.subnet, Unit: unit, Index: codec.IndexUnknown},
-		ID:              info.ID,
-		Status:          info.Status,
-	}, true
+	if len(units) == 0 {
+		units = []codec.DeviceInfo{{Address: codec.Address{Unit: unit}, ID: info.ID, Status: info.Status}}
+	}
+	out := make([]codec.DeviceInfo, 0, len(units))
+	for _, u := range units {
+		out = append(out, codec.DeviceInfo{
+			ProtocolVersion: codec.ProtocolVersion,
+			Address:         codec.Address{Net: c.subnet, Unit: u.Address.Unit, Index: codec.IndexUnknown},
+			ID:              u.ID,
+			Status:          u.Status,
+		})
+	}
+	return out, true
 }
 
-// probe reaches a real frame to learn what it is, and records it.
+// probe reaches a real frame to learn what it is and what is on its segment,
+// and records it.
 func (p *Provider) probe(ctx context.Context, c *frameChain) error {
-	info, at, err := p.probeFrame(ctx, c.upstream)
+	info, at, units, err := p.probeFrame(ctx, c.upstream)
 	if err != nil {
 		return err
 	}
@@ -445,6 +464,7 @@ func (p *Provider) probe(ctx context.Context, c *frameChain) error {
 		c.unit = at.Unit
 	}
 	c.info = info
+	c.units = units
 	c.known = true
 	unit := c.unit
 	c.mu.Unlock()
@@ -455,6 +475,7 @@ func (p *Provider) probe(ctx context.Context, c *frameChain) error {
 		"name", info.ID.Name,
 		"type", codec.UnitTypeName(info.ID.TypeID),
 		"services", info.ID.Services.String(),
+		"units", len(units),
 		"subnet", fmt.Sprintf("%04X", c.subnet))
 	return nil
 }

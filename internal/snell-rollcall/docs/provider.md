@@ -212,9 +212,13 @@ the proxy answers the handshake from `0000-FF-01` as a `RollProxy Service`
 4.6 cs0 and assigns the client no address, so every client of a proxy stays
 `0000-00-00`; a virtual node is listed at its net-zero address with session
 index 0, status present only, and a client composes the route as it descends
-(`codec.Address.Compose`, shared with the consumer); the frame at the last hop
-is listed already routed with its own identity and status; and the proxy sends
-no `SP_IAM` at all.
+(`codec.Address.Compose`, shared with the consumer); the last hop lists the
+frame's **whole segment**, already routed — the vendor's net list is "a
+delegate list which reflects the SV_MAP list served by the remote device"
+(`MapServer.c`), so an IQ frame is one entry and a Centra is its controller,
+matrices, tielines and panels, each at `3000-<unit>-00` — read from the
+frame's map once at the probe (network nodes only, port zero); and the proxy
+sends no `SP_IAM` at all.
 
 Two things can sit behind a route, and a proxy fronts several frames at once,
 one subnet each — the vendor box exists "to enable connection to more than one

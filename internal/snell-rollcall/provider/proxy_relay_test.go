@@ -176,9 +176,9 @@ func TestRelayLearnsTheFrameFromTheProbe(t *testing.T) {
 		t.Errorf("the frame unit was learned as %02X, want 0C from the probe", unit)
 	}
 	gw, _ := frame.identityOf(0)
-	entry, ok := s.p.frameEntry(0)
-	if !ok || entry.ID.TypeID != gw.TypeID || entry.ID.Name != gw.Name {
-		t.Errorf("the far side identity is %+v, want the frame's %+v", entry, gw)
+	entries, ok := s.p.frameEntries(0)
+	if !ok || len(entries) != 1 || entries[0].ID.TypeID != gw.TypeID || entries[0].ID.Name != gw.Name {
+		t.Errorf("the far side is %+v, want the frame's gateway %+v alone", entries, gw)
 	}
 
 	// The last virtual node lists the real frame's gateway as its far side.
@@ -546,7 +546,7 @@ func TestAFrameThatAcceptsAndSaysNothingIsStillCalling(t *testing.T) {
 		t.Fatalf("a proxy in front of a frame that does not answer yet was refused: %v", err)
 	}
 	// Kept, but unknown: the vendor box's "Calling".
-	if _, ok := p.frameEntry(0); ok {
+	if _, ok := p.frameEntries(0); ok {
 		t.Error("a frame that never answered is listed as known")
 	}
 }
