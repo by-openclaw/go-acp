@@ -198,6 +198,64 @@ with the evidence.
 
 ---
 
+## As a RollCall IP Proxy
+
+The provider can present as the vendor **RollProxy** instead of as a frame:
+a `RollProxy Service` on unit `FF` offering the Map service, whose map lists
+a `Proxy Virtual Node` per hop of a network address, and behind the last hop a
+frame's gateway and its cards at that route (`provider/proxy.go`). The chain is
+derived from the subnet: `2100` is two hops, so two virtual nodes, and the
+frame's gateway sits at `2100-<unit>-00`. List entries carry no route, as the
+vendor box's do; a client composes it as it descends (`codec.Address.Compose`,
+shared with the consumer).
+
+Two things can sit behind the route:
+
+| Flags | Behind the route | What it proves |
+|---|---|---|
+| `--proxy-subnet 1100 --proxy-frame 0C` with `--tree` / `--manifest` | the served tree, as an emulated frame | a client walks our chain the way it walks the vendor's |
+| `--proxy-subnet 2100 --proxy-upstream 10.6.255.113:2050` | a **real frame** on the network — our own IPShare | a client reaches real hardware through our proxy |
+
+```
+dhs producer rollcall serve --proxy-subnet 2100 --proxy-upstream 10.6.255.113 --port 2050
+```
+
+Fronting a real frame, no tree is served: every request a client addresses to
+the route is carried to the frame and its answers carried back
+(`provider/proxy_relay.go`). The frame is probed once at start to learn its unit
+and identity; a frame that does not answer refuses the start rather than
+serving a route to nothing.
+
+**One connection to the frame per client.** The vendor box multiplexes every
+client over one connection and so has to renumber sessions; this proxy opens a
+connection of the client's own, so the frame's session indices and the client's
+are exactly what each chose, and the frame sees each client as a client. It
+costs one of the frame's connection slots per client, which is what a client
+costs it directly. The connection is dialed on the first routed request and
+redialed if the frame drops it; while the frame cannot be reached a routed
+request is refused with `SP_NACK "frame unreachable"` rather than left to time
+out, and the proxy unit and its nodes keep answering.
+
+**What crosses each leg is what the vendor library does** — read from
+`IPShare.c` and `IPShClient.c` under `assets/Protocol/Source`, not guessed:
+
+- Toward the frame, the destination route is consumed hop by hop
+  (`Address.Forward`, spec 5.3) and the source device zeroed the way an
+  IPShare client zeroes its own; the frame spoofs the source to its own unit
+  and the connection's port regardless. Session indices are untouched.
+- Toward the client, the source has the route composed hop by hop
+  (`Address.ForwardSource`) so `0000-0C-01` arrives as `2100-0C-01`; the
+  destination, which a frame zeroes on everything it sends an IPShare client,
+  is written back as the address this proxy assigned the client at its
+  handshake. A broadcast keeps the broadcast address.
+- Nothing inside a payload is touched (spec 11.3.4).
+
+The route is one frame deep: an address beyond the frame's own subnet — a
+device behind a bridge the frame itself holds — is not resolved and its session
+is refused. The IQ frame holds none.
+
+---
+
 ## What it does not do
 
 - **No writes to files.** `SP_FILEWRITE`, `SP_FILEDELETE`, `SP_MAKEDIRECTORY`
@@ -224,7 +282,14 @@ a test asks for one.
 
 ```
 go test ./internal/snell-rollcall/provider/    # 100% statement coverage, a CI floor
+go test -tags integration ./internal/snell-rollcall/integration/ -run 'Proxy|IPShare'
+ROLLCALL_TEST_HOST=10.6.255.113 go test -tags integration ./internal/snell-rollcall/integration/ -run IPShare
 ```
+
+The first integration run walks our proxy with our consumer, fronting the
+committed IQ frame served in-process; the second fronts the real frame,
+read-only, which is what proves the relay against a frame that rewrites
+addresses the way the vendor library does rather than the way this provider does.
 
 A loopback check against the shipped consumer:
 

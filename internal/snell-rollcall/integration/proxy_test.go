@@ -72,7 +72,7 @@ func serveProxiedFrame(t *testing.T) (string, int) {
 	p.SetLongStrings(false) // the real frame advertises no long strings
 	// Front it behind the proxy at subnet 1100, the frame on unit 0x0C, exactly
 	// as the vendor RollProxy presented the real frame.
-	if err := p.SetProxy(rcprovider.ProxyConfig{Unit: 0xFF, Subnet: 0x1100, Frame: 0x0C}); err != nil {
+	if err := p.SetProxy(context.Background(), rcprovider.ProxyConfig{Unit: 0xFF, Subnet: 0x1100, Frame: 0x0C}); err != nil {
 		t.Fatalf("configure the proxy: %v", err)
 	}
 

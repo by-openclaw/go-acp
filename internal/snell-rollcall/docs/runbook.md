@@ -282,7 +282,7 @@ Three paths reach the same plant, and all three are worth testing:
 |---|---|
 | direct | our session layer against the vendor's own code |
 | through the vendor proxy | that we behave like a RollCall Control Panel |
-| through our own bridge | that our aggregation is indistinguishable from theirs |
+| through our own IPShare (§9.6) | that our aggregation is indistinguishable from theirs |
 
 ### 9.1 Emulators, one per chassis
 
@@ -387,6 +387,33 @@ loopback      127.0.0.1:22050     2 node(s) [ 0000-01-01 0000-01-02 ]
 It reports rather than asserts. A proxy publishes one node per chassis, so
 those counts differing is correct on both paths; asserting they matched would
 be asserting a bug. The report is there for the difference nobody predicted.
+
+### 9.6 Our own IPShare in front of the real frame
+
+The provider fronts a real frame the way the vendor proxy does
+([provider.md](provider.md) "As a RollCall IP Proxy"). Subnet `2100` is ours by
+convention, so a client holding both the vendor proxy (`1100`) and ours sees the
+same rack at two routes and never confuses them:
+
+```
+dhs producer rollcall serve --proxy-subnet 2100 --proxy-upstream 10.6.255.113 --port 2050 --log-level debug
+```
+
+It probes the frame once at start and refuses to start if the frame does not
+answer. Then, from any host that reaches it:
+
+```
+dhs consumer rollcall info <our-host>:2050        # RollProxy Service, unit FF, Map
+dhs consumer rollcall walk <our-host>:2050 --slot <n>   # a card at 2100-0C-xx
+```
+
+For the Tier 2 oracle, add `<our-host>:2050` to the vendor RollCall Control
+Panel on `win11` as an IP Proxy connection and walk it: expect the proxy unit,
+two virtual nodes, the gateway at `2100-0C-00`, the eight cards at
+`2100-0C-01` … `0D`, and a card's own panel. Capture on our host's port 2050
+and on the leg to the frame at the same time; anything the Control Panel shows
+differently from the vendor proxy is the finding, and the two captures say
+which byte.
 
 ## 10. Known device quirks
 

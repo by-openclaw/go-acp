@@ -46,10 +46,16 @@ const proxyName = "dhs rollproxy"
 // frame and the subnet (network address) to reach it by. Unit is the proxy's own
 // unit — the vendor RollProxy Service answers as 0xFF — Subnet is the frame's
 // route, and Frame is the fronted frame's own unit.
+//
+// Upstream names a real frame to front, as host:port, in place of the tree
+// this provider serves: everything a client sends to the route is carried to
+// that frame and its answers carried back (proxy_relay.go). With it set, Frame
+// may be left zero and is learned from the frame itself.
 type ProxyConfig struct {
-	Unit   uint8
-	Subnet uint16
-	Frame  uint8
+	Unit     uint8
+	Subnet   uint16
+	Frame    uint8
+	Upstream string
 }
 
 // proxyRole says what a routed address resolves to.
@@ -245,13 +251,23 @@ func (p *Provider) answerVirtualNode(s *session.Session, req codec.Frame, hop in
 	case codec.MsgGetDevInfo:
 		return s.Answer(codec.MsgRetDevInfo, proxyInfoPayload(p.proxy.nodes[hop].dialed, p.proxy.virtualID(hop)))
 	case codec.MsgGetDevList, codec.MsgGetLocDevMap:
-		// The far side carries the frame gateway's own identity on the last hop,
-		// which is what the frame this provider serves reports for port zero.
-		gw, _ := p.identityOf(0)
-		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, p.proxy.farItems(hop, gw))
+		// The far side carries the frame gateway's own identity on the last hop:
+		// what the fronted frame said it was, or what this provider serves for
+		// port zero.
+		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, p.proxy.farItems(hop, p.frameIdentity()))
 	default:
 		return session.RefuseInvalidCommand()
 	}
+}
+
+// frameIdentity is what the frame behind the proxy says it is: the identity a
+// real frame answered the probe with, or the served frame's own gateway.
+func (p *Provider) frameIdentity() codec.ID {
+	if p.relay != "" {
+		return p.frameInfo.ID
+	}
+	id, _ := p.identityOf(0)
+	return id
 }
 
 // proxyInfoPayload renders a DeviceInfo for a proxy-chain node at an address.

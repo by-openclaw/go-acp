@@ -348,6 +348,13 @@ func (l *Link) readLoop() {
 // index instead is the mistake that produced SP_INVSESS during the audit and
 // lost every push.
 func (l *Link) dispatch(f codec.Frame) {
+	// Before the session match, because a relayed frame carries a session
+	// index that belongs to the far peer's numbering, not ours: matched here
+	// it would land on whichever local session happened to share the number.
+	if l.cfg.Intercept != nil && l.cfg.Intercept(l, f) {
+		return
+	}
+
 	if s := l.session(f.Dst.Index); s != nil {
 		s.receive(f)
 		return

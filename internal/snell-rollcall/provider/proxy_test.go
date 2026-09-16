@@ -125,7 +125,7 @@ func TestServedAtAddr(t *testing.T) {
 		t.Errorf("base mode servedAtAddr = %s, want %s", got, p.served())
 	}
 
-	if err := p.SetProxy(testProxyConfig()); err != nil {
+	if err := p.SetProxy(context.Background(), testProxyConfig()); err != nil {
 		t.Fatalf("SetProxy: %v", err)
 	}
 	cases := []struct {
@@ -164,7 +164,7 @@ func TestSetProxyRejectedAfterServe(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if err := p.SetProxy(testProxyConfig()); err == nil {
+	if err := p.SetProxy(context.Background(), testProxyConfig()); err == nil {
 		t.Error("the proxy was configured after the frame was already served")
 	}
 }
@@ -177,7 +177,7 @@ func newProxyServed(t *testing.T) *served {
 	clk := clock.NewFake(time.Time{})
 	deps := testDeps(clk)
 	p := New(deps, testTree())
-	if err := p.SetProxy(testProxyConfig()); err != nil {
+	if err := p.SetProxy(context.Background(), testProxyConfig()); err != nil {
 		t.Fatalf("SetProxy: %v", err)
 	}
 

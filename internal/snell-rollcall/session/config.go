@@ -1,6 +1,10 @@
 package session
 
-import "time"
+import (
+	"time"
+
+	"dhs/internal/snell-rollcall/codec"
+)
 
 // Protocol timers.
 //
@@ -79,6 +83,17 @@ type Config struct {
 	// lossy announcement channel. Without one the link only calls, and an
 	// unmatched frame is dropped when nobody is listening.
 	Handler Handler
+
+	// Intercept sees every frame the link reads, before it is matched to a
+	// session or to a request in flight, and returns true to take it.
+	//
+	// It is how a link carries traffic for a peer it does not serve itself: a
+	// proxy fronting a frame reads a routed request off the client's link and
+	// writes it on the frame's, and the frame's reply back, where neither side
+	// holds a session of its own. It runs on the read loop, so it must not
+	// block; a relay's write to another socket is the same cost as an answer.
+	// Nil intercepts nothing.
+	Intercept func(l *Link, f codec.Frame) bool
 
 	// Local is our own address on this link.
 	//

@@ -129,6 +129,7 @@ func buildModelAt(tree *canonical.Export, name string, ports []uint8) *model {
 
 	if tree == nil || tree.Root == nil {
 		m.addPort(newPort(firstCardPort, name, nil))
+		m.ports[0] = newGatewayPort(m.frame)
 		return m
 	}
 

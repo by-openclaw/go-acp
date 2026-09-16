@@ -241,6 +241,13 @@ type Provider struct {
 	proxy     *proxyTopology
 	frameUnit uint8
 
+	// relay, when set, is the real frame the proxy fronts (host:port): routed
+	// traffic is carried to it rather than served from the model. frameInfo is
+	// what that frame answered when it was probed, listed as the last virtual
+	// node's far side.
+	relay     string
+	frameInfo codec.DeviceInfo
+
 	done     chan struct{}
 	doneOnce sync.Once
 	wg       sync.WaitGroup
@@ -272,6 +279,10 @@ type linkState struct {
 	// subscribed holds the sessions that asked for pushes, each with the
 	// queue and the goroutine that sends them.
 	subscribed map[int16]*subscriber
+
+	// relay carries this client's routed traffic to a real frame, when the
+	// proxy fronts one; nil otherwise.
+	relay *relayLink
 }
 
 // setTransfer records the transfer a session has open.
@@ -378,6 +389,14 @@ func (p *Provider) serveConn(conn net.Conn) {
 		KeepaliveInterval: -1,
 	}
 
+	// Fronting a real frame, this client's routed traffic is carried there on
+	// a connection of its own, taken off the link before any session sees it.
+	var relay *relayLink
+	if p.relay != "" {
+		relay = newRelayLink(p, p.relay)
+		cfg.Intercept = relay.intercept
+	}
+
 	l := session.NewLink(conn, cfg, p.deps)
 
 	p.mu.Lock()
@@ -387,6 +406,7 @@ func (p *Provider) serveConn(conn net.Conn) {
 		open:       make(map[int16]*transfer),
 		subscribed: make(map[int16]*subscriber),
 		assigned:   firstClientPort,
+		relay:      relay,
 	}
 	p.mu.Unlock()
 
@@ -417,6 +437,9 @@ func (p *Provider) serveConn(conn net.Conn) {
 		delete(p.links, l)
 		p.mu.Unlock()
 
+		if relay != nil {
+			relay.close()
+		}
 		p.log.Debug("rollcall: client gone", "remote", conn.RemoteAddr().String())
 	}()
 }
@@ -462,21 +485,42 @@ func (p *Provider) SetUnit(u uint8) {
 	p.unit = u
 }
 
-// SetProxy makes this provider present as a RollCall IP Proxy fronting the frame
-// it serves, at the network address the config names.
+// SetProxy makes this provider present as a RollCall IP Proxy fronting a frame
+// at the network address the config names.
 //
 // It is the emulator of the vendor RollProxy: a client sees the proxy unit, its
-// virtual routing nodes and, behind them, the frame this provider was built to
-// serve — the same chain the vendor box presents. The frame is unchanged; the
-// proxy is a routing layer in front of it. It must be called before Serve,
-// because a client that has walked the proxy has already been told where
-// everything is, and it sets the unit the proxy answers as.
-func (p *Provider) SetProxy(cfg ProxyConfig) error {
+// virtual routing nodes and, behind them, a frame — the same chain the vendor
+// box presents. The frame is the one this provider was built to serve, or,
+// with Upstream set, a real one reached over the network, probed here once to
+// learn its unit and identity. Either way the proxy is a routing layer in
+// front of it. It must be called before Serve, because a client that has
+// walked the proxy has already been told where everything is, and it sets the
+// unit the proxy answers as.
+func (p *Provider) SetProxy(ctx context.Context, cfg ProxyConfig) error {
 	p.mu.RLock()
 	serving := p.listener != nil
 	p.mu.RUnlock()
 	if serving {
 		return fmt.Errorf("rollcall: the proxy is configured before the frame is served")
+	}
+
+	var info codec.DeviceInfo
+	if cfg.Upstream != "" {
+		probed, at, err := p.probeFrame(ctx, cfg.Upstream)
+		if err != nil {
+			return err
+		}
+		info = probed
+		if cfg.Frame == 0 {
+			cfg.Frame = at.Unit
+		}
+		p.log.Info("rollcall: proxy fronts a frame",
+			"frame", cfg.Upstream,
+			"unit", fmt.Sprintf("%02X", cfg.Frame),
+			"name", info.ID.Name,
+			"type", codec.UnitTypeName(info.ID.TypeID),
+			"services", info.ID.Services.String(),
+			"subnet", fmt.Sprintf("%04X", cfg.Subnet))
 	}
 
 	t, err := buildProxyTopology(cfg)
@@ -489,6 +533,8 @@ func (p *Provider) SetProxy(cfg ProxyConfig) error {
 	p.proxy = t
 	p.frameUnit = cfg.Frame
 	p.unit = cfg.Unit
+	p.relay = cfg.Upstream
+	p.frameInfo = info
 	return nil
 }
 
