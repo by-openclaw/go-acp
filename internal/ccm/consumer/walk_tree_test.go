@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	transporthttp "dhs/internal/transport/http"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -40,7 +41,7 @@ func fakeTree() *httptest.Server {
 }
 
 func testClient(srv *httptest.Server) *Client {
-	return &Client{base: srv.URL, http: srv.Client()}
+	return &Client{base: srv.URL, http: &transporthttp.Client{HTTP: srv.Client(), MaxBody: MaxBody}}
 }
 
 func TestWalkTreeFull(t *testing.T) {
