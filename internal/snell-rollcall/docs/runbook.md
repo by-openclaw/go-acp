@@ -423,9 +423,14 @@ It runs the Sirius 800 emulator on `win11` as the scheduled task `dhs-centra`
 (at boot, restarted if it dies, unpacked from the committed zip if absent),
 and on `dhs-tools` the units `dhs-rollcall-router` (our router, `:2052`, unit
 `0x20`) and `dhs-rollcall-ipshare` (the proxy, `:2050`, fronting 2100 / 3000
-/ 4000). It then asserts the proxy lists one virtual node per frame and
-reports which frames answered. Measured 2026-09-17: second pass `changed=0`
-on both hosts, all three frames reached. Then, from any host that reaches it:
+/ 4000), on the release-managed binary the `dhs_host` role pins
+(`dhs_version`, v0.22.0 or later carries the proxy; a release bump is
+converged by `fleet-converge.yml`, and the play restarts the units when the
+version on record changes). `-e ipshare_bin_src=bin/dhs-linux-amd64` runs a
+build under test instead. It asserts the binary carries the proxy, that the
+proxy lists one virtual node per frame, and reports which frames answered.
+Measured 2026-09-17: second pass `changed=0` on both hosts, all three
+frames reached. Then, from any host that reaches it:
 
 ```
 dhs consumer rollcall info <our-host>:2050        # RollProxy Service, unit FF, Map

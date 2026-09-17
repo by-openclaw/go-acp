@@ -5,7 +5,7 @@
 # tshark / Wireshark dissector validation. Not a dhs producer host by
 # default (no ember_tree_src) — except the RollCall plant front:
 # playbooks/snell-rollcall-ipshare.yml runs our IPShare (:2050) and our
-# router (:2052) here as systemd units, from bin/dhs-linux-amd64.
+# router (:2052) here as systemd units on the release-managed dhs binary.
 pve_vmid: 655
 pve_name: dhs.tools
 pve_cores: 6          # P1 sizing (#817): ANSIBLE CONTROL NODE - forking, templating, module assembly and SSH/TLS crypto all run here
