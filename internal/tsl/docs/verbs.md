@@ -280,7 +280,7 @@ v3.1 UDP 4000, v4.0 UDP 4004, v5.0 UDP 8901, v5.0 TCP 8902.
 ```
 # copy the dissector, then filter on the dhs proto:
 #   display filter:  dhs_tsl
-#   port decode:     udp.port in {4000 4004 8901} || tcp.port == 8902
+#   port decode:     udp.port in {4000,4004,8901} || tcp.port == 8902
 tshark -r capture.pcapng -O dhs_tsl -Y dhs_tsl
 ```
 
@@ -308,7 +308,7 @@ the play has two tiers:
 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 
 # with TSL_TEST_HOST set — prints the not-yet-supported notice:
-TSL_TEST_HOST=10.100.0.42 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
+TSL_TEST_HOST=10.6.250.42 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 ```
 
 dhs / go-test logs go to **stderr** → the play `register`s the task and

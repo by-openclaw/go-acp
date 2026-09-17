@@ -9,7 +9,7 @@
 # No PowerShell; CLI-in-a-role.
 #
 #   ansible-playbook -i inventory/probel.ini playbooks/probel-sw02p-xpoint-ensure.yml \
-#     -e 'addr=10.100.0.42:2002 dst=0 src=5'
+#     -e 'addr=10.6.250.42:2002 dst=0 src=5'
 #
 - name: Probel SW-P-02 crosspoint ensure (idempotency contract)
   hosts: "{{ target | default('localhost') }}"

@@ -1,0 +1,17 @@
+{
+  "protocol": "rollcall",
+  "manufacturer": "Snell",
+  "product": "IQH3UM4-S",
+  "direction": "consumer",
+  "version": "5.25",
+  "version_kind": "firmware",
+  "discovered_at": "2026-09-12T21:40:16Z",
+  "dm_fingerprint": "sha256:ee8f5260aff57fb53d09afdde3467930146336f725aa03589ae685f54ae5b5e9",
+  "object_count": 720,
+  "capture_tool": {
+    "name": "dhs",
+    "version": "devel",
+    "git_tag": "devel-c209f56",
+    "git_commit": "c209f56"
+  }
+}

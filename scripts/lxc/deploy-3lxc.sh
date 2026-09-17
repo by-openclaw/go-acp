@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run on the controller (Ubuntu LXC) — deploys + restarts dhs on all 3 LXCs.
 set -e
-HOSTS=("dhs-debian:10.100.0.102" "dhs-ubuntu:10.100.0.103" "dhs-rocky:10.100.0.104")
+HOSTS=("dhs-debian:10.6.250.101" "dhs-ubuntu:10.6.250.102" "dhs-rocky:10.6.250.103")
 
 for entry in "${HOSTS[@]}"; do
   hostname="${entry%%:*}"

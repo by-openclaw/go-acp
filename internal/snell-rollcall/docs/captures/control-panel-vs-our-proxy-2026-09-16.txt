@@ -1,0 +1,35 @@
+# Vendor RollCall Control Panel 4.13 (win11 10.6.250.105) connecting to our IPShare on dhs-tools (10.6.250.104:2050), 2026-09-16.
+# Our proxy fronts the IQ frame at 10.6.255.113 under subnet 2100. Decoded with internal/snell-rollcall/wireshark/dhs_snell_rollcall.lua.
+
+## Before: the panel reads the map, enables the back channel, is answered InvCmd, terminates and gives up (never asks a virtual node)
+314  10.6.250.105 → 10.6.250.104 RollCall 77 GETDEVINFO 0000-00-00:2 → 0000-00-00:none
+316  10.6.250.104 → 10.6.250.105 RollCall 116 RETDEVINFO 0000-FF-01:none → 0000-00-00:2 0000-FF-01:none "dhs rollproxy" [present]
+317  10.6.250.105 → 10.6.250.104 RollCall 116 IAM 0000-00-00:none → 0000-00-00:none 0000-00-00:0 "ControlPanel" [present]
+318  10.6.250.105 → 10.6.250.104 RollCall 120 CALL 0000-00-00:3 → 0000-FF-01:none Map 16-bit level=Supervisor from ControlPanel
+320  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:3
+321  10.6.250.105 → 10.6.250.104 RollCall 76 GETLOCDEVMAP 0000-00-00:3 → 0000-FF-01:1
+322  10.6.250.104 → 10.6.250.105 RollCall 84 BLOCKHEADER 0000-FF-01:1 → 0000-00-00:3 1 items of GETLOCDEVMAP
+323  10.6.250.105 → 10.6.250.104 RollCall 79 GETNEXTPKT 0000-00-00:3 → 0000-FF-01:1 item 0 of GETLOCDEVMAP
+324  10.6.250.104 → 10.6.250.105 RollCall 116 RETDEVINFO 0000-FF-01:1 → 0000-00-00:3 0000-02-00:0 "Network(2000)" [present]
+325  10.6.250.105 → 10.6.250.104 RollCall 77 BKCHNREADY 0000-00-00:3 → 0000-FF-01:1 open and flush
+326  10.6.250.104 → 10.6.250.105 RollCall 76 INVCMD 0000-FF-01:1 → 0000-00-00:3
+327  10.6.250.105 → 10.6.250.104 RollCall 98 TERM 0000-00-00:3 → 0000-FF-01:1 user
+328  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:3
+
+## After (proxy at 0000-FF-01, no address assigned, entries index 0 / present / 4.6 cs0, no Iam, BkChnReady acknowledged): the panel keeps the map session alive
+477  10.6.250.105 → 10.6.250.104 RollCall 77 GETDEVINFO 0000-00-00:6 → 0000-00-00:none
+479  10.6.250.104 → 10.6.250.105 RollCall 116 RETDEVINFO 0000-FF-01:none → 0000-00-00:6 0000-FF-01:none "dhs rollproxy" [present]
+480  10.6.250.105 → 10.6.250.104 RollCall 116 IAM 0000-00-00:none → 0000-00-00:none 0000-00-00:0 "ControlPanel" [present]
+481  10.6.250.105 → 10.6.250.104 RollCall 120 CALL 0000-00-00:7 → 0000-FF-01:none Map 16-bit level=Supervisor from ControlPanel
+483  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:7
+484  10.6.250.105 → 10.6.250.104 RollCall 76 GETLOCDEVMAP 0000-00-00:7 → 0000-FF-01:1
+485  10.6.250.104 → 10.6.250.105 RollCall 84 BLOCKHEADER 0000-FF-01:1 → 0000-00-00:7 1 items of GETLOCDEVMAP
+486  10.6.250.105 → 10.6.250.104 RollCall 79 GETNEXTPKT 0000-00-00:7 → 0000-FF-01:1 item 0 of GETLOCDEVMAP
+487  10.6.250.104 → 10.6.250.105 RollCall 116 RETDEVINFO 0000-FF-01:1 → 0000-00-00:7 0000-02-00:0 "Network(2000)" [present]
+488  10.6.250.105 → 10.6.250.104 RollCall 77 BKCHNREADY 0000-00-00:7 → 0000-FF-01:1 open and flush
+489  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:7
+491  10.6.250.105 → 10.6.250.104 RollCall 116 IAM 0000-00-00:none → 0000-00-00:none 0000-00-00:0 "ControlPanel" [present]
+493  10.6.250.105 → 10.6.250.104 RollCall 76 KEEPALIVE 0000-00-00:7 → 0000-FF-01:1
+495  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:7
+497  10.6.250.105 → 10.6.250.104 RollCall 76 KEEPALIVE 0000-00-00:7 → 0000-FF-01:1
+498  10.6.250.104 → 10.6.250.105 RollCall 76 ACK 0000-FF-01:1 → 0000-00-00:7

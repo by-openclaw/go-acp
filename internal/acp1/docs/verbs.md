@@ -43,8 +43,8 @@ the wire, so redundancy is an **app/deployment** concern, not a protocol one:
 
 ```
 # redundant pair = two producer instances, one per controller NIC
-dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.100.0.103 --port 2071
-dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.100.0.109 --port 2071
+dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.6.250.103 --port 2071
+dhs producer acp1 serve --tree tree.json --transport tcp --bind 10.6.250.109 --port 2071
 ```
 
 ## 3. Logging & severity
@@ -214,7 +214,7 @@ node against the oracle (idempotent, run-twice = 0 changes).
 ```ini
 # inventory/hosts.ini
 [producer]
-dhs-ubuntu ansible_host=10.100.0.103 ansible_user=root
+dhs-ubuntu ansible_host=10.6.250.103 ansible_user=root
 ```
 
 ```yaml

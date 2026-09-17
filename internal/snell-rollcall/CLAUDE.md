@@ -167,6 +167,24 @@ owns the next `rStep` lines — the whole span, not just immediate children.
 index; the first non-disabled one, conventionally hidden and named `RETURN`, is
 the parent backlink and must not be drawn.
 
+The consumer follows partials. `walkPartials` (consumer/walk.go) loads the
+home partial at base 0, then every non-disabled `CM_PARTIAL` link it meets, in
+both generations — `SP_GETFUNC` at the link's `rCommand` for 16-bit,
+`GETMENUCOUNT` at that base for 32-bit. A base is loaded once, so the RETURN
+backlink and cycles need no special case: RETURN points at an ancestor already
+loaded, and a shared partial is fetched once. Measured 2026-09-11 on the real
+IQ gateway (unit `0x0C`, type 429), whose home is seven `CM_PARTIAL` links
+(Slots, System, Stats, Control, GatewayControl, Logging, Ethernet) at bases
+200–1400.
+
+> **PARTIAL — the loaded partials are collected but not yet nested.** Each
+> partial's lines are appended flat, so a sub-partial's controls sit at the top
+> level rather than under the link that loaded them: a walk finds every object,
+> but the path of a paged control is rooted rather than `Ethernet.IP Address`.
+> Splicing each partial in where its link sits, with the link as a container
+> over it, is the remaining refinement. The cards (IQDBE00, IQMUX42) do not
+> page and walk whole regardless.
+
 Styles: `CM_TILED 0x00` `CM_LIST 0x10` `CM_DISPLAY 0x20` `CM_BUTTON 0x30`
 `CM_CHECKBOX 0x40` `CM_NUMBER 0x50` `CM_VGRAPH 0x60` `CM_HGRAPH 0x70`
 `CM_EDITSTRING 0x80` `CM_VLEVEL 0x90` `CM_HLEVEL 0xA0` `CM_PARTIAL 0xB0`

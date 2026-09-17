@@ -398,7 +398,7 @@ optionally a live SW-P-08 matrix (gated on `PROBEL_SW08P_TEST_HOST`):
 # loopback only (no VPN, CI-safe):
 #   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-integration.yml
 # plus live matrix (lab, VPN):
-#   PROBEL_SW08P_TEST_HOST=10.100.0.42 ansible-playbook ... probel-sw08p-integration.yml
+#   PROBEL_SW08P_TEST_HOST=10.6.250.42 ansible-playbook ... probel-sw08p-integration.yml
 - name: "loopback — go test -tags integration (provider emulator in-process)"
   ansible.builtin.command:
     chdir: "{{ repo_root }}"

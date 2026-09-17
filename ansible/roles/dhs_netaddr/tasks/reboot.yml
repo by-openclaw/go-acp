@@ -1,0 +1,22 @@
+---
+# Restart a CT through the Proxmox API and wait for it on its inventory
+# address. The control node itself is restarted last and ends the play (it
+# cannot wait for itself); re-run afterwards -> 0 changes.
+- name: "Reboot CT {{ pve_vmid }}"
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/status/reboot"
+    method: POST
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+  delegate_to: localhost
+  changed_when: true
+
+- name: Wait for the CT to answer on its inventory address
+  ansible.builtin.wait_for:
+    host: "{{ nics[0].ip }}"
+    port: 22
+    delay: 5
+    timeout: 180
+  delegate_to: localhost
+  when: "'control' not in group_names"
