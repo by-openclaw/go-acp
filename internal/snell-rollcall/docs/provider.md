@@ -259,6 +259,19 @@ request and redialed if the frame drops it; while the frame cannot be reached
 a routed request is refused with `SP_NACK "frame unreachable"` rather than
 left to time out, and the proxy unit and its nodes keep answering.
 
+**Every client of the proxy is a connection to every frame it touches.** That
+is the price of the per-client relay, and on the IQ frame it is not free:
+the frame wedges under connection churn — TCP accepted, `GETDEVINFO` never
+answered, cleared only by restarting its gateway board (`docs/testbed.md`).
+Measured 2026-09-17: a dozen `dhs consumer rollcall` verbs in a row, each a
+fresh client of the proxy and so a fresh connection to the rack, wedged it.
+A Control Panel holds one connection for hours and is fine. So: drive a
+frame through the proxy the way a panel does, one long client, and leave
+seconds between CLI verbs against it, as the integration play already does.
+The vendor box avoids this by holding one connection per chassis and
+renumbering every client's sessions onto it; doing the same here is the
+follow-up if churn from many short clients turns out to matter in a plant.
+
 **Where the time goes.** Measured 2026-09-16 with the vendor Control Panel
 opening a Nodal card through this proxy on dhs-tools (5 548 relayed requests):
 
