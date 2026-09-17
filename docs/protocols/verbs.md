@@ -50,8 +50,14 @@ models, and verbs only make sense within a model:
 |---|---|---|---|
 | **Tree / DM** | acp1, acp2, emberplus | object tree (slots → objects / Glow nodes) | `walk`/`get`/`set`/`export`/… |
 | **Matrix** | probel-sw08p, probel-sw02p (+ emberplus `matrix`) | crosspoints (matrix/level/dst/src) | `interrogate`/`connect`/`tally-dump`/`protect-*` |
+| **Both** | snell-rollcall | cards AND crosspoints, on one connection | Tree/DM set + `router`/`route`/`tally`/`salvo` |
 | **Push / stream** | osc-v10/v11, tsl-v31/v40/v50 | one-way messages/tally (no tree) | `watch`/`listen` ; producer `send`/`serve` |
 | **Bridge** | cerebrum-nb (consumer-only) | NB command/response (routing/category/salvo) | `connect`/`listen`/`route`/`list-*` |
+
+RollCall is in two models rather than between them. One connection reaches a
+frame of cards, each with a menu that walks like any object tree, *and* a
+router whose crosspoints live in a flat command space with no tree at all.
+Both sets apply, to different nodes of the same device.
 
 > **Open decision (vocabulary):** ADR-0002 says every connector exposes the *same*
 > canonical verb set (stub if inapplicable). Reality: only the Tree/DM model does.
@@ -131,6 +137,44 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 | `replace` | substitute source A with B on every dst carrying A (`--check` dry-run, ADR-0007) | bulk write (#722) |
 | `watch` | subscribe to async tallies (`--timeout`) | until Ctrl-C / timeout |
 
+### snell-rollcall (RollCall over IPShare)
+
+A RollCall device is a frame of nodes, and which verbs apply depends on which
+node. Cards take the whole Tree/DM set from §2 — `info`, `walk`, `get`, `set`,
+`ensure`, `export`, `validate` — addressed by `--slot`. Every verb takes
+`--user-level user|engineer|supervisor|factory` (default supervisor; factory is
+what a factory-gated command needs, and a walk at another level is filed under
+its own DM key) and `--client-name` (what the unit's connection list calls
+us). The router takes the
+four below, addressed by matrix, level and destination, because a crosspoint
+has no slot and no label and never did.
+
+| Verb | Description | Scope |
+|---|---|---|
+| `router` | read the routing interface: version, matrices, levels, categories, salvo and device counts (`--output json`) | survey |
+| `route` | read one crosspoint, or take it with `--source`; `--check` is a dry run (ADR-0007) | one crosspoint |
+| `tally` | dump a level's crosspoints, then follow them on the back channel until Ctrl-C (`--names`) | bulk read + subscribe |
+| `salvo` | list the salvos, or fire one with `--fire N` | control |
+
+Three things about this connector are worth knowing before reading the table:
+
+- **The node's type decides what a command number means.** Command 100 is the
+  interface version on the node serving the Full Control tables and the
+  selected destination on a level. Nothing on the wire distinguishes them.
+- **`route --source` reports `changed` as a measurement**, comparing the
+  destination read before the take with the destination read after it — never
+  the request against the reading. A route across a tieline reads back as the
+  far end of the cable rather than as the source asked for, so the other rule
+  would call a converged route unconverged for ever. The same caveat applies
+  to `--check` across matrices, where the question is about the reading rather
+  than about the plant.
+- **`tally` reads before it subscribes**, because enabling the back channel
+  does not replay current state: a panel that only subscribes sees nothing
+  until something moves.
+
+The convergence contract for all three kinds — value, crosspoint, producer —
+is `ansible/playbooks/snell-rollcall-ensure.yml`.
+
 ---
 
 ## 4. Consumer verbs — Push/stream model
@@ -178,6 +222,7 @@ slot/matrix protocol below): `serve · tree · status · stop · ensure · valid
 | emberplus | common | `serve --tree --port` (+ `--mdns`, `--stream-ttl`, `--admin`) |
 | probel-sw08p | common | `serve --tree matrix.json --port 2008` |
 | probel-sw02p | common | reaches the generic dispatch; `serve` needs the sw02p provider plugin |
+| snell-rollcall | common | `serve --tree` or `--manifest --cache-dir`; `--generation 16\|32` picks the wire generation, `--generation-16-slots` makes named cards speak the older one; `--unit N` sets the unit address every card is reached at; `--proxy-subnet NNNN` presents as a RollCall IP Proxy with the served tree (`--proxy-frame UU`) or a real frame (`--proxy-upstream host[:port]`, no tree needed) behind that route; `--proxy-upstream NNNN=host[:port],...` fronts several real frames, one subnet each |
 | osc-v10 / osc-v11 | `send`, `fader`, `serve` | push model (own dispatch): emit / high-rate fader / bind+log |
 | tsl-v31/v40/v50 | `serve`, `send` | push model (own dispatch, `runTSLProducer`) — not the generic lifecycle set |
 | cerebrum-nb | ❌ none | consumer-only by design |
@@ -189,12 +234,12 @@ slot/matrix protocol below): `serve · tree · status · stop · ensure · valid
 
 ## 8. Gaps this matrix surfaces (for "released + compliant")
 
-1. **`ensure`** — the idempotency primitive (ADR-0007), now with `--output` + `diff[]` (#628): scalar `ensure` on the Tree/DM connectors; matrix/crosspoint/label/protect converge on emberplus + probel-sw08p/sw02p (read-back-diff-apply); producer lifecycle `ensure` on the serving side (#656). TSL ratified **N/A** (push-only) per the ADR-0007 amendment.
+1. **`ensure`** — the idempotency primitive (ADR-0007), now with `--output` + `diff[]` (#628): scalar `ensure` on the Tree/DM connectors; matrix/crosspoint/label/protect converge on emberplus + probel-sw08p/sw02p (read-back-diff-apply); crosspoint converge on snell-rollcall via `route --source`/`--check`, where `changed` is a before-and-after comparison rather than request-versus-reading because a tieline route reads back as the far end; producer lifecycle `ensure` on the serving side (#656). TSL ratified **N/A** (push-only) per the ADR-0007 amendment.
 2. **`status`** now wired (consumer #648 + producer lifecycle); **`replay` still missing** (deferred per ADR-0021).
 3. **`set` validation exit code** — returns 1, should be 2 (error-codes.md); no client-side ValueValidator on acp1 (emberplus has it).
 4. **`tree`** — acp1 now nests sub-group sections (DOWN CONV / TRANSPARENT / …) as parents (2026-06-12); other Tree/DM connectors still render shallow.
 5. **producer wiring** — tsl producer is CLI-wired via its own dispatch (`runTSLProducer`); probel-sw02p reaches the generic lifecycle dispatch (`serve` gated on its provider plugin).
-6. **`-h` help** — `producer -h` now lists the lifecycle VERBS; `consumer -h` still omits tsl + probel-sw02p. `list-protocols` is authoritative.
+6. **`-h` help** — `producer -h` lists the lifecycle VERBS; `consumer -h` now lists every registered protocol from the registry rather than a hardcoded catalogue, so tsl, probel-sw02p and snell-rollcall are discoverable (they were registered and working, just unmentioned). `list-protocols` prints the full descriptions.
 7. **ADR-0002 uniformity vs reality** — only Tree/DM implements the canonical set; Matrix/Push/Bridge diverge (see §1 open decision).
 
 ---
@@ -216,21 +261,21 @@ adds `matrix`/`invoke`/`stream`/`bench` (emberplus-only — see §2).
 
 | Verb | What it does | Example (name and/or OID) |
 |---|---|---|
-| `info` | device + per-slot card status (no walk) | `dhs consumer acp1 info 10.100.0.102 --port 2071 --transport tcp` |
-| `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.100.0.102 --port 2071 --transport tcp --slot 1` |
-| `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.100.0.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
-| `get` | read one value | name → `… get 10.100.0.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.100.0.102 --slot 1 --group control --id 10` |
-| `set` | write one value | name → `… set 10.100.0.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
-| `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.100.0.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
-| `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.100.0.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
-| `watch` | live announcements | `dhs consumer acp1 watch 10.100.0.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |
-| `export` | snapshot → json/yaml/csv (by `--format` or `--out` ext) | `dhs consumer acp1 export 10.100.0.102 --port 2071 --transport tcp --slot 1 --format json --out slot1.json` |
-| `import` | apply a snapshot (`--dry-run` first; subset by `--id`/`--path`, **not** label) | `dhs consumer acp1 import 10.100.0.102 --port 2071 --transport tcp --file slot1.json --dry-run` |
-| `profile` | walk + classify compliance (strict/partial) | `dhs consumer acp1 profile 10.100.0.102 --port 2071 --transport tcp` |
-| `ensure` | converge one object idempotently — the verb **Ansible drives**: `--check` dry-run, `--json` result, `changed` flag (change is never signalled by exit code) | `dhs consumer acp1 ensure 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed --check --json` |
+| `info` | device + per-slot card status (no walk) | `dhs consumer acp1 info 10.6.250.102 --port 2071 --transport tcp` |
+| `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.6.250.102 --port 2071 --transport tcp --slot 1` |
+| `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.6.250.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
+| `get` | read one value | name → `… get 10.6.250.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.6.250.102 --slot 1 --group control --id 10` |
+| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
+| `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.6.250.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
+| `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.6.250.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
+| `watch` | live announcements | `dhs consumer acp1 watch 10.6.250.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |
+| `export` | snapshot → json/yaml/csv (by `--format` or `--out` ext) | `dhs consumer acp1 export 10.6.250.102 --port 2071 --transport tcp --slot 1 --format json --out slot1.json` |
+| `import` | apply a snapshot (`--dry-run` first; subset by `--id`/`--path`, **not** label) | `dhs consumer acp1 import 10.6.250.102 --port 2071 --transport tcp --file slot1.json --dry-run` |
+| `profile` | walk + classify compliance (strict/partial) | `dhs consumer acp1 profile 10.6.250.102 --port 2071 --transport tcp` |
+| `ensure` | converge one object idempotently — the verb **Ansible drives**: `--check` dry-run, `--json` result, `changed` flag (change is never signalled by exit code) | `dhs consumer acp1 ensure 10.6.250.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed --check --json` |
 | `validate` | **offline**: decode a captured `frames.jsonl`; optionally write the snapshot | `dhs consumer acp1 validate capture.jsonl --out-tree tree.json` · `… --out-params params.csv` |
 | `discover` | **acp1 only**: one-shot same-subnet LAN scan (no host arg) | `dhs consumer acp1 discover --duration 5s --active --scan-port 2071` |
-| `extract` | **top-level**: capture a per-product DM triple (meta+wire+tree) | `dhs extract 10.100.0.102 --protocol acp1 --manufacturer Axon --product 2GS110 --direction consumer --version 2728 --out testdata/dm --slot 1` |
+| `extract` | **top-level**: capture a per-product DM triple (meta+wire+tree) | `dhs extract 10.6.250.102 --protocol acp1 --manufacturer Axon --product 2GS110 --direction consumer --version 2728 --out testdata/dm --slot 1` |
 | `diff` | **top-level**: compare two canonical trees offline | `dhs diff before.json after.json --format changelog --version 2.4` |
 | `convert` | **top-level**: translate a snapshot json↔yaml↔csv offline | `dhs convert --in slot1.json --out slot1.csv` |
 | producer `serve` | serve a frame AS the device | `dhs producer acp1 serve --manifest synapse-test.json --cache-dir .cache --host 0.0.0.0 --transport all --port 2071` |

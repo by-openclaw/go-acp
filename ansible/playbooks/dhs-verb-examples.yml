@@ -5,7 +5,7 @@
 # binary installed (dhs_acp1 / dhs_verbtest deploy it).
 #
 #   ansible-playbook -i inventory/hosts.yml playbooks/dhs-verb-examples.yml \
-#     -e device=10.100.0.104:2072
+#     -e device=10.6.250.104:2072
 #
 # Pattern 1 — point read, result as a fact:
 - name: Read one value (get, JSON parsed)

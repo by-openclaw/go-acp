@@ -62,10 +62,10 @@ ACP2 uses **identity-keyed** caching exclusively (DHS 2016 MasterView model — 
 ### First-time bring-up against the producer emulator
 
 ```
-dhs consumer acp2 info  10.100.0.103 --port 2072
-dhs consumer acp2 walk  10.100.0.103 --port 2072 --slot 0   # primes slot 0 in dm/<id>.json
-dhs consumer acp2 walk  10.100.0.103 --port 2072 --slot 1   # merges slot 1 into the same file
-dhs consumer acp2 watch 10.100.0.103 --port 2072 --slot 1   # hot-loads, labels frame 1
+dhs consumer acp2 info  10.6.250.103 --port 2072
+dhs consumer acp2 walk  10.6.250.103 --port 2072 --slot 0   # primes slot 0 in dm/<id>.json
+dhs consumer acp2 walk  10.6.250.103 --port 2072 --slot 1   # merges slot 1 into the same file
+dhs consumer acp2 watch 10.6.250.103 --port 2072 --slot 1   # hot-loads, labels frame 1
 ```
 
 After both walks, the file contains every slot you walked. Restart `watch` any time — labels resolve immediately.
@@ -73,7 +73,7 @@ After both walks, the file contains every slot you walked. Restart `watch` any t
 ### Inspect a single object
 
 ```
-dhs consumer acp2 get 10.100.0.103 --port 2072 --slot 1 --id 70232 --capture out.jsonl
+dhs consumer acp2 get 10.6.250.103 --port 2072 --slot 1 --id 70232 --capture out.jsonl
 # → value = "Stream 16" (enum idx 8)
 # → out.jsonl contains the raw AN2 frames for replay / spec audit
 ```
@@ -81,7 +81,7 @@ dhs consumer acp2 get 10.100.0.103 --port 2072 --slot 1 --id 70232 --capture out
 ### Bring up an emulator on a VIP alongside production traffic
 
 ```
-dhs producer acp2 serve --tree neuron-fixture.json --port 2072 --bind 10.100.0.200
+dhs producer acp2 serve --tree neuron-fixture.json --port 2072 --bind 10.6.250.200
 ```
 
 ### Verify cache state

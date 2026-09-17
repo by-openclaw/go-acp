@@ -1,0 +1,113 @@
+# Vendor RollCall IP Proxy (win11 10.6.250.105:2050, RollIPProxy 4.6) walked by dhs consumer from 10.6.239.107, 2026-09-16.
+# The proxy fronts the IQ frame at 10.6.255.113 under substitution address 1100. Decoded with internal/snell-rollcall/wireshark/dhs_snell_rollcall.lua.
+# Frames 4-58: handshake, map, both net hops, the frame's port list, the first card's menu opening. No SP_IAM from the proxy in 55 s.
+
+4  10.6.239.107 → 10.6.250.105 RollCall 74 GETDEVINFO 0000-00-00:none → 0000-00-00:none
+5  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 0000-FF-01:none → 0000-00-00:none 0000-FF-01:none "dhs-win11" [present]
+6  10.6.239.107 → 10.6.250.105 RollCall 114 IAM 0000-00-00:none → 0000-00-00:none 0000-00-00:none "dhs rollcall" [online|present]
+7  10.6.239.107 → 10.6.250.105 RollCall 118 CALL 0000-00-00:1 → 0000-FF-01:none Map 16-bit level=Supervisor from dhs rollcall
+9  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 0000-FF-01:1 → 0000-00-00:1
+10  10.6.239.107 → 10.6.250.105 RollCall 76 GETDEVLIST 0000-00-00:1 → 0000-FF-01:1
+12  10.6.239.107 → 10.6.250.105 RollCall 74 GETLOCDEVMAP 0000-00-00:1 → 0000-FF-01:1
+13  10.6.250.105 → 10.6.239.107 RollCall 82 BLOCKHEADER 0000-FF-01:1 → 0000-00-00:1 1 items of GETLOCDEVMAP
+14  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:1 → 0000-FF-01:1 item 0 of GETLOCDEVMAP
+15  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 0000-FF-01:1 → 0000-00-00:1 0000-01-00:0 "Network(1000)" [present]
+16  10.6.239.107 → 10.6.250.105 RollCall 118 CALL 0000-00-00:2 → 0000-01-00:none Net 16-bit level=Supervisor from dhs rollcall
+17  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 0000-01-00:1 → 0000-00-00:2
+18  10.6.239.107 → 10.6.250.105 RollCall 74 GETLOCDEVMAP 0000-00-00:2 → 0000-01-00:1
+19  10.6.250.105 → 10.6.239.107 RollCall 82 BLOCKHEADER 0000-01-00:1 → 0000-00-00:2 1 items of GETLOCDEVMAP
+20  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:2 → 0000-01-00:1 item 0 of GETLOCDEVMAP
+21  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 0000-01-00:1 → 0000-00-00:2 0000-01-00:0 "FRAME_12" [present]
+22  10.6.239.107 → 10.6.250.105 RollCall 118 CALL 0000-00-00:3 → 1000-01-00:none Net 16-bit level=Supervisor from dhs rollcall
+23  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 1000-01-00:1 → 0000-00-00:3
+24  10.6.239.107 → 10.6.250.105 RollCall 74 GETLOCDEVMAP 0000-00-00:3 → 1000-01-00:1
+25  10.6.250.105 → 10.6.239.107 RollCall 82 BLOCKHEADER 1000-01-00:1 → 0000-00-00:3 1 items of GETLOCDEVMAP
+26  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:3 → 1000-01-00:1 item 0 of GETLOCDEVMAP
+27  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1000-01-00:1 → 0000-00-00:3 1100-0C-00:none "FRAME_12 EMB" [present]
+28  10.6.239.107 → 10.6.250.105 RollCall 118 CALL 0000-00-00:4 → 1100-0C-00:none Ports 16-bit level=Supervisor from dhs rollcall
+30  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 1100-0C-00:18 → 0000-00-00:4
+31  10.6.239.107 → 10.6.250.105 RollCall 76 GETDEVLIST 0000-00-00:4 → 1100-0C-00:18
+32  10.6.250.105 → 10.6.239.107 RollCall 82 BLOCKHEADER 1100-0C-00:18 → 0000-00-00:4 11 items of GETDEVLIST
+33  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 0 of GETDEVLIST
+34  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-00:none "FRAME_12 EMB" [present]
+35  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 1 of GETDEVLIST
+36  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-01:0 "EMB.06 (Nodal)" [online|present]
+37  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 2 of GETDEVLIST
+38  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-03:0 "EMB.07 (Nodal)" [present]
+39  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 3 of GETDEVLIST
+40  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-05:0 "EMB.08 (Nodal)" [present]
+41  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 4 of GETDEVLIST
+42  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-07:0 "EMB.09 (Nodal)" [present]
+43  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 5 of GETDEVLIST
+44  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-09:0 "EMB.10 (Nodal)" [present]
+45  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 6 of GETDEVLIST
+46  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-0B:0 "EMB.11 (AES)" [present]
+47  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 7 of GETDEVLIST
+48  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-0C:0 "EMB.12 (AES)" [present]
+49  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 8 of GETDEVLIST
+50  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-0D:0 "EMB.13 (AES)" [present]
+51  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 9 of GETDEVLIST
+52  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-8E:none "LogServer" [present]
+53  10.6.239.107 → 10.6.250.105 RollCall 78 GETNEXTPKT 0000-00-00:4 → 1100-0C-00:18 item 10 of GETDEVLIST
+54  10.6.250.105 → 10.6.239.107 RollCall 114 RETDEVINFO 1100-0C-00:18 → 0000-00-00:4 0000-0C-8F:0 "dhs-win11" [present]
+55  10.6.239.107 → 10.6.250.105 RollCall 96 TERM 0000-00-00:4 → 1100-0C-00:18 user
+56  10.6.239.107 → 10.6.250.105 RollCall 118 CALL 0000-00-00:5 → 1100-0C-01:none Menus|Control 16-bit level=Supervisor from dhs rollcall
+58  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 1100-0C-00:18 → 0000-00-00:4
+60  10.6.250.105 → 10.6.239.107 RollCall 74 ACK 1100-0C-01:9 → 0000-00-00:5
+
+# Field detail of the proxy's own entries:
+Snell RollCall: RETDEVINFO 0000-FF-01:none "dhs-win11" [present]
+    Destination: 0000-00-00:none
+    Source: 0000-FF-01:none
+    Payload: 00030000ff0100ff00400131040620006468732d77696e3131000000000000000000000000000008
+        Address: 0000-FF-01:none
+        Services: 0x0040 (Map)
+        Unit type: 305
+        Version: 4.6 cs0
+        Name: dhs-win11
+        Status: 0x0008 (present)
+
+Snell RollCall: RETDEVINFO 0000-01-00:0 "Network(1000)" [present]
+    Destination: 0000-00-00:1
+    Source: 0000-FF-01:1
+    Payload: 000300000100000001000132040620004e6574776f726b2831303030290000000000000000000008
+        Address: 0000-01-00:0
+        Services: 0x0100 (Net)
+        Unit type: 306
+        Version: 4.6 cs0
+        Name: Network(1000)
+        Status: 0x0008 (present)
+
+Snell RollCall: RETDEVINFO 0000-01-00:0 "FRAME_12" [present]
+    Destination: 0000-00-00:2
+    Source: 0000-01-00:1
+    Payload: 000300000100000001000132040620004652414d455f313200000000000000000000000000000008
+        Address: 0000-01-00:0
+        Services: 0x0100 (Net)
+        Unit type: 306
+        Version: 4.6 cs0
+        Name: FRAME_12
+        Status: 0x0008 (present)
+
+Snell RollCall: RETDEVINFO 1100-0C-00:none "FRAME_12 EMB" [present]
+    Destination: 0000-00-00:3
+    Source: 1000-01-00:1
+    Payload: 000311000c0000ff00cb01ad051920154652414d455f313220454d42000000000000000000000008
+        Address: 1100-0C-00:none
+        Services: 0x00cb (Menus|Control|File|Map|Ports)
+        Unit type: 429
+        Version: 5.25 cs21
+        Name: FRAME_12 EMB
+        Status: 0x0008 (present)
+
+Snell RollCall: RETDEVINFO 0000-0C-00:none "FRAME_12 EMB" [present]
+    Destination: 0000-00-00:4
+    Source: 1100-0C-00:18
+    Payload: 000300000c0000ff00cb01ad051920154652414d455f313220454d42000000000000000000000008
+        Address: 0000-0C-00:none
+        Services: 0x00cb (Menus|Control|File|Map|Ports)
+        Unit type: 429
+        Version: 5.25 cs21
+        Name: FRAME_12 EMB
+        Status: 0x0008 (present)
+

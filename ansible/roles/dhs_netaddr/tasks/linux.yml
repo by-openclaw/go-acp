@@ -1,0 +1,42 @@
+---
+# Proxmox renders a CT's guest network at every start — for an EL guest that is
+# ifcfg-eth0 (IPADDR, GATEWAY, DNS1), which NetworkManager's profile then
+# follows; for Debian/Ubuntu it is resolv.conf itself. A CT whose config was
+# changed without a restart keeps what it booted with: measured on dhs-rocky
+# 2026-09-17, CT config nameserver 10.6.240.1, live resolver still the retired
+# 10.100.0.1 three weeks after the migration, because nobody had restarted it.
+#
+# Never edit the guest's NetworkManager profile to fix that. `nmcli dev
+# reapply` on the fleet NIC took dhs-rocky off the network (2026-09-17); the
+# CT restart is the mechanism, and it is what fixed it. So: if the live
+# resolver is not what the inventory says, the CT is restarted (or, with
+# dhs_netaddr_reboot_ct false, the play fails and says so).
+- name: Live resolver
+  ansible.builtin.command: grep -E '^nameserver' /etc/resolv.conf
+  register: dhs_netaddr_resolv
+  changed_when: false
+  failed_when: false
+
+- name: Does the live resolver match the inventory?
+  ansible.builtin.set_fact:
+    dhs_netaddr_resolver_stale: >-
+      {{ (dhs_netaddr_resolv.stdout_lines | map('regex_replace', '^nameserver\s+', '') | list)
+         != dhs_netaddr_dns }}
+
+- name: A stale resolver is a CT that was never restarted after its config changed
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }}: live resolver {{ dhs_netaddr_resolv.stdout_lines | join(' ') }}
+      != inventory {{ dhs_netaddr_dns | join(' ') }}; restart the CT
+      (dhs_netaddr_reboot_ct is false, so the play will not)
+  when:
+    - dhs_netaddr_resolver_stale | bool
+    - not (dhs_netaddr_reboot_ct | bool)
+
+- name: "Restart CT {{ pve_vmid }} so the guest network is re-rendered"
+  ansible.builtin.include_tasks: reboot.yml
+  when:
+    - dhs_netaddr_resolver_stale | bool
+    - dhs_netaddr_reboot_ct | bool
+    - pve_vmid is defined
+    - dhs_netaddr_proxmox_enabled | bool

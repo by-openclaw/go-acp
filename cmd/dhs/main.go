@@ -46,6 +46,7 @@ import (
 	_ "dhs/internal/osc/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
+	_ "dhs/internal/snell-rollcall/consumer"
 	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
@@ -55,6 +56,7 @@ import (
 	_ "dhs/internal/osc/provider"
 	_ "dhs/internal/probel-sw02p/provider"
 	_ "dhs/internal/probel-sw08p/provider"
+	_ "dhs/internal/snell-rollcall/provider"
 	_ "dhs/internal/tsl/provider"
 
 	// Registry plugins — blank imports register with internal/registry.
@@ -185,6 +187,10 @@ var commands = []command{
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
 	{"status", "one-shot device status: session health + identity (--output json)", helpStatus, runStatus},
 	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
+	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
+	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
+	{"tally", "print a level's crosspoints and follow them live (RollCall only)", helpRollcallTally, runRollcallTally},
+	{"salvo", "list a controller's salvos, or fire one (RollCall only)", helpRollcallSalvo, runRollcallSalvo},
 }
 
 func helpBench() {
@@ -566,15 +572,15 @@ func printConsumerHelp() {
 USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
-PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+PROTOCOLS`)
 
+	// From the registry, never from a list kept here. A hardcoded catalogue
+	// goes stale the moment a plugin is added and nobody notices, because the
+	// protocol still works — it is only undiscoverable. Three had accumulated
+	// before this was noticed: rollcall, probel-sw02p and the TSL versions.
+	printRegisteredProtocols()
+
+	fmt.Println(`
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
 		fmt.Printf("  %-10s %s\n", c.name, c.short)

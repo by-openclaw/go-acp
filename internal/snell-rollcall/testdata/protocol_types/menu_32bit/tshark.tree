@@ -1,0 +1,108 @@
+Frame 1: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51246, Dst Port: 2057, Seq: 1, Ack: 1, Len: 24
+Snell RollCall: GETMENUCOUNT from 0
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-11-00:50
+        Net: 0x0000
+        Unit: 0x11
+        Port: 0x00
+        Session index: 50
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 6
+    Type: 65 (GETMENUCOUNT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00000000
+        Menu index: 0
+
+Frame 2: Packet, 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51246, Seq: 1, Ack: 25, Len: 28
+Snell RollCall: RETMENUCOUNT 3 lines from 0
+    TX flags: 12
+    TX length: 24
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-11-00:50
+        Net: 0x0000
+        Unit: 0x11
+        Port: 0x00
+        Session index: 50
+    RollCall length: 10
+    Type: 66 (RETMENUCOUNT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0000000000000003
+        Menu index: 0
+        Menu count: 3
+
+Frame 3: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51246, Dst Port: 2057, Seq: 25, Ack: 29, Len: 24
+Snell RollCall: GETMENUITEM from 0
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-11-00:50
+        Net: 0x0000
+        Unit: 0x11
+        Port: 0x00
+        Session index: 50
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 6
+    Type: 67 (GETMENUITEM)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00000000
+        Menu index: 0
+
+Frame 4: Packet, 92 bytes on wire (736 bits), 92 bytes captured (736 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51246, Seq: 29, Ack: 49, Len: 48
+Snell RollCall: RETMENUITEM line 0 cmd=0 List "Menu"
+    TX flags: 12
+    TX length: 44
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-11-00:50
+        Net: 0x0000
+        Unit: 0x11
+        Port: 0x00
+        Session index: 50
+    RollCall length: 30
+    Type: 68 (RETMENUITEM)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 000000000010000000000000000000000000000200004d656e750000
+        Menu index: 0
+        Style: 0x0010 (List)
+        Command: 0
+        Minimum: 0
+        Maximum: 0
+        Step: 2
+        Divisor: 0
+        Text: Menu
+

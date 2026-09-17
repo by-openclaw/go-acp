@@ -33,8 +33,8 @@ Read, Edit, Write) regardless of host.
 
 ## Test fleet
 
-The agent operates against a separate VLAN (`10.100.0.0/24`) routed via
-pfSense. Full inventory + SSH access mesh in [`docs/testbed.md`](testbed.md).
+The agent operates against a separate VLAN 600 (`10.6.240.0/20`, gateway
+`10.6.255.254`). Full inventory + SSH access mesh in [`docs/testbed.md`](testbed.md).
 
 ## Vendor reference drivers (NDA)
 

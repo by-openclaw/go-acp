@@ -1,0 +1,68 @@
+{
+  "device": {
+    "name": "iq-frame-12",
+    "protocol": "rollcall",
+    "endpoints": [
+      {
+        "ip": "0.0.0.0",
+        "port": 2050,
+        "transport": "tcp"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "name": "IQH3UM4-S",
+      "slots": [
+        {
+          "addr": {
+            "slot": 1
+          },
+          "dm": "IQDBE00@5.0.cs5"
+        },
+        {
+          "addr": {
+            "slot": 3
+          },
+          "dm": "IQDBE00@5.0.cs5"
+        },
+        {
+          "addr": {
+            "slot": 5
+          },
+          "dm": "IQDBE00@5.0.cs5"
+        },
+        {
+          "addr": {
+            "slot": 7
+          },
+          "dm": "IQDBE00@5.0.cs5"
+        },
+        {
+          "addr": {
+            "slot": 9
+          },
+          "dm": "IQDBE00@5.0.cs5"
+        },
+        {
+          "addr": {
+            "slot": 11
+          },
+          "dm": "IQMUX42@8.5.cs17"
+        },
+        {
+          "addr": {
+            "slot": 12
+          },
+          "dm": "IQMUX42@8.5.cs17"
+        },
+        {
+          "addr": {
+            "slot": 13
+          },
+          "dm": "IQMUX42@8.5.cs17"
+        }
+      ]
+    }
+  ]
+}

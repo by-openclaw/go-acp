@@ -53,7 +53,7 @@ var genericVerbs = []string{
 	"info", "walk", "tree", "get", "set", "inc", "dec", "reset", "ensure",
 	"watch", "export", "import", "extract", "diff", "convert", "discover",
 	"matrix", "usage", "replace", "invoke", "stream", "profile", "diag",
-	"validate", "health", "status", "bench",
+	"validate", "health", "status", "bench", "router", "route", "tally",
 }
 
 // emberplusOnlyVerbs / acp2OnlyVerbs are captured under their owning protocol
@@ -61,6 +61,10 @@ var genericVerbs = []string{
 var emberplusOnlyVerbs = []string{"matrix", "invoke", "stream", "profile", "bench", "usage", "replace"}
 
 var acp2OnlyVerbs = []string{"diag"}
+
+// rollcallOnlyVerbs reach a router's command space, which has no menu behind it
+// and so no generic verb that can address it.
+var rollcallOnlyVerbs = []string{"router", "route", "tally"}
 
 // perProtocolVerbs are the connectors that own a private dispatch switch
 // instead of the generic table. Killing this split is the point of the
@@ -159,6 +163,9 @@ func TestCLISurfaceGolden(t *testing.T) {
 	}
 	for _, v := range acp2OnlyVerbs {
 		add("consumer/acp2/"+v, "consumer", "acp2", v, "--help")
+	}
+	for _, v := range rollcallOnlyVerbs {
+		add("consumer/rollcall/"+v, "consumer", "rollcall", v, "--help")
 	}
 
 	// 3. Every connector that owns a private dispatch switch.

@@ -57,7 +57,7 @@ TCP 2008  outbound      (default SW-P-08 port)
 
 ```
 dhs consumer probel-sw08p interrogate 127.0.0.1:2008 --matrix 0 --level 0 --dst 5
-dhs consumer probel-sw08p interrogate 10.100.0.42      --matrix 0 --level 0 --dst 5   # :2008 implied
+dhs consumer probel-sw08p interrogate 10.6.250.42      --matrix 0 --level 0 --dst 5   # :2008 implied
 ```
 
 SW-P-08 is **level-scoped**: every crosspoint / protect / name command

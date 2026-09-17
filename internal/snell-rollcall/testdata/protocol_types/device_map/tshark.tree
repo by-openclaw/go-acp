@@ -1,0 +1,108 @@
+Frame 1: Packet, 104 bytes on wire (832 bits), 104 bytes captured (832 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 1, Ack: 1, Len: 60
+Snell RollCall: RETDEVINFO 0000-08-00:none "<not set>" [present]
+    TX flags: 12
+    TX length: 56
+    Destination: 0000-00-00:none
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 255 (unconnected)
+    Source: 0000-08-00:none
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 255 (unconnected)
+    RollCall length: 42
+    Type: 20 (RETDEVINFO)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00030000080000ff804b025d0300200c3c6e6f74207365743e0072612057494e3332200000000008
+        Protocol version: 3
+        Address: 0000-08-00:none
+        Services: 0x804b (Menus|Control|File|Map|LongStr)
+        Unit type: 605
+        Version: 3.0 cs12
+        Name: <not set>
+        Status: 0x0008 (present)
+
+Frame 2: Packet, 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 65, Ack: 81, Len: 22
+Snell RollCall: GETDEVLIST
+    TX flags: 12
+    TX length: 18
+    Destination: 0000-08-00:1
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 1
+    Source: 0000-00-00:1
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 1
+    RollCall length: 4
+    Type: 19 (GETDEVLIST)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0800
+
+Frame 3: Packet, 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 81, Ack: 87, Len: 28
+Snell RollCall: BLOCKHEADER 15 items of GETDEVLIST
+    TX flags: 12
+    TX length: 24
+    Destination: 0000-00-00:1
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 1
+    Source: 0000-08-00:1
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 1
+    RollCall length: 10
+    Type: 39 (BLOCKHEADER)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 1300000f00280000
+        Block of: 19 (GETDEVLIST)
+        Items: 15
+        Max item size: 40
+
+Frame 4: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 87, Ack: 109, Len: 24
+Snell RollCall: GETNEXTPKT item 0 of GETDEVLIST
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-08-00:1
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 1
+    Source: 0000-00-00:1
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 1
+    RollCall length: 6
+    Type: 35 (GETNEXTPKT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00001300
+        Item: 0
+        Block of: 19 (GETDEVLIST)
+

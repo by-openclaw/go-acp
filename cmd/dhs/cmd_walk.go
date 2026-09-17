@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dhs/internal/acp1/consumer"
 	"dhs/internal/acp2/consumer"
 	"dhs/internal/consumer"
 	"dhs/internal/emberplus/consumer"
 	"dhs/internal/export"
+	"dhs/internal/export/canonical"
 )
 
 func runWalk(ctx context.Context, args []string) error {
@@ -199,22 +199,20 @@ func runWalk(ctx context.Context, args []string) error {
 // canonical `tree.json` in the same schema; Ember+ additionally
 // writes `glow.json` for wire-level cross-checking.
 func writeCanonicalCapture(ctx context.Context, dir string, plug consumer.Protocol, cf *commonFlags) error {
-	switch p := plug.(type) {
-	case *emberplus.Plugin:
+	// Ember+ writes glow.json beside the tree, so it keeps its own path.
+	if p, ok := plug.(*emberplus.Plugin); ok {
 		return writeEmberplusCapture(ctx, dir, p, cf)
-	case *acp1.Plugin:
-		return writeACP1Capture(ctx, dir, p)
-	case *acp2.Plugin:
-		return writeACP2Capture(ctx, dir, p)
 	}
-	return nil
-}
 
-// writeACP2Capture writes `tree.json` in canonical shape for an ACP2
-// device. Mirrors writeACP1Capture: the raw AN2 frame log (recorder)
-// is appended alongside by the transport layer; this function covers
-// only the decoded canonical export.
-func writeACP2Capture(ctx context.Context, dir string, p *acp2.Plugin) error {
+	// Everything else that can describe itself does, by the method rather than
+	// by its type. A type switch here silently produced no tree.json for every
+	// connector nobody had remembered to add — which is how a capture ends up
+	// with frames and no model.
+	p, ok := plug.(canonicalizer)
+	if !ok {
+		return nil
+	}
+
 	tree, err := p.Canonicalize(ctx)
 	if err != nil {
 		return fmt.Errorf("canonicalize: %w", err)
@@ -231,25 +229,9 @@ func writeACP2Capture(ctx context.Context, dir string, p *acp2.Plugin) error {
 	return nil
 }
 
-// writeACP1Capture writes `tree.json` in canonical shape for an ACP1
-// device. The raw frame log (recorder) is already appended alongside
-// by the transport layer; this function covers only the decoded
-// canonical export.
-func writeACP1Capture(ctx context.Context, dir string, p *acp1.Plugin) error {
-	tree, err := p.Canonicalize(ctx)
-	if err != nil {
-		return fmt.Errorf("canonicalize: %w", err)
-	}
-	f, err := os.Create(filepath.Join(dir, "tree.json"))
-	if err != nil {
-		return fmt.Errorf("create tree.json: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-	if err := export.WriteCanonicalJSON(ctx, f, tree); err != nil {
-		return fmt.Errorf("write tree.json: %w", err)
-	}
-	fmt.Printf("capture: wrote tree.json to %s\n", dir)
-	return nil
+// canonicalizer is a plugin that can describe what it has walked.
+type canonicalizer interface {
+	Canonicalize(ctx context.Context) (*canonical.Export, error)
 }
 
 // writeEmberplusCapture dumps glow.json (lossless decoded Glow tree)
