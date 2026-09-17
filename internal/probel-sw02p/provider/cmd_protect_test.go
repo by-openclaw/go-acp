@@ -55,7 +55,7 @@ func TestExtendedProtectEmitFanout(t *testing.T) {
 	deadline = time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		srv.mu.Lock()
-		n := len(srv.sessions)
+		n := len(srv.Conns())
 		srv.mu.Unlock()
 		if n >= 1 {
 			break

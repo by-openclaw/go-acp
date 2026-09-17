@@ -20,7 +20,7 @@ func TestNewServerNilLogger(t *testing.T) {
 	if srv.logger == nil {
 		t.Fatal("logger not defaulted")
 	}
-	if srv.metrics == nil || srv.profile == nil || srv.tree == nil {
+	if srv.Metrics() == nil || srv.profile == nil || srv.tree == nil {
 		t.Fatal("server not fully initialised")
 	}
 }
@@ -75,7 +75,7 @@ func TestStopClosesListenerAndSessions(t *testing.T) {
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		srv.mu.Lock()
-		n := len(srv.sessions)
+		n := len(srv.Conns())
 		srv.mu.Unlock()
 		if n > 0 {
 			break
@@ -198,7 +198,7 @@ func TestFanOutTallyWriteFail(t *testing.T) {
 	sess := newSession(srv, c1)
 	sess.closed = true // force write() to return net.ErrClosed
 	srv.mu.Lock()
-	srv.sessions[sess] = struct{}{}
+	srv.Track(sess)
 	srv.mu.Unlock()
 
 	before := srv.profile.Snapshot()[TallyBroadcastFailed]
@@ -221,7 +221,7 @@ func TestFanOutTallySkipsOrigin(t *testing.T) {
 	defer func() { _ = c2.Close() }()
 	origin := newSession(srv, c1)
 	srv.mu.Lock()
-	srv.sessions[origin] = struct{}{}
+	srv.Track(origin)
 	srv.mu.Unlock()
 	// With only the origin registered, fan-out must write nothing — if it
 	// tried to write to c1 with no reader this would block; the test
@@ -259,7 +259,7 @@ func TestFanOutTallyDebugLog(t *testing.T) {
 	}()
 	sess := newSession(srv, c1)
 	srv.mu.Lock()
-	srv.sessions[sess] = struct{}{}
+	srv.Track(sess)
 	srv.mu.Unlock()
 
 	srv.fanOutTally(nil, codec.EncodeCrosspointTally(codec.CrosspointTallyParams{
@@ -309,18 +309,32 @@ func TestServeListenHookError(t *testing.T) {
 	}
 }
 
-// TestAcceptLoopContextCancelled: acceptLoop returns ctx.Err immediately
-// when the context is already cancelled (the early ctx.Err arm).
-func TestAcceptLoopContextCancelled(t *testing.T) {
+// TestServeContextCancelStops: cancelling Serve's context closes the
+// listener via the ctx.Done->Stop goroutine, and Serve returns nil. The
+// bare accept loop is provider.Base's now and observes cancellation through
+// the listener closing, not a preemptive ctx check, so this exercises the
+// wiring at the Serve level where it actually lives.
+func TestServeContextCancelStops(t *testing.T) {
 	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, emptyExport())
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
 	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.Serve(ctx, "127.0.0.1:0") }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for srv.Addr() == nil && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if srv.Addr() == nil {
+		cancel()
+		t.Fatal("Serve never bound a listener")
+	}
 	cancel()
-	if err := srv.acceptLoop(ctx, ln); !errors.Is(err, context.Canceled) {
-		t.Errorf("acceptLoop = %v; want context.Canceled", err)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Serve after ctx cancel = %v; want nil", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not return after ctx cancel")
 	}
 }

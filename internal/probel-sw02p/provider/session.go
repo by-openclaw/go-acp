@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/transport"
 )
@@ -22,6 +23,10 @@ import (
 type session struct {
 	srv  *server
 	conn net.Conn
+
+	// met is the server's connector, captured once so the rx/tx path never
+	// takes Base's lock per frame.
+	met *metrics.Connector
 
 	writeMu sync.Mutex
 
@@ -40,7 +45,7 @@ type session struct {
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	s := &session{srv: srv, conn: conn}
+	s := &session{srv: srv, conn: conn, met: srv.Metrics()}
 	s.idle.Set(srv.idleTimeout())
 	return s
 }
@@ -60,7 +65,8 @@ func (s *session) write(b []byte) error {
 // is passed to the server dispatcher. No handler table is wired yet —
 // every well-framed frame fires UnsupportedCommand and nothing more.
 // Per-command commits replace the scaffold dispatcher.
-func (s *session) run(ctx context.Context) {
+// Run satisfies provider.Conn.
+func (s *session) Run(ctx context.Context) {
 	defer func() {
 		_ = s.conn.Close()
 	}()
@@ -110,7 +116,7 @@ func (s *session) run(ctx context.Context) {
 					slog.String("remote", s.remoteAddr()),
 					slog.String("err", derr.Error()))
 				s.srv.profile.Note(InboundFrameDecodeFailed)
-				s.srv.metrics.ObserveDecodeError()
+				s.met.ObserveDecodeError()
 				// Without per-command length info the scaffold cannot
 				// resync precisely; drop one byte and keep looking.
 				buf = buf[1:]
@@ -126,7 +132,7 @@ func (s *session) run(ctx context.Context) {
 				)
 			}
 			rxAt := time.Now()
-			s.srv.metrics.ObserveCmdRx(uint8(f.ID), consumed)
+			s.met.ObserveCmdRx(uint8(f.ID), consumed)
 			buf = buf[consumed:]
 
 			res, herr := s.srv.dispatch(f)
@@ -136,7 +142,7 @@ func (s *session) run(ctx context.Context) {
 					slog.Int("cmd", int(f.ID)),
 					slog.String("err", herr.Error()))
 				s.srv.profile.Note(HandlerDecodeFailed)
-				s.srv.metrics.ObserveDecodeError()
+				s.met.ObserveDecodeError()
 				continue
 			}
 			if res.reply == nil && len(res.broadcast) == 0 {
@@ -160,7 +166,7 @@ func (s *session) run(ctx context.Context) {
 					s.srv.profile.Note(OutboundWriteFailed)
 					return
 				}
-				s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(replyBytes), time.Since(rxAt))
+				s.met.ObserveCmdTx(uint8(res.reply.ID), len(replyBytes), time.Since(rxAt))
 			}
 
 			// Broadcast frames go to every connected session, including
@@ -175,6 +181,9 @@ func (s *session) run(ctx context.Context) {
 }
 
 // close terminates the session's socket. Idempotent.
+// Close satisfies provider.Conn.
+func (s *session) Close() { s.close() }
+
 func (s *session) close() {
 	s.closeMu.Lock()
 	if s.closed {

@@ -12,6 +12,11 @@ import (
 // header `<ws2ipdef.h>`.
 const winIPMulticastLoop = 11
 
+// syscallConn is (*net.UDPConn).SyscallConn, indirected through a package
+// var so a test can drive setMulticastLoopback's SyscallConn error
+// return deterministically. Never reassigned in production.
+var syscallConn = func(c *net.UDPConn) (syscall.RawConn, error) { return c.SyscallConn() }
+
 // setMulticastLoopback re-enables IP_MULTICAST_LOOP on a socket created
 // by net.ListenMulticastUDP, which Go's stdlib disables by default.
 // Without this, two processes on the same Windows host bound to the
@@ -19,7 +24,7 @@ const winIPMulticastLoop = 11
 // same-host AMWA NMOS discovery (a Node and a Controller running on
 // one machine). RFC 6762 §11 expects link-local loopback to work.
 func setMulticastLoopback(c *net.UDPConn, on bool) error {
-	rc, err := c.SyscallConn()
+	rc, err := syscallConn(c)
 	if err != nil {
 		return err
 	}

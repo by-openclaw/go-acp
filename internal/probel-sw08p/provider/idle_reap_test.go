@@ -61,7 +61,7 @@ func TestSessionReapsSilentClient(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(context.Background()); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:
@@ -81,7 +81,7 @@ func TestSessionKeepsSilentClientWhenDisabled(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(context.Background()); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:
@@ -103,7 +103,7 @@ func TestSessionRunReturnsWhenArmFails(t *testing.T) {
 
 	sess := newSession(srv, a)
 	done := make(chan struct{})
-	go func() { sess.run(context.Background()); close(done) }()
+	go func() { sess.Run(context.Background()); close(done) }()
 
 	select {
 	case <-done:

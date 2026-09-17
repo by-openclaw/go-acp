@@ -1,13 +1,16 @@
 package acp2
 
 import (
-	"dhs/internal/acp2/codec"
-	"dhs/internal/transport"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"sync"
+
+	"dhs/internal/acp2/codec"
+	"dhs/internal/metrics"
+	"dhs/internal/transport"
 )
 
 // session is one TCP connection. Holds the conn, a write mutex so
@@ -21,6 +24,10 @@ type session struct {
 	writeMu sync.Mutex
 	enabled map[codec.AN2Proto]bool
 
+	// met is the server's connector, captured once so the rx path never
+	// takes Base's lock per frame.
+	met *metrics.Connector
+
 	// idle reaps a client that has gone silent, so the provider stops
 	// holding a goroutine and a socket for every consumer that vanished
 	// without an RST. Off unless configured.
@@ -28,7 +35,7 @@ type session struct {
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	s := &session{srv: srv, conn: conn}
+	s := &session{srv: srv, conn: conn, met: srv.Metrics()}
 	s.idle.Set(srv.idleTimeout())
 	return s
 }
@@ -50,7 +57,7 @@ const an2HeaderBytes = 8
 // same TCP connection queue in the kernel socket buffer and execute
 // in arrival order. See provider/session_serial_test.go for the
 // pinning test.
-func (s *session) run() {
+func (s *session) Run(_ context.Context) {
 	defer func() { _ = s.conn.Close() }()
 
 	remote := s.conn.RemoteAddr().String()
@@ -68,7 +75,7 @@ func (s *session) run() {
 				s.srv.logger.Debug("acp2 session closed", slog.String("remote", remote))
 				return
 			}
-			s.srv.metrics.ObserveDecodeError()
+			s.met.ObserveDecodeError()
 			s.srv.logger.Warn("acp2 session read error",
 				slog.String("remote", remote),
 				slog.String("err", err.Error()),
@@ -77,12 +84,16 @@ func (s *session) run() {
 		}
 		// Attributed by AN2 frame Type; the 8-byte header is not counted
 		// in Payload, so add it back for a true on-wire byte count.
-		s.srv.metrics.ObserveCmdRx(uint8(frame.Type), len(frame.Payload)+an2HeaderBytes)
+		s.met.ObserveCmdRx(uint8(frame.Type), len(frame.Payload)+an2HeaderBytes)
 		s.handleFrame(frame)
 	}
 }
 
 // handleFrame dispatches one incoming AN2 frame via handlers.go.
+// Close ends the session; Base.Stop calls it. run's own defer also closes
+// the conn, so the two race harmlessly on net.Conn.Close (idempotent).
+func (s *session) Close() { _ = s.conn.Close() }
+
 func (s *session) handleFrame(f *codec.AN2Frame) {
 	s.dispatch(f)
 }

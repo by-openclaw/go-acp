@@ -10,7 +10,14 @@ on:
   # Release Please job, which recovers a missed release cut.
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    # No base-branch filter, so a PR in a stack — based on the PR below it
+    # rather than on main — is verified too. Stacked PRs used to report no
+    # checks at all: CI only fired when the base was main, so 23 of a 24-PR
+    # rollcall stack got nothing until each was retargeted. The cost of
+    # widening this is held down by the same file: a run on any ref but main
+    # is Linux-only and supersedes the previous run on that ref, so a stacked
+    # PR run is three jobs and an amended push cancels the run it replaced.
+    #
     # The release-please PR touches ONLY these two bot-owned files and is
     # re-force-pushed on every merge to main; each force-push spawned a CI
     # run that parked at action_required (bot-authored PR + workflow
@@ -162,6 +169,7 @@ jobs:
           check internal/acp2/codec 100
           check internal/acp2/consumer 100
           check internal/acp2/provider 100
+          check internal/provider 100
           check internal/emberplus/codec/ber 100
           check internal/emberplus/codec/glow 100
           check internal/emberplus/codec/matrix 100
@@ -194,6 +202,13 @@ jobs:
           check internal/auth 100
           check internal/plugin 100
           check internal/cerebrum-nb/consumer 100
+          # AMWA NMOS controller path — gold-template gated. dnssd is not
+          # listed: its Linux-only avahi/DBus and unix multicast-loop files
+          # can only be coverage-verified on the Linux tools host, so its
+          # floor is added there, not from the Windows dev build.
+          check internal/amwa/session/connection 100
+          check internal/amwa/session/query 100
+          check internal/amwa/consumer 100
           exit $fail
 
       - name: Upload coverage

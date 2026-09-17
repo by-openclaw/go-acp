@@ -75,13 +75,13 @@ func runSession(t *testing.T, srv *server) (net.Conn, *sink, func()) {
 	cConn, sConn := net.Pipe()
 	sess := newSession(srv, sConn)
 	srv.mu.Lock()
-	srv.sessions[sess] = struct{}{}
+	srv.Track(sess)
 	srv.mu.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	runDone := make(chan struct{})
 	go func() {
-		sess.run(ctx)
+		sess.Run(ctx)
 		close(runDone)
 	}()
 
@@ -312,7 +312,7 @@ func TestSessionRunCtxCancelledAtTop(t *testing.T) {
 	cancel() // already cancelled
 
 	runDone := make(chan struct{})
-	go func() { sess.run(ctx); close(runDone) }()
+	go func() { sess.Run(ctx); close(runDone) }()
 	select {
 	case <-runDone:
 	case <-time.After(2 * time.Second):
@@ -365,7 +365,7 @@ func TestSessionReadErrorNonEOF(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	runDone := make(chan struct{})
-	go func() { sess.run(ctx); close(runDone) }()
+	go func() { sess.Run(ctx); close(runDone) }()
 
 	// Let run() reach its blocking Read, then close the session's own end.
 	time.Sleep(50 * time.Millisecond)
@@ -386,7 +386,7 @@ func TestSessionWriteClosed(t *testing.T) {
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
 	sess := newSession(srv, c1)
-	sess.close()
+	sess.Close()
 	if err := sess.write([]byte{0x10, 0x06}); err != net.ErrClosed {
 		t.Errorf("write after close = %v; want net.ErrClosed", err)
 	}
@@ -399,8 +399,8 @@ func TestSessionCloseIdempotent(t *testing.T) {
 	c1, c2 := net.Pipe()
 	defer func() { _ = c2.Close() }()
 	sess := newSession(srv, c1)
-	sess.close()
-	sess.close() // must not panic / double-close
+	sess.Close()
+	sess.Close() // must not panic / double-close
 }
 
 // TestSessionDispatchReplyWriteFail: dispatch() on a closed session
@@ -413,7 +413,7 @@ func TestSessionDispatchReplyWriteFail(t *testing.T) {
 	defer func() { _ = c1.Close() }()
 	defer func() { _ = c2.Close() }()
 	sess := newSession(srv, c1)
-	sess.close() // every write() now returns net.ErrClosed
+	sess.Close() // every write() now returns net.ErrClosed
 
 	// Single-reply path — write fails, logged, no panic.
 	sess.dispatch(codec.EncodeCrosspointInterrogate(codec.CrosspointInterrogateParams{
@@ -441,7 +441,7 @@ func TestDispatcherPanicRecovered(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	runDone := make(chan struct{})
-	go func() { sess.run(ctx); close(runDone) }()
+	go func() { sess.Run(ctx); close(runDone) }()
 
 	sk := &sink{}
 	sk.start(t, c1)

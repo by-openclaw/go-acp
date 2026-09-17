@@ -12,8 +12,7 @@ import (
 
 	"dhs/internal/acp2/codec"
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
-	"dhs/internal/transport"
+	"dhs/internal/provider"
 )
 
 // Server is the exported alias for the concrete provider — lets
@@ -34,8 +33,12 @@ type Server = server
 // tree.mu's write lock; reads take RLock. Consistent with the emberplus
 // + acp1 providers.
 type server struct {
-	// net is the only way this server binds a socket. Injected.
-	net    transport.Net
+	// Base owns the listener, the live-session set, the stop sequence and
+	// the AN2-Type-attributed metrics connector — everything a TCP provider
+	// keeps that is not about ACP2. The session type parameter keeps the
+	// fan-out in broadcastAnnounce typed.
+	provider.Base[*session]
+
 	logger *slog.Logger
 	tree   *tree
 
@@ -44,39 +47,24 @@ type server struct {
 	// slotInfo reads it under the same lock as perSlot.
 	slotProtos map[uint8][]uint8
 
+	// mu guards sessionIdle only; the session set moved to Base.
 	mu sync.Mutex
 
 	// sessionIdle, when > 0, reaps a client session that has sent nothing
 	// for that long. Guarded by mu; 0 = disabled (the default).
 	sessionIdle time.Duration
-	listener    net.Listener
-	sessions    map[*session]struct{}
-	closed      bool
-	stopped     chan struct{}
-
-	// metrics is the server-wide connector snapshot exposed via
-	// Metrics() so `producer acp2 serve --metrics-addr` scrapes it
-	// (#969). Frames are attributed by AN2 Type (request/reply/event/
-	// error/data) — the natural command axis for AN2. Always non-nil.
-	metrics *metrics.Connector
 }
 
 func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 	deps = deps.WithDefaults()
 	logger := deps.Logger
-	met := deps.Metrics
+	s := &server{logger: logger}
+	s.Init(deps)
 	for _, t := range []codec.AN2Type{
 		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
 		codec.AN2TypeError, codec.AN2TypeData,
 	} {
-		met.RegisterCmd(uint8(t), t.String())
-	}
-	s := &server{
-		logger:   logger,
-		net:      deps.Net,
-		sessions: map[*session]struct{}{},
-		stopped:  make(chan struct{}),
-		metrics:  met,
+		s.Metrics().RegisterCmd(uint8(t), t.String())
 	}
 	t, err := newTree(exp)
 	if err != nil {
@@ -95,93 +83,32 @@ func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 	return s
 }
 
-// Metrics returns the server-wide connector metrics — satisfies the
-// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes
-// the acp2 provider (#969). Always non-nil.
-func (s *server) Metrics() *metrics.Connector { return s.metrics }
-
 // Serve binds addr (e.g. "0.0.0.0:2072") and blocks until ctx is
 // cancelled or a fatal listen error occurs.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	// tcp4 preserved: acp2 binds IPv4-only. The bind goes through the
-	// injected transport; the accept loop applies the socket policy per connection, which is also
-	// the arm that covers a listener injected by a test.
-	ln, err := s.net.Listen(ctx, "tcp4", addr)
+	// tcp4 preserved: acp2 binds IPv4-only. The bind goes through Base's
+	// injected transport; Base.AcceptLoop applies the socket policy per
+	// connection, so a listener injected by a test gets it too.
+	ln, err := s.Listen(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp2 provider: listen %q: %w", addr, err)
 	}
-
-	s.mu.Lock()
-	s.listener = ln
-	s.mu.Unlock()
 
 	s.logger.Info("acp2 provider listening",
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("objects", s.tree.count()),
 	)
 
-	// Close listener when ctx goes away; unblocks Accept.
+	// Close the listener (and drain sessions) when ctx goes away; unblocks
+	// Accept. Base.Stop is idempotent, so a later explicit Stop is a no-op.
 	go func() {
 		<-ctx.Done()
-		s.mu.Lock()
-		if !s.closed {
-			s.closed = true
-			_ = ln.Close()
-		}
-		s.mu.Unlock()
+		_ = s.Stop()
 	}()
 
-	return s.acceptLoop(ln)
-}
-
-// acceptLoop runs the blocking accept/spawn loop against ln. Split out of
-// Serve so the accept-error arms can be exercised with an injected
-// listener; Serve's only caller path is unchanged. A clean shutdown
-// (listener closed via ctx or Stop) returns nil; any other Accept error
-// is surfaced to the caller.
-func (s *server) acceptLoop(ln net.Listener) error {
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
-				close(s.stopped)
-				return nil
-			}
-			close(s.stopped)
-			return err
-		}
-		// OS-level dead-peer probe. Without it a half-open client session
-		// (a NAT or firewall drop with no RST) holds a goroutine and a
-		// socket here for ever — the inbound twin of the consumer-side
-		// stall. Applied here rather than at bind time so an injected
-		// listener gets it too.
-		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
-		sess := newSession(s, conn)
-		s.registerSession(sess)
-		go func() {
-			sess.run()
-			s.unregisterSession(sess)
-		}()
-	}
-}
-
-// Stop closes the listener and all active sessions. Safe to call
-// multiple times.
-func (s *server) Stop() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return nil
-	}
-	s.closed = true
-	var err error
-	if s.listener != nil {
-		err = s.listener.Close()
-	}
-	for sess := range s.sessions {
-		_ = sess.conn.Close()
-	}
-	return err
+	return s.AcceptLoop(ctx, ln, func(conn net.Conn) *session {
+		return newSession(s, conn)
+	})
 }
 
 // SetValue mutates the served tree via the API path and fans the
@@ -226,17 +153,14 @@ func (s *server) broadcastAnnounce(slot uint8, ann *codec.ACP2Message) {
 	// CLAUDE.md "Spec-strict, no-workaround posture"): follow the wire
 	// reality every field controller depends on, keep both counts in
 	// the log so the deviation stays observable per fanout.
-	s.mu.Lock()
-	totalSessions := len(s.sessions)
+	targets := s.Conns()
+	totalSessions := len(targets)
 	subscribed := 0
-	targets := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
+	for _, sess := range targets {
 		if sess.enabled[codec.AN2ProtoACP2] {
 			subscribed++
 		}
-		targets = append(targets, sess)
 	}
-	s.mu.Unlock()
 
 	s.logger.Info("acp2 announce fanout",
 		slog.Int("slot", int(slot)),
@@ -252,18 +176,6 @@ func (s *server) broadcastAnnounce(slot uint8, ann *codec.ACP2Message) {
 			)
 		}
 	}
-}
-
-func (s *server) registerSession(sess *session) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sessions[sess] = struct{}{}
-}
-
-func (s *server) unregisterSession(sess *session) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.sessions, sess)
 }
 
 // SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent

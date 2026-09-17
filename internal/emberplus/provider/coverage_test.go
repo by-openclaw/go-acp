@@ -140,10 +140,10 @@ func drive(t *testing.T, srv *server, requests [][]byte) {
 	t.Helper()
 	cliConn, srvConn := net.Pipe()
 	sess := newSession(srv, srvConn)
-	srv.registerSession(sess)
+	srv.Track(sess)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
-	go func() { sess.run(ctx); close(done) }()
+	go func() { sess.Run(ctx); close(done) }()
 
 	w := s101.NewWriter(cliConn)
 	r := s101.NewReader(cliConn)
@@ -217,11 +217,8 @@ func TestProvider_ServeStop(t *testing.T) {
 	var addr string
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		srv.mu.Lock()
-		ln := srv.listener
-		srv.mu.Unlock()
-		if ln != nil {
-			addr = ln.Addr().String()
+		if a := srv.Addr(); a != nil {
+			addr = a.String()
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
