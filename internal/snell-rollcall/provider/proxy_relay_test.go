@@ -258,7 +258,14 @@ func TestRelayCarriesABlindRequest(t *testing.T) {
 		select {
 		case reply = <-s.cl.Unsolicited():
 		case <-deadline:
-			t.Fatal("no answer through the relay")
+			// Seen once on CI (run 35253785365) and never since in some two
+			// hundred starved -race runs: say where the answer stopped, so
+			// the next time is the last time this needs guessing.
+			fs := frame.deps.Metrics.Snapshot()
+			ps := s.p.deps.Metrics.Snapshot()
+			t.Fatalf("no answer through the relay: frame holds %d connections (rx %d frames, %d GetID; tx %d frames, %d RetID), proxy holds %d (rx %d, tx %d)",
+				linkCount(frame), fs.RxFrames, fs.RxHitsByCmd[codec.MsgGetID], fs.TxFrames, fs.TxHitsByCmd[codec.MsgRetID],
+				linkCount(s.p), ps.RxFrames, ps.TxFrames)
 		}
 	}
 	{
