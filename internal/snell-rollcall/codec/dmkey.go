@@ -20,9 +20,39 @@ import (
 // why reading one back cannot recover the alpha. Every device measured so far
 // reports it blank.
 
-// DMKey is the key a device model with this identity is filed under.
+// DMKey is the key a device model with this identity is filed under, walked
+// at the supervisor level every key on disk was walked at.
 func DMKey(typeID uint16, v Version) string {
 	return fmt.Sprintf("%s@%d.%d.cs%d", dmToken(UnitTypeName(typeID)), v.Major, v.Minor, v.CmdSet)
+}
+
+// DMKeyAt is DMKey for a model walked at a user level.
+//
+// A unit may serve a different menu at each level: a line above the session's
+// level comes back hidden and disabled, a factory-gated command is refused
+// below factory. So a model walked at one level is not the model walked at
+// another, and the specification's rule for a caching client is that it
+// records "which combinations of Unit type, command set and user level it has
+// cached". The supervisor key is the plain one — every DM on disk and every
+// manifest names it so — and any other level is suffixed: IQDBE00@5.0.cs5 is
+// the supervisor's walk, IQDBE00@5.0.cs5@factory the factory's.
+func DMKeyAt(typeID uint16, v Version, level UserLevel) string {
+	key := DMKey(typeID, v)
+	if level == LevelSupervisor {
+		return key
+	}
+	return key + "@" + level.String()
+}
+
+// DMKeyLevel is the user level a key was walked at: the suffix it carries, or
+// supervisor when it carries none.
+func DMKeyLevel(key string) UserLevel {
+	if i := strings.LastIndexByte(key, '@'); i > 0 {
+		if level, ok := ParseUserLevel(key[i+1:]); ok {
+			return level
+		}
+	}
+	return LevelSupervisor
 }
 
 // ParseDMKey reads a key back into the type id and version it was made from.
@@ -33,6 +63,12 @@ func DMKey(typeID uint16, v Version) string {
 // does a revision that is not exactly what DMKey writes. The alpha character,
 // which the key never carried, comes back blank.
 func ParseDMKey(key string) (typeID uint16, v Version, ok bool) {
+	// A level suffix names the walk, not the unit: the identity is the same.
+	if i := strings.LastIndexByte(key, '@'); i > 0 {
+		if _, isLevel := ParseUserLevel(key[i+1:]); isLevel {
+			key = key[:i]
+		}
+	}
 	i := strings.LastIndexByte(key, '@')
 	if i <= 0 || i == len(key)-1 {
 		return 0, Version{}, false

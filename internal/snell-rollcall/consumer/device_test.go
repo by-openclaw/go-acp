@@ -156,6 +156,9 @@ type device struct {
 	// racers to be in flight before releasing them.
 	callsSeen int
 
+	// levelsSeen records the user level of every call, in order.
+	levelsSeen []codec.UserLevel
+
 	// oddMenuItem makes one item of a 16-bit menu transfer come back as
 	// something other than a menu line, which a walker should skip rather
 	// than abandon the menu for. Negative disables it.

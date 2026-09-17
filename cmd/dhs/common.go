@@ -17,6 +17,7 @@ import (
 	"dhs/internal/consumer"
 	"dhs/internal/datastore"
 	"dhs/internal/logging"
+	rccodec "dhs/internal/snell-rollcall/codec"
 	"dhs/internal/transport"
 )
 
@@ -59,6 +60,8 @@ type commonFlags struct {
 	timeout          time.Duration
 	keepalive        time.Duration
 	keepaliveTimeout time.Duration
+	userLevel        string
+	clientName       string
 	verbose          bool
 	logLevel         string
 	logFormat        string
@@ -113,6 +116,15 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"keep-alive dead-man threshold (0 = 3× --keepalive; -1 = never "+
 			"declare session dead). Watch verb shows freshness=cache once "+
 			"this elapses without rx; values stay decoded against the cached schema.")
+	fs.StringVar(&cf.userLevel, "user-level", "",
+		"snell-rollcall only: the user level every session is opened at — user, engineer, "+
+			"supervisor (the default) or factory. A unit hides menu lines above the session's "+
+			"level and refuses writes to a factory-gated command below factory, so a walk at "+
+			"another level is filed under its own DM key (IQDBE00@5.0.cs5@factory).")
+	fs.StringVar(&cf.clientName, "client-name", "",
+		"snell-rollcall only: how this client is named in the unit's connection list and "+
+			"in its announcements (default 'dhs rollcall'). Twenty bytes; an operator reads it "+
+			"before disconnecting clients for a firmware upgrade.")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
@@ -287,6 +299,13 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 
+	// The user level and the client name are RollCall's, applied through the
+	// optional setters; a flag given to a protocol that has no such thing is a
+	// mistake worth refusing rather than ignoring.
+	if err := applyRollCallIdentity(plug, cf.userLevel, cf.clientName); err != nil {
+		return nil, nil, err
+	}
+
 	// Keep-alive selection is also plugin-specific via the optional
 	// consumer.KeepAliver capability. Plugins that don't implement it
 	// silently ignore the flags.
@@ -326,6 +345,34 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 	return plug, cleanup, nil
+}
+
+// applyRollCallIdentity sets the user level and client name on a plugin that
+// has them. Nothing given is nothing done; something given to a plugin that
+// cannot take it is refused, since the operator asked for a level they would
+// not be getting.
+func applyRollCallIdentity(plug any, level, name string) error {
+	if level != "" {
+		p, ok := plug.(interface{ SetUserLevel(rccodec.UserLevel) error })
+		if !ok {
+			return fmt.Errorf("--user-level: this protocol has no user levels")
+		}
+		lv, ok := rccodec.ParseUserLevel(level)
+		if !ok {
+			return fmt.Errorf("--user-level %q: want user, engineer, supervisor or factory", level)
+		}
+		if err := p.SetUserLevel(lv); err != nil {
+			return err
+		}
+	}
+	if name != "" {
+		p, ok := plug.(interface{ SetName(string) })
+		if !ok {
+			return fmt.Errorf("--client-name: this protocol has no client name")
+		}
+		p.SetName(name)
+	}
+	return nil
 }
 
 // reconnectPlugin re-establishes an existing plugin's session IN PLACE, for

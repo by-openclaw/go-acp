@@ -315,7 +315,7 @@ func (p *Plugin) appendFarPorts(ctx context.Context, l *link, t *nodeTable) {
 // a far frame is enumerated once during discovery, and a session left open is
 // one the frame never reclaims.
 func (p *Plugin) portsAt(ctx context.Context, l *link, node codec.Address) ([]codec.DeviceInfo, error) {
-	s, err := session.Call(ctx, l.sess, node.Device(), codec.SvcPorts, codec.LevelSupervisor, p.identity())
+	s, err := session.Call(ctx, l.sess, node.Device(), codec.SvcPorts, p.userLevel(), p.identity())
 	if err != nil {
 		return nil, err
 	}

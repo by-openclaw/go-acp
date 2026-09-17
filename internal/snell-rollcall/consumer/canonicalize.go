@@ -263,6 +263,7 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 	// The key is written by the codec, beside the function that reads it
 	// back: a provider serving this DM turns the key into the identity the
 	// card gave, and the two halves cannot drift when they sit together. A
-	// type the vendor's table does not list is filed by its number.
-	return codec.DMKey(id.TypeID, id.Version), nil
+	// type the vendor's table does not list is filed by its number. The level
+	// the walk was made at is part of it, because the menu is.
+	return codec.DMKeyAt(id.TypeID, id.Version, p.userLevel()), nil
 }

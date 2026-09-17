@@ -212,7 +212,7 @@ func (p *Plugin) fileSession(ctx context.Context, slot int) (*session.Session, e
 	l.mu.Unlock()
 
 	s, err := session.Call(ctx, l.sess, peer, codec.SvcFile,
-		codec.LevelSupervisor, p.identity())
+		p.userLevel(), p.identity())
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: file service on %s: %w", peer, err)
 	}

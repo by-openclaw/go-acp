@@ -141,7 +141,11 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 A RollCall device is a frame of nodes, and which verbs apply depends on which
 node. Cards take the whole Tree/DM set from §2 — `info`, `walk`, `get`, `set`,
-`ensure`, `export`, `validate` — addressed by `--slot`. The router takes the
+`ensure`, `export`, `validate` — addressed by `--slot`. Every verb takes
+`--user-level user|engineer|supervisor|factory` (default supervisor; factory is
+what a factory-gated command needs, and a walk at another level is filed under
+its own DM key) and `--client-name` (what the unit's connection list calls
+us). The router takes the
 four below, addressed by matrix, level and destination, because a crosspoint
 has no slot and no label and never did.
 

@@ -89,6 +89,23 @@ const (
 // Valid reports whether the level may be sent in a Call.
 func (u UserLevel) Valid() bool { return u <= LevelFactory }
 
+// ParseUserLevel reads a level by the name String writes, case-insensitively,
+// or by its number. "all" is a mask, not a level, and is refused like anything
+// else that cannot go in a Call.
+func ParseUserLevel(s string) (UserLevel, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "user", "0":
+		return LevelUser, true
+	case "engineer", "1":
+		return LevelEngineer, true
+	case "supervisor", "2":
+		return LevelSupervisor, true
+	case "factory", "3":
+		return LevelFactory, true
+	}
+	return 0, false
+}
+
 func (u UserLevel) String() string {
 	switch u {
 	case LevelUser:

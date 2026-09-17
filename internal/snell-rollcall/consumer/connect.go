@@ -304,7 +304,7 @@ func (p *Plugin) mapSession(ctx context.Context) (*session.Session, error) {
 	// What the map carries is fixed-width whichever generation is in force, so
 	// the bit buys nothing here, and the vendor Centra refuses the pair while
 	// accepting the map service alone.
-	s, err := session.Call(ctx, l.sess, gateway, codec.SvcMap, codec.LevelSupervisor, p.identity())
+	s, err := session.Call(ctx, l.sess, gateway, codec.SvcMap, p.userLevel(), p.identity())
 	if err != nil {
 		// A gateway that will not open a map session may still answer a list
 		// on the control one. Trying is cheaper than reporting a device with
@@ -361,7 +361,7 @@ func (p *Plugin) portSession(ctx context.Context) (*session.Session, error) {
 	}
 	l.mu.Unlock()
 
-	s, err := session.Call(ctx, l.sess, gateway, codec.SvcPorts, codec.LevelSupervisor, p.identity())
+	s, err := session.Call(ctx, l.sess, gateway, codec.SvcPorts, p.userLevel(), p.identity())
 	if err != nil {
 		// A unit that advertises the service and refuses a session for it can
 		// still answer on the map session, and trying is cheaper than
@@ -409,7 +409,7 @@ func (p *Plugin) netSession(ctx context.Context, bridge codec.Address) (*session
 	}
 	l.mu.Unlock()
 
-	s, err := session.Call(ctx, l.sess, node, codec.SvcNet, codec.LevelSupervisor, p.identity())
+	s, err := session.Call(ctx, l.sess, node, codec.SvcNet, p.userLevel(), p.identity())
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +457,7 @@ func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address,
 	wantLong := advertised.LongStrings()
 
 	s, err := session.Call(ctx, l.sess, peer, sessionServices(advertised, wantLong),
-		codec.LevelSupervisor, p.identity())
+		p.userLevel(), p.identity())
 	if err == nil {
 		return s, nil
 	}
@@ -472,7 +472,7 @@ func (p *Plugin) call(ctx context.Context, l *link, peer codec.Address,
 		"%s advertises SV_LONGSTR but refused a call requesting it: %v", peer, err))
 
 	s, err = session.Call(ctx, l.sess, peer, sessionServices(advertised, false),
-		codec.LevelSupervisor, p.identity())
+		p.userLevel(), p.identity())
 	if err != nil {
 		return nil, fmt.Errorf("rollcall: call %s: %w", peer, err)
 	}
