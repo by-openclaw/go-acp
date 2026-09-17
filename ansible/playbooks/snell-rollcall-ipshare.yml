@@ -25,10 +25,11 @@
 #   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml
 #   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml   # again -> changed=0
 #
-# The proxy flags landed after the pinned fleet release, so the binary comes
-# from the built artifact bin/dhs-linux-amd64 (the same path every producer
-# play uses) into its own directory; the release-managed /usr/local/bin/dhs is
-# untouched. Point ipshare_bin_src elsewhere to deploy another build.
+# The units run the release-managed binary the dhs_host role pins
+# (dhs_version, v0.22.0 or later carries the proxy). To try a build before it
+# is released, pass -e ipshare_bin_src=bin/dhs-linux-amd64: it is copied into
+# its own directory and the units run that instead; the release-managed
+# /usr/local/bin/dhs is untouched either way.
 #
 # Point a RollCall Control Panel at <dhs-tools>:2050 and it walks the plant.
 # Our consumer walks it the same way, and the integration play takes it as
@@ -116,8 +117,9 @@
   vars:
     ipshare_root: /etc/dhs/rollcall
     ipshare_bin_dir: /opt/dhs/rollcall
-    ipshare_bin: "{{ ipshare_bin_dir }}/dhs"
-    ipshare_bin_src: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+    # A build to run instead of the pinned release; empty runs the release.
+    ipshare_bin_src: ""
+    ipshare_bin: "{{ (ipshare_bin_dir ~ '/dhs') if ipshare_bin_src else dhs_bin }}"
     ipshare_port: 2050
     router_tree_src: "{{ playbook_dir }}/../../internal/snell-rollcall/testdata/exports/router_tree.json"
     router_port: 2052
@@ -140,11 +142,36 @@
         - "{{ ipshare_bin_dir }}"
         - /var/log/dhs
 
-    - name: The dhs build that carries the proxy
+    - name: A build under test, in place of the release
       ansible.builtin.copy:
         src: "{{ ipshare_bin_src }}"
         dest: "{{ ipshare_bin }}"
         mode: "0755"
+      when: ipshare_bin_src | length > 0
+      notify:
+        - restart dhs-rollcall-router
+        - restart dhs-rollcall-ipshare
+
+    - name: The binary carries the proxy
+      ansible.builtin.command: "{{ ipshare_bin }} producer rollcall serve --help"
+      register: ipshare_help
+      changed_when: false
+      failed_when: "'proxy-upstream' not in ipshare_help.stdout ~ ipshare_help.stderr"
+
+    - name: The dhs version the units run
+      ansible.builtin.command: "{{ ipshare_bin }} version"
+      register: ipshare_version
+      changed_when: false
+
+    # A new binary at the same path — a release bump converged by dhs_host — is
+    # invisible to a running unit. Recording the version makes the change one
+    # the play can see and restart on; unchanged is unchanged.
+    - name: Version on record
+      ansible.builtin.copy:
+        content: "{{ ipshare_version.stdout_lines[0] }}
+"
+        dest: "{{ ipshare_root }}/binary.version"
+        mode: "0644"
       notify:
         - restart dhs-rollcall-router
         - restart dhs-rollcall-ipshare

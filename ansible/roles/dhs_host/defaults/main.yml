@@ -6,7 +6,7 @@
 # ansible-platform, dhs application layer = this role + siblings.
 
 # Release to deploy on the whole fleet (tag name). Bump here, converge.
-dhs_version: "v0.18.0"
+dhs_version: "v0.22.0"
 dhs_release_repo: by-openclaw/go-acp
 dhs_release_base: "https://github.com/{{ dhs_release_repo }}/releases/download/{{ dhs_version }}"
 
