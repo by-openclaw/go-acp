@@ -31,10 +31,11 @@
   gather_facts: true
   vars:
     # pve01 sits on the OOB VLAN; its own gateway (pfSense) is the surest
-    # source — it is what the node already tracks. DMZ side + pool follow.
+    # source — it is what the node already tracks. The VLAN 600 fabric
+    # gateway (what the fleet syncs to, #804) + pool follow.
     pve_time_sources:
       - "10.6.224.1 iburst"
-      - "10.100.0.1 iburst"
+      - "10.6.255.254 iburst"
       - "pool.ntp.org iburst"
     # A stored frequency beyond this (ppm) is not a real crystal error —
     # the kernel clamps adjustments at 100000 ppm (10 %).

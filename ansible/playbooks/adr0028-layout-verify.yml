@@ -11,10 +11,10 @@
 #
 #   # Matrix domain (cerebrum RM on staging):
 #   ansible-playbook -i inventory/staging.ini playbooks/adr0028-layout-verify.yml \
-#     -e 'proto=cerebrum-nb addr=10.100.0.105:40007 artifact_root=/opt/dhs'
+#     -e 'proto=cerebrum-nb addr=10.6.250.105:40007 artifact_root=/opt/dhs'
 #
 #   # Tree/DM domain (cerebrum device leg + extract cache hit):
-#   ansible-playbook ... -e 'proto=cerebrum-nb addr=... device_ip=10.100.0.120
+#   ansible-playbook ... -e 'proto=cerebrum-nb addr=... device_ip=10.6.250.120
 #     sub_device=1 device_paths="IDENTITY;GENERAL" artifact_root=/opt/dhs'
 #
 # Credentials via environment (never inventory plaintext):
