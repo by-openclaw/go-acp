@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	stdhttp "net/http"
 	"os"
 	"sync"
@@ -143,13 +144,26 @@ func (m *Mirror) serveStatus(ctx context.Context, addr string) {
 		_ = json.NewEncoder(w).Encode(st)
 	})
 	srv := &stdhttp.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		m.logger.Warn("registry/mirror: status endpoint failed", "addr", addr, "err", err)
+		return
+	}
+	m.serveUntil(ctx, srv, ln, "status endpoint")
+}
+
+// serveUntil runs one HTTP face until ctx ends, then shuts it down.
+// A server that stops for any other reason is reported: the operator
+// asked for this face, and it going away silently is how a mirror
+// ends up looking healthy while answering nothing.
+func (m *Mirror) serveUntil(ctx context.Context, srv *stdhttp.Server, ln net.Listener, what string) {
 	go func() {
 		<-ctx.Done()
 		shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutCtx)
 	}()
-	if err := srv.ListenAndServe(); err != nil && err != stdhttp.ErrServerClosed {
-		m.logger.Warn("registry/mirror: status endpoint failed", "addr", addr, "err", err)
+	if err := srv.Serve(ln); err != nil && err != stdhttp.ErrServerClosed {
+		m.logger.Warn("registry/mirror: "+what+" failed", "addr", ln.Addr().String(), "err", err)
 	}
 }

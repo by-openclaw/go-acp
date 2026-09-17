@@ -12,10 +12,12 @@ import (
 	"dhs/internal/transport"
 )
 
-// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
-// to dialed TCP connections. OSC over TCP carries no in-protocol keep-
-// alive, so the OS-layer probe is the dead-socket detector.
-const DefaultTCPKeepalivePeriod = 30 * time.Second
+// DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period on dialed
+// TCP connections. OSC over TCP carries no in-protocol keep-alive, so the
+// OS-layer probe is the dead-socket detector. It is the transport's
+// default: the dialer opens sockets through the injected transport, so
+// the period is decided by the process (transport.Config), not here.
+const DefaultTCPKeepalivePeriod = transport.DefaultTCPKeepalivePeriod
 
 // framerKind — local to provider; must match the consumer's enum.
 type framerKind int
@@ -39,22 +41,23 @@ type tcpDialer struct {
 	mu    sync.Mutex
 	conns map[string]net.Conn
 
-	// dialer opens each outbound connection. Injected rather than calling
-	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
-	// applied by the shared dialer instead of by a separate call here.
-	dialer transport.Dialer
+	// open opens each outbound connection: the owning provider's Base.Dial,
+	// i.e. the injected transport, so the process owns the socket posture
+	// (keepalive at transport.DefaultTCPKeepalivePeriod, TLS, source
+	// address) and a test substitutes a fake Net. The connector never
+	// decides how a socket is made.
+	open dialFunc
 }
 
-func newTCPDialer(f framerKind, met *metrics.Connector) *tcpDialer {
+// dialFunc is the shape of provider.Base.Dial / transport.Net.Dial.
+type dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
+
+func newTCPDialer(f framerKind, met *metrics.Connector, dial dialFunc) *tcpDialer {
 	return &tcpDialer{
 		framer: f,
 		met:    met,
 		conns:  map[string]net.Conn{},
-		dialer: transport.TCPDialer{
-			Options: transport.SocketOptions{
-				KeepalivePeriod: DefaultTCPKeepalivePeriod,
-			},
-		},
+		open:   dial,
 	}
 }
 
@@ -69,7 +72,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
+	c, err := d.open(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("osc tcp dial %s: %w", key, err)
 	}
@@ -78,6 +81,7 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 }
 
 func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
+	start := time.Now() // send footprint: frame + dial + write
 	var wire []byte
 	switch d.framer {
 	case framerLenPrefix:
@@ -91,7 +95,7 @@ func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
 	}
 	if _, werr := c.Write(wire); werr == nil {
 		if d.met != nil {
-			d.met.ObserveTx(len(wire), 0)
+			d.met.ObserveTx(len(wire), time.Since(start))
 		}
 	} else {
 		d.mu.Lock()

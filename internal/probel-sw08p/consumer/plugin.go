@@ -18,14 +18,13 @@ package probelsw08p
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw08p/codec"
 	sw08session "dhs/internal/probel-sw08p/session"
 	"dhs/internal/transport"
@@ -187,11 +186,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
 		OnRetry:   func(int) { prof.Note(RetryAttempted); met.ObserveRetry() },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
-		OnTx: func(b []byte) {
+		OnTx: func(b []byte, elapsed time.Duration) {
 			if id, ok := probelCmdFromBytes(b); ok {
-				met.ObserveCmdTx(id, len(b), 0)
+				met.ObserveCmdTx(id, len(b), elapsed)
 			} else {
-				met.ObserveTx(len(b), 0)
+				met.ObserveTx(len(b), elapsed)
 			}
 		},
 		OnRx: func(b []byte) {
@@ -206,8 +205,8 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
-		cfg.OnTx = func(b []byte) {
-			wrappedTx(b)
+		cfg.OnTx = func(b []byte, elapsed time.Duration) {
+			wrappedTx(b, elapsed)
 			rec.Record("probel-sw08p", "tx", b)
 		}
 		cfg.OnRx = func(b []byte) {
@@ -227,7 +226,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	// open") and arm the reader's dead-man deadline alongside it. Our own
 	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
 	// matrix that never pings leaves the session with no liveness signal.
-	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), clock.System())
+	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), p.Clock())
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),

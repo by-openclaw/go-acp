@@ -75,3 +75,28 @@ func (*timeoutErr) Timeout() bool { return true }
 func (*timeoutErr) Temporary() bool {
 	return true
 }
+
+// pureDeadline returns a context whose Deadline is d from now but whose
+// cancellation does not fire within the test.
+//
+// It isolates the "socket deadline expired, context still live" arm of every
+// Receive, which context.WithTimeout cannot: its own timer and the socket's
+// read deadline fire at the same instant and race for which arm reports the
+// timeout — both spell context.DeadlineExceeded, so the assertion is stable
+// but the arm taken is not. Here the socket's deadline is the only clock.
+//
+// Done is inherited from a long-lived parent rather than nil, so the cancel
+// watcher runs exactly as it does in production.
+func pureDeadline(t *testing.T, d time.Duration) context.Context {
+	t.Helper()
+	parent, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	return deadlineOnly{Context: parent, dl: time.Now().Add(d)}
+}
+
+type deadlineOnly struct {
+	context.Context
+	dl time.Time
+}
+
+func (d deadlineOnly) Deadline() (time.Time, bool) { return d.dl, true }

@@ -3,10 +3,10 @@ package registry_test
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 	"testing"
 
+	"dhs/internal/plugin"
 	"dhs/internal/registry"
 )
 
@@ -20,8 +20,8 @@ type stubFactory struct {
 	meta registry.Meta
 }
 
-func (f *stubFactory) Meta() registry.Meta                  { return f.meta }
-func (f *stubFactory) New(_ *slog.Logger) registry.Registry { return &stubRegistry{} }
+func (f *stubFactory) Meta() registry.Meta               { return f.meta }
+func (f *stubFactory) New(plugin.Deps) registry.Registry { return &stubRegistry{} }
 
 type stubRegistry struct{}
 

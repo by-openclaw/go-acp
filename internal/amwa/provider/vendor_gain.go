@@ -153,14 +153,19 @@ var vendorRegisterOnce sync.Once
 // built from it.
 func registerVendorModels() {
 	vendorRegisterOnce.Do(func() {
-		if err := ms05.RegisterClass(vendorGainClass()); err != nil {
-			panic("provider: vendor class registration: " + err.Error())
-		}
-		if err := ms05.RegisterDatatype(vendorGainDatatype()); err != nil {
-			panic("provider: vendor datatype registration: " + err.Error())
-		}
-		if err := ms05.RegisterClass(vendorFaultClass()); err != nil {
-			panic("provider: fault class registration: " + err.Error())
-		}
+		mustRegister("vendor class", ms05.RegisterClass(vendorGainClass()))
+		mustRegister("vendor datatype", ms05.RegisterDatatype(vendorGainDatatype()))
+		mustRegister("fault class", ms05.RegisterClass(vendorFaultClass()))
 	})
+}
+
+// mustRegister refuses to continue when a compiled-in vendor model
+// will not go into the catalogue. Like the framework models, these are
+// built into the binary: a failure is a build defect, and a device
+// model missing a class a controller is entitled to walk is worse than
+// a process that will not start.
+func mustRegister(what string, err error) {
+	if err != nil {
+		panic("provider: " + what + " registration: " + err.Error())
+	}
 }

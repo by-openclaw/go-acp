@@ -122,11 +122,17 @@ func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer, scheme s
 	}
 }
 
+// interfaceAddrs is the host address enumeration localIPv4 reads. A
+// package var so a test can hand it an enumeration failure and a
+// non-IPNet address — neither happens on demand on a real host;
+// production never reassigns it.
+var interfaceAddrs = net.InterfaceAddrs
+
 // localIPv4 returns every globally-routable IPv4 bound to a non-down,
 // non-loopback interface. Best-effort — failure returns an empty list.
 func localIPv4() []string {
 	out := []string{}
-	addrs, err := net.InterfaceAddrs()
+	addrs, err := interfaceAddrs()
 	if err != nil {
 		return out
 	}

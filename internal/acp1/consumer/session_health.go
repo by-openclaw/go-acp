@@ -61,12 +61,13 @@ type timestampingTransport struct {
 }
 
 func (t *timestampingTransport) Send(ctx context.Context, payload []byte) error {
+	start := time.Now()
 	if err := t.inner.Send(ctx, payload); err != nil {
 		return err
 	}
 	t.sink.recordTx()
 	if t.met != nil {
-		t.met.ObserveTx(len(payload), 0)
+		t.met.ObserveTx(len(payload), time.Since(start))
 	}
 	return nil
 }

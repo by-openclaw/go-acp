@@ -26,16 +26,25 @@ import (
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
+	"dhs/internal/plugin"
 )
 
 // unicastReresolveInterval is how often the DNS zone is re-asked.
 // DNS-SD gives no push channel, so this is the staleness bound on
-// registry changes reaching the Node.
-const unicastReresolveInterval = 60 * time.Second
+// registry changes reaching the Node. A var only so a test can drive
+// the re-ask without sitting out a minute; production never
+// reassigns it.
+var unicastReresolveInterval = 60 * time.Second
 
 // unicastDisqualifyTTL matches the mDNS watcher's failover penalty —
 // the two discovery modes must yield the same failover behaviour.
 const unicastDisqualifyTTL = 30 * time.Second
+
+// resolveUnicast is the DNS-SD lookup this watcher runs, behind a package
+// var: a unicast lookup needs an authoritative DNS server, which a unit
+// test has no business standing up, so a test scripts the zone's answers
+// here instead. Production never reassigns it.
+var resolveUnicast = dnssdsession.ResolveUnicast
 
 // UnicastRegistryWatcher resolves `_nmos-register._tcp.<domain>` (and
 // the pre-v1.2 legacy name) against one DNS resolver on an interval.
@@ -47,6 +56,11 @@ type UnicastRegistryWatcher struct {
 	disqualifyTTL time.Duration
 
 	cancel context.CancelFunc
+	// done is closed when the resolve loop has exited, so Close can
+	// say the loop has STOPPED rather than only that it has been asked
+	// to. Without the join a caller — or a test asserting no further
+	// lookups — races an in-flight resolve that is on its way out.
+	done chan struct{}
 
 	mu           sync.Mutex
 	byFull       map[string]RegistryCandidate
@@ -55,9 +69,7 @@ type UnicastRegistryWatcher struct {
 
 // NewUnicastRegistryWatcher builds the watcher. It does not resolve.
 func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIVer string) *UnicastRegistryWatcher {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if preferAPIVer == "" {
 		preferAPIVer = "v1.3"
 	}
@@ -75,10 +87,13 @@ func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIV
 // Run resolves once immediately — a Node must not sit a full interval
 // before its first registration attempt — then re-resolves on the
 // interval until ctx is cancelled. Returns immediately.
-func (w *UnicastRegistryWatcher) Run(ctx context.Context) error {
+func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
+	done := make(chan struct{})
+	w.done = done
 	go func() {
+		defer close(done)
 		w.resolveOnce(loopCtx)
 		t := time.NewTicker(unicastReresolveInterval)
 		defer t.Stop()
@@ -91,14 +106,22 @@ func (w *UnicastRegistryWatcher) Run(ctx context.Context) error {
 			}
 		}
 	}()
-	return nil
 }
 
-// Close stops the resolve loop. Idempotent.
+// Close stops the resolve loop and waits for it. Idempotent, and safe
+// on a watcher that was never Run.
+//
+// It waits because "stopped" and "asked to stop" are different facts
+// to the caller: a Node tearing down still has a goroutine resolving
+// against a zone if Close only cancelled.
 func (w *UnicastRegistryWatcher) Close() error {
 	if w.cancel != nil {
 		w.cancel()
 		w.cancel = nil
+	}
+	if w.done != nil {
+		<-w.done
+		w.done = nil
 	}
 	return nil
 }
@@ -109,7 +132,7 @@ func (w *UnicastRegistryWatcher) Close() error {
 // v1.2 transition may carry both.
 func (w *UnicastRegistryWatcher) resolveOnce(ctx context.Context) {
 	for _, service := range []string{dnssdcodec.ServiceRegister, dnssdcodec.ServiceRegisterLegacy} {
-		instances, err := dnssdsession.ResolveUnicast(ctx, w.resolver, service, w.domain, 0)
+		instances, err := resolveUnicast(ctx, w.resolver, service, w.domain, 0)
 		if err != nil {
 			// One name failing must not hide the other: a zone with no
 			// legacy records answers NXDOMAIN, which is normal, not an

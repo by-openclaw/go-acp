@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"dhs/internal/consumer"
-	"dhs/internal/probel-sw02p/consumer"
+	probelsw02p "dhs/internal/probel-sw02p/consumer"
 	"dhs/internal/wiretrace"
 )
 

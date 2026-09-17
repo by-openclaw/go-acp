@@ -239,25 +239,17 @@ func (v *validator) applyObject(s map[string]any, inst any, path string) {
 // applyRef resolves "file.json", "#/definitions/x", or
 // "file.json#/definitions/x" and validates against the target.
 func (v *validator) applyRef(ref string, inst any, path string) {
+	// An empty file part means "this file": a reference resolves
+	// against the schema it was written in unless it names another.
 	file, frag, _ := strings.Cut(ref, "#")
 	base := v.base
-	var root any
-
-	if file == "" {
-		var err error
-		root, err = v.c.schema(base)
-		if err != nil {
-			v.fail(path, "$ref", "%v", err)
-			return
-		}
-	} else {
-		var err error
-		root, err = v.c.schema(file)
-		if err != nil {
-			v.fail(path, "$ref", "%v", err)
-			return
-		}
+	if file != "" {
 		base = file
+	}
+	root, err := v.c.schema(base)
+	if err != nil {
+		v.fail(path, "$ref", "%v", err)
+		return
 	}
 
 	target := root

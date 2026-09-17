@@ -18,15 +18,15 @@ package probelsw02p
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	"dhs/internal/consumer"
-	"dhs/internal/probel-sw02p/codec"
 	session "dhs/internal/probel-sw02p/session"
+	"dhs/internal/consumer"
+	"dhs/internal/plugin"
+	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/transport"
 )
 
@@ -200,14 +200,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	cfg := session.ClientConfig{
-		OnTx: func(b []byte) { observeTxBytes(met, b) },
+		OnTx: func(b []byte, elapsed time.Duration) { observeTxBytes(met, b, elapsed) },
 		OnRx: func(b []byte) { observeRxBytes(met, b) },
 	}
 	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
-		cfg.OnTx = func(b []byte) {
-			wrappedTx(b)
+		cfg.OnTx = func(b []byte, elapsed time.Duration) {
+			wrappedTx(b, elapsed)
 			rec.Record("probel-sw02p", "tx", b)
 		}
 		cfg.OnRx = func(b []byte) {

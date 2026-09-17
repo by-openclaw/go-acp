@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
 	"dhs/internal/transport"
@@ -80,6 +81,7 @@ type Base[S Session] struct {
 
 	net     transport.Net
 	metrics *metrics.Connector
+	clk     clock.Clock
 }
 
 // Init wires the injected dependency set. Called once from the factory.
@@ -89,6 +91,19 @@ func (b *Base[S]) Init(deps plugin.Deps) {
 	defer b.mu.Unlock()
 	b.net = deps.Net
 	b.metrics = deps.Metrics
+	b.clk = deps.Clock
+}
+
+// Clock returns the injected clock — every wait, deadline and timestamp in
+// a provider goes through it so a test drives time instead of sleeping.
+// Never nil: a Base that was never Init'ed answers with the system clock.
+func (b *Base[S]) Clock() clock.Clock {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.clk == nil {
+		b.clk = clock.System()
+	}
+	return b.clk
 }
 
 // Metrics returns the provider's counter set, satisfying the optional
@@ -132,6 +147,26 @@ func (b *Base[S]) Listen(ctx context.Context, network, addr string) (net.Listene
 	b.listener = ln
 	b.mu.Unlock()
 	return ln, nil
+}
+
+// Dial opens an outbound connection through the injected transport — the
+// push providers' half of Listen. A provider that pushes to peers (osc, tsl
+// over TCP) opens every socket here, so the process owns the socket
+// posture (keepalive, TLS, source address) and a test substitutes a fake
+// Net; the connector never decides how a socket is made.
+func (b *Base[S]) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	b.mu.Lock()
+	n := b.net
+	if n == nil {
+		n = transport.New(transport.Config{})
+		b.net = n
+	}
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return nil, net.ErrClosed
+	}
+	return n.Dial(ctx, network, addr)
 }
 
 // listenUDPAddr is transport.ListenUDPAddr, indirected through a package

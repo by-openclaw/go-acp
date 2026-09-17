@@ -101,8 +101,8 @@ func TestDeviceConfig_Failed_FiresCompliance(t *testing.T) {
 	if res.Accepted {
 		t.Fatal("want not accepted")
 	}
-	if p.Compliance().Counts()["cerebrum_device_config_failed"] != 1 {
-		t.Fatalf("device_config_failed compliance not recorded: %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_device_config_failed"] != 1 {
+		t.Fatalf("device_config_failed compliance not recorded: %+v", p.Compliance().Snapshot())
 	}
 }
 
@@ -228,7 +228,7 @@ func TestDispatch_Continue_FiresComplianceAndFansOut(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 	waitFor(t, 2*time.Second, func() bool {
-		return continueN.Load() == 1 && p.Compliance().Counts()["cerebrum_continue_received"] == 1
+		return continueN.Load() == 1 && p.Compliance().Snapshot()["cerebrum_continue_received"] == 1
 	}, "CONTINUE fan-out + compliance")
 }
 

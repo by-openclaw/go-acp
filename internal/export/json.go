@@ -143,9 +143,7 @@ func containerMeta(o consumer.Object) map[string]any {
 	for k, v := range o.Meta {
 		m[k] = v
 	}
-	if len(m) == 0 {
-		return nil
-	}
+	// number and access are always present, so the map is never empty.
 	return m
 }
 

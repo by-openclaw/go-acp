@@ -32,7 +32,7 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 		includeEdges = fs.Bool("include-edges", false, "bias every 4th cycle to a min/max boundary")
 
 		logLevel  = fs.String("log-level", "info", "log level: debug / info / warn / error")
-		logFormat = fs.String("log-format", "text", "log format: text / json")
+		logFormat = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json | text — the same default as every connector (epic #987)")
 	)
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err

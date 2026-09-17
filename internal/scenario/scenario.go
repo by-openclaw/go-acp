@@ -49,7 +49,7 @@ func Load(path string) (*Scenario, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	abs, err := filepath.Abs(path)
+	abs, err := absPath(path)
 	if err != nil {
 		return nil, fmt.Errorf("abs %s: %w", path, err)
 	}
@@ -60,6 +60,10 @@ func Load(path string) (*Scenario, error) {
 // Discover walks a directory recursively and returns every *.json
 // file found, sorted for deterministic ordering. Used by the test
 // harness to enumerate every committed scenario.
+// absPath is filepath.Abs behind a package var: its only failure (no working
+// directory) cannot be produced portably, so a test swaps it.
+var absPath = filepath.Abs
+
 func Discover(dir string) ([]string, error) {
 	var out []string
 	err := filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {

@@ -25,6 +25,8 @@ import (
 	"dhs/internal/amwa/codec/is09"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 )
 
 // IS09Config wires the System provider together. APIVer overrides the
@@ -32,6 +34,10 @@ import (
 type IS09Config struct {
 	// Bind address for the HTTP listener, e.g. ":10641".
 	Bind string
+
+	// Deps is the injected dependency set (transport, clock, metrics),
+	// the same plugin.Deps every connector takes; zero = defaults.
+	Deps plugin.Deps
 
 	// AdvertiseHost+port placed in DNS-SD A/SRV records. When empty
 	// the provider falls back to os.Hostname.
@@ -56,6 +62,9 @@ type IS09Server struct {
 	cfg    IS09Config
 	global *is09.Global
 
+	met     *metrics.Connector
+	metOnce sync.Once
+
 	mu        sync.Mutex
 	http      *httpsession.Server
 	responder dnssdsession.Responder
@@ -66,12 +75,20 @@ type IS09Server struct {
 	globalHits uint64
 }
 
+// Metrics returns the System API's counter set (every request and
+// response through the shared HTTP server). Never nil.
+func (s *IS09Server) Metrics() *metrics.Connector {
+	s.metOnce.Do(func() { s.met = s.cfg.Deps.WithDefaults().Metrics })
+	return s.met
+}
+
 // NewIS09Server validates `g` against the IS-09 schema, then prepares
 // (but does not start) a server bound to the given config.
 func NewIS09Server(logger *slog.Logger, g *is09.Global, cfg IS09Config) (*IS09Server, error) {
 	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		logger = cfg.Deps.Logger
 	}
+	logger = plugin.LoggerOrDefault(logger)
 	if g == nil {
 		return nil, errors.New("provider/system: nil Global")
 	}
@@ -110,6 +127,7 @@ func (s *IS09Server) Serve(ctx context.Context) error {
 	}
 
 	srv := httpsession.NewServer(s.logger)
+	srv.Metrics = s.Metrics()
 	indexPath := "/x-nmos/system/" + s.cfg.APIVer + "/"
 	globalPath := "/x-nmos/system/" + s.cfg.APIVer + "/global"
 
@@ -148,7 +166,7 @@ func (s *IS09Server) Serve(ctx context.Context) error {
 	// publishes records via Unbound or similar.
 	if s.cfg.DiscoveryMode == "" || s.cfg.DiscoveryMode == "mdns" {
 		host, port := splitHostPort(s.cfg.AdvertiseHost, s.cfg.Bind)
-		resp, err := dnssdsession.NewResponder(s.logger)
+		resp, err := newDNSSDResponder(s.logger)
 		if err != nil {
 			s.mu.Unlock()
 			return fmt.Errorf("provider/system: open mDNS responder: %w", err)
@@ -231,7 +249,7 @@ func splitHostPort(advertise, bind string) (string, int) {
 	}
 	host, port := splitHP(bind)
 	if host == "" || host == "0.0.0.0" || host == "::" {
-		if h, err := os.Hostname(); err == nil && h != "" {
+		if h, err := osHostname(); err == nil && h != "" {
 			host = h
 		} else {
 			host = "localhost"

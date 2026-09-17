@@ -280,7 +280,9 @@ func TestLogReceivesProgress(t *testing.T) {
 }
 
 func TestWriteRawIgnoresUnusableNames(t *testing.T) {
-	h := &harvester{opts: Options{}, dir: t.TempDir()}
+	// Raw must be ON, or the test passes without ever reaching the
+	// name check it is about.
+	h := &harvester{opts: Options{Raw: true}, dir: t.TempDir()}
 	h.opts.defaults()
 	h.writeRaw("///", []byte("x"))
 	entries, err := os.ReadDir(h.dir)

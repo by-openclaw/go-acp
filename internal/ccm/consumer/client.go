@@ -44,6 +44,13 @@ type Options struct {
 // refusing a device that answers with something absurd.
 const MaxBody = 8 << 20
 
+// tlsClientConfig builds the client TLS posture, behind a package
+// variable. Its only failure modes are reading a CA or client
+// certificate FILE, and this client configures neither — so the arm
+// below is unreachable from here, and the variable is what proves the
+// answer it gives anyway. Production never reassigns it.
+var tlsClientConfig = transport.TLSOptions.Client
+
 // New builds a client.
 func New(opts Options) *Client {
 	if opts.Timeout == 0 {
@@ -54,10 +61,10 @@ func New(opts Options) *Client {
 	// version-floor-less config it used to assemble here. Skip-verify stays
 	// the default because the media-plane device is self-signed by design;
 	// VerifyTLS opts back in.
-	cfg, err := transport.TLSOptions{
+	cfg, err := tlsClientConfig(transport.TLSOptions{
 		Enable:   true,
 		Insecure: !opts.VerifyTLS,
-	}.Client()
+	})
 	if err != nil {
 		// Unreachable: no CA or client-certificate file is configured, and
 		// those are Client's only failure modes. A nil config is the safe

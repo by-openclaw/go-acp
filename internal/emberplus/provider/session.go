@@ -130,10 +130,14 @@ func (s *session) writePump(ctx context.Context) {
 // against the 1000×1000 dynamic-matrix walk reply.
 func (s *session) writeEmBERChunks(payload []byte) error {
 	// Counted once per logical message rather than per S101 chunk: the
-	// chunking is a transport detail, and a consumer sees one message.
-	if s.srv != nil {
-		s.srv.Metrics().ObserveCmdTx(s101.CmdEmBER, len(payload), 0)
-	}
+	// chunking is a transport detail, and a consumer sees one message. The
+	// footprint is the whole emission — every chunk written.
+	start := time.Now()
+	defer func() {
+		if s.srv != nil {
+			s.srv.Metrics().ObserveCmdTx(s101.CmdEmBER, len(payload), time.Since(start))
+		}
+	}()
 	if len(payload) <= maxS101Payload {
 		return s.writer.WriteFrame(&s101.Frame{
 			Slot:    s101.SlotDefault,
@@ -206,6 +210,7 @@ func (s *session) close() {
 // handleFrame processes one incoming S101 frame. Keepalives get an
 // immediate response; EmBER frames are decoded as Glow and dispatched.
 func (s *session) handleFrame(f *s101.Frame) error {
+	rxAt := time.Now() // the reply's footprint is rx -> reply written
 	switch f.Command {
 	case s101.CmdKeepAliveReq:
 		// Use the canonical KeepAlive-response builder rather than
@@ -218,7 +223,7 @@ func (s *session) handleFrame(f *s101.Frame) error {
 			return err
 		}
 		if s.srv != nil {
-			s.srv.Metrics().ObserveCmdTx(s101.CmdKeepAliveResp, 0, 0)
+			s.srv.Metrics().ObserveCmdTx(s101.CmdKeepAliveResp, 0, time.Since(rxAt))
 		}
 		return nil
 	case s101.CmdKeepAliveResp:

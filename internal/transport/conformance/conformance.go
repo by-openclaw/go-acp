@@ -58,9 +58,13 @@ type Caps struct {
 	// every message arrives or that order is kept.
 	Ordered bool
 
-	// TLS and MutualTLS gate the transport-security cases. Bearer gates the
-	// token cases, which only the HTTP family can carry: tcp and udp have no
-	// application layer to put a header in.
+	// TLS, MutualTLS and Bearer declare transport security and token
+	// carriage. There is no case for any of them yet, so declaring one
+	// obliges nothing — but it is REPORTED at the end of the run
+	// rather than passing in silence, because a capability nobody
+	// checks reads as one that was checked. Declare what the entry's
+	// own Conn can actually do: a plain socket that claims TLS claims
+	// something nothing behind it can honour.
 	TLS       bool
 	MutualTLS bool
 	Bearer    bool
@@ -87,22 +91,95 @@ type Transport struct {
 	Dial func(ctx context.Context, addr string) (Conn, error)
 }
 
+// reporter is the slice of *testing.T this battery uses.
+//
+// It exists so the battery can be run against a recorder in its own
+// tests. A suite that passes everything is worse than no suite —
+// which is this package's own argument about silent skips — so the
+// cases have to be shown catching a transport that misbehaves, and
+// that cannot be done while every failure goes straight to the
+// enclosing test.
+type reporter interface {
+	Helper()
+	Logf(format string, args ...any)
+	Error(args ...any)
+	Errorf(format string, args ...any)
+	Fatal(args ...any)
+	Fatalf(format string, args ...any)
+	// hostT is the real *testing.T an adapter's StartEcho registers
+	// its cleanup with.
+	hostT() *testing.T
+	// run executes one named case.
+	run(name string, f func(reporter))
+}
+
+// liveT reports to a real *testing.T — what every caller outside this
+// package's own tests uses.
+// The reporting methods come from the embedded *testing.T rather than
+// being forwarded one by one: a wrapper per method is a wrapper per
+// method to keep honest, and these have nothing to add.
+type liveT struct{ *testing.T }
+
+func (l liveT) hostT() *testing.T { return l.T }
+
+func (l liveT) run(name string, f func(reporter)) {
+	l.Run(name, func(st *testing.T) { f(liveT{st}) })
+}
+
 // Run executes the whole battery against tr.
 func Run(t *testing.T, tr Transport) {
+	t.Helper()
+	run(liveT{t}, tr)
+}
+
+func run(t reporter, tr Transport) {
 	t.Helper()
 	if tr.StartEcho == nil || tr.Dial == nil {
 		t.Fatalf("conformance: %s must supply StartEcho and Dial", tr.Caps.Name)
 	}
 
-	t.Run("echo round trip", func(t *testing.T) { testEcho(t, tr) })
-	t.Run("empty payload rejected", func(t *testing.T) { testEmptyPayload(t, tr) })
-	t.Run("receive honours the deadline", func(t *testing.T) { testReceiveTimeout(t, tr) })
-	t.Run("receive honours cancellation", func(t *testing.T) { testReceiveCancel(t, tr) })
-	t.Run("receive rejects a non-positive max", func(t *testing.T) { testInvalidMax(t, tr) })
-	t.Run("close is idempotent", func(t *testing.T) { testCloseIdempotent(t, tr) })
-	t.Run("use after close fails", func(t *testing.T) { testUseAfterClose(t, tr) })
-	t.Run("concurrent senders", func(t *testing.T) { testConcurrent(t, tr) })
-	t.Run("no goroutine leak", func(t *testing.T) { testNoGoroutineLeak(t, tr) })
+	t.run("echo round trip", func(t reporter) { testEcho(t, tr) })
+	t.run("empty payload rejected", func(t reporter) { testEmptyPayload(t, tr) })
+	t.run("receive honours the deadline", func(t reporter) { testReceiveTimeout(t, tr) })
+	t.run("receive honours cancellation", func(t reporter) { testReceiveCancel(t, tr) })
+	t.run("receive rejects a non-positive max", func(t reporter) { testInvalidMax(t, tr) })
+	t.run("close is idempotent", func(t reporter) { testCloseIdempotent(t, tr) })
+	t.run("use after close fails", func(t reporter) { testUseAfterClose(t, tr) })
+	t.run("concurrent senders", func(t reporter) { testConcurrent(t, tr) })
+	t.run("no goroutine leak", func(t reporter) { testNoGoroutineLeak(t, tr) })
+
+	// A capability this battery has no case for yet is REPORTED, not
+	// ignored. The package's rule is that a case which does not apply
+	// is skipped with a reason; a capability nothing checks at all is
+	// the same silence one level up, and it is the silence that makes
+	// a green run read as proof of something it never looked at.
+	for _, name := range unexercised(tr.Caps) {
+		capability := name
+		t.run(capability, func(t reporter) {
+			t.Logf("%s declares %s: %v", tr.Caps.Name, capability, ErrSkipped)
+		})
+	}
+}
+
+// unexercised lists the capabilities a transport declares that no case
+// above examines. Kept next to Run so adding a case and forgetting to
+// remove its name here is a compile-time neighbour rather than a
+// discovery months later.
+func unexercised(c Caps) []string {
+	var out []string
+	for _, d := range []struct {
+		on   bool
+		name string
+	}{
+		{c.TLS, "tls"},
+		{c.MutualTLS, "mutual tls"},
+		{c.Bearer, "bearer token"},
+	} {
+		if d.on {
+			out = append(out, d.name)
+		}
+	}
+	return out
 }
 
 // payload builds a message this transport will accept, padded to MinPayload
@@ -115,9 +192,9 @@ func payload(c Caps, seed string) []byte {
 	return b
 }
 
-func dialEcho(t *testing.T, tr Transport) (Conn, func()) {
+func dialEcho(t reporter, tr Transport) (Conn, func()) {
 	t.Helper()
-	addr, stop := tr.StartEcho(t)
+	addr, stop := tr.StartEcho(t.hostT())
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	c, err := tr.Dial(ctx, addr)
@@ -130,7 +207,7 @@ func dialEcho(t *testing.T, tr Transport) (Conn, func()) {
 
 // The baseline every transport owes: what goes in comes back out, byte for
 // byte. A transport that cannot do this is not a transport.
-func testEcho(t *testing.T, tr Transport) {
+func testEcho(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -153,7 +230,7 @@ func testEcho(t *testing.T, tr Transport) {
 // An empty payload is a caller bug, not a zero-length message: every
 // transport in this lib rejects it rather than putting an empty frame on
 // the wire.
-func testEmptyPayload(t *testing.T, tr Transport) {
+func testEmptyPayload(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -166,7 +243,7 @@ func testEmptyPayload(t *testing.T, tr Transport) {
 
 // A read with a deadline and nothing to read must come back, not hang.
 // This is the property the whole 24/7 stall came down to.
-func testReceiveTimeout(t *testing.T, tr Transport) {
+func testReceiveTimeout(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -191,7 +268,7 @@ func testReceiveTimeout(t *testing.T, tr Transport) {
 // The case is separate from the deadline case precisely because passing one
 // says nothing about the other — acp1's Discover honoured its deadline
 // perfectly and ignored cancellation for as long as it existed.
-func testReceiveCancel(t *testing.T, tr Transport) {
+func testReceiveCancel(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -215,7 +292,7 @@ func testReceiveCancel(t *testing.T, tr Transport) {
 
 // A non-positive max is a caller bug: allocating on it would either panic or
 // silently accept anything.
-func testInvalidMax(t *testing.T, tr Transport) {
+func testInvalidMax(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -230,8 +307,8 @@ func testInvalidMax(t *testing.T, tr Transport) {
 
 // Close twice is a normal shutdown race — a supervisor closing a session
 // the reader already tore down — and must not be an error.
-func testCloseIdempotent(t *testing.T, tr Transport) {
-	addr, stop := tr.StartEcho(t)
+func testCloseIdempotent(t reporter, tr Transport) {
+	addr, stop := tr.StartEcho(t.hostT())
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -250,8 +327,8 @@ func testCloseIdempotent(t *testing.T, tr Transport) {
 
 // After Close the session is over and both directions must say so rather
 // than blocking or pretending to work.
-func testUseAfterClose(t *testing.T, tr Transport) {
-	addr, stop := tr.StartEcho(t)
+func testUseAfterClose(t reporter, tr Transport) {
+	addr, stop := tr.StartEcho(t.hostT())
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -273,7 +350,7 @@ func testUseAfterClose(t *testing.T, tr Transport) {
 // Many goroutines sending on one conn must not corrupt each other or trip
 // the race detector. Replies are counted, not matched: on an unordered
 // transport a datagram may legitimately be dropped.
-func testConcurrent(t *testing.T, tr Transport) {
+func testConcurrent(t reporter, tr Transport) {
 	c, done := dialEcho(t, tr)
 	defer done()
 
@@ -318,7 +395,7 @@ func testConcurrent(t *testing.T, tr Transport) {
 
 // A closed session must leave nothing running. A transport that leaks one
 // goroutine per connection is the same 24/7 failure in slow motion.
-func testNoGoroutineLeak(t *testing.T, tr Transport) {
+func testNoGoroutineLeak(t reporter, tr Transport) {
 	settle()
 	before := runtime.NumGoroutine()
 

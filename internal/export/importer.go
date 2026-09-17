@@ -79,6 +79,15 @@ func LoadSnapshot(path string) (*Snapshot, error) {
 	return ReadJSON(f)
 }
 
+// walkNeeded switches on a per-slot pre-walk before any SetValue. No
+// protocol needs it any more: ACP2 + EmberPlus have per-object meta
+// fetch since v0.10.0 and ACP1 gained the same pattern in #421, so
+// SetValue resolves type metadata per row via a single getObject on
+// cache miss (~ms vs walking the slot). Kept as a package var rather
+// than deleted so the walk-failure accounting stays exercised by a
+// test and a future protocol can flip it without re-deriving it.
+var walkNeeded = false
+
 // Apply walks the snapshot and calls SetValue on every writable object
 // whose persisted value differs from the live device value. Read-only
 // objects are always skipped. The live tree is read from the plugin
@@ -95,12 +104,6 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 	// single get_object to catch phantom obj-ids before SetValue, and
 	// rejects enum values outside the options list.
 	validator, _ := plug.(consumer.ValueValidator)
-
-	// No protocol needs a pre-walk on import any more. ACP2 + EmberPlus
-	// have per-object meta fetch since v0.10.0; ACP1 gained the same
-	// pattern in #421. SetValue resolves type metadata per row via a
-	// single getObject on cache miss — cost is ~ms vs walking the slot.
-	walkNeeded := false
 
 	for _, dump := range s.Slots {
 		if walkNeeded {

@@ -30,7 +30,7 @@ func TestClientHooksCountAndTimestampBothWays(t *testing.T) {
 	cfg := p.clientHooks()
 
 	cfg.OnRx(41)
-	cfg.OnTx(7)
+	cfg.OnTx(7, 0)
 
 	snap := p.Metrics().Snapshot()
 	if snap.RxFrames != 1 || snap.RxBytes != 41 {
@@ -50,7 +50,7 @@ func TestClientHooksCountAndTimestampBothWays(t *testing.T) {
 func TestClientHooksToleratesNoSinkOrConnector(t *testing.T) {
 	cfg := (&Plugin{}).clientHooks()
 	cfg.OnRx(10)
-	cfg.OnTx(10)
+	cfg.OnTx(10, 0)
 }
 
 // errTransport fails whichever direction the test asks it to.

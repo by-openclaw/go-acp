@@ -3,13 +3,15 @@ package acp1
 import (
 	"bytes"
 	"context"
-	"dhs/internal/acp1/codec"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
+
+	"dhs/internal/acp1/codec"
+	"dhs/internal/plugin"
 )
 
 // Transport is the minimal send/receive contract the ACP1 client needs.
@@ -48,8 +50,9 @@ type ClientConfig struct {
 	OnRx func(n int)
 
 	// OnTx is the write-side twin, fired after a frame is successfully
-	// written. Optional — nil ⇒ no-op.
-	OnTx func(n int)
+	// written, with the send footprint: encode start to write done — the
+	// connector's own cost of emitting that frame. Optional — nil ⇒ no-op.
+	OnTx func(n int, elapsed time.Duration)
 }
 
 // defaultConfig returns a ClientConfig with all fields populated.
@@ -83,9 +86,7 @@ type Client struct {
 // chosen at random per spec §"ACP Header" p. 11: "A client randomly
 // generates an initial MTID at power-up. An MTID must not be zero."
 func NewClient(tr Transport, logger *slog.Logger, cfg ClientConfig) *Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	// Populate missing fields with defaults.
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {

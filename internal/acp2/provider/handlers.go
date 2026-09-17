@@ -1,9 +1,11 @@
 package acp2
 
 import (
-	"dhs/internal/acp2/codec"
 	"fmt"
 	"log/slog"
+	"time"
+
+	"dhs/internal/acp2/codec"
 )
 
 // Version constants advertised by this provider.
@@ -492,9 +494,13 @@ func (s *session) write(f *codec.AN2Frame) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	_, err = s.conn.Write(raw)
-	// raw already includes the 8-byte AN2 header — count it whole. No
-	// per-handler latency axis here: replies fan out from the same
-	// synchronous dispatch, so byte/frame counters carry the signal.
-	s.met.ObserveCmdTx(uint8(f.Type), len(raw), 0)
+	// raw already includes the 8-byte AN2 header — count it whole. The
+	// footprint is rx -> this reply written: replies fan out from the same
+	// synchronous dispatch, so each one reports the handler time so far.
+	var elapsed time.Duration
+	if at := s.rxAt.Load(); at != 0 {
+		elapsed = time.Since(time.Unix(0, at))
+	}
+	s.met.ObserveCmdTx(uint8(f.Type), len(raw), elapsed)
 	return err
 }

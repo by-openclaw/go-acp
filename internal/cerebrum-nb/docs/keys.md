@@ -369,7 +369,7 @@ form.
 | 12 | `NO_LICENCE_AVAILABLE` | the Cerebrum server has no licences available (British spelling) |
 | 13 | `OK` | the request completed successfully |
 
-> Every NACK code becomes a `compliance.Event` named `cerebrum_nack_<code>`.
+> Every NACK code becomes a `compliance.Note` label `cerebrum_nack_<code>`.
 
 ---
 

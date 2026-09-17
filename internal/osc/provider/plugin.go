@@ -8,7 +8,6 @@ package osc
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +16,7 @@ import (
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/osc/codec"
+	"dhs/internal/plugin"
 	"dhs/internal/provider"
 )
 
@@ -79,10 +79,20 @@ func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provide
 // NewServerV10 / NewServerV11 construct version-bound Servers directly. They
 // do not call Init, so Metrics() lazily creates the connector on first use.
 func NewServerV10(logger *slog.Logger) *Server {
-	return &Server{version: V10, logger: logger}
+	return NewServer(V10, plugin.Deps{Logger: logger})
 }
 func NewServerV11(logger *slog.Logger) *Server {
-	return &Server{version: V11, logger: logger}
+	return NewServer(V11, plugin.Deps{Logger: logger})
+}
+
+// NewServer builds a Server for one OSC version from the injected
+// dependency set — the constructor the CLI uses, so the process owns the
+// transport posture (Deps.Net), the clock and the metrics connector.
+func NewServer(v Version, deps plugin.Deps) *Server {
+	deps = deps.WithDefaults()
+	s := &Server{version: v, logger: deps.Logger}
+	s.Init(deps)
+	return s
 }
 
 // Server implements provider.Provider for one OSC version. It owns an
@@ -143,7 +153,7 @@ func (s *Server) ensureTCPDialer() *tcpDialer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tcp == nil {
-		s.tcp = newTCPDialer(s.framerForVersion(), s.Metrics())
+		s.tcp = newTCPDialer(s.framerForVersion(), s.Metrics(), s.Dial)
 	}
 	return s.tcp
 }

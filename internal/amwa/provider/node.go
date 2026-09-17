@@ -24,9 +24,67 @@ import (
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	"dhs/internal/lldp"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 
 	"dhs/internal/amwa/codec/est"
 )
+
+// Test seams. Each is the real implementation in production and is
+// swapped only by a test that needs a branch no real input reaches
+// deterministically (the same transparent pattern as
+// session/certmgr):
+//
+//   - newDNSSDResponder: the real responder binds the multicast group;
+//     a scripted one lets the announce / suspend / re-announce cycle of
+//     IS-04 §4.2.1 be asserted without a link.
+//   - osHostname: the hostname-lookup failure arms fall back to a
+//     fixed identity, and os.Hostname does not fail on demand.
+//
+// They are read through accessors under a lock rather than as bare
+// variables because a SERVED Node reads them from its own goroutines:
+// the registration client calls back into the announce path when it
+// gains or loses a Registry, and Serve's background IS-09 fetch opens
+// a browser of its own. A test swapping a bare global while another
+// test's Node was still running is a data race, and -race said so on
+// Linux while Windows stayed quiet.
+var (
+	seamMu              sync.RWMutex
+	newDNSSDResponderFn = dnssdsession.NewResponder
+	osHostnameFn        = os.Hostname
+)
+
+func newDNSSDResponder(l *slog.Logger) (dnssdsession.Responder, error) {
+	seamMu.RLock()
+	fn := newDNSSDResponderFn
+	seamMu.RUnlock()
+	return fn(l)
+}
+
+func osHostname() (string, error) {
+	seamMu.RLock()
+	fn := osHostnameFn
+	seamMu.RUnlock()
+	return fn()
+}
+
+// setDNSSDResponder and setOSHostname install a seam and return the
+// previous one, so a test restores what it found.
+func setDNSSDResponder(fn func(*slog.Logger) (dnssdsession.Responder, error)) func(*slog.Logger) (dnssdsession.Responder, error) {
+	seamMu.Lock()
+	defer seamMu.Unlock()
+	prev := newDNSSDResponderFn
+	newDNSSDResponderFn = fn
+	return prev
+}
+
+func setOSHostname(fn func() (string, error)) func() (string, error) {
+	seamMu.Lock()
+	defer seamMu.Unlock()
+	prev := osHostnameFn
+	osHostnameFn = fn
+	return prev
+}
 
 // encodeOne wraps a per-resource codec Encode method into a
 // json.RawMessage suitable for handing back to the HTTP framework.
@@ -93,6 +151,13 @@ type IS04NodeConfig struct {
 	DiscoveryMode string // "mdns" | "static" | "unicast"
 	Priority      int
 	APIVer        string // default "v1.3"
+
+	// Deps is the injected dependency set (transport, clock, metrics) the
+	// Node is built from — the same plugin.Deps every connector takes. A
+	// zero value means the production defaults. The logger comes from the
+	// constructor's parameter for compatibility; Deps.Logger fills in when
+	// that is nil.
+	Deps plugin.Deps
 
 	// UnicastResolver + UnicastDomain drive Registry discovery over
 	// unicast DNS-SD (DiscoveryMode "unicast"): the resolver is the
@@ -225,7 +290,12 @@ type IS04NodeConfig struct {
 type IS04NodeServer struct {
 	logger *slog.Logger
 	cfg    IS04NodeConfig
-	bundle *NodeConfig
+
+	// met counts every Node/Connection API request through the shared
+	// HTTP server; supplied by cfg.Deps, created on first use otherwise.
+	met     *metrics.Connector
+	metOnce sync.Once
+	bundle  *NodeConfig
 	// codec encodes every Node-API response in the wire shape for the
 	// configured api_ver. Without this downcast, GET /x-nmos/node/v1.0/...
 	// would return the canonical (v1.3) JSON shape, which carries fields
@@ -328,10 +398,20 @@ type IS04NodeServer struct {
 
 // NewIS04NodeServer validates the Node bundle and prepares (but does
 // not start) the server.
+// Metrics returns the Node's counter set — every Node API and Connection
+// API request and response, counted by the shared HTTP server — so
+// --metrics-addr scrapes an NMOS Node like any raw-socket provider. Never
+// nil.
+func (s *IS04NodeServer) Metrics() *metrics.Connector {
+	s.metOnce.Do(func() { s.met = s.cfg.Deps.WithDefaults().Metrics })
+	return s.met
+}
+
 func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConfig) (*IS04NodeServer, error) {
 	if logger == nil {
-		logger = slog.Default()
+		logger = cfg.Deps.Logger
 	}
+	logger = plugin.LoggerOrDefault(logger)
 	if bundle == nil {
 		return nil, errors.New("provider/node: nil bundle")
 	}
@@ -491,6 +571,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	}
 
 	srv := httpsession.NewServer(s.logger)
+	srv.Metrics = s.Metrics()
 	// BCP-003-01/-03: TLS serving. A manual pair or EST enrollment
 	// arms the HTTPS/WSS listener; without either the Node speaks
 	// plain HTTP (and never both — the spec forbids mixing).
@@ -573,7 +654,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		// ["http://*.<domain>", "http://*.local"]) that the advertise
 		// IP alone can never match.
 		gateHosts := []string{gateHost}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostname(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		srv.Auth = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: s.logger}
@@ -658,10 +739,11 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		// Mode B with discovery: registries come from a conventional
 		// DNS zone instead of multicast — same client, same failover.
 		uw := NewUnicastRegistryWatcher(s.logger, s.cfg.UnicastResolver, s.cfg.UnicastDomain, s.cfg.APIVer)
-		if err := uw.Run(ctx); err != nil {
-			s.mu.Unlock()
-			return fmt.Errorf("provider/node: start unicast registry watcher: %w", err)
-		}
+		// No error to check: the resolve loop starts in its own
+		// goroutine and every zone failure inside it is a logged
+		// retry, because a DNS server that is down for a minute is
+		// not a reason to refuse to serve the Node API.
+		uw.Run(ctx)
 		rc := NewRegistrationClient(s.logger, "", s.cfg.APIVer, s.bundle)
 		s.attachAuthToken(rc)
 		s.attachTLSTrust(rc)
@@ -842,7 +924,7 @@ func (s *IS04NodeServer) startMDNSAnnounceLocked() error {
 	if s.responder != nil {
 		return nil
 	}
-	resp, err := dnssdsession.NewResponder(s.logger)
+	resp, err := newDNSSDResponder(s.logger)
 	if err != nil {
 		return fmt.Errorf("provider/node: open mDNS responder: %w", err)
 	}
@@ -1194,7 +1276,7 @@ func tlsIdentities(advertiseHost string) []string {
 			out = append(out, h)
 		}
 	}
-	if hn, err := os.Hostname(); err == nil && hn != "" {
+	if hn, err := osHostname(); err == nil && hn != "" {
 		out = append(out, hn, hn+".local")
 	}
 	if len(out) == 0 {

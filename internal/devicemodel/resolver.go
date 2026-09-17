@@ -33,6 +33,17 @@ var (
 	ErrInvalid  = errors.New("dmlib: invalid fingerprint")
 )
 
+// openFile and closeFile are os.Open and (*os.File).Close, indirected
+// through package vars so a test can drive readSlots' open-failure
+// branch (the entry was just listed by ReadDir, so only a permission
+// or handle failure reaches it) and writeSlot's close-failure branch.
+// Neither can be provoked portably without privileges — the same
+// testability seam amwa/consumer uses for marshalJSON.
+var (
+	openFile  = os.Open
+	closeFile = (*os.File).Close
+)
+
 // Fingerprint identifies a product schema. (Model, SwRev, Proto) is the
 // lookup key; Vendor and Product locate the on-disk directory but are not
 // part of the equality check (callers may resolve "RRS18@1601 acp1"
@@ -253,10 +264,10 @@ func (r *fileResolver) Persist(s *Schema) error {
 	// Save product.yaml if the schema carries metadata. The Product
 	// struct's Model + SwRev are the trigger; both must be non-empty.
 	if s.Product.Model != "" && s.Product.SwRev != "" {
-		pyPath, perr := r.productYAMLPath(s.Fingerprint)
-		if perr != nil {
-			return perr
-		}
+		// product.yaml sits beside the per-protocol dir, under the same
+		// <model>-<swrev> directory protoDir just validated and built —
+		// derived from it rather than re-validating the same fingerprint.
+		pyPath := filepath.Join(filepath.Dir(dir), "product.yaml")
 		if err := SaveProductYAML(pyPath, &s.Product, &s.Identity, &s.Walk, s.SupportedProtocols); err != nil {
 			return err
 		}
@@ -393,7 +404,7 @@ func readSlots(dir string) (map[int]*export.Snapshot, error) {
 		if _, err := fmt.Sscanf(name, "slot_%d.json", &slot); err != nil {
 			continue
 		}
-		f, err := os.Open(filepath.Join(dir, name))
+		f, err := openFile(filepath.Join(dir, name))
 		if err != nil {
 			return nil, fmt.Errorf("dmlib: open %s: %w", name, err)
 		}
@@ -420,7 +431,7 @@ func writeSlot(dir string, slot int, snap *export.Snapshot) error {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("dmlib: write %s: %w", tmp, err)
 	}
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("dmlib: close %s: %w", tmp, err)
 	}

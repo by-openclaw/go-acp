@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/clock"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -36,6 +38,9 @@ type RawEventFunc func(msg *codec.Message)
 type Listener struct {
 	logger *slog.Logger
 	conn   *transport.UDPListener
+	// clk paces the transient-error retry; the owning plugin sets it from
+	// its injected clock (SetClock), nil = system clock.
+	clk clock.Clock
 
 	mu   sync.Mutex
 	subs []subscription
@@ -58,13 +63,23 @@ type subscription struct {
 // SubHandle is an opaque unsubscribe handle.
 type SubHandle int
 
+// SetClock injects the clock that paces the receive-retry wait. Call before
+// Start; the owning plugin passes its Base clock so a test drives time.
+func (l *Listener) SetClock(c clock.Clock) { l.clk = c }
+
+// clock returns the injected clock, or the system clock when none was set.
+func (l *Listener) clock() clock.Clock {
+	if l.clk == nil {
+		return clock.System()
+	}
+	return l.clk
+}
+
 // NewListener binds a listening UDP socket to the given port. Typical
 // usage: port = acp1.DefaultPort (2071). The listener is not running
 // until Start is called.
 func NewListener(logger *slog.Logger, port int) (*Listener, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	conn, err := transport.ListenUDP(context.Background(), port)
 	if err != nil {
 		return nil, err
@@ -175,7 +190,7 @@ func (l *Listener) loop(ctx context.Context) {
 			// when cancellation landed inside the 10 ms window — a
 			// scheduling-dependent branch, #694 coverage class.)
 			l.logger.Debug("acp1 listener receive error (retrying)", "err", err)
-			time.Sleep(10 * time.Millisecond)
+			_ = l.clock().Sleep(ctx, 10*time.Millisecond)
 			continue
 		}
 

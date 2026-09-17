@@ -8,6 +8,7 @@ package metrics
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -193,14 +194,11 @@ func labelsFor(m map[string]string) (names, values []string) {
 		names = append(names, k)
 	}
 	// Sort for deterministic ordering (Prom expects consistent order
-	// across Collect calls within a scrape).
-	for i := 0; i < len(names); i++ {
-		for j := i + 1; j < len(names); j++ {
-			if names[i] > names[j] {
-				names[i], names[j] = names[j], names[i]
-			}
-		}
-	}
+	// across Collect calls within a scrape). sort.Strings rather than a
+	// hand-written swap loop: the loop's swap only ran when map iteration
+	// happened to yield keys out of order, so whether it was covered was a
+	// coin toss per run and the 100% floor failed at random.
+	sort.Strings(names)
 	values = make([]string, len(names))
 	for i, n := range names {
 		values[i] = m[n]

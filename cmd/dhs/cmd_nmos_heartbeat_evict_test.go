@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/provider"
+	"dhs/internal/plugin"
 	registryslot "dhs/internal/registry"
 
 	_ "dhs/internal/amwa/registry" // registry plugin registration
@@ -75,7 +76,7 @@ func TestHeartbeatCadenceVsRegistryGC(t *testing.T) {
 		regCtx, regCancel := context.WithCancel(context.Background())
 		defer regCancel()
 		go func() {
-			_ = f.New(logger).Serve(regCtx, registryslot.ServeOptions{
+			_ = f.New(plugin.Deps{Logger: logger}).Serve(regCtx, registryslot.ServeOptions{
 				BindAddrs:        []string{fmt.Sprintf("127.0.0.1:%d", port)},
 				DiscoveryMode:    "static",
 				GCInterval:       100 * time.Millisecond,

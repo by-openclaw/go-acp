@@ -18,6 +18,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -409,5 +411,32 @@ func TestNetTLSServerBadClientCAFailsAtListen(t *testing.T) {
 	}})
 	if _, err := n.Listen(context.Background(), "tcp", "127.0.0.1:0"); err == nil {
 		t.Error("an unreadable client-CA file must fail the listen")
+	}
+}
+
+// The Control hook's own dispatch can fail (RawConn.Control on a dead fd),
+// distinct from the setsockopt inside it failing; both must fail the bind.
+func TestNetControlDispatchFailureFailsTheBind(t *testing.T) {
+	boom := errors.New("fd already closed")
+	orig := udpRawControl
+	udpRawControl = func(syscall.RawConn, func(uintptr)) error { return boom }
+	t.Cleanup(func() { udpRawControl = orig })
+
+	n := New(Config{ReuseAddr: true})
+	if _, err := n.ListenPacket(context.Background(), "udp4", "127.0.0.1:0"); !errors.Is(err, ErrListenFailed) {
+		t.Errorf("ListenPacket = %v, want ErrListenFailed", err)
+	}
+}
+
+// A group that resolves but cannot be joined — here ":0", which names no
+// address at all — fails at the join rather than at the resolve, and says so.
+func TestNetMulticastJoinFailureIsTyped(t *testing.T) {
+	n := New(Config{Multicast: true})
+	_, err := n.ListenPacket(context.Background(), "udp4", ":0")
+	if err == nil {
+		t.Fatal("a multicast bind with no group address must be refused")
+	}
+	if !errors.Is(err, ErrListenFailed) || !strings.Contains(err.Error(), "join") {
+		t.Errorf("err = %v, want ErrListenFailed naming the join", err)
 	}
 }

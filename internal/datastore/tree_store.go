@@ -24,6 +24,18 @@ import (
 	"dhs/internal/export/canonical"
 )
 
+// openFile and closeFile are os.Open and (*os.File).Close, indirected
+// through package vars so a test can drive the open-failure and
+// close-failure branches of the readers and atomic writers below. A
+// non-ENOENT open failure and a Close failure cannot be provoked
+// portably (Windows reports a file-as-directory as "path not found",
+// which os.IsNotExist accepts) — the same testability seam
+// amwa/consumer uses for marshalJSON.
+var (
+	openFile  = os.Open
+	closeFile = (*os.File).Close
+)
+
 // TreeStore manages cached tree files on disk.
 type TreeStore struct {
 	baseDir string
@@ -68,7 +80,7 @@ func NewTreeStoreInProjectCache() (*TreeStore, error) {
 // layout — keeps artifacts OUT of bin/), else the binary's own dir.
 // .cache/, snapshots/ and captures/ are siblings under this root.
 func ProjectRoot() (string, error) {
-	exe, err := os.Executable()
+	exe, err := osExecutable()
 	if err != nil {
 		return "", fmt.Errorf("storage: locate binary: %w", err)
 	}
@@ -148,7 +160,7 @@ func (s *TreeStore) Save(ip, proto string, slot int, objs []consumer.Object) err
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: write: %w", err)
 	}
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: close: %w", err)
 	}
@@ -164,7 +176,7 @@ func (s *TreeStore) Save(ip, proto string, slot int, objs []consumer.Object) err
 // Returns nil, nil if the file does not exist (cache miss).
 func (s *TreeStore) Load(ip string, slot int) (*export.Snapshot, error) {
 	path := s.slotPath(ip, slot)
-	f, err := os.Open(path)
+	f, err := openFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -361,7 +373,7 @@ func (s *TreeStore) writeDMToPath(proto, identity string, dm DM) error {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: encode: %w", err)
 	}
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: close: %w", err)
 	}
@@ -412,7 +424,7 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, objs []consumer.Objec
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: encode: %w", err)
 	}
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("storage: close: %w", err)
 	}
@@ -447,13 +459,13 @@ func (s *TreeStore) LoadByIdentity(proto, identity string) (*export.Snapshot, er
 		return nil, fmt.Errorf("storage: LoadByIdentity: empty identity")
 	}
 	path := s.identityPath(proto, identity)
-	f, err := os.Open(path)
+	f, err := openFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("storage: open %s: %w", path, err)
 		}
 		legacy := s.legacyIdentityPath(identity)
-		f, err = os.Open(legacy)
+		f, err = openFile(legacy)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil, nil

@@ -33,6 +33,7 @@ import (
 	"dhs/internal/amwa/codec/spec"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/plugin"
 )
 
 // IS09FetchOptions configures a single Fetch call.
@@ -40,6 +41,11 @@ type IS09FetchOptions struct {
 	// Logger to emit progress messages (mDNS bind, selection
 	// outcome). May be nil for quiet mode.
 	Logger *slog.Logger
+
+	// Deps is the injected dependency set (transport, clock, metrics), the
+	// same plugin.Deps every connector takes; zero = defaults. Its metrics
+	// connector counts the fetch when no HTTPClient is supplied.
+	Deps plugin.Deps
 
 	// APIVer is the IS-09 wire version requested. Default v1.0.
 	APIVer string
@@ -69,6 +75,21 @@ type IS09FetchOptions struct {
 	Discovered []dnssdcodec.Instance
 }
 
+// The three calls below reach the network — an mDNS socket, a DNS
+// resolver, the platform entropy source — and each is behind a package
+// variable so this package's own tests can drive the arms that follow
+// them without one. Production never reassigns them.
+var (
+	newBrowser     = dnssdsession.NewBrowser
+	resolveUnicast = dnssdsession.ResolveUnicast
+	randRead       = rand.Read
+)
+
+// fetchTimeout bounds a /global GET when the caller set no deadline of
+// their own. A System API that accepts the connection and then says
+// nothing must not hold a Node's bootstrap open forever.
+var fetchTimeout = 5 * time.Second
+
 // ErrNoInstances signals that no usable instance survived selection.
 var ErrNoInstances = fmt.Errorf("nmos/system: no instance matched api_proto/api_ver filters")
 
@@ -92,6 +113,7 @@ func Fetch(ctx context.Context, opts IS09FetchOptions) (*FetchResult, error) {
 	client := opts.HTTPClient
 	if client == nil {
 		client = httpsession.NewClient()
+		client.Metrics = opts.Deps.WithDefaults().Metrics
 	}
 
 	// Direct override — skip discovery entirely.
@@ -209,7 +231,7 @@ func fetchFromInstance(ctx context.Context, client *httpsession.Client, ins dnss
 	// Apply a deadline if the caller didn't already set one.
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+		ctx, cancel = context.WithTimeout(ctx, fetchTimeout)
 		defer cancel()
 	}
 
@@ -253,7 +275,7 @@ func fetchFromInstance(ctx context.Context, client *httpsession.Client, ins dnss
 
 // DiscoverMDNS browses _nmos-system._tcp on the local link.
 func DiscoverMDNS(ctx context.Context, timeout time.Duration, logger *slog.Logger) ([]dnssdcodec.Instance, error) {
-	br, err := dnssdsession.NewBrowser(logger)
+	br, err := newBrowser(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +305,7 @@ func DiscoverUnicast(ctx context.Context, resolver, domain string, timeout time.
 	if domain == "" {
 		domain = dnssdcodec.DefaultDomain
 	}
-	return dnssdsession.ResolveUnicast(ctx, resolver, dnssdcodec.ServiceSystem, domain, timeout)
+	return resolveUnicast(ctx, resolver, dnssdcodec.ServiceSystem, domain, timeout)
 }
 
 // parseDirect splits "host:port" into its components and validates the
@@ -308,7 +330,7 @@ func secureRandIndex(n int) int {
 		return 0
 	}
 	var buf [8]byte
-	if _, err := rand.Read(buf[:]); err != nil {
+	if _, err := randRead(buf[:]); err != nil {
 		return 0
 	}
 	v := binary.BigEndian.Uint64(buf[:])

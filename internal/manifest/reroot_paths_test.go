@@ -103,6 +103,35 @@ func TestRerootPaths_AlreadyPrefixed(t *testing.T) {
 	}
 }
 
+// headerlessElement is a canonical.Element whose Common() reports no
+// header -- the one shape rerootPaths must skip rather than
+// dereference. None of the canonical types behave this way (Header is
+// embedded by value), so a test type is the only honest producer.
+type headerlessElement struct{}
+
+func (headerlessElement) Kind() string              { return "headerless" }
+func (headerlessElement) Common() *canonical.Header { return nil }
+
+// TestRerootPaths_DefensiveGuards pins the malformed-input behaviour: a
+// nil element, an element without a header, and a node whose Path is
+// empty are all left untouched (and do not panic) so one broken DM
+// entry cannot take the whole export down.
+func TestRerootPaths_DefensiveGuards(t *testing.T) {
+	rerootPaths(nil, "dev")
+	rerootPaths(headerlessElement{}, "dev")
+
+	n := &canonical.Node{
+		Header: canonical.Header{
+			Identifier: "x", Path: "", OID: "1",
+			Children: []canonical.Element{headerlessElement{}},
+		},
+	}
+	rerootPaths(n, "dev")
+	if n.Path != "" {
+		t.Errorf("empty Path must stay empty, got %q", n.Path)
+	}
+}
+
 // TestRerootPaths_EmptyPrefixIsNoOp guards against accidental
 // rerooting when BuildExport's rootIdent computation degrades to "".
 func TestRerootPaths_EmptyPrefixIsNoOp(t *testing.T) {

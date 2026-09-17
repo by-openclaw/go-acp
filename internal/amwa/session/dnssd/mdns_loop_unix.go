@@ -7,6 +7,13 @@ import (
 	"syscall"
 )
 
+// syscallConn is (*net.UDPConn).SyscallConn behind a package var, the
+// same seam the Windows twin carries: SyscallConn only fails on a socket
+// that is already torn down, and such a socket also fails rc.Control
+// first, so the error arm is unreachable from a live connection.
+// Never reassigned in production.
+var syscallConn = func(c *net.UDPConn) (syscall.RawConn, error) { return c.SyscallConn() }
+
 // setMulticastLoopback re-enables IP_MULTICAST_LOOP on a socket created
 // by net.ListenMulticastUDP, which Go's stdlib disables by default. With
 // loopback off, two processes on the same host bound to the same
@@ -14,7 +21,7 @@ import (
 // AMWA NMOS discovery (a Node and a Controller running on one machine).
 // RFC 6762 §11 expects link-local loopback to work.
 func setMulticastLoopback(c *net.UDPConn, on bool) error {
-	rc, err := c.SyscallConn()
+	rc, err := syscallConn(c)
 	if err != nil {
 		return err
 	}

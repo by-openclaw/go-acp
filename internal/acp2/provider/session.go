@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"dhs/internal/acp2/codec"
 	"dhs/internal/metrics"
@@ -27,6 +29,10 @@ type session struct {
 	// met is the server's connector, captured once so the rx path never
 	// takes Base's lock per frame.
 	met *metrics.Connector
+
+	// rxAt is when the frame being dispatched arrived (UnixNano); every
+	// reply written while handling it reports rx->reply as its footprint.
+	rxAt atomic.Int64
 
 	// idle reaps a client that has gone silent, so the provider stops
 	// holding a goroutine and a socket for every consumer that vanished
@@ -85,6 +91,7 @@ func (s *session) Run(_ context.Context) {
 		// Attributed by AN2 frame Type; the 8-byte header is not counted
 		// in Payload, so add it back for a true on-wire byte count.
 		s.met.ObserveCmdRx(uint8(frame.Type), len(frame.Payload)+an2HeaderBytes)
+		s.rxAt.Store(time.Now().UnixNano())
 		s.handleFrame(frame)
 	}
 }

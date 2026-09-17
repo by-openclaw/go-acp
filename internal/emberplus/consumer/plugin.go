@@ -16,7 +16,6 @@ package emberplus
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"math"
@@ -29,6 +28,7 @@ import (
 	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
+	"dhs/internal/plugin"
 )
 
 func init() {
@@ -664,7 +664,9 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 				lastCount = count
 				settle.Reset(settleIvl)
 			}
-			time.Sleep(pollIvl)
+			// The injected clock, so a test drives the settle loop instead
+			// of sleeping through it; a cancelled ctx is handled at loop top.
+			_ = p.Clock().Sleep(ctx, pollIvl)
 		}
 	}
 done:

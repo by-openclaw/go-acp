@@ -217,7 +217,7 @@ func TestHintCountsMeasureCoverage(t *testing.T) {
 // "RACK:1:video" into a group called "RACK".
 func TestHintSplitsOnLastColon(t *testing.T) {
 	acc := newGroupAccumulator()
-	acc.add("RACK:1:Video 1", "dev", "senders")
+	acc.add("RACK:1:Video 1", &Harvest{Target: "dev"}, "senders")
 	rows := acc.rows()
 	if len(rows) != 1 {
 		t.Fatalf("want 1 group, got %v", rows)
@@ -234,9 +234,9 @@ func TestHintSplitsOnLastColon(t *testing.T) {
 // must not create a group keyed on the whole string.
 func TestMalformedHintsIgnored(t *testing.T) {
 	acc := newGroupAccumulator()
-	acc.add("no-colon-here", "dev", "senders")
-	acc.add(":only-a-role", "dev", "senders")
-	acc.add("", "dev", "senders")
+	acc.add("no-colon-here", &Harvest{Target: "dev"}, "senders")
+	acc.add(":only-a-role", &Harvest{Target: "dev"}, "senders")
+	acc.add("", &Harvest{Target: "dev"}, "senders")
 	if rows := acc.rows(); len(rows) != 0 {
 		t.Errorf("malformed hints produced groups: %v", rows)
 	}
@@ -305,5 +305,41 @@ func TestRoleOrdering(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("sortedRoles = %v, want %v", got, want)
 		}
+	}
+}
+
+// TestReceiverHintsCountTowardTheGroup: a group is senders AND
+// receivers; a receiver carrying the hint is counted on its own side.
+func TestReceiverHintsCountTowardTheGroup(t *testing.T) {
+	h := mk("node", map[string]map[string]map[string]any{
+		"node": {"v1.3": {
+			"senders":   []any{hinted("44444444-4444-4444-8444-444444444444", "CAM-01:Video 1")},
+			"receivers": []any{hinted("88888888-8888-4888-8888-888888888888", "CAM-01:Audio 1")},
+		}},
+	})
+	rows, _ := checkPlantGroups([]*Harvest{h})
+	if len(rows) != 1 || rows[0].Senders != 1 || rows[0].Receivers != 1 {
+		t.Fatalf("rows = %+v, want one group with 1 sender and 1 receiver", rows)
+	}
+}
+
+// TestSingleRoleFindingNamesThreeExamples: the per-device single-role
+// finding names three groups and counts the rest.
+func TestSingleRoleFindingNamesThreeExamples(t *testing.T) {
+	h := mk("node", map[string]map[string]map[string]any{
+		"node": {"v1.3": {
+			"senders": []any{
+				hinted("44444444-4444-4444-8444-444444444444", "ARX-01:s2110-30"),
+				hinted("55555555-5555-4555-8555-555555555555", "ARX-02:s2110-30"),
+				hinted("66666666-6666-4666-8666-666666666666", "ARX-03:s2110-30"),
+				hinted("77777777-7777-4777-8777-777777777777", "ARX-04:s2110-30"),
+			},
+			"receivers": []any{},
+		}},
+	})
+	_, findings := checkPlantGroups([]*Harvest{h})
+	f := has(t, findings, "NMOS-BCP002-GROUP-SINGLE-ROLE")
+	if !strings.Contains(f.Detail, "ARX-01, ARX-02, ARX-03 (+1 more)") {
+		t.Errorf("examples should be capped at three with a count: %q", f.Detail)
 	}
 }

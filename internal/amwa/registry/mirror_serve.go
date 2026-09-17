@@ -27,16 +27,13 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	stdhttp "net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
 
-	"log/slog"
 	"strconv"
 
 	codec "dhs/internal/amwa/codec/dnssd"
@@ -130,6 +127,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	store := NewStore()
 	apiVers := pickAPIVersions("")
 	srv := httpsession.NewServer(m.logger)
+	srv.Metrics = m.Metrics()
 	// BCP-003-02 gate on the SERVED face only (issue #946) — the same
 	// KeyCache + AuthGate wiring Registry.Serve arms with --auth-url.
 	// The route table is covered via srv.Auth; the dispatcher branches
@@ -143,7 +141,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 		}
 		go kc.Run(ctx)
 		gateHosts := []string{advertiseHostOnly(advertise)}
-		if hn, err := os.Hostname(); err == nil && hn != "" {
+		if hn, err := osHostnameFn(); err == nil && hn != "" {
 			gateHosts = append(gateHosts, hn, hn+".local")
 		}
 		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: m.logger}
@@ -237,17 +235,7 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	m.mu.Unlock()
 
 	httpSrv := &stdhttp.Server{Handler: dispatcher, ReadHeaderTimeout: 5 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = httpSrv.Shutdown(shutCtx)
-	}()
-	go func() {
-		if err := httpSrv.Serve(ln); err != nil && err != stdhttp.ErrServerClosed {
-			m.logger.Warn("registry/mirror: served query face failed", "addr", ln.Addr().String(), "err", err)
-		}
-	}()
+	go m.serveUntil(ctx, httpSrv, ln, "served query face")
 	// DNS-SD announce of the served Query face (AMWA IS-04-02 test_02):
 	// only with an operator-provided advertise identity — the
 	// bound-address fallbacks (loopback binds, bare OS hostnames) are
@@ -262,12 +250,12 @@ func (m *Mirror) startServe(ctx context.Context) error {
 	return nil
 }
 
-// newServeResponder is the mDNS seam — production uses the same
-// session/dnssd backend detection Registry.Serve does; unit tests
-// inject a recording fake (same seam pattern as osHostnameFn).
-var newServeResponder = func(logger *slog.Logger) (session.Responder, error) {
-	return session.NewResponder(logger)
-}
+// newServeResponder is the package's one mDNS seam: both the
+// Registry's own announce and the mirror's served Query face open
+// their responder through it, so a unit test injects a recording fake
+// for either without joining 224.0.0.251 (same seam pattern as
+// osHostnameFn).
+var newServeResponder = session.NewResponder
 
 // announceServe announces the served Query face as _nmos-query._tcp
 // via the same Responder machinery Registry.Serve uses and keeps the
@@ -460,12 +448,11 @@ func (m *Mirror) applyServeRow(topic, ver string, row is04.GrainDataRow, allowRe
 			}
 		}
 	case is04.ChangeRemoved:
-		// ErrNotFound is fine: a node delete cascades in the store, so
-		// the source's follow-up child-removal rows find nothing left.
-		if err := m.serve.store.DeleteResource(t, row.Path); err != nil && !errors.Is(err, ErrNotFound) {
-			m.logger.Warn("registry/mirror: serve: store delete failed",
-				"topic", topic, "id", row.Path, "err", err)
-		}
+		// The only refusal DeleteResource can give here is ErrNotFound
+		// — the type came from singularFromPlural above — and that one
+		// is expected: a node delete cascades in the store, so the
+		// source's follow-up child-removal rows find nothing left.
+		_ = m.serve.store.DeleteResource(t, row.Path)
 	}
 }
 
@@ -523,10 +510,9 @@ func (m *Mirror) serveReplay() {
 	}
 	m.mu.Unlock()
 	for _, topic := range mirrorTopics {
-		t, ok := singularFromPlural(topic)
-		if !ok {
-			continue
-		}
+		// Every mirrored topic is an IS-04 collection by construction,
+		// so the lookup cannot miss.
+		t, _ := singularFromPlural(topic)
 		for _, vd := range snapshot[topic] {
 			env := &is04.RegistrationRequest{Type: t, Data: vd.doc}
 			// Re-stamp at the minor the row originally arrived on —

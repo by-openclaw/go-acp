@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"strings"
@@ -34,6 +35,37 @@ import (
 
 	"github.com/godbus/dbus/v5"
 )
+
+// avahiBus is the slice of a DBus connection this backend uses: address
+// an object, ask the bus to route a signal, and hand over the channel it
+// routes into. *dbus.Conn satisfies it.
+//
+// It exists so the daemon can be scripted. Everything below — which
+// ItemNew signals become Instances, which AddService failures free the
+// group they half-built, whether a goodbye is emitted after the daemon
+// disowns the records — is behaviour we assert against AMWA tests and
+// against a live Cerebrum, and none of it is reachable without a running
+// avahi-daemon otherwise. dbus.BusObject is already an interface and
+// dbus.Call is a plain struct, so a scripted bus is a small fake rather
+// than a mock framework.
+type avahiBus interface {
+	Object(dest string, path dbus.ObjectPath) dbus.BusObject
+	AddMatchSignal(options ...dbus.MatchOption) error
+	Signal(ch chan<- *dbus.Signal)
+}
+
+// systemBus opens the system bus. A package variable so a test can hand
+// back a scripted bus, or refuse to open one. Production never reassigns
+// it; both readers are constructor-time and synchronous.
+var systemBus = func() (avahiBus, error) { return dbus.SystemBus() }
+
+// dialGoodbye opens the send-only socket Close writes RFC 6762 §10.1
+// goodbyes to. Separate from the responder so a test can watch the
+// packets, or refuse the socket. See Close for why we send these
+// ourselves rather than letting Avahi do it.
+var dialGoodbye = func() (io.WriteCloser, error) {
+	return net.DialUDP("udp4", nil, &mdnsIPv4)
+}
 
 const (
 	avahiBusName     = "org.freedesktop.Avahi"
@@ -54,7 +86,7 @@ const (
 // tryDaemonBrowser — Linux: probe avahi-daemon via DBus; pick it if
 // reachable, signal a fallback otherwise.
 func tryDaemonBrowser(logger *slog.Logger) (Browser, bool) {
-	conn, err := dbus.SystemBus()
+	conn, err := systemBus()
 	if err != nil {
 		logger.Debug("dnssd: no system DBus — skipping Avahi", "err", err)
 		return nil, false
@@ -69,7 +101,7 @@ func tryDaemonBrowser(logger *slog.Logger) (Browser, bool) {
 
 // tryDaemonResponder mirrors tryDaemonBrowser.
 func tryDaemonResponder(logger *slog.Logger) (Responder, bool) {
-	conn, err := dbus.SystemBus()
+	conn, err := systemBus()
 	if err != nil {
 		logger.Debug("dnssd: no system DBus — skipping Avahi", "err", err)
 		return nil, false
@@ -84,7 +116,7 @@ func tryDaemonResponder(logger *slog.Logger) (Responder, bool) {
 
 // pingAvahi returns true when the Avahi server bus name is owned, which
 // means the daemon is up and accepting calls.
-func pingAvahi(conn *dbus.Conn) bool {
+func pingAvahi(conn avahiBus) bool {
 	var version string
 	obj := conn.Object(avahiBusName, dbus.ObjectPath(avahiServerPath))
 	call := obj.Call(avahiServerIface+".GetVersionString", 0)
@@ -103,7 +135,7 @@ func pingAvahi(conn *dbus.Conn) bool {
 // resolved [dnssd.Instance].
 type avahiBrowser struct {
 	logger *slog.Logger
-	conn   *dbus.Conn
+	conn   avahiBus
 
 	mu     sync.Mutex
 	closed bool
@@ -114,9 +146,15 @@ type avahiBrowseSub struct {
 	browserPath dbus.ObjectPath
 	out         chan dnssd.Instance
 	cancel      context.CancelFunc
+	// done is closed by dispatch when it has stopped reading signals.
+	// Teardown waits on it before closing out: cancelling a browse
+	// while an instance is mid-handover would otherwise close the
+	// channel underneath the send, which is a race the detector sees
+	// and a "send on closed channel" panic the Node does not survive.
+	done chan struct{}
 }
 
-func newAvahiBrowser(logger *slog.Logger, conn *dbus.Conn) *avahiBrowser {
+func newAvahiBrowser(logger *slog.Logger, conn avahiBus) *avahiBrowser {
 	return &avahiBrowser{logger: logger, conn: conn}
 }
 
@@ -161,7 +199,10 @@ func (b *avahiBrowser) Browse(ctx context.Context, service string) (<-chan dnssd
 	signals := make(chan *dbus.Signal, 32)
 	b.conn.Signal(signals)
 
-	sub := &avahiBrowseSub{browserPath: browserPath, out: out, cancel: cancel}
+	sub := &avahiBrowseSub{
+		browserPath: browserPath, out: out, cancel: cancel,
+		done: make(chan struct{}),
+	}
 	b.mu.Lock()
 	b.subs = append(b.subs, sub)
 	b.mu.Unlock()
@@ -169,9 +210,10 @@ func (b *avahiBrowser) Browse(ctx context.Context, service string) (<-chan dnssd
 	// 3. Goroutine: dispatch ItemNew signals → resolve → emit Instances.
 	go b.dispatch(subCtx, sub, signals, service, domain)
 
-	// 4. Tear down on context cancel.
+	// 4. Tear down on context cancel, once dispatch has let go of out.
 	go func() {
 		<-subCtx.Done()
+		<-sub.done
 		b.removeSub(sub)
 		close(out)
 		// Best-effort free the browser server-side.
@@ -186,6 +228,8 @@ func (b *avahiBrowser) dispatch(
 	ctx context.Context, sub *avahiBrowseSub, signals chan *dbus.Signal,
 	service, domain string,
 ) {
+	// Whoever closes out waits for this; see avahiBrowseSub.done.
+	defer close(sub.done)
 	for {
 		select {
 		case <-ctx.Done():
@@ -323,7 +367,7 @@ func (b *avahiBrowser) Close() error {
 // probe-then-claim conflict resolution (RFC 6762 §8) automatically.
 type avahiResponder struct {
 	logger *slog.Logger
-	conn   *dbus.Conn
+	conn   avahiBus
 
 	mu     sync.Mutex
 	closed bool
@@ -387,14 +431,14 @@ func announceIfaceIndexes(ifs []net.Interface) []int32 {
 // from announceIfaceIndexes so the filter stays a pure function under
 // unit test while this thin wrapper owns the syscall.
 func announceIfaces() []int32 {
-	ifs, err := net.Interfaces()
+	ifs, err := netInterfaces()
 	if err != nil {
 		return nil
 	}
 	return announceIfaceIndexes(ifs)
 }
 
-func newAvahiResponder(logger *slog.Logger, conn *dbus.Conn) *avahiResponder {
+func newAvahiResponder(logger *slog.Logger, conn avahiBus) *avahiResponder {
 	return &avahiResponder{logger: logger, conn: conn, groups: map[string]avahiGroup{}}
 }
 
@@ -571,7 +615,7 @@ func (r *avahiResponder) Close() error {
 	// Step 2: emit explicit goodbye via an ephemeral send-only UDP
 	// socket. DialUDP binds a random local port, NOT 5353 — Avahi
 	// keeps owning 5353 for receive without conflict.
-	c, err := net.DialUDP("udp4", nil, &mdnsIPv4)
+	c, err := dialGoodbye()
 	if err != nil {
 		if r.logger != nil {
 			r.logger.Warn("dnssd: open goodbye socket failed", "err", err)

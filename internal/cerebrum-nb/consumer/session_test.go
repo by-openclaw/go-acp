@@ -55,10 +55,10 @@ func TestSplitURLHostPort(t *testing.T) {
 
 func TestProfile_Counts(t *testing.T) {
 	p := &Profile{}
-	p.Event("a")
-	p.Event("a")
-	p.Event("b")
-	c := p.Counts()
+	p.Note("a")
+	p.Note("a")
+	p.Note("b")
+	c := p.Snapshot()
 	if c["a"] != 2 || c["b"] != 1 {
 		t.Errorf("counts: got %+v want a=2 b=1", c)
 	}

@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"testing"
 
 	"dhs/internal/acp2/codec"
-	"dhs/internal/acp2/consumer"
+	acp2 "dhs/internal/acp2/consumer"
 )
 
 // Run dispatches the scenario to the right per-protocol runner and
@@ -20,7 +19,17 @@ import (
 //	t.Run(scenarioName, func(t *testing.T) { scenario.Run(t, s) })
 //
 // Any mismatch is reported with t.Errorf or t.Fatalf as appropriate.
-func Run(t *testing.T, s *Scenario) {
+// T is the slice of testing.TB the runner needs. *testing.T satisfies it;
+// a recording fake lets the runner's own failure and skip paths be tested
+// without a test that fails on purpose.
+type T interface {
+	Helper()
+	Fatalf(format string, args ...any)
+	Errorf(format string, args ...any)
+	Skipf(format string, args ...any)
+}
+
+func Run(t T, s *Scenario) {
 	t.Helper()
 	switch s.Protocol {
 	case "acp2":
@@ -49,7 +58,7 @@ type captureRecord struct {
 // filenames) and returns every line as a parsed captureRecord. Skips
 // a fixture file that's still a Git LFS pointer rather than failing
 // hard — CI without git-lfs installed runs successfully.
-func readCapture(t *testing.T, wirePath string) []captureRecord {
+func readCapture(t T, wirePath string) []captureRecord {
 	t.Helper()
 	f, err := os.Open(wirePath)
 	if err != nil {
@@ -80,7 +89,7 @@ func readCapture(t *testing.T, wirePath string) []captureRecord {
 // runACP2 is the protocol-specific runner. Walks inbound frames,
 // decodes the first ACP2 error reply, asserts the status code + the
 // compliance-event label derived via acp2.EventForErrStatus.
-func runACP2(t *testing.T, s *Scenario) {
+func runACP2(t T, s *Scenario) {
 	t.Helper()
 	wirePath, err := s.ResolveWirePath()
 	if err != nil {

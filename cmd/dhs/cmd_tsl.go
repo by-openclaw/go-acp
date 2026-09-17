@@ -36,6 +36,10 @@ func runTSLConsumer(ctx context.Context, proto string, args []string) error {
 		printTSLConsumerHelp(os.Stdout, proto)
 		return nil
 	}
+	// Shared log flags (--log-format / --log / --syslog-addr / --log-level)
+	// are stripped here and read back by consumerLogger (epic #987).
+	lf, args := stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
@@ -80,7 +84,8 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger, _, logClean, _ := consumerLogger(ctx, proto, host, "listen")
+	defer logClean()
 	plugin := newTSLPlugin(version, logger)
 
 	if *tcp {

@@ -25,7 +25,16 @@
 //	duplicate-name   one name appears twice in one enumeration
 //	missing-import   a module is IMPORTed that nothing in the set DEFINES
 //
-// Exits non-zero when anything is found, so it can gate a commit.
+// Exit codes are the contract a commit hook depends on, so they are
+// three and not two:
+//
+//	0  the set is clean
+//	1  findings were reported (the set is bad)
+//	2  the command could not run (usage, or a directory it cannot read)
+//
+// Telling 1 and 2 apart is what lets a hook distinguish "the MIB set is
+// wrong" from "you called me wrong" — collapsing them makes a typo in
+// the invocation look like a defect in the vendor's MIB.
 //
 // With -fetch it also RESOLVES the missing imports, downloading each absent
 // module into -out and re-checking the enlarged set:
@@ -64,52 +73,81 @@ const defaultMIBSource = "https://mibbrowser.online/mibs/"
 // fetchTimeout bounds one download. A linter must not hang on a slow mirror.
 const fetchTimeout = 30 * time.Second
 
-func main() {
-	quiet := flag.Bool("q", false, "print only findings, no summary")
-	fetch := flag.Bool("fetch", false, "download modules that are imported but missing")
-	out := flag.String("out", "", "directory to write fetched modules into (required with -fetch)")
-	source := flag.String("source", defaultMIBSource, "base URL to fetch missing modules from")
-	flag.Parse()
+// The disk operations behind package variables. A linter reads a tree
+// it does not own, and both of these can fail on a real machine — a
+// file the walk listed and the disk then would not give up, a set that
+// changed between the first scan and the re-scan after a fetch. What
+// the command does then is the contract; the variables are how it is
+// proved without a filesystem that misbehaves on demand.
+// Production never reassigns them.
+var (
+	readFile = os.ReadFile
+	scanSet  = scan
+)
 
-	dirs := flag.Args()
+// osExit is os.Exit behind a package variable, so main itself can be
+// exercised rather than only the function under it: a CLI whose entry
+// point is untested is a CLI whose flag wiring nobody checks.
+// Production never reassigns it.
+var osExit = os.Exit
+
+func main() { osExit(run(os.Args[1:], os.Stdout, os.Stderr)) }
+
+// run is the command proper: argv in, exit code out, and every message
+// written to the streams it was handed rather than to the process's.
+//
+// Exit codes: 0 clean, 1 findings, 2 usage or I/O.
+func run(argv []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mibcheck", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	quiet := fs.Bool("q", false, "print only findings, no summary")
+	fetch := fs.Bool("fetch", false, "download modules that are imported but missing")
+	out := fs.String("out", "", "directory to write fetched modules into (required with -fetch)")
+	source := fs.String("source", defaultMIBSource, "base URL to fetch missing modules from")
+	if err := fs.Parse(argv); err != nil {
+		return 2
+	}
+
+	dirs := fs.Args()
 	if len(dirs) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: mibcheck [-q] [-fetch -out DIR] <dir>...")
-		os.Exit(2)
+		_, _ = fmt.Fprintln(stderr, "usage: mibcheck [-q] [-fetch -out DIR] <dir>...")
+		return 2
 	}
 	if *fetch && *out == "" {
-		fmt.Fprintln(os.Stderr, "mibcheck: -fetch needs -out <dir>")
-		os.Exit(2)
+		_, _ = fmt.Fprintln(stderr, "mibcheck: -fetch needs -out <dir>")
+		return 2
 	}
 
 	set, err := scan(dirs)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "mibcheck:", err)
-		os.Exit(2)
+		_, _ = fmt.Fprintln(stderr, "mibcheck:", err)
+		return 2
 	}
 
 	if *fetch {
-		if n := fetchMissing(*source, *out, set.missing()); n > 0 {
+		if n := fetchMissing(stderr, *source, *out, set.missing()); n > 0 {
 			// Re-scan from disk rather than trusting what was just written:
 			// what matters is what the next compile will see.
-			fmt.Fprintf(os.Stderr, "mibcheck: fetched %d module(s) into %s; re-checking\n", n, *out)
-			if set, err = scan(append(dirs, *out)); err != nil {
-				fmt.Fprintln(os.Stderr, "mibcheck:", err)
-				os.Exit(2)
+			_, _ = fmt.Fprintf(stderr, "mibcheck: fetched %d module(s) into %s; re-checking\n", n, *out)
+			if set, err = scanSet(append(dirs, *out)); err != nil {
+				_, _ = fmt.Fprintln(stderr, "mibcheck:", err)
+				return 2
 			}
 		}
 	}
 
 	findings := set.findings()
 	for _, f := range findings {
-		fmt.Println(f)
+		_, _ = fmt.Fprintln(stdout, f)
 	}
 	if !*quiet {
-		fmt.Fprintf(os.Stderr, "\nmibcheck: %d file(s), %d module(s) defined, %d finding(s)\n",
+		_, _ = fmt.Fprintf(stderr, "\nmibcheck: %d file(s), %d module(s) defined, %d finding(s)\n",
 			set.files, len(set.defined), len(findings))
 	}
 	if len(findings) > 0 {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // Finding is one defect, formatted like a compiler diagnostic so an editor
@@ -148,7 +186,7 @@ func scan(dirs []string) (*Set, error) {
 		imported: map[string][]string{},
 	}
 	for _, p := range paths {
-		src, err := os.ReadFile(p)
+		src, err := readFile(p)
 		if err != nil {
 			return nil, err
 		}
@@ -223,8 +261,11 @@ func collect(dirs []string) ([]string, error) {
 			if info.IsDir() || !mibExt(info.Name()) {
 				return nil
 			}
-			// A README sitting beside the modules is not one of them.
-			if strings.EqualFold(info.Name(), "README.md") {
+			// A README sitting beside the modules is not one of them,
+			// whatever it is called: README.txt passes the extension
+			// test above, and README.md never reaches here at all.
+			name := info.Name()
+			if strings.EqualFold(strings.TrimSuffix(name, filepath.Ext(name)), "README") {
 				return nil
 			}
 			slash := filepath.ToSlash(p)
@@ -344,31 +385,31 @@ func importedModules(text string) []string {
 // were written. A module that cannot be fetched, or that fails validation,
 // is reported and skipped rather than written — a bad file on disk is worse
 // than an absent one, because the next run stops reporting it as missing.
-func fetchMissing(source, dir string, missing []string) int {
+func fetchMissing(stderr io.Writer, source, dir string, missing []string) int {
 	if len(missing) == 0 {
 		return 0
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "mibcheck: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "mibcheck: %v\n", err)
 		return 0
 	}
 	n := 0
 	for _, m := range missing {
 		body, err := download(source, m)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "mibcheck: fetch %s: %v\n", m, err)
+			_, _ = fmt.Fprintf(stderr, "mibcheck: fetch %s: %v\n", m, err)
 			continue
 		}
 		if err := validate(m, body); err != nil {
-			fmt.Fprintf(os.Stderr, "mibcheck: fetch %s: %v (not written)\n", m, err)
+			_, _ = fmt.Fprintf(stderr, "mibcheck: fetch %s: %v (not written)\n", m, err)
 			continue
 		}
 		path := filepath.Join(dir, m)
 		if err := os.WriteFile(path, body, 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "mibcheck: write %s: %v\n", path, err)
+			_, _ = fmt.Fprintf(stderr, "mibcheck: write %s: %v\n", path, err)
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "mibcheck: fetched %s (%d bytes) -> %s\n", m, len(body), path)
+		_, _ = fmt.Fprintf(stderr, "mibcheck: fetched %s (%d bytes) -> %s\n", m, len(body), path)
 		n++
 	}
 	return n

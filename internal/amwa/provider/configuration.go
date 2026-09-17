@@ -118,11 +118,33 @@ func (s *IS14ConfigurationServer) objectByOid(oid int) *configObject {
 	return nil
 }
 
+// marshalJSON is encoding/json.Marshal behind a package variable.
+// Every value handed to it here is a type this package built — a
+// property value decoded from JSON, a counter list, a member
+// descriptor — so a refusal is impossible in production. It is still
+// answered rather than served: a controller reading a null where a
+// value belongs has been told the property is unset, which is a
+// different fact. Production never reassigns it.
+var marshalJSON = json.Marshal
+
 // propKey renders a property id in the {level}p{index} URL form.
 func propKey(id ms05.NcPropertyId) string { return fmt.Sprintf("%dp%d", id.Level, id.Index) }
 
 // methodKey renders a method id in the {level}m{index} URL form.
 func methodKey(id ms05.NcMethodId) string { return fmt.Sprintf("%dm%d", id.Level, id.Index) }
+
+// mustObject builds one model object and refuses to continue if it
+// cannot. The framework models are compiled into the binary, so a
+// failure here is a build defect and not a runtime condition — and a
+// device model missing an object a controller is entitled to walk is
+// worse than a process that will not start.
+func mustObject(classID ms05.NcClassId, oid ms05.NcOid, path []string, seed map[string]any) *configObject {
+	o, err := newConfigObject(classID, oid, path, seed)
+	if err != nil {
+		panic(fmt.Sprintf("provider/is14: framework model load: %v", err))
+	}
+	return o
+}
 
 // newConfigObject builds one model object from the embedded framework
 // class, seeding property values from the provided name→value table.
@@ -223,7 +245,7 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 
 	website := "https://github.com/by-openclaw/go-acp"
 	prodDesc := "dhs AMWA NMOS reference node"
-	dm, err := newConfigObject(ms05.NcClassId{1, 3, 1}, 2, []string{"root", "DeviceManager"}, map[string]any{
+	dm := mustObject(ms05.NcClassId{1, 3, 1}, 2, []string{"root", "DeviceManager"}, map[string]any{
 		"userLabel": "Device manager",
 		"ncVersion": "v1.0.0",
 		"manufacturer": ms05.NcManufacturer{
@@ -243,7 +265,7 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 		},
 		"resetCause": ms05.NcResetCausePowerOn,
 	})
-	cm, err2 := newConfigObject(ms05.NcClassId{1, 3, 2}, 3, []string{"root", "ClassManager"}, map[string]any{
+	cm := mustObject(ms05.NcClassId{1, 3, 2}, 3, []string{"root", "ClassManager"}, map[string]any{
 		"userLabel": "Class manager",
 		// The catalogues publish the RAW spec models — own elements
 		// only, inheritance via parentType/classId. The AMWA suite
@@ -259,18 +281,13 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	// set, class 1.3.3) — so the object exists in the model, and its
 	// three methods run the SAME backup/restore code as the REST
 	// routes.
-	bpm, err4 := newConfigObject(ms05.NcClassId{1, 3, 3}, 4, []string{"root", "BulkPropertiesManager"}, map[string]any{
+	bpm := mustObject(ms05.NcClassId{1, 3, 3}, 4, []string{"root", "BulkPropertiesManager"}, map[string]any{
 		"userLabel": "Bulk properties manager",
 	})
-	root, err3 := newConfigObject(ms05.NcClassId{1, 1}, 1, []string{"root"}, map[string]any{
+	root := mustObject(ms05.NcClassId{1, 1}, 1, []string{"root"}, map[string]any{
 		"userLabel": nodeLabel,
 		"enabled":   true,
 	})
-	if err != nil || err2 != nil || err3 != nil || err4 != nil {
-		// The framework models are compiled in; failing to load them is
-		// a build defect, not a runtime condition.
-		panic(fmt.Sprintf("provider/is14: framework model load: %v %v %v %v", err, err2, err3, err4))
-	}
 	// BCP-008-01/-02: one status monitor per stream endpoint, tied to
 	// its IS-04 resource through a touchpoint. Statuses boot Inactive —
 	// nothing transmits until IS-05 activates — and flip on activation
@@ -307,10 +324,7 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 			seed[p] = 0
 			seed[p+"TransitionCounter"] = uint64(0)
 		}
-		mon, err := newConfigObject(classID, nextOid, []string{"root", role}, seed)
-		if err != nil {
-			panic(fmt.Sprintf("provider/is14: monitor model load: %v", err))
-		}
+		mon := mustObject(classID, nextOid, []string{"root", role}, seed)
 		nextOid++
 		objs = append(objs, mon)
 		s.monitorByResource[resourceID] = strings.Join(mon.path, ".")
@@ -332,28 +346,22 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 
 	// The DhsGainControl worker carries the model's constraint surface
 	// (all three MS-05 levels, declared AND enforced — vendor_gain.go).
-	gain, err5 := newConfigObject(vendorClassID, nextOid, []string{"root", vendorRole}, map[string]any{
+	gain := mustObject(vendorClassID, nextOid, []string{"root", vendorRole}, map[string]any{
 		"userLabel":                  "Gain control",
 		"enabled":                    true,
 		"channelLabel":               "Gain",
 		"gainDb":                     0.0,
 		"runtimePropertyConstraints": vendorRuntimeConstraints(),
 	})
-	if err5 != nil {
-		panic(fmt.Sprintf("provider/is14: gain worker model load: %v", err5))
-	}
 	objs = append(objs, gain)
 	nextOid++
 
 	// The DhsFaultControl worker: the operator/Ansible seam into the
 	// BCP-008 health engine (vendor_fault.go).
-	fault, err6 := newConfigObject(faultClassID, nextOid, []string{"root", faultRole}, map[string]any{
+	fault := mustObject(faultClassID, nextOid, []string{"root", faultRole}, map[string]any{
 		"userLabel": "Fault injection control",
 		"enabled":   true,
 	})
-	if err6 != nil {
-		panic(fmt.Sprintf("provider/is14: fault worker model load: %v", err6))
-	}
 	objs = append(objs, fault)
 
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
@@ -491,7 +499,7 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 		switch method {
 		case stdhttp.MethodGet:
 			s.mu.RLock()
-			raw, err := json.Marshal(p.value)
+			raw, err := marshalJSON(p.value)
 			s.mu.RUnlock()
 			if err != nil {
 				return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
@@ -774,7 +782,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 			return 400, *e, nil
 		}
 		s.mu.RLock()
-		raw, err := json.Marshal(p.value)
+		raw, err := marshalJSON(p.value)
 		s.mu.RUnlock()
 		if err != nil {
 			return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
@@ -844,7 +852,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		if counters == nil {
 			counters = []ncCounter{}
 		}
-		raw, err := json.Marshal(counters)
+		raw, err := marshalJSON(counters)
 		if err != nil {
 			return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
 		}
@@ -982,7 +990,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 		return ms05Err(400, ms05.NcMethodStatusParameterError, p.desc.Name+" is not a sequence")
 	}
 	s.mu.RLock()
-	raw, err := json.Marshal(p.value)
+	raw, err := marshalJSON(p.value)
 	s.mu.RUnlock()
 	if err != nil {
 		return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())

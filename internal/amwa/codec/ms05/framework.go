@@ -12,6 +12,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,7 +29,14 @@ import (
 // datatypes in the catalogue of every device that monitors streams.
 //
 //go:embed testdata/schemas/v1.0.0/classes/*.json testdata/schemas/v1.0.0/datatypes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/classes/*.json testdata/schemas/v1.0.0/featuresets/device-configuration/datatypes/*.json testdata/schemas/v1.0.0/featuresets/monitoring/classes/*.json testdata/schemas/v1.0.0/featuresets/monitoring/datatypes/*.json
-var frameworkFS embed.FS
+var frameworkEmbed embed.FS
+
+// frameworkFS is the file system loadFramework reads, behind a package
+// variable. In production it is the embedded copy above, which cannot
+// fail to open — which is exactly why the loader's failure arms need a
+// substitute to prove they report rather than serve a half-built
+// catalogue. Production never reassigns it.
+var frameworkFS fs.FS = frameworkEmbed
 
 var (
 	frameworkOnce sync.Once
@@ -84,16 +92,20 @@ var primitiveNames = []string{
 }
 
 func loadFramework() {
+	// The loader owns every one of its outputs, the error included:
+	// leaving a previous run's failure in place would make a
+	// successful reload look like the failed one.
+	frameworkErr = nil
 	classesByKey = map[string]NcClassDescriptor{}
 	datatypesByNm = map[string]NcDatatypeDescriptor{}
 
 	load := func(dir string, into func(name string, raw []byte) error) error {
-		entries, err := frameworkFS.ReadDir(dir)
+		entries, err := fs.ReadDir(frameworkFS, dir)
 		if err != nil {
 			return fmt.Errorf("ms05: framework embed %s: %w", dir, err)
 		}
 		for _, e := range entries {
-			raw, err := frameworkFS.ReadFile(dir + "/" + e.Name())
+			raw, err := fs.ReadFile(frameworkFS, dir+"/"+e.Name())
 			if err != nil {
 				return fmt.Errorf("ms05: framework read %s: %w", e.Name(), err)
 			}

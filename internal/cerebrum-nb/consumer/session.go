@@ -16,6 +16,7 @@ import (
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/clock"
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/metrics"
 	"dhs/internal/transport"
 	"dhs/internal/transport/ws"
@@ -45,6 +46,10 @@ type Session struct {
 	// same wire truth --capture records, not the RFC 6455 framing around
 	// it. Nil until SetMetrics.
 	met *metrics.Connector
+
+	// clk drives the keepalive prober and every deadline: the plugin's
+	// injected clock, so a test advances time instead of waiting for it.
+	clk clock.Clock
 
 	mu       sync.Mutex
 	pending  map[string]chan *codec.Frame
@@ -126,35 +131,15 @@ type Subscription struct {
 	fn   EventFunc
 }
 
-// Profile is the cerebrum-nb compliance profile. Each Event() call
-// records a named deviation; CLI surfaces them in --debug mode.
-type Profile struct {
-	mu     sync.Mutex
-	counts map[string]int
-}
-
-// Event records one deviation by name + optional details. Counts are
-// kept; a name maps to its first detail string only (for log brevity).
-func (p *Profile) Event(name string, details ...any) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.counts == nil {
-		p.counts = make(map[string]int)
-	}
-	p.counts[name]++
-	_ = details // logging happens at the call site; profile keeps counts
-}
-
-// Counts returns a copy of the count map.
-func (p *Profile) Counts() map[string]int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	out := make(map[string]int, len(p.counts))
-	for k, v := range p.counts {
-		out[k] = v
-	}
-	return out
-}
+// Profile is the compliance profile every connector shares — this
+// connector used to carry its own, with a different verb (Event
+// rather than Note), a different container, and no summary or
+// verdict. One concept with two implementations is one concept whose
+// counts cannot be compared across protocols, which is the whole
+// point of collecting them.
+//
+// The name stays so this package's callers keep the one they know.
+type Profile = compliance.Profile
 
 // newSession dials the Cerebrum WebSocket and starts the RX goroutine.
 // Login is performed by the caller via session.login. rec may be nil
@@ -163,7 +148,10 @@ func (p *Profile) Counts() map[string]int {
 // through a setter because the read loop is running before this returns —
 // a connector assigned afterwards would be a data race, and would miss the
 // LOGIN exchange besides.
-func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder, met *metrics.Connector) (*Session, error) {
+func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts transport.TLSOptions, rec *transport.Recorder, met *metrics.Connector, clk clock.Clock) (*Session, error) {
+	if clk == nil {
+		clk = clock.System()
+	}
 	// The POSTURE is injected; the *tls.Config is built once in the
 	// transport layer. This connector used to assemble its own, with no
 	// MinVersion — see internal/transport/tls.go for why that is now a
@@ -188,6 +176,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 		pending:    map[string]chan *codec.Frame{},
 		stopRX:     make(chan struct{}),
 		met:        met,
+		clk:        clk,
 		done:       make(chan struct{}),
 	}
 	s.mtidNext.Store(1)
@@ -197,7 +186,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 	// consumer.DisableInterval / DisableTimeout turn it off deliberately.
 	s.conn.SetIdleTimeout(defaultKeepAliveTimeout)
 	go s.readLoop()
-	s.startKeepAlive(defaultKeepAliveInterval, clock.System())
+	s.startKeepAlive(defaultKeepAliveInterval, s.clk)
 	return s, nil
 }
 
@@ -251,13 +240,14 @@ func (s *Session) nextMTID() uint32 {
 // or login_reply / poll_reply (any frame whose mtid matches). Returns
 // the matched Frame; turns NACK into a NackError. Times out per ctx.
 func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*codec.Frame, error) {
+	start := time.Now() // send footprint: entry -> document written
 	ch := make(chan *codec.Frame, 1)
 	mtidStr := strconv.FormatUint(uint64(mtid), 10)
 
 	s.mu.Lock()
 	if _, dup := s.pending[mtidStr]; dup {
 		s.mu.Unlock()
-		s.compliance.Event("cerebrum_mtid_reused")
+		s.compliance.Note("cerebrum_mtid_reused")
 		return nil, fmt.Errorf("cerebrum-nb: mtid %s already in flight", mtidStr)
 	}
 	s.pending[mtidStr] = ch
@@ -282,7 +272,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 		return nil, fmt.Errorf("cerebrum-nb: write: %w", err)
 	}
 	if s.met != nil {
-		s.met.ObserveTx(len(payload), 0)
+		s.met.ObserveTx(len(payload), time.Since(start))
 	}
 
 	select {
@@ -292,7 +282,7 @@ func (s *Session) roundTrip(ctx context.Context, mtid uint32, payload []byte) (*
 			s.recordNack(f.Nack)
 			return f, f.Nack
 		case codec.KindBusy:
-			s.compliance.Event("cerebrum_busy_received")
+			s.compliance.Note("cerebrum_busy_received")
 		}
 		return f, nil
 	case <-ctx.Done():
@@ -309,7 +299,7 @@ func (s *Session) recordNack(n *codec.NackError) {
 	if n.ID >= 0 {
 		name = "cerebrum_nack_" + strings.ToLower(n.Code)
 	}
-	s.compliance.Event(name)
+	s.compliance.Note(name)
 }
 
 // login sends <login>, waits for login_reply / nack, and stores api_ver.
@@ -347,7 +337,7 @@ func (s *Session) Poll(ctx context.Context) (*codec.PollReply, error) {
 		return nil, fmt.Errorf("cerebrum-nb: poll: unexpected %s", f.Kind)
 	}
 	if !f.PollReply.ConnectedServerActive {
-		s.compliance.Event("cerebrum_server_inactive")
+		s.compliance.Note("cerebrum_server_inactive")
 	}
 	return f.PollReply, nil
 }
@@ -487,11 +477,11 @@ func (s *Session) readLoop() {
 			s.logger.Warn("decode failed",
 				slog.String("err", err.Error()),
 				slog.Int("len", len(payload)))
-			s.compliance.Event("cerebrum_decode_failed")
+			s.compliance.Note("cerebrum_decode_failed")
 			continue
 		}
 		if f.CaseChanged {
-			s.compliance.Event("cerebrum_case_normalized")
+			s.compliance.Note("cerebrum_case_normalized")
 		}
 		s.dispatch(f)
 	}
@@ -543,7 +533,7 @@ func (s *Session) dispatch(f *codec.Frame) {
 		// may resume sending. Log + continue (no client-side throttle is
 		// modelled today); subscribers may react.
 		s.logger.Debug("flow-control: CONTINUE (resume after BUSY)", slog.String("mtid", f.MTID))
-		s.compliance.Event("cerebrum_continue_received")
+		s.compliance.Note("cerebrum_continue_received")
 	case codec.KindWildcardComplete:
 		// End of an OBTAIN/SUBSCRIBE wildcard snapshot — every matching
 		// row has been sent. Subscribers use this as the "snapshot
@@ -553,7 +543,7 @@ func (s *Session) dispatch(f *codec.Frame) {
 
 	// 3. Fan out to OnEvent subscribers.
 	if f.Kind == codec.KindUnknown {
-		s.compliance.Event("cerebrum_unknown_notification")
+		s.compliance.Note("cerebrum_unknown_notification")
 		return
 	}
 	s.mu.Lock()

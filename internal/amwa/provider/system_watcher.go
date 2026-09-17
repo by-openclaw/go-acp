@@ -28,6 +28,7 @@ import (
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	systemsession "dhs/internal/amwa/session/system"
+	"dhs/internal/plugin"
 )
 
 // SystemWatcher browses `_nmos-system._tcp` and fetches the global
@@ -64,13 +65,11 @@ type SystemWatcher struct {
 
 // NewSystemWatcher opens the browser. It does not start browsing.
 func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, url string)) (*SystemWatcher, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if apiVer == "" {
 		apiVer = "v1.0"
 	}
-	br, err := dnssdsession.NewBrowser(logger)
+	br, err := newDNSSDBrowser(logger)
 	if err != nil {
 		return nil, err
 	}

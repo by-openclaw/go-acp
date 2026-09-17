@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -73,9 +74,7 @@ func (c *TCPClient) IdleTimeout() time.Duration { return c.idle.Get() }
 // multiplexing reader goroutine. The caller retains ownership of the
 // conn until Close is called.
 func NewTCPClient(conn *transport.TCPConn, logger *slog.Logger, cfg ClientConfig) *TCPClient {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	dc := defaultConfig()
 	if cfg.MaxRetries <= 0 {
 		cfg.MaxRetries = dc.MaxRetries
@@ -156,6 +155,7 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		c.pendingMu.Unlock()
 	}()
 
+	start := time.Now()
 	payload, err := req.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("acp1 tcp: encode: %w", err)
@@ -168,7 +168,7 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 		return nil, fmt.Errorf("acp1 tcp send: %w", err)
 	}
 	if c.cfg.OnTx != nil {
-		c.cfg.OnTx(len(payload))
+		c.cfg.OnTx(len(payload), time.Since(start))
 	}
 
 	// Wait for the reader goroutine to route the matching reply.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	"errors"
 	"io"
 	"log/slog"
@@ -723,7 +724,7 @@ func TestSendV50TCP_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(nil)
+	d := newTCPDialer(nil, transport.New(transport.Config{}).Dial)
 	defer func() { _ = d.close() }()
 	pkt := codec.V50Packet{DMSGs: []codec.DMSG{{Index: 1, Text: "A"}}}
 	if err := d.sendV50TCP(host, port, pkt); err != nil {
@@ -776,7 +777,7 @@ func TestTCPDialer_CloseError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(nil)
+	d := newTCPDialer(nil, transport.New(transport.Config{}).Dial)
 	c, err := d.dial(host, port)
 	if err != nil {
 		t.Fatalf("dial: %v", err)

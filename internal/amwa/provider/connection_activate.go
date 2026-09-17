@@ -166,7 +166,11 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		out.Activation = e.active.Activation
 		return out, 200, nil
 
-	case is05.ActivationModeScheduledAbsolute, is05.ActivationModeScheduledRelative:
+	default:
+		// The scheduled pair. ValidateActivation above has already
+		// refused every mode outside the four this switch names, so
+		// there is no fifth case to fall through to — and a refusal
+		// written here would only ever disagree with that one.
 		when, err := s.scheduledTimeLocked(patch.Activation)
 		if err != nil {
 			return is05.StagedSender{}, 400, err
@@ -188,7 +192,6 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		e.staged.Activation.ActivationTime = &at
 		return out, 202, nil
 	}
-	return is05.StagedSender{}, 400, fmt.Errorf("unknown activation mode %q", mode)
 }
 
 // validateParamValue checks one transport parameter against the type

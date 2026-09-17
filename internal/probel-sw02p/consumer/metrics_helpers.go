@@ -1,6 +1,8 @@
 package probelsw02p
 
 import (
+	"time"
+
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
 )
@@ -35,10 +37,10 @@ func observeRxBytes(met *metrics.Connector, b []byte) {
 }
 
 // observeTxBytes is the tx counterpart of observeRxBytes.
-func observeTxBytes(met *metrics.Connector, b []byte) {
+func observeTxBytes(met *metrics.Connector, b []byte, elapsed time.Duration) {
 	if id, ok := probelCmdFromBytes(b); ok {
-		met.ObserveCmdTx(id, len(b), 0)
+		met.ObserveCmdTx(id, len(b), elapsed)
 	} else {
-		met.ObserveTx(len(b), 0)
+		met.ObserveTx(len(b), elapsed)
 	}
 }

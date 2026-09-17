@@ -529,6 +529,7 @@ func (s *Session) SendInvoke(funcPath []int32, invocationID int32, args []interf
 }
 
 func (s *Session) sendEmBER(payload []byte) error {
+	start := time.Now() // send footprint: entry -> frame written
 	s.mu.Lock()
 	w := s.writer
 	s.mu.Unlock()
@@ -540,7 +541,7 @@ func (s *Session) sendEmBER(payload []byte) error {
 		return err
 	}
 	if met := s.metricsConn(); met != nil {
-		met.ObserveCmdTx(frame.Command, len(payload), 0)
+		met.ObserveCmdTx(frame.Command, len(payload), time.Since(start))
 	}
 	return nil
 }

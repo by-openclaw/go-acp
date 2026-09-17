@@ -2,8 +2,6 @@ package session
 
 import (
 	"context"
-	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/transport"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +10,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"dhs/internal/plugin"
+	"dhs/internal/probel-sw02p/codec"
+	"dhs/internal/transport"
 )
 
 // DefaultDialTimeout caps how long Client.Dial waits for a TCP connect.
@@ -82,7 +84,7 @@ type Client struct {
 	// Observer callbacks — stdlib-only hooks for higher layers to plug
 	// in traffic capture, metrics, or compliance counters without
 	// coupling this package to any specific implementation.
-	onTx func([]byte)
+	onTx func([]byte, time.Duration)
 	onRx func([]byte)
 }
 
@@ -118,8 +120,9 @@ type ClientConfig struct {
 	TCPKeepalivePeriod time.Duration
 
 	// OnTx / OnRx are optional raw-byte observer callbacks invoked on
-	// every send and receive respectively.
-	OnTx func([]byte)
+	// every send and receive respectively. OnTx fires after the write with
+	// the send footprint (pack start -> write done).
+	OnTx func(raw []byte, elapsed time.Duration)
 	OnRx func([]byte)
 }
 
@@ -132,9 +135,7 @@ type ClientConfig struct {
 // A nil Net is the plain-socket default, so a test that does not care about
 // transport still calls Dial with one argument fewer in spirit.
 func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger, cfg ClientConfig) (*Client, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.DialTimeout <= 0 {
 		cfg.DialTimeout = DefaultDialTimeout
 	}
@@ -162,9 +163,7 @@ func Dial(ctx context.Context, n transport.Net, addr string, logger *slog.Logger
 // NewClientFromConn wraps an already-connected net.Conn in a Client. Used
 // by loopback tests where the caller supplies both ends of a net.Pipe.
 func NewClientFromConn(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	if cfg.ReadBufferSize <= 0 {
 		cfg.ReadBufferSize = codec.DefaultReadBufferSize
 	}
@@ -236,6 +235,7 @@ func (c *Client) Subscribe(fn eventFunc) {
 //   - ctx.Err() if ctx expires before the peer replies.
 //   - any net I/O error from the underlying conn.
 func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame) bool) (codec.Frame, error) {
+	start := time.Now()
 	raw := codec.Pack(f)
 
 	waiter := &pendingWaiter{
@@ -272,11 +272,11 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 			slog.String("hex", codec.HexDump(raw)),
 		)
 	}
-	if c.onTx != nil {
-		c.onTx(raw)
-	}
 	if _, err := conn.Write(raw); err != nil {
 		return codec.Frame{}, fmt.Errorf("probel-sw02p write: %w", err)
+	}
+	if c.onTx != nil {
+		c.onTx(raw, time.Since(start))
 	}
 
 	if match == nil {
@@ -301,10 +301,11 @@ func (c *Client) Write(raw []byte) error {
 	conn := c.conn
 	onTx := c.onTx
 	c.mu.Unlock()
-	if onTx != nil {
-		onTx(raw)
-	}
+	start := time.Now()
 	_, err := conn.Write(raw)
+	if err == nil && onTx != nil {
+		onTx(raw, time.Since(start))
+	}
 	return err
 }
 

@@ -18,7 +18,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
 	"net"
 	"os"
 	"sort"
@@ -333,11 +332,19 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	fs.Var(&tlsKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
 	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if len(tlsCerts) != len(tlsKeys) {
 		return fmt.Errorf("producer nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(tlsCerts), len(tlsKeys))
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
@@ -385,6 +392,7 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		TLSKeyFile:        tlsKeys.String(),
 		TLSCAFile:         *tlsCA,
 		TLSDataDir:        *tlsDir,
+		Deps:              pluginDeps(logger),
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -405,6 +413,10 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		// hard-coded default (#855); a discovered IS-09 System API can
 		// still override it live.
 		fmt.Printf("Registering against %s + heartbeat every %s (IS-09 may override).\n", *registry, *heartbeat)
+	}
+	if *metricsAddr != "" {
+		serveMetricsEndpoint(ctx, logger, *metricsAddr, srv.Metrics(),
+			map[string]string{"proto": "nmos", "role": "node", "addr": *bind})
 	}
 	return srv.Serve(ctx)
 }
@@ -435,6 +447,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 	if *direct != "" {
 		res, err := consumer.Fetch(ctx, consumer.IS09FetchOptions{
 			Logger:   logger,
+			Deps:     pluginDeps(logger),
 			APIVer:   *apiVer,
 			APIProto: *apiProto,
 			Direct:   *direct,
@@ -496,6 +509,7 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 
 	res, err := consumer.Fetch(ctx, consumer.IS09FetchOptions{
 		Logger:     logger,
+		Deps:       pluginDeps(logger),
 		APIVer:     *apiVer,
 		APIProto:   *apiProto,
 		Discovered: insts,
@@ -556,11 +570,19 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version exposed under /x-nmos/system/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
+	pidfile := fs.String("pidfile", "", "if set, write this process's PID to PATH on start (removed on exit) so `dhs producer nmos stop|ensure --pidfile PATH` can manage it")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this instance on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role system: --config FILE required")
+	}
+	if *pidfile != "" {
+		if err := writePIDFile(*pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(*pidfile) }()
 	}
 
 	// Uniform logging (epic #987): human stderr + default local syslog file.
@@ -577,6 +599,7 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 	cfg := provider.IS09Config{
+		Deps:          pluginDeps(logger),
 		Bind:          *bind,
 		AdvertiseHost: *advertise,
 		DiscoveryMode: mode,
@@ -596,6 +619,10 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 		fmt.Println("Announcing _nmos-system._tcp via mDNS.")
 	} else {
 		fmt.Println("DNS-SD announce disabled — caller publishes records (e.g. pfSense Unbound, see docs/dns-sd-unbound.md).")
+	}
+	if *metricsAddr != "" {
+		serveMetricsEndpoint(ctx, logger, *metricsAddr, srv.Metrics(),
+			map[string]string{"proto": "nmos", "role": "system", "addr": *bind})
 	}
 	return srv.Serve(ctx)
 }
@@ -621,6 +648,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	fs.Var(&regTLSCerts, "tls-cert", "manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client")
 	fs.Var(&regTLSKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
 	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
+	metricsAddr := fs.String("metrics-addr", "", "if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json for this registry on this address")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -640,7 +668,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	if !ok {
 		return fmt.Errorf("registry plugin %q not registered", "nmos")
 	}
-	r := f.New(logger)
+	r := f.New(pluginDeps(logger))
 
 	opts := registryslot.ServeOptions{
 		BindAddrs:        []string{*bind},
@@ -672,6 +700,12 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
 	}
 
+	if *metricsAddr != "" {
+		if mp, ok := r.(metricsExposer); ok {
+			serveMetricsEndpoint(ctx, logger, *metricsAddr, mp.Metrics(),
+				map[string]string{"proto": "nmos", "role": "registry", "addr": *bind})
+		}
+	}
 	return r.Serve(ctx, opts)
 }
 
@@ -794,8 +828,13 @@ PATCHes, activates, or registers, so it is safe against a plant that is on air.
 func printNMOSProducerHelp() {
 	fmt.Println(`Usage:
   dhs producer nmos serve [flags]
+  dhs producer nmos status --url http://HOST:PORT/snapshot.json   live runtime snapshot of a serving instance
+  dhs producer nmos stop   --pidfile PATH                           stop a serving instance
+  dhs producer nmos ensure --state present|absent --pidfile PATH   converge a serving instance (ADR-0007, Ansible)
 
   --role node|system    Producer role (default: node)
+  --pidfile PATH        write the PID on start (removed on exit) for stop / ensure
+  --metrics-addr ADDR   serve Prometheus /metrics + /snapshot.json for this instance (status reads it)
 
 Role: node (Phase 1 #3 — IS-04 v1.3 Node API)
   Loads a Node bundle JSON (node + devices + sources + flows + senders +
@@ -834,6 +873,7 @@ subscriptions on the configured --bind, plus the optional mDNS
 announce of _nmos-register._tcp + _nmos-query._tcp.
 
   --bind ADDR              HTTP listen address (default :8235)
+  --metrics-addr ADDR      serve Prometheus /metrics + /snapshot.json for this registry
   --advertise-host H:P     host:port placed in SRV / ws_href records
                            (default: derived from --bind + hostname)
   --mdns / --no-mdns       Toggle mDNS announce (default on)
@@ -928,6 +968,10 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "mirror")
+	defer logClean()
 	if len(serveTLSCerts) != len(serveTLSKeys) {
 		return fmt.Errorf("nmos mirror: %d --serve-tls-cert but %d --serve-tls-key — every certificate needs its private key, given in the same order", len(serveTLSCerts), len(serveTLSKeys))
 	}
@@ -935,7 +979,8 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		Source:             *source,
 		Target:             *targetURL,
 		APIVer:             *apiVer,
-		Logger:             slog.Default(),
+		Logger:             logger,
+		Deps:               pluginDeps(logger),
 		AuditPath:          *auditLog,
 		StatusAddr:         *statusAddr,
 		ServeAddr:          *serveAddr,
@@ -987,6 +1032,10 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "watch")
+	defer logClean()
 	if *registry == "" && !*mdns && !*unicast {
 		return fmt.Errorf("nmos watch: pick exactly one of --registry / --mdns / --unicast")
 	}
@@ -1004,7 +1053,8 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
@@ -1142,6 +1192,10 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "walk")
+	defer logClean()
 	if *node == "" && *registry == "" && !*mdns && !*unicast {
 		return fmt.Errorf("nmos walk: pick one of --node / --registry / --mdns / --unicast")
 	}
@@ -1161,7 +1215,8 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

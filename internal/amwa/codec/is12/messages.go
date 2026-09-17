@@ -38,13 +38,15 @@ type envelope struct {
 // Decode parses any IS-12 wire frame and returns a typed Message.
 // Strict-decode rejects unknown fields per dhs convention.
 func Decode(raw []byte) (Message, error) {
+	// Just the discriminator: whether the payload carries more than
+	// one frame is decodeStrict's rule, and it names that fault
+	// precisely.
 	var env envelope
-	if err := json.Unmarshal(raw, &env); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&env); err != nil {
 		return nil, fmt.Errorf("is12: peek messageType: %w", err)
 	}
-	if !IsValidMessageType(env.MessageType) {
-		return nil, fmt.Errorf("is12: messageType %d: unknown", env.MessageType)
-	}
+	// The switch below is the one gate on the discriminator: a
+	// pre-check would only ever shadow its default arm.
 	switch env.MessageType {
 	case MessageTypeCommand:
 		var m CommandMessage
@@ -101,7 +103,7 @@ func Decode(raw []byte) (Message, error) {
 		}
 		return m, nil
 	}
-	return nil, fmt.Errorf("is12: messageType %d: dispatch fall-through", env.MessageType)
+	return nil, fmt.Errorf("is12: messageType %d: unknown", env.MessageType)
 }
 
 // Encode marshals any Message variant. The discriminator field is

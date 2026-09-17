@@ -183,8 +183,8 @@ func TestPoll_InactiveFiresCompliance(t *testing.T) {
 	if _, err := sess.Poll(ctx); err != nil {
 		t.Fatalf("poll: %v", err)
 	}
-	if p.Compliance().Counts()["cerebrum_server_inactive"] != 1 {
-		t.Fatalf("expected cerebrum_server_inactive, got %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_server_inactive"] != 1 {
+		t.Fatalf("expected cerebrum_server_inactive, got %+v", p.Compliance().Snapshot())
 	}
 }
 
@@ -242,8 +242,8 @@ func TestAction_Nack_RecordsCompliance(t *testing.T) {
 	if !errors.As(err, &ne) {
 		t.Fatalf("want NackError, got %v", err)
 	}
-	if p.Compliance().Counts()["cerebrum_nack_one_or_more_actions_invalid"] != 1 {
-		t.Fatalf("nack compliance not recorded: %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_nack_one_or_more_actions_invalid"] != 1 {
+		t.Fatalf("nack compliance not recorded: %+v", p.Compliance().Snapshot())
 	}
 }
 
@@ -256,8 +256,8 @@ func TestAction_Nack_UnknownCode(t *testing.T) {
 	ctx, cancel := ctx2s(t)
 	defer cancel()
 	_ = sess.SetDeviceValue(ctx, "D", "S", "O", "v")
-	if p.Compliance().Counts()["cerebrum_nack_unknown"] != 1 {
-		t.Fatalf("want cerebrum_nack_unknown, got %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_nack_unknown"] != 1 {
+		t.Fatalf("want cerebrum_nack_unknown, got %+v", p.Compliance().Snapshot())
 	}
 }
 
@@ -272,8 +272,8 @@ func TestAction_Busy(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "busy") {
 		t.Fatalf("want busy error, got %v", err)
 	}
-	if p.Compliance().Counts()["cerebrum_busy_received"] != 1 {
-		t.Fatalf("busy compliance not recorded: %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_busy_received"] != 1 {
+		t.Fatalf("busy compliance not recorded: %+v", p.Compliance().Snapshot())
 	}
 }
 
@@ -453,7 +453,7 @@ func TestDispatch_DecodeFailureCompliance(t *testing.T) {
 	})
 	p, _ := dialFake(t, fs)
 	waitFor(t, time.Second, func() bool {
-		return p.Compliance().Counts()["cerebrum_decode_failed"] >= 1
+		return p.Compliance().Snapshot()["cerebrum_decode_failed"] >= 1
 	}, "decode_failed compliance")
 }
 
@@ -466,7 +466,7 @@ func TestDispatch_CaseNormalizedCompliance(t *testing.T) {
 	p, sess := dialFake(t, fs)
 	sess.OnEvent(codec.KindUnknown, func(*codec.Frame) {})
 	waitFor(t, time.Second, func() bool {
-		return p.Compliance().Counts()["cerebrum_case_normalized"] >= 1
+		return p.Compliance().Snapshot()["cerebrum_case_normalized"] >= 1
 	}, "case_normalized compliance")
 }
 
@@ -477,7 +477,7 @@ func TestDispatch_UnknownNotificationCompliance(t *testing.T) {
 	})
 	p, _ := dialFake(t, fs)
 	waitFor(t, time.Second, func() bool {
-		return p.Compliance().Counts()["cerebrum_unknown_notification"] >= 1
+		return p.Compliance().Snapshot()["cerebrum_unknown_notification"] >= 1
 	}, "unknown_notification compliance")
 }
 
@@ -539,8 +539,8 @@ func TestMTIDReuse_Compliance(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "already in flight") {
 		t.Fatalf("want mtid-in-flight error, got %v", err)
 	}
-	if p.Compliance().Counts()["cerebrum_mtid_reused"] != 1 {
-		t.Fatalf("mtid reuse compliance: %+v", p.Compliance().Counts())
+	if p.Compliance().Snapshot()["cerebrum_mtid_reused"] != 1 {
+		t.Fatalf("mtid reuse compliance: %+v", p.Compliance().Snapshot())
 	}
 }
 

@@ -35,6 +35,7 @@ import (
 
 	"dhs/internal/amwa/codec/is10"
 	jwt "dhs/internal/auth"
+	"dhs/internal/plugin"
 )
 
 // httpTimeout caps every exchange with the Authorization Server.
@@ -106,9 +107,7 @@ type TokenClient struct {
 
 // NewTokenClient builds a client; nothing is fetched until Token.
 func NewTokenClient(opts TokenClientOptions) *TokenClient {
-	if opts.Logger == nil {
-		opts.Logger = slog.Default()
-	}
+	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	return &TokenClient{opts: opts, hc: &stdhttp.Client{Timeout: httpTimeout}}
 }
 
@@ -193,9 +192,7 @@ type KeyCache struct {
 
 // NewKeyCache builds a cache for one Authorization Server.
 func NewKeyCache(metadataURL string, logger *slog.Logger) *KeyCache {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &KeyCache{metadataURL: metadataURL, logger: logger,
 		hc: &stdhttp.Client{Timeout: httpTimeout}}
 }
@@ -278,13 +275,21 @@ func (k *KeyCache) FetchIssuer(ctx context.Context, issuer string) error {
 // hour, jittered by 0–60 s so a fleet of resource servers does not
 // synchronise its fetches. Failures keep the stale set. Blocks until
 // ctx is done.
+// refreshInterval is how often Run re-fetches the JWKS (plus up to a
+// minute of jitter). A package var so a test drives the loop without
+// waiting an hour; never reassigned in production.
+var refreshInterval = time.Hour
+
 func (k *KeyCache) Run(ctx context.Context) {
 	for {
 		jitter := time.Duration(rand.Intn(60)) * time.Second
+		if refreshInterval < time.Minute {
+			jitter = 0 // a test-driven cadence must stay test-driven
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Hour + jitter):
+		case <-time.After(refreshInterval + jitter):
 		}
 		if err := k.Fetch(ctx); err != nil {
 			k.logger.Warn("nmos/auth: JWKS refresh failed; keeping cached keys", "err", err)

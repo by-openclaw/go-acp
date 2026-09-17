@@ -13,6 +13,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	an2 "dhs/internal/acp2/codec"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -312,9 +313,7 @@ type an2Session struct {
 }
 
 func newAN2SessionRegistry(logger *slog.Logger) *an2SessionRegistry {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = plugin.LoggerOrDefault(logger)
 	return &an2SessionRegistry{
 		logger:   logger,
 		sessions: map[uint64]*an2Session{},

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -59,6 +58,10 @@ func runNMOSSet(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "set")
+	defer logClean()
 	if *sender == "" && *label == "" {
 		return fmt.Errorf("nmos set: --sender <uuid> or --label <name> is required " +
 			"(run `dhs consumer nmos walk -l` to list them)")
@@ -117,7 +120,8 @@ func runNMOSSet(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

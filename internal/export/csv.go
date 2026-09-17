@@ -44,8 +44,15 @@ var csvHeader = []string{
 // Writable-object round-trip is lossless: every scalar field the
 // importer needs (oid, path, id, label, kind, value, access) survives
 // a JSON → CSV → JSON → import --dry-run with zero diff (issue #38).
+// newCSVWriter is csv.NewWriter, indirected through a package var so a
+// test can hand WriteCSV a writer whose sink has already failed. A
+// fresh csv.Writer buffers 4 KiB before touching the sink, so the
+// header (~160 bytes) can never fail on its own — the guard is
+// otherwise unreachable. Same seam pattern as amwa/consumer.marshalJSON.
+var newCSVWriter = csv.NewWriter
+
 func WriteCSV(w io.Writer, s *Snapshot) error {
-	cw := csv.NewWriter(w)
+	cw := newCSVWriter(w)
 	defer cw.Flush()
 
 	if err := cw.Write(csvHeader); err != nil {

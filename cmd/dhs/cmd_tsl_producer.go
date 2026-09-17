@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"dhs/internal/plugin"
+	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 	tslprov "dhs/internal/tsl/provider"
 )
@@ -30,6 +31,10 @@ func runTSLProducer(ctx context.Context, proto string, args []string) error {
 		printTSLProducerHelp(os.Stdout, proto)
 		return nil
 	}
+	// Shared log flags are stripped here and read back by producerLogger,
+	// so `producer tsl-* send|serve` logs like every other producer (#987).
+	lf, args := stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
@@ -55,6 +60,7 @@ type tslSendFlags struct {
 	tcp       bool
 	keepalive time.Duration
 	refresh   time.Duration
+	pidfile   string
 
 	// v3.1/v4.0 + v5.0 shared
 	addr       int
@@ -87,6 +93,7 @@ func registerTSLSendFlags(fs *flag.FlagSet, version tslprov.Version, f *tslSendF
 	fs.StringVar(&f.bind, "bind", "0.0.0.0:0", "local UDP egress bind (':0' = ephemeral)")
 	fs.Var(&f.dests, "dest", "destination MV host:port (repeatable; required for UDP)")
 	fs.DurationVar(&f.refresh, "refresh", 0, "if >0 (serve only), re-emit the frame every DURATION")
+	fs.StringVar(&f.pidfile, "pidfile", "", "serve only: write this process's PID to PATH on start (removed on exit) so `dhs producer <proto> stop|ensure --pidfile PATH` can manage it")
 
 	fs.StringVar(&f.text, "text", "", "UMD label text (≤16 ASCII for v3.1/v4.0, free for v5.0)")
 	fs.IntVar(&f.brightness, "brightness", 3, "brightness 0=off 1=1/7 2=1/2 3=full")
@@ -137,13 +144,25 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger, logClean := producerLogger(ctx)
+	defer logClean()
+
+	if loop && f.pidfile != "" {
+		if err := writePIDFile(f.pidfile); err != nil {
+			return fmt.Errorf("write pidfile: %w", err)
+		}
+		defer func() { _ = os.Remove(f.pidfile) }()
+	}
 
 	if !f.tcp && len(f.dests) == 0 {
 		return fmt.Errorf("producer %s %s: at least one --dest is required for UDP", proto, verbName)
 	}
 
-	srv := newTSLServer(version, logger)
+	// --keepalive reaches the socket through the injected transport: the
+	// server opens its TCP connections via Base.Dial on this Net.
+	deps := pluginDeps(logger)
+	deps.Net = transport.New(transport.Config{KeepalivePeriod: f.keepalive})
+	srv := newTSLServer(version, deps)
 	defer func() { _ = srv.Stop() }()
 
 	if !f.tcp {
@@ -178,7 +197,7 @@ func runTSLSend(ctx context.Context, proto string, args []string, loop bool) err
 			return nil
 		case <-t.C:
 			if err := emit(); err != nil {
-				slog.Default().Error("tsl serve refresh emit failed", "err", err)
+				logger.Error("tsl serve refresh emit failed", "err", err)
 			}
 		}
 	}
@@ -464,14 +483,12 @@ func defaultTSLProducerPort(v tslprov.Version) int {
 	return 0
 }
 
-func newTSLServer(v tslprov.Version, logger *slog.Logger) *tslprov.Server {
+// newTSLServer builds the producer from the injected dependency set, the
+// same way the provider registry does, so the CLI never bypasses DI.
+func newTSLServer(v tslprov.Version, deps plugin.Deps) *tslprov.Server {
 	switch v {
-	case tslprov.V31:
-		return tslprov.NewServerV31(logger)
-	case tslprov.V40:
-		return tslprov.NewServerV40(logger)
-	case tslprov.V50:
-		return tslprov.NewServerV50(logger)
+	case tslprov.V31, tslprov.V40, tslprov.V50:
+		return tslprov.NewServer(v, deps)
 	}
 	return nil
 }
@@ -487,11 +504,15 @@ USAGE
 VERBS
   send            encode one frame from the flags and push once
   serve           encode + push, then re-emit every --refresh DURATION until Ctrl-C
+  status          live runtime snapshot of a serving instance (--url http://HOST:PORT/snapshot.json)
+  stop            stop a serving instance (--pidfile PATH)
+  ensure          converge a serving instance to --state present|absent (--pidfile PATH; ADR-0007, Ansible)
 
 COMMON FLAGS
   --bind HOST:PORT       local egress bind (default 0.0.0.0:0 ephemeral)
   --dest HOST:PORT       destination MV (repeatable; required for UDP)
   --refresh DURATION     periodic re-emit (serve only; e.g. 1s)
+  --pidfile PATH         serve only: PID file for stop / ensure (removed on exit)
   --text "STR"           UMD label
   --brightness 0..3      0=off 1=1/7 2=1/2 3=full
 

@@ -146,10 +146,14 @@ type envelope struct {
 // variant. Returns a typed error for unknown discriminators so
 // callers can fire a compliance event without string-matching.
 func DecodeMessage(raw []byte) (Message, error) {
-	var env envelope
-	if err := json.Unmarshal(raw, &env); err != nil {
+	env, err := peekEnvelope(raw)
+	if err != nil {
 		return nil, fmt.Errorf("is07: peek message_type: %w", err)
 	}
+	// Each arm decodes into its own variant; the validation runs ONCE
+	// below, so every envelope answers the same way and no variant can
+	// quietly skip its own rules.
+	var msg Message
 	switch env.MessageType {
 	case MessageTypeState:
 		return decodeStateEvent(raw)
@@ -158,32 +162,28 @@ func DecodeMessage(raw []byte) (Message, error) {
 		if err := decodeStrict(raw, &m); err != nil {
 			return nil, err
 		}
-		if err := m.validate(); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = m
 	case MessageTypeReboot, MessageTypeShutdown:
 		var m MessageShutdownReboot
 		if err := decodeStrict(raw, &m); err != nil {
 			return nil, err
 		}
-		if err := m.validate(); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = m
 	case MessageTypeConnectionStatus:
 		var m MessageConnectionStatus
 		if err := decodeStrict(raw, &m); err != nil {
 			return nil, err
 		}
-		if err := m.validate(); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = m
 	case "":
 		return nil, fmt.Errorf("is07: message_type: required")
+	default:
+		return nil, fmt.Errorf("is07: message_type %q: unknown", env.MessageType)
 	}
-	return nil, fmt.Errorf("is07: message_type %q: unknown", env.MessageType)
+	if err := msg.validate(); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 // decodeStateEvent inspects event_type to pick the correct payload
@@ -239,8 +239,8 @@ func decodeStateEvent(raw []byte) (Message, error) {
 // DecodeCommand parses any receiver → sender wire frame, switching
 // on `command`.
 func DecodeCommand(raw []byte) (Command, error) {
-	var env envelope
-	if err := json.Unmarshal(raw, &env); err != nil {
+	env, err := peekEnvelope(raw)
+	if err != nil {
 		return nil, fmt.Errorf("is07: peek command: %w", err)
 	}
 	switch env.Command {
@@ -329,6 +329,18 @@ func marshalNormalised(v any) ([]byte, error) {
 		return jsonMarshalIndent(x)
 	}
 	return nil, fmt.Errorf("is07: encode: unsupported variant %T", v)
+}
+
+// peekEnvelope reads JUST the discriminators off a frame. It decodes
+// one JSON value and stops: whether the payload carries more than one
+// frame is decodeStrict's rule to enforce, and enforcing it here too
+// would answer "peek" for a fault the strict decode names precisely.
+func peekEnvelope(raw []byte) (envelope, error) {
+	var env envelope
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&env); err != nil {
+		return envelope{}, err
+	}
+	return env, nil
 }
 
 // decodeStrict is shared strict JSON decode helper — rejects unknown

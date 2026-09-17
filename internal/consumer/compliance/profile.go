@@ -1,15 +1,54 @@
-// Package compliance tracks per-session deviations from a strict
-// protocol specification. Each plugin (ACP1, ACP2, Ember+, future
-// Probel / TSL / NMOS) defines its own named event constants close
-// to the code that fires them — this package provides only the
-// generic counter machinery.
+// Package compliance records what a provider did that its own
+// specification does not describe.
 //
-// Rationale — root CLAUDE.md "Spec-strict, no-workaround posture":
-// when a provider deviates from spec we NEVER silently work around it. We
-// absorb the deviation, fire a named event, and surface the profile
-// so the operator can audit which providers are strict vs lax.
+// # Why it exists
 //
-// Zero allocations on the hot path — counters are atomic int64.
+// The repo-wide posture (root CLAUDE.md, "Spec-strict, no-workaround")
+// is that a deviation is never silently worked around. We absorb it so
+// the operator keeps their device, we carry on, and we COUNT it here.
+// This package is therefore the only place a deviation is visible at
+// all: a count that is wrong is a deviation nobody will ever hear
+// about, and a plant full of lax devices that reads as strict.
+//
+// # The contract
+//
+// One Profile belongs to one live connection. A connector notes an
+// event by label whenever it absorbs something; the operator reads the
+// counts at the end, or the summary line in a log.
+//
+//   - Note(label) counts one occurrence. It is safe from any
+//     goroutine and allocates nothing after the first sighting of a
+//     label, because it is called from the decode path.
+//   - Snapshot() returns a copy, so a caller reading it while the
+//     session runs does not watch the numbers move.
+//   - SummaryLine() renders those counts deterministically, sorted by
+//     label — two runs of one session that read differently are two
+//     runs nobody can diff.
+//   - Classification() is the coarse verdict: strict when nothing was
+//     absorbed, partial when something was.
+//
+// A nil *Profile answers all four. That is deliberate: the call sites
+// are on the decode path, and a nil check at each of them is a nil
+// check to keep honest at each of them.
+//
+// # Labels
+//
+// A label is `<protocol>_<what_happened>`, lowercase, and is declared
+// as a CONSTANT in the protocol's own package next to the code that
+// fires it — see internal/emberplus/consumer/compliance_events.go for
+// the shape. Constants rather than literals because the label is the
+// aggregation key: a typo in one call site silently splits a count in
+// two, and nothing downstream can tell that from two different
+// deviations.
+//
+//	const ShortReply = "acp1_short_reply"
+//
+//	if p.profile != nil {
+//		p.profile.Note(ShortReply)
+//	}
+//
+// This package holds no labels of its own. It is the counter; the
+// protocols own their vocabularies.
 package compliance
 
 import (
@@ -18,25 +57,26 @@ import (
 	"sync/atomic"
 )
 
+// Recorder is the half of a Profile a connector actually depends on:
+// somewhere to note that a deviation happened. Taking this rather than
+// *Profile keeps a protocol package from depending on how the counting
+// is done — and *Profile satisfies it, nil included.
+type Recorder interface {
+	// Note counts one occurrence of a labelled deviation.
+	Note(event string)
+}
+
 // Profile aggregates tolerance events for a single live connection.
-// Thread-safe. Zero value is ready to use via Note / Snapshot.
-//
-// Usage (plugin side):
-//
-//	const ShortReply = "acp1_short_reply"
-//
-//	if p.profile != nil {
-//		p.profile.Note(ShortReply)
-//	}
+// Thread-safe. The zero value is ready to use, and so is a nil pointer.
 type Profile struct {
 	mu       sync.RWMutex
 	counters map[string]*int64
 }
 
 // Note increments the counter for the given event label. Safe to call
-// from any goroutine. Unknown labels are accepted — callers should
-// define constants in their protocol package so aggregation keys stay
-// stable across runs.
+// from any goroutine. Unknown labels are accepted — callers declare
+// constants in their protocol package so aggregation keys stay stable
+// across runs.
 func (p *Profile) Note(event string) {
 	if p == nil {
 		return
@@ -114,6 +154,8 @@ func (p *Profile) Classification() string {
 	return "strict"
 }
 
+// appendInt renders v into out. Written here rather than reached for
+// through fmt because SummaryLine runs per log line.
 func appendInt(out []byte, v int64) []byte {
 	if v == 0 {
 		return append(out, '0')
@@ -135,3 +177,7 @@ func appendInt(out []byte, v int64) []byte {
 	}
 	return append(out, buf[n:]...)
 }
+
+// interface check: the concrete type is the reference implementation of
+// the contract above.
+var _ Recorder = (*Profile)(nil)

@@ -16,14 +16,21 @@ import (
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	"dhs/internal/amwa/session/query"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 )
 
 // ControllerOptions configures the IS-04 Controller. The pattern
 // mirrors IS09FetchOptions in system.go: explicit dependency injection,
 // no globals, every knob a constructor parameter.
 type ControllerOptions struct {
-	// Logger is optional; nil = silent.
+	// Logger is optional; nil = the process default.
 	Logger *slog.Logger
+
+	// Deps is the injected dependency set (transport, clock, metrics), the
+	// same plugin.Deps every connector takes; zero = defaults. Its metrics
+	// connector counts every Query/Node API request the controller makes.
+	Deps plugin.Deps
 
 	// Reporter receives compliance events. nil = spec.NopReporter{}.
 	Reporter spec.Reporter
@@ -76,6 +83,24 @@ type Controller struct {
 	logger   *slog.Logger
 	reporter spec.Reporter
 	client   *query.Client
+	met      *metrics.Connector
+}
+
+// Metrics returns the controller's counter set: every request it sent
+// (tx, with the round-trip time) and every response read (rx), counted
+// by the shared HTTP client. Never nil.
+func (c *Controller) Metrics() *metrics.Connector { return c.met }
+
+// newController finishes a Controller over a query client, wiring the
+// injected metrics into the HTTP client every request goes through.
+func newController(opts ControllerOptions, rep spec.Reporter, client *query.Client) *Controller {
+	deps := opts.Deps.WithDefaults()
+	logger := opts.Logger
+	if logger == nil {
+		logger = deps.Logger
+	}
+	client.HTTP.Metrics = deps.Metrics
+	return &Controller{logger: logger, reporter: rep, client: client, met: deps.Metrics}
 }
 
 // NewController resolves the Registry per ControllerOptions and
@@ -108,7 +133,7 @@ func NewController(ctx context.Context, opts ControllerOptions) (*Controller, er
 	if err != nil {
 		return nil, err
 	}
-	return &Controller{logger: opts.Logger, reporter: rep, client: c}, nil
+	return newController(opts, rep, c), nil
 }
 
 // newNodeController binds a Controller straight to one Node.
@@ -134,7 +159,7 @@ func newNodeController(ctx context.Context, opts ControllerOptions, rep spec.Rep
 	if err != nil {
 		return nil, err
 	}
-	return &Controller{logger: opts.Logger, reporter: rep, client: c}, nil
+	return newController(opts, rep, c), nil
 }
 
 // nodeAPIVersions asks a Node which IS-04 minors it serves, by GETting

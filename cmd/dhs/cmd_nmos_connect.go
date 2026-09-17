@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"time"
 
@@ -42,6 +41,10 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	// The shared consumer logger honours --log-format / --syslog-addr /
+	// --debug like every other verb (epic #987).
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "connect")
+	defer logClean()
 	if *receiver == "" {
 		return fmt.Errorf("nmos connect: --receiver <uuid> is required " +
 			"(run `dhs consumer nmos walk -l` to list them)")
@@ -61,7 +64,8 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 
 	rep := &spec.SliceReporter{}
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           slog.Default(),
+		Logger:           logger,
+		Deps:             pluginDeps(logger),
 		Reporter:         rep,
 		NodeURL:          *node,
 		RegistryURL:      *registry,

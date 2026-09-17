@@ -328,3 +328,147 @@ func TestConstraintSatisfied(t *testing.T) {
 		}
 	}
 }
+
+// ---- residual SDP / capability branches ---------------------------------
+
+// TestSenderSDPParamsUnreadable: a sender whose transport file cannot
+// be read is never judged compatible — every way the read can fail
+// yields nil, and only a readable SDP with usable parameters yields
+// values.
+func TestSenderSDPParamsUnreadable(t *testing.T) {
+	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		switch r.URL.Path {
+		case "/good.sdp":
+			_, _ = w.Write([]byte(jxsvSDP(1920, 1080, "50", "YCbCr-4:2:2", "BT709", "SDR", "High444.12", "2k-1", 500000)))
+		case "/nothing-usable.sdp":
+			_, _ = w.Write([]byte("v=0\ns=nothing here\n"))
+		case "/truncated.sdp":
+			// Promise more than is sent: the client's read ends in an
+			// unexpected EOF, the shape of a device that drops mid-body.
+			w.Header().Set("Content-Length", "1000")
+			_, _ = w.Write([]byte("v=0\n"))
+		default:
+			w.WriteHeader(stdhttp.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	dead := httptest.NewServer(stdhttp.NotFoundHandler())
+	dead.Close()
+
+	cases := []struct {
+		name string
+		href *string
+		want bool // non-nil params
+	}{
+		{"no manifest advertised", nil, false},
+		{"an empty manifest href", strPtr(""), false},
+		{"an unusable manifest href", strPtr("://not-a-url"), false},
+		{"an unreachable manifest", strPtr(dead.URL + "/good.sdp"), false},
+		{"a manifest the sender no longer serves", strPtr(srv.URL + "/missing.sdp"), false},
+		{"a transport file cut off mid-body", strPtr(srv.URL + "/truncated.sdp"), false},
+		{"an SDP with no capability parameters", strPtr(srv.URL + "/nothing-usable.sdp"), false},
+		{"a readable SDP", strPtr(srv.URL + "/good.sdp"), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			snd := is04.Sender{ResourceCore: is04.ResourceCore{ID: "s"}, ManifestHref: tc.href}
+			got := senderSDPParams(context.Background(), &snd)
+			if (got != nil) != tc.want {
+				t.Errorf("senderSDPParams = %v, want non-nil=%v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestSDPCapParamsTolerance pins the parser on the shapes real SDPs
+// carry that the tool's template does not: a bare interlace token, empty
+// and unknown fmtp segments, an integer exactframerate, and an m= line
+// with no media kind (then no rtpmap can yield a media type).
+func TestSDPCapParamsTolerance(t *testing.T) {
+	params := sdpCapParams("m=\na=rtpmap:96 raw/90000\na=fmtp:96 interlace; ; bogus; width=1920; exactframerate=50\n")
+	if params["urn:x-nmos:cap:format:interlace_mode"] != "interlaced_tff" {
+		t.Errorf("interlace_mode = %v, want interlaced_tff from the bare interlace token", params["urn:x-nmos:cap:format:interlace_mode"])
+	}
+	if params["urn:x-nmos:cap:format:frame_width"] != float64(1920) {
+		t.Errorf("frame_width = %v, want 1920 despite the empty and unknown segments", params["urn:x-nmos:cap:format:frame_width"])
+	}
+	if gr, ok := params["urn:x-nmos:cap:format:grain_rate"].(is04.GrainRate); !ok || gr.Numerator != 50 || gr.Denominator != 1 {
+		t.Errorf("grain_rate = %v, want 50/1 from an integer exactframerate", params["urn:x-nmos:cap:format:grain_rate"])
+	}
+	if _, has := params["urn:x-nmos:cap:format:media_type"]; has {
+		t.Error("an m= line naming no kind must yield no media_type")
+	}
+}
+
+// TestTR08SDPMatchNeedsMediaType: without a media type the SDP says
+// nothing a receiver's caps.media_types can be matched against.
+func TestTR08SDPMatchNeedsMediaType(t *testing.T) {
+	caps := is04.ReceiverCaps{MediaTypes: []string{"video/jxsv"}, ConstraintSets: []map[string]any{{}}}
+	if tr08SDPMatch(map[string]any{"urn:x-nmos:cap:format:frame_width": float64(1920)}, caps) {
+		t.Error("an SDP with no media type must match nothing")
+	}
+	if !tr08SDPMatch(map[string]any{"urn:x-nmos:cap:format:media_type": "video/jxsv"}, caps) {
+		t.Error("a media type the receiver lists with an unconstrained set must match")
+	}
+}
+
+// TestSDPMatchesConstraintSetSkips: meta keys and parameters the SDP
+// does not carry are skipped (the tool's leniency); a parameter it does
+// carry must satisfy its constraint.
+func TestSDPMatchesConstraintSetSkips(t *testing.T) {
+	params := map[string]any{
+		"urn:x-nmos:cap:format:media_type":  "video/jxsv",
+		"urn:x-nmos:cap:format:frame_width": float64(1920),
+	}
+	lenient := map[string]any{
+		"urn:x-nmos:cap:meta:label":      "skipped",
+		"urn:x-nmos:cap:format:sublevel": map[string]any{"enum": []any{"Sublev3bpp"}}, // not in the SDP
+	}
+	if !sdpMatchesConstraintSet(params, lenient) {
+		t.Error("a set constraining only what the SDP does not carry must match")
+	}
+	narrow := map[string]any{
+		"urn:x-nmos:cap:meta:label":         "skipped",
+		"urn:x-nmos:cap:format:frame_width": map[string]any{"maximum": float64(1280)},
+	}
+	if sdpMatchesConstraintSet(params, narrow) {
+		t.Error("a carried parameter outside its constraint must not match")
+	}
+}
+
+// TestFlowCapValueAbsent: a Flow that does not state a parameter has no
+// value for it, so the constraint is skipped rather than failed.
+func TestFlowCapValueAbsent(t *testing.T) {
+	bare := &is04.Flow{}
+	for _, capURI := range []string{
+		"urn:x-nmos:cap:format:grain_rate",
+		"urn:x-nmos:cap:format:component_depth",
+		"urn:x-nmos:cap:format:not_a_flow_field",
+	} {
+		if v, known := flowCapValue(bare, capURI); known {
+			t.Errorf("%s on a bare flow = %v, want unknown", capURI, v)
+		}
+	}
+}
+
+// TestCapValueEqualShapes: an enum entry of the wrong JSON shape never
+// equals the value, whatever the value's type.
+func TestCapValueEqualShapes(t *testing.T) {
+	cases := []struct {
+		name  string
+		v     any
+		entry any
+	}{
+		{"string against a number", "BT709", float64(1)},
+		{"number against a string", float64(1920), "1920"},
+		{"grain rate against a string", is04.GrainRate{Numerator: 25, Denominator: 1}, "25/1"},
+		{"a value type the register does not use", 1920, float64(1920)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if capValueEqual(tc.v, tc.entry) {
+				t.Errorf("capValueEqual(%v, %v) = true, want false", tc.v, tc.entry)
+			}
+		})
+	}
+}

@@ -1,0 +1,13 @@
+# Corrections for vendor MIB defects that break name resolution.
+#
+#   MODULE  SYMBOL  PARENT  ARC  -- evidence
+#
+# Only what the vendor's OWN files prove belongs here. An arc guessed from
+# a neighbour is an invented OID: the table would label a real device's
+# objects with a name nobody defined, and nothing downstream could tell.
+# Everything unprovable stays unresolved, and mibc reports it.
+#
+# When a vendor fixes a file, mibc reports the patch as "patch-stale";
+# delete the line then.
+
+SNELL-WILCOX-PRODUCT-REG moduleIQDMX31 snellWilcoxModular 532 -- the 2013 registry defines moduleIQDMX30 twice, at 531 and at 532 (lines 337-338, the second a copy of the first); its MIB-branch twin on line 545 is moduleIQDMX31MIB at 532, and SNELL-IQDMX31-CMD-MIB imports moduleIQDMX31 from this module

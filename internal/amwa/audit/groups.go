@@ -27,6 +27,13 @@ type GroupRow struct {
 	// Devices are the targets contributing to the group. More than one
 	// means no controller can bind the group from NMOS alone.
 	Devices []string `json:"devices"`
+
+	// first is the capture this group was first seen on, so a finding
+	// can name where to go and look. It travels with the row rather
+	// than in a second map beside it: two containers keyed by group
+	// name are two chances for a name to be in one and not the other,
+	// and the code downstream would have to ask every time.
+	first *Harvest
 }
 
 // groupAccumulator collects hints across every captured device.
@@ -35,6 +42,7 @@ type groupAccumulator struct {
 	senders   map[string]int
 	receivers map[string]int
 	devices   map[string]map[string]bool
+	first     map[string]*Harvest
 }
 
 func newGroupAccumulator() *groupAccumulator {
@@ -43,6 +51,7 @@ func newGroupAccumulator() *groupAccumulator {
 		senders:   map[string]int{},
 		receivers: map[string]int{},
 		devices:   map[string]map[string]bool{},
+		first:     map[string]*Harvest{},
 	}
 }
 
@@ -50,7 +59,7 @@ func newGroupAccumulator() *groupAccumulator {
 // a role may itself contain spaces ("audio 1"), and a group name may
 // contain colons, so the split is on the LAST colon — splitting on the
 // first would make "RACK:1:video" a group called "RACK".
-func (g *groupAccumulator) add(hint, target, kind string) {
+func (g *groupAccumulator) add(hint string, h *Harvest, kind string) {
 	name, role, ok := cutLast(hint, ":")
 	if !ok {
 		return
@@ -62,11 +71,12 @@ func (g *groupAccumulator) add(hint, target, kind string) {
 	if g.roles[name] == nil {
 		g.roles[name] = map[string]bool{}
 		g.devices[name] = map[string]bool{}
+		g.first[name] = h
 	}
 	if role != "" {
 		g.roles[name][role] = true
 	}
-	g.devices[name][target] = true
+	g.devices[name][h.Name()] = true
 	if kind == "senders" {
 		g.senders[name]++
 	} else {
@@ -99,6 +109,7 @@ func (g *groupAccumulator) rows() []GroupRow {
 			Senders:   g.senders[n],
 			Receivers: g.receivers[n],
 			Devices:   sortedSet(g.devices[n]),
+			first:     g.first[n],
 		})
 	}
 	return out
@@ -189,9 +200,6 @@ func hintCounts(h *Harvest) (senders, receivers, groups int) {
 // from inside either of them.
 func checkPlantGroups(all []*Harvest) ([]GroupRow, []Finding) {
 	acc := newGroupAccumulator()
-	// firstSeen keeps a device per group so a finding can name where to
-	// go and look.
-	firstSeen := map[string]*Harvest{}
 
 	// A registry's catalogue is a VIEW of the nodes, not a device of its
 	// own: the same sender appears in the registry's query API and in
@@ -233,13 +241,7 @@ func checkPlantGroups(all []*Harvest) ([]GroupRow, []Finding) {
 					seenResource[p.ID] = true
 				}
 				for _, hint := range p.Tags[groupHintTag] {
-					acc.add(hint, h.Name(), kind)
-					if name, _, ok := cutLast(hint, ":"); ok {
-						name = strings.TrimSpace(name)
-						if _, seen := firstSeen[name]; !seen && name != "" {
-							firstSeen[name] = h
-						}
-					}
+					acc.add(hint, h, kind)
 				}
 			}
 		}
@@ -251,24 +253,20 @@ func checkPlantGroups(all []*Harvest) ([]GroupRow, []Finding) {
 	// Collapse the single-role case into one finding per device. A
 	// Neuron publishes one group per essence, so per-group findings
 	// would be 176 lines saying the same thing.
-	singleByDevice := map[string][]string{}
+	singleByDevice := map[string][]GroupRow{}
 
 	for _, r := range rows {
 		if len(r.Roles) <= 1 && len(r.Devices) == 1 {
-			singleByDevice[r.Devices[0]] = append(singleByDevice[r.Devices[0]], r.Name)
+			singleByDevice[r.Devices[0]] = append(singleByDevice[r.Devices[0]], r)
 		}
 		if len(r.Devices) > 1 {
-			h := firstSeen[r.Name]
-			if h == nil {
-				continue
-			}
 			// Two very different situations produce this, and a capture
 			// cannot tell them apart: one signal genuinely spanning
 			// devices, or a group name that is simply not unique across
 			// the plant. Both need saying, because the second is worse
 			// — a controller merging by name fuses unrelated devices
 			// into one bogus signal.
-			out = append(out, h.find(
+			out = append(out, r.first.find(
 				"NMOS-BCP002-GROUP-CROSS-DEVICE", SevWarn, "group/"+r.Name,
 				fmt.Sprintf("group %q appears on %d devices: %s", r.Name, len(r.Devices), strings.Join(r.Devices, ", ")),
 				"BCP-002-01 v1.0 §3 grouphint",
@@ -276,14 +274,14 @@ func checkPlantGroups(all []*Harvest) ([]GroupRow, []Finding) {
 		}
 	}
 
-	for _, dev := range sortedSet(toSet(keysOfStrings(singleByDevice))) {
-		names := singleByDevice[dev]
-		sort.Strings(names)
-		h := firstSeen[names[0]]
-		if h == nil {
-			continue
+	for _, dev := range sortedSet(toSet(keysOfGroupRows(singleByDevice))) {
+		group := singleByDevice[dev]
+		sort.Slice(group, func(i, j int) bool { return group[i].Name < group[j].Name })
+		names := make([]string, len(group))
+		for i, r := range group {
+			names[i] = r.Name
 		}
-		out = append(out, h.find(
+		out = append(out, group[0].first.find(
 			"NMOS-BCP002-GROUP-SINGLE-ROLE", SevWarn, "groups",
 			fmt.Sprintf("%d group(s) on %s hold exactly one role, so they express no association between essences: %s",
 				len(names), dev, examplesOf(names)),
@@ -294,7 +292,7 @@ func checkPlantGroups(all []*Harvest) ([]GroupRow, []Finding) {
 	return rows, out
 }
 
-func keysOfStrings(m map[string][]string) []string {
+func keysOfGroupRows(m map[string][]GroupRow) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)

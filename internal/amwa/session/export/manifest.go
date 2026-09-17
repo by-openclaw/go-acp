@@ -1,7 +1,6 @@
 package export
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -66,7 +65,7 @@ func writeManifest(root string, res *Result, opts Options) error {
 		return m.Devices[i].Target < m.Devices[j].Target
 	})
 
-	b, err := json.MarshalIndent(m, "", "  ")
+	b, err := marshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}

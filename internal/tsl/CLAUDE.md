@@ -154,7 +154,10 @@ labels mirroring Miranda IP Emulator UI exactly.
 
 TCP dead-socket detection: SO_KEEPALIVE 30 s on both the v5.0
 producer dialer and consumer listener (`tcpKeepalivePeriod` /
-`DefaultTCPKeepalivePeriod`). TSL v5 spec defines no app-layer
+`DefaultTCPKeepalivePeriod`; the producer opens its sockets through
+the injected transport — `provider.Base.Dial` — so the period is the
+process's `transport.Config.KeepalivePeriod`, which `--keepalive`
+sets, and never a dialer the connector builds). TSL v5 spec defines no app-layer
 heartbeat — pcap audit confirmed VSM never sends one — so the
 OS-layer probe is the right detector.
 

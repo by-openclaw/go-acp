@@ -98,7 +98,7 @@ func TestSendWireHexLogAndOnTx(t *testing.T) {
 	var txCount atomic.Int32
 	// WireHexLog defaults to true (cfg.WireHexLog nil) → hex log path runs.
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{
-		OnTx: func([]byte) { txCount.Add(1) },
+		OnTx: func([]byte, time.Duration) { txCount.Add(1) },
 	})
 	defer func() { _ = c.Close() }()
 
@@ -364,7 +364,7 @@ func TestWriteFiresOnTx(t *testing.T) {
 	a, b := net.Pipe()
 	var seen atomic.Int32
 	c := NewClientFromConn(a, discardLogger(), ClientConfig{
-		OnTx: func([]byte) { seen.Add(1) },
+		OnTx: func([]byte, time.Duration) { seen.Add(1) },
 	})
 	defer func() { _ = c.Close() }()
 

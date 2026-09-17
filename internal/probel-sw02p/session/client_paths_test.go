@@ -206,7 +206,7 @@ func TestSendWireHexLogObserver(t *testing.T) {
 	var mu sync.Mutex
 	cli := NewClientFromConn(a, quietLogger(), ClientConfig{
 		WireHexLog: boolPtr(true), // exercise the hex-log branch
-		OnTx:       func(raw []byte) { mu.Lock(); txSeen = append(txSeen, raw); mu.Unlock() },
+		OnTx:       func(raw []byte, _ time.Duration) { mu.Lock(); txSeen = append(txSeen, raw); mu.Unlock() },
 	})
 	defer func() { _ = cli.Close() }()
 
@@ -240,7 +240,7 @@ func TestWrite(t *testing.T) {
 	var observed []byte
 	cli := NewClientFromConn(a, quietLogger(), ClientConfig{
 		WireHexLog: boolPtr(false),
-		OnTx:       func(raw []byte) { observed = append(observed, raw...) },
+		OnTx:       func(raw []byte, _ time.Duration) { observed = append(observed, raw...) },
 	})
 
 	raw := []byte{codec.SOM, 0x07, 0x79}

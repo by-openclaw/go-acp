@@ -2,7 +2,6 @@ package acp1
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
@@ -12,6 +11,7 @@ import (
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -294,12 +294,12 @@ func (p *Plugin) clientHooks() ClientConfig {
 				met.ObserveRx(n)
 			}
 		},
-		OnTx: func(n int) {
+		OnTx: func(n int, elapsed time.Duration) {
 			if sink != nil {
 				sink.recordTx()
 			}
 			if met != nil {
-				met.ObserveTx(n, 0)
+				met.ObserveTx(n, elapsed)
 			}
 		},
 	}
@@ -334,6 +334,7 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 		p.logger.Warn("acp1 listener unavailable — Subscribe will fail",
 			"port", port, "err", lerr)
 	} else {
+		l.SetClock(p.Clock()) // the plugin's injected clock paces its retries
 		p.listener = l
 		p.listener.Start(context.Background())
 	}

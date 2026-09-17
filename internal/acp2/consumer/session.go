@@ -444,6 +444,7 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 
 // sendFrame encodes and sends one AN2 frame on the TCP connection.
 func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
+	start := time.Now() // send footprint: encode start -> write done
 	data, err := codec.EncodeAN2Frame(f)
 	if err != nil {
 		return err
@@ -474,7 +475,7 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	}
 	s.lastTxNS.Store(time.Now().UnixNano())
 	if s.met != nil {
-		s.met.ObserveCmdTx(uint8(f.Type), len(data), 0)
+		s.met.ObserveCmdTx(uint8(f.Type), len(data), time.Since(start))
 	}
 	return nil
 }

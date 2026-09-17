@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"log/slog"
+	"time"
 
 	"dhs/internal/probel-sw02p/codec"
 )
@@ -84,6 +85,7 @@ func (s *server) fanOut(b []byte, id codec.CommandID) {
 		slog.Int("targets", len(targets)),
 		slog.Int("bytes", len(b)))
 	for _, sess := range targets {
+		start := time.Now()
 		if werr := sess.write(b); werr != nil {
 			s.logger.Debug("probel-sw02p fanOut write",
 				slog.String("remote", sess.remoteAddr()),
@@ -92,6 +94,6 @@ func (s *server) fanOut(b []byte, id codec.CommandID) {
 			s.profile.Note(OutboundWriteFailed)
 			continue
 		}
-		met.ObserveCmdTx(uint8(id), len(b), 0)
+		met.ObserveCmdTx(uint8(id), len(b), time.Since(start))
 	}
 }

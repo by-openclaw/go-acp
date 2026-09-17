@@ -254,3 +254,29 @@ func TestTLSOptionsClientCertificateErrors(t *testing.T) {
 		})
 	}
 }
+
+// Server matches Client on the zero value: disabled is "no TLS", not an
+// error, so a listener can take the result straight to its nil-is-plaintext
+// case.
+func TestTLSOptionsServerDisabledReturnsNilConfig(t *testing.T) {
+	cfg, err := TLSOptions{}.Server()
+	if err != nil {
+		t.Fatalf("Server: %v", err)
+	}
+	if cfg != nil {
+		t.Fatalf("disabled TLSOptions returned a server config: %+v", cfg)
+	}
+}
+
+// A half-given identity is reported as such, before the "no certificate"
+// check has a chance to mislabel it as an omission.
+func TestTLSOptionsServerHalfIdentityIsAnError(t *testing.T) {
+	certPath, _, _ := writeKeyPair(t, t.TempDir())
+	_, err := TLSOptions{Enable: true, CertFile: certPath}.Server()
+	if err == nil {
+		t.Fatal("Server succeeded with a CertFile and no KeyFile")
+	}
+	if !strings.Contains(err.Error(), "both CertFile and KeyFile") {
+		t.Errorf("err = %v, want it to name the missing half", err)
+	}
+}

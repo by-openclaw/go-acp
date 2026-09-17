@@ -44,8 +44,8 @@ func TestSubscribeObtainUnsub_RoundTripError(t *testing.T) {
 func TestRecordNack_NilGuard(t *testing.T) {
 	s := &Session{compliance: &Profile{}}
 	s.recordNack(nil) // must not panic; no count recorded
-	if len(s.compliance.Counts()) != 0 {
-		t.Fatalf("nil nack should record nothing, got %+v", s.compliance.Counts())
+	if len(s.compliance.Snapshot()) != 0 {
+		t.Fatalf("nil nack should record nothing, got %+v", s.compliance.Snapshot())
 	}
 }
 

@@ -7,7 +7,6 @@ package tsl
 
 import (
 	"context"
-	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +14,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/plugin"
 	"dhs/internal/provider"
 	"dhs/internal/tsl/codec"
 )
@@ -90,17 +90,28 @@ func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provide
 
 // NewServerV31 constructs a v3.1-bound Server directly (tests + direct callers).
 func NewServerV31(logger *slog.Logger) *Server {
-	return &Server{version: V31, logger: logger}
+	return NewServer(V31, plugin.Deps{Logger: logger})
 }
 
 // NewServerV40 constructs a v4.0-bound Server directly.
 func NewServerV40(logger *slog.Logger) *Server {
-	return &Server{version: V40, logger: logger}
+	return NewServer(V40, plugin.Deps{Logger: logger})
 }
 
 // NewServerV50 constructs a v5.0-bound Server directly.
 func NewServerV50(logger *slog.Logger) *Server {
-	return &Server{version: V50, logger: logger}
+	return NewServer(V50, plugin.Deps{Logger: logger})
+}
+
+// NewServer builds a Server for one TSL version from the injected
+// dependency set — the constructor the CLI uses, so the process owns the
+// transport posture (Deps.Net carries the TCP keepalive period `producer
+// tsl-v50 serve --keepalive` sets), the clock and the metrics connector.
+func NewServer(v Version, deps plugin.Deps) *Server {
+	deps = deps.WithDefaults()
+	s := &Server{version: v, logger: deps.Logger}
+	s.Init(deps)
+	return s
 }
 
 // Server implements provider.Provider for one TSL version. It owns an
@@ -157,7 +168,7 @@ func (s *Server) ensureTCPDialer() *tcpDialer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tcpDialer == nil {
-		s.tcpDialer = newTCPDialer(s.Metrics())
+		s.tcpDialer = newTCPDialer(s.Metrics(), s.Dial)
 	}
 	return s.tcpDialer
 }

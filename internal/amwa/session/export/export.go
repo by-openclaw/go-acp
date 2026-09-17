@@ -227,9 +227,7 @@ func captureAt(ctx context.Context, opts Options, root, target string, visited *
 	// `10_41_40_80_3000__bm-n-nnbrg-t01` is the thing they search for.
 	// Renaming here, before any node is followed, keeps children nested
 	// under the final path.
-	if err := h.renameWithIdentity(); err != nil {
-		return nil, err
-	}
+	h.renameWithIdentity()
 
 	if err := h.writeTree(); err != nil {
 		return nil, err
@@ -313,7 +311,7 @@ func captureAt(ctx context.Context, opts Options, root, target string, visited *
 			// on the PARENT is what lets the audit see a registry
 			// advertising a node nobody can reach.
 			if sub.Requests == 0 {
-				if err := os.RemoveAll(sub.Dir); err != nil {
+				if err := removeAll(sub.Dir); err != nil {
 					return nil, err
 				}
 				h.note(fmt.Sprintf("SKIP  node %s '%s' unreachable at: %s", n.ID, n.Label, addr))
@@ -387,9 +385,28 @@ type apiCapture struct {
 
 func (h *harvester) note(s string) { h.report = append(h.report, s) }
 
-// makeDir builds the per-device folder. It refuses to write into the
-// output root: a harvest folder that IS the root leaves raw/ and sdp/
-// loose at the top with nothing identifying whose they are.
+// marshalJSON and marshalIndent are the encoding/json entry points
+// behind package variables. Most of what this package writes is
+// strings and integers that cannot fail to encode, but what a capture
+// does when a write fails is the whole point of a capture tool — a
+// truncated file that looks complete is worse than no file — so the
+// tests drive those arms through here. One call site can fail for
+// real: a device's raw payloads travel as json.RawMessage, and a peer
+// that served something that is not JSON makes tree.json refuse.
+// Production never reassigns either.
+var (
+	marshalJSON   = json.Marshal
+	marshalIndent = json.MarshalIndent
+)
+
+// makeDir builds the per-device folder.
+//
+// It refuses a target with no usable name, and that refusal is also
+// what keeps the capture out of the output root: sanitize yields
+// letters, digits and underscores or nothing at all, so a name that
+// survives the check cannot resolve back to the root the way "." or
+// ".." would. A harvest folder that IS the root would leave raw/ and
+// sdp/ loose at the top with nothing identifying whose they are.
 func (h *harvester) makeDir(root string) (string, error) {
 	safe := sanitize(h.target)
 	if safe == "" {
@@ -403,11 +420,6 @@ func (h *harvester) makeDir(root string) (string, error) {
 		name = safe + "_" + h.opts.Now().Format("20060102-150405")
 	}
 	dir := filepath.Join(root, name)
-	rootAbs, _ := filepath.Abs(root)
-	dirAbs, _ := filepath.Abs(dir)
-	if rootAbs == dirAbs {
-		return "", fmt.Errorf("export: refusing to capture into the output root (%s)", root)
-	}
 	// raw/ and sdp/ are created lazily, when there is something to put
 	// in them, and pruned at the end if there is not.
 	return dir, os.MkdirAll(dir, 0o755)
@@ -423,29 +435,28 @@ func (h *harvester) makeDir(root string) (string, error) {
 //
 // A rename that fails is not fatal — the capture is complete and
 // correct under the address-only name, and losing it over a locked
-// directory would be absurd.
-func (h *harvester) renameWithIdentity() error {
+// directory would be absurd. That is why this returns nothing: every
+// way it can go wrong is a note in the report, and a signature
+// promising an error the body never produces invites a caller to
+// abandon a good capture over a folder name.
+func (h *harvester) renameWithIdentity() {
 	suffix := identitySuffix(h.hostname, h.label)
 	if suffix == "" {
-		return nil
+		return
 	}
 	parent, base := filepath.Split(strings.TrimRight(h.dir, string(filepath.Separator)))
 	target := filepath.Join(parent, base+"__"+suffix)
-	if target == h.dir {
-		return nil
-	}
 	if _, err := os.Stat(target); err == nil {
 		// Something is already there — two devices resolving to the same
 		// name. Keep the unambiguous address-only folder.
 		h.note(fmt.Sprintf("NOTE  folder not renamed to %q: a folder of that name already exists", base+"__"+suffix))
-		return nil
+		return
 	}
-	if err := os.Rename(h.dir, target); err != nil {
+	if err := renameDir(h.dir, target); err != nil {
 		h.note(fmt.Sprintf("NOTE  folder not renamed: %v", err))
-		return nil
+		return
 	}
 	h.dir = target
-	return nil
 }
 
 // identitySuffix builds the filesystem-safe tail appended to a capture
@@ -785,7 +796,7 @@ func (h *harvester) getPaged(ctx context.Context, path string) json.RawMessage {
 	if dupes > 0 {
 		h.note(fmt.Sprintf("NOTE  %s returned %d rows across pages, %d unique", path, len(all), len(uniq)))
 	}
-	out, err := json.Marshal(uniq)
+	out, err := marshalJSON(uniq)
 	if err != nil {
 		return nil
 	}
@@ -1045,6 +1056,19 @@ func (h *harvester) do(ctx context.Context, rawURL string) ([]byte, http.Header,
 
 // --- writers ---
 
+// Test seams: the real os call in production, swapped only by a test
+// that needs a filesystem failure no portable fixture can produce
+// (same transparent pattern as internal/transport/ws/seam.go). A
+// directory rename and an empty-directory remove both succeed on
+// every writable filesystem a test can set up; the branches that
+// handle them failing exist for the locked folder and the vanished
+// mount, which a test cannot arrange on both Windows and Linux.
+var (
+	renameDir = os.Rename
+	removeDir = os.Remove
+	removeAll = os.RemoveAll
+)
+
 func (h *harvester) writeRaw(path string, body []byte) {
 	if !h.opts.Raw {
 		return
@@ -1077,7 +1101,7 @@ func (h *harvester) writeDevice(role string) error {
 		"label":      h.label,
 		"id":         h.id,
 	}
-	b, err := json.MarshalIndent(d, "", "  ")
+	b, err := marshalIndent(d, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -1091,7 +1115,7 @@ func (h *harvester) writeTree() error {
 		"harvester":    Version,
 		"apis":         h.apis,
 	}
-	b, err := json.MarshalIndent(tree, "", "  ")
+	b, err := marshalIndent(tree, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -1120,7 +1144,7 @@ func (h *harvester) pruneEmptyDirs() error {
 		if err != nil || len(entries) > 0 {
 			continue
 		}
-		if err := os.Remove(p); err != nil {
+		if err := removeDir(p); err != nil {
 			return err
 		}
 	}
