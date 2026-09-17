@@ -308,7 +308,7 @@ the play has two tiers:
 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 
 # with TSL_TEST_HOST set — prints the not-yet-supported notice:
-TSL_TEST_HOST=10.100.0.42 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
+TSL_TEST_HOST=10.6.250.42 ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 ```
 
 dhs / go-test logs go to **stderr** → the play `register`s the task and

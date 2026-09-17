@@ -31,9 +31,9 @@
 #   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
 #
 #   # plus a live matrix (lab, VPN), read-only verbs:
-#   PROBEL_SW02P_TEST_HOST=10.100.0.42 \
+#   PROBEL_SW02P_TEST_HOST=10.6.250.42 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
-#   PROBEL_SW02P_TEST_HOST=10.100.0.42 PROBEL_SW02P_TEST_PORT=2002 ansible-playbook ...
+#   PROBEL_SW02P_TEST_HOST=10.6.250.42 PROBEL_SW02P_TEST_PORT=2002 ansible-playbook ...
 - name: Probel SW-P-02 integration (loopback verb-drive + optional live matrix)
   hosts: localhost
   connection: local

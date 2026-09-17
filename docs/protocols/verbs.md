@@ -261,21 +261,21 @@ adds `matrix`/`invoke`/`stream`/`bench` (emberplus-only — see §2).
 
 | Verb | What it does | Example (name and/or OID) |
 |---|---|---|
-| `info` | device + per-slot card status (no walk) | `dhs consumer acp1 info 10.100.0.102 --port 2071 --transport tcp` |
-| `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.100.0.102 --port 2071 --transport tcp --slot 1` |
-| `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.100.0.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
-| `get` | read one value | name → `… get 10.100.0.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.100.0.102 --slot 1 --group control --id 10` |
-| `set` | write one value | name → `… set 10.100.0.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
-| `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.100.0.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
-| `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.100.0.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
-| `watch` | live announcements | `dhs consumer acp1 watch 10.100.0.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |
-| `export` | snapshot → json/yaml/csv (by `--format` or `--out` ext) | `dhs consumer acp1 export 10.100.0.102 --port 2071 --transport tcp --slot 1 --format json --out slot1.json` |
-| `import` | apply a snapshot (`--dry-run` first; subset by `--id`/`--path`, **not** label) | `dhs consumer acp1 import 10.100.0.102 --port 2071 --transport tcp --file slot1.json --dry-run` |
-| `profile` | walk + classify compliance (strict/partial) | `dhs consumer acp1 profile 10.100.0.102 --port 2071 --transport tcp` |
-| `ensure` | converge one object idempotently — the verb **Ansible drives**: `--check` dry-run, `--json` result, `changed` flag (change is never signalled by exit code) | `dhs consumer acp1 ensure 10.100.0.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed --check --json` |
+| `info` | device + per-slot card status (no walk) | `dhs consumer acp1 info 10.6.250.102 --port 2071 --transport tcp` |
+| `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.6.250.102 --port 2071 --transport tcp --slot 1` |
+| `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.6.250.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
+| `get` | read one value | name → `… get 10.6.250.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.6.250.102 --slot 1 --group control --id 10` |
+| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
+| `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.6.250.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
+| `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.6.250.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
+| `watch` | live announcements | `dhs consumer acp1 watch 10.6.250.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |
+| `export` | snapshot → json/yaml/csv (by `--format` or `--out` ext) | `dhs consumer acp1 export 10.6.250.102 --port 2071 --transport tcp --slot 1 --format json --out slot1.json` |
+| `import` | apply a snapshot (`--dry-run` first; subset by `--id`/`--path`, **not** label) | `dhs consumer acp1 import 10.6.250.102 --port 2071 --transport tcp --file slot1.json --dry-run` |
+| `profile` | walk + classify compliance (strict/partial) | `dhs consumer acp1 profile 10.6.250.102 --port 2071 --transport tcp` |
+| `ensure` | converge one object idempotently — the verb **Ansible drives**: `--check` dry-run, `--json` result, `changed` flag (change is never signalled by exit code) | `dhs consumer acp1 ensure 10.6.250.102 --port 2071 --transport tcp --slot 1 --group control --label Out-Mode --value Crossed --check --json` |
 | `validate` | **offline**: decode a captured `frames.jsonl`; optionally write the snapshot | `dhs consumer acp1 validate capture.jsonl --out-tree tree.json` · `… --out-params params.csv` |
 | `discover` | **acp1 only**: one-shot same-subnet LAN scan (no host arg) | `dhs consumer acp1 discover --duration 5s --active --scan-port 2071` |
-| `extract` | **top-level**: capture a per-product DM triple (meta+wire+tree) | `dhs extract 10.100.0.102 --protocol acp1 --manufacturer Axon --product 2GS110 --direction consumer --version 2728 --out testdata/dm --slot 1` |
+| `extract` | **top-level**: capture a per-product DM triple (meta+wire+tree) | `dhs extract 10.6.250.102 --protocol acp1 --manufacturer Axon --product 2GS110 --direction consumer --version 2728 --out testdata/dm --slot 1` |
 | `diff` | **top-level**: compare two canonical trees offline | `dhs diff before.json after.json --format changelog --version 2.4` |
 | `convert` | **top-level**: translate a snapshot json↔yaml↔csv offline | `dhs convert --in slot1.json --out slot1.csv` |
 | producer `serve` | serve a frame AS the device | `dhs producer acp1 serve --manifest synapse-test.json --cache-dir .cache --host 0.0.0.0 --transport all --port 2071` |

@@ -52,8 +52,8 @@ concern *and* an in-protocol exchange:
 
 ```
 # two provider instances, one per controller NIC
-dhs producer probel-sw02p serve --tree matrix.json --bind 10.100.0.103 --port 2002
-dhs producer probel-sw02p serve --tree matrix.json --bind 10.100.0.109 --port 2002
+dhs producer probel-sw02p serve --tree matrix.json --bind 10.6.250.103 --port 2002
+dhs producer probel-sw02p serve --tree matrix.json --bind 10.6.250.109 --port 2002
 ```
 
 ## 3. Logging & severity
@@ -407,13 +407,13 @@ on the lab network).
 ```ini
 # inventory/hosts.ini
 [producer]
-dhs-ubuntu ansible_host=10.100.0.103 ansible_user=root
+dhs-ubuntu ansible_host=10.6.250.103 ansible_user=root
 ```
 
 ```yaml
 # loopback (always) + optional live matrix (playbooks/probel-sw02p-integration.yml)
 #   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw02p-integration.yml
-#   PROBEL_SW02P_TEST_HOST=10.100.0.42 ansible-playbook -i ... playbooks/probel-sw02p-integration.yml
+#   PROBEL_SW02P_TEST_HOST=10.6.250.42 ansible-playbook -i ... playbooks/probel-sw02p-integration.yml
 - hosts: localhost
   connection: local
   tasks:

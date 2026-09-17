@@ -172,10 +172,11 @@ host — `eth0` = `ansible_host` on `10.6.250.101`–`.105`, fabric gateway
 (`netX: …,ip=<addr>/20[,gw=…]`, `nameserver`, `searchdomain`, written
 via the API, applied by a CT reboot); the Windows VM gets it guest-side.
 No DHCP dependency. The inventory is the source of truth, not an
-overlay. **The `dhs_netaddr` role (#786) still carries the retired
-`10.100.0.x` plan — do NOT run it until it is reworked for VLAN 600**
-(the live addresses above were set during the migration, not by that
-role).
+overlay. The `dhs_netaddr` role (#786) carries this plan since 2026-09-17
+(prefix /20, gateway `10.6.255.254`, DNS `10.6.240.1`, host_vars on
+`10.6.250.101`–`.105`); run against the fleet it reported changed=0 on
+every CT — the migration had set exactly these values — and converged the
+one guest-side leftover, dhs-rocky's NetworkManager resolver.
 
 A second management NIC (`eth1` = eth0 + 10, `.111`–`.113`, no default
 route) existed until 2026-08-23 and is **parked, not deleted** — re-adding
@@ -441,5 +442,5 @@ Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
 hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
 firewall (#785), host baseline (#800), OS updates + reboot (#799),
 time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815).
-Post-migration follow-ups: confirm Cerebrum's VLAN 600 address; rework
-`dhs_netaddr` for VLAN 600 before re-enabling it.
+Post-migration follow-up still open: confirm Cerebrum's VLAN 600 address.
+`dhs_netaddr` was reworked for VLAN 600 on 2026-09-17.

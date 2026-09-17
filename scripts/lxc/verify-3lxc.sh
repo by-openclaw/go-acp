@@ -1,6 +1,6 @@
 #!/bin/bash
 echo ">>> Cerebrum: dhs nodes registered"
-curl -s http://10.100.0.5:8080/x-nmos/query/v1.3/nodes | grep -oE '"label":"[^"]*"' | sort -u
+curl -s http://10.6.250.5:8080/x-nmos/query/v1.3/nodes | grep -oE '"label":"[^"]*"' | sort -u
 
 echo ""
 echo ">>> avahi-browse _nmos-node._tcp from this host"

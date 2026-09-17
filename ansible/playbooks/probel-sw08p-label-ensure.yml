@@ -13,7 +13,7 @@
 # One selector per run so stdout is a single JSON object (dst is symmetric).
 #
 #   ansible-playbook -i inventory/probel.ini playbooks/probel-sw08p-label-ensure.yml \
-#     -e 'addr=10.100.0.42:2008 in_dir=routes/mcr size=8'
+#     -e 'addr=10.6.250.42:2008 in_dir=routes/mcr size=8'
 #
 - name: Probel SW-P-08 label ensure (idempotency contract)
   hosts: "{{ target | default('localhost') }}"

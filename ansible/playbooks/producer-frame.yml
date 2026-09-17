@@ -19,7 +19,7 @@
 #
 # Inventory: put the serving host in a [producer] group, e.g.
 #   [producer]
-#   dhs-debian ansible_host=10.100.0.102 ansible_user=root
+#   dhs-debian ansible_host=10.6.250.101 ansible_user=root
 - name: Serve the ACP1 frame (slot 0 + cards) from a lab host
   hosts: producer
   gather_facts: false
