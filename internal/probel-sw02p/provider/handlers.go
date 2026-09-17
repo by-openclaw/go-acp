@@ -77,12 +77,8 @@ func (s *server) dispatch(f codec.Frame) (handlerResult, error) {
 // failures are logged but never abort the fan-out — one slow peer
 // must not block broadcast delivery to healthy peers.
 func (s *server) fanOut(b []byte, id codec.CommandID) {
-	s.mu.Lock()
-	targets := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		targets = append(targets, sess)
-	}
-	s.mu.Unlock()
+	targets := s.Conns()
+	met := s.Metrics()
 	s.logger.Debug("probel-sw02p fanOut",
 		slog.Int("cmd", int(id)),
 		slog.Int("targets", len(targets)),
@@ -96,6 +92,6 @@ func (s *server) fanOut(b []byte, id codec.CommandID) {
 			s.profile.Note(OutboundWriteFailed)
 			continue
 		}
-		s.metrics.ObserveCmdTx(uint8(id), len(b), 0)
+		met.ObserveCmdTx(uint8(id), len(b), 0)
 	}
 }

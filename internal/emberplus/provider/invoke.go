@@ -389,15 +389,9 @@ func (s *server) broadcastMatrixConnections(matrixOID string, conns []canonical.
 	}
 	payload := s.encodeMatrixConnectionsAnnouncement(e, conns)
 
-	s.mu.Lock()
-	targets := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		targets = append(targets, sess)
-	}
-	s.mu.Unlock()
-
+	// Base owns the session set; snapshot and fan out to all.
 	sent := map[*session]struct{}{}
-	for _, sess := range targets {
+	for _, sess := range s.Conns() {
 		sess.send(payload)
 		sent[sess] = struct{}{}
 	}

@@ -119,7 +119,7 @@ func TestRun_CtxDone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already done
 	done := make(chan struct{})
-	go func() { sess.run(ctx); close(done) }()
+	go func() { sess.Run(ctx); close(done) }()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -127,57 +127,10 @@ func TestRun_CtxDone(t *testing.T) {
 	}
 }
 
-// scriptedListener is a net.Listener that returns a scripted sequence of
-// Accept results: first a transient (non-ErrClosed) error to drive the
-// accept-error-continue branch, then net.ErrClosed to terminate the loop.
-type scriptedListener struct {
-	calls atomic.Int32
-}
-
-func (l *scriptedListener) Accept() (net.Conn, error) {
-	switch l.calls.Add(1) {
-	case 1:
-		return nil, errors.New("scripted: transient accept error")
-	default:
-		return nil, net.ErrClosed
-	}
-}
-func (l *scriptedListener) Close() error   { return nil }
-func (l *scriptedListener) Addr() net.Addr { return fakeAddr{} }
-
-// TestAcceptLoop_TransientErrorContinue covers the accept-error-continue
-// path in acceptLoop: a transient error (ctx live, not ErrClosed) is
-// logged and the loop continues; a subsequent ErrClosed ends it.
-func TestAcceptLoop_TransientErrorContinue(t *testing.T) {
-	srv := newServer(plugin.Deps{}, buildRichExport())
-	ln := &scriptedListener{}
-	done := make(chan error, 1)
-	go func() { done <- srv.acceptLoop(context.Background(), ln) }()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Errorf("acceptLoop returned %v, want nil after ErrClosed", err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("acceptLoop did not terminate")
-	}
-	if ln.calls.Load() < 2 {
-		t.Errorf("expected ≥2 Accept calls (transient + closed), got %d", ln.calls.Load())
-	}
-}
-
-// TestAcceptLoop_CtxCancelledError covers the ctx.Err()!=nil branch: a
-// transient accept error while the context is already cancelled returns
-// nil immediately.
-func TestAcceptLoop_CtxCancelledError(t *testing.T) {
-	srv := newServer(plugin.Deps{}, buildRichExport())
-	ln := &scriptedListener{}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := srv.acceptLoop(ctx, ln); err != nil {
-		t.Errorf("acceptLoop with cancelled ctx returned %v, want nil", err)
-	}
-}
+// The accept-loop's transient-error-continue and ctx-cancel branches moved
+// to provider.Base.AcceptLoop when this provider adopted the shared base;
+// they are covered by internal/provider/base_test.go. serveListener's own
+// wiring is covered by TestProvider_ServeStop and TestServe_AcceptAfterCancel.
 
 // TestFindCommandInElements_MatrixChildren covers the e.Matrix recursion
 // branch (a Command nested inside a Matrix's children).

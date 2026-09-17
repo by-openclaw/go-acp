@@ -2,7 +2,6 @@ package emberplus
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -11,21 +10,24 @@ import (
 
 	"dhs/internal/emberplus/codec/s101"
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
 	"dhs/internal/plugin"
-	"dhs/internal/transport"
+	"dhs/internal/provider"
 )
 
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
 type server struct {
-	logger *slog.Logger
+	// Base owns the listener, the live-session set, the stop sequence and
+	// the metrics connector — the same contract acp2 / probel-sw08p /
+	// probel-sw02p embed. The subscription table below stays here under
+	// s.mu: Base manages set MEMBERSHIP, this server manages who-watches-
+	// what. The two locks are only ever taken sequentially — Conns() first,
+	// then s.mu — never nested, so a session dropped between them degrades
+	// safely: a write to a closing session errors, an emptied subs sends
+	// nothing.
+	provider.Base[*session]
 
-	// metrics is the server-wide connector snapshot exposed via Metrics()
-	// so `producer emberplus serve --metrics-addr` scrapes it. Frames are
-	// attributed by S101 command byte, which separates EmBER payloads from
-	// keep-alives. Always non-nil.
-	metrics *metrics.Connector
+	logger *slog.Logger
 
 	tree      *tree
 	templates []*canonical.TemplateEntry
@@ -33,31 +35,25 @@ type server struct {
 	salvos    *salvoStore
 	locks     *lockStore
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
+	// mu guards the subscription table only (the server subs map and every
+	// sess.subs). Base owns its own lock for the session set.
+	mu sync.Mutex
 	// subs: oid -> set of sessions watching it
 	subs map[string]map[*session]struct{}
-
-	stopOnce sync.Once
-	stopped  chan struct{}
 }
 
 func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 	deps = deps.WithDefaults()
-	met := deps.Metrics
-	met.RegisterCmd(s101.CmdEmBER, "ember")
-	met.RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
-	met.RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
 	t, err := newTree(exp)
 	s := &server{
-		metrics:  met,
-		logger:   deps.Logger.With(slog.String("plugin", "emberplus-provider")),
-		funcs:    newFunctionRegistry(),
-		sessions: map[*session]struct{}{},
-		subs:     map[string]map[*session]struct{}{},
-		stopped:  make(chan struct{}),
+		logger: deps.Logger.With(slog.String("plugin", "emberplus-provider")),
+		funcs:  newFunctionRegistry(),
+		subs:   map[string]map[*session]struct{}{},
 	}
+	s.Init(deps)
+	s.Metrics().RegisterCmd(s101.CmdEmBER, "ember")
+	s.Metrics().RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
+	s.Metrics().RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
 	if err != nil {
 		// defer until Serve so the factory signature stays clean
 		s.logger.Error("tree build failed", slog.String("err", err.Error()))
@@ -75,14 +71,11 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if s.tree == nil {
 		return fmt.Errorf("emberplus-provider: tree not loaded")
 	}
-	ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
+	ln, err := s.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
-	// The embedded listener, not the wrapper: serveListener's accept loop
-	// applies the socket policy itself, so an injected listener from
-	// ServeListener gets it too. Passing the wrapper would apply it twice.
-	return s.serveListener(ctx, ln.Listener)
+	return s.serveListener(ctx, ln)
 }
 
 // ServeListener serves on a pre-bound listener. Exported on the concrete
@@ -99,17 +92,13 @@ func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
 }
 
 func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
-	s.mu.Lock()
-	s.listener = ln
-	s.mu.Unlock()
-
 	s.logger.Info("listening",
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("tree_size", len(s.tree.byOID)),
 	)
 
 	// Unsolicited stream fan-out — runs if the tree has any Parameters
-	// with a streamIdentifier, exits on ctx cancel or Stop().
+	// with a streamIdentifier, exits on ctx cancel or Base.Stopped().
 	go s.runStreamer(ctx, 500*time.Millisecond)
 
 	// Idle-session sweeper — disconnect peers that haven't sent any
@@ -120,66 +109,19 @@ func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
 	// lastActive well within the TTL.
 	go s.runIdleSweeper(ctx, idleSweepInterval, idleSessionTTL)
 
-	// Close listener on ctx cancel to unblock Accept.
+	// Base.Stop closes the listener (unblocking Accept) and drains every
+	// tracked session; idempotent, so a later explicit Stop is a no-op.
 	go func() {
-		select {
-		case <-ctx.Done():
-		case <-s.stopped:
-		}
-		_ = ln.Close()
+		<-ctx.Done()
+		_ = s.Stop()
 	}()
 
-	return s.acceptLoop(ctx, ln)
-}
-
-// acceptLoop runs the listener accept loop until the listener is closed
-// or the context is cancelled. Split out of Serve as a testability seam:
-// a test can drive it with a fake net.Listener that injects a transient
-// (non-ErrClosed) accept error to exercise the accept-error-continue
-// branch, which a real OS listener will not produce on demand.
-func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return nil
-			}
-			if ctx.Err() != nil {
-				return nil
-			}
-			s.logger.Debug("accept", slog.String("err", err.Error()))
-			continue
-		}
-		// OS-level dead-peer probe. Without it a half-open client session
-		// (a NAT or firewall drop with no RST) holds a goroutine and a
-		// socket here for ever. Applied in the accept loop rather than at
-		// bind time so ServeListener's injected listener gets it too.
-		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
-		sess := newSession(s, conn)
-		s.registerSession(sess)
-		go sess.run(ctx)
-	}
-}
-
-// Stop implements provider.Provider.
-func (s *server) Stop() error {
-	s.stopOnce.Do(func() {
-		close(s.stopped)
-		s.mu.Lock()
-		ln := s.listener
-		sessions := make([]*session, 0, len(s.sessions))
-		for sess := range s.sessions {
-			sessions = append(sessions, sess)
-		}
-		s.mu.Unlock()
-		if ln != nil {
-			_ = ln.Close()
-		}
-		for _, sess := range sessions {
-			sess.close()
-		}
+	// Base.AcceptLoop applies the socket policy per connection, backs off
+	// on transient accept errors, tracks each session and removes it when
+	// Run returns. newSession is the protocol's only per-connection work.
+	return s.AcceptLoop(ctx, ln, func(conn net.Conn) *session {
+		return newSession(s, conn)
 	})
-	return nil
 }
 
 // SetValue mutates a parameter on the served tree and broadcasts a
@@ -200,16 +142,13 @@ func (s *server) SetValue(ctx context.Context, path string, val any) (any, error
 
 // --- Session bookkeeping ---
 
-func (s *server) registerSession(sess *session) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sessions[sess] = struct{}{}
-}
-
+// dropSession removes a session from Base's set and cleans its entries out
+// of the subscription table. The two are separate locks taken in sequence,
+// never nested: Base.Remove first, then s.mu for the subs sweep.
 func (s *server) dropSession(sess *session) {
+	s.Remove(sess)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.sessions, sess)
 	for oid, set := range s.subs {
 		delete(set, sess)
 		if len(set) == 0 {
@@ -278,7 +217,7 @@ func (s *server) runIdleSweeper(ctx context.Context, interval, ttl time.Duration
 		select {
 		case <-ctx.Done():
 			return
-		case <-s.stopped:
+		case <-s.Stopped():
 			return
 		case <-ticker.C:
 			s.sweepIdleSessions(ttl)
@@ -291,14 +230,12 @@ func (s *server) runIdleSweeper(ctx context.Context, interval, ttl time.Duration
 // re-acquire it via dropSession without deadlocking.
 func (s *server) sweepIdleSessions(ttl time.Duration) {
 	cutoff := time.Now().Add(-ttl).UnixNano()
-	s.mu.Lock()
 	var idle []*session
-	for sess := range s.sessions {
+	for _, sess := range s.Conns() {
 		if sess.lastActive.Load() < cutoff {
 			idle = append(idle, sess)
 		}
 	}
-	s.mu.Unlock()
 	for _, sess := range idle {
 		s.logger.Info("idle session swept",
 			slog.String("peer", sess.id),
@@ -326,19 +263,9 @@ func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
 	payload := s.encodeParamAnnouncement(e, p)
 	s.tree.mu.RUnlock()
 
-	s.mu.Lock()
-	targets := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		targets = append(targets, sess)
-	}
-	s.mu.Unlock()
-
-	for _, sess := range targets {
+	// Base owns the session set; snapshot it and fan out. A session that
+	// closed since the snapshot just errors on send (see session.send).
+	for _, sess := range s.Conns() {
 		sess.send(payload)
 	}
 }
-
-// Metrics returns the server-wide connector metrics — satisfies the
-// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
-// emberplus provider. Always non-nil.
-func (s *server) Metrics() *metrics.Connector { return s.metrics }

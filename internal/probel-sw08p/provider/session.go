@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/transport"
 )
@@ -28,6 +29,10 @@ import (
 type session struct {
 	srv  *server
 	conn net.Conn
+
+	// met is the server's connector, captured once so the rx/tx path never
+	// takes Base's lock per frame.
+	met *metrics.Connector
 
 	writeMu sync.Mutex
 	closeMu sync.Mutex
@@ -70,6 +75,7 @@ func newSession(srv *server, conn net.Conn) *session {
 	s := &session{
 		srv:        srv,
 		conn:       conn,
+		met:        srv.Metrics(),
 		dispatchCh: make(chan pendingFrame, dispatchChanCap),
 	}
 	s.idle.Set(srv.idleTimeout())
@@ -79,7 +85,18 @@ func newSession(srv *server, conn net.Conn) *session {
 // run reads frames until EOF or ctx cancellation. Each frame is decoded,
 // ACK'd, then enqueued for the dispatcher goroutine (started here).
 // The read loop never waits on handler or fan-out work.
-func (s *session) run(ctx context.Context) {
+// Run satisfies provider.Conn. It owns the per-session keepalive: a ctx
+// derived from the server's, cancelled when the read loop returns, so a
+// probe never outlives its session. The old accept loop did this in a
+// closure; folding it here keeps the accept loop generic.
+func (s *session) Run(ctx context.Context) {
+	sessCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	s.startKeepalive(sessCtx, s.srv.kaInterval())
+	s.runLoop(sessCtx)
+}
+
+func (s *session) runLoop(ctx context.Context) {
 	defer func() {
 		_ = s.conn.Close()
 		// Signal dispatcher no more frames coming; drain anything queued
@@ -149,7 +166,7 @@ func (s *session) run(ctx context.Context) {
 					slog.String("err", derr.Error()))
 				_ = s.write(codec.PackNAK())
 				s.srv.profile.Note(InboundFrameDecodeFailed)
-				s.srv.metrics.ObserveDecodeError()
+				s.met.ObserveDecodeError()
 				buf = buf[2:]
 				continue
 			}
@@ -166,7 +183,7 @@ func (s *session) run(ctx context.Context) {
 					slog.String("hex", codec.HexDump(buf[:consumed])),
 				)
 			}
-			s.srv.metrics.ObserveCmdRx(uint8(f.ID), consumed)
+			s.met.ObserveCmdRx(uint8(f.ID), consumed)
 			rxAt := time.Now()
 			buf = buf[consumed:]
 			// SW-P-08 §2 — always ACK a well-framed message, then
@@ -220,7 +237,7 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 			slog.String("err", err.Error()),
 		)
 		s.srv.profile.Note(HandlerRejected)
-		s.srv.metrics.ObserveDecodeError()
+		s.met.ObserveDecodeError()
 		return
 	}
 	if res.reply != nil {
@@ -239,7 +256,7 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 				slog.String("remote", s.remoteAddr()),
 				slog.String("err", werr.Error()))
 		}
-		s.srv.metrics.ObserveCmdTx(uint8(res.reply.ID), len(raw), time.Since(rxAt))
+		s.met.ObserveCmdTx(uint8(res.reply.ID), len(raw), time.Since(rxAt))
 	}
 	if res.streamToSender != nil {
 		emit := func(f codec.Frame) error {
@@ -248,7 +265,7 @@ func (s *session) dispatch(f codec.Frame, rxAt time.Time) {
 				return err
 			}
 			// Per-frame metric so the streaming emitter is visible.
-			s.srv.metrics.ObserveCmdTx(uint8(f.ID), len(raw), time.Since(rxAt))
+			s.met.ObserveCmdTx(uint8(f.ID), len(raw), time.Since(rxAt))
 			return nil
 		}
 		if err := res.streamToSender(emit); err != nil {
@@ -275,6 +292,9 @@ func (s *session) write(raw []byte) error {
 }
 
 // close terminates the session's socket. Idempotent.
+// Close satisfies provider.Conn.
+func (s *session) Close() { s.close() }
+
 func (s *session) close() {
 	s.closeMu.Lock()
 	if s.closed {

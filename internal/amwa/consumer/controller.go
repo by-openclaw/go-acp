@@ -185,6 +185,18 @@ type CatalogueSnapshot struct {
 	Receivers []is04.Receiver
 }
 
+// marshalJSON is json.Marshal, indirected through a package var so a
+// test can drive Walk's per-receiver marshal-error continue. A decoded
+// is04.Receiver always re-marshals cleanly, so the guard is otherwise
+// unreachable — the same testability seam session/query uses.
+var marshalJSON = json.Marshal
+
+// receiverCapsValidators is bcp.ForKind, indirected through a package
+// var so a test can drive Walk with a validator returning an event with
+// a zero At. The only wired receiver-caps validator (bcp00401) always
+// stamps At, so Walk's At-normalisation is otherwise unreachable.
+var receiverCapsValidators = bcp.ForKind
+
 // Walk fetches every catalogue collection. Errors fire compliance
 // events but do not abort the walk — callers see the partial snapshot
 // + an error per failed collection.
@@ -237,11 +249,11 @@ func (c *Controller) Walk(ctx context.Context) (*CatalogueSnapshot, []error) {
 	// controller silently drops. Events flow to the same Reporter as
 	// every other walk finding.
 	for i := range snap.Receivers {
-		body, err := json.Marshal(snap.Receivers[i])
+		body, err := marshalJSON(snap.Receivers[i])
 		if err != nil {
 			continue
 		}
-		for _, v := range bcp.ForKind(bcp.KindReceiver) {
+		for _, v := range receiverCapsValidators(bcp.KindReceiver) {
 			for _, ev := range v.Validate(body) {
 				ev.PeerHost = trimURLScheme(c.client.Base)
 				if ev.At.IsZero() {
@@ -308,11 +320,17 @@ func resolveRegistry(ctx context.Context, opts ControllerOptions) (string, []str
 	}
 }
 
+// newQueryBrowser is dnssdsession.NewBrowser, indirected through a
+// package var so a test can drive browseQueryMDNS's NewBrowser-error and
+// Browse-error arms (both need a browser that fails, which the real
+// stdlib browser does not on this host).
+var newQueryBrowser = dnssdsession.NewBrowser
+
 // browseQueryMDNS browses `_nmos-query._tcp` on the local link. The
 // shared session helpers only browse the IS-09 system service, which
 // is the wrong record set for a controller looking for a Registry.
 func browseQueryMDNS(ctx context.Context, timeout time.Duration, logger *slog.Logger) ([]dnssd.Instance, error) {
-	br, err := dnssdsession.NewBrowser(logger)
+	br, err := newQueryBrowser(logger)
 	if err != nil {
 		return nil, err
 	}
