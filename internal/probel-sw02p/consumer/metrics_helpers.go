@@ -10,7 +10,7 @@ import (
 // (SOM + cmd + MESSAGE + checksum ≥ 3 bytes); returns (0, false) for
 // anything too short or mis-framed.
 //
-// The raw observer callbacks (OnRx / OnTx on codec.ClientConfig)
+// The raw observer callbacks (OnRx / OnTx on session.ClientConfig)
 // receive framed application traffic; this helper lets the metrics
 // wrapper attribute each frame to a specific command.
 func probelCmdFromBytes(b []byte) (uint8, bool) {

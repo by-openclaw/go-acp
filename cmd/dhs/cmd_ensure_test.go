@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -163,5 +165,80 @@ func TestPredictStored(t *testing.T) {
 				t.Errorf("predictStored = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestResolveEnsureOutput pins the canonical --output flag (ADR-0002) and the
+// deprecated --json alias mapping to a single json/text decision, and that yaml
+// / unknown formats are exit-2 validation errors.
+func TestResolveEnsureOutput(t *testing.T) {
+	cases := []struct {
+		name      string
+		output    string
+		jsonAlias bool
+		wantJSON  bool
+		wantErr   bool
+	}{
+		{"text default", "text", false, false, false},
+		{"text + --json alias", "text", true, true, false},
+		{"output json", "json", false, true, false},
+		{"output json + alias", "json", true, true, false},
+		{"yaml not yet supported", "yaml", false, false, true},
+		{"unknown format", "xml", false, false, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveEnsureOutput(tc.output, tc.jsonAlias)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("resolveEnsureOutput(%q,%v) err = nil, want validation error", tc.output, tc.jsonAlias)
+				}
+				var verr *consumer.ValidationError
+				if !errors.As(err, &verr) {
+					t.Errorf("err = %T, want *consumer.ValidationError (exit 2)", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveEnsureOutput(%q,%v) err = %v, want nil", tc.output, tc.jsonAlias, err)
+			}
+			if got != tc.wantJSON {
+				t.Errorf("resolveEnsureOutput(%q,%v) = %v, want %v", tc.output, tc.jsonAlias, got, tc.wantJSON)
+			}
+		})
+	}
+}
+
+// TestEnsureValueDiff pins the ADR-0007 diff[] for the value case: one
+// {field:"value",from,to} entry when changed, an empty but NON-nil slice when
+// not (ADR-0007 §Forbidden: diff must always be emitted, even []).
+func TestEnsureValueDiff(t *testing.T) {
+	t.Run("changed yields one entry", func(t *testing.T) {
+		d := ensureValueDiff(true, "On", "Off")
+		if len(d) != 1 || d[0] != (ensureDiff{Field: "value", From: "On", To: "Off"}) {
+			t.Fatalf("diff = %+v, want [{value On Off}]", d)
+		}
+	})
+	t.Run("unchanged yields empty non-nil slice", func(t *testing.T) {
+		d := ensureValueDiff(false, "On", "On")
+		if d == nil {
+			t.Fatal("diff is nil; ADR-0007 requires an empty [], never null")
+		}
+		if len(d) != 0 {
+			t.Fatalf("diff = %+v, want []", d)
+		}
+	})
+}
+
+// TestEnsureResultDiffAlwaysEmitted pins that ensureResult always serialises a
+// diff array (never omitted, never null), per ADR-0007 §Forbidden.
+func TestEnsureResultDiffAlwaysEmitted(t *testing.T) {
+	no := false
+	b, err := json.Marshal(ensureResult{Changed: &no, Current: "On", Diff: ensureValueDiff(false, "On", "On")})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"diff":[]`) {
+		t.Errorf("json = %s; want it to contain \"diff\":[] (ADR-0007 always emits diff)", b)
 	}
 }

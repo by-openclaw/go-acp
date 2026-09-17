@@ -1,0 +1,23 @@
+v=0
+o=- 1443716955 1443716955 IN IP4 198.51.100.10
+s=dhs-audio ST 2110-30
+t=0 0
+a=group:DUP primary secondary
+m=audio 5004 RTP/AVP 97
+c=IN IP4 233.252.0.20/64
+a=source-filter: incl IN IP4 233.252.0.20 198.51.100.10
+a=rtpmap:97 L24/48000/8
+a=ptime:0.125
+a=fmtp:97 channel-order=SMPTE2110.(U08)
+a=ts-refclk:ptp=IEEE1588-2008:AA-BB-CC-FF-FE-00-00-01:127
+a=mediaclk:direct=0
+a=mid:primary
+m=audio 5004 RTP/AVP 97
+c=IN IP4 233.252.0.148/64
+a=source-filter: incl IN IP4 233.252.0.148 198.51.100.138
+a=rtpmap:97 L24/48000/8
+a=ptime:0.125
+a=fmtp:97 channel-order=SMPTE2110.(U08)
+a=ts-refclk:ptp=IEEE1588-2008:AA-BB-CC-FF-FE-00-00-01:127
+a=mediaclk:direct=0
+a=mid:secondary

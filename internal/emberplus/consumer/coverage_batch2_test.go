@@ -81,10 +81,10 @@ func TestApplyParameterConstraints_EdgeBranches(t *testing.T) {
 // and a matrix whose labels resolve to nothing.
 func TestEnrichMatrixLabels_SkipBranches(t *testing.T) {
 	objs := []consumer.Object{
-		{OID: "1", Meta: nil},                                  // nil Meta → skip
-		{OID: "2", Meta: map[string]any{"element": "node"}},    // non-matrix → skip
-		{OID: "3", Meta: map[string]any{"element": "matrix"}},  // no labels key → skip
-		{OID: "4", Meta: map[string]any{                        // empty basePath → skip level
+		{OID: "1", Meta: nil},                                 // nil Meta → skip
+		{OID: "2", Meta: map[string]any{"element": "node"}},   // non-matrix → skip
+		{OID: "3", Meta: map[string]any{"element": "matrix"}}, // no labels key → skip
+		{OID: "4", Meta: map[string]any{ // empty basePath → skip level
 			"element": "matrix",
 			"labels":  []map[string]any{{"basePath": "", "description": "x"}},
 		}},

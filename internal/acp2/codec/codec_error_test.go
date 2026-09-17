@@ -150,7 +150,7 @@ func TestDecodeACP2Message_GetVersionReply(t *testing.T) {
 // embedded property headers.
 func TestDecodeACP2Message_AnnounceWithProperties(t *testing.T) {
 	// header
-	data := []byte{byte(ACP2TypeAnnounce), 0, byte(PIDValue), PIDValue}
+	data := []byte{byte(ACP2TypeAnnounce), 0, PIDValue, PIDValue}
 	// obj-id + idx
 	objIdx := make([]byte, 8)
 	binary.BigEndian.PutUint32(objIdx[0:4], 0x01020304)

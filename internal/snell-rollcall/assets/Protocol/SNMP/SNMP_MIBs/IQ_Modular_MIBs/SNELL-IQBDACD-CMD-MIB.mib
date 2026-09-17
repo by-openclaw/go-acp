@@ -1,0 +1,628 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBDACD
+--        Module Id#:105
+--       Command Set:8
+--          Filename:SNELL-IQBDACD-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:30/06/2005
+--              Time:13:35
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBDACD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBDACD,
+    moduleIQBDACDMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBDACDCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506301335Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBDACDMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbdacdCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbdacdCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBDACD 1 }
+
+	iqbdacdCmdEntry OBJECT-TYPE
+		SYNTAX		IqbdacdCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbdacdSlotIndex }
+		::= { iqbdacdCmdTable 1 }
+
+	IqbdacdCmdEntry ::=
+		SEQUENCE {
+			iqbdacdSlotIndex
+				Unsigned32,
+			iqbdacdChannel1Mute
+				INTEGER,
+			iqbdacdChannel1Gain
+				INTEGER,
+			iqbdacdChannel1LRSwap
+				INTEGER,
+			iqbdacdChannel1PhaseInvert
+				INTEGER,
+			iqbdacdChannel1InputSource
+				INTEGER,
+			iqbdacdChannel2Mute
+				INTEGER,
+			iqbdacdChannel2Gain
+				INTEGER,
+			iqbdacdChannel2LRSwap
+				INTEGER,
+			iqbdacdChannel2PhaseInvert
+				INTEGER,
+			iqbdacdChannel2InputSource
+				INTEGER,
+			iqbdacdMemorySave
+				INTEGER,
+			iqbdacdMemoryRead
+				INTEGER,
+			iqbdacdMemoryPreset
+				INTEGER,
+			iqbdacdMemoryNameMemory1
+				RollCallString,
+			iqbdacdMemoryNameMemory2
+				RollCallString,
+			iqbdacdMemoryNameMemory3
+				RollCallString,
+			iqbdacdMemoryNameMemory4
+				RollCallString,
+			iqbdacdMemoryNamePresetAllNames
+				INTEGER,
+			iqbdacdSetupGPI1
+				INTEGER,
+			iqbdacdSetupGPI2
+				INTEGER,
+			iqbdacdSetupLoggingInputStatus
+				INTEGER,
+			iqbdacdSetupLoggingOverflow
+				INTEGER,
+			iqbdacdSetupPresetUnit
+				INTEGER,
+			iqbdacdSetupSoftwareVersion
+				RollCallString,
+			iqbdacdSetupSerialNo
+				RollCallString,
+			iqbdacdExtDelay1
+				INTEGER,
+			iqbdacdExtDelay2
+				INTEGER,
+			iqbdacdExtDelay3
+				INTEGER,
+			iqbdacdExtDelay4
+				INTEGER,
+			iqbdacdExtDelay5
+				INTEGER
+		}
+
+	iqbdacdSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbdacdCmdEntry 0 }
+
+
+	iqbdacdChannel1Mute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute  cmdID= 6 "
+		::= { iqbdacdCmdEntry 6 }
+
+
+	iqbdacdChannel1Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Gain  cmdID= 5  min= -1200  max= 0  step= 25  format= %1.2f dBu  div_scale= 100 
+					Min = -12.00 dBu  Max = 0.00 dBu  Step = 0.25 dBu "
+		::= { iqbdacdCmdEntry 5 }
+
+
+	iqbdacdChannel1LRSwap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					L/R_Swap  cmdID= 59 "
+		::= { iqbdacdCmdEntry 59 }
+
+
+	iqbdacdChannel1PhaseInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Phase_Invert  cmdID= 61 "
+		::= { iqbdacdCmdEntry 61 }
+
+
+	iqbdacdChannel1InputSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Balanced(1),
+							val_Unbalanced(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input_Source  cmdID= 45 
+					Balanced  value= 1  
+					Unbalanced  value= 0  "
+		::= { iqbdacdCmdEntry 45 }
+
+
+	iqbdacdChannel2Mute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute  cmdID= 43 "
+		::= { iqbdacdCmdEntry 43 }
+
+
+	iqbdacdChannel2Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Gain  cmdID= 44  min= -1200  max= 0  step= 25  format= %1.2f dBu  div_scale= 100 
+					Min = -12.00 dBu  Max = 0.00 dBu  Step = 0.25 dBu "
+		::= { iqbdacdCmdEntry 44 }
+
+
+	iqbdacdChannel2LRSwap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					L/R_Swap  cmdID= 60 "
+		::= { iqbdacdCmdEntry 60 }
+
+
+	iqbdacdChannel2PhaseInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Phase_Invert  cmdID= 62 "
+		::= { iqbdacdCmdEntry 62 }
+
+
+	iqbdacdChannel2InputSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Balanced(1),
+							val_Unbalanced(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input_Source  cmdID= 46 
+					Balanced  value= 1  
+					Unbalanced  value= 0  "
+		::= { iqbdacdCmdEntry 46 }
+
+
+	iqbdacdMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 51 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbdacdCmdEntry 51 }
+
+
+	iqbdacdMemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 52 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbdacdCmdEntry 52 }
+
+
+	iqbdacdMemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 53 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  "
+		::= { iqbdacdCmdEntry 53 }
+
+
+	iqbdacdMemoryNameMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 54  "
+		::= { iqbdacdCmdEntry 54 }
+
+
+	iqbdacdMemoryNameMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 55  "
+		::= { iqbdacdCmdEntry 55 }
+
+
+	iqbdacdMemoryNameMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 56  "
+		::= { iqbdacdCmdEntry 56 }
+
+
+	iqbdacdMemoryNameMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 57  "
+		::= { iqbdacdCmdEntry 57 }
+
+
+	iqbdacdMemoryNamePresetAllNames OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_All_Names(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_All_Names  cmdID= 58  value= 1  "
+		::= { iqbdacdCmdEntry 58 }
+
+
+	iqbdacdSetupGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute_1(1),
+							val_Unbalanced_1(3),
+							val_Mute_2(2),
+							val_Unbalanced_2(4),
+							val_Not_used(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI1  cmdID= 50 
+					Mute_1  value= 1  
+					Unbalanced_1  value= 3  
+					Mute_2  value= 2  
+					Unbalanced_2  value= 4  
+					Not_used  value= 0  "
+		::= { iqbdacdCmdEntry 50 }
+
+
+	iqbdacdSetupGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute_1(1),
+							val_Unbalanced_1(3),
+							val_Mute_2(2),
+							val_Unbalanced_2(4),
+							val_Not_used(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI2  cmdID= 49 
+					Mute_1  value= 1  
+					Unbalanced_1  value= 3  
+					Mute_2  value= 2  
+					Unbalanced_2  value= 4  
+					Not_used  value= 0  "
+		::= { iqbdacdCmdEntry 49 }
+
+
+	iqbdacdSetupLoggingInputStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Status  cmdID= 10 "
+		::= { iqbdacdCmdEntry 10 }
+
+
+	iqbdacdSetupLoggingOverflow OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Overflow  cmdID= 11 "
+		::= { iqbdacdCmdEntry 11 }
+
+
+	iqbdacdSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbdacdCmdEntry 3 }
+
+
+	iqbdacdSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbdacdCmdEntry 2 }
+
+
+	iqbdacdSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbdacdCmdEntry 1 }
+
+
+	iqbdacdExtDelay1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_1  cmdID= 14  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbdacdCmdEntry 14 }
+
+
+	iqbdacdExtDelay2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_2  cmdID= 15  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbdacdCmdEntry 15 }
+
+
+	iqbdacdExtDelay3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_3  cmdID= 16  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbdacdCmdEntry 16 }
+
+
+	iqbdacdExtDelay4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_4  cmdID= 17  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbdacdCmdEntry 17 }
+
+
+	iqbdacdExtDelay5 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Ext_Delay_5  cmdID= 18  min= 0  max= 300  step= 1  format= %1.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 300 ms  Step = 1 ms "
+		::= { iqbdacdCmdEntry 18 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH1
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.67.72.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.67.72.49
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH2
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.67.72.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.67.72.50
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-LEFT1
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.67.72.45.76.69.70.84.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.67.72.45.76.69.70.84.49
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-LEFT2
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.67.72.45.76.69.70.84.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.67.72.45.76.69.70.84.50
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-RIGHT1
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.67.72.45.82.73.71.72.84.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.67.72.45.82.73.71.72.84.49
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: CH-RIGHT2
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.67.72.45.82.73.71.72.84.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.67.72.45.82.73.71.72.84.50
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: OVERFLOW
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

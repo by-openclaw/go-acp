@@ -1,12 +1,13 @@
 package acp2
 
 import (
+	"dhs/internal/acp2/codec"
+	"dhs/internal/transport"
 	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"sync"
-	"dhs/internal/acp2/codec"
 )
 
 // session is one TCP connection. Holds the conn, a write mutex so
@@ -19,11 +20,24 @@ type session struct {
 
 	writeMu sync.Mutex
 	enabled map[codec.AN2Proto]bool
+
+	// idle reaps a client that has gone silent, so the provider stops
+	// holding a goroutine and a socket for every consumer that vanished
+	// without an RST. Off unless configured.
+	idle transport.Idle
 }
 
 func newSession(srv *server, conn net.Conn) *session {
-	return &session{srv: srv, conn: conn}
+	s := &session{srv: srv, conn: conn}
+	s.idle.Set(srv.idleTimeout())
+	return s
 }
+
+// an2HeaderBytes is the fixed AN2 frame header size (magic u16 + proto
+// + slot + mtid + type + dlen u16 — CLAUDE.md "AN2 frame header").
+// ReadAN2Frame returns Payload without it, so rx byte accounting adds
+// it back for a true on-wire count.
+const an2HeaderBytes = 8
 
 // run reads AN2 frames until the connection closes. Every frame is
 // dispatched inline through handleFrame; fatal errors close the conn.
@@ -43,18 +57,27 @@ func (s *session) run() {
 	s.srv.logger.Info("acp2 session accepted", slog.String("remote", remote))
 
 	for {
+		// Re-arm before every frame: any inbound AN2 traffic refreshes it,
+		// so a consumer that is talking at all is never reaped.
+		if err := s.idle.Arm(s.conn); err != nil {
+			return
+		}
 		frame, err := codec.ReadAN2Frame(s.conn)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				s.srv.logger.Debug("acp2 session closed", slog.String("remote", remote))
 				return
 			}
+			s.srv.metrics.ObserveDecodeError()
 			s.srv.logger.Warn("acp2 session read error",
 				slog.String("remote", remote),
 				slog.String("err", err.Error()),
 			)
 			return
 		}
+		// Attributed by AN2 frame Type; the 8-byte header is not counted
+		// in Payload, so add it back for a true on-wire byte count.
+		s.srv.metrics.ObserveCmdRx(uint8(frame.Type), len(frame.Payload)+an2HeaderBytes)
 		s.handleFrame(frame)
 	}
 }

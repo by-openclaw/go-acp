@@ -2,16 +2,19 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/consumer/compliance"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.
@@ -28,11 +31,19 @@ type server struct {
 	logger *slog.Logger
 	tree   *tree
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
-	closed   bool
-	stopped  chan struct{}
+	// net is the only way this server binds a socket. Injected, so the
+	// process owns the transport posture and a test can hand in a fake.
+	net transport.Net
+
+	mu sync.Mutex
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
+	listener    net.Listener
+	sessions    map[*session]struct{}
+	closed      bool
+	stopped     chan struct{}
 
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started.
@@ -82,10 +93,9 @@ func (s *server) ComplianceProfile() *compliance.Profile {
 	return s.profile
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	t, err := newTree(exp)
 	if treeBuildErrHook != nil {
 		err = treeBuildErrHook()
@@ -94,12 +104,13 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 		logger.Error("probel-sw02p provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := metrics.NewConnector()
+	met := deps.Metrics
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	return &server{
 		logger:           logger,
+		net:              deps.Net,
 		tree:             t,
 		sessions:         map[*session]struct{}{},
 		stopped:          make(chan struct{}),
@@ -112,11 +123,21 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	lc := &net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp", addr)
+	ln, err := s.net.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("probel-sw02p provider: listen %q: %w", addr, err)
 	}
+	return s.serveListener(ctx, ln)
+}
+
+// ServeListener accepts client sessions on a pre-bound listener until
+// ctx is cancelled. Exported on the concrete type (not part of the
+// neutral provider.Provider interface) so external-package tests can
+// bind "127.0.0.1:0" themselves and skip the close-then-rebind window
+// of the addr-based path — in a parallel test sweep another process
+// can steal the port between the probe listener's Close and Serve's
+// re-listen (issue #694 flake class).
+func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
 	return s.serveListener(ctx, ln)
 }
 
@@ -208,6 +229,11 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		if err != nil {
 			return err
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever. Applied in the accept loop rather than at
+		// bind time so ServeListener's injected listener gets it too.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}
@@ -254,4 +280,24 @@ func coerceSource(val any) (uint16, error) {
 		return uint16(v), nil
 	}
 	return 0, fmt.Errorf("probel-sw02p: cannot coerce %T to source index", val)
+}
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Off by default. SW-P-02 defines no keep-alive command, so an idle link is
+// indistinguishable from a dead one; enable this only where something
+// guarantees inbound traffic (a controller that polls, as VSM does with a
+// rotating rx 01).
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
 }

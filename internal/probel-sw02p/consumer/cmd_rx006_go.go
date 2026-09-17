@@ -16,7 +16,7 @@ import (
 // connected to the matrix sees the same "go done" result. Tally
 // updates from the set path arrive as unsolicited tx 04 frames —
 // callers that want a live crosspoint mirror should subscribe via
-// codec.Client.Subscribe before invoking SendGo.
+// session.Client.Subscribe before invoking SendGo.
 func (p *Plugin) SendGo(ctx context.Context, op codec.GoOperation) (codec.GoDoneAckParams, error) {
 	cli, err := p.getClient()
 	if err != nil {

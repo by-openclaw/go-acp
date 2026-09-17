@@ -1,0 +1,1426 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQACO
+--        Module Id#:206
+--       Command Set:6
+--  Software Version:5.2.6
+--          Filename:SNELL-IQACO-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:10:12
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQACO-CMD-MIB.mib 219 2006-12-06 12:11:35Z nikolaoskatsampekis $
+--
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQACO-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQACO,
+    moduleIQACOMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQACOCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281012Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQACOMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqacoCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqacoCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQACO 1 }
+
+	iqacoCmdEntry OBJECT-TYPE
+		SYNTAX		IqacoCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqacoSlotIndex }
+		::= { iqacoCmdTable 1 }
+
+	IqacoCmdEntry ::=
+		SEQUENCE {
+			iqacoSlotIndex
+				Unsigned32,
+			iqacoForceA
+				INTEGER,
+			iqacoForceB
+				INTEGER,
+			iqacoRulesDefineipAOkInputPresent
+				INTEGER,
+			iqacoDefineIPAokInputSyncLevelSyncThresholdEnable
+				INTEGER,
+			iqacoDefineIPAokInputSyncLevelSyncThreshold
+				INTEGER,
+			iqacoDefineIPAokInputStandardStdis525
+				INTEGER,
+			iqacoDefineIPAokInputStandardStdis625
+				INTEGER,
+			iqacoRulesDefineipBOkInputPresent
+				INTEGER,
+			iqacoDefineIPBokInputSyncLevelSyncThresholdEnable
+				INTEGER,
+			iqacoDefineIPBokInputSyncLevelSyncThreshold
+				INTEGER,
+			iqacoDefineIPBokInputStandardStdis525
+				INTEGER,
+			iqacoDefineIPBokInputStandardStdis625
+				INTEGER,
+			iqacoRulesRule1SetRule1
+				INTEGER,
+			iqacoRulesRule1Select
+				INTEGER,
+			iqacoRulesRule1TimeDelay
+				INTEGER,
+			iqacoRulesRule2SetRule2
+				INTEGER,
+			iqacoRulesRule2Select
+				INTEGER,
+			iqacoRulesRule2TimeDelay
+				INTEGER,
+			iqacoRulesRule3SetRule3
+				INTEGER,
+			iqacoRulesRule3Select
+				INTEGER,
+			iqacoRulesRule3TimeDelay
+				INTEGER,
+			iqacoRulesRule4SetRule4
+				INTEGER,
+			iqacoRulesRule4Select
+				INTEGER,
+			iqacoRulesRule4TimeDelay
+				INTEGER,
+			iqacoRulesRule5SetRule5
+				INTEGER,
+			iqacoRulesRule5Select
+				INTEGER,
+			iqacoRulesRule5TimeDelay
+				INTEGER,
+			iqacoGPIOCtrl1DefineipOkUseRulesDefinition
+				INTEGER,
+			iqacoDefineipOkDefineIPGPI1okInputPresent
+				INTEGER,
+			iqacoDefineIPGPI1okInputSyncLevelSyncThresholdEnable
+				INTEGER,
+			iqacoDefineIPGPI1okInputSyncLevelSyncThreshold
+				INTEGER,
+			iqacoDefineIPGPI1okInputStandardStdis525
+				INTEGER,
+			iqacoDefineIPGPI1okInputStandardStdis625
+				INTEGER,
+			iqacoGPIOCtrlsGPIOCtrl1
+				INTEGER,
+			iqacoGPIOCtrl2DefineipOkUseRulesDefinition
+				INTEGER,
+			iqacoDefineipOkDefineIPGPI2okInputPresent
+				INTEGER,
+			iqacoDefineIPGPI2okInputSyncLevelSyncThresholdEnable
+				INTEGER,
+			iqacoDefineIPGPI2okInputSyncLevelSyncThreshold
+				INTEGER,
+			iqacoDefineIPGPI2okInputStandardStdis525
+				INTEGER,
+			iqacoDefineIPGPI2okInputStandardStdis625
+				INTEGER,
+			iqacoGPIOCtrlsGPIOCtrl2
+				INTEGER,
+			iqacoGPIOCtrl3DefineipOkUseRulesDefinition
+				INTEGER,
+			iqacoDefineipOkDefineIPGPI3okInputPresent
+				INTEGER,
+			iqacoDefineIPGPI3okInputSyncLevelSyncThresholdEnable
+				INTEGER,
+			iqacoDefineIPGPI3okInputSyncLevelSyncThreshold
+				INTEGER,
+			iqacoDefineIPGPI3okInputStandardStdis525
+				INTEGER,
+			iqacoDefineIPGPI3okInputStandardStdis625
+				INTEGER,
+			iqacoGPIOCtrlsGPIOCtrl3
+				INTEGER,
+			iqacoRollTracksRTrk1RollTrack1Mode
+				INTEGER,
+			iqacoRollTracksRTrk1RollTrack1Add
+				RollCallString,
+			iqacoRollTracksRTrk1RollTrack1Data
+				RollCallString,
+			iqacoRollTracksRTrk2RollTrack2Mode
+				INTEGER,
+			iqacoRollTracksRTrk2RollTrack2Add
+				RollCallString,
+			iqacoRollTracksRTrk2RollTrack2Data
+				RollCallString,
+			iqacoRollTracksRTrk3RollTrack3Mode
+				INTEGER,
+			iqacoRollTracksRTrk3RollTrack3Add
+				RollCallString,
+			iqacoRollTracksRTrk3RollTrack3Data
+				RollCallString,
+			iqacoRollTracksRTrk4RollTrack4Mode
+				INTEGER,
+			iqacoRollTracksRTrk4RollTrack4Add
+				RollCallString,
+			iqacoRollTracksRTrk4RollTrack4Data
+				RollCallString,
+			iqacoRollTracksRTrk5RollTrack5Mode
+				INTEGER,
+			iqacoRollTracksRTrk5RollTrack5Add
+				RollCallString,
+			iqacoRollTracksRTrk5RollTrack5Data
+				RollCallString,
+			iqacoRollTracksRTrk6RollTrack6Mode
+				INTEGER,
+			iqacoRollTracksRTrk6RollTrack6Add
+				RollCallString,
+			iqacoRollTracksRTrk6RollTrack6Data
+				RollCallString,
+			iqacoSetupLoggingLogInputA
+				INTEGER,
+			iqacoSetupLoggingLogInputB
+				INTEGER,
+			iqacoSetupLoggingOutput
+				INTEGER,
+			iqacoSetupPresetUnit
+				INTEGER,
+			iqacoSetupSoftwareVersion
+				RollCallString,
+			iqacoSetupSerialNo
+				RollCallString,
+			iqacoSetupBuildNo
+				RollCallString
+		}
+
+	iqacoSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqacoCmdEntry 0 }
+
+
+	iqacoForceA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force_A  cmdID= 12 "
+		::= { iqacoCmdEntry 12 }
+
+
+	iqacoForceB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force_B  cmdID= 13 "
+		::= { iqacoCmdEntry 13 }
+
+
+	iqacoRulesDefineipAOkInputPresent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_A_Ok
+					Input_Present  cmdID= 127 "
+		::= { iqacoCmdEntry 127 }
+
+
+	iqacoDefineIPAokInputSyncLevelSyncThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_A_Ok
+					Sync_>_Threshold  cmdID= 129 "
+		::= { iqacoCmdEntry 129 }
+
+
+	iqacoDefineIPAokInputSyncLevelSyncThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Define_i/p_A_Ok
+					Sync_Threshold  cmdID= 128  min= 150  max= 250  step= 50  format= %1.0fmV  div_scale= 1 
+					Min = 150mV  Max = 250mV  Step = 50mV "
+		::= { iqacoCmdEntry 128 }
+
+
+	iqacoDefineIPAokInputStandardStdis525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_A_Ok
+					Std_is_525  cmdID= 130 "
+		::= { iqacoCmdEntry 130 }
+
+
+	iqacoDefineIPAokInputStandardStdis625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_A_Ok
+					Std_is_625  cmdID= 131 "
+		::= { iqacoCmdEntry 131 }
+
+
+	iqacoRulesDefineipBOkInputPresent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_B_Ok
+					Input_Present  cmdID= 132 "
+		::= { iqacoCmdEntry 132 }
+
+
+	iqacoDefineIPBokInputSyncLevelSyncThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_B_Ok
+					Sync_>_Threshold  cmdID= 134 "
+		::= { iqacoCmdEntry 134 }
+
+
+	iqacoDefineIPBokInputSyncLevelSyncThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Define_i/p_B_Ok
+					Sync_Threshold  cmdID= 133  min= 150  max= 250  step= 50  format= %1.0fmV  div_scale= 1 
+					Min = 150mV  Max = 250mV  Step = 50mV "
+		::= { iqacoCmdEntry 133 }
+
+
+	iqacoDefineIPBokInputStandardStdis525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_B_Ok
+					Std_is_525  cmdID= 135 "
+		::= { iqacoCmdEntry 135 }
+
+
+	iqacoDefineIPBokInputStandardStdis625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rules- Define_i/p_B_Ok
+					Std_is_625  cmdID= 136 "
+		::= { iqacoCmdEntry 136 }
+
+
+	iqacoRulesRule1SetRule1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_is_Ok(1),
+							val_B_is_Ok(5),
+							val_A_in_Error(3),
+							val_B_in_Error(7),
+							val_GPI_1_Open(9),
+							val_GPI_1_Closed(11),
+							val_GPI_2_Open(13),
+							val_GPI_2_Closed(15),
+							val_GPI_3_Open(17),
+							val_GPI_3_Closed(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rules- Rule_1
+					Set_Rule_1  cmdID= 99 
+					Off  value= 0  
+					A_is_Ok  value= 1  
+					B_is_Ok  value= 5  
+					A_in_Error  value= 3  
+					B_in_Error  value= 7  
+					GPI_1_Open  value= 9  
+					GPI_1_Closed  value= 11  
+					GPI_2_Open  value= 13  
+					GPI_2_Closed  value= 15  
+					GPI_3_Open  value= 17  
+					GPI_3_Closed  value= 19  "
+		::= { iqacoCmdEntry 99 }
+
+
+	iqacoRulesRule1Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_A(0),
+							val_Select_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Rules- Rule_1
+					Select A  cmdID= 104  value= 0  
+					Select B  cmdID= 104  value= 1  "
+		::= { iqacoCmdEntry 104 }
+
+
+	iqacoRulesRule1TimeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Rule_1
+					Time Delay  cmdID= 7  min= 0  max= 10000  step= 20  format= %.0fms  div_scale= 1 
+					Min = 0ms  Max = 10000ms  Step = 20ms "
+		::= { iqacoCmdEntry 7 }
+
+
+	iqacoRulesRule2SetRule2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_is_Ok(1),
+							val_B_is_Ok(5),
+							val_A_in_Error(3),
+							val_B_in_Error(7),
+							val_GPI_1_Open(9),
+							val_GPI_1_Closed(11),
+							val_GPI_2_Open(13),
+							val_GPI_2_Closed(15),
+							val_GPI_3_Open(17),
+							val_GPI_3_Closed(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rules- Rule_2
+					Set_Rule_2  cmdID= 100 
+					Off  value= 0  
+					A_is_Ok  value= 1  
+					B_is_Ok  value= 5  
+					A_in_Error  value= 3  
+					B_in_Error  value= 7  
+					GPI_1_Open  value= 9  
+					GPI_1_Closed  value= 11  
+					GPI_2_Open  value= 13  
+					GPI_2_Closed  value= 15  
+					GPI_3_Open  value= 17  
+					GPI_3_Closed  value= 19  "
+		::= { iqacoCmdEntry 100 }
+
+
+	iqacoRulesRule2Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_A(0),
+							val_Select_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Rules- Rule_2
+					Select A  cmdID= 105  value= 0  
+					Select B  cmdID= 105  value= 1  "
+		::= { iqacoCmdEntry 105 }
+
+
+	iqacoRulesRule2TimeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Rule_2
+					Time Delay  cmdID= 8  min= 0  max= 10000  step= 20  format= %.0fms  div_scale= 1 
+					Min = 0ms  Max = 10000ms  Step = 20ms "
+		::= { iqacoCmdEntry 8 }
+
+
+	iqacoRulesRule3SetRule3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_is_Ok(1),
+							val_B_is_Ok(5),
+							val_A_in_Error(3),
+							val_B_in_Error(7),
+							val_GPI_1_Open(9),
+							val_GPI_1_Closed(11),
+							val_GPI_2_Open(13),
+							val_GPI_2_Closed(15),
+							val_GPI_3_Open(17),
+							val_GPI_3_Closed(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rules- Rule_3
+					Set_Rule_3  cmdID= 101 
+					Off  value= 0  
+					A_is_Ok  value= 1  
+					B_is_Ok  value= 5  
+					A_in_Error  value= 3  
+					B_in_Error  value= 7  
+					GPI_1_Open  value= 9  
+					GPI_1_Closed  value= 11  
+					GPI_2_Open  value= 13  
+					GPI_2_Closed  value= 15  
+					GPI_3_Open  value= 17  
+					GPI_3_Closed  value= 19  "
+		::= { iqacoCmdEntry 101 }
+
+
+	iqacoRulesRule3Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_A(0),
+							val_Select_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Rules- Rule_3
+					Select A  cmdID= 106  value= 0  
+					Select B  cmdID= 106  value= 1  "
+		::= { iqacoCmdEntry 106 }
+
+
+	iqacoRulesRule3TimeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Rule_3
+					Time Delay  cmdID= 9  min= 0  max= 10000  step= 20  format= %.0fms  div_scale= 1 
+					Min = 0ms  Max = 10000ms  Step = 20ms "
+		::= { iqacoCmdEntry 9 }
+
+
+	iqacoRulesRule4SetRule4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_is_Ok(1),
+							val_B_is_Ok(5),
+							val_A_in_Error(3),
+							val_B_in_Error(7),
+							val_GPI_1_Open(9),
+							val_GPI_1_Closed(11),
+							val_GPI_2_Open(13),
+							val_GPI_2_Closed(15),
+							val_GPI_3_Open(17),
+							val_GPI_3_Closed(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rules- Rule_4
+					Set_Rule_4  cmdID= 102 
+					Off  value= 0  
+					A_is_Ok  value= 1  
+					B_is_Ok  value= 5  
+					A_in_Error  value= 3  
+					B_in_Error  value= 7  
+					GPI_1_Open  value= 9  
+					GPI_1_Closed  value= 11  
+					GPI_2_Open  value= 13  
+					GPI_2_Closed  value= 15  
+					GPI_3_Open  value= 17  
+					GPI_3_Closed  value= 19  "
+		::= { iqacoCmdEntry 102 }
+
+
+	iqacoRulesRule4Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_A(0),
+							val_Select_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Rules- Rule_4
+					Select A  cmdID= 107  value= 0  
+					Select B  cmdID= 107  value= 1  "
+		::= { iqacoCmdEntry 107 }
+
+
+	iqacoRulesRule4TimeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Rule_4
+					Time Delay  cmdID= 10  min= 0  max= 10000  step= 20  format= %.0fms  div_scale= 1 
+					Min = 0ms  Max = 10000ms  Step = 20ms "
+		::= { iqacoCmdEntry 10 }
+
+
+	iqacoRulesRule5SetRule5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_is_Ok(1),
+							val_B_is_Ok(5),
+							val_A_in_Error(3),
+							val_B_in_Error(7),
+							val_GPI_1_Open(9),
+							val_GPI_1_Closed(11),
+							val_GPI_2_Open(13),
+							val_GPI_2_Closed(15),
+							val_GPI_3_Open(17),
+							val_GPI_3_Closed(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rules- Rule_5
+					Set_Rule_5  cmdID= 103 
+					Off  value= 0  
+					A_is_Ok  value= 1  
+					B_is_Ok  value= 5  
+					A_in_Error  value= 3  
+					B_in_Error  value= 7  
+					GPI_1_Open  value= 9  
+					GPI_1_Closed  value= 11  
+					GPI_2_Open  value= 13  
+					GPI_2_Closed  value= 15  
+					GPI_3_Open  value= 17  
+					GPI_3_Closed  value= 19  "
+		::= { iqacoCmdEntry 103 }
+
+
+	iqacoRulesRule5Select OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_A(0),
+							val_Select_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Rules- Rule_5
+					Select A  cmdID= 108  value= 0  
+					Select B  cmdID= 108  value= 1  "
+		::= { iqacoCmdEntry 108 }
+
+
+	iqacoRulesRule5TimeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Rules- Rule_5
+					Time Delay  cmdID= 11  min= 0  max= 10000  step= 20  format= %.0fms  div_scale= 1 
+					Min = 0ms  Max = 10000ms  Step = 20ms "
+		::= { iqacoCmdEntry 11 }
+
+
+	iqacoGPIOCtrl1DefineipOkUseRulesDefinition OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup
+					Use Rules Definition  cmdID= 95 "
+		::= { iqacoCmdEntry 95 }
+
+
+	iqacoDefineipOkDefineIPGPI1okInputPresent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Input_Present  cmdID= 137 "
+		::= { iqacoCmdEntry 137 }
+
+
+	iqacoDefineIPGPI1okInputSyncLevelSyncThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_>_Threshold  cmdID= 139 "
+		::= { iqacoCmdEntry 139 }
+
+
+	iqacoDefineIPGPI1okInputSyncLevelSyncThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_Threshold  cmdID= 138  min= 150  max= 250  step= 50  format= %1.0fmV  div_scale= 1 
+					Min = 150mV  Max = 250mV  Step = 50mV "
+		::= { iqacoCmdEntry 138 }
+
+
+	iqacoDefineIPGPI1okInputStandardStdis525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_525  cmdID= 140 "
+		::= { iqacoCmdEntry 140 }
+
+
+	iqacoDefineIPGPI1okInputStandardStdis625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_625  cmdID= 141 "
+		::= { iqacoCmdEntry 141 }
+
+
+	iqacoGPIOCtrlsGPIOCtrl1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_To_Rules(1),
+							val_Output_A_Selected(2),
+							val_Output_B_Selected(5),
+							val_Output_A_Ok(3),
+							val_Output_B_Ok(6),
+							val_Output_A_Error(4),
+							val_Output_B_Error(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Setup
+					(Input)_To_Rules  cmdID= 92  value= 1  
+					(Output)_A_Selected  cmdID= 92  value= 2  
+					(Output)_B_Selected  cmdID= 92  value= 5  
+					(Output)_A_Ok  cmdID= 92  value= 3  
+					(Output)_B_Ok  cmdID= 92  value= 6  
+					(Output)_A_Error  cmdID= 92  value= 4  
+					(Output)_B_Error  cmdID= 92  value= 7  "
+		::= { iqacoCmdEntry 92 }
+
+
+	iqacoGPIOCtrl2DefineipOkUseRulesDefinition OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup
+					Use Rules Definition  cmdID= 96 "
+		::= { iqacoCmdEntry 96 }
+
+
+	iqacoDefineipOkDefineIPGPI2okInputPresent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Input_Present  cmdID= 142 "
+		::= { iqacoCmdEntry 142 }
+
+
+	iqacoDefineIPGPI2okInputSyncLevelSyncThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_>_Threshold  cmdID= 144 "
+		::= { iqacoCmdEntry 144 }
+
+
+	iqacoDefineIPGPI2okInputSyncLevelSyncThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_Threshold  cmdID= 143  min= 150  max= 250  step= 50  format= %1.0fmV  div_scale= 1 
+					Min = 150mV  Max = 250mV  Step = 50mV "
+		::= { iqacoCmdEntry 143 }
+
+
+	iqacoDefineIPGPI2okInputStandardStdis525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_525  cmdID= 145 "
+		::= { iqacoCmdEntry 145 }
+
+
+	iqacoDefineIPGPI2okInputStandardStdis625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_625  cmdID= 146 "
+		::= { iqacoCmdEntry 146 }
+
+
+	iqacoGPIOCtrlsGPIOCtrl2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_To_Rules(1),
+							val_Output_A_Selected(2),
+							val_Output_B_Selected(5),
+							val_Output_A_Ok(3),
+							val_Output_B_Ok(6),
+							val_Output_A_Error(4),
+							val_Output_B_Error(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Setup
+					(Input)_To_Rules  cmdID= 93  value= 1  
+					(Output)_A_Selected  cmdID= 93  value= 2  
+					(Output)_B_Selected  cmdID= 93  value= 5  
+					(Output)_A_Ok  cmdID= 93  value= 3  
+					(Output)_B_Ok  cmdID= 93  value= 6  
+					(Output)_A_Error  cmdID= 93  value= 4  
+					(Output)_B_Error  cmdID= 93  value= 7  "
+		::= { iqacoCmdEntry 93 }
+
+
+	iqacoGPIOCtrl3DefineipOkUseRulesDefinition OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup
+					Use Rules Definition  cmdID= 97 "
+		::= { iqacoCmdEntry 97 }
+
+
+	iqacoDefineipOkDefineIPGPI3okInputPresent OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Input_Present  cmdID= 147 "
+		::= { iqacoCmdEntry 147 }
+
+
+	iqacoDefineIPGPI3okInputSyncLevelSyncThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_>_Threshold  cmdID= 149 "
+		::= { iqacoCmdEntry 149 }
+
+
+	iqacoDefineIPGPI3okInputSyncLevelSyncThreshold OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Sync_Threshold  cmdID= 148  min= 150  max= 250  step= 50  format= %1.0fmV  div_scale= 1 
+					Min = 150mV  Max = 250mV  Step = 50mV "
+		::= { iqacoCmdEntry 148 }
+
+
+	iqacoDefineIPGPI3okInputStandardStdis525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_525  cmdID= 150 "
+		::= { iqacoCmdEntry 150 }
+
+
+	iqacoDefineIPGPI3okInputStandardStdis625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI_Setup- Define_i/p_Ok
+					Std_is_625  cmdID= 151 "
+		::= { iqacoCmdEntry 151 }
+
+
+	iqacoGPIOCtrlsGPIOCtrl3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_To_Rules(1),
+							val_Output_A_Selected(2),
+							val_Output_B_Selected(5),
+							val_Output_A_Ok(3),
+							val_Output_B_Ok(6),
+							val_Output_A_Error(4),
+							val_Output_B_Error(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI_Setup
+					(Input)_To_Rules  cmdID= 94  value= 1  
+					(Output)_A_Selected  cmdID= 94  value= 2  
+					(Output)_B_Selected  cmdID= 94  value= 5  
+					(Output)_A_Ok  cmdID= 94  value= 3  
+					(Output)_B_Ok  cmdID= 94  value= 6  
+					(Output)_A_Error  cmdID= 94  value= 4  
+					(Output)_B_Error  cmdID= 94  value= 7  "
+		::= { iqacoCmdEntry 94 }
+
+
+	iqacoRollTracksRTrk1RollTrack1Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_1 Mode  cmdID= 111 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 111 }
+
+
+	iqacoRollTracksRTrk1RollTrack1Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_1 Add  cmdID= 109  "
+		::= { iqacoCmdEntry 109 }
+
+
+	iqacoRollTracksRTrk1RollTrack1Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_1 Data  cmdID= 110  "
+		::= { iqacoCmdEntry 110 }
+
+
+	iqacoRollTracksRTrk2RollTrack2Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_2 Mode  cmdID= 114 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 114 }
+
+
+	iqacoRollTracksRTrk2RollTrack2Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_2 Add  cmdID= 112  "
+		::= { iqacoCmdEntry 112 }
+
+
+	iqacoRollTracksRTrk2RollTrack2Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_2 Data  cmdID= 113  "
+		::= { iqacoCmdEntry 113 }
+
+
+	iqacoRollTracksRTrk3RollTrack3Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_3 Mode  cmdID= 117 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 117 }
+
+
+	iqacoRollTracksRTrk3RollTrack3Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_3 Add  cmdID= 115  "
+		::= { iqacoCmdEntry 115 }
+
+
+	iqacoRollTracksRTrk3RollTrack3Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_3 Data  cmdID= 116  "
+		::= { iqacoCmdEntry 116 }
+
+
+	iqacoRollTracksRTrk4RollTrack4Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_4 Mode  cmdID= 120 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 120 }
+
+
+	iqacoRollTracksRTrk4RollTrack4Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_4 Add  cmdID= 118  "
+		::= { iqacoCmdEntry 118 }
+
+
+	iqacoRollTracksRTrk4RollTrack4Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_4 Data  cmdID= 119  "
+		::= { iqacoCmdEntry 119 }
+
+
+	iqacoRollTracksRTrk5RollTrack5Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_5 Mode  cmdID= 123 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 123 }
+
+
+	iqacoRollTracksRTrk5RollTrack5Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_5 Add  cmdID= 121  "
+		::= { iqacoCmdEntry 121 }
+
+
+	iqacoRollTracksRTrk5RollTrack5Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_5 Data  cmdID= 122  "
+		::= { iqacoCmdEntry 122 }
+
+
+	iqacoRollTracksRTrk6RollTrack6Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_A_Ok(1),
+							val_A_in_Error(2),
+							val_B_Ok(3),
+							val_B_in_Error(4),
+							val_Using_A(5),
+							val_Using_B(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - RollTracks
+					RollTrack_6 Mode  cmdID= 126 
+					Off  value= 0  
+					A Ok  value= 1  
+					A in Error  value= 2  
+					B Ok  value= 3  
+					B in Error  value= 4  
+					Using A  value= 5  
+					Using B  value= 6  "
+		::= { iqacoCmdEntry 126 }
+
+
+	iqacoRollTracksRTrk6RollTrack6Add OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_6 Add  cmdID= 124  "
+		::= { iqacoCmdEntry 124 }
+
+
+	iqacoRollTracksRTrk6RollTrack6Data OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTracks
+					RollTrack_6 Data  cmdID= 125  "
+		::= { iqacoCmdEntry 125 }
+
+
+	iqacoSetupLoggingLogInputA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input A  cmdID= 14 "
+		::= { iqacoCmdEntry 14 }
+
+
+	iqacoSetupLoggingLogInputB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input B  cmdID= 15 "
+		::= { iqacoCmdEntry 15 }
+
+
+	iqacoSetupLoggingOutput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Output  cmdID= 16 "
+		::= { iqacoCmdEntry 16 }
+
+
+	iqacoSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqacoCmdEntry 3 }
+
+
+	iqacoSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqacoCmdEntry 2 }
+
+
+	iqacoSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqacoCmdEntry 1 }
+
+
+	iqacoSetupBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build_No  cmdID= 98  format=   "
+		::= { iqacoCmdEntry 98 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: This log field shows that the module is in Local Mode.
+--				: When a device boots up in Local Mode, all settings will be
+--				: set to the values indicated by card edge switches, (ignoring
+--				: any previous values set through RollCall), and any parameters
+--				: not accessible from the card edge will be restored to their
+--				: factory defaults.
+--				: Generally Local mode is not suitable in a networked
+--				: environment, and Remote Mode should be used instead.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUTA
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.65
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.65
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: FAIL:525
+--				: FAIL:625
+--				: FAIL:Min
+-- Comments		: This log field shows the detected video state of the Composite input A.
+--				: LOST indicates no input detected.  
+--				: FAIL:525 indicates that the card is configured to only accept 525 input signals,
+--				: but the detected input is not a valid 525 signal.
+--				: FAIL:625 indicates that the card is configured to only accept 625 input signals,
+--				: but the detected input is not a valid 625 signal.
+--				: FAIL:Min indicates that the sync level of the detected input is less than the 
+--				: value set by the Sync Amplitude control.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUTB
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.66
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.66
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: FAIL:525
+--				: FAIL:625
+--				: FAIL:Min
+-- Comments		: This log field shows the detected video state of the Composite input B.
+--				: LOST indicates no input detected.  
+--				: FAIL:525 indicates that the card is configured to only accept 525 input signals,
+--				: but the detected input is not a valid 525 signal.
+--				: FAIL:625 indicates that the card is configured to only accept 625 input signals,
+--				: but the detected input is not a valid 625 signal.
+--				: FAIL:Min indicates that the sync level of the detected input is less than the 
+--				: value set by the Sync Amplitude control.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.79.85.84.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.79.85.84.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: A
+--				: B
+-- Comments		: This log field shows the current routed input signal feeding the output.
+--
+---------------------------------------------------------------------------------------------------

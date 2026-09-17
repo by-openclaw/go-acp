@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export/canonical"
 )
 
 // TestEncodeDecodeRoundTrip asserts that every object type produced by
@@ -281,49 +281,49 @@ func TestEncodeValue(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "int16 positive",
+			name:  "int16 positive",
 			entry: &entry{acpType: codec.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(300)))},
-			want: []byte{0x01, 0x2C},
+			want:  []byte{0x01, 0x2C},
 		},
 		{
-			name: "int16 negative",
+			name:  "int16 negative",
 			entry: &entry{acpType: codec.TypeInteger, param: param("v", canonical.ParamInteger, withValue(int64(-1)))},
-			want: []byte{0xFF, 0xFF},
+			want:  []byte{0xFF, 0xFF},
 		},
 		{
-			name: "byte",
+			name:  "byte",
 			entry: &entry{acpType: codec.TypeByte, param: param("v", canonical.ParamInteger, withFormat("uint8"), withValue(int64(200)))},
-			want: []byte{0xC8},
+			want:  []byte{0xC8},
 		},
 		{
-			name: "long",
+			name:  "long",
 			entry: &entry{acpType: codec.TypeLong, param: param("v", canonical.ParamInteger, withFormat("int32"), withValue(int64(1_000_000)))},
-			want: []byte{0x00, 0x0F, 0x42, 0x40},
+			want:  []byte{0x00, 0x0F, 0x42, 0x40},
 		},
 		{
-			name: "ipaddr",
+			name:  "ipaddr",
 			entry: &entry{acpType: codec.TypeIPAddr, param: param("v", canonical.ParamString, withFormat("ipv4"), withValue("10.0.0.1"))},
-			want: []byte{0x0A, 0x00, 0x00, 0x01},
+			want:  []byte{0x0A, 0x00, 0x00, 0x01},
 		},
 		{
-			name: "enum",
+			name:  "enum",
 			entry: &entry{acpType: codec.TypeEnum, param: param("v", canonical.ParamEnum, withValue(int64(1)))},
-			want: []byte{0x01},
+			want:  []byte{0x01},
 		},
 		{
-			name: "string",
+			name:  "string",
 			entry: &entry{acpType: codec.TypeString, param: param("v", canonical.ParamString, withValue("hi"))},
-			want: []byte{'h', 'i', 0},
+			want:  []byte{'h', 'i', 0},
 		},
 		{
-			name: "alarm active",
+			name:  "alarm active",
 			entry: &entry{acpType: codec.TypeAlarm, param: param("v", canonical.ParamBoolean, withFormat("alarm"), withValue(true))},
-			want: []byte{0x01},
+			want:  []byte{0x01},
 		},
 		{
-			name: "frame",
+			name:  "frame",
 			entry: &entry{acpType: codec.TypeFrame, param: param("v", canonical.ParamOctets, withFormat("frame"), withValue([]any{int64(2), int64(0), int64(2)}))},
-			want: []byte{0x03, 0x02, 0x00, 0x02},
+			want:  []byte{0x03, 0x02, 0x00, 0x02},
 		},
 		{
 			name:    "overflow int16",
@@ -412,13 +412,13 @@ func param(ident, typ string, opts ...paramOpt) *canonical.Parameter {
 	return p
 }
 
-func withValue(v any) paramOpt       { return func(p *canonical.Parameter) { p.Value = v } }
-func withDefault(v any) paramOpt     { return func(p *canonical.Parameter) { p.Default = v } }
-func withMin(v any) paramOpt         { return func(p *canonical.Parameter) { p.Minimum = v } }
-func withMax(v any) paramOpt         { return func(p *canonical.Parameter) { p.Maximum = v } }
-func withStep(v any) paramOpt        { return func(p *canonical.Parameter) { p.Step = v } }
-func withUnit(s string) paramOpt     { return func(p *canonical.Parameter) { p.Unit = &s } }
-func withFormat(s string) paramOpt   { return func(p *canonical.Parameter) { p.Format = &s } }
+func withValue(v any) paramOpt     { return func(p *canonical.Parameter) { p.Value = v } }
+func withDefault(v any) paramOpt   { return func(p *canonical.Parameter) { p.Default = v } }
+func withMin(v any) paramOpt       { return func(p *canonical.Parameter) { p.Minimum = v } }
+func withMax(v any) paramOpt       { return func(p *canonical.Parameter) { p.Maximum = v } }
+func withStep(v any) paramOpt      { return func(p *canonical.Parameter) { p.Step = v } }
+func withUnit(s string) paramOpt   { return func(p *canonical.Parameter) { p.Unit = &s } }
+func withFormat(s string) paramOpt { return func(p *canonical.Parameter) { p.Format = &s } }
 func withDescription(s string) paramOpt {
 	return func(p *canonical.Parameter) { p.Description = &s }
 }

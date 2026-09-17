@@ -1,0 +1,30 @@
+---
+# Runs on the control node against the Proxmox API (read-then-write so a
+# second run is a no-op). Only the `hostname=` field of the CT config is
+# touched.
+- name: Read the CT config from Proxmox
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/config"
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    return_content: true
+  delegate_to: localhost
+  register: dhs_hostname_ct
+  when: dhs_hostname_proxmox_enabled | bool
+
+- name: "Proxmox CT {{ pve_vmid }} hostname = {{ fleet_hostname }}"
+  ansible.builtin.uri:
+    url: "https://{{ proxmox_api_host }}/api2/json/nodes/{{ proxmox_node }}/lxc/{{ pve_vmid }}/config"
+    method: PUT
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox_token_id }}={{ proxmox_token_secret }}"
+    body_format: form-urlencoded
+    body:
+      hostname: "{{ fleet_hostname }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+  delegate_to: localhost
+  when:
+    - dhs_hostname_proxmox_enabled | bool
+    - (dhs_hostname_ct.json.data.hostname | default('')) != fleet_hostname
+  changed_when: true

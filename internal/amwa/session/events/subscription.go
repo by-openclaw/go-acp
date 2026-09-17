@@ -1,19 +1,19 @@
 package events
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"dhs/internal/amwa/codec/spec"
 	httpsession "dhs/internal/amwa/session/http"
 )
 
 // subscription tracks one publisher-side connected client and its
 // declared source-id set.
 type subscription struct {
-	id  uint64
-	ws  *httpsession.WebSocket
+	id uint64
+	ws *httpsession.WebSocket
 
 	mu      sync.RWMutex
 	sources map[string]struct{}
@@ -50,12 +50,14 @@ func (s *subscription) markFailed() {
 }
 
 // is07Now formats the current wall-clock time as the IS-07 TAI
-// `<sec>:<nsec>` string. We DO NOT subtract the leap-second offset
-// (~37s in 2026) — production code that wants strict TAI must layer
-// an NTP-derived offset on top. For dhs's current scope (loopback
-// tests + dev integration), Unix-epoch-as-TAI is the documented
-// approximation in `internal/amwa/codec/is05/types.go` FormatTAINow.
+// `<sec>:<nsec>` string.
+//
+// Through codec/spec, so IS-07 event timing sits on the same scale as
+// IS-04 versions and IS-05 activation times. It used to skip the
+// leap-second offset on the grounds that loopback tests do not care --
+// but a controller DOES compare across APIs, and a health response
+// whose creation_timestamp reads 37 seconds BEFORE the command it
+// answers is not approximately right, it is backwards.
 func is07Now() string {
-	t := time.Now()
-	return fmt.Sprintf("%d:%d", t.Unix(), t.Nanosecond())
+	return spec.FormatTAI(time.Now())
 }

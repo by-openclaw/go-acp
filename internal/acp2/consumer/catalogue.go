@@ -10,14 +10,14 @@ import "dhs/internal/acp2/codec"
 type CommandKind string
 
 const (
-	KindAN2Type     CommandKind = "an2-type"     // AN2 frame type field (request/reply/event/error/data)
-	KindAN2Func     CommandKind = "an2-func"     // AN2 internal func ID (proto=0)
-	KindACP2Type    CommandKind = "acp2-type"    // ACP2 message type byte
-	KindACP2Func    CommandKind = "acp2-func"    // ACP2 application func ID
-	KindObjType     CommandKind = "obj-type"     // ACP2 object type
-	KindPid         CommandKind = "pid"          // ACP2 property ID
-	KindNumberType  CommandKind = "number-type"  // ACP2 numeric vtype
-	KindErrStat     CommandKind = "err-stat"     // ACP2 error stat code
+	KindAN2Type    CommandKind = "an2-type"    // AN2 frame type field (request/reply/event/error/data)
+	KindAN2Func    CommandKind = "an2-func"    // AN2 internal func ID (proto=0)
+	KindACP2Type   CommandKind = "acp2-type"   // ACP2 message type byte
+	KindACP2Func   CommandKind = "acp2-func"   // ACP2 application func ID
+	KindObjType    CommandKind = "obj-type"    // ACP2 object type
+	KindPid        CommandKind = "pid"         // ACP2 property ID
+	KindNumberType CommandKind = "number-type" // ACP2 numeric vtype
+	KindErrStat    CommandKind = "err-stat"    // ACP2 error stat code
 )
 
 // CatalogueEntry is the structured row used by the CLI catalogue

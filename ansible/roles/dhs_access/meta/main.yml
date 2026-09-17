@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: dhs_access
+  author: by-rune
+  description: >-
+    Converge every fleet host's SSH authorized keys to the committed list
+    of actor public keys (agent, control node, owner) — exclusively, so
+    stray keys disappear — on Linux (root authorized_keys) and Windows
+    (administrators_authorized_keys + strict ACL). Idempotent: run-twice
+    = 0 changes.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

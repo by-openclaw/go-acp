@@ -1,0 +1,5522 @@
+-- ************************************************************************************
+--       Source File:Original_SNELL-IQSYN30-CMD-MIB.mib
+--    Logging Source:LogsSyn30.csv
+--            Author:MikeSmith
+--              Date:29/07/2010
+--              Time:12:50
+--
+-- Copyright (c) 2010 Snell Ltd
+-- All rights reserved.
+--
+-- ORIGINAL HEADER
+-- Snell&Wilcox Card:IQSYN30
+--        Module Id#:526
+--       Command Set:6
+--          Filename:SNELL-IQSYN30-CMD-MIB.mib
+--            Author:R English
+--              Date:28/06/2010
+--              Time:16:52
+--
+-- Copyright (c) 2010 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSYN30-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSYN30,
+    moduleIQSYN30MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSYN30CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1006281652Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:R English
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSYN30MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsyn30CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsyn30CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSYN30 1 }
+
+	iqsyn30CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsyn30CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsyn30SlotIndex }
+		::= { iqsyn30CmdTable 1 }
+
+	Iqsyn30CmdEntry ::=
+		SEQUENCE {
+			iqsyn30SlotIndex
+				Unsigned32,
+			iqsyn30VideoVANCBlank1
+				INTEGER,
+			iqsyn30Video1625BlankLinesLine231
+				INTEGER,
+			iqsyn30Video1625BlankLinesLine3361
+				INTEGER,
+			iqsyn30Video1525BlankLinesLine211
+				INTEGER,
+			iqsyn30Video1525BlankLinesLine221
+				INTEGER,
+			iqsyn30Video1525BlankLinesLine2831
+				INTEGER,
+			iqsyn30Video1525BlankLinesLine2841
+				INTEGER,
+			iqsyn30VideoSelect
+				INTEGER,
+			iqsyn30VideoFreezeMode
+				INTEGER,
+			iqsyn30VideoManualFreeze
+				INTEGER,
+			iqsyn30VideoDefaultOutput
+				INTEGER,
+			iqsyn30VideoPatSelect
+				INTEGER,
+			iqsyn30VideoProcAmpEnable
+				INTEGER,
+			iqsyn30VideoBlackLevel
+				INTEGER,
+			iqsyn30VideoHueAdjust
+				INTEGER,
+			iqsyn30VideoMasterVideoGain
+				INTEGER,
+			iqsyn30VideoYGain
+				INTEGER,
+			iqsyn30VideoCbCrGain
+				INTEGER,
+			iqsyn30VideoYCTiming
+				INTEGER,
+			iqsyn30VideoPictureposition
+				INTEGER,
+			iqsyn30VideoModalIndex
+				INTEGER,
+			iqsyn30VideoYCTimingnm
+				INTEGER,
+			iqsyn30VideoPicturepositionnm
+				INTEGER,
+			iqsyn30Video
+				INTEGER,
+			iqsyn30VideoText
+				RollCallString,
+			iqsyn30AudioHANKBlank1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1Enable
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1SourceLNonPCMPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1SourceRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1MutePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1InvertLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1InvertRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1GainLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1GainRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1PairModePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1SourceLNonPCMPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1SourceRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1MutePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1InvertLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1InvertRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1GainLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1GainRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder1PairModePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2Enable
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2SourceLNonPCMPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2SourceRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2MutePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2InvertLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2InvertRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2GainLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2GainRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2PairModePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2SourceLNonPCMPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2SourceRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2MutePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2InvertLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2InvertRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2GainLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2GainRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder2PairModePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3Enable
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3SourceLNonPCMPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3SourceRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3MutePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3InvertLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3InvertRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3GainLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3GainRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3PairModePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3SourceLNonPCMPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3SourceRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3MutePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3InvertLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3InvertRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3GainLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3GainRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder3PairModePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4Enable
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4SourceLNonPCMPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4SourceRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4MutePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4InvertLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4InvertRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4GainLPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4GainRPair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4PairModePair1
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4SourceLNonPCMPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4SourceRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4MutePair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4InvertLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4InvertRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4GainLPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4GainRPair2
+				INTEGER,
+			iqsyn30EmbeddersEmbedder4PairModePair2
+				INTEGER,
+			iqsyn30AudioFrequency
+				INTEGER,
+			iqsyn30AudioChannelident
+				INTEGER,
+			iqsyn30AudioTotaldelay
+				RollCallString,
+			iqsyn30AudioActiveVideodelay
+				RollCallString,
+			iqsyn30Audiomanualdelay
+				RollCallString,
+			iqsyn30AudioTrack14delay
+				RollCallString,
+			iqsyn30AudioTrack15delay
+				RollCallString,
+			iqsyn30AudioTrack16delay
+				RollCallString,
+			iqsyn30AudioTrack17delay
+				RollCallString,
+			iqsyn30AudioVideodelayEnable
+				INTEGER,
+			iqsyn30AudiomanualdelayEnable
+				INTEGER,
+			iqsyn30AudioTrack14delayEnable
+				INTEGER,
+			iqsyn30AudioTrack15delayEnable
+				INTEGER,
+			iqsyn30AudioTrack16delayEnable
+				INTEGER,
+			iqsyn30AudioTrack17delayEnable
+				INTEGER,
+			iqsyn30AudioCoarse
+				INTEGER,
+			iqsyn30AudioFine
+				INTEGER,
+			iqsyn30AudioDolbyEautoalign
+				INTEGER,
+			iqsyn30AudioSilenceLevel
+				INTEGER,
+			iqsyn30AudioOverloadLevel
+				INTEGER,
+			iqsyn30AudioWarningTimer
+				INTEGER,
+			iqsyn30Genlock3674
+				INTEGER,
+			iqsyn30GenlockFreerunFrequency
+				INTEGER,
+			iqsyn30GenlockGenlockHPhase
+				INTEGER,
+			iqsyn30GenlockGenlockVPhase
+				INTEGER,
+			iqsyn30GenlockVideoHdelay
+				INTEGER,
+			iqsyn30GenlockVideoVdelay
+				INTEGER,
+			iqsyn30GenlockVideo1Fdelay
+				INTEGER,
+			iqsyn30GenlockGenlocksaveindex
+				INTEGER,
+			iqsyn30GenlockGenlockHPhaseRT
+				INTEGER,
+			iqsyn30GenlockGenlockVPhaseRT
+				INTEGER,
+			iqsyn30GenlockVideoHdelayRT
+				INTEGER,
+			iqsyn30GenlockVideoVdelayRT
+				INTEGER,
+			iqsyn30DefaultOutputStd
+				INTEGER,
+			iqsyn30Genlock108050pB
+				INTEGER,
+			iqsyn30Genlock108059pB
+				INTEGER,
+			iqsyn30Genlock108050pA
+				INTEGER,
+			iqsyn30Genlock108059pA
+				INTEGER,
+			iqsyn30Genlock108029i
+				INTEGER,
+			iqsyn30Genlock108025i
+				INTEGER,
+			iqsyn30Genlock72059p
+				INTEGER,
+			iqsyn30Genlock72050p
+				INTEGER,
+			iqsyn30Genlock52529i
+				INTEGER,
+			iqsyn30Genlock62525i
+				INTEGER,
+			iqsyn30MemoriesSelMemory
+				INTEGER,
+			iqsyn30MemoriesSetMemName
+				RollCallString,
+			iqsyn30MemoriesRecallMemory
+				INTEGER,
+			iqsyn30MemoriesSaveMemory
+				INTEGER,
+			iqsyn30MemoriesLastUserMemory
+				RollCallString,
+			iqsyn30MemoriesClearMemory
+				INTEGER,
+			iqsyn30MemoriesMemoryNamesMemory1Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory2Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory3Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory4Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory5Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory6Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory7Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory8Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory9Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory10Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory11Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory12Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory13Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory14Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory15Name
+				RollCallString,
+			iqsyn30MemoriesMemoryNamesMemory16Name
+				RollCallString,
+			iqsyn30SetupUptimeLogEnable
+				INTEGER,
+			iqsyn30SetupUptimeLogString
+				RollCallString,
+			iqsyn30SetupOSVersionLogEnable
+				INTEGER,
+			iqsyn30SetupOSVersionLogString
+				RollCallString,
+			iqsyn30SetupHardwareVersionLogEnable
+				INTEGER,
+			iqsyn30SetupHardwareVersionLogString
+				RollCallString,
+			iqsyn30SetupBuildNumberLogEnable
+				INTEGER,
+			iqsyn30SetupBuildNumberLogString
+				RollCallString,
+			iqsyn30SetupSerialNumberLogEnable
+				INTEGER,
+			iqsyn30SetupSerialNumberLogString
+				RollCallString,
+			iqsyn30SetupLicensedOptionsLogEnable
+				INTEGER,
+			iqsyn30SetupLicensedOptionsLogString
+				RollCallString,
+			iqsyn30SetupFirmwareVersionLogEnable
+				INTEGER,
+			iqsyn30SetupFirmwareVersionLogString
+				RollCallString,
+			iqsyn30SetupInput1LogEnable
+				INTEGER,
+			iqsyn30SetupInput1LogString
+				RollCallString,
+			iqsyn30SetupInput1StandardLogEnable
+				INTEGER,
+			iqsyn30SetupInput1StandardLogString
+				RollCallString,
+			iqsyn30SetupInput1TypeLogEnable
+				INTEGER,
+			iqsyn30SetupInput1TypeLogString
+				RollCallString,
+			iqsyn30SetupInput1IdentLogEnable
+				INTEGER,
+			iqsyn30SetupInput1IdentLogString
+				RollCallString,
+			iqsyn30SetupIn1SDIERRSLogEnable
+				INTEGER,
+			iqsyn30SetupIn1SDIERRSLogString
+				RollCallString,
+			iqsyn30SetupIn1SDIANCERRSLogEnable
+				INTEGER,
+			iqsyn30SetupIn1SDIANCERRSLogString
+				RollCallString,
+			iqsyn30SetupInput1Audio1LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio1LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio2LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio2LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio3LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio3LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio4LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio4LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio5LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio5LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio6LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio6LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio7LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio7LogString
+				RollCallString,
+			iqsyn30SetupInput1Audio8LogEnable
+				INTEGER,
+			iqsyn30SetupInput1Audio8LogString
+				RollCallString,
+			iqsyn30SetupOutput1TypeLogEnable
+				INTEGER,
+			iqsyn30SetupOutput1TypeLogString
+				RollCallString,
+			iqsyn30SetupOutput1StateLogEnable
+				INTEGER,
+			iqsyn30SetupOutput1StateLogString
+				RollCallString,
+			iqsyn30SetupOutput1StdLogEnable
+				INTEGER,
+			iqsyn30SetupOutput1StdLogString
+				RollCallString,
+			iqsyn30SetupOutput1CaptionLogEnable
+				INTEGER,
+			iqsyn30SetupOutput1CaptionLogString
+				RollCallString,
+			iqsyn30SetupOutput1LogEnable
+				INTEGER,
+			iqsyn30SetupOutput1LogString
+				RollCallString,
+			iqsyn30SetupInput2LogEnable
+				INTEGER,
+			iqsyn30SetupInput2LogString
+				RollCallString,
+			iqsyn30SetupInput2StandardLogEnable
+				INTEGER,
+			iqsyn30SetupInput2StandardLogString
+				RollCallString,
+			iqsyn30SetupInput2TypeLogEnable
+				INTEGER,
+			iqsyn30SetupInput2TypeLogString
+				RollCallString,
+			iqsyn30SetupInput2IdentLogEnable
+				INTEGER,
+			iqsyn30SetupInput2IdentLogString
+				RollCallString,
+			iqsyn30SetupIn2SDIERRSLogEnable
+				INTEGER,
+			iqsyn30SetupIn2SDIERRSLogString
+				RollCallString,
+			iqsyn30SetupIn2SDIANCERRSLogEnable
+				INTEGER,
+			iqsyn30SetupIn2SDIANCERRSLogString
+				RollCallString,
+			iqsyn30SetupInput2Audio1LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio1LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio2LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio2LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio3LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio3LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio4LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio4LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio5LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio5LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio6LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio6LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio7LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio7LogString
+				RollCallString,
+			iqsyn30SetupInput2Audio8LogEnable
+				INTEGER,
+			iqsyn30SetupInput2Audio8LogString
+				RollCallString,
+			iqsyn30Setupop1embed11LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed11LogString
+				RollCallString,
+			iqsyn30Setupop1embed12LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed12LogString
+				RollCallString,
+			iqsyn30Setupop1embed21LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed21LogString
+				RollCallString,
+			iqsyn30Setupop1embed22LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed22LogString
+				RollCallString,
+			iqsyn30Setupop1embed31LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed31LogString
+				RollCallString,
+			iqsyn30Setupop1embed32LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed32LogString
+				RollCallString,
+			iqsyn30Setupop1embed41LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed41LogString
+				RollCallString,
+			iqsyn30Setupop1embed42LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed42LogString
+				RollCallString,
+			iqsyn30Setupop1embed51LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed51LogString
+				RollCallString,
+			iqsyn30Setupop1embed52LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed52LogString
+				RollCallString,
+			iqsyn30Setupop1embed61LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed61LogString
+				RollCallString,
+			iqsyn30Setupop1embed62LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed62LogString
+				RollCallString,
+			iqsyn30Setupop1embed71LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed71LogString
+				RollCallString,
+			iqsyn30Setupop1embed72LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed72LogString
+				RollCallString,
+			iqsyn30Setupop1embed81LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed81LogString
+				RollCallString,
+			iqsyn30Setupop1embed82LogEnable
+				INTEGER,
+			iqsyn30Setupop1embed82LogString
+				RollCallString,
+			iqsyn30SetupGenlock1StateLogEnable
+				INTEGER,
+			iqsyn30SetupGenlock1StateLogString
+				RollCallString,
+			iqsyn30SetupRef1StateLogEnable
+				INTEGER,
+			iqsyn30SetupRef1StateLogString
+				RollCallString,
+			iqsyn30SetupRef1StandardLogEnable
+				INTEGER,
+			iqsyn30SetupRef1StandardLogString
+				RollCallString,
+			iqsyn30SetupRef1TypeLogEnable
+				INTEGER,
+			iqsyn30SetupRef1TypeLogString
+				RollCallString,
+			iqsyn30StatusProduct
+				RollCallString,
+			iqsyn30StatusSoftwareVersion
+				RollCallString,
+			iqsyn30StatusSerialNo
+				RollCallString,
+			iqsyn30StatusFactoryDefaults
+				INTEGER,
+			iqsyn30StatusDefaultSetting
+				INTEGER,
+			iqsyn30StatusRestart
+				INTEGER,
+			iqsyn30StatusBuild
+				RollCallString,
+			iqsyn30StatusPCB
+				RollCallString,
+			iqsyn30StatusKOSVersion
+				RollCallString,
+			iqsyn30StatusFirmwareVersion
+				RollCallString,
+			iqsyn30StatusUpTime
+				RollCallString,
+			iqsyn30Status
+				INTEGER
+		}
+
+	iqsyn30SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+        ::= { iqsyn30CmdEntry 99999 }
+
+
+	iqsyn30VideoVANCBlank1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					VANC Blank 1  cmdID= 3949 "
+		::= { iqsyn30CmdEntry 3949 }
+
+
+	iqsyn30Video1625BlankLinesLine231 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 23 1  cmdID= 3951 "
+		::= { iqsyn30CmdEntry 3951 }
+
+
+	iqsyn30Video1625BlankLinesLine3361 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 336 1  cmdID= 3952 "
+		::= { iqsyn30CmdEntry 3952 }
+
+
+	iqsyn30Video1525BlankLinesLine211 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 21 1  cmdID= 3953 "
+		::= { iqsyn30CmdEntry 3953 }
+
+
+	iqsyn30Video1525BlankLinesLine221 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 22 1  cmdID= 3955 "
+		::= { iqsyn30CmdEntry 3955 }
+
+
+	iqsyn30Video1525BlankLinesLine2831 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 283 1  cmdID= 3954 "
+		::= { iqsyn30CmdEntry 3954 }
+
+
+	iqsyn30Video1525BlankLinesLine2841 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Line 284 1  cmdID= 3956 "
+		::= { iqsyn30CmdEntry 3956 }
+
+
+	iqsyn30VideoSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val1(0),
+							val2(1),
+							valFibre1(2),
+							valFibre2(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					1  cmdID= 2251  value= 0
+					2  cmdID= 2251  value= 1
+					Fibre 1  cmdID= 2251  value= 2
+					Fibre 2  cmdID= 2251  value= 3  "
+		::= { iqsyn30CmdEntry 2251 }
+
+
+	iqsyn30VideoFreezeMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valField(0),
+							valFrame(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					Field  cmdID= 5023  value= 0
+					Frame  cmdID= 5023  value= 1  "
+		::= { iqsyn30CmdEntry 5023 }
+
+
+	iqsyn30VideoManualFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Manual Freeze  cmdID= 5022 "
+		::= { iqsyn30CmdEntry 5022 }
+
+
+	iqsyn30VideoDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valBlack(0),
+							valFreeze(1),
+							valPattern(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					Black  cmdID= 2623  value= 0
+					Freeze  cmdID= 2623  value= 1
+					Pattern  cmdID= 2623  value= 2  "
+		::= { iqsyn30CmdEntry 2623 }
+
+
+	iqsyn30VideoPatSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valOff(0),
+							valBlack(1),
+							valBars(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					Off  cmdID= 2624  value= 0
+					Black  cmdID= 2624  value= 1
+					Bars  cmdID= 2624  value= 2  "
+		::= { iqsyn30CmdEntry 2624 }
+
+
+	iqsyn30VideoProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					ProcAmp Enable  cmdID= 2864 "
+		::= { iqsyn30CmdEntry 2864 }
+
+
+	iqsyn30VideoBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Black Level  cmdID= 2708  min= -1000  max= 1000  step= 8  format= %3.1fmV  div_scale= 10
+					Min = -100.0mV  Max = 100.0mV  Step = 0.8mV "
+		::= { iqsyn30CmdEntry 2708 }
+
+
+	iqsyn30VideoHueAdjust OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Hue Adjust  cmdID= 3622  min= -180  max= 180  step= 1  format= %1.0fdeg  div_scale= 1
+					Min = -180deg  Max = 180deg  Step = 1deg "
+		::= { iqsyn30CmdEntry 3622 }
+
+
+	iqsyn30VideoMasterVideoGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Master Video Gain  cmdID= 3780  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3780 }
+
+
+	iqsyn30VideoYGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Y Gain  cmdID= 2707  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 2707 }
+
+
+	iqsyn30VideoCbCrGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Cb/Cr Gain  cmdID= 2706  min= -60  max= 60  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -6.0dB  Max = 6.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 2706 }
+
+
+	iqsyn30VideoYCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Y/C Timing  cmdID= 2924  min= -8  max= 8  step= 2  format= %1.0f pixels  div_scale= 1
+					Min = -8 pixels  Max = 8 pixels  Step = 2 pixels "
+		::= { iqsyn30CmdEntry 2924 }
+
+
+	iqsyn30VideoPictureposition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Picture position  cmdID= 2709  min= -8  max= 8  step= 2  format= %1.0f pixels  div_scale= 1
+					Min = -8 pixels  Max = 8 pixels  Step = 2 pixels "
+		::= { iqsyn30CmdEntry 2709 }
+
+
+	iqsyn30VideoModalIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Modal Index  cmdID= 5006  min= 0  max= 1  step= 1  format= %1.0f  div_scale= 1
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsyn30CmdEntry 5006 }
+
+
+	iqsyn30VideoYCTimingnm OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Y/C Timing nm  cmdID= 5008  min= -16  max= 16  step= 2  format= %1.0f pixels  div_scale= 1
+					Min = -16 pixels  Max = 16 pixels  Step = 2 pixels "
+		::= { iqsyn30CmdEntry 5008 }
+
+
+	iqsyn30VideoPicturepositionnm OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Picture position nm  cmdID= 5007  min= -16  max= 16  step= 2  format= %1.0f pixels  div_scale= 1
+					Min = -16 pixels  Max = 16 pixels  Step = 2 pixels "
+		::= { iqsyn30CmdEntry 5007 }
+
+
+	iqsyn30Video OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valOff(0),
+							valOn(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					Off  cmdID= 1037  value= 0
+					On  cmdID= 1037  value= 1  "
+		::= { iqsyn30CmdEntry 1037 }
+
+
+	iqsyn30VideoText OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Video
+					Text  cmdID= 1041  "
+		::= { iqsyn30CmdEntry 1041 }
+
+
+	iqsyn30AudioHANKBlank1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					HANK Blank 1  cmdID= 3947 "
+		::= { iqsyn30CmdEntry 3947 }
+
+
+	iqsyn30EmbeddersEmbedder1Enable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Enable  cmdID= 5066 "
+		::= { iqsyn30CmdEntry 5066 }
+
+
+	iqsyn30EmbeddersEmbedder1SourceLNonPCMPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Source L / Non-PCM  cmdID= 5034
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5034 }
+
+
+	iqsyn30EmbeddersEmbedder1SourceRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Source R  cmdID= 5035
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5035 }
+
+
+	iqsyn30EmbeddersEmbedder1MutePair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Mute  cmdID= 3240 "
+		::= { iqsyn30CmdEntry 3240 }
+
+
+	iqsyn30EmbeddersEmbedder1InvertLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Invert L  cmdID= 3160 "
+		::= { iqsyn30CmdEntry 3160 }
+
+
+	iqsyn30EmbeddersEmbedder1InvertRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Invert R  cmdID= 3161 "
+		::= { iqsyn30CmdEntry 3161 }
+
+
+	iqsyn30EmbeddersEmbedder1GainLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 1
+					Gain L  cmdID= 3080  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3080 }
+
+
+	iqsyn30EmbeddersEmbedder1GainRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 1
+					Gain R  cmdID= 3081  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3081 }
+
+
+	iqsyn30EmbeddersEmbedder1PairModePair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Pair Mode  cmdID= 3930
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3930 }
+
+
+	iqsyn30EmbeddersEmbedder1SourceLNonPCMPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Source L / Non-PCM  cmdID= 5036
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5036 }
+
+
+	iqsyn30EmbeddersEmbedder1SourceRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Source R  cmdID= 5037
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5037 }
+
+
+	iqsyn30EmbeddersEmbedder1MutePair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Mute  cmdID= 3241 "
+		::= { iqsyn30CmdEntry 3241 }
+
+
+	iqsyn30EmbeddersEmbedder1InvertLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Invert L  cmdID= 3162 "
+		::= { iqsyn30CmdEntry 3162 }
+
+
+	iqsyn30EmbeddersEmbedder1InvertRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 1
+					Invert R  cmdID= 3163 "
+		::= { iqsyn30CmdEntry 3163 }
+
+
+	iqsyn30EmbeddersEmbedder1GainLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 1
+					Gain L  cmdID= 3082  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3082 }
+
+
+	iqsyn30EmbeddersEmbedder1GainRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 1
+					Gain R  cmdID= 3083  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3083 }
+
+
+	iqsyn30EmbeddersEmbedder1PairModePair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 1
+					Pair Mode  cmdID= 3931
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3931 }
+
+
+	iqsyn30EmbeddersEmbedder2Enable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Enable  cmdID= 5067 "
+		::= { iqsyn30CmdEntry 5067 }
+
+
+	iqsyn30EmbeddersEmbedder2SourceLNonPCMPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Source L / Non-PCM  cmdID= 5038
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5038 }
+
+
+	iqsyn30EmbeddersEmbedder2SourceRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Source R  cmdID= 5039
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5039 }
+
+
+	iqsyn30EmbeddersEmbedder2MutePair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Mute  cmdID= 3242 "
+		::= { iqsyn30CmdEntry 3242 }
+
+
+	iqsyn30EmbeddersEmbedder2InvertLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Invert L  cmdID= 3164 "
+		::= { iqsyn30CmdEntry 3164 }
+
+
+	iqsyn30EmbeddersEmbedder2InvertRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Invert R  cmdID= 3165 "
+		::= { iqsyn30CmdEntry 3165 }
+
+
+	iqsyn30EmbeddersEmbedder2GainLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 2
+					Gain L  cmdID= 3084  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3084 }
+
+
+	iqsyn30EmbeddersEmbedder2GainRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 2
+					Gain R  cmdID= 3085  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3085 }
+
+
+	iqsyn30EmbeddersEmbedder2PairModePair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Pair Mode  cmdID= 3932
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3932 }
+
+
+	iqsyn30EmbeddersEmbedder2SourceLNonPCMPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Source L / Non-PCM  cmdID= 5040
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5040 }
+
+
+	iqsyn30EmbeddersEmbedder2SourceRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Source R  cmdID= 5041
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5041 }
+
+
+	iqsyn30EmbeddersEmbedder2MutePair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Mute  cmdID= 3243 "
+		::= { iqsyn30CmdEntry 3243 }
+
+
+	iqsyn30EmbeddersEmbedder2InvertLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Invert L  cmdID= 3166 "
+		::= { iqsyn30CmdEntry 3166 }
+
+
+	iqsyn30EmbeddersEmbedder2InvertRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 2
+					Invert R  cmdID= 3167 "
+		::= { iqsyn30CmdEntry 3167 }
+
+
+	iqsyn30EmbeddersEmbedder2GainLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 2
+					Gain L  cmdID= 3086  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3086 }
+
+
+	iqsyn30EmbeddersEmbedder2GainRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 2
+					Gain R  cmdID= 3087  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3087 }
+
+
+	iqsyn30EmbeddersEmbedder2PairModePair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 2
+					Pair Mode  cmdID= 3933
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3933 }
+
+
+	iqsyn30EmbeddersEmbedder3Enable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Enable  cmdID= 5068 "
+		::= { iqsyn30CmdEntry 5068 }
+
+
+	iqsyn30EmbeddersEmbedder3SourceLNonPCMPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Source L / Non-PCM  cmdID= 5042
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5042 }
+
+
+	iqsyn30EmbeddersEmbedder3SourceRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Source R  cmdID= 5043
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5043 }
+
+
+	iqsyn30EmbeddersEmbedder3MutePair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Mute  cmdID= 3244 "
+		::= { iqsyn30CmdEntry 3244 }
+
+
+	iqsyn30EmbeddersEmbedder3InvertLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Invert L  cmdID= 3168 "
+		::= { iqsyn30CmdEntry 3168 }
+
+
+	iqsyn30EmbeddersEmbedder3InvertRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Invert R  cmdID= 3169 "
+		::= { iqsyn30CmdEntry 3169 }
+
+
+	iqsyn30EmbeddersEmbedder3GainLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 3
+					Gain L  cmdID= 3088  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3088 }
+
+
+	iqsyn30EmbeddersEmbedder3GainRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 3
+					Gain R  cmdID= 3089  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3089 }
+
+
+	iqsyn30EmbeddersEmbedder3PairModePair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Pair Mode  cmdID= 3934
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3934 }
+
+
+	iqsyn30EmbeddersEmbedder3SourceLNonPCMPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Source L / Non-PCM  cmdID= 5044
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5044 }
+
+
+	iqsyn30EmbeddersEmbedder3SourceRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Source R  cmdID= 5045
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5045 }
+
+
+	iqsyn30EmbeddersEmbedder3MutePair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Mute  cmdID= 3245 "
+		::= { iqsyn30CmdEntry 3245 }
+
+
+	iqsyn30EmbeddersEmbedder3InvertLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Invert L  cmdID= 3170 "
+		::= { iqsyn30CmdEntry 3170 }
+
+
+	iqsyn30EmbeddersEmbedder3InvertRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 3
+					Invert R  cmdID= 3171 "
+		::= { iqsyn30CmdEntry 3171 }
+
+
+	iqsyn30EmbeddersEmbedder3GainLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 3
+					Gain L  cmdID= 3090  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3090 }
+
+
+	iqsyn30EmbeddersEmbedder3GainRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 3
+					Gain R  cmdID= 3091  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3091 }
+
+
+	iqsyn30EmbeddersEmbedder3PairModePair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 3
+					Pair Mode  cmdID= 3935
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3935 }
+
+
+	iqsyn30EmbeddersEmbedder4Enable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Enable  cmdID= 5069 "
+		::= { iqsyn30CmdEntry 5069 }
+
+
+	iqsyn30EmbeddersEmbedder4SourceLNonPCMPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Source L / Non-PCM  cmdID= 5046
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5046 }
+
+
+	iqsyn30EmbeddersEmbedder4SourceRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Source R  cmdID= 5047
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5047 }
+
+
+	iqsyn30EmbeddersEmbedder4MutePair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Mute  cmdID= 3246 "
+		::= { iqsyn30CmdEntry 3246 }
+
+
+	iqsyn30EmbeddersEmbedder4InvertLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Invert L  cmdID= 3172 "
+		::= { iqsyn30CmdEntry 3172 }
+
+
+	iqsyn30EmbeddersEmbedder4InvertRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Invert R  cmdID= 3173 "
+		::= { iqsyn30CmdEntry 3173 }
+
+
+	iqsyn30EmbeddersEmbedder4GainLPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 4
+					Gain L  cmdID= 3092  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3092 }
+
+
+	iqsyn30EmbeddersEmbedder4GainRPair1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 4
+					Gain R  cmdID= 3093  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3093 }
+
+
+	iqsyn30EmbeddersEmbedder4PairModePair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Pair Mode  cmdID= 3936
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3936 }
+
+
+	iqsyn30EmbeddersEmbedder4SourceLNonPCMPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed11(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(32),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Source L / Non-PCM  cmdID= 5048
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 32
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5048 }
+
+
+	iqsyn30EmbeddersEmbedder4SourceRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valDisembed1n1(0),
+							valDisembed12(1),
+							valDisembed21(2),
+							valDisembed22(3),
+							valDisembed31(4),
+							valDisembed32(5),
+							valDisembed41(6),
+							valDisembed42(7),
+							valDisembed51(8),
+							valDisembed52(9),
+							valDisembed61(10),
+							valDisembed62(11),
+							valDisembed71(12),
+							valDisembed72(13),
+							valDisembed81(14),
+							valDisembed82(15),
+							valTone(33),
+							valSilence(34)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Source R  cmdID= 5049
+					Dis-embed 1_1  value= 0
+					Dis-embed 1_2  value= 1
+					Dis-embed 2_1  value= 2
+					Dis-embed 2_2  value= 3
+					Dis-embed 3_1  value= 4
+					Dis-embed 3_2  value= 5
+					Dis-embed 4_1  value= 6
+					Dis-embed 4_2  value= 7
+					Dis-embed 5_1  value= 8
+					Dis-embed 5_2  value= 9
+					Dis-embed 6_1  value= 10
+					Dis-embed 6_2  value= 11
+					Dis-embed 7_1  value= 12
+					Dis-embed 7_2  value= 13
+					Dis-embed 8_1  value= 14
+					Dis-embed 8_2  value= 15
+					Tone  value= 33
+					Silence  value= 34  "
+		::= { iqsyn30CmdEntry 5049 }
+
+
+	iqsyn30EmbeddersEmbedder4MutePair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Mute  cmdID= 3247 "
+		::= { iqsyn30CmdEntry 3247 }
+
+
+	iqsyn30EmbeddersEmbedder4InvertLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Invert L  cmdID= 3174 "
+		::= { iqsyn30CmdEntry 3174 }
+
+
+	iqsyn30EmbeddersEmbedder4InvertRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embedders- Embedder 4
+					Invert R  cmdID= 3175 "
+		::= { iqsyn30CmdEntry 3175 }
+
+
+	iqsyn30EmbeddersEmbedder4GainLPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 4
+					Gain L  cmdID= 3094  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3094 }
+
+
+	iqsyn30EmbeddersEmbedder4GainRPair2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Embedders- Embedder 4
+					Gain R  cmdID= 3095  min= -720  max= 120  step= 1  format= %0.1fdB  div_scale= 10
+					Min = -72.0dB  Max = 12.0dB  Step = 0.1dB "
+		::= { iqsyn30CmdEntry 3095 }
+
+
+	iqsyn30EmbeddersEmbedder4PairModePair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val2ChannelPCM(0),
+							valStereoPCM(1),
+							valnonPCM(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embedders- Embedder 4
+					Pair Mode  cmdID= 3937
+					2 Channel PCM  value= 0
+					Stereo PCM  value= 1
+					nonPCM  value= 2  "
+		::= { iqsyn30CmdEntry 3937 }
+
+
+	iqsyn30AudioFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Frequency  cmdID= 2487  min= 100  max= 10000  step= 100  format= %5.0fHz  div_scale= 1
+					Min =   100Hz  Max = 10000Hz  Step =   100Hz "
+		::= { iqsyn30CmdEntry 2487 }
+
+
+	iqsyn30AudioChannelident OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Channel ident  cmdID= 5030 "
+		::= { iqsyn30CmdEntry 5030 }
+
+
+	iqsyn30AudioTotaldelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Total delay  cmdID= 5084  format=   "
+		::= { iqsyn30CmdEntry 5084 }
+
+
+	iqsyn30AudioActiveVideodelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Video delay  cmdID= 5074  format=   "
+		::= { iqsyn30CmdEntry 5074 }
+
+
+	iqsyn30Audiomanualdelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					manual delay  cmdID= 5076  format=   "
+		::= { iqsyn30CmdEntry 5076 }
+
+
+	iqsyn30AudioTrack14delay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Track 14 delay  cmdID= 3924  format=   "
+		::= { iqsyn30CmdEntry 3924 }
+
+
+	iqsyn30AudioTrack15delay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Track 15 delay  cmdID= 3925  format=   "
+		::= { iqsyn30CmdEntry 3925 }
+
+
+	iqsyn30AudioTrack16delay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Track 16 delay  cmdID= 3926  format=   "
+		::= { iqsyn30CmdEntry 3926 }
+
+
+	iqsyn30AudioTrack17delay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio
+					Track 17 delay  cmdID= 3927  format=   "
+		::= { iqsyn30CmdEntry 3927 }
+
+
+	iqsyn30AudioVideodelayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Video delay  cmdID= 5078 "
+		::= { iqsyn30CmdEntry 5078 }
+
+
+	iqsyn30AudiomanualdelayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					manual delay  cmdID= 5079 "
+		::= { iqsyn30CmdEntry 5079 }
+
+
+	iqsyn30AudioTrack14delayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Track 14 delay  cmdID= 5080 "
+		::= { iqsyn30CmdEntry 5080 }
+
+
+	iqsyn30AudioTrack15delayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Track 15 delay  cmdID= 5081 "
+		::= { iqsyn30CmdEntry 5081 }
+
+
+	iqsyn30AudioTrack16delayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Track 16 delay  cmdID= 5082 "
+		::= { iqsyn30CmdEntry 5082 }
+
+
+	iqsyn30AudioTrack17delayEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Track 17 delay  cmdID= 5083 "
+		::= { iqsyn30CmdEntry 5083 }
+
+
+	iqsyn30AudioCoarse OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Coarse  cmdID= 5075  min= 0  max= 1750  step= 5  format= %5.3fs  div_scale= 1000
+					Min = 0.000s  Max = 1.750s  Step = 0.005s "
+		::= { iqsyn30CmdEntry 5075 }
+
+
+	iqsyn30AudioFine OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Fine  cmdID= 5077  min= -2500  max= 2500  step= 5  format= %0.1fms  div_scale= 10
+					Min = -250.0ms  Max = 250.0ms  Step = 0.5ms "
+		::= { iqsyn30CmdEntry 5077 }
+
+
+	iqsyn30AudioDolbyEautoalign OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio
+					Dolby E auto align  cmdID= 5032 "
+		::= { iqsyn30CmdEntry 5032 }
+
+
+	iqsyn30AudioSilenceLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Silence Level  cmdID= 3061  min= -80  max= 0  step= 1  format= %1.0f dB  div_scale= 1
+					Min = -80 dB  Max = 0 dB  Step = 1 dB "
+		::= { iqsyn30CmdEntry 3061 }
+
+
+	iqsyn30AudioOverloadLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Overload Level  cmdID= 3064  min= -80  max= 0  step= 1  format= %1.0f dB  div_scale= 1
+					Min = -80 dB  Max = 0 dB  Step = 1 dB "
+		::= { iqsyn30CmdEntry 3064 }
+
+
+	iqsyn30AudioWarningTimer OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio
+					Warning Timer  cmdID= 3065  min= 1  max= 20  step= 1  format= %1.0f sec  div_scale= 1
+					Min = 1 sec  Max = 20 sec  Step = 1 sec "
+		::= { iqsyn30CmdEntry 3065 }
+
+
+	iqsyn30Genlock3674 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valFreerun(2),
+							valLocktoReference(0),
+							valLocktoInput(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Freerun  cmdID= 3674  value= 2
+					Lock to Reference  cmdID= 3674  value= 0
+					Lock to Input  cmdID= 3674  value= 1  "
+		::= { iqsyn30CmdEntry 3674 }
+
+
+	iqsyn30GenlockFreerunFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Freerun Frequency  cmdID= 2449  min= -200  max= 200  step= 1  format= %.0f  div_scale= 1
+					Min = -200  Max = 200  Step = 1 "
+		::= { iqsyn30CmdEntry 2449 }
+
+
+	iqsyn30GenlockGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock H Phase  cmdID= 3790  min= -1320  max= 1320  step= 1  format= %.0f pixels  div_scale= 1
+					Min = -1320 pixels  Max = 1320 pixels  Step = 1 pixels "
+		::= { iqsyn30CmdEntry 3790 }
+
+
+	iqsyn30GenlockGenlockVPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock V Phase  cmdID= 3791  min= -562  max= 562  step= 1  format= %.0f lines  div_scale= 1
+					Min = -562 lines  Max = 562 lines  Step = 1 lines "
+		::= { iqsyn30CmdEntry 3791 }
+
+
+	iqsyn30GenlockVideoHdelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Video H delay  cmdID= 3794  min= 0  max= 2640  step= 1  format= %.0f pixels  div_scale= 1
+					Min = 0 pixels  Max = 2640 pixels  Step = 1 pixels "
+		::= { iqsyn30CmdEntry 3794 }
+
+
+	iqsyn30GenlockVideoVdelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Video V delay  cmdID= 3795  min= 0  max= 1125  step= 1  format= %.0f lines  div_scale= 1
+					Min = 0 lines  Max = 1125 lines  Step = 1 lines "
+		::= { iqsyn30CmdEntry 3795 }
+
+
+	iqsyn30GenlockVideo1Fdelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Video 1 F delay  cmdID= 3796  min= 0  max= 9  step= 1  format= %.0f frames  div_scale= 1
+					Min = 0 frames  Max = 9 frames  Step = 1 frames "
+		::= { iqsyn30CmdEntry 3796 }
+
+
+	iqsyn30GenlockGenlocksaveindex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock save index  cmdID= 3991  min= 0  max= 10  step= 1  format= %.0f  div_scale= 1
+					Min = 0  Max = 10  Step = 1 "
+		::= { iqsyn30CmdEntry 3991 }
+
+
+	iqsyn30GenlockGenlockHPhaseRT OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock H Phase  cmdID= 3992  min= -1320  max= 1320  step= 1  format= %.0f pixels  div_scale= 1
+					Min = -1320 pixels  Max = 1320 pixels  Step = 1 pixels "
+		::= { iqsyn30CmdEntry 3992 }
+
+
+	iqsyn30GenlockGenlockVPhaseRT OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Genlock V Phase  cmdID= 3993  min= -562  max= 562  step= 1  format= %.0f lines  div_scale= 1
+					Min = -562 lines  Max = 562 lines  Step = 1 lines "
+		::= { iqsyn30CmdEntry 3993 }
+
+
+	iqsyn30GenlockVideoHdelayRT OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Video H delay  cmdID= 3994  min= 0  max= 2640  step= 1  format= %.0f pixels  div_scale= 1
+					Min = 0 pixels  Max = 2640 pixels  Step = 1 pixels "
+		::= { iqsyn30CmdEntry 3994 }
+
+
+	iqsyn30GenlockVideoVdelayRT OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Video V delay  cmdID= 3995  min= 0  max= 1125  step= 1  format= %.0f lines  div_scale= 1
+					Min = 0 lines  Max = 1125 lines  Step = 1 lines "
+		::= { iqsyn30CmdEntry 3995 }
+
+
+	iqsyn30DefaultOutputStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valLastKnownGood(1),
+							val108050pB(25),
+							val108059pB(26),
+							val108050pA(22),
+							val108059pA(23),
+							val108029i(18),
+							val108025i(17),
+							val72059p(10),
+							val72050p(9),
+							val52529i(3),
+							val62525i(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Last Known Good  cmdID= 3793  value= 1
+					1080/50p-B  cmdID= 3793  value= 25
+					1080/59p-B  cmdID= 3793  value= 26
+					1080/50p-A  cmdID= 3793  value= 22
+					1080/59p-A  cmdID= 3793  value= 23
+					1080/29i  cmdID= 3793  value= 18
+					1080/25i  cmdID= 3793  value= 17
+					720/59p  cmdID= 3793  value= 10
+					720/50p  cmdID= 3793  value= 9
+					525/29i  cmdID= 3793  value= 3
+					625/25i  cmdID= 3793  value= 2  "
+		::= { iqsyn30CmdEntry 3793 }
+
+
+	iqsyn30Genlock108050pB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/50p-B  cmdID= 3825 "
+		::= { iqsyn30CmdEntry 3825 }
+
+
+	iqsyn30Genlock108059pB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/59p-B  cmdID= 3826 "
+		::= { iqsyn30CmdEntry 3826 }
+
+
+	iqsyn30Genlock108050pA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/50p-A  cmdID= 3822 "
+		::= { iqsyn30CmdEntry 3822 }
+
+
+	iqsyn30Genlock108059pA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/59p-A  cmdID= 3823 "
+		::= { iqsyn30CmdEntry 3823 }
+
+
+	iqsyn30Genlock108029i OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/29i  cmdID= 3818 "
+		::= { iqsyn30CmdEntry 3818 }
+
+
+	iqsyn30Genlock108025i OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					1080/25i  cmdID= 3817 "
+		::= { iqsyn30CmdEntry 3817 }
+
+
+	iqsyn30Genlock72059p OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					720/59p  cmdID= 3810 "
+		::= { iqsyn30CmdEntry 3810 }
+
+
+	iqsyn30Genlock72050p OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					720/50p  cmdID= 3809 "
+		::= { iqsyn30CmdEntry 3809 }
+
+
+	iqsyn30Genlock52529i OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					525/29i  cmdID= 3803 "
+		::= { iqsyn30CmdEntry 3803 }
+
+
+	iqsyn30Genlock62525i OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Genlock
+					625/25i  cmdID= 3802 "
+		::= { iqsyn30CmdEntry 3802 }
+
+
+	iqsyn30MemoriesSelMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valUserMemory1(1),
+							valUserMemory2(2),
+							valUserMemory3(3),
+							valUserMemory4(4),
+							valUserMemory5(5),
+							valUserMemory6(6),
+							valUserMemory7(7),
+							valUserMemory8(8),
+							valUserMemory9(9),
+							valUserMemory10(10),
+							valUserMemory11(11),
+							valUserMemory12(12),
+							valUserMemory13(13),
+							valUserMemory14(14),
+							valUserMemory15(15),
+							valUserMemory16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Sel Memory  cmdID= 37101
+					User Memory 1  value= 1
+					User Memory 2  value= 2
+					User Memory 3  value= 3
+					User Memory 4  value= 4
+					User Memory 5  value= 5
+					User Memory 6  value= 6
+					User Memory 7  value= 7
+					User Memory 8  value= 8
+					User Memory 9  value= 9
+					User Memory 10  value= 10
+					User Memory 11  value= 11
+					User Memory 12  value= 12
+					User Memory 13  value= 13
+					User Memory 14  value= 14
+					User Memory 15  value= 15
+					User Memory 16  value= 16  "
+		::= { iqsyn30CmdEntry 37101 }
+
+
+	iqsyn30MemoriesSetMemName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					SetMemName  cmdID= 37103  "
+		::= { iqsyn30CmdEntry 37103 }
+
+
+	iqsyn30MemoriesRecallMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valNoneSelected(0),
+							valUserMemory1(1),
+							valUserMemory2(2),
+							valUserMemory3(3),
+							valUserMemory4(4),
+							valUserMemory5(5),
+							valUserMemory6(6),
+							valUserMemory7(7),
+							valUserMemory8(8),
+							valUserMemory9(9),
+							valUserMemory10(10),
+							valUserMemory11(11),
+							valUserMemory12(12),
+							valUserMemory13(13),
+							valUserMemory14(14),
+							valUserMemory15(15),
+							valUserMemory16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Recall Memory  cmdID= 37100
+					None Selected  value= 0
+					User Memory 1  value= 1
+					User Memory 2  value= 2
+					User Memory 3  value= 3
+					User Memory 4  value= 4
+					User Memory 5  value= 5
+					User Memory 6  value= 6
+					User Memory 7  value= 7
+					User Memory 8  value= 8
+					User Memory 9  value= 9
+					User Memory 10  value= 10
+					User Memory 11  value= 11
+					User Memory 12  value= 12
+					User Memory 13  value= 13
+					User Memory 14  value= 14
+					User Memory 15  value= 15
+					User Memory 16  value= 16  "
+		::= { iqsyn30CmdEntry 37100 }
+
+
+	iqsyn30MemoriesSaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),valSaveMemory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save Memory  cmdID= 37102  value= 1  "
+		::= { iqsyn30CmdEntry 37102 }
+
+
+	iqsyn30MemoriesLastUserMemory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Last User Memory  cmdID= 37104  format=   "
+		::= { iqsyn30CmdEntry 37104 }
+
+
+	iqsyn30MemoriesClearMemory OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),valClearMemory(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear Memory  cmdID= 37105  value= 1  "
+		::= { iqsyn30CmdEntry 37105 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 1 Name  cmdID= 37106  format=   "
+		::= { iqsyn30CmdEntry 37106 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 2 Name  cmdID= 37107  format=   "
+		::= { iqsyn30CmdEntry 37107 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory3Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 3 Name  cmdID= 37108  format=   "
+		::= { iqsyn30CmdEntry 37108 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory4Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 4 Name  cmdID= 37109  format=   "
+		::= { iqsyn30CmdEntry 37109 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory5Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 5 Name  cmdID= 37110  format=   "
+		::= { iqsyn30CmdEntry 37110 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory6Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 6 Name  cmdID= 37111  format=   "
+		::= { iqsyn30CmdEntry 37111 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory7Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 7 Name  cmdID= 37112  format=   "
+		::= { iqsyn30CmdEntry 37112 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory8Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 8 Name  cmdID= 37113  format=   "
+		::= { iqsyn30CmdEntry 37113 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory9Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 9 Name  cmdID= 37114  format=   "
+		::= { iqsyn30CmdEntry 37114 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory10Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 10 Name  cmdID= 37115  format=   "
+		::= { iqsyn30CmdEntry 37115 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory11Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 11 Name  cmdID= 37116  format=   "
+		::= { iqsyn30CmdEntry 37116 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory12Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 12 Name  cmdID= 37117  format=   "
+		::= { iqsyn30CmdEntry 37117 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory13Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 13 Name  cmdID= 37118  format=   "
+		::= { iqsyn30CmdEntry 37118 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory14Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 14 Name  cmdID= 37119  format=   "
+		::= { iqsyn30CmdEntry 37119 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory15Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 15 Name  cmdID= 37120  format=   "
+		::= { iqsyn30CmdEntry 37120 }
+
+
+	iqsyn30MemoriesMemoryNamesMemory16Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Memories
+					Memory 16 Name  cmdID= 37121  format=   "
+		::= { iqsyn30CmdEntry 37121 }
+
+
+	iqsyn30SetupUptimeLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Uptime  cmdID= 4998 "
+		::= { iqsyn30CmdEntry 4998 }
+
+
+	iqsyn30SetupUptimeLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Uptime=  cmdID= 4999  format=   "
+		::= { iqsyn30CmdEntry 4999 }
+
+
+	iqsyn30SetupOSVersionLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					OS Version  cmdID= 4994 "
+		::= { iqsyn30CmdEntry 4994 }
+
+
+	iqsyn30SetupOSVersionLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					OS Version=  cmdID= 4995  format=   "
+		::= { iqsyn30CmdEntry 4995 }
+
+
+	iqsyn30SetupHardwareVersionLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Hardware Version  cmdID= 4996 "
+		::= { iqsyn30CmdEntry 4996 }
+
+
+	iqsyn30SetupHardwareVersionLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Hardware Version=  cmdID= 4997  format=   "
+		::= { iqsyn30CmdEntry 4997 }
+
+
+	iqsyn30SetupBuildNumberLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Build Number  cmdID= 4992 "
+		::= { iqsyn30CmdEntry 4992 }
+
+
+	iqsyn30SetupBuildNumberLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Build Number=  cmdID= 4993  format=   "
+		::= { iqsyn30CmdEntry 4993 }
+
+
+	iqsyn30SetupSerialNumberLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Serial Number  cmdID= 4990 "
+		::= { iqsyn30CmdEntry 4990 }
+
+
+	iqsyn30SetupSerialNumberLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Serial Number=  cmdID= 4991  format=   "
+		::= { iqsyn30CmdEntry 4991 }
+
+
+	iqsyn30SetupLicensedOptionsLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Licensed Options  cmdID= 4988 "
+		::= { iqsyn30CmdEntry 4988 }
+
+
+	iqsyn30SetupLicensedOptionsLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Licensed Options=  cmdID= 4989  format=   "
+		::= { iqsyn30CmdEntry 4989 }
+
+
+	iqsyn30SetupFirmwareVersionLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Firmware Version  cmdID= 4986 "
+		::= { iqsyn30CmdEntry 4986 }
+
+
+	iqsyn30SetupFirmwareVersionLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Firmware Version=  cmdID= 4987  format=   "
+		::= { iqsyn30CmdEntry 4987 }
+
+
+	iqsyn30SetupInput1LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1  cmdID= 4000 "
+		::= { iqsyn30CmdEntry 4000 }
+
+
+	iqsyn30SetupInput1LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1=  cmdID= 4001  format=   "
+		::= { iqsyn30CmdEntry 4001 }
+
+
+	iqsyn30SetupInput1StandardLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Standard  cmdID= 4004 "
+		::= { iqsyn30CmdEntry 4004 }
+
+
+	iqsyn30SetupInput1StandardLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Standard=  cmdID= 4005  format=   "
+		::= { iqsyn30CmdEntry 4005 }
+
+
+	iqsyn30SetupInput1TypeLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Type  cmdID= 4024 "
+		::= { iqsyn30CmdEntry 4024 }
+
+
+	iqsyn30SetupInput1TypeLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Type=  cmdID= 4025  format=   "
+		::= { iqsyn30CmdEntry 4025 }
+
+
+	iqsyn30SetupInput1IdentLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Ident  cmdID= 4028 "
+		::= { iqsyn30CmdEntry 4028 }
+
+
+	iqsyn30SetupInput1IdentLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Ident=  cmdID= 4029  format=   "
+		::= { iqsyn30CmdEntry 4029 }
+
+
+	iqsyn30SetupIn1SDIERRSLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					In 1 SDI ERRS  cmdID= 4012 "
+		::= { iqsyn30CmdEntry 4012 }
+
+
+	iqsyn30SetupIn1SDIERRSLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					In 1 SDI ERRS=  cmdID= 4013  format=   "
+		::= { iqsyn30CmdEntry 4013 }
+
+
+	iqsyn30SetupIn1SDIANCERRSLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					In 1 SDI ANC ERRS  cmdID= 4020 "
+		::= { iqsyn30CmdEntry 4020 }
+
+
+	iqsyn30SetupIn1SDIANCERRSLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					In 1 SDI ANC ERRS=  cmdID= 4021  format=   "
+		::= { iqsyn30CmdEntry 4021 }
+
+
+	iqsyn30SetupInput1Audio1LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 1  cmdID= 3852 "
+		::= { iqsyn30CmdEntry 3852 }
+
+
+	iqsyn30SetupInput1Audio1LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 1=  cmdID= 3853  format=   "
+		::= { iqsyn30CmdEntry 3853 }
+
+
+	iqsyn30SetupInput1Audio2LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 2  cmdID= 3854 "
+		::= { iqsyn30CmdEntry 3854 }
+
+
+	iqsyn30SetupInput1Audio2LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 2=  cmdID= 3855  format=   "
+		::= { iqsyn30CmdEntry 3855 }
+
+
+	iqsyn30SetupInput1Audio3LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 3  cmdID= 3856 "
+		::= { iqsyn30CmdEntry 3856 }
+
+
+	iqsyn30SetupInput1Audio3LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 3=  cmdID= 3857  format=   "
+		::= { iqsyn30CmdEntry 3857 }
+
+
+	iqsyn30SetupInput1Audio4LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 4  cmdID= 3858 "
+		::= { iqsyn30CmdEntry 3858 }
+
+
+	iqsyn30SetupInput1Audio4LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 4=  cmdID= 3859  format=   "
+		::= { iqsyn30CmdEntry 3859 }
+
+
+	iqsyn30SetupInput1Audio5LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 5  cmdID= 3860 "
+		::= { iqsyn30CmdEntry 3860 }
+
+
+	iqsyn30SetupInput1Audio5LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 5=  cmdID= 3861  format=   "
+		::= { iqsyn30CmdEntry 3861 }
+
+
+	iqsyn30SetupInput1Audio6LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 6  cmdID= 3862 "
+		::= { iqsyn30CmdEntry 3862 }
+
+
+	iqsyn30SetupInput1Audio6LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 6=  cmdID= 3863  format=   "
+		::= { iqsyn30CmdEntry 3863 }
+
+
+	iqsyn30SetupInput1Audio7LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 7  cmdID= 3864 "
+		::= { iqsyn30CmdEntry 3864 }
+
+
+	iqsyn30SetupInput1Audio7LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 7=  cmdID= 3865  format=   "
+		::= { iqsyn30CmdEntry 3865 }
+
+
+	iqsyn30SetupInput1Audio8LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 1 Audio 8  cmdID= 3866 "
+		::= { iqsyn30CmdEntry 3866 }
+
+
+	iqsyn30SetupInput1Audio8LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 1 Audio 8=  cmdID= 3867  format=   "
+		::= { iqsyn30CmdEntry 3867 }
+
+
+	iqsyn30SetupOutput1TypeLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1 Type  cmdID= 4192 "
+		::= { iqsyn30CmdEntry 4192 }
+
+
+	iqsyn30SetupOutput1TypeLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Output 1 Type=  cmdID= 4193  format=   "
+		::= { iqsyn30CmdEntry 4193 }
+
+
+	iqsyn30SetupOutput1StateLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1 State  cmdID= 4196 "
+		::= { iqsyn30CmdEntry 4196 }
+
+
+	iqsyn30SetupOutput1StateLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Output 1 State=  cmdID= 4197  format=   "
+		::= { iqsyn30CmdEntry 4197 }
+
+
+	iqsyn30SetupOutput1StdLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1 Std  cmdID= 4200 "
+		::= { iqsyn30CmdEntry 4200 }
+
+
+	iqsyn30SetupOutput1StdLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Output 1 Std=  cmdID= 4201  format=   "
+		::= { iqsyn30CmdEntry 4201 }
+
+
+	iqsyn30SetupOutput1CaptionLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1 Caption  cmdID= 4204 "
+		::= { iqsyn30CmdEntry 4204 }
+
+
+	iqsyn30SetupOutput1CaptionLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Output 1 Caption=  cmdID= 4205  format=   "
+		::= { iqsyn30CmdEntry 4205 }
+
+
+	iqsyn30SetupOutput1LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Output 1  cmdID= 4208 "
+		::= { iqsyn30CmdEntry 4208 }
+
+
+	iqsyn30SetupOutput1LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Output 1=  cmdID= 4209  format=   "
+		::= { iqsyn30CmdEntry 4209 }
+
+
+	iqsyn30SetupInput2LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2  cmdID= 4002 "
+		::= { iqsyn30CmdEntry 4002 }
+
+
+	iqsyn30SetupInput2LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2=  cmdID= 4003  format=   "
+		::= { iqsyn30CmdEntry 4003 }
+
+
+	iqsyn30SetupInput2StandardLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Standard  cmdID= 4006 "
+		::= { iqsyn30CmdEntry 4006 }
+
+
+	iqsyn30SetupInput2StandardLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Standard=  cmdID= 4007  format=   "
+		::= { iqsyn30CmdEntry 4007 }
+
+
+	iqsyn30SetupInput2TypeLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Type  cmdID= 4026 "
+		::= { iqsyn30CmdEntry 4026 }
+
+
+	iqsyn30SetupInput2TypeLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Type=  cmdID= 4027  format=   "
+		::= { iqsyn30CmdEntry 4027 }
+
+
+	iqsyn30SetupInput2IdentLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Ident  cmdID= 4030 "
+		::= { iqsyn30CmdEntry 4030 }
+
+
+	iqsyn30SetupInput2IdentLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Ident=  cmdID= 4031  format=   "
+		::= { iqsyn30CmdEntry 4031 }
+
+
+	iqsyn30SetupIn2SDIERRSLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					In 2 SDI ERRS  cmdID= 4014 "
+		::= { iqsyn30CmdEntry 4014 }
+
+
+	iqsyn30SetupIn2SDIERRSLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					In 2 SDI ERRS=  cmdID= 4015  format=   "
+		::= { iqsyn30CmdEntry 4015 }
+
+
+	iqsyn30SetupIn2SDIANCERRSLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					In 2 SDI ANC ERRS  cmdID= 4022 "
+		::= { iqsyn30CmdEntry 4022 }
+
+
+	iqsyn30SetupIn2SDIANCERRSLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					In 2 SDI ANC ERRS=  cmdID= 4023  format=   "
+		::= { iqsyn30CmdEntry 4023 }
+
+
+	iqsyn30SetupInput2Audio1LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 1  cmdID= 3868 "
+		::= { iqsyn30CmdEntry 3868 }
+
+
+	iqsyn30SetupInput2Audio1LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 1=  cmdID= 3869  format=   "
+		::= { iqsyn30CmdEntry 3869 }
+
+
+	iqsyn30SetupInput2Audio2LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 2  cmdID= 3870 "
+		::= { iqsyn30CmdEntry 3870 }
+
+
+	iqsyn30SetupInput2Audio2LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 2=  cmdID= 3871  format=   "
+		::= { iqsyn30CmdEntry 3871 }
+
+
+	iqsyn30SetupInput2Audio3LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 3  cmdID= 3872 "
+		::= { iqsyn30CmdEntry 3872 }
+
+
+	iqsyn30SetupInput2Audio3LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 3=  cmdID= 3873  format=   "
+		::= { iqsyn30CmdEntry 3873 }
+
+
+	iqsyn30SetupInput2Audio4LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 4  cmdID= 3874 "
+		::= { iqsyn30CmdEntry 3874 }
+
+
+	iqsyn30SetupInput2Audio4LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 4=  cmdID= 3875  format=   "
+		::= { iqsyn30CmdEntry 3875 }
+
+
+	iqsyn30SetupInput2Audio5LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 5  cmdID= 3876 "
+		::= { iqsyn30CmdEntry 3876 }
+
+
+	iqsyn30SetupInput2Audio5LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 5=  cmdID= 3877  format=   "
+		::= { iqsyn30CmdEntry 3877 }
+
+
+	iqsyn30SetupInput2Audio6LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 6  cmdID= 3878 "
+		::= { iqsyn30CmdEntry 3878 }
+
+
+	iqsyn30SetupInput2Audio6LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 6=  cmdID= 3879  format=   "
+		::= { iqsyn30CmdEntry 3879 }
+
+
+	iqsyn30SetupInput2Audio7LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 7  cmdID= 3880 "
+		::= { iqsyn30CmdEntry 3880 }
+
+
+	iqsyn30SetupInput2Audio7LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 7=  cmdID= 3881  format=   "
+		::= { iqsyn30CmdEntry 3881 }
+
+
+	iqsyn30SetupInput2Audio8LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Input 2 Audio 8  cmdID= 3882 "
+		::= { iqsyn30CmdEntry 3882 }
+
+
+	iqsyn30SetupInput2Audio8LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Input 2 Audio 8=  cmdID= 3883  format=   "
+		::= { iqsyn30CmdEntry 3883 }
+
+
+	iqsyn30Setupop1embed11LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_1_1  cmdID= 4064 "
+		::= { iqsyn30CmdEntry 4064 }
+
+
+	iqsyn30Setupop1embed11LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_1_1=  cmdID= 4065  format=   "
+		::= { iqsyn30CmdEntry 4065 }
+
+
+	iqsyn30Setupop1embed12LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_1_2  cmdID= 4068 "
+		::= { iqsyn30CmdEntry 4068 }
+
+
+	iqsyn30Setupop1embed12LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_1_2=  cmdID= 4069  format=   "
+		::= { iqsyn30CmdEntry 4069 }
+
+
+	iqsyn30Setupop1embed21LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_2_1  cmdID= 4072 "
+		::= { iqsyn30CmdEntry 4072 }
+
+
+	iqsyn30Setupop1embed21LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_2_1=  cmdID= 4073  format=   "
+		::= { iqsyn30CmdEntry 4073 }
+
+
+	iqsyn30Setupop1embed22LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_2_2  cmdID= 4076 "
+		::= { iqsyn30CmdEntry 4076 }
+
+
+	iqsyn30Setupop1embed22LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_2_2=  cmdID= 4077  format=   "
+		::= { iqsyn30CmdEntry 4077 }
+
+
+	iqsyn30Setupop1embed31LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_3_1  cmdID= 4080 "
+		::= { iqsyn30CmdEntry 4080 }
+
+
+	iqsyn30Setupop1embed31LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_3_1=  cmdID= 4081  format=   "
+		::= { iqsyn30CmdEntry 4081 }
+
+
+	iqsyn30Setupop1embed32LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_3_2  cmdID= 4084 "
+		::= { iqsyn30CmdEntry 4084 }
+
+
+	iqsyn30Setupop1embed32LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_3_2=  cmdID= 4085  format=   "
+		::= { iqsyn30CmdEntry 4085 }
+
+
+	iqsyn30Setupop1embed41LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_4_1  cmdID= 4088 "
+		::= { iqsyn30CmdEntry 4088 }
+
+
+	iqsyn30Setupop1embed41LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_4_1=  cmdID= 4089  format=   "
+		::= { iqsyn30CmdEntry 4089 }
+
+
+	iqsyn30Setupop1embed42LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_4_2  cmdID= 4092 "
+		::= { iqsyn30CmdEntry 4092 }
+
+
+	iqsyn30Setupop1embed42LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_4_2=  cmdID= 4093  format=   "
+		::= { iqsyn30CmdEntry 4093 }
+
+
+	iqsyn30Setupop1embed51LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_5_1  cmdID= 4096 "
+		::= { iqsyn30CmdEntry 4096 }
+
+
+	iqsyn30Setupop1embed51LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_5_1=  cmdID= 4097  format=   "
+		::= { iqsyn30CmdEntry 4097 }
+
+
+	iqsyn30Setupop1embed52LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_5_2  cmdID= 4100 "
+		::= { iqsyn30CmdEntry 4100 }
+
+
+	iqsyn30Setupop1embed52LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_5_2=  cmdID= 4101  format=   "
+		::= { iqsyn30CmdEntry 4101 }
+
+
+	iqsyn30Setupop1embed61LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_6_1  cmdID= 4104 "
+		::= { iqsyn30CmdEntry 4104 }
+
+
+	iqsyn30Setupop1embed61LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_6_1=  cmdID= 4105  format=   "
+		::= { iqsyn30CmdEntry 4105 }
+
+
+	iqsyn30Setupop1embed62LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_6_2  cmdID= 4108 "
+		::= { iqsyn30CmdEntry 4108 }
+
+
+	iqsyn30Setupop1embed62LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_6_2=  cmdID= 4109  format=   "
+		::= { iqsyn30CmdEntry 4109 }
+
+
+	iqsyn30Setupop1embed71LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_7_1  cmdID= 4112 "
+		::= { iqsyn30CmdEntry 4112 }
+
+
+	iqsyn30Setupop1embed71LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_7_1=  cmdID= 4113  format=   "
+		::= { iqsyn30CmdEntry 4113 }
+
+
+	iqsyn30Setupop1embed72LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_7_2  cmdID= 4116 "
+		::= { iqsyn30CmdEntry 4116 }
+
+
+	iqsyn30Setupop1embed72LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_7_2=  cmdID= 4117  format=   "
+		::= { iqsyn30CmdEntry 4117 }
+
+
+	iqsyn30Setupop1embed81LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_8_1  cmdID= 4120 "
+		::= { iqsyn30CmdEntry 4120 }
+
+
+	iqsyn30Setupop1embed81LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_8_1=  cmdID= 4121  format=   "
+		::= { iqsyn30CmdEntry 4121 }
+
+
+	iqsyn30Setupop1embed82LogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					op_1_embed_8_2  cmdID= 4124 "
+		::= { iqsyn30CmdEntry 4124 }
+
+
+	iqsyn30Setupop1embed82LogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					op_1_embed_8_2=  cmdID= 4125  format=   "
+		::= { iqsyn30CmdEntry 4125 }
+
+
+	iqsyn30SetupGenlock1StateLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Genlock 1 State  cmdID= 4052 "
+		::= { iqsyn30CmdEntry 4052 }
+
+
+	iqsyn30SetupGenlock1StateLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Genlock 1 State=  cmdID= 4053  format=   "
+		::= { iqsyn30CmdEntry 4053 }
+
+
+	iqsyn30SetupRef1StateLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Ref 1 State  cmdID= 4040 "
+		::= { iqsyn30CmdEntry 4040 }
+
+
+	iqsyn30SetupRef1StateLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Ref 1 State=  cmdID= 4041  format=   "
+		::= { iqsyn30CmdEntry 4041 }
+
+
+	iqsyn30SetupRef1StandardLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Ref 1 Standard  cmdID= 4044 "
+		::= { iqsyn30CmdEntry 4044 }
+
+
+	iqsyn30SetupRef1StandardLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Ref 1 Standard=  cmdID= 4045  format=   "
+		::= { iqsyn30CmdEntry 4045 }
+
+
+	iqsyn30SetupRef1TypeLogEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Ref 1 Type  cmdID= 4048 "
+		::= { iqsyn30CmdEntry 4048 }
+
+
+	iqsyn30SetupRef1TypeLogString OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Ref 1 Type=  cmdID= 4049  format=   "
+		::= { iqsyn30CmdEntry 4049 }
+
+
+	iqsyn30StatusProduct OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Product  cmdID= 5000  format=   "
+		::= { iqsyn30CmdEntry 5000 }
+
+
+	iqsyn30StatusSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Software Version  cmdID= 2  format=   "
+		::= { iqsyn30CmdEntry 2 }
+
+
+	iqsyn30StatusSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Serial No  cmdID= 1  format=   "
+		::= { iqsyn30CmdEntry 1 }
+
+
+	iqsyn30StatusFactoryDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),valFactoryDefaults(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Factory Defaults  cmdID= 5020  value= 1  "
+		::= { iqsyn30CmdEntry 5020 }
+
+
+	iqsyn30StatusDefaultSetting OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),valDefaultSetting(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Default Setting  cmdID= 5021  value= 1  "
+		::= { iqsyn30CmdEntry 5021 }
+
+
+	iqsyn30StatusRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),valRestart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Restart  cmdID= 4  value= 1  "
+		::= { iqsyn30CmdEntry 4 }
+
+
+	iqsyn30StatusBuild OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Build  cmdID= 5  format=   "
+		::= { iqsyn30CmdEntry 5 }
+
+
+	iqsyn30StatusPCB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					PCB  cmdID= 6  format=   "
+		::= { iqsyn30CmdEntry 6 }
+
+
+	iqsyn30StatusKOSVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					KOS Version  cmdID= 7  format=   "
+		::= { iqsyn30CmdEntry 7 }
+
+
+	iqsyn30StatusFirmwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Firmware Version  cmdID= 5001  format=   "
+		::= { iqsyn30CmdEntry 5001 }
+
+
+	iqsyn30StatusUpTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Up Time  cmdID= 8  format=   "
+		::= { iqsyn30CmdEntry 8 }
+
+
+	iqsyn30Status OBJECT-TYPE
+		SYNTAX		INTEGER {
+							valVideo(0),
+							valAudioInput(1),
+							valReference(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Video  cmdID= 1915  value= 0
+					AudioInput  cmdID= 1915  value= 1
+					Reference  cmdID= 1915  value= 2  "
+		::= { iqsyn30CmdEntry 1915 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  The OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |        base            |Slt|Len| F  A  U  L  T|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+--
+-- Value(s)		: S50052163
+-- Comments		: Module serial number
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: State of module presence.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+--
+-- Value(s)		: 000:00:24:00
+-- Comments		: Time since last restart ddd:hh:mm:ss
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.79.85.84.80.85.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.79.85.84.80.85.84.95.49
+--
+-- Value(s)		: INPUT_1
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+--
+-- Value(s)		: 0
+-- Comments		: Number of current control sessions.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: V115 Release
+-- Comments		: Operating system name and version
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+--
+-- Value(s)		: 2317.2318.2329
+-- Comments		: Software build number - BSP and APP
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+--
+-- Value(s)		: HD/SD/3G SDI
+-- Comments		: Input type as specified by unit's configuration
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.84.89.80.69
+--
+-- Value(s)		: HD/SD/3G SDI
+-- Comments		: Input type as specified by unit's configuration
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+--
+-- Value(s)		: 2010-01-27T10:41:47Z
+-- Comments		: Time of last restart
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+--
+-- Value(s)		: SERIAL IN 1
+-- Comments		: Input ID
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: WARN:Mismatch
+--				: FAIL:Lost
+-- Comments		: Input state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.73.68.69.78.84
+--
+-- Value(s)		: SERIAL IN 2
+-- Comments		: Input ID
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: WARN:Mismatch
+--				: FAIL:Lost
+-- Comments		: Input state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MOFIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.70.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.70.73.70.73.69.68
+--
+-- Value(s)		: 2010-01-27T10:45:05Z
+-- Comments		: Time of last control modification.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.49.95.84.89.80.69
+--
+-- Value(s)		: 3G / HD / SD SDI
+-- Comments		: Output type as specified by unit's configuration
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.79.85.84.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.79.85.84.80.85.84.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: WARN:Pattern
+--				: WARN:Black
+--				: WARN:Freeze
+-- Comments		: Output state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: GENLOCK_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.71.69.78.76.79.67.75.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.71.69.78.76.79.67.75.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:Reference
+--				: OK:Input
+--				: WARN:Freerun
+--				: WARN:CrossLock
+-- Comments		: Genlock state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FIRMWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 2325
+-- Comments		: FPGA version(s)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: HDBASP1B
+-- Comments		: Hardware build version
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_SDI_ERRS
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.83.68.73.95.69.82.82.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.83.68.73.95.69.82.82.83
+--
+-- Value(s)		: OK
+--				: WARN
+-- Comments		: SDI errors
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+--
+-- Value(s)		: LOST
+--				: 1080/59p-B
+--				: 1080/50p-B
+--				: 1080/59p-A
+--				: 1080/50p-A
+--				: 1080/29i
+--				: 1080/25i
+--				: 720/59p
+--				: 720/50p
+--				: 525/29i
+--				: 625/25i
+--				: WARN:Unknown
+-- Comments		: Current input signal standard
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_SDI_ERRS
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.50.95.83.68.73.95.69.82.82.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.50.95.83.68.73.95.69.82.82.83
+--
+-- Value(s)		: OK
+--				: WARN
+-- Comments		: SDI errors
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+--
+-- Value(s)		: LOST
+--				: 1080/59p-B
+--				: 1080/50p-B
+--				: 1080/59p-A
+--				: 1080/50p-A
+--				: 1080/29i
+--				: 1080/25i
+--				: 720/59p
+--				: 720/50p
+--				: 525/29i
+--				: 625/25i
+--				: WARN:Unknown
+-- Comments		: Current input signal standard
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LICENSED_OPTIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.76.73.67.69.78.83.69.68.95.79.80.84.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.76.73.67.69.78.83.69.68.95.79.80.84.73.79.78.83
+--
+-- Value(s)		:  if applicable"
+--				: SDHD;3G
+-- Comments		: "Licensed options
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_CAPTION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.79.85.84.80.85.84.95.49.95.67.65.80.84.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.79.85.84.80.85.84.95.49.95.67.65.80.84.73.79.78
+--
+-- Value(s)		: OK:Off
+-- Comments		: Caption on/off
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.82.69.70.69.82.69.78.67.69.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.82.69.70.69.82.69.78.67.69.95.49.95.84.89.80.69
+--
+-- Value(s)		: OK:TriLevel
+--				: OK:Bi-Level
+--				: WARN:Unknown
+-- Comments		: Reference type
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+--
+-- Value(s)		: LOST
+--				: 1080/59p-B
+--				: 1080/50p-B
+--				: 1080/59p-A
+--				: 1080/50p-A
+--				: 1080/29i
+--				: 1080/25i
+--				: 720/59p
+--				: 720/50p
+--				: 525/29i
+--				: 625/25i
+--				: WARN:Unknown
+-- Comments		: Current output video standard
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: FAIL:Lost
+-- Comments		: Reference state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_SDI_ANC_ERRS
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.49.95.83.68.73.95.65.78.67.95.69.82.82.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.49.95.83.68.73.95.65.78.67.95.69.82.82.83
+--
+-- Value(s)		: OK
+--				: WARN
+-- Comments		: ANC errors
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_SDI_ANC_ERRS
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.50.95.83.68.73.95.65.78.67.95.69.82.82.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.50.95.83.68.73.95.65.78.67.95.69.82.82.83
+--
+-- Value(s)		: OK
+--				: WARN
+-- Comments		: ANC errors
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REFERENCE_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.82.69.70.69.82.69.78.67.69.95.49.95.83.84.65.78.68.65.82.68
+--
+-- Value(s)		: LOST
+--				: 1080/59p-B
+--				: 1080/50p-B
+--				: 1080/59p-A
+--				: 1080/50p-A
+--				: 1080/29i
+--				: 1080/25i
+--				: 720/59p
+--				: 720/50p
+--				: 525/29i
+--				: 625/25i
+--				: WARN:Unknown
+-- Comments		: Reference video standard
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		: Current embedded input 1 audio state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_3_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.51.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.51.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_4_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.52.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.52.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_5_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.53.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.53.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_6_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.54.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.54.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_7_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.55.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.55.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_EMBEDDED_AUDIO_8_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.56.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.49.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.56.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		: Current embedded input 2 audio state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_3_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.51.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.51.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_4_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.52.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.52.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_5_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.53.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.53.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_6_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.54.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.54.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_7_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.55.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.55.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_EMBEDDED_AUDIO_8_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.56.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.73.78.80.85.84.95.50.95.69.77.66.69.68.68.69.68.95.65.85.68.73.79.95.56.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:No Input
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_1_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.49.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.49.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		: Current embedded output 1 audio state
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_1_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.49.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.49.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_2_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.50.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.50.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_2_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.50.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.50.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_3_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.51.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.51.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_3_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.51.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.51.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_4_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.52.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.52.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_4_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.52.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.52.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_5_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.53.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.53.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_5_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.53.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.53.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_6_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.54.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.54.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_6_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.54.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.54.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_7_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.55.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.55.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_7_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.55.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.55.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_8_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.56.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.56.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_EMBED_AUDIO_8_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.56.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.30.79.85.84.80.85.84.95.49.95.69.77.66.69.68.95.65.85.68.73.79.95.56.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK:PCM
+--				: OK:Data
+--				: OK:DolbyE
+--				: WARN:Silent PCM
+--				: WARN:Overload PCM
+--				: FAIL_Input Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

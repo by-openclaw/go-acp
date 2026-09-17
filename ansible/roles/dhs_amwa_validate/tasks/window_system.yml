@@ -1,0 +1,49 @@
+---
+# System API server window (IS-09-01, issue #958): a transient
+# `--role system` unit on the CuT port serving an authored /global.
+# The suite is a pure GenericTest — auto-generated RAML/schema rows
+# against the System API tree — so the window only has to put a
+# spec-shaped server where the row points. The plant residents stay
+# untouched (no resident serves a System API; Nodes CONSUME one).
+
+- name: Author the transient System API global
+  ansible.builtin.copy:
+    content: |
+      {
+        "id": "0d0a0f0e-0000-4000-8000-000000000958",
+        "version": "1:0",
+        "label": "dhs-validate-system-global",
+        "description": "transient /global for the IS-09-01 window (issue #958)",
+        "tags": {},
+        "is04": { "heartbeat_interval": 5 },
+        "ptp": { "announce_receipt_timeout": 3, "domain_number": 0 }
+      }
+    dest: /opt/dhs-amwa-plant/validate-global.json
+    mode: "0644"
+  delegate_to: "{{ groups['plant'][0] }}"
+
+- name: Start the transient System API
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-sys --collect
+    {{ dhs_amwa_validate_plant_bin }} producer nmos serve --role system
+    --config /opt/dhs-amwa-plant/validate-global.json
+    --bind 0.0.0.0:{{ dhs_amwa_validate_cut_port }}
+    --no-mdns
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+- name: Arm the window safety-stop timer
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-sysstop --collect
+    --on-active={{ dhs_amwa_validate_window_safety_sec }}
+    systemctl stop dhs-nmos-validate-sys
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+- name: Wait for the transient System API
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/system/v1.0/global"
+  register: _sys_up
+  retries: 15
+  delay: 2
+  until: _sys_up.status == 200

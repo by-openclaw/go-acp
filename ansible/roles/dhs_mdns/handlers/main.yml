@@ -1,0 +1,5 @@
+---
+- name: restart avahi (mdns)
+  ansible.builtin.service:
+    name: "{{ dhs_mdns_linux_service }}"
+    state: restarted

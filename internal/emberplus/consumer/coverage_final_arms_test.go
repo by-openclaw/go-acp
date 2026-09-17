@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"os"
 	"path/filepath"
@@ -31,7 +32,7 @@ func newTempRecorder(t *testing.T) (*transport.Recorder, error) {
 // *Header), so this branch is otherwise unreachable.
 type nilCommonElement struct{}
 
-func (nilCommonElement) Kind() string             { return "test" }
+func (nilCommonElement) Kind() string              { return "test" }
 func (nilCommonElement) Common() *canonical.Header { return nil }
 
 // TestRootOID covers rootOID across all three arms: nil element, an
@@ -424,10 +425,10 @@ func TestProcessParameter_StreamIDReannounceSamePath(t *testing.T) {
 			Type: glow.ParamTypeInteger, HasStreamIdentifier: true, StreamIdentifier: 5}}
 	}
 	p.handleElements([]glow.Element{mk()})
-	before := p.profile.Snapshot()[StreamIDCollisionNoDescriptor]
+	before := p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor]
 	// Re-announce the SAME parameter (key "1") → isNewPath false → no Note.
 	p.handleElements([]glow.Element{mk()})
-	after := p.profile.Snapshot()[StreamIDCollisionNoDescriptor]
+	after := p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor]
 	if after != before {
 		t.Errorf("re-announce of same stream path must not re-fire collision: %d → %d", before, after)
 	}
@@ -518,7 +519,7 @@ func TestReadLoop_KeepAliveRespWriteError(t *testing.T) {
 // reconnectLoop: a plugin with a recorder set, dialing a dead port so the
 // loop builds a fresh session (installing the recorder) then gives up.
 func TestReconnectLoop_WithRecorder(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1 // nothing listens → dial fails, loop builds the session first
 	rec, err := newTempRecorder(t)

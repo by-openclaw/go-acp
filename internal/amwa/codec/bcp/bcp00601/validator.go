@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	SpecID         = "bcp-006-01"
-	APIVer         = "v1.0"
-	SpecPatch      = "v1.0.0"
+	SpecID          = "bcp-006-01"
+	APIVer          = "v1.0"
+	SpecPatch       = "v1.0.0"
 	JPEGXSMediaType = "video/jxsv"
 )
 

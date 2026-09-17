@@ -108,8 +108,8 @@ func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
 func (p *Plugin) GetIdentity(ctx context.Context, slot int) (consumer.CardIdentity, error) {
 	p.mu.Lock()
 	c := p.client
-	profile := p.profile
 	p.mu.Unlock()
+	profile := p.ComplianceProfile()
 	if c == nil {
 		return consumer.CardIdentity{}, consumer.ErrNotConnected
 	}

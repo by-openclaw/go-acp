@@ -56,7 +56,7 @@ func DecodeInterrogate(f Frame) (InterrogateParams, error) {
 	}
 	mult := f.Payload[0]
 	return InterrogateParams{
-		Destination: (uint16(mult>>4) & 0x07) * 128 + uint16(f.Payload[1]),
+		Destination: (uint16(mult>>4)&0x07)*128 + uint16(f.Payload[1]),
 		BadSource:   mult&0x08 != 0,
 	}, nil
 }

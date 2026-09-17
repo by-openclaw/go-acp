@@ -1,9 +1,9 @@
 package is04
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Device is the IS-04 v1.3 Device resource.
@@ -12,19 +12,30 @@ import (
 type Device struct {
 	ResourceCore
 
-	Type      string          `json:"type"`     // URN
-	NodeID    string          `json:"node_id"`  // UUID v1-5
-	Senders   []string        `json:"senders"`  // deprecated array of UUIDs
+	Type      string          `json:"type"`    // URN
+	NodeID    string          `json:"node_id"` // UUID v1-5
+	Senders   []string        `json:"senders"` // deprecated array of UUIDs
 	Receivers []string        `json:"receivers"`
 	Controls  []DeviceControl `json:"controls"`
 }
 
 // DeviceControl is one entry in Device.Controls — points at IS-05 /
 // IS-07 / IS-08 / IS-12 sub-APIs.
+//
+// `authorization` carries NO omitempty: v1.3's control schema requires
+// the field, false is its common value, and omitempty on a bool is
+// exactly how a required false vanishes on re-encode. This is the
+// third member of that bug family (NodeEndpoint.Authorization,
+// NodeClock's ptp booleans) and it was found the same way — a real
+// EVS Neuron registered controls with `"authorization": false`, our
+// Registry re-served them without the field, and Cerebrum's IS-05
+// panel for the Neuron went silently blank. Lower minors don't list
+// the property and draft-04 permits extras, so always emitting it is
+// safe on every wire version.
 type DeviceControl struct {
 	Href          string `json:"href"`
 	Type          string `json:"type"` // URN
-	Authorization bool   `json:"authorization,omitempty"`
+	Authorization bool   `json:"authorization"`
 }
 
 // Validate enforces device.json rules.
@@ -63,16 +74,33 @@ func (d *Device) Validate() error {
 
 // DecodeDevice parses + validates a Device payload.
 func DecodeDevice(raw []byte) (*Device, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var dev Device
-	if err := d.Decode(&dev); err != nil {
-		return nil, fmt.Errorf("is04: decode device: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode device: trailing JSON content")
+	return DecodeDeviceReporting(raw, APIVersion, nil)
+}
+
+// DecodeDeviceReporting parses a Device payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseDevice] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeDeviceReporting(raw []byte, apiVer string, rep spec.Reporter) (*Device, error) {
+	dev, err := ParseDevice(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := dev.Validate(); err != nil {
+		return nil, err
+	}
+	return dev, nil
+}
+
+// ParseDevice decodes a Device served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseDevice(raw []byte, apiVer string, rep spec.Reporter) (*Device, error) {
+	var dev Device
+	if err := decodeAbsorbing(raw, &dev, "device", apiVer, rep); err != nil {
 		return nil, err
 	}
 	return &dev, nil

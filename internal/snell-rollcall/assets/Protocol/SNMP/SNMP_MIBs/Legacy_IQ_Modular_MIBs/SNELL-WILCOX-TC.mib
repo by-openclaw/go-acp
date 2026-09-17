@@ -1,0 +1,217 @@
+-- *****************************************************************
+-- SNELL-WILCOX-TC.mib:  Snell & Wilcox MIB Textual Conventions
+--
+-- February 2003, Sandy Kellagher
+--
+-- Copyright (c) 2003 Snell & Wilcox Ltd
+-- All rights reserved.
+-- 
+-- $Id: SNELL-WILCOX-TC.mib,v 1.2 2005/01/24 16:51:23 sandy-k Exp $
+--
+-- *****************************************************************
+--
+
+SNELL-WILCOX-TC DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, Integer32, Unsigned32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+	snellWilcoxGeneric
+		FROM SNELL-WILCOX-SMI;
+
+
+snellWilcoxTextualConventions MODULE-IDENTITY
+	LAST-UPDATED 	"0501241400Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					Generic Software Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+		
+		   Tel: 	+44 (0) 2392 489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+
+	DESCRIPTION		"This module defines textual conventions used throughout
+        			Snell & Wilcox enterprise MIBs."
+
+	REVISION    	"0501241400Z"
+	DESCRIPTION		"Updated contact details"
+
+	REVISION    	"0302241230Z"
+	DESCRIPTION		"Initial version of this MIB module."
+
+	::= { snellWilcoxGeneric 1 }
+
+
+RollCallString ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention should be used for all text fields transmitted
+        		via RollCall. Such strings are limited to 20 characters."
+        	
+    SYNTAX    DisplayString (SIZE(0..20))
+
+
+RollCallUnitType ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for RollCall unit type ID. Each distinct
+        		equipment type has a defined type ID associated with it,
+        		eg the RollPod control panel has type ID = 218."
+        	
+    SYNTAX    Integer32 (1..65535)
+                            
+                            
+RollCallUnitTypeName ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for RollCall unit type names, associated
+        		with the defined type ID, eg the RollPod control panel has type ID = 218,
+        		and type name 'RollPod'"
+        	
+    SYNTAX    RollCallString
+
+
+RollCallMajorVersion ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for the RollCall major version number"
+        	
+    SYNTAX    Integer32 (1..255)
+
+
+RollCallMinorVersion ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for the RollCall minor version number"
+        	
+    SYNTAX    Integer32 (1..255)
+
+
+RollCallAlphaVersion ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for the RollCall alpha version number"
+        	
+    SYNTAX    Integer32 (1..255)
+
+
+RollCallCmdSetVersion ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for the RollCall command set version number"
+        	
+    SYNTAX    Integer32 (1..255)
+
+
+RollCallVersionString ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used for the complete RollCall version string,
+        		consisting of Major, Minor, Alpha and CmdSet."
+        	
+    SYNTAX    RollCallString
+
+
+RollCallAddressString ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        		"This textual convention is used to represent RollNet addresses.
+        		 The form of the string is:
+        		 	nnnn:uu:pp
+        		 	
+        		 where 	nnnn is the network routing specification
+        		 		uu   is the (ArcNet) unit address (1 - 255)
+        		 		pp 	 is the port address.
+        		 		
+        		Unit addresses 0x01 - 0x0F are reserved for units that can act as RollNet bridges."
+        	
+    SYNTAX    DisplayString (SIZE(10))
+
+
+RollCallNetworkAddress ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "2x"
+    STATUS       current
+    DESCRIPTION
+        "This textual convention is used to represent the rNet portion of a RollNet address,
+         specifying the network address (ie individual subnet) of the destination unit.
+         
+         In RollNet (ArcNet) networks, the network address is a relative address that allows
+         four hops from the source subnet to the destination subnet. Inter-subnet hops occur
+         via bridges which by definition have addresses in the range 0x01 - 0x0F. 
+         With a network address of four nibbles, this allows up to four hops to be specified.
+         A network address of zero indicates the current subnet."
+         
+    SYNTAX    Unsigned32 (0..65535)
+
+
+RollCallUnitAddress ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "1x"
+    STATUS       current
+    DESCRIPTION
+        "This textual convention is used to represent the rUnit portion of a RollNet address,
+         specifying the unit address of the destination unit, ie the unit ArcNet address
+         on the subnet to which it is connected.
+         
+         Unit address 0 is reserved for broadcast messages, and cannot be assigned to individual
+         units.
+         
+         Addresses 0x01 - 0x0F are reserved for units that can act as RollNet bridges.
+         
+         Addresses 0x10 - 0xFF are valid unit addresses."
+         
+    SYNTAX    Unsigned32 (1..255)
+
+
+RollCallPortAddress ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "1x"
+    STATUS       current
+    DESCRIPTION
+        "This textual convention is used to represent the rPort portion of a RollNet address,
+         specifying the port address of the destination unit. 
+         
+         A unit may house up to 255 controllable entities, referred to as ports. A typical
+         example would be a 3U modular frame, which includes a control card/gateway (port 0) 
+         and up to 16 module cards (ports 1 - 16).
+         
+         Port address 0 is the normal/master control port of the unit.
+         Port addresses 1 - 254 are unit-specific.
+         Port address 255 is generally used for an RS-422 port."
+         
+    SYNTAX    Unsigned32 (0..255)
+
+
+RollCallSysTime ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        "This textual convention is used for RollCall system time. 
+        
+		 At unit power-up, RollCall system time is simply unit up-time. As soon as the unit 
+		 receives an SP_TIME message from a time server, it updates its RollCall system time 
+		 accordingly. From this point on, RollCall system time contains UCT time (seconds 
+		 since midnight on 1 Jan 1970).
+		 
+		 RollCall system time is used as the timestamp for all RollCall logging messages."
+
+    SYNTAX    Integer32
+
+
+CountryCode ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "2a"
+    STATUS    current
+    DESCRIPTION
+        "Represents a case-insensitive 2-letter country code taken 
+        from ISO-3166. Unrecognized countries are represented as
+        empty string."
+                
+    SYNTAX    DisplayString (SIZE (0 | 2))
+    
+END
+

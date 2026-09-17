@@ -245,6 +245,13 @@ type DeviceChange struct {
 	SubDevice  string
 	Object     string
 
+	// ExplicitEmptyObject makes the encoder emit a literal OBJECT=""
+	// attribute when Object is empty (Add() otherwise drops empty
+	// attrs entirely). Used by the extract root-discovery ladder —
+	// "no OBJECT attr" and OBJECT="" are DIFFERENT frames to the
+	// server. TX-only; never set on decode.
+	ExplicitEmptyObject bool
+
 	// Devices is populated on RX for TYPE=LIST. Live Cerebrum nests
 	// one <DEVICE IP="..."> per entry, each containing an
 	// <INSTANCE DEVICE_TYPE="..."/> child (verified 2026-04-27 — the
@@ -290,6 +297,9 @@ type DeviceObjectValue struct {
 	Units     string
 	Label     string
 	Default   string
+	Min       string // §5.4.3 range attrs (live 2026-08-16: MIN/MAX/STEP on FLOAT objects)
+	Max       string
+	Step      string
 	EnumList  []string // ENUM_LIST="On,Off" split on comma
 }
 
@@ -308,6 +318,16 @@ type DeviceEntry struct {
 	DeviceType  DeviceType   // first instance — convenience accessor
 	DeviceTypes []DeviceType // every <INSTANCE DEVICE_TYPE="..."/> emitted by the server
 	DeviceName  string
+
+	// Index / states populate for the positional SUB_DEVICES shape a live
+	// NOC Cerebrum emits under DETAILS (2026-08-16, Neuron shelf
+	// bm-n-nnshf-004): <SUB_DEVICES><DEVICE_1 TYPE="SHUFFLE-256"
+	// PRIMARY_STATE="Connection Active" SECONDARY_STATE="..."/> — the
+	// child is DEVICE_N (not <DEVICE>) and TYPE carries the sub-device
+	// model, which lands in DeviceName. Index is N.
+	Index          int
+	PrimaryState   string
+	SecondaryState string
 }
 
 // DeviceDetails is the <details> child of a DEVICE_CHANGE TYPE=DETAILS
@@ -341,8 +361,16 @@ func (d *DeviceChange) encodeSubItem(b *strings.Builder) {
 		Add("IP_ADDRESS", d.IPAddress).
 		Add("DEVICE_TYPE", string(d.DeviceType)).
 		Add("DEVICE_NAME", d.DeviceName).
-		Add("SUB_DEVICE", d.SubDevice).
-		Add("OBJECT", d.Object)
+		Add("SUB_DEVICE", d.SubDevice)
+	if d.Object == "" && d.ExplicitEmptyObject {
+		// Root-discovery probe: emit a literal OBJECT="" attribute.
+		// Add() drops empty values, so without this flag an empty
+		// Object means NO attribute on the wire — a different frame
+		// the server may treat differently (root enumeration ladder).
+		a = a.ForceAdd("OBJECT", "")
+	} else {
+		a = a.Add("OBJECT", d.Object)
+	}
 	emitElement(b, "DEVICE_CHANGE", a, nil)
 }
 

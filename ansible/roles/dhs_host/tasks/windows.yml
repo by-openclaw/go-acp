@@ -1,0 +1,120 @@
+---
+# ---- power: a fleet VM must never sleep -----------------------------------
+# 2026-08-23: win11 idled into S3 sleep mid-converge ("Connectivity state in
+# standby: Disconnected"), vanishing from the network for minutes. Pin the
+# High performance plan (AC sleep = Never) and disable hibernation.
+- name: Power plan = High performance (never sleep on AC)
+  community.windows.win_power_plan:
+    name: high performance
+
+- name: Sleep / hibernate timeouts = never, hibernation off
+  ansible.windows.win_shell: |
+    $changed = $false
+    foreach ($s in 'standby-timeout-ac','hibernate-timeout-ac','standby-timeout-dc','hibernate-timeout-dc') {
+      $v = (powercfg /query SCHEME_CURRENT SUB_SLEEP ($(if ($s -like 'standby*') {'STANDBYIDLE'} else {'HIBERNATEIDLE'})) | Select-String ($(if ($s -like '*-ac') {'Current AC Power Setting Index'} else {'Current DC Power Setting Index'}))).ToString().Split(':')[1].Trim()
+      if ($v -ne '0x00000000') { powercfg /change $s 0 | Out-Null; $changed = $true }
+    }
+    if (Test-Path C:\hiberfil.sys) { powercfg /hibernate off | Out-Null; $changed = $true }
+    if ($changed) { 'CHANGED' } else { 'OK' }
+  register: dhs_host_power
+  changed_when: "'CHANGED' in dhs_host_power.stdout"
+
+# ---- Defender exclusions for the automation working folders (#815) --------
+- name: Defender exclusions for the dhs + ansible-tmp paths
+  ansible.windows.win_shell: |
+    $want = @('{{ dhs_host_defender_exclusions | join("','") }}')
+    $cur = @((Get-MpPreference).ExclusionPath)
+    $added = @()
+    foreach ($p in $want) {
+      if ($cur -notcontains $p) { Add-MpPreference -ExclusionPath $p; $added += $p }
+    }
+    if ($added.Count) { "CHANGED: $($added -join ';')" } else { 'OK' }
+  register: dhs_host_defender
+  changed_when: "'CHANGED' in dhs_host_defender.stdout"
+  failed_when: false          # Defender may be absent/managed by policy
+  when: dhs_host_defender_exclusions | length > 0
+
+# ---- time: NTP from the DMZ gateway + pool, w32time synchronized ----------
+# 2026-08-23: w32time was "not synchronized" (peer time.windows.com, Local
+# type). The fabric gateway 10.6.255.254 and pool.ntp.org answer NTP (#804).
+- name: w32time peers + manual sync flags (idempotent on the configured peer list)
+  ansible.windows.win_shell: |
+    $want = '{{ dhs_host_ntp_peers | join(" ") }}'
+    $cur = (w32tm /query /configuration | Select-String '^NtpServer:' | Select-Object -First 1)
+    $curPeers = if ($cur) { ($cur.ToString() -replace '^NtpServer:\s*','' -replace '\s*\(Local\)\s*$','').Trim() } else { '' }
+    $type = ((w32tm /query /configuration | Select-String '^Type:' | Select-Object -First 1).ToString() -replace '^Type:\s*','' -replace '\s*\(Local\)\s*$','').Trim()
+    if ($curPeers -eq $want -and $type -eq 'NTP') { 'OK' } else {
+      w32tm /config /manualpeerlist:"$want" /syncfromflags:manual /reliable:no /update | Out-Null
+      Restart-Service w32time
+      w32tm /resync /nowait | Out-Null
+      'CHANGED'
+    }
+  register: dhs_host_w32
+  changed_when: "'CHANGED' in dhs_host_w32.stdout"
+
+- name: w32time service running and automatic
+  ansible.windows.win_service:
+    name: w32time
+    state: started
+    start_mode: auto
+
+# ---- directories + environment -------------------------------------------
+- name: dhs directories
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop: "{{ dhs_host_windows_dirs }}"
+
+- name: Machine PATH contains the dhs directory
+  ansible.windows.win_path:
+    elements: "{{ dhs_bin | win_dirname }}"
+    scope: machine
+    state: present
+
+- name: Machine environment DHS_DATA_DIR
+  ansible.windows.win_environment:
+    name: DHS_DATA_DIR
+    value: "{{ dhs_host_windows_data_dir }}"
+    level: machine
+    state: present
+
+# ---- dhs binary from the pinned release ----------------------------------
+- name: Current dhs version on the host
+  ansible.windows.win_command:
+    argv: ["{{ dhs_bin }}", "version"]
+  register: dhs_host_cur
+  changed_when: false
+  failed_when: false
+
+- name: Resolve installed version
+  ansible.builtin.set_fact:
+    dhs_host_installed: "{{ (dhs_host_cur.stdout_lines[0] | default('') | split(' '))[1] | default('') }}"
+
+- name: "Install dhs {{ dhs_version }} (installed {{ dhs_host_installed | default('none') }})"
+  when: dhs_host_installed != dhs_version
+  block:
+    - name: Download release archive (sha256 verified against SHA256SUMS.txt)
+      ansible.windows.win_get_url:
+        url: "{{ dhs_release_base }}/dhs_windows_amd64.zip"
+        dest: "{{ dhs_bin | win_dirname }}\\dhs_windows_amd64-{{ dhs_version }}.zip"
+        checksum_algorithm: sha256
+        checksum_url: "{{ dhs_release_base }}/SHA256SUMS.txt"
+
+    - name: Unpack
+      community.windows.win_unzip:
+        src: "{{ dhs_bin | win_dirname }}\\dhs_windows_amd64-{{ dhs_version }}.zip"
+        dest: "{{ dhs_bin | win_dirname }}\\unpack"
+        delete_archive: false
+
+    - name: Install binary to {{ dhs_bin }}
+      ansible.windows.win_copy:
+        src: "{{ dhs_bin | win_dirname }}\\unpack\\dhs_windows_amd64\\dhs.exe"
+        dest: "{{ dhs_bin }}"
+        remote_src: true
+
+    - name: Verify installed version
+      ansible.windows.win_command:
+        argv: ["{{ dhs_bin }}", "version"]
+      register: dhs_host_new
+      changed_when: false
+      failed_when: (dhs_host_new.stdout_lines[0] | split(' '))[1] != dhs_version

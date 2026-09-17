@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"sync"
+
+	"dhs/internal/transport"
 	"time"
 
 	"dhs/internal/osc/codec"
@@ -45,14 +47,50 @@ type tcpSession struct {
 	subs      []subscriber
 	wg        sync.WaitGroup
 	closeOnce sync.Once
+
+	// idleTimeout, when > 0, closes an accepted connection that has sent
+	// nothing for that long, reaping half-open peers (a NAT or firewall
+	// drop with no RST) that would otherwise hold a goroutine and a socket
+	// forever.
+	//
+	// It defaults to 0 (OFF), deliberately. This is a PASSIVE receiver and
+	// OSC 1.0/1.1 define no heartbeat — a control surface that sends
+	// nothing until someone moves a fader is perfectly healthy, so silence
+	// carries no information about liveness and an on-by-default deadline
+	// would disconnect working peers. OS-level SO_KEEPALIVE (set on every
+	// accepted connection) stays the always-on detector; this is the opt-in
+	// for deployments that would rather reap aggressively.
+	idle transport.Idle
+
+	// onRx, when set, is called on every packet received, with the byte
+	// count that arrived. It is how the plugin's inherited Health learns
+	// the peer is alive and how the metrics connector counts rx; fired on
+	// BYTES received rather than on a successful decode, because a peer
+	// sending malformed frames is still a peer that is there.
+	onRx func(n int)
 }
 
 func newTCPSession(f framerKind) *tcpSession {
 	return &tcpSession{framer: f}
 }
 
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-connection idle
+// reaper. See the field comment for why this is off by default.
+func (s *tcpSession) SetIdleTimeout(d time.Duration) {
+	s.idle.Set(d)
+}
+
+// IdleTimeout reports the currently armed idle reaper window.
+func (s *tcpSession) IdleTimeout() time.Duration {
+	return s.idle.Get()
+}
+
 func (s *tcpSession) listen(ctx context.Context, addr string) error {
-	l, err := net.Listen("tcp", addr)
+	// The listener applies SO_KEEPALIVE to every connection it accepts, so
+	// the accept loop below no longer carries its own copy of that policy.
+	l, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{
+		KeepalivePeriod: tcpKeepalivePeriod,
+	})
 	if err != nil {
 		return fmt.Errorf("osc tcp: listen %q: %w", addr, err)
 	}
@@ -83,10 +121,6 @@ func (s *tcpSession) acceptLoop(ctx context.Context) {
 			}
 			continue
 		}
-		if tc, ok := conn.(*net.TCPConn); ok {
-			_ = tc.SetKeepAlive(true)
-			_ = tc.SetKeepAlivePeriod(tcpKeepalivePeriod)
-		}
 		s.wg.Add(1)
 		go s.connLoop(ctx, conn)
 	}
@@ -107,6 +141,10 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 		if ctx.Err() != nil {
 			return
 		}
+		// Arm via the shared bound (transport.Idle): Arm and SetOn share a
+		// mutex there, so a concurrent change cannot be clobbered by a stale
+		// value read here. Disabled is a no-op, leaving any caller deadline.
+		_ = s.idle.Arm(conn)
 		pkt, err := rd.ReadPacket()
 		if err != nil {
 			if err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
@@ -116,6 +154,9 @@ func (s *tcpSession) connLoop(ctx context.Context, conn net.Conn) {
 			// (malformed stream can't be recovered).
 			s.fireDecodeError(conn.RemoteAddr(), err)
 			return
+		}
+		if s.onRx != nil {
+			s.onRx(len(pkt))
 		}
 		s.dispatchPacket(conn.RemoteAddr(), pkt)
 	}

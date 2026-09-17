@@ -1,0 +1,2213 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDPF
+--        Module Id#:129
+--       Command Set:9
+--          Filename:SNELL-IQDPF-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:14:30
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDPF-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDPF,
+    moduleIQDPFMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDPFCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281430Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDPFMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdpfCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdpfCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDPF 1 }
+
+	iqdpfCmdEntry OBJECT-TYPE
+		SYNTAX		IqdpfCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdpfSlotIndex }
+		::= { iqdpfCmdTable 1 }
+
+	IqdpfCmdEntry ::=
+		SEQUENCE {
+			iqdpfSlotIndex
+				Unsigned32,
+			iqdpfProcAmpLumaGain
+				INTEGER,
+			iqdpfProcAmpChromaGain
+				INTEGER,
+			iqdpfProcAmpBlackLevel
+				INTEGER,
+			iqdpfProcAmpBlackStretch
+				INTEGER,
+			iqdpfProcAmpHue
+				INTEGER,
+			iqdpfProcAmpChromaLineAverage
+				INTEGER,
+			iqdpfProcAmpOffsetsCbOffset
+				INTEGER,
+			iqdpfProcAmpOffsetsCrOffset
+				INTEGER,
+			iqdpfProcAmpOffsetsCbGainOffset
+				INTEGER,
+			iqdpfLimitingLegaliseGamut
+				INTEGER,
+			iqdpfLimitingDefaultYUVLimiter
+				INTEGER,
+			iqdpfLimitingMinCClipLevel
+				INTEGER,
+			iqdpfLimitingMaxCClipLevel
+				INTEGER,
+			iqdpfLimitingMinYClipLevel
+				INTEGER,
+			iqdpfLimitingMaxYClipLevel
+				INTEGER,
+			iqdpfLimitingEnableinVBI
+				INTEGER,
+			iqdpfEnhancerHighFrequency
+				INTEGER,
+			iqdpfEnhancerMediumFrequency
+				INTEGER,
+			iqdpfTimingYCDelayHorizontal
+				INTEGER,
+			iqdpfTimingPicturePosition
+				INTEGER,
+			iqdpfUserMemoryReadMem
+				INTEGER,
+			iqdpfUserMemorySaveMem
+				INTEGER,
+			iqdpfUserMemoryNameMemMemory1
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory2
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory3
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory4
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory5
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory6
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory7
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory8
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory9
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory10
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory11
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory12
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory13
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory14
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory15
+				RollCallString,
+			iqdpfUserMemoryNameMemMemory16
+				RollCallString,
+			iqdpfUserMemoryNameMemPresetAllNames
+				INTEGER,
+			iqdpfUserMemoryClearMem
+				INTEGER,
+			iqdpfBypass
+				INTEGER,
+			iqdpfSetupPatternsPatternOn
+				INTEGER,
+			iqdpfSetupPatternsIncludeCaption
+				INTEGER,
+			iqdpfSetupPatterns
+				INTEGER,
+			iqdpfSetupVerticalData525
+				INTEGER,
+			iqdpfSetupVerticalData525PreserveLine21
+				INTEGER,
+			iqdpfSetupVerticalData525PreserveL283L284
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL10
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL272
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL11
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL273
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL12
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL274
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL13
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL275
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL14
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL276
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL15
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL277
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL16
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL278
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL17
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL279
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL18
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL280
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL19
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL281
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL20
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL282
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL21
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL283
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL22
+				INTEGER,
+			iqdpfVerticalData525SetLines525BlankL284
+				INTEGER,
+			iqdpfSetupVerticalData625
+				INTEGER,
+			iqdpfSetupVerticalData625PreserveLine23
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL6
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL318
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL7
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL319
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL8
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL320
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL9
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL321
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL10
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL322
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL11
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL323
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL12
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL324
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL13
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL325
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL14
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL326
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL15
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL327
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL16
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL328
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL17
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL329
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL18
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL330
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL19
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL331
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL20
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL332
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL21
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL333
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL22
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL334
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL23
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL335
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL24
+				INTEGER,
+			iqdpfVerticalData625SetLines625BlankL336
+				INTEGER,
+			iqdpfSetupHANCPass
+				INTEGER,
+			iqdpfSetupDefaultOutputOutputStandard
+				INTEGER,
+			iqdpfSetupDefaultOutputIncludeCaption
+				INTEGER,
+			iqdpfSetupDefaultOutput
+				INTEGER,
+			iqdpfSetupEditCaption
+				RollCallString,
+			iqdpfSetupCaptionOverrideCaptionOn
+				INTEGER,
+			iqdpfSetupCaptionOverride
+				INTEGER,
+			iqdpfSetupEDHShowStats
+				INTEGER,
+			iqdpfSetupEDHResetStats
+				INTEGER,
+			iqdpfSetupGPIInputsGPI1
+				INTEGER,
+			iqdpfSetupGPIInputsGPI1GPI1Function
+				INTEGER,
+			iqdpfSetupGPIInputsGPI2
+				INTEGER,
+			iqdpfSetupGPIInputsGPI2GPI2Function
+				INTEGER,
+			iqdpfSetupGPIInputsGPI3
+				INTEGER,
+			iqdpfSetupGPIInputsGPI3GPI3Function
+				INTEGER,
+			iqdpfSetupLoggingInputChange
+				INTEGER,
+			iqdpfSetupLoggingEDHErrors
+				INTEGER,
+			iqdpfSetupPresetUnit
+				INTEGER,
+			iqdpfSetupSoftwareVersion
+				RollCallString,
+			iqdpfSetupSerialNo
+				RollCallString,
+			iqdpfSetupRestart
+				INTEGER
+		}
+
+	iqdpfSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdpfCmdEntry 0 }
+
+
+	iqdpfProcAmpLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Luma_Gain  cmdID= 5  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdpfCmdEntry 5 }
+
+
+	iqdpfProcAmpChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Chroma_Gain  cmdID= 6  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdpfCmdEntry 6 }
+
+
+	iqdpfProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Black_Level  cmdID= 7  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdpfCmdEntry 7 }
+
+
+	iqdpfProcAmpBlackStretch OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Black_Stretch  cmdID= 9  min= 0  max= 9  step= 1  format= %f  div_scale= 1 
+					Min = 0.000000  Max = 9.000000  Step = 1.000000 "
+		::= { iqdpfCmdEntry 9 }
+
+
+	iqdpfProcAmpHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Hue  cmdID= 130  min= -180  max= 179  step= 1  format= %1.0f Deg  div_scale= 1 
+					Min = -180 Deg  Max = 179 Deg  Step = 1 Deg "
+		::= { iqdpfCmdEntry 130 }
+
+
+	iqdpfProcAmpChromaLineAverage OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Chroma_Line_Average  cmdID= 107 "
+		::= { iqdpfCmdEntry 107 }
+
+
+	iqdpfProcAmpOffsetsCbOffset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Cb_Offset  cmdID= 109  min= -504  max= 504  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -50.4 mV  Max = 50.4 mV  Step = 0.8 mV "
+		::= { iqdpfCmdEntry 109 }
+
+
+	iqdpfProcAmpOffsetsCrOffset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Cr_Offset  cmdID= 110  min= -504  max= 504  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -50.4 mV  Max = 50.4 mV  Step = 0.8 mV "
+		::= { iqdpfCmdEntry 110 }
+
+
+	iqdpfProcAmpOffsetsCbGainOffset OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Cb_Gain_Offset  cmdID= 111  min= -10  max= 10  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -1.0 dB  Max = 1.0 dB  Step = 0.1 dB "
+		::= { iqdpfCmdEntry 111 }
+
+
+	iqdpfLimitingLegaliseGamut OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Legalise_Gamut  cmdID= 10 "
+		::= { iqdpfCmdEntry 10 }
+
+
+	iqdpfLimitingDefaultYUVLimiter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Default_YUV_Limiter  cmdID= 137 "
+		::= { iqdpfCmdEntry 137 }
+
+
+	iqdpfLimitingMinCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Min_C_Clip_Level  cmdID= 11  min= -396980  max= -200447  step= 783  format= %4.1f mV  div_scale= 1000 
+					Min = -397.0 mV  Max = -200.4 mV  Step =  0.8 mV "
+		::= { iqdpfCmdEntry 11 }
+
+
+	iqdpfLimitingMaxCClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Max_C_Clip_Level  cmdID= 12  min= 200447  max= 393848  step= 783  format= %4.1f mV  div_scale= 1000 
+					Min = 200.4 mV  Max = 393.8 mV  Step =  0.8 mV "
+		::= { iqdpfCmdEntry 12 }
+
+
+	iqdpfLimitingMinYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Min_Y_Clip_Level  cmdID= 13  min= -48000  max= 48000  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = -48.0 mV  Max = 48.0 mV  Step =  0.8 mV "
+		::= { iqdpfCmdEntry 13 }
+
+
+	iqdpfLimitingMaxYClipLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Max_Y_Clip_Level  cmdID= 14  min= 600000  max= 760800  step= 800  format= %4.1f mV  div_scale= 1000 
+					Min = 600.0 mV  Max = 760.8 mV  Step =  0.8 mV "
+		::= { iqdpfCmdEntry 14 }
+
+
+	iqdpfLimitingEnableinVBI OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable_in_VBI  cmdID= 139 "
+		::= { iqdpfCmdEntry 139 }
+
+
+	iqdpfEnhancerHighFrequency OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_HF_Enhance_Off(0),
+							val_HF_Enhance_Low(1),
+							val_HF_Enhance_Medium(2),
+							val_HF_Enhance_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					High_Frequency  cmdID= 15 
+					HF_Enhance_Off  value= 0  
+					HF_Enhance_Low  value= 1  
+					HF_Enhance_Medium  value= 2  
+					HF_Enhance_High  value= 3  "
+		::= { iqdpfCmdEntry 15 }
+
+
+	iqdpfEnhancerMediumFrequency OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_MF_Enhance_Off(0),
+							val_MF_Enhance_Low(1),
+							val_MF_Enhance_Medium(2),
+							val_MF_Enhance_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Medium_Frequency  cmdID= 16 
+					MF_Enhance_Off  value= 0  
+					MF_Enhance_Low  value= 1  
+					MF Enhance_Medium  value= 2  
+					MF_Enhance_High  value= 3  "
+		::= { iqdpfCmdEntry 16 }
+
+
+	iqdpfTimingYCDelayHorizontal OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC_Delay_Horizontal  cmdID= 18  min= -444  max= 444  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -444 ns  Max = 444 ns  Step = 148 ns "
+		::= { iqdpfCmdEntry 18 }
+
+
+	iqdpfTimingPicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Picture_Position  cmdID= 19  min= -592  max= 592  step= 148  format= %1.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqdpfCmdEntry 19 }
+
+
+	iqdpfUserMemoryReadMem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read_Mem  cmdID= 20 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  "
+		::= { iqdpfCmdEntry 20 }
+
+
+	iqdpfUserMemorySaveMem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save_Mem  cmdID= 21 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  "
+		::= { iqdpfCmdEntry 21 }
+
+
+	iqdpfUserMemoryNameMemMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 114  "
+		::= { iqdpfCmdEntry 114 }
+
+
+	iqdpfUserMemoryNameMemMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 115  "
+		::= { iqdpfCmdEntry 115 }
+
+
+	iqdpfUserMemoryNameMemMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 116  "
+		::= { iqdpfCmdEntry 116 }
+
+
+	iqdpfUserMemoryNameMemMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 117  "
+		::= { iqdpfCmdEntry 117 }
+
+
+	iqdpfUserMemoryNameMemMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_5  cmdID= 118  "
+		::= { iqdpfCmdEntry 118 }
+
+
+	iqdpfUserMemoryNameMemMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_6  cmdID= 119  "
+		::= { iqdpfCmdEntry 119 }
+
+
+	iqdpfUserMemoryNameMemMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_7  cmdID= 120  "
+		::= { iqdpfCmdEntry 120 }
+
+
+	iqdpfUserMemoryNameMemMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_8  cmdID= 121  "
+		::= { iqdpfCmdEntry 121 }
+
+
+	iqdpfUserMemoryNameMemMemory9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_9  cmdID= 122  "
+		::= { iqdpfCmdEntry 122 }
+
+
+	iqdpfUserMemoryNameMemMemory10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_10  cmdID= 123  "
+		::= { iqdpfCmdEntry 123 }
+
+
+	iqdpfUserMemoryNameMemMemory11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_11  cmdID= 124  "
+		::= { iqdpfCmdEntry 124 }
+
+
+	iqdpfUserMemoryNameMemMemory12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_12  cmdID= 125  "
+		::= { iqdpfCmdEntry 125 }
+
+
+	iqdpfUserMemoryNameMemMemory13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_13  cmdID= 126  "
+		::= { iqdpfCmdEntry 126 }
+
+
+	iqdpfUserMemoryNameMemMemory14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_14  cmdID= 127  "
+		::= { iqdpfCmdEntry 127 }
+
+
+	iqdpfUserMemoryNameMemMemory15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_15  cmdID= 128  "
+		::= { iqdpfCmdEntry 128 }
+
+
+	iqdpfUserMemoryNameMemMemory16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_16  cmdID= 129  "
+		::= { iqdpfCmdEntry 129 }
+
+
+	iqdpfUserMemoryNameMemPresetAllNames OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_All_Names(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset_All_Names  cmdID= 25 
+					Preset_All_Names  value= 1  "
+		::= { iqdpfCmdEntry 25 }
+
+
+	iqdpfUserMemoryClearMem OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3),
+							val_Memory_5(4),
+							val_Memory_6(5),
+							val_Memory_7(6),
+							val_Memory_8(7),
+							val_Memory_9(8),
+							val_Memory_10(9),
+							val_Memory_11(10),
+							val_Memory_12(11),
+							val_Memory_13(12),
+							val_Memory_14(13),
+							val_Memory_15(14),
+							val_Memory_16(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Clear_Mem  cmdID= 22 
+					Memory_1  value= 0  
+					Memory_2  value= 1  
+					Memory_3  value= 2  
+					Memory_4  value= 3  
+					Memory_5  value= 4  
+					Memory_6  value= 5  
+					Memory_7  value= 6  
+					Memory_8  value= 7  
+					Memory_9  value= 8  
+					Memory_10  value= 9  
+					Memory_11  value= 10  
+					Memory_12  value= 11  
+					Memory_13  value= 12  
+					Memory_14  value= 13  
+					Memory_15  value= 14  
+					Memory_16  value= 15  "
+		::= { iqdpfCmdEntry 22 }
+
+
+	iqdpfBypass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bypass  cmdID= 106 "
+		::= { iqdpfCmdEntry 106 }
+
+
+	iqdpfSetupPatternsPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern_On  cmdID= 93 "
+		::= { iqdpfCmdEntry 93 }
+
+
+	iqdpfSetupPatternsIncludeCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_In_Pattern(1),
+							val_In_VBI(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Include_Caption  cmdID= 135 
+					Off  value= 0  
+					In_Pattern  value= 1  
+					In_VBI  value= 2  "
+		::= { iqdpfCmdEntry 135 }
+
+
+	iqdpfSetupPatterns OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Bars(3),
+							val_100_Bars(2),
+							val_Valid_Ramp(1),
+							val_Multi_Burst(4),
+							val_Pulse_and_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 94  value= 0  
+					EBU_Bars  cmdID= 94  value= 3  
+					100%_Bars  cmdID= 94  value= 2  
+					Valid_Ramp  cmdID= 94  value= 1  
+					Multi_Burst  cmdID= 94  value= 4  
+					Pulse_and_Bar  cmdID= 94  value= 5  
+					Green  cmdID= 94  value= 6  "
+		::= { iqdpfCmdEntry 94 }
+
+
+	iqdpfSetupVerticalData525 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Blank_Vits(0),
+							val_Pass_Vits(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Blank_Vits  cmdID= 23  value= 0  
+					Pass_Vits  cmdID= 23  value= 1  "
+		::= { iqdpfCmdEntry 23 }
+
+
+	iqdpfSetupVerticalData525PreserveLine21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_Line_21  cmdID= 112 "
+		::= { iqdpfCmdEntry 112 }
+
+
+	iqdpfSetupVerticalData525PreserveL283L284 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_L283/L284  cmdID= 138 "
+		::= { iqdpfCmdEntry 138 }
+
+
+	iqdpfVerticalData525SetLines525BlankL10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L10  cmdID= 65 "
+		::= { iqdpfCmdEntry 65 }
+
+
+	iqdpfVerticalData525SetLines525BlankL272 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L272  cmdID= 78 "
+		::= { iqdpfCmdEntry 78 }
+
+
+	iqdpfVerticalData525SetLines525BlankL11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L11  cmdID= 66 "
+		::= { iqdpfCmdEntry 66 }
+
+
+	iqdpfVerticalData525SetLines525BlankL273 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L273  cmdID= 79 "
+		::= { iqdpfCmdEntry 79 }
+
+
+	iqdpfVerticalData525SetLines525BlankL12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L12  cmdID= 67 "
+		::= { iqdpfCmdEntry 67 }
+
+
+	iqdpfVerticalData525SetLines525BlankL274 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L274  cmdID= 80 "
+		::= { iqdpfCmdEntry 80 }
+
+
+	iqdpfVerticalData525SetLines525BlankL13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L13  cmdID= 68 "
+		::= { iqdpfCmdEntry 68 }
+
+
+	iqdpfVerticalData525SetLines525BlankL275 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L275  cmdID= 81 "
+		::= { iqdpfCmdEntry 81 }
+
+
+	iqdpfVerticalData525SetLines525BlankL14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L14  cmdID= 69 "
+		::= { iqdpfCmdEntry 69 }
+
+
+	iqdpfVerticalData525SetLines525BlankL276 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L276  cmdID= 82 "
+		::= { iqdpfCmdEntry 82 }
+
+
+	iqdpfVerticalData525SetLines525BlankL15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L15  cmdID= 70 "
+		::= { iqdpfCmdEntry 70 }
+
+
+	iqdpfVerticalData525SetLines525BlankL277 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L277  cmdID= 83 "
+		::= { iqdpfCmdEntry 83 }
+
+
+	iqdpfVerticalData525SetLines525BlankL16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L16  cmdID= 71 "
+		::= { iqdpfCmdEntry 71 }
+
+
+	iqdpfVerticalData525SetLines525BlankL278 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L278  cmdID= 84 "
+		::= { iqdpfCmdEntry 84 }
+
+
+	iqdpfVerticalData525SetLines525BlankL17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L17  cmdID= 72 "
+		::= { iqdpfCmdEntry 72 }
+
+
+	iqdpfVerticalData525SetLines525BlankL279 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L279  cmdID= 85 "
+		::= { iqdpfCmdEntry 85 }
+
+
+	iqdpfVerticalData525SetLines525BlankL18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L18  cmdID= 73 "
+		::= { iqdpfCmdEntry 73 }
+
+
+	iqdpfVerticalData525SetLines525BlankL280 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L280  cmdID= 86 "
+		::= { iqdpfCmdEntry 86 }
+
+
+	iqdpfVerticalData525SetLines525BlankL19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L19  cmdID= 74 "
+		::= { iqdpfCmdEntry 74 }
+
+
+	iqdpfVerticalData525SetLines525BlankL281 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L281  cmdID= 87 "
+		::= { iqdpfCmdEntry 87 }
+
+
+	iqdpfVerticalData525SetLines525BlankL20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L20  cmdID= 75 "
+		::= { iqdpfCmdEntry 75 }
+
+
+	iqdpfVerticalData525SetLines525BlankL282 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L282  cmdID= 88 "
+		::= { iqdpfCmdEntry 88 }
+
+
+	iqdpfVerticalData525SetLines525BlankL21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L21  cmdID= 76 "
+		::= { iqdpfCmdEntry 76 }
+
+
+	iqdpfVerticalData525SetLines525BlankL283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L283  cmdID= 89 "
+		::= { iqdpfCmdEntry 89 }
+
+
+	iqdpfVerticalData525SetLines525BlankL22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L22  cmdID= 77 "
+		::= { iqdpfCmdEntry 77 }
+
+
+	iqdpfVerticalData525SetLines525BlankL284 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_525
+					Blank_L284  cmdID= 90 "
+		::= { iqdpfCmdEntry 90 }
+
+
+	iqdpfSetupVerticalData625 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Blank_Vits(0),
+							val_Pass_Vits(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Blank_Vits  cmdID= 24  value= 0  
+					Pass_Vits  cmdID= 24  value= 1  "
+		::= { iqdpfCmdEntry 24 }
+
+
+	iqdpfSetupVerticalData625PreserveLine23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Preserve_Line_23  cmdID= 113 "
+		::= { iqdpfCmdEntry 113 }
+
+
+	iqdpfVerticalData625SetLines625BlankL6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L6  cmdID= 27 "
+		::= { iqdpfCmdEntry 27 }
+
+
+	iqdpfVerticalData625SetLines625BlankL318 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L318  cmdID= 46 "
+		::= { iqdpfCmdEntry 46 }
+
+
+	iqdpfVerticalData625SetLines625BlankL7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L7  cmdID= 28 "
+		::= { iqdpfCmdEntry 28 }
+
+
+	iqdpfVerticalData625SetLines625BlankL319 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L319  cmdID= 47 "
+		::= { iqdpfCmdEntry 47 }
+
+
+	iqdpfVerticalData625SetLines625BlankL8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L8  cmdID= 29 "
+		::= { iqdpfCmdEntry 29 }
+
+
+	iqdpfVerticalData625SetLines625BlankL320 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L320  cmdID= 48 "
+		::= { iqdpfCmdEntry 48 }
+
+
+	iqdpfVerticalData625SetLines625BlankL9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L9  cmdID= 30 "
+		::= { iqdpfCmdEntry 30 }
+
+
+	iqdpfVerticalData625SetLines625BlankL321 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L321  cmdID= 49 "
+		::= { iqdpfCmdEntry 49 }
+
+
+	iqdpfVerticalData625SetLines625BlankL10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L10  cmdID= 31 "
+		::= { iqdpfCmdEntry 31 }
+
+
+	iqdpfVerticalData625SetLines625BlankL322 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L322  cmdID= 50 "
+		::= { iqdpfCmdEntry 50 }
+
+
+	iqdpfVerticalData625SetLines625BlankL11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L11  cmdID= 32 "
+		::= { iqdpfCmdEntry 32 }
+
+
+	iqdpfVerticalData625SetLines625BlankL323 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L323  cmdID= 51 "
+		::= { iqdpfCmdEntry 51 }
+
+
+	iqdpfVerticalData625SetLines625BlankL12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L12  cmdID= 33 "
+		::= { iqdpfCmdEntry 33 }
+
+
+	iqdpfVerticalData625SetLines625BlankL324 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L324  cmdID= 52 "
+		::= { iqdpfCmdEntry 52 }
+
+
+	iqdpfVerticalData625SetLines625BlankL13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L13  cmdID= 34 "
+		::= { iqdpfCmdEntry 34 }
+
+
+	iqdpfVerticalData625SetLines625BlankL325 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L325  cmdID= 53 "
+		::= { iqdpfCmdEntry 53 }
+
+
+	iqdpfVerticalData625SetLines625BlankL14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L14  cmdID= 35 "
+		::= { iqdpfCmdEntry 35 }
+
+
+	iqdpfVerticalData625SetLines625BlankL326 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L326  cmdID= 54 "
+		::= { iqdpfCmdEntry 54 }
+
+
+	iqdpfVerticalData625SetLines625BlankL15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L15  cmdID= 36 "
+		::= { iqdpfCmdEntry 36 }
+
+
+	iqdpfVerticalData625SetLines625BlankL327 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L327  cmdID= 55 "
+		::= { iqdpfCmdEntry 55 }
+
+
+	iqdpfVerticalData625SetLines625BlankL16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L16  cmdID= 37 "
+		::= { iqdpfCmdEntry 37 }
+
+
+	iqdpfVerticalData625SetLines625BlankL328 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L328  cmdID= 56 "
+		::= { iqdpfCmdEntry 56 }
+
+
+	iqdpfVerticalData625SetLines625BlankL17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L17  cmdID= 38 "
+		::= { iqdpfCmdEntry 38 }
+
+
+	iqdpfVerticalData625SetLines625BlankL329 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L329  cmdID= 57 "
+		::= { iqdpfCmdEntry 57 }
+
+
+	iqdpfVerticalData625SetLines625BlankL18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L18  cmdID= 39 "
+		::= { iqdpfCmdEntry 39 }
+
+
+	iqdpfVerticalData625SetLines625BlankL330 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L330  cmdID= 58 "
+		::= { iqdpfCmdEntry 58 }
+
+
+	iqdpfVerticalData625SetLines625BlankL19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L19  cmdID= 40 "
+		::= { iqdpfCmdEntry 40 }
+
+
+	iqdpfVerticalData625SetLines625BlankL331 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L331  cmdID= 59 "
+		::= { iqdpfCmdEntry 59 }
+
+
+	iqdpfVerticalData625SetLines625BlankL20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L20  cmdID= 41 "
+		::= { iqdpfCmdEntry 41 }
+
+
+	iqdpfVerticalData625SetLines625BlankL332 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L332  cmdID= 60 "
+		::= { iqdpfCmdEntry 60 }
+
+
+	iqdpfVerticalData625SetLines625BlankL21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L21  cmdID= 42 "
+		::= { iqdpfCmdEntry 42 }
+
+
+	iqdpfVerticalData625SetLines625BlankL333 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L333  cmdID= 61 "
+		::= { iqdpfCmdEntry 61 }
+
+
+	iqdpfVerticalData625SetLines625BlankL22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L22  cmdID= 43 "
+		::= { iqdpfCmdEntry 43 }
+
+
+	iqdpfVerticalData625SetLines625BlankL334 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L334  cmdID= 62 "
+		::= { iqdpfCmdEntry 62 }
+
+
+	iqdpfVerticalData625SetLines625BlankL23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L23  cmdID= 44 "
+		::= { iqdpfCmdEntry 44 }
+
+
+	iqdpfVerticalData625SetLines625BlankL335 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L335  cmdID= 63 "
+		::= { iqdpfCmdEntry 63 }
+
+
+	iqdpfVerticalData625SetLines625BlankL24 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L24  cmdID= 45 "
+		::= { iqdpfCmdEntry 45 }
+
+
+	iqdpfVerticalData625SetLines625BlankL336 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Set_Lines_625
+					Blank_L336  cmdID= 64 "
+		::= { iqdpfCmdEntry 64 }
+
+
+	iqdpfSetupHANCPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					HANC_Pass  cmdID= 108 "
+		::= { iqdpfCmdEntry 108 }
+
+
+	iqdpfSetupDefaultOutputOutputStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto(0),
+							val_625(1),
+							val_525(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_Standard  cmdID= 91 
+					Auto  value= 0  
+					625  value= 1  
+					525  value= 2  "
+		::= { iqdpfCmdEntry 91 }
+
+
+	iqdpfSetupDefaultOutputIncludeCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_In_Default(1),
+							val_In_VBI(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Include_Caption  cmdID= 134 
+					Off  value= 0  
+					In_Default  value= 1  
+					In_VBI  value= 2  "
+		::= { iqdpfCmdEntry 134 }
+
+
+	iqdpfSetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Bars(3),
+							val_100_Bars(2),
+							val_Valid_Ramp(1),
+							val_Multi_Burst(4),
+							val_Pulse_and_Bar(5),
+							val_Green(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 92  value= 0  
+					EBU_Bars  cmdID= 92  value= 3  
+					100%_Bars  cmdID= 92  value= 2  
+					Valid_Ramp  cmdID= 92  value= 1  
+					Multi_Burst  cmdID= 92  value= 4  
+					Pulse_and_Bar  cmdID= 92  value= 5  
+					Green  cmdID= 92  value= 6  "
+		::= { iqdpfCmdEntry 92 }
+
+
+	iqdpfSetupEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Edit_Caption  cmdID= 103  "
+		::= { iqdpfCmdEntry 103 }
+
+
+	iqdpfSetupCaptionOverrideCaptionOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Caption_On  cmdID= 136 "
+		::= { iqdpfCmdEntry 136 }
+
+
+	iqdpfSetupCaptionOverride OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Insert_On_Video(0),
+							val_Insert_On_VBI(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Insert_On_Video  cmdID= 104  value= 0  
+					Insert_On_VBI  cmdID= 104  value= 1  "
+		::= { iqdpfCmdEntry 104 }
+
+
+	iqdpfSetupEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 100 "
+		::= { iqdpfCmdEntry 100 }
+
+
+	iqdpfSetupEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 101  value= 1  "
+		::= { iqdpfCmdEntry 101 }
+
+
+	iqdpfSetupGPIInputsGPI1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 95  value= 2  
+					Latch  cmdID= 95  value= 0  
+					Edge  cmdID= 95  value= 1  "
+		::= { iqdpfCmdEntry 95 }
+
+
+	iqdpfSetupGPIInputsGPI1GPI1Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Gamut(1),
+							val_Pattern(2),
+							val_HANC_Pass(3),
+							val_Caption_On(4),
+							val_Memory_1(5),
+							val_Memory_2(6),
+							val_Memory_3(7),
+							val_Memory_4(8),
+							val_Memory_5(9),
+							val_Memory_6(10),
+							val_Memory_7(11),
+							val_Memory_8(12),
+							val_Memory_9(13),
+							val_Memory_10(14),
+							val_Memory_11(15),
+							val_Memory_12(16),
+							val_Memory_13(17),
+							val_Memory_14(18),
+							val_Memory_15(19),
+							val_Memory_16(20)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_1_Function  cmdID= 131 
+					ByPass  value= 0  
+					Gamut  value= 1  
+					Pattern  value= 2  
+					HANC_Pass  value= 3  
+					Caption_On  value= 4  
+					Memory_1  value= 5  
+					Memory_2  value= 6  
+					Memory_3  value= 7  
+					Memory_4  value= 8  
+					Memory_5  value= 9  
+					Memory_6  value= 10  
+					Memory_7  value= 11  
+					Memory_8  value= 12  
+					Memory_9  value= 13  
+					Memory_10  value= 14  
+					Memory_11  value= 15  
+					Memory_12  value= 16  
+					Memory_13  value= 17  
+					Memory_14  value= 18  
+					Memory_15  value= 19  
+					Memory_16  value= 20  "
+		::= { iqdpfCmdEntry 131 }
+
+
+	iqdpfSetupGPIInputsGPI2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 96  value= 2  
+					Latch  cmdID= 96  value= 0  
+					Edge  cmdID= 96  value= 1  "
+		::= { iqdpfCmdEntry 96 }
+
+
+	iqdpfSetupGPIInputsGPI2GPI2Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Gamut(1),
+							val_Pattern(2),
+							val_HANC_Pass(3),
+							val_Caption_On(4),
+							val_Memory_1(5),
+							val_Memory_2(6),
+							val_Memory_3(7),
+							val_Memory_4(8),
+							val_Memory_5(9),
+							val_Memory_6(10),
+							val_Memory_7(11),
+							val_Memory_8(12),
+							val_Memory_9(13),
+							val_Memory_10(14),
+							val_Memory_11(15),
+							val_Memory_12(16),
+							val_Memory_13(17),
+							val_Memory_14(18),
+							val_Memory_15(19),
+							val_Memory_16(20)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_2_Function  cmdID= 132 
+					ByPass  value= 0  
+					Gamut  value= 1  
+					Pattern  value= 2  
+					HANC_Pass  value= 3  
+					Caption_On  value= 4  
+					Memory_1  value= 5  
+					Memory_2  value= 6  
+					Memory_3  value= 7  
+					Memory_4  value= 8  
+					Memory_5  value= 9  
+					Memory_6  value= 10  
+					Memory_7  value= 11  
+					Memory_8  value= 12  
+					Memory_9  value= 13  
+					Memory_10  value= 14  
+					Memory_11  value= 15  
+					Memory_12  value= 16  
+					Memory_13  value= 17  
+					Memory_14  value= 18  
+					Memory_15  value= 19  
+					Memory_16  value= 20  "
+		::= { iqdpfCmdEntry 132 }
+
+
+	iqdpfSetupGPIInputsGPI3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(2),
+							val_Latch(0),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup_GPI_Inputs
+					Off  cmdID= 97  value= 2  
+					Latch  cmdID= 97  value= 0  
+					Edge  cmdID= 97  value= 1  "
+		::= { iqdpfCmdEntry 97 }
+
+
+	iqdpfSetupGPIInputsGPI3GPI3Function OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_ByPass(0),
+							val_Gamut(1),
+							val_Pattern(2),
+							val_HANC_Pass(3),
+							val_Caption_On(4),
+							val_Memory_1(5),
+							val_Memory_2(6),
+							val_Memory_3(7),
+							val_Memory_4(8),
+							val_Memory_5(9),
+							val_Memory_6(10),
+							val_Memory_7(11),
+							val_Memory_8(12),
+							val_Memory_9(13),
+							val_Memory_10(14),
+							val_Memory_11(15),
+							val_Memory_12(16),
+							val_Memory_13(17),
+							val_Memory_14(18),
+							val_Memory_15(19),
+							val_Memory_16(20)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup_GPI_Inputs
+					GPI_3_Function  cmdID= 133 
+					ByPass  value= 0  
+					Gamut  value= 1  
+					Pattern  value= 2  
+					HANC_Pass  value= 3  
+					Caption_On  value= 4  
+					Memory_1  value= 5  
+					Memory_2  value= 6  
+					Memory_3  value= 7  
+					Memory_4  value= 8  
+					Memory_5  value= 9  
+					Memory_6  value= 10  
+					Memory_7  value= 11  
+					Memory_8  value= 12  
+					Memory_9  value= 13  
+					Memory_10  value= 14  
+					Memory_11  value= 15  
+					Memory_12  value= 16  
+					Memory_13  value= 17  
+					Memory_14  value= 18  
+					Memory_15  value= 19  
+					Memory_16  value= 20  "
+		::= { iqdpfCmdEntry 133 }
+
+
+	iqdpfSetupLoggingInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Change  cmdID= 98 "
+		::= { iqdpfCmdEntry 98 }
+
+
+	iqdpfSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 99 "
+		::= { iqdpfCmdEntry 99 }
+
+
+	iqdpfSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdpfCmdEntry 3 }
+
+
+	iqdpfSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdpfCmdEntry 2 }
+
+
+	iqdpfSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdpfCmdEntry 1 }
+
+
+	iqdpfSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdpfCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: RESET
+--				: OK
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL_MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -1,0 +1,42 @@
+---
+# dhs_guestsize — vCPU / RAM of each fleet guest converged from the inventory
+# truth, via the Proxmox API (#817 P1).
+#
+# WHY: measured 2026-08-23, the control node ran every Ansible play for the
+# whole fleet on ONE vCPU while pve01 sat at ~12% of 24 cores. Ansible does
+# its forking, Jinja templating, module assembly and SSH/TLS crypto on the
+# CONTROLLER, so a 1-core control node is a fleet-wide tax — not a per-host
+# one. `dhs version` warm cost 0.54-0.56 s on the 1-core LXCs, which is a
+# CPU-starvation signal for a Go binary printing a string.
+#
+# SIZING IS DELIBERATELY CONSERVATIVE. pve01 is a PRODUCTION node: 12 running
+# guests including pfsense01 (the firewall), vm-cerebrum-stg-01 (8 vCPU /
+# 64 GB) and by-odoo-instances (8 vCPU / 32 GB); 43 vCPU allocated on 24
+# cores and 162 of 188.7 GB RAM before this role. So:
+#   - LXC `cores` is a cgroup CEILING, not a reservation — an idle container
+#     consumes nothing, which is why raising it on containers is cheap.
+#   - QEMU vCPUs are real threads, so win11 is NOT resized here.
+#   - RAM is the tight resource (27 GB headroom) — this role changes memory
+#     only where a host_var asks for it, and nothing asks today.
+#
+# Desired values live in host_vars as `pve_cores` (and optionally
+# `pve_memory`, MiB). A host without `pve_cores` is skipped entirely.
+
+# Proxmox API — token vars come from the control-node-only secrets file
+# (-e @/root/.secrets/proxmox.yml), same as dhs_netaddr and dhs_hostname.
+dhs_guestsize_enabled: "{{ proxmox_token_id is defined and proxmox_token_secret is defined }}"
+proxmox_api_host: 10.6.224.5:8006
+proxmox_node: pve01
+proxmox_validate_certs: false
+
+# LXC core/memory changes apply LIVE (cgroup), no restart. QEMU needs a
+# hypervisor stop/start — a guest reboot keeps the same QEMU process and the
+# new config is NOT picked up (learned on win11, see docs/testbed.md). This
+# role never power-cycles a VM; it reports the pending delta and leaves the
+# window to the operator.
+dhs_guestsize_vm_apply: false
+
+# Guard: refuse to converge if the node's total allocated vCPU for RUNNING
+# guests would exceed this ratio of physical cores. 43/24 = 1.79 today; the
+# P1 targets take it to 50/24 = 2.08.
+dhs_guestsize_max_overcommit: 2.5

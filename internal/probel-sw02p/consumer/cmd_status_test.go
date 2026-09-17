@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendStatusRequestRoundTrip drives SendStatusRequest through a
@@ -22,7 +23,7 @@ func TestSendStatusRequestRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// rx 07 = SOM + cmd + 1 payload + checksum = 4 bytes.
 	matrixDone := make(chan struct{})

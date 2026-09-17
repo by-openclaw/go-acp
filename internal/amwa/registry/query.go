@@ -72,17 +72,66 @@ func installQueryRoutes(srv *httpsession.Server, store *Store, mgr *Subscription
 	srv.Handle(stdhttp.MethodGet, base+"/subscriptions", mgr.HandleList())
 	subPrefix := base + "/subscriptions/"
 	srv.HandlePrefix(subPrefix, stdhttp.MethodGet, mgr.HandleGetByID(subPrefix))
+	// DELETE releases a subscription a Controller is finished with.
+	// Also what makes DELETE appear in Access-Control-Allow-Methods,
+	// since that header is generated from this route table.
+	srv.HandlePrefix(subPrefix, stdhttp.MethodDelete, mgr.HandleDeleteByID(subPrefix))
 }
 
 // hasAncestryFilter reports whether the request asked for an
 // IS-04 §6.1.5 ancestry query (`query.ancestry_id` /
-// `query.ancestry_type`). The Registry plugin doesn't implement
-// ancestry yet — it returns HTTP 501 so the AMWA test_25 suite
-// records the gap as OPTIONAL rather than failing on stale data.
+// `query.ancestry_type`).
 func hasAncestryFilter(q map[string][]string) bool {
 	_, a := q["query.ancestry_id"]
 	_, b := q["query.ancestry_type"]
 	return a || b
+}
+
+// parseAncestry validates the ancestry parameters and computes the id
+// set the query selects. Returns (nil, 0) when everything is fine and
+// no ancestry was requested; a non-zero status when the request must
+// be answered with an error instead of a listing.
+//
+// Ancestry is defined only for the two kinds that carry `parents` —
+// Sources and Flows. Asking it of a Sender is answered 501, the code
+// the AMWA suite documents as "registry does not support ancestry
+// here"; a malformed type or generations value on a supported kind is
+// the client's error, 400.
+func parseAncestry(store *Store, t is04.ResourceType, q map[string][]string) (map[string]bool, int, string) {
+	if !hasAncestryFilter(q) {
+		return nil, 0, ""
+	}
+	if t != is04.ResourceSource && t != is04.ResourceFlow {
+		return nil, stdhttp.StatusNotImplemented,
+			"ancestry queries apply to sources and flows; this registry does not define them for " + string(t)
+	}
+	id := first(q["query.ancestry_id"])
+	typ := first(q["query.ancestry_type"])
+	if id == "" || typ == "" {
+		return nil, stdhttp.StatusBadRequest,
+			"query.ancestry_id and query.ancestry_type must be supplied together"
+	}
+	if typ != ancestryChildren && typ != ancestryParents {
+		return nil, stdhttp.StatusBadRequest,
+			"query.ancestry_type must be \"children\" or \"parents\", got " + typ
+	}
+	generations := 0 // unlimited
+	if g := first(q["query.ancestry_generations"]); g != "" {
+		n, err := strconv.Atoi(g)
+		if err != nil || n < 1 {
+			return nil, stdhttp.StatusBadRequest,
+				"query.ancestry_generations must be a positive integer, got " + g
+		}
+		generations = n
+	}
+	return ancestrySet(store.ParentsIndex(t), id, typ, generations), 0, ""
+}
+
+func first(vs []string) string {
+	if len(vs) == 0 {
+		return ""
+	}
+	return vs[0]
 }
 
 // servePagedList drives one IS-04 Query API GET /<plural> response.
@@ -98,11 +147,20 @@ func hasAncestryFilter(q map[string][]string) bool {
 // Spec: IS-04 v1.3.3 §6.1.6 + Query API RAML pagination clause.
 func servePagedList(store *Store, t is04.ResourceType, base, plural, apiVer string, r *stdhttp.Request) (int, any, error) {
 	q := r.URL.Query()
-	if hasAncestryFilter(q) {
-		return stdhttp.StatusNotImplemented,
-			httpsession.ErrorBody{Code: 501, Error: "Not Implemented", Debug: "ancestry queries (query.ancestry_id/query.ancestry_type) not supported by this Registry"},
-			nil
+	ancestry, status, debug := parseAncestry(store, t, q)
+	if status != 0 {
+		reason := "Bad Request"
+		if status == stdhttp.StatusNotImplemented {
+			reason = "Not Implemented"
+		}
+		return status, httpsession.ErrorBody{Code: status, Error: reason, Debug: debug}, nil
 	}
+	// The ancestry keys are control parameters, not field filters —
+	// left in place they would be matched against resource JSON as
+	// literal equality filters and select nothing.
+	delete(q, "query.ancestry_id")
+	delete(q, "query.ancestry_type")
+	delete(q, "query.ancestry_generations")
 	since := q.Get("paging.since")
 	until := q.Get("paging.until")
 	if since != "" && until != "" && taiCmp(since, until) > 0 {
@@ -136,6 +194,10 @@ func servePagedList(store *Store, t is04.ResourceType, base, plural, apiVer stri
 		rv := reflect.ValueOf(res)
 		if id := readJSONField(rv, "id"); id != "" {
 			if !versionAllowed(store.apiVerOfLocked(t, id), apiVer, downgrade) {
+				return false
+			}
+			// Ancestry membership, computed before the lock was taken.
+			if ancestry != nil && !ancestry[id] {
 				return false
 			}
 		}

@@ -1,25 +1,240 @@
-# docs/testbed.md — Test fleet inventory and SSH access mesh
+# docs/testbed.md — Test fleet inventory and access
 
-Tracked, repo-local source of truth for the test fleet on the DMZ VLAN
-(`10.100.0.0/24`, routed via pfSense).
+> **Dev/test/deploy flow:** see
+> [`docs/deployment/dev-test-flow.md`](deployment/dev-test-flow.md) —
+> the authoritative how-to (desk → git bundle → control node → Ansible).
+> This file is the fleet **inventory + access reference**.
+
+Tracked, repo-local source of truth for the test fleet on **VLAN 600 /
+MGMT_CTRL** (`10.6.240.0/20`, Proxmox bridge `vmbrMGMT`, fabric gateway
+`10.6.255.254`), live since the **2026-08-29 migration**. Management
+addresses are `10.6.250.101`–`.105`. The Ansible inventory
+(`ansible/inventory/`) carries the SAME facts per host (`ansible_host`,
+`pve_vmid`, `nics`, `os_label`) — when one changes, both change in the
+same PR — and the inventory wins on any disagreement.
+
+> **Retired:** the earlier `10.100.0.0/24` VLAN 100 (`vmbrAPPS`, gw
+> `10.100.0.1`) plan is **dead** — do not use those addresses. Older
+> `10.6.239.x` office addresses for emulators are unrelated to the fleet.
 
 ## Fleet
 
-| Hostname | IP | Role | OS | Notes |
+| Inventory name | Proxmox | Guest OS | mgmt (`ansible_host`) | Role |
 | --- | --- | --- | --- | --- |
-| `dhs-debian` | `10.100.0.102` | dhs producer host | Debian 12 | OS-compat row, all four producers concurrently |
-| `dhs-ubuntu` | `10.100.0.103` | dhs producer host + Ansible controller | Ubuntu 24.04 | Current ACP2 reconnect/keepalive test target |
-| `dhs-rocky` | `10.100.0.104` | dhs producer host | Rocky 9.4 | OS-compat row |
-| `dhs-tools` | `10.100.0.105` | tooling host | Ubuntu 24.04 | Docker, AMWA NMOS Testing tool, tshark, Wireshark dissector validator |
-| `dhs-win11` | `10.100.0.106` | Windows producer host | Windows 11 Pro | Multi-OS matrix per ADR-0016; producer parity check for the Windows row |
-| `cerebrum` | `10.100.0.5` | external reference peer | (vendor appliance) | NMOS Registry + Node — not part of the test fleet, used as a real-peer integration target |
+| `dhs-debian` | LXC 651 | Debian 12 | `10.6.250.101` | **Ansible control node** + AMWA plant registry (`:8235`); dhs producer host; Docker |
+| `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
+| `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet**. Also the RollCall plant front: `dhs-rollcall-ipshare` (our IPShare `:2050`, fronting the IQ frame at 2100, the Sirius 800 emulator at 3000, our router at 4000) and `dhs-rollcall-router` (`:2052`, unit `0x20`), both systemd units from `ansible/playbooks/snell-rollcall-ipshare.yml` |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and the Centra emulator as a Sirius 800 (`:2057`, scheduled task `dhs-centra` from `ansible/playbooks/snell-rollcall-ipshare.yml`, at boot, restarted if it dies). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
+| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
-The three `dhs-*` Linux producer hosts validate the OS-compat axis from
-ADR-0016 without requiring vendor hardware. `dhs-tools` hosts the AMWA
-Testing tool peer + isolated Docker bridge. `dhs-win11` covers the
-Windows producer parity row required by ADR-0016.
+## Physical devices under test
 
-## Producer port plan (every Linux LXC + dhs-win11)
+Real hardware on the same `10.6.240.0/20` management fabric as the fleet, so
+the Ansible control node reaches them directly. These are the Tier 3 oracles
+ADR-0025 requires — a connector is not DONE against our own provider.
+
+| Device | Address | Serves | Connector |
+| --- | --- | --- | --- |
+| **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
+| **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
+| ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
+| **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
+
+The IQ frame is unit `0x0C` and carries nine cards, reached as **ports of the
+gateway** (spec 7.6) rather than as units of their own:
+
+| Address | Type | Name |
+| --- | --- | --- |
+| `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
+| `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
+| `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
+| `0000-0C-8E` and up | the connected clients | **client ports, stamped by the gateway from `0x8E` upward, one per RollCall client connected at the time**. Measured: on 2026-09-09 `8E` was our own `dhs rollcall` (type 483) because it was alone; on 2026-09-11 `8E` was the vendor ControlPanel (type 500) on `win11` and ours was `8F`. A session asked of one is refused, since it is a client and not a node. Our provider stamps clients from `0xE0` instead |
+
+It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
+the 16-bit generation — the one a proxy also speaks, and the one the emulator
+does not exercise. Its cards advertise `Menus|Control|File` only: no
+`SV_LOC1`, so no thumbnails from this frame (they are audio cards).
+
+**When the frame stops answering RollCall** (TCP on 2050 still accepts, but
+`GETDEVINFO` times out), restart the gateway board over SNMP, which is out of
+band and keeps working. The command is Restart Unit in the gateway command set,
+cmdID 16706 (`iqh3aSystemSetupRestartUnit` in `SNELL-IQH3A-CMD-MIB`), at
+instance 256: the row whose Unit Name (16388) reads `FRAME_12 EMB`.
+
+```
+# prove the write community first: the MIB defines 0 as noAction, so this changes nothing
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 0
+# then restart the gateway board; the set times out because the board reboots before replying
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 1
+```
+
+Measured 2026-09-11 from `dhs-tools`, the only fleet host with net-snmp: SNMP
+answered 35 s later with a fresh uptime; RollCall did not answer within 2.5
+minutes and did within 4. Only the gateway board restarts; every card is a unit
+of its own and keeps running. SNMP read community `public`, write `private`.
+The vendor RollCall Control Panel on `win11` holds a connection to this frame
+of its own.
+
+Drive it with `ROLLCALL_TEST_HOST=10.6.255.113`. It is **read-only** in the
+play, like every real device.
+
+Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
+NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
+services this one Neuron offers cannot yet be driven at a real device — see
+"Integration tiers" below.
+
+### IRD satellite receivers — SNMP only
+
+Installed and addressed 2026-09-07. Both answer on the management fabric;
+the MIBs belong in `internal/snmp/assets/mibs/`.
+
+| | TT1260 | RX1290 |
+| --- | --- | --- |
+| Address | `10.6.255.110` | `10.6.255.111` |
+| `sysDescr` | "Tandberg TV TT1260 Professional MPEG Receiver" | "Tandberg Television RX1290 Professional AVC Receiver" |
+| `sysObjectID` | `1.3.6.1.4.1.1773.1.3.200` | `1.3.6.1.4.1.1773.1.3.200` |
+| Objects under 1773 | 577 | 842 |
+
+**The MIB to find is Tandberg Television, IANA enterprise 1773.** Both units
+report the SAME sysObjectID, so one product-family MIB covers both — which
+matches their identical web UI and their shared alarm-ID namespace
+(1 = Signal Lock lost, 2 = BER too high, 4 = Video stopped, 5/6 = Audio
+stopped, 8 = CN margin too low, 9 = PreBER too high). Ericsson acquired
+Tandberg Television in 2007, so vendor material may be filed under either
+name.
+
+Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
+
+- **SNMPv1 ONLY.** v2c gets no response at all, on either unit, for either
+  community. Community `public` reads. This happens to match Cerebrum's own
+  manager default (v1, `public`), so Cerebrum can poll them as they stand.
+- Tree shape: `1773.1.1.x` is the common chassis branch (network config at
+  `.1.1.1.1-4`, trap destinations at `.1.1.2.1`, a card/module table at
+  `.1.1.3.1` carrying per-slot type, firmware and card names), and
+  `1773.1.3.200.x` is the product branch — 299 of the TT1260's objects.
+
+Two things to fix on the devices before trap work starts:
+
+1. **The trap destination is stale.** `.1.1.2.1.2.1` still reads
+   `192.168.0.229`, an address from a previous network, so traps currently
+   go nowhere. Point it at Cerebrum (`10.6.250.5`, receiver Active on 162)
+   for an independent confirmation the devices emit at all.
+2. **The clock is unset** — both report `0000-00-00 00:00:00`, and every
+   alarm row carries that timestamp. Trap and alarm times are meaningless
+   until NTP is configured.
+
+Scope, per the codeowner:
+
+Scope, per the codeowner:
+
+- **SNMP + MIB** — the whole reason these are in the testbed. This is what
+  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **HTTP management page** — expected to work. Useful for reading the device's
+  own view of a value while checking ours, and for setting the SNMP community
+  and trap destination. Not a connector target.
+- **No REST API.** There is none to consume; do not plan one.
+- **A raw vendor protocol exists but is OUT OF SCOPE** — the same call as
+  Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
+
+So one connector serves these devices, and it is the SNMP one.
+
+### Cerebrum is a multi-protocol peer, not only the NB API
+
+Cerebrum speaks syslog and SNMP as well as its Northbound API, which means
+SNMP work needs no additional hardware — it is BOTH directions of the loop.
+Read off Configuration → SNMP (2026-09-07):
+
+| Cerebrum role | Where | Settings | What it is for |
+| --- | --- | --- | --- |
+| **SNMP agent** (answers) | port **1161**, status Active | RO community `public`, RW `private` | the target our SNMP CONSUMER polls. Note 1161, not 161 — above 1024, so polling it needs no capability grant |
+| **SNMP manager** (polls) | port **161**, SNMPv1, community `public`, poll 3 s | — | the peer that will poll an agent WE expose |
+| **Trap receiver** | port **162**, status Active | "Enable SNMP Trap reception" on | receives traps we emit; sending to it needs no local privilege |
+| **Trap sender** | Notifications → SNMP Traps | SNMPv1, dest port 162, dest IP unset, "on startup" only | a trap SOURCE for a listener of ours. **"Test SNMP Trap"** triggers one on demand, so a test need not restart Cerebrum |
+
+A "V3 Settings" button exists beside the version dropdown (greyed while v1
+is selected), so v3 is supported by the product. SNMP sub-system logging is
+at level Emergency with "Show MIB value type mismatch" off — turn that on
+when debugging our MIB against it.
+
+Only a trap LISTENER of our own would need `CAP_NET_BIND_SERVICE` (port 162
+is privileged), and neither direction above requires one.
+
+All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
+in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
+
+Addressing is **static, from the inventory**: one management NIC per
+host — `eth0` = `ansible_host` on `10.6.250.101`–`.105`, fabric gateway
+`10.6.255.254`, no overlaps. LXCs get it in the Proxmox CT config
+(`netX: …,ip=<addr>/20[,gw=…]`, `nameserver`, `searchdomain`, written
+via the API, applied by a CT reboot); the Windows VM gets it guest-side.
+No DHCP dependency. The inventory is the source of truth, not an
+overlay. The `dhs_netaddr` role (#786) carries this plan since 2026-09-17
+(prefix /20, gateway `10.6.255.254`, DNS `10.6.240.1`, host_vars on
+`10.6.250.101`–`.105`); run against the fleet it reported changed=0 on
+every CT — the migration had set exactly these values — and converged the
+one guest-side leftover, dhs-rocky's NetworkManager resolver.
+
+A second management NIC (`eth1` = eth0 + 10, `.111`–`.113`, no default
+route) existed until 2026-08-23 and is **parked, not deleted** — re-adding
+it is a `host_vars` edit. It was retired because both NICs sat on the same
+L2, so `<host>.local` resolved to whichever answered first: `dhs-debian.local`
+returned `.111` instead of `.101` (#822). IPv6 is **out of scope for this
+fleet** — dual stack lives on the new Proxmox node.
+`ansible/playbooks/fleet-verify.yml` asserts live IP == inventory IP per
+NIC and fails loudly on drift. Before 2026-08-23 the fleet ran on DHCP
+leases (`.101–.108`, win11 drifted `.106`→`.107`) — never reuse those
+old numbers from memory; this table is the truth.
+
+Guest hostnames equal the inventory name (`fleet_hostname`:
+`dhs-debian`, `dhs-ubuntu`, `dhs-rocky`, `dhs-tools`, `dhs-win11`),
+converged by the `dhs_hostname` role (#783) in BOTH layers — the guest
+and the Proxmox CT config (Proxmox rewrites `/etc/hostname` from its
+config at every CT start, so a guest-only rename would revert). Unique
+names matter: three LXCs used to answer `dhs`, which collides in Avahi.
+
+## AMWA plant — node identity (stable UUIDs)
+
+The AMWA lab plant (`dhs_amwa_plant` role) uses **deterministic** UUIDs so
+a redeploy or heartbeat re-registration **updates** a resource, never
+creates a duplicate. Any duplicate label seen in a consumer (e.g.
+Cerebrum's registry) is therefore a **stale or foreign registration**
+that ages out on the heartbeat GC — not a UUID-churn bug. Keep this table
+as the test oracle for "duplicate vs mismatch vs real".
+
+Scale nodes `dhs-scale-NN` (NN = `00`–`19`), from
+`templates/scale-node.json.j2` with index `i` = NN — one device / source /
+flow / sender / receiver each:
+
+| Resource | UUID (`i` = 00–19) |
+| --- | --- |
+| Node | `aa000000-0000-4000-8000-0000000000`*i* |
+| Device | `bb000000-0000-4000-8000-0000000000`*i* |
+| Source | `cc000000-0000-4000-8000-0000000000`*i* |
+| Flow | `dd000000-0000-4000-8000-0000000000`*i* |
+| Sender | `ee000000-0000-4000-8000-0000000000`*i* |
+| Receiver | `ff000000-0000-4000-8000-0000000000`*i* |
+
+Fixed nodes:
+
+| Node | UUID |
+| --- | --- |
+| `dhs-test-node` (fixture `amwa-test-node.json`) | `2c47bf5e-1b2c-4abc-9def-deadbeef0001` |
+| Neuron `bm-n-nnbrg-c01` (real EVS device) | `b7011c4e-5f39-5a1a-a6eb-a8036b0a5fd9` |
+
+Fleet total: **22 nodes / 237 senders / 231 receivers** (208 senders are
+the Neuron's). Feeding these into Cerebrum's own registry is a separate
+bridge — see the mirror in [`dev-test-flow.md`](deployment/dev-test-flow.md).
+
+**Clean-test rule:** run the AMWA conformance suite **or** the registry
+mirror against the registry, not both at once — the conformance tool
+registers its own mock nodes (foreign UUIDs) which a running mirror would
+forward and show as transient extras. Only one mirror at a time.
+
+## Producer port plan (every Linux LXC + win11)
 
 | Connector | Wire | Port |
 | --- | --- | --- |
@@ -27,66 +242,155 @@ Windows producer parity row required by ADR-0016.
 | ACP2 | TCP (AN2) | `2072` |
 | Ember+ | TCP (S101) | `9000` |
 | Probel SW-P-08 | TCP (DLE) | `2008` |
-| AMWA NMOS Node | HTTP | `18080` |
+| Probel SW-P-02 | TCP | `2002` |
+| AMWA NMOS Node | HTTP | `8080` (CLI default) / `18080` (fleet plan) |
+| AMWA NMOS Registry (Registration/Query) | HTTP + WS | `8235` |
+| AMWA NMOS IS-07 events | WS | `8090` |
+| AMWA NMOS IS-09 System | HTTP | `10641` |
+| Cerebrum NB | TCP | `40007` (staging Cerebrum answers on `40009`) |
+| mDNS (Avahi / Bonjour) | UDP | `5353` |
+| metrics (`--metrics-addr`) | HTTP | `9100` |
+| SSH / WinRM (mgmt) | TCP | `22` / `5985` |
 
 All producers run concurrently on the same host; one port per
 connector. The same producer binary is driven by `dhs consumer` and by
-external peers (Cerebrum @ `.5`, AMWA Testing tool in Docker on `.105`)
-so wire behaviour can be compared across drivers.
+external peers (Cerebrum @ `.5`, AMWA Testing tool in Docker on
+`dhs-tools` `.104`) so wire behaviour can be compared across drivers.
+Host firewalls are managed by the `dhs_firewall` role (#785): each host opens exactly the rule groups of the connectors it declares in `dhs_connectors` (host_vars) plus ssh/metrics(/winrm); other `dhs-*` rules are removed; Windows connector rules are scoped to `C:\dhs\dhs.exe`; the `nmos` group includes mDNS and requires `dhs_mdns`.
 
-## SSH access mesh
+## Control node
 
-The agent (Claude, git author `by-rune`) needs passwordless SSH to and
-from every node in the fleet so it can launch / restart / probe
-producers from any host.
+`dhs-debian` (`10.6.250.101`) runs every Ansible play — Linux hosts over
+SSH as `root`, the Windows VM over SSH as `by-rune` (key auth). The fleet
+has **no internet**, so code arrives as a **git bundle** from the desk
+(see [`dev-test-flow.md`](deployment/dev-test-flow.md)), not `git pull`.
+The AMWA plant checkout lives at **`/root/acp-plant`** (its git `origin`
+is the shipped bundle `/tmp/plantfull.bundle`); the plant registry runs
+as the `dhs-nmos-registry` systemd unit
+(`/opt/dhs-amwa-plant/dhs registry nmos serve --bind :8235`). Never
+drive the fleet from a Windows workstation (PowerShell) — ADR-0025 §5.
 
-### Key material
+**Secondary runner** (#938): `dhs-tools` (`10.6.250.104`) carries its
+own pipx `ansible-core` and repo mirror (`/root/acp-runner`, cloned
+from the primary's `/root/acp-plant`), converged by
+`playbooks/amwa-runner.yml`. It exists for exactly one class of play:
+ones that reboot the primary control node itself
+(`amwa-reboot-resilience.yml`, `amwa-reboot-gate.yml`) — a play cannot
+survive rebooting the host it runs on. Everything else stays on the
+primary.
 
-- Single ed25519 keypair, no passphrase: `id_dhs_testbed` (private),
-  `id_dhs_testbed.pub` (public).
-- Generated once on `BY-DESK-03`, then distributed to every node so the
-  same `~/.ssh/id_dhs_testbed` exists on every Linux LXC and on the
-  Windows host. This makes the mesh symmetric — any node can SSH any
-  other node with the same key.
-- The agent shell on `BY-DESK-03` continues to use the existing key
-  `~/.ssh/by-rune_lxc` for outbound SSH (already present and working).
-  The new `id_dhs_testbed` mesh is for fleet-internal SSH and replaces
-  the desk-03-only path.
+Monitoring a run (#790): every play logs to `/tmp/ansible-fleet.log`
+on the control node (`tail -f` it) and prints per-task timings
+(`profile_tasks`); `ps -eo pid,lstart,etimes,args | grep ansible-playbook`
+shows which pass is running and for how long. Windows tasks run with
+`ansible_shell_type: powershell` against an sshd `DefaultShell` of
+PowerShell (set by `dhs_access`, sshd restarted when it changes) — a
+fresh VM needs `playbooks/win-shell-bootstrap.yml` once (play-scoped cmd
+shell; never a global `-e ansible_shell_type`, it would hit tasks delegated
+to the control node). Facts are cached for an hour (`/tmp/ansible-facts`).
+Ad-hoc `ssh by-rune@win11 '<cmd>'` now lands in PowerShell, not cmd.
 
-### Account
+## Access — actor keys, not per-host keys
 
-Login user is `root` on every Linux LXC (the `by-rune` user is
-rejected by sshd config on the LXCs; only `root` accepts the key —
-verified 2026-05-10). On `dhs-win11` the equivalent is the local
-Administrator user with OpenSSH server enabled.
+Exactly four ed25519 identities are authorized on every host, managed
+by the `dhs_access` role (#782); anything else is removed:
 
-### Authorised destinations (mesh)
+| Actor | Key comment | Purpose |
+| --- | --- | --- |
+| by-rune (agent, desk-03) | `by-rune-dhs-lxc` | agent SSH to every host |
+| control node `.101` | `root@dhs` | Ansible → fleet |
+| codeowner | (owner's ed25519) | direct SSH |
+| secondary runner `.104` | `runner-dhs-tools` | plays that reboot the primary control node (#938) |
 
-| Source → | dhs-debian | dhs-ubuntu | dhs-rocky | dhs-tools | dhs-win11 | desk-03 |
-| --- | --- | --- | --- | --- | --- | --- |
-| dhs-debian | self | yes | yes | yes | yes | (pull only) |
-| dhs-ubuntu | yes | self | yes | yes | yes | (pull only) |
-| dhs-rocky | yes | yes | self | yes | yes | (pull only) |
-| dhs-tools | yes | yes | yes | self | yes | (pull only) |
-| dhs-win11 | yes | yes | yes | yes | self | (pull only) |
-| desk-03 | yes | yes | yes | yes | yes | self |
+Linux: `/root/.ssh/authorized_keys` (login user is `root`; `by-rune` is
+rejected by sshd on the LXCs). Windows: `by-rune` is in the local
+Administrators group, so sshd reads
+`C:\ProgramData\ssh\administrators_authorized_keys` (strict ACL:
+SYSTEM + Administrators only) — the per-profile `authorized_keys` is
+ignored for admin users, which is why earlier key installs "did
+nothing". No GPG keys and no per-host keypairs are generated (commit
+signing belongs to the parked hardening topic).
 
-`desk-03` initiates SSH outbound. The fleet does not SSH back into
-`desk-03` (the codeowner's workstation is on the OOB VLAN behind
-pfSense and is not reachable from the DMZ).
+## mDNS daemons
 
-### Distribution status
+Avahi 0.8 is installed, active and pinned by the `dhs_mdns` role on all
+four LXCs (Docker hosts exclude `docker0` from Avahi). On `win11` the
+role installs Apple Bonjour unattended: it stages `BonjourPSSetup.exe`
+at `C:\dhs\installers\`, carves the embedded CAB, expands it and
+installs the core `Bonjour64.msi` with `msiexec /qn` (the bootstrapper's
+own silent mode only installs the Print-Services MSI, which fails
+without the core — #797), then keeps "Bonjour Service" running /
+automatic. dhs uses the stdlib mDNS fallback on Windows until the
+Bonjour backend (#195) lands.
 
-- desk-03 → fleet: working via `~/.ssh/by-rune_lxc` (legacy key).
-- Fleet ↔ fleet: **NOT YET DISTRIBUTED.** The new `id_dhs_testbed`
-  keypair has not been generated or pushed. Tracked as a separate
-  infra task — see "Open work" below.
+## Host baseline (`dhs_host` role, #800)
+
+Every fleet host gets the same dhs baseline, per OS, from the
+`dhs_host` role (first role in `fleet-converge.yml`):
+
+| | Linux (LXCs) | win11 |
+| --- | --- | --- |
+| binary | `/usr/local/bin/dhs` from the pinned GitHub release `dhs_version` (tar.gz, sha256 checked against `SHA256SUMS.txt`) | `C:\dhs\dhs.exe` (zip, same checksum rule) |
+| PATH / env | `/etc/profile.d/dhs.sh` (PATH, `DHS_DATA_DIR=/var/lib/dhs`) | machine `PATH += C:\dhs`, `DHS_DATA_DIR=C:\ProgramData\dhs\data` |
+| directories | `/etc/dhs` (trees/packs), `/var/lib/dhs` (data), `/var/log/dhs` | `C:\dhs`, `C:\ProgramData\dhs\{data,logs}` |
+| packages | tshark/wireshark-cli, curl, jq, ca-certificates, unzip, tar | — |
+
+Time (#804): `win11` syncs w32time to the fabric gateway
+`10.6.255.254` (set by `dhs_host`); the LXCs cannot set
+their own clock — they inherit the Proxmox node's, which was measured
+~9 min ahead on 2026-08-23 → `ansible/playbooks/pve-time.yml` (#810,
+group `pve` = pve01 over SSH as root; chrony + `makestep`; platform twin
+`ansible-platform#168`);
+`fleet-verify.yml` prints each host's offset vs the control node.
+
+IPv6: this fleet is **IPv4-only** (owner). VLAN 600 offers no
+RA/DHCPv6 — so NICs
+hold link-local IPv6 only and nothing autoconfigures. Dual stack belongs
+to the NEW Proxmox node, not here; do not reintroduce an IPv6 scheme for
+this fleet without the owner asking.
+
+Roll the fleet to a new release by bumping `dhs_version` and converging
+(run-twice = 0 changes). Layering: hypervisor = `infra-terraform-proxmox`
+(import of the dhs guests tracked there), OS baseline/hardening =
+`ansible-platform` (sshd 22222 / `by-systems`; applies when hardening
+un-parks — the inventory then switches port/user), dhs application layer
+= this repo's roles.
+
+### win11 Ansible latency (#790, #812, #815)
+
+A no-op `fleet-converge.yml -l win11` pass, measured 2026-08-23 from the
+control node:
+
+| Configuration | Duration |
+| --- | ---: |
+| SSH transport, one `win_firewall_rule` task per rule | 481 s |
+| PSRP over WinRM-HTTPS, client-certificate auth (#812) | 305 s |
+| + `dhs_firewall` single-pass reconcile, bulk query + in-memory join (#790) | 236 s |
+| + Defender path exclusions, VM 654 at 8 GB (#815) | 139-156 s |
+
+What each lever fixed. Over SSH every task spawns a fresh PowerShell on
+the target - connection reuse (`ControlPersist`) was already on, so the
+cost is process spawn, not connect; PSRP keeps one runspace for the
+whole play. Per-rule `Get-NetFirewallRule` + `Get-NetFirewall*Filter`
+cost ~3 s each, so ~30 rules were 111 s of the pass - one bulk query
+joined in memory removes it. Defender scanned every module written to
+`ansible-tmp-*`; the exclusions (`dhs_host_defender_exclusions`) are
+narrow by design - `C:\dhs`, `C:\ProgramData\dhs`, and the
+`ansible-tmp-*` pattern only, never a blanket `%TEMP%` or a system-wide
+exclusion, and real-time protection stays on. A memory change on the VM
+needs a hypervisor stop/start: `win_reboot` restarts the guest only, the
+QEMU process survives and keeps the old `maxmem`.
+
+The floor is now per-task, not per-role - the twelve slowest tasks are
+all 4.0-5.7 s of pure module round-trip. The next lever is task-count
+consolidation (one idempotent script per role's Windows path, as
+`dhs_firewall` already does), not transport.
 
 ## Producer launch and stop
 
 ### Linux LXC (Debian / Ubuntu / Rocky)
 
-Launch the four producers nohup-detached, writing logs to
+Launch the producers nohup-detached, writing logs to
 `/var/log/dhs-<proto>.log`. Example for ACP2:
 
 ```sh
@@ -100,39 +404,43 @@ Hard-stop by walking `/proc/*/exe` symlinks pointing to
 `/usr/local/bin/dhs` and killing each PID. Helper script at
 `bin/stop-dhs.sh`.
 
-### dhs-win11
+### win11
 
-OpenSSH server on the Windows host, `dhs.exe` placed under
-`C:\Program Files\dhs\dhs.exe`. Producer launch via PowerShell
-`Start-Process` with `-WindowStyle Hidden` and a redirect of
-stdout/stderr to log files under `C:\ProgramData\dhs\logs\`.
+OpenSSH Server on the VM, `dhs.exe` under `C:\dhs\dhs.exe` (see
+`ansible/inventory/group_vars/windows.yml`). Producer launch via
+`Start-Process -WindowStyle Hidden` with stdout/stderr redirected to
+`C:\ProgramData\dhs\logs\`.
+
+## OS updates (reboot-if-required, then continue)
+
+`ansible/playbooks/fleet-update.yml` (#799) patches the fleet the way
+production will: Windows Update on `win11` through `win_updates`
+(security/critical/rollups/updates) with `reboot: true` — Ansible
+performs the reboot only when Windows requires it, waits for SSH to
+return on the same path and **continues** with the post-update tasks;
+`apt`/`dnf` upgrades on the LXCs with `reboot` only when the OS flags it
+(`/var/run/reboot-required`, `needs-restarting -r`). The control node is
+never rebooted mid-play (reported instead — reboot it between runs).
+Second run = 0 updates / 0 changes.
 
 ## Caveats
 
 - `amwa/nmos-testing:latest` upstream regressed to the "Controller
   Testing Façade" on port 5001 after 2026-04-30. Pin to a pre-Façade
-  tag or run from source.
-- Win11 desk-03 (the codeowner's workstation) sits on the OOB VLAN and
-  cannot reach the DMZ via mDNS. `dhs-win11` (`.106`) on the DMZ
-  provides the Bonjour live test surface instead.
+  tag or run from source (#173).
+- desk-03 (the codeowner's workstation) sits on the OOB VLAN and cannot
+  reach the DMZ via mDNS. `win11` (`.105`) on the DMZ provides the
+  Windows mDNS live test surface instead.
 - Cerebrum drops `v1.0` from `api.versions` on registration — real-peer
   fact, not our bug.
-
-## Pending rig changes
-
-- Add `eth1` second NIC per `dhs-*` Linux LXC for dual-controller
-  redundancy testing per ADR-0022 (N-endpoints/Frame). Planned
-  pairings: `.102/.108`, `.103/.109`, `.104/.107`.
-- Bring `dhs-win11` (`.106`) online with the four producers running
-  to complete the multi-OS coverage matrix.
+- The Synapse ACP1 emulator referenced by `ansible/inventory/group_vars/all.yml`
+  (`10.6.239.113`) is on the office network, not the DMZ.
 
 ## Open work
 
-- Generate `id_dhs_testbed` keypair on `BY-DESK-03`.
-- Distribute private + public to every node in the fleet (LXCs +
-  Windows) and add the public to every `authorized_keys`.
-- Verify the mesh: from each node, `ssh -i ~/.ssh/id_dhs_testbed
-  <every-other-node>` succeeds without prompting.
-
-These are infra actions that require codeowner-side execution (key
-distribution touches credentials and is therefore not autonomous).
+Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
+hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
+firewall (#785), host baseline (#800), OS updates + reboot (#799),
+time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815).
+Post-migration follow-up still open: confirm Cerebrum's VLAN 600 address.
+`dhs_netaddr` was reworked for VLAN 600 on 2026-09-17.

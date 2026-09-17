@@ -2,11 +2,11 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/acp1/codec"
 	"encoding/binary"
 	"log/slog"
 	"math"
 	"time"
-	"dhs/internal/acp1/codec"
 )
 
 // RunAnnounceDemo oscillates the integer value at (slot, group, id)

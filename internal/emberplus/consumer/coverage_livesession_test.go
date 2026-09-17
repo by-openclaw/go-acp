@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -115,7 +116,7 @@ func TestConsumerReconnect(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(proxy.addr())
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Fast, bounded reconnect so the test is deterministic and quick.
 	p.reconnectPolicyOverride = &reconnectPolicy{
 		InitialBackoff: 5 * time.Millisecond,
@@ -143,32 +144,40 @@ func TestConsumerReconnect(t *testing.T) {
 		t.Fatalf("initial Walk: %v", err)
 	}
 
-	// Sever the link â€” consumer should observe the disconnect and
+	// Remember the pre-sever session object. reconnectLoop builds a
+	// FRESH session on success, so a changed pointer is a MONOTONIC
+	// proof that the disconnect was observed (onSessionStateChange
+	// false fired, the loop launched) AND the redial succeeded. The
+	// old two-phase poll sampled the transient sessionConnected=false
+	// window — with a 5 ms backoff the whole sever→redial cycle can
+	// complete between two polls, so the false state was never seen
+	// (rocky9, run 32428699670; ADR-0029 determinism rule).
+	p.mu.Lock()
+	oldSess := p.session
+	p.mu.Unlock()
+
+	// Sever the link — consumer should observe the disconnect and
 	// auto-reconnect.
 	proxy.sever()
 
-	// First, wait for the disconnect to register (sessionConnected
-	// false). This guarantees onSessionStateChange(false) fired and the
-	// reconnect goroutine launched.
-	disconnectSeen := false
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
+	replaced := false
 	for time.Now().Before(deadline) {
 		p.mu.Lock()
-		connected := p.sessionConnected
+		replaced = p.session != oldSess
 		p.mu.Unlock()
-		if !connected {
-			disconnectSeen = true
+		if replaced {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if !disconnectSeen {
-		t.Fatal("consumer never observed the unsolicited disconnect")
+	if !replaced {
+		t.Fatal("reconnect never replaced the severed session")
 	}
 
-	// Now wait for the reconnect: session live again AND the tree
-	// re-walked. refreshAfterReconnect clears the tree then re-walks, so
-	// a populated numIndex after the disconnect proves the refresh ran.
+	// Now wait for the refresh: session live AND the tree re-walked.
+	// refreshAfterReconnect clears the tree then re-walks, so a
+	// populated numIndex after the session swap proves the refresh ran.
 	deadline = time.Now().Add(5 * time.Second)
 	reconnected := false
 	for time.Now().Before(deadline) {
@@ -204,7 +213,7 @@ func TestConsumerReconnect_StopOnDisconnect(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(proxy.addr())
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.reconnectPolicyOverride = &reconnectPolicy{
 		InitialBackoff: time.Second, // long, so the loop is mid-backoff when we stop it
 		MaxBackoff:     time.Second,
@@ -280,23 +289,22 @@ func startStreamMatrixProvider(t *testing.T) (string, func()) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{meter, mtx},
 	}}
-	srv := (&provider.Factory{}).New(nil, &canonical.Export{Root: root})
+	srv := (&provider.Factory{}).New(plugin.Deps{}, &canonical.Export{Root: root})
+	// Pre-bound listener: no close-then-rebind port-steal window and no
+	// dial-poll (#694 flake class).
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
 	addr := ln.Addr().String()
-	_ = ln.Close()
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() { _ = srv.Serve(ctx, addr) }()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if c, derr := net.DialTimeout("tcp", addr, 100*time.Millisecond); derr == nil {
-			_ = c.Close()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
+	sl, ok := srv.(interface {
+		ServeListener(context.Context, net.Listener) error
+	})
+	if !ok {
+		t.Fatal("provider does not expose ServeListener")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { _ = sl.ServeListener(ctx, ln) }()
 	return addr, func() { cancel(); _ = srv.Stop() }
 }
 
@@ -311,7 +319,7 @@ func TestLoopbackStreamMatrix(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	ctx := context.Background()
 	if err := p.Connect(ctx, host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
@@ -347,7 +355,7 @@ func TestLoopbackVerbsFull(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	ctx := context.Background()
 	if err := p.Connect(ctx, host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
@@ -422,7 +430,7 @@ func TestLoopbackVerbsFull(t *testing.T) {
 // address with a bounded attempt count so the MaxAttempts give-up
 // branch (and the backoff-doubling cap) are exercised deterministically.
 func TestReconnectLoop_GiveUp(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1 // nothing listens here → every dial fails fast
 	p.reconnectPolicyOverride = &reconnectPolicy{
@@ -443,7 +451,7 @@ func TestReconnectLoop_GiveUp(t *testing.T) {
 // TestReconnectLoop_CtxCancelled covers the ctx.Err() early return at the
 // top of the loop.
 func TestReconnectLoop_CtxCancelled(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	p.connIP = "127.0.0.1"
 	p.connPort = 1
 	ctx, cancel := context.WithCancel(context.Background())
@@ -461,7 +469,7 @@ func TestReconnectLoop_CtxCancelled(t *testing.T) {
 // and the Walk-failure branch (no session → ErrNotConnected) of
 // refreshAfterReconnect.
 func TestRefreshAfterReconnect_EdgeBranches(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Initialise the index maps clearTree expects.
 	p.numIndex = map[string]*treeEntry{}
 	p.pathIndex = map[string]*treeEntry{}
@@ -492,7 +500,7 @@ func TestWildcardSubscribeBatch(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	if err := p.Connect(context.Background(), host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}

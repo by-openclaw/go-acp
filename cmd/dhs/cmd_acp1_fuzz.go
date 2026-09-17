@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"time"
 
-	acp1provider "dhs/internal/acp1/provider"
 	"dhs/internal/acp1/codec"
+	acp1provider "dhs/internal/acp1/provider"
 	"dhs/internal/provider"
 )
 
@@ -34,7 +34,7 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 		logLevel  = fs.String("log-level", "info", "log level: debug / info / warn / error")
 		logFormat = fs.String("log-format", "text", "log format: text / json")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *treePath == "" {
@@ -75,7 +75,7 @@ func runACP1Fuzz(ctx context.Context, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", *host, listenPort)
 
-	srv, ok := factory.New(logger, tree).(*acp1provider.Server)
+	srv, ok := factory.New(pluginDeps(logger), tree).(*acp1provider.Server)
 	if !ok {
 		return fmt.Errorf("acp1 fuzz: unexpected server type")
 	}

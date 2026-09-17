@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
+	"dhs/internal/consumer"
 	"dhs/internal/export"
 	"dhs/internal/identity"
-	"dhs/internal/consumer"
 )
 
 // Sentinel errors returned by the resolver.

@@ -1,0 +1,86 @@
+{
+  "harvested_at": "2026-08-24T09:00:20.0000000+02:00",
+  "target": "198.51.100.22:3212",
+  "harvester": "nmos-harvest.ps1",
+  "version": "2026.08.23.15",
+  "apis": {
+    "_root": ["node/", "connection/"],
+    "node": {
+      "versions": ["v1.3"],
+      "data": {
+        "v1.3": {
+          "self": {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "version": "1755000001:0",
+            "label": "mv-01",
+            "description": "",
+            "tags": {},
+            "href": "http://198.51.100.22:3212/"
+          },
+          "devices": [
+            {
+              "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              "version": "1755000001:0",
+              "label": "mv-01 device",
+              "description": "",
+              "tags": {},
+              "type": "urn:x-nmos:device:generic",
+              "node_id": "22222222-2222-4222-8222-222222222222",
+              "senders": [],
+              "receivers": [],
+              "controls": []
+            }
+          ],
+          "sources": [],
+          "flows": [],
+          "senders": [
+            {
+              "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              "version": "1755000001:0",
+              "label": "mv-01 out",
+              "description": "",
+              "tags": {},
+              "flow_id": null,
+              "transport": "urn:x-nmos:transport:rtp.mcast",
+              "device_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              "manifest_href": "http://198.51.100.22:3212/x-nmos/node/v1.3/sdp/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              "interface_bindings": ["eth0", "eth1"],
+              "subscription": { "receiver_id": null, "active": true }
+            }
+          ],
+          "receivers": []
+        }
+      }
+    },
+    "connection": {
+      "versions": ["v1.1"],
+      "data": {
+        "v1.1": {
+          "single_senders": ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/"],
+          "senders/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/active": {
+            "master_enable": true,
+            "activation": { "mode": null, "requested_time": null, "activation_time": "1755000001:0" },
+            "receiver_id": null,
+            "transport_params": [
+              {
+                "destination_ip": "233.252.0.20",
+                "destination_port": 20000,
+                "source_ip": "198.51.100.22",
+                "source_port": 5004,
+                "rtp_enabled": true
+              },
+              {
+                "destination_ip": "233.252.0.30",
+                "destination_port": 20000,
+                "source_ip": "198.51.100.22",
+                "source_port": 5004,
+                "rtp_enabled": false
+              }
+            ]
+          },
+          "bulk": null
+        }
+      }
+    }
+  }
+}

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // runExport walks every present slot on the device and writes the
@@ -20,16 +20,38 @@ import (
 // the --out filename extension second, defaulting to json.
 func runExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpExport) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
 	out := fs.String("out", "", "output file path (default: stdout)")
 	slot := fs.Int("slot", -1, "export only this slot (-1 = all present slots)")
-	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
+	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1); with --out-dir: the matrix to export (dotted path or numeric OID)")
+	outDir := fs.String("out-dir", "", "canonical matrix file-set mode (#461): write <prefix>-matrix.csv / -xpoint.csv / -src.csv / -dst.csv for the matrix named by --path (same grammar as probel-sw08p / cerebrum-nb)")
+	prefix := fs.String("prefix", "matrix", "file prefix used with --out-dir")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE] [--slot N] [--path SEG.SEG]")
+		return fmt.Errorf("usage: dhs consumer <proto> export <host> [--format json|yaml|csv] [--out FILE | --out -] [--slot N] [--path SEG.SEG] [--out-dir DIR --prefix P]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
+
+	// ADR-0028 default home: --out omitted → snapshots/<proto>/<host>/
+	// params.<fmt> (deterministic, never a cwd surprise). --out "-"
+	// keeps the explicit stdout stream.
+	stdoutOut := *out == "-"
+	if stdoutOut {
+		*out = ""
+	}
+	if !stdoutOut && *out == "" && *outDir == "" {
+		ext := "json"
+		switch *format {
+		case "yaml", "yml":
+			ext = "yaml"
+		case "csv":
+			ext = "csv"
+		}
+		*out = filepath.Join(snapshotDir(cf.protocol, host), "params."+ext)
+		fmt.Fprintf(os.Stderr, "export: default snapshot file %s (ADR-0028)\n", *out)
+	}
 
 	// Format resolution: --format wins; otherwise guess from --out extension.
 	fmtStr := *format
@@ -74,6 +96,21 @@ func runExport(ctx context.Context, args []string) error {
 		Generator: "acp " + version,
 		CreatedAt: time.Now().UTC(),
 	}
+	// Canonical matrix file-set mode (#461): walk, then write the
+	// -matrix/-xpoint/-src/-dst CSV set for the selected matrix instead
+	// of a snapshot. Same verbs + grammar as the levelled protocols.
+	if *outDir != "" {
+		var all []consumer.Object
+		for s := 0; s < info.NumSlots; s++ {
+			objs, werr := plug.Walk(ctx, s)
+			if werr != nil {
+				continue
+			}
+			all = append(all, objs...)
+		}
+		return runMatrixSetExport(plug, all, *pathFlag, *outDir, *prefix, cf.protocol, host)
+	}
+
 	for s := 0; s < info.NumSlots; s++ {
 		if *slot >= 0 && s != *slot {
 			continue
@@ -106,6 +143,11 @@ func runExport(ctx context.Context, args []string) error {
 	// Pick the output writer: file or stdout.
 	var w io.Writer = os.Stdout
 	if *out != "" {
+		if dir := filepath.Dir(*out); dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return fmt.Errorf("create %s: %w", dir, err)
+			}
+		}
 		f, ferr := os.Create(*out)
 		if ferr != nil {
 			return fmt.Errorf("create %s: %w", *out, ferr)

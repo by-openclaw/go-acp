@@ -185,7 +185,7 @@ func TestServeAN2_AnnouncesGatedByEnableProtocolEvents(t *testing.T) {
 	// broadcastACP1 which honours the per-session events-enabled flag.
 	setReq := &codec.Message{
 		MTID: 2, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodSetValue),
+		MCode:    byte(codec.MethodSetValue),
 		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x07}, // i16 BE = 7
 	}

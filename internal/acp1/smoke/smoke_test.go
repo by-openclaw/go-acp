@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/codec"
 	"dhs/internal/acp1/consumer"
+	"dhs/internal/consumer"
 )
 
 func testHost() string {

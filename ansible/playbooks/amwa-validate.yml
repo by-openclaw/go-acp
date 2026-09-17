@@ -1,0 +1,22 @@
+---
+# The whole AMWA conformance gate — every role, in dependency order
+# (registry before node: node suites assume a serving plant registry;
+# mirror after the resident scopes: it asserts on what those plays
+# left running; the IS-10 auth twins close the gate).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate.yml
+
+- import_playbook: amwa-validate-registry.yml
+- import_playbook: amwa-validate-node.yml
+- import_playbook: amwa-validate-controller.yml
+- import_playbook: amwa-validate-mirror.yml
+# Auth windows LAST (issue #942): prove the plain gate first, then the
+# armed one — every upgrade passes both WITHOUT and WITH IS-10. Mirror
+# stays before them: it asserts on what the resident plays leave
+# running, and the auth plays only add transients they tear down.
+- import_playbook: amwa-validate-registry-auth.yml
+- import_playbook: amwa-validate-node-auth.yml
+# TLS window after the auth ones (issue #948): same transient-only
+# posture — the plant residents never serve https; only the window's
+# CuT does, scored by the TLS tool instance.
+- import_playbook: amwa-validate-node-tls.yml

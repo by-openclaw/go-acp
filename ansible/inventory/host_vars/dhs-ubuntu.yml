@@ -1,0 +1,18 @@
+---
+# dhs-ubuntu — Proxmox LXC 652 "dhs.ubuntu24", Ubuntu 24.04 LTS.
+# eth0 10.6.250.102 (ansible_host); eth1 (mgmt-B, 10.6.250.112) parked since #822.
+pve_vmid: 652
+pve_name: dhs.ubuntu24
+pve_cores: 2          # P1 sizing (#817): LXC cores are a cgroup ceiling, not a reservation
+os_label: "Ubuntu 24.04"
+nics:
+  - { name: eth0, mac: "BC:24:11:28:78:25", ip: 10.6.250.102 }
+fleet_hostname: dhs-ubuntu
+
+# Ember+ producer: the DHD audio console tree, rebuilt from the committed
+# real-device capture (internal/emberplus/testdata/fixtures/dhd).
+ember_tree_src: "{{ playbook_dir }}/../files/trees/dhd.tree.json"
+
+# Connectors this host serves -> dhs_firewall opens exactly these rule groups
+# (nmos also needs the dhs_mdns daemon). Add/remove with the producer deploy.
+dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos]

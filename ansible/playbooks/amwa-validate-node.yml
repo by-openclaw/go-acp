@@ -1,0 +1,14 @@
+---
+# Validate the plant NODE against every AMWA suite it answers for.
+# Run after any node upgrade; the committed baselines are the verdict.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-node.yml
+#   # one suite: ... -e '{"dhs_amwa_validate_only":["IS-08-01"]}'
+
+- name: AMWA validate — node
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: node

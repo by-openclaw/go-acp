@@ -107,8 +107,8 @@ func DecodeExtendedProtectTallyDump(f Frame) (ExtendedProtectTallyDumpParams, er
 	for i := 0; i < int(count); i++ {
 		off := 1 + i*4
 		entries[i] = ExtendedProtectTallyDumpEntry{
-			Destination: (uint16(f.Payload[off+0]) & 0x7F) * 128 + uint16(f.Payload[off+1]),
-			Device:      (uint16(f.Payload[off+3]) & 0x07) * 128 + uint16(f.Payload[off+2]&0x7F),
+			Destination: (uint16(f.Payload[off+0])&0x7F)*128 + uint16(f.Payload[off+1]),
+			Device:      (uint16(f.Payload[off+3])&0x07)*128 + uint16(f.Payload[off+2]&0x7F),
 			Protect:     ProtectState((f.Payload[off+3] >> 4) & 0x07),
 		}
 	}

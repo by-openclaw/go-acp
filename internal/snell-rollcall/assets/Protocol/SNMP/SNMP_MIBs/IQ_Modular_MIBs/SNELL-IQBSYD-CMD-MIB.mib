@@ -1,0 +1,796 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBSYD
+--        Module Id#:90
+--       Command Set:6
+--          Filename:SNELL-IQBSYD-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:12:58
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBSYD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBSYD,
+    moduleIQBSYDMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBSYDCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281258Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBSYDMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbsydCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbsydCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBSYD 1 }
+
+	iqbsydCmdEntry OBJECT-TYPE
+		SYNTAX		IqbsydCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbsydSlotIndex }
+		::= { iqbsydCmdTable 1 }
+
+	IqbsydCmdEntry ::=
+		SEQUENCE {
+			iqbsydSlotIndex
+				Unsigned32,
+			iqbsydRouterOutputAInput
+				INTEGER,
+			iqbsydRouterOutputAVFade
+				INTEGER,
+			iqbsydRouterOutputAFadeDelay
+				INTEGER,
+			iqbsydRouterOutputASilence
+				INTEGER,
+			iqbsydRouterOutputBInput
+				INTEGER,
+			iqbsydRouterOutputBVFade
+				INTEGER,
+			iqbsydRouterOutputBFadeDelay
+				INTEGER,
+			iqbsydRouterOutputBSilence
+				INTEGER,
+			iqbsydRouterABSimul
+				INTEGER,
+			iqbsydDisplay
+				INTEGER,
+			iqbsydDisplayChannelStatusInf
+				INTEGER,
+			iqbsydDisplayChannelStatusSetupUp
+				INTEGER,
+			iqbsydDisplayChannelStatusSetupSubFrame
+				INTEGER,
+			iqbsydDisplayChannelStatusSetupDown
+				INTEGER,
+			iqbsydDisplayChannelStatusSetup
+				INTEGER,
+			iqbsydChannelStatOutputAInsertEditedCS
+				INTEGER,
+			iqbsydOutputAEditChannelStatOrigin
+				RollCallString,
+			iqbsydOutputAEditChannelStatDestination
+				RollCallString,
+			iqbsydChannelStatOutputBInsertEditedCS
+				INTEGER,
+			iqbsydOutputBEditChannelStatOrigin
+				RollCallString,
+			iqbsydOutputBEditChannelStatDestination
+				RollCallString,
+			iqbsydLock
+				INTEGER,
+			iqbsydMemorySave
+				INTEGER,
+			iqbsydMemoryRead
+				INTEGER,
+			iqbsydMemoryPreset
+				INTEGER,
+			iqbsydMemoryNamesMemory1
+				RollCallString,
+			iqbsydMemoryNamesMemory2
+				RollCallString,
+			iqbsydMemoryNamesMemory3
+				RollCallString,
+			iqbsydMemoryNamesMemory4
+				RollCallString,
+			iqbsydSetupPPM0dBuRefInA
+				INTEGER,
+			iqbsydSetupPPM0dBuRefInB
+				INTEGER,
+			iqbsydSetupGPISetupEnable
+				INTEGER,
+			iqbsydSetupGPISetup
+				INTEGER,
+			iqbsydGPISetupGPIPortLevel
+				INTEGER,
+			iqbsydGPISetupGPIPortPositive
+				INTEGER,
+			iqbsydSetupGPISetupGPICtrl
+				INTEGER,
+			iqbsydSetupPresetUnit
+				INTEGER,
+			iqbsydSetupLoggingAESInputA
+				INTEGER,
+			iqbsydSetupLoggingAESInputB
+				INTEGER,
+			iqbsydSetupLoggingAESReference
+				INTEGER,
+			iqbsydSetupLoggingVideoReference
+				INTEGER,
+			iqbsydSetupSoftwareVersion
+				RollCallString,
+			iqbsydSetupSerialNo
+				RollCallString
+		}
+
+	iqbsydSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbsydCmdEntry 0 }
+
+
+	iqbsydRouterOutputAInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 24  value= 0  
+					Input_B  cmdID= 24  value= 1  "
+		::= { iqbsydCmdEntry 24 }
+
+
+	iqbsydRouterOutputAVFade OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					V-Fade  cmdID= 26 "
+		::= { iqbsydCmdEntry 26 }
+
+
+	iqbsydRouterOutputAFadeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Fade_Delay  cmdID= 30  min= 0  max= 30  step= 2  format= %1.1f sec  div_scale= 10 
+					Min = 0.0 sec  Max = 3.0 sec  Step = 0.2 sec "
+		::= { iqbsydCmdEntry 30 }
+
+
+	iqbsydRouterOutputASilence OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Silence  cmdID= 28 "
+		::= { iqbsydCmdEntry 28 }
+
+
+	iqbsydRouterOutputBInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Input_B(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 25  value= 0  
+					Input_B  cmdID= 25  value= 1  "
+		::= { iqbsydCmdEntry 25 }
+
+
+	iqbsydRouterOutputBVFade OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					V-Fade  cmdID= 27 "
+		::= { iqbsydCmdEntry 27 }
+
+
+	iqbsydRouterOutputBFadeDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Fade_Delay  cmdID= 31  min= 0  max= 30  step= 2  format= %1.1f sec  div_scale= 10 
+					Min = 0.0 sec  Max = 3.0 sec  Step = 0.2 sec "
+		::= { iqbsydCmdEntry 31 }
+
+
+	iqbsydRouterOutputBSilence OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Silence  cmdID= 29 "
+		::= { iqbsydCmdEntry 29 }
+
+
+	iqbsydRouterABSimul OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_A_B_Simul(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					A/B_Simul  cmdID= 32  value= 1  "
+		::= { iqbsydCmdEntry 32 }
+
+
+	iqbsydDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_AES_Inputs(5),
+							val_AES_Outputs(6),
+							val_Input_A_PPM(7),
+							val_Input_B_PPM(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					AES_Inputs  cmdID= 18  value= 5  
+					AES_Outputs  cmdID= 18  value= 6  
+					Input_A_PPM  cmdID= 18  value= 7  
+					Input_B_PPM  cmdID= 18  value= 8  "
+		::= { iqbsydCmdEntry 18 }
+
+
+	iqbsydDisplayChannelStatusInf OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel_Status_Inf  cmdID= 19 "
+		::= { iqbsydCmdEntry 19 }
+
+
+	iqbsydDisplayChannelStatusSetupUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Up  cmdID= 20  value= 1  "
+		::= { iqbsydCmdEntry 20 }
+
+
+	iqbsydDisplayChannelStatusSetupSubFrame OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SubFrame_1(0),
+							val_SubFrame_2(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SubFrame_1  cmdID= 22  value= 0  
+					SubFrame_2  cmdID= 22  value= 1  "
+		::= { iqbsydCmdEntry 22 }
+
+
+	iqbsydDisplayChannelStatusSetupDown OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Down(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Down  cmdID= 21  value= 1  "
+		::= { iqbsydCmdEntry 21 }
+
+
+	iqbsydDisplayChannelStatusSetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_A(0),
+							val_Output_A(3),
+							val_Input_B(1),
+							val_Output_B(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 23  value= 0  
+					Output_A  cmdID= 23  value= 3  
+					Input_B  cmdID= 23  value= 1  
+					Output_B  cmdID= 23  value= 4  "
+		::= { iqbsydCmdEntry 23 }
+
+
+	iqbsydChannelStatOutputAInsertEditedCS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Edited_CS  cmdID= 6 "
+		::= { iqbsydCmdEntry 6 }
+
+
+	iqbsydOutputAEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 16  "
+		::= { iqbsydCmdEntry 16 }
+
+
+	iqbsydOutputAEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 14  "
+		::= { iqbsydCmdEntry 14 }
+
+
+	iqbsydChannelStatOutputBInsertEditedCS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Edited_CS  cmdID= 7 "
+		::= { iqbsydCmdEntry 7 }
+
+
+	iqbsydOutputBEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 17  "
+		::= { iqbsydCmdEntry 17 }
+
+
+	iqbsydOutputBEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 15  "
+		::= { iqbsydCmdEntry 15 }
+
+
+	iqbsydLock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video(2),
+							val_AES_Reference(1),
+							val_Internal(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Lock  cmdID= 5 
+					Video  value= 2  
+					AES_Reference  value= 1  
+					Internal  value= 0  "
+		::= { iqbsydCmdEntry 5 }
+
+
+	iqbsydMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 36 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbsydCmdEntry 36 }
+
+
+	iqbsydMemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 35 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  "
+		::= { iqbsydCmdEntry 35 }
+
+
+	iqbsydMemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Preset_All_Memories(5),
+							val_Preset_All_Names(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 37 
+					Memory_1  value= 1  
+					Memory_2  value= 2  
+					Memory_3  value= 3  
+					Memory_4  value= 4  
+					Preset_All_Memories  value= 5  
+					Preset_All_Names  cmdID= 37  value= 6  "
+		::= { iqbsydCmdEntry 37 }
+
+
+	iqbsydMemoryNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 38  "
+		::= { iqbsydCmdEntry 38 }
+
+
+	iqbsydMemoryNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 39  "
+		::= { iqbsydCmdEntry 39 }
+
+
+	iqbsydMemoryNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 40  "
+		::= { iqbsydCmdEntry 40 }
+
+
+	iqbsydMemoryNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 41  "
+		::= { iqbsydCmdEntry 41 }
+
+
+	iqbsydSetupPPM0dBuRefInA OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_A  cmdID= 12  min= -24  max= -12  step= 1  format= %1.0f dBFS  div_scale= 1 
+					Min = -24 dBFS  Max = -12 dBFS  Step = 1 dBFS "
+		::= { iqbsydCmdEntry 12 }
+
+
+	iqbsydSetupPPM0dBuRefInB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_B  cmdID= 13  min= -24  max= -12  step= 1  format= %1.0f dBFS  div_scale= 1 
+					Min = -24 dBFS  Max = -12 dBFS  Step = 1 dBFS "
+		::= { iqbsydCmdEntry 13 }
+
+
+	iqbsydSetupGPISetupEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable  cmdID= 43 "
+		::= { iqbsydCmdEntry 43 }
+
+
+	iqbsydSetupGPISetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_A_B(0),
+							val_Silence(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					A<-->B  cmdID= 42  value= 0  
+					Silence  cmdID= 42  value= 3  "
+		::= { iqbsydCmdEntry 42 }
+
+
+	iqbsydGPISetupGPIPortLevel OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Level(0),
+							val_Pulse(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Level  cmdID= 45  value= 0  
+					Pulse  cmdID= 45  value= 1  "
+		::= { iqbsydCmdEntry 45 }
+
+
+	iqbsydGPISetupGPIPortPositive OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Positive(0),
+							val_Negative(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Positive  cmdID= 46  value= 0  
+					Negative  cmdID= 46  value= 1  "
+		::= { iqbsydCmdEntry 46 }
+
+
+	iqbsydSetupGPISetupGPICtrl OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output_A(0),
+							val_Output_B(1),
+							val_A_B(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI_Ctrl  cmdID= 44 
+					Output_A  value= 0  
+					Output_B  value= 1  
+					A+B  value= 2  "
+		::= { iqbsydCmdEntry 44 }
+
+
+	iqbsydSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbsydCmdEntry 3 }
+
+
+	iqbsydSetupLoggingAESInputA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_A  cmdID= 8 "
+		::= { iqbsydCmdEntry 8 }
+
+
+	iqbsydSetupLoggingAESInputB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_B  cmdID= 9 "
+		::= { iqbsydCmdEntry 9 }
+
+
+	iqbsydSetupLoggingAESReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Reference  cmdID= 10 "
+		::= { iqbsydCmdEntry 10 }
+
+
+	iqbsydSetupLoggingVideoReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Video_Reference  cmdID= 11 "
+		::= { iqbsydCmdEntry 11 }
+
+
+	iqbsydSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbsydCmdEntry 2 }
+
+
+	iqbsydSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbsydCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 525
+--				: 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.70.82.69.81
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.70.82.69.81
+-- Vary			: YES
+--
+-- Value(s)		: **
+--				: 48kHz  
+--				: 44.1kHz
+--				: 32kHz  
+--				: 48kHz  
+--				: 44.1kHz
+--				: 44.1kHz
+--				: 32kHz  
+--				: ??     
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST CH_A
+--				: LOST CH_B
+--				: LOST CH_C
+--				: OK   CH_A
+--				: OK   CH_B
+--				: OK   CH_C
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: INV
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

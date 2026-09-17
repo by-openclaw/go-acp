@@ -1,0 +1,95 @@
+---
+# Validate the MIRROR registry. AMWA ships no mirror suite — the
+# checks here are ours: the mirror must hold a live Query WS
+# subscription on the upstream registry (its whole job), which is also
+# what keeps the registry's subscription surface testable
+# (IS-04-02 auto_query_18/19 need a real subscription to exist).
+#
+# Grows with the mirror unit (program slot 5): resource parity
+# upstream-vs-mirror, audit-trail assertions, and the
+# controller-in-the-middle checks.
+#
+# Two plays: the parity/health checks first (a broken mirror should
+# fail cheaply, not mid-suite), then the catalog's mirror-scope suites
+# (scope: mirror in dhs_amwa_validate_suites) — IS-04-02 scored
+# end-to-end THROUGH the mirror's served Query face (issue #946).
+
+- name: AMWA validate — mirror
+  hosts: tooling
+  gather_facts: false
+  vars:
+    dhs_amwa_validate_plant_host: "10.6.250.101"
+    dhs_amwa_validate_registry_port: 8235
+    dhs_amwa_validate_mirror_status: "http://10.6.250.101:9101/status.json"
+  tasks:
+    - name: The upstream registry must hold at least one live subscription
+      ansible.builtin.uri:
+        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/subscriptions"
+        return_content: true
+      register: _subs
+
+    - name: The mirror status endpoint answers
+      ansible.builtin.uri:
+        url: "{{ dhs_amwa_validate_mirror_status }}"
+        return_content: true
+      register: _mstatus
+
+    - name: The upstream node count, for parity
+      ansible.builtin.uri:
+        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/nodes?paging.limit=300"
+        return_content: true
+      register: _upnodes
+
+    - name: Gate
+      ansible.builtin.assert:
+        that:
+          - _subs.json | length > 0
+          - _mstatus.json.stats.forwarded | int > 0
+          # Parity: the mirror's authoritative cache carries every
+          # node the upstream Query API shows.
+          - _mstatus.json.cache_counts.nodes | int == _upnodes.json | length
+        fail_msg: >-
+          mirror unhealthy: subscriptions={{ _subs.json | length }},
+          forwarded={{ _mstatus.json.stats.forwarded | default('?') }},
+          cache nodes={{ _mstatus.json.cache_counts.nodes | default('?') }}
+          vs upstream {{ _upnodes.json | length }}
+        success_msg: >-
+          mirror OK: {{ _subs.json | length }} subscription(s),
+          forwarded={{ _mstatus.json.stats.forwarded }},
+          failures={{ _mstatus.json.stats.failures }},
+          resyncs={{ _mstatus.json.stats.resyncs }},
+          node parity {{ _mstatus.json.cache_counts.nodes }}/{{ _upnodes.json | length }}
+
+    - name: Recent audit observations
+      ansible.builtin.debug:
+        msg: "{{ _mstatus.json.recent_audit | map(attribute='kind') | list | join(', ') }}"
+
+# The mirror-scope catalog entries — same role invocation shape as
+# amwa-validate-registry.yml, selecting scope: mirror.
+- name: AMWA validate — mirror suites
+  hosts: tooling
+  gather_facts: true
+  pre_tasks:
+    # auto_query_18/19 page /subscriptions; the served face starts with
+    # none (the plant registry always holds the mirror's own upstream
+    # ones, the mirror's SERVED face holds only what controllers
+    # create). One persistent subscription (survives with no WS client)
+    # gives those rounds a resource — same reasoning as the armed
+    # registry window's seed in window_registry.yml.
+    - name: Seed a persistent subscription on the mirror's served face
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[groups['plant'][0]].ansible_host }}:{{ dhs_amwa_validate_mirror_serve_port }}/x-nmos/query/v1.3/subscriptions"
+        method: POST
+        body_format: json
+        body:
+          max_update_rate_ms: 100
+          persist: true
+          resource_path: /nodes
+          params: {}
+        status_code: [200, 201]
+      vars:
+        dhs_amwa_validate_mirror_serve_port: 8335
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: mirror

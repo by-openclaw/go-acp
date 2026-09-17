@@ -1,0 +1,87 @@
+-- ************************************************************************************
+-- SNELL-WILCOX-SMI.mib:  Snell & Wilcox Enterprise Structure of Management Information
+--
+-- February 2003, Sandy Kellagher
+--
+-- Copyright (c) 2003 Snell & Wilcox Ltd
+-- All rights reserved.
+-- 
+-- $Id: SNELL-WILCOX-SMI.mib,v 1.4 2005/02/07 16:00:10 jonathan-r Exp $
+--
+-- ************************************************************************************
+--
+
+SNELL-WILCOX-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY, OBJECT-IDENTITY, enterprises
+		FROM SNMPv2-SMI;
+
+
+snellWilcoxRoot MODULE-IDENTITY
+	LAST-UPDATED 	"0501241400Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					Generic Software Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+		
+		   Tel: 	+44 (0) 2392 489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+		
+	DESCRIPTION		"The root of the OID sub-tree assigned to Snell & Wilcox by IANA" 
+
+	REVISION    	"0501241400Z"
+	DESCRIPTION		"Updated contact details"
+
+	REVISION    	"0302241230Z"
+	DESCRIPTION		"Initial version of this MIB module."
+
+	::= { enterprises 7995 }
+
+
+-- Top level sub-trees
+
+snellWilcoxProductReg OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"snellWilcoxProductReg is the root OBJECT-IDENTITY from which 
+					sysObjectID values are assigned. Actual values are defined in 
+					SNELL-WILCOX-PRODUCT-REG."
+	::= { snellWilcoxRoot 1 }
+
+snellWilcoxGeneric OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"Sub-tree for common textual conventions, objects and events 
+					used by multiple products."
+	::= { snellWilcoxRoot 2 }
+
+snellWilcoxProducts OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"Sub-tree for product-specific objects and events"
+	::= { snellWilcoxRoot 3 }
+
+snellWilcoxCapabilities OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"Sub-tree for agent implementation profiles"
+	::= { snellWilcoxRoot 4 }
+
+snellWilcoxExperimental OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"Sub-tree for experimental definitions"
+	::= { snellWilcoxRoot 5 }
+
+snellWilcoxMibReg OBJECT-IDENTITY
+	STATUS			current
+	DESCRIPTION		"snellWilcoxMibReg is the root OBJECT-IDENTITY from which 
+					sysObjectID values are assigned for MIB files. Actual values are defined in 
+					SNELL-WILCOX-PRODUCT-REG."
+	::= { snellWilcoxRoot 6 }
+
+
+END
+

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendDualControllerStatusRequestRoundTrip drives SendDualController
@@ -22,7 +23,7 @@ func TestSendDualControllerStatusRequestRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// rx 050 = 3 bytes (zero-length MESSAGE).
 	matrixDone := make(chan struct{})

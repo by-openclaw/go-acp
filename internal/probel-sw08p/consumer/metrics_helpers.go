@@ -7,7 +7,7 @@ import "dhs/internal/probel-sw08p/codec"
 // DLE STX cmd … frame; returns (0, false) for DLE ACK (`10 06`),
 // DLE NAK (`10 15`), or anything too short / mis-framed.
 //
-// The raw observer callbacks (OnRx / OnTx on codec.ClientConfig)
+// The raw observer callbacks (OnRx / OnTx on sw08session.ClientConfig)
 // receive both application frames AND bare ACK/NAK signals; this
 // helper lets the metrics wrapper attribute the former to a specific
 // command and route the latter through the aggregate path.

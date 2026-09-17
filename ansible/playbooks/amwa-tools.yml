@@ -1,0 +1,25 @@
+---
+# Stand up the AMWA reference stack on the tooling host and leave it
+# running.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini \
+#     ansible/playbooks/amwa-tools.yml
+#
+# What it gives you, and why each half matters:
+#
+#   nmos-cpp registry + virtual node   a peer that tracks the spec, so
+#                                      "the registry is wrong" can be
+#                                      distinguished from "we are"
+#   AMWA NMOS Testing tool             the external judge of the dhs
+#                                      node, registry and controller
+#
+# Both are upstream implementations. Per docs/user.md an oracle is never
+# our own provider — Tier 4 loopback is regression only, after Tiers 2
+# and 3 pass. Run amwa-conformance.yml afterwards to score dhs against
+# it.
+
+- name: AMWA reference stack
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa

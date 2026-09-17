@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"io"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 )
@@ -54,10 +57,18 @@ func TestCerebrumWriteVerbsValidateFlags(t *testing.T) {
 		{"salvo-bad-op", []string{"salvo", "h", "--op", "frob", "--group", "G"}, "unknown --op"},
 		{"salvo-no-group", []string{"salvo", "h", "--op", "run"}, "--group is required"},
 		{"salvo-rename-no-name", []string{"salvo", "h", "--op", "rename", "--group", "G"}, "--new-name is required"},
-		// category: missing/unknown op, missing category.
+		{"salvo-desc-no-text", []string{"salvo", "h", "--op", "description", "--group", "G"}, "--description is required"},
+		// category: missing/unknown op, missing category, per-op required attrs
+		// (§4.2 table), bad §3.3 item-type.
 		{"cat-no-op", []string{"category", "h", "--category", "C"}, "--op is required"},
 		{"cat-bad-op", []string{"category", "h", "--op", "frob", "--category", "C"}, "unknown --op"},
 		{"cat-no-category", []string{"category", "h", "--op", "create"}, "--category is required"},
+		{"cat-create-no-name", []string{"category", "h", "--op", "create", "--category", "C"}, "--name is required"},
+		{"cat-modify-missing", []string{"category", "h", "--op", "modify", "--category", "C", "--index", "1"}, "--index, --item-type and --value are required"},
+		{"cat-modify-all-missing", []string{"category", "h", "--op", "modify-all", "--category", "C"}, "--item-type and --value are required"},
+		{"cat-modify-desc-missing", []string{"category", "h", "--op", "modify-desc", "--category", "C"}, "--description is required"},
+		{"cat-delete-item-missing", []string{"category", "h", "--op", "delete-item", "--category", "C"}, "--index is required"},
+		{"cat-bad-item-type", []string{"category", "h", "--op", "modify-all", "--category", "C", "--item-type", "WAT", "--value", "V"}, "unknown --item-type"},
 		// set-value: missing required addressing.
 		{"setval-missing", []string{"set-value", "h", "--device", "D"}, "are required"},
 		// obtain-datastore: missing --name.
@@ -85,7 +96,7 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 		{"set-mnemonic", "--kind", "DEST_MNE", "--dest", "1", "--mnemonic", "X"},
 		{"set-tags", "--kind", "RM_DEST_TAGS", "--dest", "1", "--tags", "a"},
 		{"salvo", "--op", "run", "--group", "G"},
-		{"category", "--op", "create", "--category", "C"},
+		{"category", "--op", "create", "--category", "C", "--name", "N"},
 		{"set-value", "--device", "D", "--sub-device", "S", "--object", "O", "--value", "V"},
 		{"obtain-datastore", "--name", "p"},
 	}
@@ -99,9 +110,29 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 	}
 }
 
+// TestWriteVerbPortReachesDial pins the dropped-connection-flags fix: the §4
+// write verbs (and obtain-datastore) parse the shared connection flags in
+// their own FlagSet, and those values MUST reach the dialer. Before the fix
+// they re-parsed only the leftover host, silently dialing the default port.
+// Port 1 on loopback refuses instantly; the dial error must name it.
+func TestWriteVerbPortReachesDial(t *testing.T) {
+	cases := [][]string{
+		{"salvo", "--op", "run", "--group", "G", "--user", "u", "--pass", "p", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
+		{"obtain-datastore", "--name", "x", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
+	}
+	for _, args := range cases {
+		t.Run(args[0], func(t *testing.T) {
+			err := runCerebrum(context.Background(), args)
+			if err == nil || !strings.Contains(err.Error(), ":1") {
+				t.Fatalf("verb %q: want dial error naming port 1, got %v", args[0], err)
+			}
+		})
+	}
+}
+
 // TestSalvoOpType / TestCategoryOpType pin the op -> wire TYPE maps.
 func TestSalvoOpType(t *testing.T) {
-	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "delete": "DELETE"}
+	cases := map[string]string{"run": "RUN", "save": "SAVE", "rename": "RENAME", "description": "DESCRIPTION", "delete": "DELETE"}
 	for in, want := range cases {
 		got, err := salvoOpType(in)
 		if err != nil || got != want {
@@ -114,7 +145,10 @@ func TestSalvoOpType(t *testing.T) {
 }
 
 func TestCategoryOpType(t *testing.T) {
-	cases := map[string]string{"create": "CREATE", "modify": "MODIFY_ITEM", "delete": "DELETE"}
+	cases := map[string]string{
+		"create": "CREATE", "modify": "MODIFY_ITEM", "modify-all": "MODIFY_ALL",
+		"modify-desc": "MODIFY_DESC", "delete": "DELETE", "delete-item": "DELETE_ITEM",
+	}
 	for in, want := range cases {
 		got, err := categoryOpType(in)
 		if err != nil || got != want {
@@ -305,5 +339,371 @@ func TestRouteTargetFromFlags(t *testing.T) {
 	byIP := routeTargetFromFlags("10.1.2.3", "")
 	if byIP.IPAddress != "10.1.2.3" {
 		t.Fatalf("router IP target = %+v", byIP)
+	}
+}
+
+// TestNamePaddingIsVisible pins the fix for a live-session trap.
+//
+// --by-name matches DEVICE_NAME byte-for-byte and Cerebrum pads some
+// names and not others. Printed bare, "NOC" and "NOC " look identical,
+// so an operator copies what the terminal showed, the obtain NACKs 10,
+// and the error blames the obtain. On 2026-08-25 that cost an hour:
+// every by-name call against the NMOS NOC device failed while the same
+// call by IP succeeded, and the whole difference was one trailing
+// space.
+func TestNamePaddingIsVisible(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"trailing space is shown", "Cerebrum NMOS NOC ", `"Cerebrum NMOS NOC "`},
+		{"leading space is shown", " CONVERT", `" CONVERT"`},
+		{"tab is shown", "CONVERT\t", `"CONVERT\t"`},
+		// An unpadded name stays bare. Quoting every name would make
+		// the quotes decoration; the point is that quotes MEAN
+		// "this string has edges you cannot see".
+		{"unpadded stays bare", "Cerebrum NMOS NOC", "Cerebrum NMOS NOC"},
+		{"inner spaces are not padding", "bm-n-nncvt-001", "bm-n-nncvt-001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := quoteIfPadded(tc.in); got != tc.want {
+				t.Errorf("quoteIfPadded(%q) = %s, want %s", tc.in, got, tc.want)
+			}
+		})
+	}
+	// displayName keeps its empty-string dash and gains the same
+	// visibility for padded values.
+	if got := displayName(""); got != "-" {
+		t.Errorf(`displayName("") = %q, want "-"`, got)
+	}
+	if got := displayName("NOC "); got != `"NOC "` {
+		t.Errorf(`displayName("NOC ") = %s, want quoted`, got)
+	}
+}
+
+// TestByNameHintNamesTheSuspect: the server refuses an unknown
+// DEVICE_NAME with the same code it uses for a bad object path, so the
+// hint is the only thing that points at whitespace.
+func TestByNameHintNamesTheSuspect(t *testing.T) {
+	nack := &codec.NackError{ID: codec.NackOneOrMoreObtainsInvalid}
+
+	// Padded name: say so, and say what to try.
+	got := byNameHint(nack, "Cerebrum NMOS NOC ", true)
+	if !strings.Contains(got.Error(), "padded") || !strings.Contains(got.Error(), `"Cerebrum NMOS NOC"`) {
+		t.Errorf("padded-name hint should name the trimmed form, got %q", got)
+	}
+	// The wire's own words must survive - a hint that displaces the
+	// real error is worse than no hint.
+	if !strings.Contains(got.Error(), "nack") {
+		t.Errorf("hint replaced the underlying error: %q", got)
+	}
+
+	// Unpadded name: still hint, because the name the operator copied
+	// may have been padded at the source.
+	got = byNameHint(nack, "Cerebrum NMOS NOC", true)
+	if !strings.Contains(got.Error(), "byte-for-byte") {
+		t.Errorf("unpadded by-name hint missing: %q", got)
+	}
+
+	// By IP: the name is not in play, so no hint.
+	if got := byNameHint(nack, "10.44.55.56", false); got != error(nack) {
+		t.Errorf("by-IP should pass the error through unchanged, got %q", got)
+	}
+	// A different NACK is not a naming problem.
+	other := &codec.NackError{ID: codec.NackNoLicenceAvailable}
+	if got := byNameHint(other, "NOC ", true); got != error(other) {
+		t.Errorf("unrelated NACK should pass through unchanged, got %q", got)
+	}
+	if byNameHint(nil, "NOC ", true) != nil {
+		t.Error("nil error must stay nil")
+	}
+}
+
+// TestWatchObjectListGrammar: --object accepts one path, a
+// ';'-separated list (the same grammar --path already uses in
+// export/extract), or "GROUP.*" for every leaf under a group.
+//
+// Only the non-expanding forms are exercised here; ".*" needs a live
+// obtain and is covered by the consumer package's fake-WS tests.
+func TestWatchObjectListGrammar(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"single path", "Nodes.[u].SubID", []string{"Nodes.[u].SubID"}},
+		{"list", "Nodes.[u].SubID;Nodes.[u].Connected", []string{"Nodes.[u].SubID", "Nodes.[u].Connected"}},
+		{"whitespace around separators is ignored", " a ; b ", []string{"a", "b"}},
+		{"empty entries are dropped", "a;;b;", []string{"a", "b"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", tc.in, "")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				// cerebrumWatchObjects now returns descriptor-bearing rows;
+				// the grammar is about which OBJECTS are resolved.
+				if got[i].Object != tc.want[i] {
+					t.Errorf("got %v, want %v", got, tc.want)
+					break
+				}
+			}
+		})
+	}
+	// A list of nothing is a usage error, not an empty subscription.
+	if _, err := cerebrumWatchObjects(nil, 0, "dev", true, "0", " ; ; ", ""); err == nil {
+		t.Error("an all-empty --object should be refused")
+	}
+}
+
+// TestCerebrumDMRowMatchesGenericWatch pins the Tree/DM layout so an
+// NB watch reads like `dhs watch` on acp1/acp2. One grammar everywhere
+// is the point of the Tree/DM template (docs/protocols/verbs.md 12b);
+// an operator comparing a CONVERT over acp2 against the same card over
+// Cerebrum should be diffing VALUES, not re-learning a layout.
+func TestCerebrumDMRowMatchesGenericWatch(t *testing.T) {
+	ts := time.Date(2026, 8, 26, 1, 2, 3, 0, time.UTC)
+	capture := func(fn func()) string {
+		old := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		fn()
+		_ = w.Close()
+		os.Stdout = old
+		var sb strings.Builder
+		_, _ = io.Copy(&sb, r)
+		return sb.String()
+	}
+
+	// A readable value carries its access bits and type.
+	got := capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "Nodes.[abc].SubID", Value: "1000",
+			Available: true, Readable: true, Writable: true, DataType: "INTEGER",
+		})
+	})
+	for _, want := range []string{"01:02:03", "SubID", "RW-", "integer", "1000"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("row missing %q:\n%s", want, got)
+		}
+	}
+
+	// available=0 is a CHILD GROUP arriving inside a VALUE response,
+	// not an object with an empty value — rendering it as the latter
+	// reads as "this object is empty" instead of "this is a folder".
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Interfaces.[eno1]"})
+	})
+	if !strings.Contains(got, "group") || !strings.Contains(got, "<children>") {
+		t.Errorf("a BRACKETED collection member is a group row:\n%s", got)
+	}
+
+	// ...but an UNBRACKETED valueless leaf is NOT a folder. Connected
+	// on a node that never connected, and Last_Error on a live one,
+	// both arrive available=0; calling them "group <children>" told
+	// the operator a status field was a directory.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{Object: "Nodes.[abc].Connected", Readable: true})
+	})
+	if strings.Contains(got, "group") {
+		t.Errorf("a valueless named field must not render as a group:\n%s", got)
+	}
+	if !strings.Contains(got, "no-value") {
+		t.Errorf("a valueless leaf should say so:\n%s", got)
+	}
+
+	// Units ride with the value, as in the generic watch.
+	got = capture(func() {
+		cerebrumDMRow(ts, codec.DeviceObjectValue{
+			Object: "a.Delay", Value: "5.0", Available: true, Readable: true, Units: "ms",
+		})
+	})
+	if !strings.Contains(got, "5.0 ms") {
+		t.Errorf("units should follow the value:\n%s", got)
+	}
+}
+
+// TestTruncatePathKeepsBothEnds: Cerebrum paths are front-loaded with a
+// group and a bracketed UUID, so head-truncation leaves every row with
+// an identical 52-character prefix and hides the segment that differs.
+func TestTruncatePathKeepsBothEnds(t *testing.T) {
+	long := "Nodes.[ab469b7c-0100-1000-a000-3ceceffd5b65].SDP_Resend_Mode"
+	got := truncatePath(long, 40)
+	if len([]rune(got)) != 40 {
+		t.Errorf("truncatePath returned %d runes, want 40: %q", len([]rune(got)), got)
+	}
+	if !strings.HasPrefix(got, "Nodes.") {
+		t.Errorf("head lost: %q", got)
+	}
+	if !strings.HasSuffix(got, "SDP_Resend_Mode") {
+		t.Errorf("tail lost — the tail IS the object name: %q", got)
+	}
+	// Short enough already: untouched.
+	if got := truncatePath("a.b", 40); got != "a.b" {
+		t.Errorf("short path was modified: %q", got)
+	}
+}
+
+// TestNBNodeClassification pins the NB group/leaf classifier that drives
+// the DM walk's descent. Availability is never the test (a valueless leaf
+// like Last_Error is available=0, but so is a group handle); the real
+// rules are: a scalar descriptor is always a leaf, and a non-scalar row
+// (typeless handle, or a STRING that could be a summary/list node such as
+// io.sdi="uuid,uuid,…") is worth obtaining to find out. This is exactly
+// the bug that made value-bearing summary nodes look like leaves and
+// truncated the DM.
+func TestNBNodeClassification(t *testing.T) {
+	scalarLeaf := []codec.DeviceObjectValue{
+		{Object: "a.enable", DataType: "INTEGER", Available: true, Value: "1"},
+		{Object: "a.dir", DataType: "ENUM", Available: true, Value: "Input"},
+		{Object: "a.on", DataType: "BOOL", Available: false},
+		{Object: "a.gain", DataType: "FLOAT", Available: true, Value: "0.5"},
+	}
+	for _, ov := range scalarLeaf {
+		if !nbScalarLeaf(ov) {
+			t.Errorf("%s (%s) must be a scalar leaf", ov.Object, ov.DataType)
+		}
+		if nbMaybeNode(ov) {
+			t.Errorf("%s (%s) is scalar; must not be probed as a node", ov.Object, ov.DataType)
+		}
+	}
+
+	// Non-scalar rows worth obtaining (could be nodes).
+	nodes := []codec.DeviceObjectValue{
+		{Object: "io.handle", DataType: ""},                                                                    // typeless handle
+		{Object: "io.sdi", DataType: "STRING", Available: true, Value: "uuid-a,uuid-b,uuid"},                   // CSV summary node
+		{Object: "io.one", DataType: "STRING", Available: true, Value: "8fd150f9-883f-421c-b568-808e5fbf9712"}, // single-child list (bare UUID)
+		{Object: "io.empty", DataType: "STRING", Available: false, Value: ""},                                  // empty STRING handle
+	}
+	for _, ov := range nodes {
+		if nbScalarLeaf(ov) {
+			t.Errorf("%s must not be scalar", ov.Object)
+		}
+		if !nbMaybeNode(ov) {
+			t.Errorf("%s (%q) must be probed as a possible node", ov.Object, ov.Value)
+		}
+	}
+
+	// A plain STRING leaf (a real value, not a list) must NOT be probed.
+	plain := codec.DeviceObjectValue{Object: "a.name", DataType: "STRING", Available: true, Value: "SDI Input 6"}
+	if nbMaybeNode(plain) {
+		t.Errorf("plain STRING leaf %q must not be re-obtained as a node", plain.Value)
+	}
+}
+
+// TestConstraintsSurviveToTheWatch: the wire carries MIN/MAX/STEP and
+// ENUM_LIST on the same row as the value, and the watch was dropping
+// them. They are the difference between reading a device and being
+// able to set it.
+func TestConstraintsSurviveToTheWatch(t *testing.T) {
+	enum := codec.DeviceObjectValue{EnumList: []string{"Send SDP Always", "Send SDP Once"}}
+	if got := cerebrumConstraint(enum); got != "{Send SDP Always|Send SDP Once}" {
+		t.Errorf("enum list = %q", got)
+	}
+	rng := codec.DeviceObjectValue{Min: "0", Max: "1000", Step: "0.5"}
+	if got := cerebrumConstraint(rng); got != "[0..1000 step 0.5]" {
+		t.Errorf("range = %q", got)
+	}
+	// A degenerate MIN==MAX carries no information - live ENUM rows
+	// report 0..0 and their real constraint is the enum list. Same
+	// rule CanonicalDeviceObject applies when building the DM.
+	if got := cerebrumConstraint(codec.DeviceObjectValue{Min: "0", Max: "0"}); got != "" {
+		t.Errorf("degenerate range should be dropped, got %q", got)
+	}
+	if got := cerebrumConstraint(codec.DeviceObjectValue{}); got != "" {
+		t.Errorf("no constraint should render nothing, got %q", got)
+	}
+	// Enum wins over a range when both are present.
+	both := codec.DeviceObjectValue{EnumList: []string{"On", "Off"}, Min: "0", Max: "1"}
+	if got := cerebrumConstraint(both); got != "{On|Off}" {
+		t.Errorf("enum should win over range, got %q", got)
+	}
+}
+
+// TestWatchReportsChangesNotState pins what a watch IS.
+//
+// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, and
+// the server re-asserts values that have not changed. Printing both
+// turned a 68-node watch into a 1,088-row state dump that buried the
+// events it existed to show. A snapshot is export's job.
+func TestWatchReportsChangesNotState(t *testing.T) {
+	newFilter := func(showInitial bool) func(codec.DeviceObjectValue) bool {
+		seen := map[string]string{}
+		return func(ov codec.DeviceObjectValue) bool {
+			v := ov.Value
+			if !ov.Available {
+				v = "\x00unavailable"
+			}
+			prev, known := seen[ov.Object]
+			seen[ov.Object] = v
+			if !known {
+				return showInitial
+			}
+			return prev != v
+		}
+	}
+	row := func(v string) codec.DeviceObjectValue {
+		return codec.DeviceObjectValue{Object: "Nodes.[a].SubID", Value: v, Available: true}
+	}
+
+	f := newFilter(false)
+	if f(row("0")) {
+		t.Error("the subscribe baseline must not print by default")
+	}
+	if !f(row("1000")) {
+		t.Error("a changed value must print")
+	}
+	if f(row("1000")) {
+		t.Error("a re-asserted value must not print - the server repeats them")
+	}
+	if !f(row("0")) {
+		t.Error("changing back must print")
+	}
+
+	// --initial opts the baseline back in.
+	f2 := newFilter(true)
+	if !f2(row("0")) {
+		t.Error("--initial should print the baseline")
+	}
+	if f2(row("0")) {
+		t.Error("--initial still suppresses re-asserts")
+	}
+
+	// available=0 is a distinct state, not the empty string: a value
+	// GOING absent is a change worth seeing.
+	f3 := newFilter(false)
+	f3(codec.DeviceObjectValue{Object: "x", Value: "up", Available: true})
+	if !f3(codec.DeviceObjectValue{Object: "x"}) {
+		t.Error("a value going unavailable is a change")
+	}
+}
+
+// TestOnlyIsAppliedDuringTheWalk: the filter has to narrow the
+// expansion as it happens, not afterwards. Applied after,
+// "Nodes.** --label SubID" builds the whole tree first and trips the
+// object cap before it reaches the filter - which is exactly the
+// combination needed to watch one field across a plant.
+func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
+	want := parseOnly("SubID,Connected")
+	if !wantLeaf(want, "Nodes.[a].SubID") {
+		t.Error("a named leaf should be kept")
+	}
+	if wantLeaf(want, "Nodes.[a].Description") {
+		t.Error("an unnamed leaf should be dropped")
+	}
+	// Case- and space-insensitive: the name in the operator's head is
+	// "subid", not the casing of a path they never typed.
+	if !wantLeaf(parseOnly(" subid "), "Nodes.[a].SubID") {
+		t.Error("match should ignore case and surrounding space")
+	}
+	// No filter keeps everything - nil means "unfiltered", never
+	// "match nothing".
+	if !wantLeaf(nil, "anything") || parseOnly("") != nil || parseOnly(" , ") != nil {
+		t.Error("an empty --label must be a no-op, not an empty result")
 	}
 }

@@ -1,0 +1,28 @@
+---
+# dhs_amwa_runner — the SECONDARY Ansible runner on dhs-tools (#938).
+#
+# Why it exists: the AMWA plant host (dhs-debian) doubles as the
+# PRIMARY control node, and a play cannot survive rebooting the host
+# it runs on — so any play that reboots the plant (reboot-resilience)
+# must be driven from a second, independent runner. dhs-tools is the
+# only fleet host with internet egress, so pipx can install a
+# supported ansible-core there the same way control-node.yml does on
+# the primary.
+
+# Same supported core the primary control node pins (control-node.yml):
+# Debian's distro ansible-core 2.14 cannot drive Python 3.12 targets.
+dhs_amwa_runner_ansible_core_spec: ">=2.17,<2.18"
+
+# The runner's own actor identity. The PRIVATE key is generated on the
+# runner and never leaves it; the fetched .pub is committed under
+# roles/dhs_access/files/keys/ and listed in dhs_access_keys — the
+# documented add-an-actor path.
+dhs_amwa_runner_key: /root/.ssh/id_ed25519_runner
+dhs_amwa_runner_key_comment: runner-dhs-tools
+
+# The runner's repo checkout, cloned/refreshed from the primary control
+# node's plant checkout (the fleet has no internet; code arrives on the
+# primary as a git bundle and the runner mirrors it over SSH).
+dhs_amwa_runner_repo: /root/acp-runner
+dhs_amwa_runner_origin_host: "{{ hostvars['dhs-debian'].ansible_host }}"
+dhs_amwa_runner_origin_path: /root/acp-plant

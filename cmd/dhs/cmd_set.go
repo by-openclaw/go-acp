@@ -23,6 +23,7 @@ func orFirst(s ...string) string {
 
 func runSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpSet) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", 0, "slot number (default 0)")
 	group := fs.String("group", "", "object group name")
@@ -39,7 +40,7 @@ func runSet(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	// Detect whether --value / --raw were explicitly passed (even if
 	// empty). fs.Visit walks only flags the user actually supplied, so
 	// `--value ""` is distinguishable from "--value omitted" — needed
@@ -124,13 +125,19 @@ func runSet(ctx context.Context, args []string) error {
 	}
 
 	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") {
-		if *noWalk {
-			return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
-				orFirst(*pathFlag, *label), *slot, *slot)
-		}
-		// Cache miss on non-Ember+ — walk the slot to populate.
-		if _, err := plug.Walk(ctx, *slot); err != nil {
-			return fmt.Errorf("walk for resolution: %w", err)
+		// Identity-keyed DM cache (acp1/acp2) before any walk — the
+		// host/slot-keyed resolvePathFromCache above never sees these
+		// (.cache/dm/<proto>/<Card>@<Ver>.json, #353/#363). SetValue then
+		// resolves --path/--label from the seeded tree.
+		if !hotLoadIdentityDM(ctx, plug, cf.protocol, *slot) {
+			if *noWalk {
+				return fmt.Errorf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)",
+					orFirst(*pathFlag, *label), *slot, *slot)
+			}
+			// Cache miss on non-Ember+ — walk the slot to populate.
+			if _, err := plug.Walk(ctx, *slot); err != nil {
+				return fmt.Errorf("walk for resolution: %w", err)
+			}
 		}
 	}
 

@@ -26,7 +26,7 @@ func runConvert(_ context.Context, args []string) error {
 	// and ignores it (mirrors diff). Lets convert be reached via the consumer
 	// dispatcher without "flag provided but not defined: -protocol".
 	_ = fs.String("protocol", "", "(ignored; convert is offline)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *in == "" {

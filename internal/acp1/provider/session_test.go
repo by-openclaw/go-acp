@@ -2,12 +2,13 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/export/canonical"
 )
 
 // newTestServer builds a server with a hand-crafted tree containing two
@@ -88,8 +89,8 @@ func newTestServer(t *testing.T) *server {
 									Number: 0, Identifier: "Level", OID: "1.2.2.0",
 									Access: rw, Children: canonical.EmptyChildren(),
 								},
-								Type:  canonical.ParamInteger,
-								Value: int64(-6),
+								Type:    canonical.ParamInteger,
+								Value:   int64(-6),
 								Minimum: int64(-60), Maximum: int64(12),
 								Step: int64(1), Default: int64(0),
 							},
@@ -108,14 +109,14 @@ func newTestServer(t *testing.T) *server {
 	}}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return newServer(logger, exp)
+	return newServer(plugin.Deps{Logger: logger}, exp)
 }
 
 func TestSession_GetValue_ReadOnlyString(t *testing.T) {
 	s := newTestServer(t)
 	req := &codec.Message{
 		MTID: 42, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodGetValue),
+		MCode:    byte(codec.MethodGetValue),
 		ObjGroup: codec.GroupIdentity, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
@@ -139,7 +140,7 @@ func TestSession_GetObject_Integer(t *testing.T) {
 	s := newTestServer(t)
 	req := &codec.Message{
 		MTID: 7, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodGetObject),
+		MCode:    byte(codec.MethodGetObject),
 		ObjGroup: codec.GroupControl, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
@@ -166,7 +167,7 @@ func TestSession_Root_Synthesised(t *testing.T) {
 	// getValue on Root returns boot_mode byte (0 = normal).
 	req := &codec.Message{
 		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodGetValue),
+		MCode:    byte(codec.MethodGetValue),
 		ObjGroup: codec.GroupRoot, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)
@@ -196,7 +197,7 @@ func TestSession_UnknownObject_InstanceError(t *testing.T) {
 	// control group exists, id=99 does not.
 	req := &codec.Message{
 		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodGetValue),
+		MCode:    byte(codec.MethodGetValue),
 		ObjGroup: codec.GroupControl, ObjID: 99,
 	}
 	rep, _ := s.handleRequest(req)
@@ -213,7 +214,7 @@ func TestSession_UnknownGroup_GroupError(t *testing.T) {
 	// Alarm group has no entries on slot 1.
 	req := &codec.Message{
 		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodGetValue),
+		MCode:    byte(codec.MethodGetValue),
 		ObjGroup: codec.GroupAlarm, ObjID: 0,
 	}
 	rep, _ := s.handleRequest(req)

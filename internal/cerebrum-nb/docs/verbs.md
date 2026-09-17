@@ -323,9 +323,9 @@ It is **gated** on `CEREBRUM_TEST_HOST` (+ `DHS_CEREBRUM_USER` /
 `meta: end_play` skips cleanly when unset — so it is safe to invoke
 unconditionally.
 
-> **The live run requires the NB northbound LICENCE enabled on the
-> Cerebrum** — currently missing. The play is written + ready and skips
-> until host + creds + licence all exist.
+> The NB licence is now present (2026-06) and the read-side verbs were
+> live-verified against a production Cerebrum (2026-08). The play still
+> gates on the env vars and skips cleanly when unset.
 
 ```
 CEREBRUM_TEST_HOST=10.6.239.50 DHS_CEREBRUM_USER=admin DHS_CEREBRUM_PASS=s3cr3t \
@@ -336,7 +336,198 @@ Read-only verbs → `changed_when: false` → idempotent by construction
 (run-twice = 0 changes). dhs logs go to stderr → tasks `register` and
 `debug` the combined `stdout_lines + stderr_lines`.
 
-## 12. See also
+## 12. Inventory + snapshot — list-* / export / import (ensure)
+
+The probel-sw08p-parity operator surface: enumerate the Route-Master,
+snapshot it to CSVs, and converge live state back from (possibly edited)
+CSVs. All reads are **one-shot OBTAIN** (§2.4) — never SUBSCRIBE; the read
+ends on the MTID-carrying `WILDCARD_COMPLETE` (§1.6).
+
+### list-sources / list-dests (alias `list-destinations`) / list-levels
+
+```
+dhs consumer cerebrum-nb list-sources 10.6.239.50 --user U --pass P [--id N] [--out FILE]
+```
+
+One row per resource: `ID · LEVELS · LABEL · ALTS`. **Capability levels**
+come from the `ASSOCIATION_n` indices (index = Routemaster level — live-wire
+fact, not in the 0v16 PDF); a resource with no ASSOCIATIONS block is
+unbound and shows no levels. Alternate labels print as `1=Black 4=ENG`
+(slot index, §4.1.5 `ALT_MNE=n`); the slot→set-name mapping is Cerebrum
+config and not exposed over NB. `--id N` narrows to one resource, `--out`
+writes CSV instead of the table.
+
+### usage / replace — source-side pair (reverse tally + substitution)
+
+```
+# where is a source assigned (fan-out, virtuals resolved):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --srce 2 --resolve --format ascii
+# what feeds a dest (upstream chain through virtuals):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --dest 1 --resolve --format ascii
+# machine form (default file snapshots/<proto>/<router>/usage.csv; "-" = stdout):
+dhs consumer cerebrum-nb usage HOST --user U --pass P --resolve --out -
+#   srce,dest,levels[,effective_srce,via]
+
+# replace source A with B on every LITERAL cell carrying A:
+dhs consumer cerebrum-nb replace HOST --user U --pass P --srce A --with B [--level L] --check
+```
+
+- A VIRTUAL resource registers on both faces (same ID + same mnemonic —
+  the detection heuristic; the wire carries no flag). `--resolve`
+  follows chains upstream (virtual→virtual included), loop-guarded;
+  an unfed virtual or a cycle is marked, never silently resolved.
+- Owner-confirmed semantics (2026-08-19): a dst's own crosspoint does
+  NOT change when a virtual upstream is re-fed — the NB correctly does
+  not notify subscriber dests, and snapshots stay literal. `usage
+  --resolve` is the client-side correlation; `replace` touches literal
+  cells only, so virtual subscribers inherit through their own chains.
+- `replace` is ADR-0007: `--check` dry-run, diff-only apply, run-twice
+  = 0 (nothing carries A afterwards); every touched dest notifies
+  naturally. Matrix domain only (RM + physical routers via --router).
+
+### export — full snapshot
+
+```
+# crosspoints only (optionally one level):
+dhs consumer cerebrum-nb export HOST --user U --pass P --out xp.csv [--level N]
+# full Route-Master snapshot:
+dhs consumer cerebrum-nb export HOST --user U --pass P --out-dir DIR --prefix noc
+#   → noc-src.csv  noc-dst.csv  noc-level.csv  noc-xpoint.csv
+```
+
+- Mnemonic CSVs: `<kind>_id,levels,mnemonic,alt_1..alt_N` — alt columns are
+  **uniform plant-wide** (sized to the highest used slot across the whole
+  snapshot), `levels` is `;`-separated capability levels.
+- Xpoint CSV: `dest,srce,level` — one row per **routed** cell. The server
+  answers every dest × level cell; `SOURCE_ID` `0` / `4294967294` /
+  `4294967295` are undocumented **no-route sentinels** and are filtered.
+- Cross-level routes (src level ≠ dst level) are skipped with a warning —
+  shuffle representation is not yet supported (parked).
+
+### import — ENSURE (ADR-0007)
+
+```
+# mirror of export --out-dir — reads the same file set back:
+dhs consumer cerebrum-nb import HOST --user U --pass P --in-dir DIR --prefix noc [--check] [--allow-clear]
+# or per-file (partial scope):
+dhs consumer cerebrum-nb import HOST --user U --pass P \
+  [--xpoint xp.csv] [--src s.csv] [--dst d.csv] [--levels l.csv] [--check] [--allow-clear]
+```
+
+`--in-dir` resolves `<prefix>-xpoint.csv / -src.csv / -dst.csv /
+-level.csv`; files absent from the directory are simply out of scope, and
+an explicit per-file flag overrides its `--in-dir` counterpart.
+
+Diff-first: reads live state over the same OBTAINs, diffs against the
+CSVs, sends **only the differences** (`ROUTE` actions / `*_MNE` writes via
+`ALT_MNE=n`). Contract:
+
+- `--check` — online dry-run: prints `[would-*] …` lines + `would_change=N`,
+  sends nothing (a host is still required — ensure reads live state).
+- Partial CSV = partial scope: rows/files absent are never touched.
+- Empty label cell = untouched, **unless** `--allow-clear` AND the column is
+  managed (present in the CSV header; primary always managed) AND the live
+  value is set → clear-write (`MNEMONIC=""`). ⚠ the clear wire-form is
+  **live-unverified** — staging only.
+- Route import never disconnects — an unrouted live cell only changes if
+  the CSV routes it.
+- Run-twice = 0 changes (idempotent by construction).
+- `--output json` — the canonical ADR-0007 shape on stdout
+  (`{changed|would_change, diff[]}`, one `diff[]` entry per cell:
+  `route.<dest>.<level>` / `<kind>.<id>.<slot>`); per-change narration
+  moves to stderr so Ansible can parse stdout.
+
+## 12b. Tree/DM domain — get / watch / extract / validate (D2, #700)
+
+Devices behind Cerebrum ride the **Tree/DM template** (the acp2/ember+
+model), while the RM/routers ride the Matrix template above. One dotted
+path grammar everywhere — `DEVICE.SUB.OBJECT…`, DEVICE_NAME taken
+verbatim (incl. the live trailing-whitespace quirk):
+
+```
+# canonical read of one object (§5.4.3 VALUE obtain):
+dhs consumer cerebrum-nb get HOST --user U --pass P \
+  --path "bm-n-nncvt-001 .1.PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+
+# canonical subscribe (exact leaf — wildcards refused, live-verified):
+dhs consumer cerebrum-nb watch HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1 \
+  --object "PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+```
+
+### extract — ADR-0022 card data model
+
+Walks one device's object tree (same walk contract as `tree --device`:
+seeded start groups, recursion, self-echo leaf re-classification) and
+persists the DM + manifest pair:
+
+```
+dhs consumer cerebrum-nb extract HOST --user U --pass P \
+  --device "bm-n-nncvt-001 " --by-name --sub-device 1
+#   root discovered via OBJECT="…": N top group(s): …
+#   identity: CONVERT IP@6.7.4 (from the device tree)
+#   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
+#   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
+```
+
+- **Zero prior knowledge required** (acp2/ember parity): with no
+  `--path`, the root is discovered by the probe ladder — `OBJECT=""`
+  literal, `OBJECT="ROOT-NODE-V2"` (the acp2 root name; NB paths are
+  that tree root-stripped), `OBJECT="*"`, then the bare no-attribute
+  form — and the walk seeds itself from whatever the server
+  enumerates. `--path "GROUP[;GROUP…]"` remains as manual scope (a
+  partial extract of one folder is legitimate).
+
+- **DM cache: schema once, state on demand** (ADR-0028 §6) — the
+  identity probe costs 2–3 obtains; when `dm/cerebrum-nb/
+  <Model@SwRev>.json` already exists, extract stops there (zero walk)
+  and still writes THIS unit's manifest binding. `--refresh` forces a
+  re-walk. A second unit of a known card costs 3 obtains, not 38,353.
+- **Identity is auto-probed from the device tree** — the same objects
+  acp2's IdentityProbe reads, reachable over NB as root-stripped
+  paths: Model = `IDENTITY.Card Name`, SwRev = `IDENTITY.Product
+  Version` (fallback `BOARD.Hardware Version`). A cerebrum extract of
+  a CONVERT therefore lands under the **same `<Model@SwRev>.json`
+  name** as the acp2 extract of that card — the dual-oracle diff
+  needs zero renames. `--product` / `--version` override for devices
+  whose tree carries no identity objects.
+- A walk that hits `--max-requests` **fails** rather than persisting a
+  truncated DM (a partial model is not a device model).
+- The printed `sha256:` fingerprint is the evidence anchor; the DM +
+  manifest are committed under `testdata/integration-test/` like every
+  other connector's, so the acp2 extract of the same CONVERT is
+  diffable against the cerebrum one (dual-oracle, S9).
+
+### export --device — parameter snapshot to ONE file (acp2 parity)
+
+```
+dhs consumer cerebrum-nb export HOST --user U --pass P \
+  --device 10.44.72.28 --sub-device 1 \
+  --path "PROCESSING AUDIO;PROCESSING VIDEO;…" --out cvt-params.csv
+```
+
+Same walk as `extract`, but the result goes to a snapshot FILE instead
+of the DM store: json | yaml | csv picked by `--format` then the
+`--out` extension (stdout when `--out` is omitted) — the exact file
+shape `dhs consumer acp2 export` produces for a slot. One facet
+(parameters) → one file; the multi-file `--out-dir` set remains the
+Matrix domain's shape (xpoint/src/dst/level/lock facets). The future
+device-ensure `import` reads this same file back (diff-first,
+run-twice = 0).
+
+### validate — offline decoder oracle
+
+```
+dhs consumer cerebrum-nb validate frames.jsonl --out-tree tree.json [--out-params p.csv]
+```
+
+Replays a `--capture` JSONL through the codec offline: per-document
+counts, NACKs, case deviations; `--out-tree` aggregates the observed
+§5.4.3 VALUE rows into the same canonical tree shape `extract` writes —
+capture-derived and live-extracted views of one device stay
+byte-comparable.
+
+## 13. See also
 
 - [`../CLAUDE.md`](../CLAUDE.md) — wire format, mtid, quirks, "what NOT to do"
 - [`README.md`](README.md) · [`consumer.md`](consumer.md) · [`runbook.md`](runbook.md) · [`provider.md`](provider.md) · [`keys.md`](keys.md)

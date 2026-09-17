@@ -37,6 +37,7 @@ func canonicalDirection(d string) (string, error) {
 // output directory using the schema locked in #43.
 func runExtract(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("extract", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpExtract) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 
 	manufacturer := fs.String("manufacturer", "",
@@ -61,7 +62,7 @@ func runExtract(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs extract <host> --protocol P --manufacturer M --product X --direction D --version V --out DIR [--slot N]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *manufacturer == "" || *product == "" || *direction == "" || *ver == "" || *outDir == "" {
 		return fmt.Errorf("--manufacturer, --product, --direction, --version, and --out are all required")
@@ -100,6 +101,10 @@ func runExtract(ctx context.Context, args []string) error {
 	if err := writeCanonicalCapture(ctx, *outDir, plug, cf); err != nil {
 		return fmt.Errorf("canonical capture: %w", err)
 	}
+
+	// Everything that writes to the capture directory is finished with, so the
+	// recorder can be closed before anything is renamed.
+	cleanup()
 
 	// Rename raw.<transport>.jsonl → wire.jsonl so the fixture layout
 	// matches docs/adr/0020-capture-and-fixture-layout.md (+ tests/fixtures/products/README.md) exactly (the protocol is still

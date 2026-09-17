@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 func sampleSnapshot() *export.Snapshot {
@@ -34,7 +34,7 @@ func sampleSnapshot() *export.Snapshot {
 						Slot: 0, Group: "control", Path: []string{"control"},
 						ID: 4, Label: "Broadcasts", Kind: consumer.KindEnum,
 						Access: 3, EnumItems: []string{"Off", "On"},
-						Def: uint64(1),
+						Def:   uint64(1),
 						Value: consumer.Value{Kind: consumer.KindEnum, Enum: 1, Str: "On"},
 					},
 					{

@@ -1,0 +1,15 @@
+---
+# exclusive: true -> the file becomes exactly the listed keys (stray keys
+# such as experiment leftovers are removed). Idempotent by content.
+- name: "authorized_keys for {{ dhs_access_linux_user }} = the fleet actor keys (exclusive)"
+  ansible.posix.authorized_key:
+    user: "{{ dhs_access_linux_user }}"
+    key: "{{ dhs_access_key_lines | join('\n') }}"
+    exclusive: true
+    manage_dir: true
+
+- name: sshd enabled and running
+  ansible.builtin.service:
+    name: "{{ 'sshd' if ansible_os_family == 'RedHat' else 'ssh' }}"
+    state: started
+    enabled: true

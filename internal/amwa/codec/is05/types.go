@@ -5,25 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+
+	"dhs/internal/amwa/codec/spec"
 	"time"
 )
 
 // ActivationMode is the fixed-set discriminator on the activation
 // object. Spec: §4.2 PATCH /staged → activation.
 //
-//   ""                              — no activation requested
-//   activate_immediate              — apply on receipt
-//   activate_scheduled_relative     — apply N seconds after receipt
-//   activate_scheduled_absolute     — apply at TAI timestamp
+//	""                              — no activation requested
+//	activate_immediate              — apply on receipt
+//	activate_scheduled_relative     — apply N seconds after receipt
+//	activate_scheduled_absolute     — apply at TAI timestamp
 type ActivationMode string
 
 // Recognised activation modes per the spec. Empty is a valid value
 // (no activation in this PATCH).
 const (
-	ActivationModeNone               ActivationMode = ""
-	ActivationModeImmediate          ActivationMode = "activate_immediate"
-	ActivationModeScheduledRelative  ActivationMode = "activate_scheduled_relative"
-	ActivationModeScheduledAbsolute  ActivationMode = "activate_scheduled_absolute"
+	ActivationModeNone              ActivationMode = ""
+	ActivationModeImmediate         ActivationMode = "activate_immediate"
+	ActivationModeScheduledRelative ActivationMode = "activate_scheduled_relative"
+	ActivationModeScheduledAbsolute ActivationMode = "activate_scheduled_absolute"
 )
 
 // IsValidActivationMode is true when m is one of the four spec values.
@@ -49,6 +51,28 @@ type Activation struct {
 	Mode           ActivationMode `json:"mode"`
 	RequestedTime  *string        `json:"requested_time"`
 	ActivationTime *string        `json:"activation_time"`
+}
+
+// MarshalJSON writes an unset mode as JSON null, never as "".
+//
+// Every IS-05 activation schema types `mode` as an ENUM that is
+// nullable: null, activate_immediate, activate_scheduled_relative,
+// activate_scheduled_absolute. The empty string is not a member, so a
+// Go zero value serialised literally makes every staged and active
+// response fail schema validation -- a wide failure with a narrow
+// cause, because the activation block sits inside almost every other
+// response this API returns.
+func (a Activation) MarshalJSON() ([]byte, error) {
+	// A named alias, so the nested Marshal does not recurse back into
+	// this method.
+	type plain Activation
+	if a.Mode == "" {
+		return json.Marshal(struct {
+			Mode any `json:"mode"`
+			plain
+		}{Mode: nil, plain: plain(a)})
+	}
+	return json.Marshal(plain(a))
 }
 
 // TransportParams is the per-leg array of transport-specific
@@ -89,8 +113,12 @@ type StagedSender struct {
 // TransportFile is the inline transport file representation used in
 // PATCH bodies (vs the separate /transportfile GET endpoint).
 type TransportFile struct {
-	Type string `json:"type"` // "application/sdp" for RTP
-	Data string `json:"data"` // SDP body, or empty when null
+	// Both members are typed ["string","null"] by the schema, so both
+	// are pointers. An unset transport file is
+	// {"type":null,"data":null} -- NOT an absent object, and not a
+	// pair of empty strings; neither of those validates.
+	Type *string `json:"type"` // "application/sdp" for RTP
+	Data *string `json:"data"` // SDP body
 }
 
 // StagedReceiver is the body of GET / PATCH
@@ -107,7 +135,11 @@ type StagedReceiver struct {
 
 	// SDP-style transport file the controller feeds into the
 	// receiver — same shape as StagedSender.TransportFile.
-	TransportFile *TransportFile `json:"transport_file,omitempty"`
+	// No omitempty: receiver-stage-schema lists transport_file as
+	// REQUIRED (nullable), while sender-stage-schema does not allow it
+	// at all under additionalProperties:false. The asymmetry is the
+	// spec's, and it is why the two views cannot share one tag.
+	TransportFile *TransportFile `json:"transport_file"`
 }
 
 // ActiveSender is the read-only mirror of currently-running sender
@@ -123,10 +155,10 @@ var taiPattern = regexp.MustCompile(`^[0-9]+:[0-9]+$`)
 
 // ValidateActivation enforces the per-mode rules:
 //
-//   activate_scheduled_relative — requested_time MUST be set, in TAI.
-//   activate_scheduled_absolute — same.
-//   activate_immediate          — requested_time MUST be null.
-//   ""                          — every field MUST be null.
+//	activate_scheduled_relative — requested_time MUST be set, in TAI.
+//	activate_scheduled_absolute — same.
+//	activate_immediate          — requested_time MUST be null.
+//	""                          — every field MUST be null.
 func ValidateActivation(a Activation) error {
 	if !IsValidActivationMode(a.Mode) {
 		return fmt.Errorf("is05: activation.mode %q: invalid", a.Mode)
@@ -162,7 +194,8 @@ func ValidateStagedSender(s StagedSender) error {
 	if s.TransportParams == nil {
 		return fmt.Errorf("is05: staged.sender.transport_params: required (may be empty array)")
 	}
-	if s.TransportFile != nil && s.TransportFile.Type == "" {
+	if s.TransportFile != nil && s.TransportFile.Data != nil && *s.TransportFile.Data != "" &&
+		(s.TransportFile.Type == nil || *s.TransportFile.Type == "") {
 		return fmt.Errorf("is05: staged.sender.transport_file.type: required when transport_file present")
 	}
 	return nil
@@ -229,10 +262,16 @@ func DecodeStagedReceiver(raw []byte) (*StagedReceiver, error) {
 	return &r, nil
 }
 
-// FormatTAINow renders a `<sec>:<nsec>` TAI string from a wall-clock
-// time.Time. Note: this is approximate (uses Unix epoch + Go
-// monotonic) — production code that needs strict TAI must subtract
-// the leap-second offset (~37s in 2026); see IETF NTP sources.
-func FormatTAINow(t time.Time) string {
-	return fmt.Sprintf("%d:%d", t.Unix(), t.Nanosecond())
-}
+// TAILeapSeconds is TAI − UTC. Defined once for the whole suite in
+// codec/spec, because IS-04 versions, IS-05 activations, IS-07 event
+// timing and IS-08 activations are compared against each other and a
+// second implementation would put them 37 seconds apart.
+const TAILeapSeconds = spec.TAILeapSeconds
+
+// FormatTAINow renders a wall-clock time as a `<sec>:<nsec>` TAI
+// string.
+func FormatTAINow(t time.Time) string { return spec.FormatTAI(t) }
+
+// TAIToTime converts a TAI `<sec>:<nsec>` instant to wall-clock time.
+// The inverse of FormatTAINow.
+func TAIToTime(sec, nsec int64) time.Time { return spec.TAIToTime(sec, nsec) }

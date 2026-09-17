@@ -1,0 +1,186 @@
+---
+# Reboot-resilience proof for the AMWA plant (#938): reboot the plant
+# host and assert the whole plant returns with zero hands — every
+# dhs-nmos-* unit active, the resident node APIs answering, all nodes
+# re-registered into the registry, and the mirror's source cache
+# rebuilt. The boot_id is compared before/after so a skipped reboot
+# can never fake a pass.
+#
+# MUST be driven from the SECONDARY runner (dhs-tools, amwa-runner.yml)
+# — the plant host doubles as the primary control node, and a play
+# cannot survive rebooting the host it runs on:
+#
+#   (on dhs-tools)
+#   cd /root/acp-runner/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-reboot-resilience.yml
+
+- name: AMWA reboot resilience — plant
+  hosts: plant
+  gather_facts: false
+  vars_files:
+    - ../roles/dhs_amwa_plant/defaults/main.yml
+  vars:
+    rr_units: >-
+      {{ ['dhs-nmos-registry.service']
+         + (['dhs-nmos-mirror.service'] if dhs_amwa_plant_mirror_target | length > 0 else [])
+         + (dhs_amwa_plant_nodes | map(attribute='name') | map('regex_replace', '^(.*)$', 'dhs-nmos-\1.service') | list)
+         + (range(dhs_amwa_plant_scale_count) | map('regex_replace', '^(.*)$', 'dhs-nmos-scale\1.service') | list) }}
+    rr_expected_nodes: "{{ (dhs_amwa_plant_nodes | length) + dhs_amwa_plant_scale_count }}"
+    rr_query_url: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port }}/x-nmos/query/{{ dhs_amwa_plant_api_ver }}/nodes"
+    rr_query_base: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port }}/x-nmos/query/{{ dhs_amwa_plant_api_ver }}"
+    rr_mirror_status_url: "http://127.0.0.1{{ dhs_amwa_plant_mirror_status_addr }}/status.json"
+    # Every Query API collection, for the id-persistence half (AMWA
+    # IS-04-01 test_22 "Node resource IDs persist over a reboot" —
+    # MANUAL in the tool, tool-equivalent here and STRONGER: exact
+    # per-topic set equality over every resource kind, not a spot
+    # check of one uuid).
+    rr_topics: [nodes, devices, sources, flows, senders, receivers]
+    # One page must hold the whole collection or the set comparison
+    # would silently compare truncations — the snapshot task fails if
+    # a collection ever reaches the page size.
+    rr_page_limit: 1000
+  tasks:
+    # ---- pre-flight: the plant must be healthy BEFORE the reboot, so
+    # a post-reboot failure is attributable to the reboot alone.
+    - name: Pre-reboot boot_id
+      ansible.builtin.slurp:
+        src: /proc/sys/kernel/random/boot_id
+      register: rr_boot_pre
+
+    - name: "Pre-reboot: every plant unit active"
+      ansible.builtin.command: systemctl is-active --quiet {{ item }}
+      loop: "{{ rr_units }}"
+      changed_when: false
+
+    - name: "Pre-reboot: registry holds the full plant"
+      ansible.builtin.uri:
+        url: "{{ rr_query_url }}"
+        return_content: true
+      register: rr_pre_nodes
+      failed_when: rr_pre_nodes.status != 200 or (rr_pre_nodes.json | length) != (rr_expected_nodes | int)
+
+    - name: "Pre-reboot: mirror status endpoint answers"
+      ansible.builtin.uri:
+        url: "{{ rr_mirror_status_url }}"
+      when: dhs_amwa_plant_mirror_target | length > 0
+
+    # ---- id persistence, pre half (IS-04-01 test_22 equivalent):
+    # snapshot EVERY resource id across the six Query collections.
+    - name: "Pre-reboot: snapshot all resource ids (IS-04-01 test_22 equivalent)"
+      ansible.builtin.uri:
+        url: "{{ rr_query_base }}/{{ item }}?paging.limit={{ rr_page_limit }}"
+        return_content: true
+      loop: "{{ rr_topics }}"
+      register: rr_pre_ids
+      failed_when: >-
+        rr_pre_ids.status != 200
+        or (rr_pre_ids.json | length) >= (rr_page_limit | int)
+
+    - name: "Pre-reboot: fold the id snapshot per topic"
+      ansible.builtin.set_fact:
+        rr_pre_id_sets: >-
+          {{ dict(rr_topics | zip(rr_pre_ids.results
+             | map(attribute='json')
+             | map('map', attribute='id')
+             | map('sort') | list)) }}
+
+    # ---- the reboot. test_command gates the module's own wait on the
+    # registry unit, so control returns only once systemd has brought
+    # the plant's anchor service back.
+    - name: Reboot the plant host
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        post_reboot_delay: 5
+        test_command: systemctl is-active --quiet dhs-nmos-registry.service
+
+    - name: Post-reboot boot_id
+      ansible.builtin.slurp:
+        src: /proc/sys/kernel/random/boot_id
+      register: rr_boot_post
+
+    - name: The host actually rebooted (boot_id changed)
+      ansible.builtin.assert:
+        that: rr_boot_pre.content != rr_boot_post.content
+        fail_msg: "boot_id unchanged — the reboot did not happen"
+
+    # ---- recovery: units first, then the API surfaces, then the
+    # cross-service state (registration + mirror cache).
+    - name: "Post-reboot: every plant unit active again"
+      ansible.builtin.command: systemctl is-active --quiet {{ item }}
+      loop: "{{ rr_units }}"
+      register: rr_unit_up
+      until: rr_unit_up.rc == 0
+      retries: 30
+      delay: 2
+      changed_when: false
+
+    - name: "Post-reboot: resident node APIs answer"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ item.port }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/self"
+      loop: "{{ dhs_amwa_plant_nodes }}"
+      loop_control:
+        label: "{{ item.name }}:{{ item.port }}"
+      register: rr_node_self
+      until: rr_node_self.status == 200
+      retries: 30
+      delay: 2
+
+    - name: "Post-reboot: all {{ rr_expected_nodes }} nodes re-registered"
+      ansible.builtin.uri:
+        url: "{{ rr_query_url }}"
+        return_content: true
+      register: rr_post_nodes
+      until: rr_post_nodes.status == 200 and (rr_post_nodes.json | length) == (rr_expected_nodes | int)
+      retries: 60
+      delay: 5
+
+    # ---- id persistence, post half: every topic must return with the
+    # EXACT id set it had before the reboot (retried per topic — child
+    # resources land right after their node's re-registration).
+    - name: "Post-reboot: resource ids identical per topic (IS-04-01 test_22 equivalent)"
+      ansible.builtin.uri:
+        url: "{{ rr_query_base }}/{{ item }}?paging.limit={{ rr_page_limit }}"
+        return_content: true
+      loop: "{{ rr_topics }}"
+      register: rr_post_ids
+      until: >-
+        rr_post_ids.status == 200
+        and (rr_post_ids.json | map(attribute='id') | sort | list) == (rr_pre_id_sets[item] | list)
+      retries: 30
+      delay: 2
+
+    - name: "Post-reboot: mirror rebuilt its source cache"
+      ansible.builtin.uri:
+        url: "{{ rr_mirror_status_url }}"
+        return_content: true
+      register: rr_post_mirror
+      until: >-
+        rr_post_mirror.status == 200
+        and (rr_post_mirror.json.cache_counts.nodes | default(0)) == (rr_expected_nodes | int)
+      retries: 60
+      delay: 5
+      when: dhs_amwa_plant_mirror_target | length > 0
+
+    # The stamp carries the post-reboot boot_id; amwa-reboot-gate.yml's
+    # guard play refuses to run the conformance half unless the stamp
+    # matches the CURRENT boot — i.e. this play passed for this boot.
+    - name: Resilience stamp for the gate guard
+      ansible.builtin.copy:
+        dest: "{{ dhs_amwa_plant_dir }}/reboot-resilience.json"
+        mode: "0644"
+        content: |
+          {"boot_id": "{{ rr_boot_post.content | b64decode | trim }}",
+           "nodes": {{ rr_post_nodes.json | length }},
+           "units": {{ rr_units | length }}}
+
+    - name: Reboot-resilience verdict
+      ansible.builtin.debug:
+        msg: >-
+          reboot resilience OK: {{ rr_units | length }} unit(s) active,
+          {{ rr_post_nodes.json | length }}/{{ rr_expected_nodes }} nodes re-registered,
+          ids-stable across {{ rr_topics | length }} topics
+          ({{ rr_pre_id_sets | dict2items | map(attribute='value') | map('length') | sum }} resource ids
+          persisted — IS-04-01 test_22 equivalent),
+          mirror cache nodes={{ (rr_post_mirror.json.cache_counts.nodes | default('n/a'))
+            if dhs_amwa_plant_mirror_target | length > 0 else 'disabled' }},
+          boot_id {{ rr_boot_pre.content | b64decode | trim }} -> {{ rr_boot_post.content | b64decode | trim }}

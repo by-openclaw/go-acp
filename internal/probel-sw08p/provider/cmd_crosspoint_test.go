@@ -2,15 +2,17 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"io"
 	"log/slog"
 	"testing"
 	"time"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 	probelproto "dhs/internal/probel-sw08p/consumer"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // TestCrosspointInterrogateLoopback exercises the full rx 001 → tx 003
@@ -20,7 +22,7 @@ func TestCrosspointInterrogateLoopback(t *testing.T) {
 	// 1. Build a demo tree and seed one crosspoint via the API path.
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	// Seed: matrix=0 level=0 dst=2 → src=7
 	if _, err := srv.SetValue(context.Background(), "0.0.2", 7); err != nil {
@@ -37,7 +39,7 @@ func TestCrosspointInterrogateLoopback(t *testing.T) {
 	// 3. Connect via the consumer plugin.
 	host, port := splitAddr(t, addr)
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDial()
 	if err := plugin.Connect(dialCtx, host, port); err != nil {
@@ -132,7 +134,7 @@ func TestHandleCrosspointInterrogateUnit(t *testing.T) {
 func TestCrosspointTallyDumpLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = srv.Serve(ctx, "127.0.0.1:0") }()
@@ -148,7 +150,7 @@ func TestCrosspointTallyDumpLoopback(t *testing.T) {
 	}
 
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := plugin.Connect(dc, host, port); err != nil {
@@ -182,7 +184,7 @@ func TestCrosspointTallyDumpLoopback(t *testing.T) {
 func TestCrosspointConnectLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -193,7 +195,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 
 	// Primary consumer: sends the Connect.
 	f := &probelproto.Factory{}
-	primary := f.New(logger).(*probelproto.Plugin)
+	primary := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := primary.Connect(dc, host, port); err != nil {
@@ -202,7 +204,7 @@ func TestCrosspointConnectLoopback(t *testing.T) {
 	defer func() { _ = primary.Disconnect() }()
 
 	// Secondary consumer: subscribes to async tallies.
-	secondary, err := codec.Dial(dc, addr, logger, codec.ClientConfig{})
+	secondary, err := sw08session.Dial(dc, nil, addr, logger, sw08session.ClientConfig{})
 	if err != nil {
 		t.Fatalf("secondary dial: %v", err)
 	}

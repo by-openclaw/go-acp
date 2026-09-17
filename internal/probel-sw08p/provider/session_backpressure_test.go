@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -20,9 +21,10 @@ import (
 // per-session dispatchCh so the read loop's `case <-ctx.Done()` send arm
 // (session.go) becomes reachable.
 type gatedConn struct {
-	mu       sync.Mutex
-	data     []byte // remaining bytes to hand to Read
-	released chan struct{}
+	mu        sync.Mutex
+	data      []byte // remaining bytes to hand to Read
+	released  chan struct{}
+	closeOnce sync.Once
 }
 
 func (g *gatedConn) Read(p []byte) (int, error) {
@@ -49,19 +51,19 @@ func (g *gatedConn) Write(p []byte) (int, error) {
 }
 
 func (g *gatedConn) Close() error {
-	select {
-	case <-g.released:
-	default:
-		close(g.released)
-	}
+	// A real net.Conn.Close is idempotent; run()'s defer and session.close()
+	// can both call it, and under -race the old check-then-close select raced
+	// (two goroutines hitting default → "close of closed channel"). sync.Once
+	// makes it race-free and idempotent.
+	g.closeOnce.Do(func() { close(g.released) })
 	return nil
 }
 
-func (g *gatedConn) LocalAddr() net.Addr                { return fakeAddr{} }
-func (g *gatedConn) RemoteAddr() net.Addr               { return fakeAddr{} }
-func (g *gatedConn) SetDeadline(time.Time) error        { return nil }
-func (g *gatedConn) SetReadDeadline(time.Time) error    { return nil }
-func (g *gatedConn) SetWriteDeadline(time.Time) error   { return nil }
+func (g *gatedConn) LocalAddr() net.Addr              { return fakeAddr{} }
+func (g *gatedConn) RemoteAddr() net.Addr             { return fakeAddr{} }
+func (g *gatedConn) SetDeadline(time.Time) error      { return nil }
+func (g *gatedConn) SetReadDeadline(time.Time) error  { return nil }
+func (g *gatedConn) SetWriteDeadline(time.Time) error { return nil }
 
 type fakeAddr struct{}
 
@@ -73,7 +75,7 @@ func (fakeAddr) String() string  { return "fake:0" }
 // next send blocks; cancelling the ctx then drives the read loop's
 // `case <-ctx.Done(): return` arm in run().
 func TestReadLoopDispatchBackpressureCancel(t *testing.T) {
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), demoMatrixExport(16, 16))
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, demoMatrixExport(16, 16))
 
 	// Build a stream of many interrogate frames (each yields a >2-byte
 	// reply). dispatchChanCap + a comfortable margin guarantees the read

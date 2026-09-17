@@ -1,0 +1,3578 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDKEY
+--        Module Id#:334
+--       Command Set:5	
+--  Software Version:
+--          Filename:SNELL-IQDKEY-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:10:46
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQDKEY-CMD-MIB.mib 222 2006-12-08 11:52:12Z nikolaoskatsampekis $
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDKEY-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDKEY,
+    moduleIQDKEYMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDKEYCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171046Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDKEYMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdkeyCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdkeyCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDKEY 1 }
+
+	iqdkeyCmdEntry OBJECT-TYPE
+		SYNTAX		IqdkeyCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdkeySlotIndex }
+		::= { iqdkeyCmdTable 1 }
+
+	IqdkeyCmdEntry ::=
+		SEQUENCE {
+			iqdkeySlotIndex
+				Unsigned32,
+			iqdkeyControlFadeEnable
+				INTEGER,
+			iqdkeyControlFadeTime
+				INTEGER,
+			iqdkeyControlMixEnable
+				INTEGER,
+			iqdkeyControlMixLevel
+				INTEGER,
+			iqdkeyControlKeyEnable
+				INTEGER,
+			iqdkeyControlKeySetupKeyerMode
+				INTEGER,
+			iqdkeyControlKeySetupKeySource
+				INTEGER,
+			iqdkeyControlKeySetupFillSource
+				INTEGER,
+			iqdkeyKeySetupKeyProcAmpKeyProcAmpEnable
+				INTEGER,
+			iqdkeyKeySetupKeyProcAmpKeyGainControl
+				INTEGER,
+			iqdkeyKeySetupKeyProcAmpKeyLiftControl
+				INTEGER,
+			iqdkeyKeySetupKeyProcAmpKeyPicturePos
+				INTEGER,
+			iqdkeyKeySetupKeyProcAmpKeyInvert
+				INTEGER,
+			iqdkeyOutputProgramOutputFadeTime
+				INTEGER,
+			iqdkeyOutputProgramOutputFadeEnable
+				INTEGER,
+			iqdkeyOutputPreviewOutput
+				INTEGER,
+			iqdkeyOutputPreviewOutputEditCaption
+				RollCallString,
+			iqdkeyOutputPreviewOutputCaption
+				INTEGER,
+			iqdkeyOutputDefaultProgram
+				INTEGER,
+			iqdkeyOutputDefaultPreview
+				INTEGER,
+			iqdkeyMatte
+				INTEGER,
+			iqdkeyMatteCaptureFrameCapture
+				INTEGER,
+			iqdkeyMatteCaptureFrame
+				INTEGER,
+			iqdkeyMatteSingleColorSetupSaturation
+				INTEGER,
+			iqdkeyMatteSingleColorSetupLuminance
+				INTEGER,
+			iqdkeyMatteSingleColorSetupHue
+				INTEGER,
+			iqdkeyMatteFrameStoreStatus
+				RollCallString,
+			iqdkeyMemoriesMemory1Save1
+				INTEGER,
+			iqdkeyMemoriesMemory1Recall1
+				INTEGER,
+			iqdkeyMemoriesMemory1Clear1
+				INTEGER,
+			iqdkeyMemoriesMemory1Name1
+				RollCallString,
+			iqdkeyMemoriesMemory2Save2
+				INTEGER,
+			iqdkeyMemoriesMemory2Recall2
+				INTEGER,
+			iqdkeyMemoriesMemory2Clear2
+				INTEGER,
+			iqdkeyMemoriesMemory2Name2
+				RollCallString,
+			iqdkeyMemoriesMemory3Save3
+				INTEGER,
+			iqdkeyMemoriesMemory3Recall3
+				INTEGER,
+			iqdkeyMemoriesMemory3Clear3
+				INTEGER,
+			iqdkeyMemoriesMemory3Name3
+				RollCallString,
+			iqdkeyMemoriesMemory4Save4
+				INTEGER,
+			iqdkeyMemoriesMemory4Recall4
+				INTEGER,
+			iqdkeyMemoriesMemory4Clear4
+				INTEGER,
+			iqdkeyMemoriesMemory4Name4
+				RollCallString,
+			iqdkeyMemoriesMemory5Save5
+				INTEGER,
+			iqdkeyMemoriesMemory5Recall5
+				INTEGER,
+			iqdkeyMemoriesMemory5Clear5
+				INTEGER,
+			iqdkeyMemoriesMemory5Name5
+				RollCallString,
+			iqdkeyMemoriesMemory6Save6
+				INTEGER,
+			iqdkeyMemoriesMemory6Recall6
+				INTEGER,
+			iqdkeyMemoriesMemory6Clear6
+				INTEGER,
+			iqdkeyMemoriesMemory6Name6
+				RollCallString,
+			iqdkeyMemoriesMemory7Save7
+				INTEGER,
+			iqdkeyMemoriesMemory7Recall7
+				INTEGER,
+			iqdkeyMemoriesMemory7Clear7
+				INTEGER,
+			iqdkeyMemoriesMemory7Name7
+				RollCallString,
+			iqdkeyMemoriesMemory8Save8
+				INTEGER,
+			iqdkeyMemoriesMemory8Recall8
+				INTEGER,
+			iqdkeyMemoriesMemory8Clear8
+				INTEGER,
+			iqdkeyMemoriesMemory8Name8
+				RollCallString,
+			iqdkeyMemoriesMemory9Save9
+				INTEGER,
+			iqdkeyMemoriesMemory9Recall9
+				INTEGER,
+			iqdkeyMemoriesMemory9Clear9
+				INTEGER,
+			iqdkeyMemoriesMemory9Name9
+				RollCallString,
+			iqdkeyMemoriesMemory10Save10
+				INTEGER,
+			iqdkeyMemoriesMemory10Recall10
+				INTEGER,
+			iqdkeyMemoriesMemory10Clear10
+				INTEGER,
+			iqdkeyMemoriesMemory10Name10
+				RollCallString,
+			iqdkeyMemoriesMemory11Save11
+				INTEGER,
+			iqdkeyMemoriesMemory11Recall11
+				INTEGER,
+			iqdkeyMemoriesMemory11Clear11
+				INTEGER,
+			iqdkeyMemoriesMemory11Name11
+				RollCallString,
+			iqdkeyMemoriesMemory12Save12
+				INTEGER,
+			iqdkeyMemoriesMemory12Recall12
+				INTEGER,
+			iqdkeyMemoriesMemory12Clear12
+				INTEGER,
+			iqdkeyMemoriesMemory12Name12
+				RollCallString,
+			iqdkeyMemoriesMemory13Save13
+				INTEGER,
+			iqdkeyMemoriesMemory13Recall13
+				INTEGER,
+			iqdkeyMemoriesMemory13Clear13
+				INTEGER,
+			iqdkeyMemoriesMemory13Name13
+				RollCallString,
+			iqdkeyMemoriesMemory14Save14
+				INTEGER,
+			iqdkeyMemoriesMemory14Recall14
+				INTEGER,
+			iqdkeyMemoriesMemory14Clear14
+				INTEGER,
+			iqdkeyMemoriesMemory14Name14
+				RollCallString,
+			iqdkeyMemoriesMemory15Save15
+				INTEGER,
+			iqdkeyMemoriesMemory15Recall15
+				INTEGER,
+			iqdkeyMemoriesMemory15Clear15
+				INTEGER,
+			iqdkeyMemoriesMemory15Name15
+				RollCallString,
+			iqdkeyMemoriesMemory16Save16
+				INTEGER,
+			iqdkeyMemoriesMemory16Recall16
+				INTEGER,
+			iqdkeyMemoriesMemory16Clear16
+				INTEGER,
+			iqdkeyMemoriesMemory16Name16
+				RollCallString,
+			iqdkeyGenlock
+				INTEGER,
+			iqdkeyGenlockGenlockPhaseH525Phase
+				INTEGER,
+			iqdkeyGenlockGenlockPhaseH625Phase
+				INTEGER,
+			iqdkeyProcAmpsBackgroundBkgdProcAmpEnable
+				INTEGER,
+			iqdkeyProcAmpsBackgroundLumaGain
+				INTEGER,
+			iqdkeyProcAmpsBackgroundChromaGain
+				INTEGER,
+			iqdkeyProcAmpsBackgroundBlackLevel
+				INTEGER,
+			iqdkeyProcAmpsFillFillProcAmpEnable
+				INTEGER,
+			iqdkeyProcAmpsFillLumaGain
+				INTEGER,
+			iqdkeyProcAmpsFillChromaGain
+				INTEGER,
+			iqdkeyProcAmpsFillBlackLevel
+				INTEGER,
+			iqdkeyProcAmpsFillPicturePosition
+				INTEGER,
+			iqdkeySetupRollTrackRollTrackIndex
+				INTEGER,
+			iqdkeySetupRollTrackRollTrackSource
+				INTEGER,
+			iqdkeySetupRollTrackRollTrackDisable
+				INTEGER,
+			iqdkeySetupRollTrackRollTrackAddress
+				RollCallString,
+			iqdkeySetupRollTrackRollTrackCommand
+				RollCallString,
+			iqdkeySetupRollTrackRollTrackSending
+				RollCallString,
+			iqdkeySetupRollTrackRollTrackStatus
+				RollCallString,
+			iqdkeySetupRollTrackRollTrack_Index
+				INTEGER,
+			iqdkeySetupRollTrackRollTrack_Source
+				INTEGER,
+			iqdkeySetupRollTrackRollTrack_Address
+				RollCallString,
+			iqdkeySetupRollTrackRollTrack_Command
+				RollCallString,
+			iqdkeySetupLoggingBkgdInput
+				INTEGER,
+			iqdkeySetupLoggingFillInput
+				INTEGER,
+			iqdkeySetupLoggingKeyInput
+				INTEGER,
+			iqdkeySetupLoggingRefInput
+				INTEGER,
+			iqdkeySetupLoggingBkgdStandard
+				INTEGER,
+			iqdkeySetupLoggingFillStandard
+				INTEGER,
+			iqdkeySetupLoggingKeyStandard
+				INTEGER,
+			iqdkeySetupLoggingRefStandard
+				INTEGER,
+			iqdkeySetupLoggingBkgdEDHStatus
+				INTEGER,
+			iqdkeySetupLoggingFillEDHStatus
+				INTEGER,
+			iqdkeySetupLoggingKeyEDHStatus
+				INTEGER,
+			iqdkeySetupLoggingBkgdEDHErrors
+				INTEGER,
+			iqdkeySetupLoggingFillEDHErrors
+				INTEGER,
+			iqdkeySetupLoggingKeyEDHErrors
+				INTEGER,
+			iqdkeySetupLoggingReference
+				INTEGER,
+			iqdkeyGPIIOGPIInputDisableAll
+				INTEGER,
+			iqdkeyGPIIOGPIInput
+				INTEGER,
+			iqdkeyGPIIOGPIInputInputSelection
+				INTEGER,
+			iqdkeyGPIIOGPIInputGPIInStatus
+				RollCallString,
+			iqdkeyGPIIOGPIOutput
+				INTEGER,
+			iqdkeyGPIIOGPIOutputOutputSelection
+				INTEGER,
+			iqdkeyGPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iqdkeyGPIIOGPIInputOutputGPIO1Out
+				INTEGER,
+			iqdkeyGPIIOGPIInputOutputGPIO2Out
+				INTEGER,
+			iqdkeyGPIIOGPIInputOutputGPIO3Out
+				INTEGER,
+			iqdkeySetupGPIIOGPIIn
+				INTEGER,
+			iqdkeySetupGPIIOInputSelection
+				INTEGER,
+			iqdkeySetupGPIIOGPIOut
+				INTEGER,
+			iqdkeySetupGPIIOOutputSelection
+				INTEGER,
+			iqdkeyVAncSource525525Field1525BlankAll
+				INTEGER,
+			iqdkeyVAncSource525525Field1525PassBkgd
+				INTEGER,
+			iqdkeyVAncSource525525Field1525PassFill
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_11
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_12
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_13
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_14
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_15
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_16
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_17
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_18
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_19
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_20
+				INTEGER,
+			iqdkeyVAncSource525525Field1Line_21
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_274
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_275
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_276
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_277
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_278
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_279
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_280
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_281
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_282
+				INTEGER,
+			iqdkeyVAncSource525525Field2Line_283
+				INTEGER,
+			iqdkeyAncDataVAncSource525
+				INTEGER,
+			iqdkeyVAncSource625625Field1625BlankAll
+				INTEGER,
+			iqdkeyVAncSource625625Field1625PassBkgd
+				INTEGER,
+			iqdkeyVAncSource625625Field1625PassFill
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_7
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_8
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_9
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_10
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_11
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_12
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_13
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_14
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_15
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_16
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_17
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_18
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_19
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_20
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_21
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_22
+				INTEGER,
+			iqdkeyVAncSource625625Field1Line_23
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_320
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_321
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_322
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_323
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_324
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_325
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_326
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_327
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_328
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_329
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_330
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_331
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_332
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_333
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_334
+				INTEGER,
+			iqdkeyVAncSource625625Field2Line_335
+				INTEGER,
+			iqdkeyAncDataVAncSource625
+				INTEGER,
+			iqdkeySetupAncDataHAncSource
+				INTEGER,
+			iqdkeyStatusUnitSoftwareVersion
+				RollCallString,
+			iqdkeyStatusUnitSerialNo
+				RollCallString,
+			iqdkeyStatusUnitPresetUnit
+				INTEGER,
+			iqdkeyStatusUnitRestart
+				INTEGER,
+			iqdkeyStatusUnitBuildNo
+				RollCallString,
+			iqdkeyStatusStatusDisplay
+				INTEGER,
+			iqdkeyStatusStatusDisplayEDHReset
+				INTEGER,
+			iqdkeyStatusStatusDisplayEDHChecksum
+				INTEGER
+		}
+
+	iqdkeySlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdkeyCmdEntry 0 }
+
+
+	iqdkeyControlFadeEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Fade Enable  cmdID= 2680 "
+		::= { iqdkeyCmdEntry 2680 }
+
+
+	iqdkeyControlFadeTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Fade Time  cmdID= 2679  min= 0  max= 2047  step= 1  format= %4.0f Fields  div_scale= 1 
+					Min =    0 Fields  Max = 2047 Fields  Step =    1 Fields "
+		::= { iqdkeyCmdEntry 2679 }
+
+
+	iqdkeyControlMixEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Mix Enable  cmdID= 2686 "
+		::= { iqdkeyCmdEntry 2686 }
+
+
+	iqdkeyControlMixLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Mix Level  cmdID= 2687  min= 0  max= 100  step= 1  format= %3.0f %%  div_scale= 1 
+					Min =   0 %  Max = 100 %  Step =   1 % "
+		::= { iqdkeyCmdEntry 2687 }
+
+
+	iqdkeyControlKeyEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Key Enable  cmdID= 1963 "
+		::= { iqdkeyCmdEntry 1963 }
+
+
+	iqdkeyControlKeySetupKeyerMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Luma(0),
+							val_Linear(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Keyer Mode  cmdID= 1961 
+					Luma  value= 0  
+					Linear  value= 1  "
+		::= { iqdkeyCmdEntry 1961 }
+
+
+	iqdkeyControlKeySetupKeySource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Key_Input(0),
+							val_Fill_Input(1),
+							val_Matte(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Key Source  cmdID= 1967 
+					Key Input  value= 0  
+					Fill Input  value= 1  
+					Matte  value= 2  "
+		::= { iqdkeyCmdEntry 1967 }
+
+
+	iqdkeyControlKeySetupFillSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Fill_Input(0),
+							val_Matte(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Control
+					Fill Source  cmdID= 1966 
+					Fill Input  value= 0  
+					Matte  value= 1  "
+		::= { iqdkeyCmdEntry 1966 }
+
+
+	iqdkeyKeySetupKeyProcAmpKeyProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Key ProcAmp Enable  cmdID= 2868 "
+		::= { iqdkeyCmdEntry 2868 }
+
+
+	iqdkeyKeySetupKeyProcAmpKeyGainControl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Key Gain Control  cmdID= 2460  min= 0  max= 15999  step= 1  format= %2.3f  div_scale= 1000 
+					Min = 0.000  Max = 15.999  Step = 0.001 "
+		::= { iqdkeyCmdEntry 2460 }
+
+
+	iqdkeyKeySetupKeyProcAmpKeyLiftControl OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Key Lift Control  cmdID= 2461  min= -100  max= 1100  step= 1  format= %3.1f%%  div_scale= 10 
+					Min = -10.0%  Max = 110.0%  Step = 0.1% "
+		::= { iqdkeyCmdEntry 2461 }
+
+
+	iqdkeyKeySetupKeyProcAmpKeyPicturePos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Control
+					Key Picture Pos.  cmdID= 2462  min= -592  max= 592  step= 74  format= %3.0fns  div_scale= 1 
+					Min = -592ns  Max = 592ns  Step =  74ns "
+		::= { iqdkeyCmdEntry 2462 }
+
+
+	iqdkeyKeySetupKeyProcAmpKeyInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Control
+					Key Invert  cmdID= 2463 "
+		::= { iqdkeyCmdEntry 2463 }
+
+
+	iqdkeyOutputProgramOutputFadeTime OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Output
+					Fade Time  cmdID= 2677  min= 0  max= 2047  step= 1  format= %4.0f Fields  div_scale= 1 
+					Min =    0 Fields  Max = 2047 Fields  Step =    1 Fields "
+		::= { iqdkeyCmdEntry 2677 }
+
+
+	iqdkeyOutputProgramOutputFadeEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Output
+					Fade Enable  cmdID= 2678 "
+		::= { iqdkeyCmdEntry 2678 }
+
+
+	iqdkeyOutputPreviewOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Keyed_Output(0),
+							val_Background_Input(1),
+							val_Fill_Input(2),
+							val_Key_Input(3),
+							val_Color_Bars(4),
+							val_Black(5),
+							val_Matte(6),
+							val_Processed_Key(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Output
+					Keyed Output  cmdID= 2577  value= 0  
+					Background Input  cmdID= 2577  value= 1  
+					Fill Input  cmdID= 2577  value= 2  
+					Key Input  cmdID= 2577  value= 3  
+					Color Bars  cmdID= 2577  value= 4  
+					Black  cmdID= 2577  value= 5  
+					Matte  cmdID= 2577  value= 6  
+					Processed Key  cmdID= 2577  value= 7  "
+		::= { iqdkeyCmdEntry 2577 }
+
+
+	iqdkeyOutputPreviewOutputEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Output
+					Edit Caption  cmdID= 1041  "
+		::= { iqdkeyCmdEntry 1041 }
+
+
+	iqdkeyOutputPreviewOutputCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_Caption_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Output
+					Caption Off  cmdID= 1037  value= 0  
+					Caption On  cmdID= 1037  value= 1  "
+		::= { iqdkeyCmdEntry 1037 }
+
+
+	iqdkeyOutputDefaultProgram OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Color_Bars(1),
+							val_Matte(2),
+							val_Default_Fill(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Output
+					Default Program  cmdID= 2576 
+					Black  value= 0  
+					Color Bars  value= 1  
+					Matte  value= 2  
+					Default Fill  value= 3  "
+		::= { iqdkeyCmdEntry 2576 }
+
+
+	iqdkeyOutputDefaultPreview OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_Color_Bars(1),
+							val_Matte(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Output
+					Default Preview  cmdID= 2575 
+					Black  value= 0  
+					Color Bars  value= 1  
+					Matte  value= 2  "
+		::= { iqdkeyCmdEntry 2575 }
+
+
+	iqdkeyMatte OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Frame_Store(1),
+							val_Single_Color(0)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Frame Store  cmdID= 2725  value= 1  
+					Single Color  cmdID= 2725  value= 0  "
+		::= { iqdkeyCmdEntry 2725 }
+
+
+	iqdkeyMatteCaptureFrameCapture OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Capture(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Capture  cmdID= 2727  value= 1  "
+		::= { iqdkeyCmdEntry 2727 }
+
+
+	iqdkeyMatteCaptureFrame OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Background(0),
+							val_Fill(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Matte
+					Background  cmdID= 2726  value= 0  
+					Fill  cmdID= 2726  value= 1  "
+		::= { iqdkeyCmdEntry 2726 }
+
+
+	iqdkeyMatteSingleColorSetupSaturation OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Saturation  cmdID= 2722  min= 0  max= 100  step= 1  format= %3.0f%%  div_scale= 1 
+					Min =   0%  Max = 100%  Step =   1% "
+		::= { iqdkeyCmdEntry 2722 }
+
+
+	iqdkeyMatteSingleColorSetupLuminance OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Luminance  cmdID= 2723  min= 0  max= 100  step= 1  format= %3.0f%%  div_scale= 1 
+					Min =   0%  Max = 100%  Step =   1% "
+		::= { iqdkeyCmdEntry 2723 }
+
+
+	iqdkeyMatteSingleColorSetupHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Matte
+					Hue  cmdID= 2724  min= 0  max= 360  step= 1  format= %3.0f Deg  div_scale= 1 
+					Min =   0 Deg  Max = 360 Deg  Step =   1 Deg "
+		::= { iqdkeyCmdEntry 2724 }
+
+
+	iqdkeyMatteFrameStoreStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Matte
+					Frame Store Status  cmdID= 2728  format=   "
+		::= { iqdkeyCmdEntry 2728 }
+
+
+	iqdkeyMemoriesMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iqdkeyCmdEntry 1600 }
+
+
+	iqdkeyMemoriesMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iqdkeyCmdEntry 1601 }
+
+
+	iqdkeyMemoriesMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iqdkeyCmdEntry 1602 }
+
+
+	iqdkeyMemoriesMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 1  cmdID= 1603  "
+		::= { iqdkeyCmdEntry 1603 }
+
+
+	iqdkeyMemoriesMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iqdkeyCmdEntry 1604 }
+
+
+	iqdkeyMemoriesMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iqdkeyCmdEntry 1605 }
+
+
+	iqdkeyMemoriesMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iqdkeyCmdEntry 1606 }
+
+
+	iqdkeyMemoriesMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 2  cmdID= 1607  "
+		::= { iqdkeyCmdEntry 1607 }
+
+
+	iqdkeyMemoriesMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iqdkeyCmdEntry 1608 }
+
+
+	iqdkeyMemoriesMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iqdkeyCmdEntry 1609 }
+
+
+	iqdkeyMemoriesMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iqdkeyCmdEntry 1610 }
+
+
+	iqdkeyMemoriesMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 3  cmdID= 1611  "
+		::= { iqdkeyCmdEntry 1611 }
+
+
+	iqdkeyMemoriesMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iqdkeyCmdEntry 1612 }
+
+
+	iqdkeyMemoriesMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iqdkeyCmdEntry 1613 }
+
+
+	iqdkeyMemoriesMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iqdkeyCmdEntry 1614 }
+
+
+	iqdkeyMemoriesMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 4  cmdID= 1615  "
+		::= { iqdkeyCmdEntry 1615 }
+
+
+	iqdkeyMemoriesMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iqdkeyCmdEntry 1616 }
+
+
+	iqdkeyMemoriesMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iqdkeyCmdEntry 1617 }
+
+
+	iqdkeyMemoriesMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iqdkeyCmdEntry 1618 }
+
+
+	iqdkeyMemoriesMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 5  cmdID= 1619  "
+		::= { iqdkeyCmdEntry 1619 }
+
+
+	iqdkeyMemoriesMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iqdkeyCmdEntry 1620 }
+
+
+	iqdkeyMemoriesMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iqdkeyCmdEntry 1621 }
+
+
+	iqdkeyMemoriesMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iqdkeyCmdEntry 1622 }
+
+
+	iqdkeyMemoriesMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 6  cmdID= 1623  "
+		::= { iqdkeyCmdEntry 1623 }
+
+
+	iqdkeyMemoriesMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iqdkeyCmdEntry 1624 }
+
+
+	iqdkeyMemoriesMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iqdkeyCmdEntry 1625 }
+
+
+	iqdkeyMemoriesMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iqdkeyCmdEntry 1626 }
+
+
+	iqdkeyMemoriesMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 7  cmdID= 1627  "
+		::= { iqdkeyCmdEntry 1627 }
+
+
+	iqdkeyMemoriesMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iqdkeyCmdEntry 1628 }
+
+
+	iqdkeyMemoriesMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iqdkeyCmdEntry 1629 }
+
+
+	iqdkeyMemoriesMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iqdkeyCmdEntry 1630 }
+
+
+	iqdkeyMemoriesMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 8  cmdID= 1631  "
+		::= { iqdkeyCmdEntry 1631 }
+
+
+	iqdkeyMemoriesMemory9Save9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 9  cmdID= 1632  value= 1  "
+		::= { iqdkeyCmdEntry 1632 }
+
+
+	iqdkeyMemoriesMemory9Recall9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 9  cmdID= 1633  value= 1  "
+		::= { iqdkeyCmdEntry 1633 }
+
+
+	iqdkeyMemoriesMemory9Clear9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_9(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 9  cmdID= 1634  value= 1  "
+		::= { iqdkeyCmdEntry 1634 }
+
+
+	iqdkeyMemoriesMemory9Name9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 9  cmdID= 1635  "
+		::= { iqdkeyCmdEntry 1635 }
+
+
+	iqdkeyMemoriesMemory10Save10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 10  cmdID= 1636  value= 1  "
+		::= { iqdkeyCmdEntry 1636 }
+
+
+	iqdkeyMemoriesMemory10Recall10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 10  cmdID= 1637  value= 1  "
+		::= { iqdkeyCmdEntry 1637 }
+
+
+	iqdkeyMemoriesMemory10Clear10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_10(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 10  cmdID= 1638  value= 1  "
+		::= { iqdkeyCmdEntry 1638 }
+
+
+	iqdkeyMemoriesMemory10Name10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 10  cmdID= 1639  "
+		::= { iqdkeyCmdEntry 1639 }
+
+
+	iqdkeyMemoriesMemory11Save11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 11  cmdID= 1640  value= 1  "
+		::= { iqdkeyCmdEntry 1640 }
+
+
+	iqdkeyMemoriesMemory11Recall11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 11  cmdID= 1641  value= 1  "
+		::= { iqdkeyCmdEntry 1641 }
+
+
+	iqdkeyMemoriesMemory11Clear11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_11(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 11  cmdID= 1642  value= 1  "
+		::= { iqdkeyCmdEntry 1642 }
+
+
+	iqdkeyMemoriesMemory11Name11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 11  cmdID= 1643  "
+		::= { iqdkeyCmdEntry 1643 }
+
+
+	iqdkeyMemoriesMemory12Save12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 12  cmdID= 1644  value= 1  "
+		::= { iqdkeyCmdEntry 1644 }
+
+
+	iqdkeyMemoriesMemory12Recall12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 12  cmdID= 1645  value= 1  "
+		::= { iqdkeyCmdEntry 1645 }
+
+
+	iqdkeyMemoriesMemory12Clear12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_12(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 12  cmdID= 1646  value= 1  "
+		::= { iqdkeyCmdEntry 1646 }
+
+
+	iqdkeyMemoriesMemory12Name12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 12  cmdID= 1647  "
+		::= { iqdkeyCmdEntry 1647 }
+
+
+	iqdkeyMemoriesMemory13Save13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 13  cmdID= 1648  value= 1  "
+		::= { iqdkeyCmdEntry 1648 }
+
+
+	iqdkeyMemoriesMemory13Recall13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 13  cmdID= 1649  value= 1  "
+		::= { iqdkeyCmdEntry 1649 }
+
+
+	iqdkeyMemoriesMemory13Clear13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_13(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 13  cmdID= 1650  value= 1  "
+		::= { iqdkeyCmdEntry 1650 }
+
+
+	iqdkeyMemoriesMemory13Name13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 13  cmdID= 1651  "
+		::= { iqdkeyCmdEntry 1651 }
+
+
+	iqdkeyMemoriesMemory14Save14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 14  cmdID= 1652  value= 1  "
+		::= { iqdkeyCmdEntry 1652 }
+
+
+	iqdkeyMemoriesMemory14Recall14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 14  cmdID= 1653  value= 1  "
+		::= { iqdkeyCmdEntry 1653 }
+
+
+	iqdkeyMemoriesMemory14Clear14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_14(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 14  cmdID= 1654  value= 1  "
+		::= { iqdkeyCmdEntry 1654 }
+
+
+	iqdkeyMemoriesMemory14Name14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 14  cmdID= 1655  "
+		::= { iqdkeyCmdEntry 1655 }
+
+
+	iqdkeyMemoriesMemory15Save15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 15  cmdID= 1656  value= 1  "
+		::= { iqdkeyCmdEntry 1656 }
+
+
+	iqdkeyMemoriesMemory15Recall15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 15  cmdID= 1657  value= 1  "
+		::= { iqdkeyCmdEntry 1657 }
+
+
+	iqdkeyMemoriesMemory15Clear15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_15(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 15  cmdID= 1658  value= 1  "
+		::= { iqdkeyCmdEntry 1658 }
+
+
+	iqdkeyMemoriesMemory15Name15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 15  cmdID= 1659  "
+		::= { iqdkeyCmdEntry 1659 }
+
+
+	iqdkeyMemoriesMemory16Save16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 16  cmdID= 1660  value= 1  "
+		::= { iqdkeyCmdEntry 1660 }
+
+
+	iqdkeyMemoriesMemory16Recall16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 16  cmdID= 1661  value= 1  "
+		::= { iqdkeyCmdEntry 1661 }
+
+
+	iqdkeyMemoriesMemory16Clear16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_16(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Clear 16  cmdID= 1662  value= 1  "
+		::= { iqdkeyCmdEntry 1662 }
+
+
+	iqdkeyMemoriesMemory16Name16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 16  cmdID= 1663  "
+		::= { iqdkeyCmdEntry 1663 }
+
+
+	iqdkeyGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Lock_to_Reference(0),
+							val_Lock_to_Background(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Lock to Reference  cmdID= 1049  value= 0  
+					Lock to Background  cmdID= 1049  value= 1  "
+		::= { iqdkeyCmdEntry 1049 }
+
+
+	iqdkeyGenlockGenlockPhaseH525Phase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					H. 525 Phase  cmdID= 1052  min= -26751  max= 36741  step= 37  format= %.03fus  div_scale= 1000 
+					Min = -26.751us  Max = 36.741us  Step = 0.037us "
+		::= { iqdkeyCmdEntry 1052 }
+
+
+	iqdkeyGenlockGenlockPhaseH625Phase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					H. 625 Phase  cmdID= 1050  min= -27195  max= 36815  step= 37  format= %.03fus  div_scale= 1000 
+					Min = -27.195us  Max = 36.815us  Step = 0.037us "
+		::= { iqdkeyCmdEntry 1050 }
+
+
+	iqdkeyProcAmpsBackgroundBkgdProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Proc Amps
+					Bkgd ProcAmp Enable  cmdID= 2864 "
+		::= { iqdkeyCmdEntry 2864 }
+
+
+	iqdkeyProcAmpsBackgroundLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Luma Gain  cmdID= 2707  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdkeyCmdEntry 2707 }
+
+
+	iqdkeyProcAmpsBackgroundChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Chroma Gain  cmdID= 2706  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdkeyCmdEntry 2706 }
+
+
+	iqdkeyProcAmpsBackgroundBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Black Level  cmdID= 2708  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdkeyCmdEntry 2708 }
+
+
+	iqdkeyProcAmpsFillFillProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Proc Amps
+					Fill ProcAmp Enable  cmdID= 2865 "
+		::= { iqdkeyCmdEntry 2865 }
+
+
+	iqdkeyProcAmpsFillLumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Luma Gain  cmdID= 2711  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdkeyCmdEntry 2711 }
+
+
+	iqdkeyProcAmpsFillChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Chroma Gain  cmdID= 2710  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iqdkeyCmdEntry 2710 }
+
+
+	iqdkeyProcAmpsFillBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Black Level  cmdID= 2712  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iqdkeyCmdEntry 2712 }
+
+
+	iqdkeyProcAmpsFillPicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Proc Amps
+					Picture Position  cmdID= 2713  min= -592  max= 592  step= 148  format= %3.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iqdkeyCmdEntry 2713 }
+
+
+	iqdkeySetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Index  cmdID= 1495  min= 0  max= 31  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdkeyCmdEntry 1495 }
+
+
+	iqdkeySetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Source  cmdID= 1496  min= -1  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 11  Step = 1 "
+		::= { iqdkeyCmdEntry 1496 }
+
+
+	iqdkeySetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqdkeyCmdEntry 1513 }
+
+
+	iqdkeySetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Address  cmdID= 1497  "
+		::= { iqdkeyCmdEntry 1497 }
+
+
+	iqdkeySetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Command  cmdID= 1498  "
+		::= { iqdkeyCmdEntry 1498 }
+
+
+	iqdkeySetupRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqdkeyCmdEntry 1514 }
+
+
+	iqdkeySetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqdkeyCmdEntry 1511 }
+
+
+	iqdkeySetupRollTrackRollTrack_Index OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Index  cmdID= 2870  min= 0  max= 31  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 31  Step = 1 "
+		::= { iqdkeyCmdEntry 2870 }
+
+
+	iqdkeySetupRollTrackRollTrack_Source OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					RollTrack Source  cmdID= 2871  min= -1  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 11  Step = 1 "
+		::= { iqdkeyCmdEntry 2871 }
+
+
+	iqdkeySetupRollTrackRollTrack_Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Address  cmdID= 2872  "
+		::= { iqdkeyCmdEntry 2872 }
+
+
+	iqdkeySetupRollTrackRollTrack_Command OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					RollTrack Command  cmdID= 2873  "
+		::= { iqdkeyCmdEntry 2873 }
+
+
+	iqdkeySetupLoggingBkgdInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Bkgd Input  cmdID= 1060 "
+		::= { iqdkeyCmdEntry 1060 }
+
+
+	iqdkeySetupLoggingFillInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Fill Input  cmdID= 1094 "
+		::= { iqdkeyCmdEntry 1094 }
+
+
+	iqdkeySetupLoggingKeyInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Key Input  cmdID= 1095 "
+		::= { iqdkeyCmdEntry 1095 }
+
+
+	iqdkeySetupLoggingRefInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Ref Input  cmdID= 1096 "
+		::= { iqdkeyCmdEntry 1096 }
+
+
+	iqdkeySetupLoggingBkgdStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Bkgd Standard  cmdID= 1061 "
+		::= { iqdkeyCmdEntry 1061 }
+
+
+	iqdkeySetupLoggingFillStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Fill Standard  cmdID= 1097 "
+		::= { iqdkeyCmdEntry 1097 }
+
+
+	iqdkeySetupLoggingKeyStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Key Standard  cmdID= 1098 "
+		::= { iqdkeyCmdEntry 1098 }
+
+
+	iqdkeySetupLoggingRefStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Ref Standard  cmdID= 1099 "
+		::= { iqdkeyCmdEntry 1099 }
+
+
+	iqdkeySetupLoggingBkgdEDHStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Bkgd EDH Status  cmdID= 1064 "
+		::= { iqdkeyCmdEntry 1064 }
+
+
+	iqdkeySetupLoggingFillEDHStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Fill EDH Status  cmdID= 1100 "
+		::= { iqdkeyCmdEntry 1100 }
+
+
+	iqdkeySetupLoggingKeyEDHStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Key EDH Status  cmdID= 1101 "
+		::= { iqdkeyCmdEntry 1101 }
+
+
+	iqdkeySetupLoggingBkgdEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Bkgd EDH Errors  cmdID= 1070 "
+		::= { iqdkeyCmdEntry 1070 }
+
+
+	iqdkeySetupLoggingFillEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Fill EDH Errors  cmdID= 1103 "
+		::= { iqdkeyCmdEntry 1103 }
+
+
+	iqdkeySetupLoggingKeyEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Key EDH Errors  cmdID= 1104 "
+		::= { iqdkeyCmdEntry 1104 }
+
+
+	iqdkeySetupLoggingReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Reference  cmdID= 1062 "
+		::= { iqdkeyCmdEntry 1062 }
+
+
+	iqdkeyGPIIOGPIInputDisableAll OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					Disable All  cmdID= 2605 "
+		::= { iqdkeyCmdEntry 2605 }
+
+
+	iqdkeyGPIIOGPIInput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI In  cmdID= 2010  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdkeyCmdEntry 2010 }
+
+
+	iqdkeyGPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Input Selection  cmdID= 2011  min= -1  max= 23  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 23  Step = 1 "
+		::= { iqdkeyCmdEntry 2011 }
+
+
+	iqdkeyGPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iqdkeyCmdEntry 2048 }
+
+
+	iqdkeyGPIIOGPIOutput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI Out  cmdID= 2012  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdkeyCmdEntry 2012 }
+
+
+	iqdkeyGPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Output Selection  cmdID= 2013  min= -1  max= 6  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 6  Step = 1 "
+		::= { iqdkeyCmdEntry 2013 }
+
+
+	iqdkeyGPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iqdkeyCmdEntry 2049 }
+
+
+	iqdkeyGPIIOGPIInputOutputGPIO1Out OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					GPI/O 1 Out  cmdID= 2014 "
+		::= { iqdkeyCmdEntry 2014 }
+
+
+	iqdkeyGPIIOGPIInputOutputGPIO2Out OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					GPI/O 2 Out  cmdID= 2015 "
+		::= { iqdkeyCmdEntry 2015 }
+
+
+	iqdkeyGPIIOGPIInputOutputGPIO3Out OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup
+					GPI/O 3 Out  cmdID= 2016 "
+		::= { iqdkeyCmdEntry 2016 }
+
+
+	iqdkeySetupGPIIOGPIIn OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI In  cmdID= 2874  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdkeyCmdEntry 2874 }
+
+
+	iqdkeySetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Input Selection  cmdID= 2875  min= -1  max= 23  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 23  Step = 1 "
+		::= { iqdkeyCmdEntry 2875 }
+
+
+	iqdkeySetupGPIIOGPIOut OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					GPI Out  cmdID= 2876  min= 0  max= 2  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 2  Step = 1 "
+		::= { iqdkeyCmdEntry 2876 }
+
+
+	iqdkeySetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup
+					Output Selection  cmdID= 2877  min= -1  max= 6  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 6  Step = 1 "
+		::= { iqdkeyCmdEntry 2877 }
+
+
+	iqdkeyVAncSource525525Field1525BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_525_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					525 Blank All  cmdID= 2857  value= 1  "
+		::= { iqdkeyCmdEntry 2857 }
+
+
+	iqdkeyVAncSource525525Field1525PassBkgd OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_525_Pass_Bkgd(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					525 Pass Bkgd  cmdID= 2858  value= 1  "
+		::= { iqdkeyCmdEntry 2858 }
+
+
+	iqdkeyVAncSource525525Field1525PassFill OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_525_Pass_Fill(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					525 Pass Fill  cmdID= 2859  value= 1  "
+		::= { iqdkeyCmdEntry 2859 }
+
+
+	iqdkeyVAncSource525525Field1Line_11 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_11_Blank(0),
+							val_Line_11_Background(1),
+							val_Line_11_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 11 Blank  cmdID= 2779  value= 0  
+					Line 11 Background  cmdID= 2779  value= 1  
+					Line 11 Fill  cmdID= 2779  value= 2  "
+		::= { iqdkeyCmdEntry 2779 }
+
+
+	iqdkeyVAncSource525525Field1Line_12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_12_Blank(0),
+							val_Line_12_Background(1),
+							val_Line_12_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 12 Blank  cmdID= 2780  value= 0  
+					Line 12 Background  cmdID= 2780  value= 1  
+					Line 12 Fill  cmdID= 2780  value= 2  "
+		::= { iqdkeyCmdEntry 2780 }
+
+
+	iqdkeyVAncSource525525Field1Line_13 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_13_Blank(0),
+							val_Line_13_Background(1),
+							val_Line_13_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 13 Blank  cmdID= 2781  value= 0  
+					Line 13 Background  cmdID= 2781  value= 1  
+					Line 13 Fill  cmdID= 2781  value= 2  "
+		::= { iqdkeyCmdEntry 2781 }
+
+
+	iqdkeyVAncSource525525Field1Line_14 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_14_Blank(0),
+							val_Line_14_Background(1),
+							val_Line_14_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 14 Blank  cmdID= 2782  value= 0  
+					Line 14 Background  cmdID= 2782  value= 1  
+					Line 14 Fill  cmdID= 2782  value= 2  "
+		::= { iqdkeyCmdEntry 2782 }
+
+
+	iqdkeyVAncSource525525Field1Line_15 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_15_Blank(0),
+							val_Line_15_Background(1),
+							val_Line_15_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 15 Blank  cmdID= 2783  value= 0  
+					Line 15 Background  cmdID= 2783  value= 1  
+					Line 15 Fill  cmdID= 2783  value= 2  "
+		::= { iqdkeyCmdEntry 2783 }
+
+
+	iqdkeyVAncSource525525Field1Line_16 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_16_Blank(0),
+							val_Line_16_Background(1),
+							val_Line_16_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 16 Blank  cmdID= 2784  value= 0  
+					Line 16 Background  cmdID= 2784  value= 1  
+					Line 16 Fill  cmdID= 2784  value= 2  "
+		::= { iqdkeyCmdEntry 2784 }
+
+
+	iqdkeyVAncSource525525Field1Line_17 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_17_Blank(0),
+							val_Line_17_Background(1),
+							val_Line_17_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 17 Blank  cmdID= 2785  value= 0  
+					Line 17 Background  cmdID= 2785  value= 1  
+					Line 17 Fill  cmdID= 2785  value= 2  "
+		::= { iqdkeyCmdEntry 2785 }
+
+
+	iqdkeyVAncSource525525Field1Line_18 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_18_Blank(0),
+							val_Line_18_Background(1),
+							val_Line_18_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 18 Blank  cmdID= 2786  value= 0  
+					Line 18 Background  cmdID= 2786  value= 1  
+					Line 18 Fill  cmdID= 2786  value= 2  "
+		::= { iqdkeyCmdEntry 2786 }
+
+
+	iqdkeyVAncSource525525Field1Line_19 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_19_Blank(0),
+							val_Line_19_Background(1),
+							val_Line_19_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 19 Blank  cmdID= 2787  value= 0  
+					Line 19 Background  cmdID= 2787  value= 1  
+					Line 19 Fill  cmdID= 2787  value= 2  "
+		::= { iqdkeyCmdEntry 2787 }
+
+
+	iqdkeyVAncSource525525Field1Line_20 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_20_Blank(0),
+							val_Line_20_Background(1),
+							val_Line_20_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 20 Blank  cmdID= 2788  value= 0  
+					Line 20 Background  cmdID= 2788  value= 1  
+					Line 20 Fill  cmdID= 2788  value= 2  "
+		::= { iqdkeyCmdEntry 2788 }
+
+
+	iqdkeyVAncSource525525Field1Line_21 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_21_Blank(0),
+							val_Line_21_Background(1),
+							val_Line_21_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 21 Blank  cmdID= 2910  value= 0  
+					Line 21 Background  cmdID= 2910  value= 1  
+					Line 21 Fill  cmdID= 2910  value= 2  "
+		::= { iqdkeyCmdEntry 2910 }
+
+
+	iqdkeyVAncSource525525Field2Line_274 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_274_Blank(0),
+							val_Line_274_Background(1),
+							val_Line_274_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 274 Blank  cmdID= 2799  value= 0  
+					Line 274 Background  cmdID= 2799  value= 1  
+					Line 274 Fill  cmdID= 2799  value= 2  "
+		::= { iqdkeyCmdEntry 2799 }
+
+
+	iqdkeyVAncSource525525Field2Line_275 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_275_Blank(0),
+							val_Line_275_Background(1),
+							val_Line_275_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 275 Blank  cmdID= 2800  value= 0  
+					Line 275 Background  cmdID= 2800  value= 1  
+					Line 275 Fill  cmdID= 2800  value= 2  "
+		::= { iqdkeyCmdEntry 2800 }
+
+
+	iqdkeyVAncSource525525Field2Line_276 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_276_Blank(0),
+							val_Line_276_Background(1),
+							val_Line_276_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 276 Blank  cmdID= 2801  value= 0  
+					Line 276 Background  cmdID= 2801  value= 1  
+					Line 276 Fill  cmdID= 2801  value= 2  "
+		::= { iqdkeyCmdEntry 2801 }
+
+
+	iqdkeyVAncSource525525Field2Line_277 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_277_Blank(0),
+							val_Line_277_Background(1),
+							val_Line_277_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 277 Blank  cmdID= 2802  value= 0  
+					Line 277 Background  cmdID= 2802  value= 1  
+					Line 277 Fill  cmdID= 2802  value= 2  "
+		::= { iqdkeyCmdEntry 2802 }
+
+
+	iqdkeyVAncSource525525Field2Line_278 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_278_Blank(0),
+							val_Line_278_Background(1),
+							val_Line_278_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 278 Blank  cmdID= 2803  value= 0  
+					Line 278 Background  cmdID= 2803  value= 1  
+					Line 278 Fill  cmdID= 2803  value= 2  "
+		::= { iqdkeyCmdEntry 2803 }
+
+
+	iqdkeyVAncSource525525Field2Line_279 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_279_Blank(0),
+							val_Line_279_Background(1),
+							val_Line_279_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 279 Blank  cmdID= 2804  value= 0  
+					Line 279 Background  cmdID= 2804  value= 1  
+					Line 279 Fill  cmdID= 2804  value= 2  "
+		::= { iqdkeyCmdEntry 2804 }
+
+
+	iqdkeyVAncSource525525Field2Line_280 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_280_Blank(0),
+							val_Line_280_Background(1),
+							val_Line_280_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 280 Blank  cmdID= 2805  value= 0  
+					Line 280 Background  cmdID= 2805  value= 1  
+					Line 280 Fill  cmdID= 2805  value= 2  "
+		::= { iqdkeyCmdEntry 2805 }
+
+
+	iqdkeyVAncSource525525Field2Line_281 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_281_Blank(0),
+							val_Line_281_Background(1),
+							val_Line_281_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 281 Blank  cmdID= 2806  value= 0  
+					Line 281 Background  cmdID= 2806  value= 1  
+					Line 281 Fill  cmdID= 2806  value= 2  "
+		::= { iqdkeyCmdEntry 2806 }
+
+
+	iqdkeyVAncSource525525Field2Line_282 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_282_Blank(0),
+							val_Line_282_Background(1),
+							val_Line_282_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 282 Blank  cmdID= 2807  value= 0  
+					Line 282 Background  cmdID= 2807  value= 1  
+					Line 282 Fill  cmdID= 2807  value= 2  "
+		::= { iqdkeyCmdEntry 2807 }
+
+
+	iqdkeyVAncSource525525Field2Line_283 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_283_Blank(0),
+							val_Line_283_Background(1),
+							val_Line_283_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Line 283 Blank  cmdID= 2911  value= 0  
+					Line 283 Background  cmdID= 2911  value= 1  
+					Line 283 Fill  cmdID= 2911  value= 2  "
+		::= { iqdkeyCmdEntry 2911 }
+
+
+	iqdkeyAncDataVAncSource525 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Video_21_283(0),
+							val_Pass_Data_21_283(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 525
+					Pass Video 21&283  cmdID= 2913  value= 0  
+					Pass Data  21&283  cmdID= 2913  value= 1  "
+		::= { iqdkeyCmdEntry 2913 }
+
+
+	iqdkeyVAncSource625625Field1625BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_625_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					625 Blank All  cmdID= 2860  value= 1  "
+		::= { iqdkeyCmdEntry 2860 }
+
+
+	iqdkeyVAncSource625625Field1625PassBkgd OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_625_Pass_Bkgd(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					625 Pass Bkgd  cmdID= 2861  value= 1  "
+		::= { iqdkeyCmdEntry 2861 }
+
+
+	iqdkeyVAncSource625625Field1625PassFill OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_625_Pass_Fill(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					625 Pass Fill  cmdID= 2862  value= 1  "
+		::= { iqdkeyCmdEntry 2862 }
+
+
+	iqdkeyVAncSource625625Field1Line_7 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_7_Blank(0),
+							val_Line_7_Background(1),
+							val_Line_7_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 7 Blank  cmdID= 2816  value= 0  
+					Line 7 Background  cmdID= 2816  value= 1  
+					Line 7 Fill  cmdID= 2816  value= 2  "
+		::= { iqdkeyCmdEntry 2816 }
+
+
+	iqdkeyVAncSource625625Field1Line_8 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_8_Blank(0),
+							val_Line_8_Background(1),
+							val_Line_8_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 8 Blank  cmdID= 2817  value= 0  
+					Line 8 Background  cmdID= 2817  value= 1  
+					Line 8 Fill  cmdID= 2817  value= 2  "
+		::= { iqdkeyCmdEntry 2817 }
+
+
+	iqdkeyVAncSource625625Field1Line_9 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_9_Blank(0),
+							val_Line_9_Background(1),
+							val_Line_9_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 9 Blank  cmdID= 2818  value= 0  
+					Line 9 Background  cmdID= 2818  value= 1  
+					Line 9 Fill  cmdID= 2818  value= 2  "
+		::= { iqdkeyCmdEntry 2818 }
+
+
+	iqdkeyVAncSource625625Field1Line_10 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_10_Blank(0),
+							val_Line_10_Background(1),
+							val_Line_10_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 10 Blank  cmdID= 2819  value= 0  
+					Line 10 Background  cmdID= 2819  value= 1  
+					Line 10 Fill  cmdID= 2819  value= 2  "
+		::= { iqdkeyCmdEntry 2819 }
+
+
+	iqdkeyVAncSource625625Field1Line_11 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_11_Blank(0),
+							val_Line_11_Background(1),
+							val_Line_11_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 11 Blank  cmdID= 2820  value= 0  
+					Line 11 Background  cmdID= 2820  value= 1  
+					Line 11 Fill  cmdID= 2820  value= 2  "
+		::= { iqdkeyCmdEntry 2820 }
+
+
+	iqdkeyVAncSource625625Field1Line_12 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_12_Blank(0),
+							val_Line_12_Background(1),
+							val_Line_12_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 12 Blank  cmdID= 2821  value= 0  
+					Line 12 Background  cmdID= 2821  value= 1  
+					Line 12 Fill  cmdID= 2821  value= 2  "
+		::= { iqdkeyCmdEntry 2821 }
+
+
+	iqdkeyVAncSource625625Field1Line_13 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_13_Blank(0),
+							val_Line_13_Background(1),
+							val_Line_13_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 13 Blank  cmdID= 2822  value= 0  
+					Line 13 Background  cmdID= 2822  value= 1  
+					Line 13 Fill  cmdID= 2822  value= 2  "
+		::= { iqdkeyCmdEntry 2822 }
+
+
+	iqdkeyVAncSource625625Field1Line_14 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_14_Blank(0),
+							val_Line_14_Background(1),
+							val_Line_14_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 14 Blank  cmdID= 2823  value= 0  
+					Line 14 Background  cmdID= 2823  value= 1  
+					Line 14 Fill  cmdID= 2823  value= 2  "
+		::= { iqdkeyCmdEntry 2823 }
+
+
+	iqdkeyVAncSource625625Field1Line_15 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_15_Blank(0),
+							val_Line_15_Background(1),
+							val_Line_15_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 15 Blank  cmdID= 2824  value= 0  
+					Line 15 Background  cmdID= 2824  value= 1  
+					Line 15 Fill  cmdID= 2824  value= 2  "
+		::= { iqdkeyCmdEntry 2824 }
+
+
+	iqdkeyVAncSource625625Field1Line_16 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_16_Blank(0),
+							val_Line_16_Background(1),
+							val_Line_16_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 16 Blank  cmdID= 2825  value= 0  
+					Line 16 Background  cmdID= 2825  value= 1  
+					Line 16 Fill  cmdID= 2825  value= 2  "
+		::= { iqdkeyCmdEntry 2825 }
+
+
+	iqdkeyVAncSource625625Field1Line_17 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_17_Blank(0),
+							val_Line_17_Background(1),
+							val_Line_17_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 17 Blank  cmdID= 2826  value= 0  
+					Line 17 Background  cmdID= 2826  value= 1  
+					Line 17 Fill  cmdID= 2826  value= 2  "
+		::= { iqdkeyCmdEntry 2826 }
+
+
+	iqdkeyVAncSource625625Field1Line_18 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_18_Blank(0),
+							val_Line_18_Background(1),
+							val_Line_18_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 18 Blank  cmdID= 2827  value= 0  
+					Line 18 Background  cmdID= 2827  value= 1  
+					Line 18 Fill  cmdID= 2827  value= 2  "
+		::= { iqdkeyCmdEntry 2827 }
+
+
+	iqdkeyVAncSource625625Field1Line_19 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_19_Blank(0),
+							val_Line_19_Background(1),
+							val_Line_19_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 19 Blank  cmdID= 2828  value= 0  
+					Line 19 Background  cmdID= 2828  value= 1  
+					Line 19 Fill  cmdID= 2828  value= 2  "
+		::= { iqdkeyCmdEntry 2828 }
+
+
+	iqdkeyVAncSource625625Field1Line_20 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_20_Blank(0),
+							val_Line_20_Background(1),
+							val_Line_20_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 20 Blank  cmdID= 2829  value= 0  
+					Line 20 Background  cmdID= 2829  value= 1  
+					Line 20 Fill  cmdID= 2829  value= 2  "
+		::= { iqdkeyCmdEntry 2829 }
+
+
+	iqdkeyVAncSource625625Field1Line_21 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_21_Blank(0),
+							val_Line_21_Background(1),
+							val_Line_21_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 21 Blank  cmdID= 2830  value= 0  
+					Line 21 Background  cmdID= 2830  value= 1  
+					Line 21 Fill  cmdID= 2830  value= 2  "
+		::= { iqdkeyCmdEntry 2830 }
+
+
+	iqdkeyVAncSource625625Field1Line_22 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_22_Blank(0),
+							val_Line_22_Background(1),
+							val_Line_22_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 22 Blank  cmdID= 2831  value= 0  
+					Line 22 Background  cmdID= 2831  value= 1  
+					Line 22 Fill  cmdID= 2831  value= 2  "
+		::= { iqdkeyCmdEntry 2831 }
+
+
+	iqdkeyVAncSource625625Field1Line_23 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_23_Blank(0),
+							val_Line_23_Background(1),
+							val_Line_23_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 23 Blank  cmdID= 2912  value= 0  
+					Line 23 Background  cmdID= 2912  value= 1  
+					Line 23 Fill  cmdID= 2912  value= 2  "
+		::= { iqdkeyCmdEntry 2912 }
+
+
+	iqdkeyVAncSource625625Field2Line_320 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_320_Blank(0),
+							val_Line_320_Background(1),
+							val_Line_320_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 320 Blank  cmdID= 2841  value= 0  
+					Line 320 Background  cmdID= 2841  value= 1  
+					Line 320 Fill  cmdID= 2841  value= 2  "
+		::= { iqdkeyCmdEntry 2841 }
+
+
+	iqdkeyVAncSource625625Field2Line_321 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_321_Blank(0),
+							val_Line_321_Background(1),
+							val_Line_321_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 321 Blank  cmdID= 2842  value= 0  
+					Line 321 Background  cmdID= 2842  value= 1  
+					Line 321 Fill  cmdID= 2842  value= 2  "
+		::= { iqdkeyCmdEntry 2842 }
+
+
+	iqdkeyVAncSource625625Field2Line_322 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_322_Blank(0),
+							val_Line_322_Background(1),
+							val_Line_322_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 322 Blank  cmdID= 2843  value= 0  
+					Line 322 Background  cmdID= 2843  value= 1  
+					Line 322 Fill  cmdID= 2843  value= 2  "
+		::= { iqdkeyCmdEntry 2843 }
+
+
+	iqdkeyVAncSource625625Field2Line_323 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_323_Blank(0),
+							val_Line_323_Background(1),
+							val_Line_323_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 323 Blank  cmdID= 2844  value= 0  
+					Line 323 Background  cmdID= 2844  value= 1  
+					Line 323 Fill  cmdID= 2844  value= 2  "
+		::= { iqdkeyCmdEntry 2844 }
+
+
+	iqdkeyVAncSource625625Field2Line_324 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_324_Blank(0),
+							val_Line_324_Background(1),
+							val_Line_324_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 324 Blank  cmdID= 2845  value= 0  
+					Line 324 Background  cmdID= 2845  value= 1  
+					Line 324 Fill  cmdID= 2845  value= 2  "
+		::= { iqdkeyCmdEntry 2845 }
+
+
+	iqdkeyVAncSource625625Field2Line_325 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_325_Blank(0),
+							val_Line_325_Background(1),
+							val_Line_325_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 325 Blank  cmdID= 2846  value= 0  
+					Line 325 Background  cmdID= 2846  value= 1  
+					Line 325 Fill  cmdID= 2846  value= 2  "
+		::= { iqdkeyCmdEntry 2846 }
+
+
+	iqdkeyVAncSource625625Field2Line_326 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_326_Blank(0),
+							val_Line_326_Background(1),
+							val_Line_326_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 326 Blank  cmdID= 2847  value= 0  
+					Line 326 Background  cmdID= 2847  value= 1  
+					Line 326 Fill  cmdID= 2847  value= 2  "
+		::= { iqdkeyCmdEntry 2847 }
+
+
+	iqdkeyVAncSource625625Field2Line_327 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_327_Blank(0),
+							val_Line_327_Background(1),
+							val_Line_327_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 327 Blank  cmdID= 2848  value= 0  
+					Line 327 Background  cmdID= 2848  value= 1  
+					Line 327 Fill  cmdID= 2848  value= 2  "
+		::= { iqdkeyCmdEntry 2848 }
+
+
+	iqdkeyVAncSource625625Field2Line_328 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_328_Blank(0),
+							val_Line_328_Background(1),
+							val_Line_328_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 328 Blank  cmdID= 2849  value= 0  
+					Line 328 Background  cmdID= 2849  value= 1  
+					Line 328 Fill  cmdID= 2849  value= 2  "
+		::= { iqdkeyCmdEntry 2849 }
+
+
+	iqdkeyVAncSource625625Field2Line_329 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_329_Blank(0),
+							val_Line_329_Background(1),
+							val_Line_329_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 329 Blank  cmdID= 2850  value= 0  
+					Line 329 Background  cmdID= 2850  value= 1  
+					Line 329 Fill  cmdID= 2850  value= 2  "
+		::= { iqdkeyCmdEntry 2850 }
+
+
+	iqdkeyVAncSource625625Field2Line_330 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_330_Blank(0),
+							val_Line_330_Background(1),
+							val_Line_330_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 330 Blank  cmdID= 2851  value= 0  
+					Line 330 Background  cmdID= 2851  value= 1  
+					Line 330 Fill  cmdID= 2851  value= 2  "
+		::= { iqdkeyCmdEntry 2851 }
+
+
+	iqdkeyVAncSource625625Field2Line_331 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_331_Blank(0),
+							val_Line_331_Background(1),
+							val_Line_331_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 331 Blank  cmdID= 2852  value= 0  
+					Line 331 Background  cmdID= 2852  value= 1  
+					Line 331 Fill  cmdID= 2852  value= 2  "
+		::= { iqdkeyCmdEntry 2852 }
+
+
+	iqdkeyVAncSource625625Field2Line_332 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_332_Blank(0),
+							val_Line_332_Background(1),
+							val_Line_332_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 332 Blank  cmdID= 2853  value= 0  
+					Line 332 Background  cmdID= 2853  value= 1  
+					Line 332 Fill  cmdID= 2853  value= 2  "
+		::= { iqdkeyCmdEntry 2853 }
+
+
+	iqdkeyVAncSource625625Field2Line_333 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_333_Blank(0),
+							val_Line_333_Background(1),
+							val_Line_333_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 333 Blank  cmdID= 2854  value= 0  
+					Line 333 Background  cmdID= 2854  value= 1  
+					Line 333 Fill  cmdID= 2854  value= 2  "
+		::= { iqdkeyCmdEntry 2854 }
+
+
+	iqdkeyVAncSource625625Field2Line_334 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_334_Blank(0),
+							val_Line_334_Background(1),
+							val_Line_334_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 334 Blank  cmdID= 2855  value= 0  
+					Line 334 Background  cmdID= 2855  value= 1  
+					Line 334 Fill  cmdID= 2855  value= 2  "
+		::= { iqdkeyCmdEntry 2855 }
+
+
+	iqdkeyVAncSource625625Field2Line_335 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Line_335_Blank(0),
+							val_Line_335_Background(1),
+							val_Line_335_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Line 335 Blank  cmdID= 2856  value= 0  
+					Line 335 Background  cmdID= 2856  value= 1  
+					Line 335 Fill  cmdID= 2856  value= 2  "
+		::= { iqdkeyCmdEntry 2856 }
+
+
+	iqdkeyAncDataVAncSource625 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Pass_Video_Line_23(0),
+							val_Pass_Data_Line_23(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- VAnc Source 625
+					Pass Video Line 23  cmdID= 2914  value= 0  
+					Pass Data  Line 23  cmdID= 2914  value= 1  "
+		::= { iqdkeyCmdEntry 2914 }
+
+
+	iqdkeySetupAncDataHAncSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Blank(0),
+							val_Background(1),
+							val_Fill(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					HAnc Source  cmdID= 2863 
+					Blank  value= 0  
+					Background  value= 1  
+					Fill  value= 2  "
+		::= { iqdkeyCmdEntry 2863 }
+
+
+	iqdkeyStatusUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Software Version  cmdID= 2  format=   "
+		::= { iqdkeyCmdEntry 2 }
+
+
+	iqdkeyStatusUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Serial No  cmdID= 1  format=   "
+		::= { iqdkeyCmdEntry 1 }
+
+
+	iqdkeyStatusUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdkeyCmdEntry 3 }
+
+
+	iqdkeyStatusUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdkeyCmdEntry 4 }
+
+
+	iqdkeyStatusUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Status
+					Build No  cmdID= 5  format=   "
+		::= { iqdkeyCmdEntry 5 }
+
+
+	iqdkeyStatusStatusDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Status(0),
+							val_Output_Status(1),
+							val_Bkgd_EDH_Status(2),
+							val_Fill_EDH_Status(3),
+							val_Key_EDH_Status(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					Input Status  cmdID= 1915  value= 0  
+					Output Status  cmdID= 1915  value= 1  
+					Bkgd EDH Status  cmdID= 1915  value= 2  
+					Fill EDH Status  cmdID= 1915  value= 3  
+					Key EDH Status  cmdID= 1915  value= 4  "
+		::= { iqdkeyCmdEntry 1915 }
+
+
+	iqdkeyStatusStatusDisplayEDHReset OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_EDH_Reset(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Status
+					EDH Reset  cmdID= 1409  value= 1  "
+		::= { iqdkeyCmdEntry 1409 }
+
+
+	iqdkeyStatusStatusDisplayEDHChecksum OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Status
+					EDH Checksum  cmdID= 1962 "
+		::= { iqdkeyCmdEntry 1962 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: This log field shows the EDH status of the background SDI
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: NONE
+-- Comments		: This log field shows the detected video standard of the background SDI input.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: LOST
+--				: ERR
+-- Comments		: This log field shows the detected video state of the background SDI input.
+--				: LOST indicates no input detected.  
+--				: ERR indicates that the detected input is not valid.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the number of seconds during which EDH
+--				: errors were detected on the background SDI input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: NONE
+--				: OK
+--				: *BKGD
+-- Comments		: This log field shows the status of the reference.
+--				: 525 or 625 indicate valid reference input of this standard.
+--				: NONE indicates no valid reference signal available.
+--				: *BKGD indicates that the reference input is missing, and the
+--				: the card is instead locked to the background input as a
+--				: reference.
+--				: OK indicates that the card is locked to the selected input.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH_KEY
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.69.68.72.95.75.69.89
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.69.68.72.95.75.69.89
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: This log field shows the EDH status of the key SDI
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD_KEY
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.83.84.68.95.75.69.89
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.83.84.68.95.75.69.89
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: NONE
+--				: *525
+--				: *625
+--				: MATTE
+--				: MATTE*
+--				: FILL
+--				: FILL*
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD_REF
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.83.84.68.95.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.83.84.68.95.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: NONE
+--				: *525
+--				: *625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH_FILL
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.69.68.72.95.70.73.76.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.69.68.72.95.70.73.76.76
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD_FILL
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.84.68.95.70.73.76.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.84.68.95.70.73.76.76
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: NONE
+--				: *525
+--				: *625
+--				: MATTE
+--				: MATTE*
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_KEY
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.73.78.80.85.84.95.75.69.89
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.73.78.80.85.84.95.75.69.89
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: LOST
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_REF
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.73.78.80.85.84.95.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.73.78.80.85.84.95.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: LOST
+--				: ERR
+-- Comments		: This log field shows the status of the reference input.
+--				: LOST indicates no reference input detected.
+--				: ERR indicates that the detected reference input is not valid.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC_KEY
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.69.82.82.83.69.67.95.75.69.89
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.69.82.82.83.69.67.95.75.69.89
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_FILL
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.73.78.80.85.84.95.70.73.76.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.73.78.80.85.84.95.70.73.76.76
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: LOST
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC_FILL
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.69.82.82.83.69.67.95.70.73.76.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.69.82.82.83.69.67.95.70.73.76.76
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

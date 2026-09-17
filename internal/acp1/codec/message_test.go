@@ -24,12 +24,12 @@ func TestEncode_GetFrameStatus(t *testing.T) {
 	}
 	want := []byte{
 		0x00, 0x00, 0x00, 0x00, // MTID = 0 (broadcast)
-		0x01,                   // PVER = 1
-		0x01,                   // MTYPE = 1 (request)
-		0x00,                   // MADDR = 0
-		0x00,                   // MCODE = 0 (getValue)
-		0x06,                   // ObjGroup = 6 (frame)
-		0x00,                   // ObjID = 0
+		0x01, // PVER = 1
+		0x01, // MTYPE = 1 (request)
+		0x00, // MADDR = 0
+		0x00, // MCODE = 0 (getValue)
+		0x06, // ObjGroup = 6 (frame)
+		0x00, // ObjID = 0
 	}
 	got, err := m.Encode()
 	if err != nil {
@@ -53,12 +53,12 @@ func TestEncode_GetRootObject(t *testing.T) {
 	}
 	want := []byte{
 		0xCA, 0xFE, 0xBA, 0xBE, // MTID big-endian
-		0x01,                   // PVER default
-		0x01,                   // MTYPE = request
-		0x03,                   // MADDR = 3
-		0x05,                   // MCODE = getObject
-		0x00,                   // group = root
-		0x00,                   // id = 0
+		0x01, // PVER default
+		0x01, // MTYPE = request
+		0x03, // MADDR = 3
+		0x05, // MCODE = getObject
+		0x00, // group = root
+		0x00, // id = 0
 	}
 	got, err := m.Encode()
 	if err != nil {

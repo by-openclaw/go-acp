@@ -845,6 +845,18 @@ local function decode_connection_seq(ba, off, endpos)
         end
         walk = v_off + l
     end
+    -- Spec p.89: operation defaults to `absolute` when the field is omitted —
+    -- which is exactly how oneToN / oneToOne connect AND toggle-off disconnect
+    -- ride on the wire (both are absolute; connect carries the source, unroute
+    -- re-sends the same source or an empty OID). Surfacing the default makes
+    -- the Info column show the operation for every matrix connection instead
+    -- of a blank for the common absolute case. nToN keeps its explicit
+    -- connect(1)/disconnect(2). An absolute with no sources is an unroute, so
+    -- flag it as a clear/disconnect for the reader.
+    if out.op == nil then out.op = "absolute" end
+    if out.op == "absolute" and (out.sources == nil or out.sources == "") then
+        out.op = "absolute(clear/disconnect)"
+    end
     return out
 end
 

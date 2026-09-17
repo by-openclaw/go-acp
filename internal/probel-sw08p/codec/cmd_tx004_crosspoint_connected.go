@@ -81,8 +81,8 @@ func DecodeCrosspointConnected(f Frame) (CrosspointConnectedParams, error) {
 		return CrosspointConnectedParams{
 			MatrixID:      f.Payload[0] >> 4,
 			LevelID:       f.Payload[0] & 0x0F,
-			DestinationID: (uint16(f.Payload[1]>>4) & 0x07) * 128 + uint16(f.Payload[2]),
-			SourceID:      (uint16(f.Payload[1]) & 0x07) * 128 + uint16(f.Payload[3]),
+			DestinationID: (uint16(f.Payload[1]>>4)&0x07)*128 + uint16(f.Payload[2]),
+			SourceID:      (uint16(f.Payload[1])&0x07)*128 + uint16(f.Payload[3]),
 		}, nil
 	case TxCrosspointConnectedExt:
 		if len(f.Payload) < 7 {

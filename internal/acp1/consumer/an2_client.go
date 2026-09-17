@@ -30,7 +30,11 @@ const AN2DefaultPort = 2072
 // clientIface for the Plugin, with the same AddListener/RemoveListener
 // announce fan-out shape as TCPClient.
 type AN2Client struct {
-	conn   *net.TCPConn
+	// conn is a net.Conn, not a *net.TCPConn: this client only ever calls
+	// Read / Write / Close / SetWriteDeadline on it, and narrowing to the
+	// concrete type forced the caller to type-assert a dialer's result —
+	// which is exactly what stopped the dialer being injectable.
+	conn   net.Conn
 	logger *slog.Logger
 	cfg    ClientConfig
 
@@ -47,7 +51,7 @@ type AN2Client struct {
 
 // NewAN2Client wraps an already-connected raw TCP socket, starts the reader
 // goroutine, and sends EnableProtocolEvents([ACP1]) so announces flow.
-func NewAN2Client(conn *net.TCPConn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
+func NewAN2Client(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *AN2Client {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -91,7 +95,9 @@ func (c *AN2Client) enableProtocolEvents() {
 	// payload > MaxPayload (65536); this 2-byte control frame is neither.
 	b, _ := an2.EncodeAN2Frame(frame)
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
-	_, _ = c.conn.Write(b)
+	if _, err := c.conn.Write(b); err == nil && c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(b))
+	}
 }
 
 // Do sends one ACP1 request inside an AN2 data frame and returns the matching
@@ -137,6 +143,9 @@ func (c *AN2Client) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.ReceiveTimeout))
 	if _, err := c.conn.Write(wire); err != nil {
 		return nil, fmt.Errorf("acp1 an2 send: %w", err)
+	}
+	if c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(wire))
 	}
 
 	select {
@@ -224,7 +233,8 @@ func (c *AN2Client) readerLoop() {
 			return
 		}
 		if c.cfg.OnRx != nil {
-			c.cfg.OnRx()
+			// 8-byte AN2 header + payload: the bytes that arrived.
+			c.cfg.OnRx(8 + len(frame.Payload))
 		}
 		// Only ACP1-proto data frames carry ACP1 PDUs. Internal frames
 		// (e.g. the EnableProtocolEvents reply) are control acks — ignore.
@@ -276,3 +286,6 @@ func (c *AN2Client) readerLoop() {
 		}
 	}
 }
+
+// ReaderDone is closed when the reader goroutine exits — see TCPClient.
+func (c *AN2Client) ReaderDone() <-chan struct{} { return c.readerDone }

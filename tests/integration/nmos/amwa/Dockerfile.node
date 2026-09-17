@@ -1,0 +1,45 @@
+# The dhs Node under test, built from source in one image.
+#
+# Neither the control node nor the tooling host has a Go toolchain, and
+# a conformance number is worthless if nobody can say which source
+# produced it. Building inside the image removes both problems: the
+# only input is this repository, and the binary cannot drift from it.
+#
+# Context is the repo ROOT (see .dockerignore — assets and testdata are
+# 567 MB of the 574 and none of it compiles).
+FROM golang:1.23-bookworm AS build
+WORKDIR /src
+# go.mod first so a source-only change does not re-download the module
+# graph.
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /out/dhs ./cmd/dhs
+
+FROM debian:bookworm-slim
+# avahi + dbus so dhs's DNS-SD layer can delegate to a real responder
+# (#194). Without one the stdlib fallback's 500 ms read-deadline jitter
+# fails the cascade-timing rounds — test_05/15/16, which exist
+# precisely to tell a real responder from a polling loop. nmos-cpp does
+# the same via Bonjour. The stdlib path stays the floor; it just scores
+# worse, and that difference is the measurement.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates dbus avahi-daemon avahi-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Avahi refuses to start with disallow-other-stacks=yes when no
+# Apple/Bonjour daemon is present. Permissive for the test bridge.
+RUN sed -i \
+    -e 's/^#\?use-ipv4=.*/use-ipv4=yes/' \
+    -e 's/^#\?use-ipv6=.*/use-ipv6=no/' \
+    -e 's/^#\?disallow-other-stacks=.*/disallow-other-stacks=no/' \
+    -e 's/^#\?rlimit-nproc=.*/rlimit-nproc=10/' \
+    /etc/avahi/avahi-daemon.conf
+
+WORKDIR /app
+COPY --from=build /out/dhs /usr/local/bin/dhs
+COPY tests/integration/nmos/amwa/amwa-test-node.json /app/amwa-test-node.json
+COPY tests/integration/nmos/amwa/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

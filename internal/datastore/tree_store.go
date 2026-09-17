@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/export"
 	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 )
 
 // TreeStore manages cached tree files on disk.
@@ -56,16 +56,45 @@ func (s *TreeStore) BaseDir() string {
 //   - otherwise (production, dropped binary), cache root is
 //     <binary-dir>/.cache/.
 func NewTreeStoreInProjectCache() (*TreeStore, error) {
+	root, err := ProjectRoot()
+	if err != nil {
+		return nil, err
+	}
+	return NewTreeStore(filepath.Join(root, ".cache")), nil
+}
+
+// ProjectRoot returns the directory every artifact bucket roots under
+// (ADR-0028): <X> when the binary lives at <X>/bin/ (dev / convention
+// layout — keeps artifacts OUT of bin/), else the binary's own dir.
+// .cache/, snapshots/ and captures/ are siblings under this root.
+func ProjectRoot() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("storage: locate binary: %w", err)
+		return "", fmt.Errorf("storage: locate binary: %w", err)
 	}
 	parent := filepath.Dir(exe)
-	base := parent
 	if filepath.Base(parent) == "bin" {
-		base = filepath.Dir(parent)
+		return filepath.Dir(parent), nil
 	}
-	return NewTreeStore(filepath.Join(base, ".cache")), nil
+	return parent, nil
+}
+
+// SanitizePathSeg strips characters that are illegal in filenames on
+// Windows + POSIX — the shared sanitiser for ADR-0028 path segments
+// (IPs incl. IPv6 colons, protocol names, verb/scope labels).
+func SanitizePathSeg(s string) string {
+	return sanitizeSeg(s)
+}
+
+// IdentityPath returns the on-disk path a DM for (proto, identity)
+// is written to — the exported face of identityPath, so CLI verbs
+// can print / fingerprint the exact file WriteDM produced (extract
+// evidence lines) without re-implementing the sanitisation.
+func (s *TreeStore) IdentityPath(proto, identity string) string {
+	if s == nil {
+		return ""
+	}
+	return s.identityPath(proto, identity)
 }
 
 // slotPath returns the file path for a cached slot.
@@ -74,7 +103,6 @@ func NewTreeStoreInProjectCache() (*TreeStore, error) {
 func (s *TreeStore) slotPath(ip string, slot int) string {
 	return filepath.Join(s.baseDir, "devices", ip, fmt.Sprintf("slot_%d.json", slot))
 }
-
 
 // Save writes a walked tree to disk using the same hierarchical JSON
 // format as `dhs export --format json`. Values are stripped before
@@ -406,8 +434,8 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, objs []consumer.Objec
 //     ...}. Accepted for one release cycle, then dropped.
 //
 // Path resolution order:
-//   1. .cache/dm/<proto>/<identity>.json (new per-proto path, #425)
-//   2. .cache/dm/<identity>.json         (legacy flat path)
+//  1. .cache/dm/<proto>/<identity>.json (new per-proto path, #425)
+//  2. .cache/dm/<identity>.json         (legacy flat path)
 //
 // Both paths can carry either DM or legacy Snapshot content — the
 // shape detection is content-based, not path-based.

@@ -15,12 +15,12 @@ import (
 //
 // Mindmap notation (one line per element, depth encoded by `*` count):
 //
-//	* root
-//	** identity [oid=1.0]
-//	*** product (string) = "Tiny Ember+ Router"
-//	*** dtdVersion (string) = "2.60"
-//	** types [oid=1.6]
-//	*** vInteger (int) = 0
+//   - root
+//     ** identity [oid=1.0]
+//     *** product (string) = "Tiny Ember+ Router"
+//     *** dtdVersion (string) = "2.60"
+//     ** types [oid=1.6]
+//     *** vInteger (int) = 0
 //
 // Containers render as `* <ident> [oid=X]`; leaves render as
 // `* <ident> (<kind>) = <value>` so docs viewers see the type + current
@@ -57,7 +57,17 @@ func renderTreePlantUML(w io.Writer, objs []consumer.Object, opts treeRenderOpts
 	if _, err := fmt.Fprintln(w, "* device"); err != nil {
 		return err
 	}
-	for _, c := range root.sortedChildren() {
+	children := root.sortedChildren()
+	// Collapse the single device-root anchor (ROOT_NODE_V2 / ROOT) so the
+	// mindmap starts at its children — matches the ASCII tree and the
+	// root-stripped path strings. Drop the matching focus head in lock-step.
+	if len(children) == 1 && isDisplayRoot(children[0].Name) {
+		if len(focus) > 0 && strings.EqualFold(focus[0], children[0].Name) {
+			focus = focus[1:]
+		}
+		children = children[0].sortedChildren()
+	}
+	for _, c := range children {
 		renderPlantUMLNode(w, c, 2, focus, 0, opts.Depth, filterLower)
 	}
 	if _, err := fmt.Fprintln(w, "@endmindmap"); err != nil {

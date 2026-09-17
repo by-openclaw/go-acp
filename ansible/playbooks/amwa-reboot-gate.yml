@@ -1,0 +1,48 @@
+---
+# Reboot + conformance gate (#938): prove the plant survives a host
+# reboot AND still passes its full node conformance baseline — the
+# firmware/OS-update drill. Run from the SECONDARY runner (dhs-tools);
+# see amwa-reboot-resilience.yml for why the primary control node
+# cannot drive this.
+#
+#   (on dhs-tools)
+#   cd /root/acp-runner/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-reboot-gate.yml
+
+- name: Reboot resilience
+  ansible.builtin.import_playbook: amwa-reboot-resilience.yml
+
+# A failed play only marks ITS hosts failed — ansible would still run
+# the conformance half on [tooling]. This guard runs ON tooling (so a
+# failure removes tooling from the run) and asserts the resilience
+# stamp matches the plant's CURRENT boot_id: the proof above passed,
+# for this boot, or nothing below executes.
+- name: Gate guard — resilience proof must cover the current boot
+  hosts: tooling
+  gather_facts: false
+  vars_files:
+    - ../roles/dhs_amwa_plant/defaults/main.yml
+  tasks:
+    - name: Plant's current boot_id
+      ansible.builtin.slurp:
+        src: /proc/sys/kernel/random/boot_id
+      delegate_to: "{{ groups['plant'][0] }}"
+      register: gate_boot
+
+    - name: Resilience stamp
+      ansible.builtin.slurp:
+        src: "{{ dhs_amwa_plant_dir }}/reboot-resilience.json"
+      delegate_to: "{{ groups['plant'][0] }}"
+      register: gate_stamp
+
+    - name: Stamp is for this boot
+      ansible.builtin.assert:
+        that:
+          - (gate_stamp.content | b64decode | from_json).boot_id == (gate_boot.content | b64decode | trim)
+        fail_msg: >-
+          resilience stamp does not match the plant's current boot —
+          the reboot-resilience play did not pass for this boot;
+          refusing to run the conformance gate.
+
+- name: Node conformance gate after the reboot
+  ansible.builtin.import_playbook: amwa-validate-node.yml

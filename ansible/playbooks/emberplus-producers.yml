@@ -1,0 +1,172 @@
+---
+# Stand up the Ember+ PRODUCER on every lab host for Tier-3 verification
+# against a real external controller (EVS Cerebrum / EmberViewer) — the
+# inbound side of the connector. ONE device tree per host so the controller
+# sees several distinct Ember+ devices:
+#
+#   dhs-debian (.102) -> our integration DM (matrix + salvo/lock functions)
+#   dhs-ubuntu (.103) -> DHD audio console (real-device capture tree)
+#   dhs-rocky  (.104) -> Lawo PowerCore   (real-device capture tree)
+#   win11      (.106) -> our integration DM (Windows parity, WinRM)
+#
+# Every host is wiped of ALL dhs producers first, so ONLY the Ember+ provider
+# runs on :9000 afterwards (per the "only ember+ running" requirement).
+#
+# Per-host tree assignment lives in inventory/host_vars/<host>.yml
+# (var: ember_tree_src). Trees + binaries are staged under ansible/files/.
+#
+# Run from the controller (.103):
+#   cd /root/ansible
+#   ansible-playbook -i inventory/fleetwin.ini playbooks/emberplus-producers.yml \
+#     -e @secrets/credentials.json
+#   # Linux only:    add  --limit linux
+#   # Windows only:  add  --limit windows
+
+- name: Ember+ producer (Linux LXC)
+  hosts: linux
+  gather_facts: false
+  vars:
+    dhs_bin_src: "{{ playbook_dir }}/../files/dhs-linux-amd64"
+    dhs_bin: /usr/local/bin/dhs
+    ember_tree: /etc/dhs/emberplus-tree.json
+    ember_port: 9000
+  tasks:
+    - name: Create install + log dirs
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /etc/dhs
+        - /var/log/dhs
+
+    - name: Deploy the dhs binary
+      ansible.builtin.copy:
+        src: "{{ dhs_bin_src }}"
+        dest: "{{ dhs_bin }}"
+        mode: "0755"
+
+    - name: Deploy this host's Ember+ tree
+      ansible.builtin.copy:
+        src: "{{ ember_tree_src }}"
+        dest: "{{ ember_tree }}"
+        mode: "0644"
+
+    - name: Stop + disable every non-emberplus dhs systemd service
+      # The acp2 producer runs under systemd (dhs-acp2.service) and respawns
+      # the instant pkill kills it, so it must be stopped+disabled first or it
+      # will fight the Ember+ provider for the host. Reversible — re-enable
+      # with: systemctl enable --now dhs-acp2.service
+      ansible.builtin.shell: |
+        for u in $(systemctl list-unit-files 'dhs-*.service' --no-legend 2>/dev/null | awk '{print $1}'); do
+          [ "$u" = "dhs-emberplus.service" ] && continue
+          systemctl disable --now "$u" || true
+        done
+      changed_when: false
+      failed_when: false
+
+    - name: Kill ALL remaining dhs producers (any protocol)
+      # [d]hs bracket trick so pkill doesn't match its own argv. rc 1 = "no
+      # match" on a clean host — not an error.
+      ansible.builtin.shell: "pkill -f '[d]hs producer' || true"
+      changed_when: false
+      failed_when: false
+
+    - name: Let the old listeners release their ports
+      ansible.builtin.wait_for:
+        port: "{{ ember_port }}"
+        host: 127.0.0.1
+        state: stopped
+        timeout: 10
+
+    - name: Start ONLY the Ember+ producer
+      ansible.builtin.shell:
+        cmd: >-
+          nohup {{ dhs_bin }} producer emberplus serve
+          --tree {{ ember_tree }}
+          --host 0.0.0.0 --port {{ ember_port }}
+          --log-level info > /var/log/dhs/emberplus.log 2>&1 &
+      changed_when: true
+
+    - name: Wait for the S101 listener
+      ansible.builtin.wait_for:
+        port: "{{ ember_port }}"
+        host: 127.0.0.1
+        timeout: 20
+
+    - name: ASSERT no other dhs producer survived the wipe
+      ansible.builtin.shell: "ps -eo args | grep '[d]hs producer' | grep -v emberplus | wc -l"
+      register: others
+      changed_when: false
+      failed_when: (others.stdout | int) != 0
+
+    - name: Read the served tree size from the log
+      ansible.builtin.shell: "grep -o 'tree_size=[0-9]*' /var/log/dhs/emberplus.log | head -1"
+      register: szline
+      changed_when: false
+
+    - name: ASSERT the tree is non-empty
+      ansible.builtin.assert:
+        that:
+          - (szline.stdout | regex_replace('tree_size=', '') | default('0') | int) > 0
+        fail_msg: "producer loaded an EMPTY tree — tree fixture rejected"
+        success_msg: "served {{ szline.stdout }}"
+
+    - name: Ember+ producer ready
+      ansible.builtin.debug:
+        msg: >-
+          Ember+ producer on {{ ansible_host }}:{{ ember_port }}
+          ({{ szline.stdout }}, tree={{ ember_tree_src | basename }}) —
+          point Cerebrum / EmberViewer here.
+
+- name: Ember+ producer (Windows / WinRM)
+  hosts: windows
+  gather_facts: false
+  vars:
+    dhs_bin_src: "{{ playbook_dir }}/../files/dhs-windows-amd64.exe"
+    dhs_dir: 'C:\dhs'
+    dhs_bin: 'C:\dhs\dhs.exe'
+    ember_tree: 'C:\dhs\emberplus-tree.json'
+    log_dir: 'C:\ProgramData\dhs\logs'
+    ember_port: 9000
+  tasks:
+    - name: Create install + log dirs
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "{{ dhs_dir }}"
+        - "{{ log_dir }}"
+
+    - name: Deploy the dhs.exe binary
+      ansible.windows.win_copy:
+        src: "{{ dhs_bin_src }}"
+        dest: "{{ dhs_bin }}"
+
+    - name: Deploy this host's Ember+ tree
+      ansible.windows.win_copy:
+        src: "{{ ember_tree_src }}"
+        dest: "{{ ember_tree }}"
+
+    - name: Kill ALL running dhs (any protocol)
+      ansible.windows.win_shell: "Get-Process dhs -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0"
+
+    - name: Start ONLY the Ember+ producer (detached)
+      ansible.windows.win_shell: >-
+        Start-Process -FilePath '{{ dhs_bin }}'
+        -ArgumentList 'producer','emberplus','serve','--tree','{{ ember_tree }}','--host','0.0.0.0','--port','{{ ember_port }}','--log-level','info'
+        -WindowStyle Hidden
+        -RedirectStandardOutput '{{ log_dir }}\emberplus.out.log'
+        -RedirectStandardError '{{ log_dir }}\emberplus.err.log'
+
+    - name: Wait for the S101 listener
+      ansible.windows.win_wait_for:
+        port: "{{ ember_port }}"
+        host: 127.0.0.1
+        timeout: 25
+
+    - name: Ember+ producer ready (Windows)
+      ansible.builtin.debug:
+        msg: >-
+          Ember+ producer on {{ ansible_host }}:{{ ember_port }} (win11,
+          tree={{ ember_tree_src | basename }}) — point Cerebrum / EmberViewer here.

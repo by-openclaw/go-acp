@@ -7,12 +7,15 @@ package cerebrumnb
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/transport"
 )
 
 func init() {
@@ -34,14 +37,22 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return NewPlugin(logger)
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := NewPlugin(deps.Logger)
+	p.Init(deps, defaultKeepAliveTimeout)
+	return p
 }
 
 // Plugin is the consumer-side handle. It wraps a single WebSocket
 // session (one connection per Plugin) and routes RX events to
 // subscribers.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: what is
+	// Cerebrum's is the stale window — the keep-alive timeout it already
+	// judges a dead link by — and the Session as the time source.
+	consumer.Base
+
 	logger *slog.Logger
 
 	// Username / Password come from CLI flags or the
@@ -59,8 +70,25 @@ type Plugin struct {
 	// when UseTLS is true.
 	InsecureSkipVerify bool
 
+	// Capture, when set, records every TX/RX XML document (the ws text
+	// payload) to a JSONL wire-trace at this path — the same --capture
+	// contract every other connector honours (#242). Set before Connect.
+	Capture string
+
+	// CaptureMeta, when non-nil, is written as LINE ONE of the capture
+	// (ADR-0028 self-description: CLI, binary identity, wire context).
+	// Typically a wiretrace.MetaRecord built by the CLI; opaque here.
+	// Set before Connect.
+	CaptureMeta any
+
 	mu      sync.Mutex
 	session *Session
+
+	// devSubs tracks canonical DEVICE VALUE subscriptions by dotted
+	// path (D2 — device_canonical.go) so Unsubscribe can cancel both
+	// the local dispatch and the wire row.
+	devSubMu sync.Mutex
+	devSubs  map[string]*deviceSub
 }
 
 // NewPlugin constructs a Plugin with the given logger. Credentials
@@ -69,6 +97,10 @@ func NewPlugin(logger *slog.Logger) *Plugin {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	// No connector to create here any more: Base supplies one on demand,
+	// which is what NewPlugin needed. The CLI builds this plugin directly
+	// rather than through the factory, so a field that only the factory
+	// filled left every command-line session uncounted.
 	return &Plugin{logger: logger.With(slog.String("plugin", "cerebrum-nb"))}
 }
 
@@ -103,8 +135,22 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	}
 	url := fmt.Sprintf("%s://%s:%d/", scheme, host, port)
 
-	sess, err := newSession(ctx, p.logger, url, p.UseTLS, p.InsecureSkipVerify)
+	var rec *transport.Recorder
+	if p.Capture != "" {
+		r, rerr := transport.NewRecorder(p.Capture)
+		if rerr != nil {
+			return fmt.Errorf("cerebrum-nb: --capture: %w", rerr)
+		}
+		rec = r
+		rec.WriteMeta(p.CaptureMeta) // nil-safe; ADR-0028 line one
+	}
+
+	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
+		Enable:   p.UseTLS,
+		Insecure: p.InsecureSkipVerify,
+	}, rec, p.Metrics())
 	if err != nil {
+		_ = rec.Close() // nil-safe; don't leak the file on dial failure
 		return err
 	}
 
@@ -119,6 +165,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 		)
 	}
 	p.session = sess
+	p.Opened("tcp", host, port, sessionTimes{sess})
 	return nil
 }
 
@@ -142,6 +189,8 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	sess := p.session
 	p.session = nil
+	p.Closed()
+	p.logger.Info("cerebrum-nb session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.mu.Unlock()
 	if sess == nil {
 		return nil
@@ -207,9 +256,8 @@ func (p *Plugin) Walk(_ context.Context, _ int) ([]consumer.Object, error) {
 	return nil, fmt.Errorf("cerebrum-nb: walk not applicable; use Session.WalkAll")
 }
 
-func (p *Plugin) GetValue(_ context.Context, _ consumer.ValueRequest) (consumer.Value, error) {
-	return consumer.Value{}, fmt.Errorf("cerebrum-nb: get-value not applicable; use Session.Obtain")
-}
+// GetValue is implemented in device_canonical.go (D2 — the DEVICE
+// domain on the canonical Tree/DM contract).
 
 func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
 	sess := p.Session()
@@ -239,13 +287,17 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	return val, nil
 }
 
-// Subscribe / Unsubscribe through the generic interface aren't wired —
-// CLI verbs use Session.Subscribe<X> directly to express the §5
-// addressing precisely.
-func (p *Plugin) Subscribe(_ consumer.ValueRequest, _ consumer.EventFunc) error {
-	return fmt.Errorf("cerebrum-nb: consumer.Subscribe not implemented; use Session.Subscribe<Routing|Category|Salvo|Device|Datastore>")
-}
+// Subscribe / Unsubscribe are implemented in device_canonical.go (D2):
+// canonical DEVICE.SUB.OBJECT… paths onto §5.4 VALUE subscriptions.
+// Routing/category/salvo subscriptions keep their precise §5 addressing
+// through Session.Subscribe<X> (the Matrix-template half).
 
-func (p *Plugin) Unsubscribe(_ consumer.ValueRequest) error {
-	return fmt.Errorf("cerebrum-nb: consumer.Unsubscribe not implemented; use Session.UnsubscribeAll")
-}
+// sessionTimes adapts a Session to consumer.RxTxTimes.
+//
+// The session stamps rx only (noteRX, on every inbound frame), which is what
+// Live is derived from. There is no single write path to stamp for tx, so
+// LastTx is reported as unknown rather than invented.
+type sessionTimes struct{ s *Session }
+
+func (t sessionTimes) LastRx() time.Time { return t.s.LastRx() }
+func (t sessionTimes) LastTx() time.Time { return time.Time{} }

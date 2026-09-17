@@ -1,0 +1,431 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQADBBG
+--        Module Id#:139
+--       Command Set:9
+--          Filename:SNELL-IQADBBG-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:30/06/2005
+--              Time:13:24
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQADBBG-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQADBBG,
+    moduleIQADBBGMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQADBBGCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506301324Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQADBBGMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqadbbgCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqadbbgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQADBBG 1 }
+
+	iqadbbgCmdEntry OBJECT-TYPE
+		SYNTAX		IqadbbgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqadbbgSlotIndex }
+		::= { iqadbbgCmdTable 1 }
+
+	IqadbbgCmdEntry ::=
+		SEQUENCE {
+			iqadbbgSlotIndex
+				Unsigned32,
+			iqadbbgStandard
+				INTEGER,
+			iqadbbgGenlock
+				INTEGER,
+			iqadbbgGenlockSCPhase
+				INTEGER,
+			iqadbbgGenlockHPhase
+				INTEGER,
+			iqadbbgGain
+				INTEGER,
+			iqadbbgPatterns
+				INTEGER,
+			iqadbbgSetupInsertVITS
+				INTEGER,
+			iqadbbgSetupNTSCPedestal
+				INTEGER,
+			iqadbbgSetupSECAMOptionsBottles
+				INTEGER,
+			iqadbbgSetupSECAMOptionsCarrierOff
+				INTEGER,
+			iqadbbgSetupPresetUnit
+				INTEGER,
+			iqadbbgSetupLoggingRefLoss
+				INTEGER,
+			iqadbbgSetupSoftwareVersion
+				RollCallString,
+			iqadbbgSetupSerialNo
+				RollCallString
+		}
+
+	iqadbbgSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqadbbgCmdEntry 0 }
+
+
+	iqadbbgStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL(0),
+							val_NTSC(1),
+							val_PAL_N(2),
+							val_PAL_M(3),
+							val_SECAM(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Standard  cmdID= 34 
+					PAL  value= 0  
+					NTSC  value= 1  
+					PAL-N  value= 2  
+					PAL-M  value= 3  
+					SECAM  value= 4  "
+		::= { iqadbbgCmdEntry 34 }
+
+
+	iqadbbgGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Internal(32),
+							val_Zero_SC_H_Lock(0),
+							val_Variable_SC_H_Lock(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Internal  cmdID= 6  value= 32  
+					Zero_SC/H_Lock  cmdID= 6  value= 0  
+					Variable_SC/H_Lock  cmdID= 6  value= 16  "
+		::= { iqadbbgCmdEntry 6 }
+
+
+	iqadbbgGenlockSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					SC_Phase  cmdID= 7  min= 0  max= 3599  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = 0.0 Deg  Max = 359.9 Deg  Step = 0.1 Deg "
+		::= { iqadbbgCmdEntry 7 }
+
+
+	iqadbbgGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					H_Phase  cmdID= 8  min= 0  max= 1  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = 0 ns  Max = 1 ns  Step = 1 ns "
+		::= { iqadbbgCmdEntry 8 }
+
+
+	iqadbbgGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Gain  cmdID= 17  min= -128  max= 127   step= 1  format= %1.0f  div_scale= 1 
+					Min = -128  Max = 127  Step = 1 "
+		::= { iqadbbgCmdEntry 17 }
+
+
+	iqadbbgPatterns OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Test_Pattern_1(1),
+							val_Test_Pattern_2(2),
+							val_Test_Pattern_3(3),
+							val_Test_Pattern_4(4),
+							val_Test_Pattern_5(5),
+							val_Test_Pattern_6(6),
+							val_Test_Pattern_7(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Patterns  cmdID= 11 
+					Test_Pattern_1  value= 1  
+					Test_Pattern_2  value= 2  
+					Test_Pattern_3  value= 3  
+					Test_Pattern_4  value= 4  
+					Test_Pattern_5  value= 5  
+					Test_Pattern_6  value= 6  
+					Test_Pattern_7  value= 7  "
+		::= { iqadbbgCmdEntry 11 }
+
+
+	iqadbbgSetupInsertVITS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_VITS  cmdID= 14 "
+		::= { iqadbbgCmdEntry 14 }
+
+
+	iqadbbgSetupNTSCPedestal OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					NTSC_Pedestal  cmdID= 16 "
+		::= { iqadbbgCmdEntry 16 }
+
+
+	iqadbbgSetupSECAMOptionsBottles OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bottles  cmdID= 30 "
+		::= { iqadbbgCmdEntry 30 }
+
+
+	iqadbbgSetupSECAMOptionsCarrierOff OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Carrier_Off  cmdID= 31 "
+		::= { iqadbbgCmdEntry 31 }
+
+
+	iqadbbgSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqadbbgCmdEntry 3 }
+
+
+	iqadbbgSetupLoggingRefLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Ref_Loss  cmdID= 21 "
+		::= { iqadbbgCmdEntry 21 }
+
+
+	iqadbbgSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqadbbgCmdEntry 2 }
+
+
+	iqadbbgSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqadbbgCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: This log field shows the EDH status of the Composite
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: PAL
+--				: NTSC
+--				: PAL-N
+--				: PAL-M
+--				: SECAM
+--				: NTSC-J
+-- Comments		: This log field shows the detected video standard of the Composite input. 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: This log field shows that the module is in Local Mode.
+--				: When a device boots up in Local Mode, all settings will be
+--				: set to the values indicated by card edge switches, (ignoring
+--				: any previous values set through RollCall), and any parameters
+--				: not accessible from the card edge will be restored to their
+--				: factory defaults.
+--				: Generally Local mode is not suitable in a networked
+--				: environment, and Remote Mode should be used instead.
+--
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: ERROR
+--				: OK
+-- Comments		: This log field shows the detected video state of the composite input.
+--				: LOST indicates no input detected.  ERR indicates that the detected input is not valid.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the number of seconds during which EDH
+--				: errors were detected on the Composite input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: OK
+--				: LOST
+-- Comments		: This log field shows the status of the reference.
+--				: OK indicates that the card is locked to the selected input.
+--				: N/A indicates no valid reference signal available.
+--				: LOST indicates that the reference signal has been Lost.
+--
+---------------------------------------------------------------------------------------------------

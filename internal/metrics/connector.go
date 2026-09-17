@@ -278,8 +278,8 @@ func (c *Connector) Uptime() time.Duration {
 // pass around — no pointers into the Connector.
 type Snapshot struct {
 	// Aggregate.
-	RxFrames, TxFrames                       uint64
-	RxBytes, TxBytes                         uint64
+	RxFrames, TxFrames                                uint64
+	RxBytes, TxBytes                                  uint64
 	DecodeErrors, NAKs, Timeouts, Retries, Reconnects uint64
 
 	// Aggregate latency: count per µs log-linear bucket.

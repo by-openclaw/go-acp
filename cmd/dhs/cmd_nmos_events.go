@@ -22,7 +22,9 @@ import (
 
 // runNMOSEventsConsumer dispatches `dhs consumer nmos events <verb>`.
 func runNMOSEventsConsumer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSEventsConsumerHelp()
 		return nil
 	}
@@ -37,7 +39,7 @@ func runNMOSEventsConsumer(ctx context.Context, args []string) error {
 
 // runNMOSEventsProducer dispatches `dhs producer nmos events <verb>`.
 func runNMOSEventsProducer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSEventsProducerHelp()
 		return nil
 	}
@@ -59,7 +61,7 @@ func runNMOSEventsWatch(ctx context.Context, args []string) error {
 	sources := fs.String("sources", "", "comma-separated source UUIDs to subscribe to")
 	heartbeat := fs.Duration("heartbeat", 5*time.Second, "client-side command_health interval (0 disables)")
 	timeout := fs.Duration("timeout", 0, "stop after this duration; 0 = run until ^C")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *wsURL == "" {
@@ -104,7 +106,7 @@ func runNMOSEventsServe(ctx context.Context, args []string) error {
 	bind := fs.String("bind", ":8090", "HTTP listen address")
 	path := fs.String("path", "/x-nmos/events/v1.0/ws", "WS endpoint path")
 	heartbeat := fs.Duration("heartbeat", 5*time.Second, "publisher heartbeat interval (0 disables)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 

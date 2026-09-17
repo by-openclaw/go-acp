@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"fmt"
 	"log/slog"
@@ -10,10 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
-	"dhs/internal/transport"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/transport"
 )
 
 // init registers the ACP2 plugin with the global protocol registry.
@@ -34,15 +34,27 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{logger: logger}
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, acp2StaleAfter)
+	return p
 }
 
 // Plugin is the ACP2 Protocol implementation. One instance handles one
 // device. Internally it holds an AN2 Session for transport, a Walker for
 // tree traversal, and per-slot caches of walked trees.
 type Plugin struct {
+	// Base supplies health, metrics, the compliance profile and the
+	// capture recorder — the four concerns that are not ACP2's. What is
+	// ACP2-specific is only the stale window and the time source, which
+	// Connect hands over.
+	consumer.Base
+
 	logger *slog.Logger
+
+	// net is the only way this plugin reaches a socket. Injected.
+	net transport.Net
 
 	mu      sync.Mutex
 	session *Session
@@ -67,16 +79,8 @@ type Plugin struct {
 	// and after Disconnect; non-nil between.
 	rc *reconnectState
 
-	// Optional traffic capture.
-	recorder *transport.Recorder
-
 	// Optional walk progress callback.
 	walkProgress WalkProgressFunc
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
 
 	// kaCfg captures the operator's --keepalive / --keepalive-timeout
 	// choice (set via SetKeepAlive). Zero values mean "use plugin
@@ -199,15 +203,6 @@ func decodeStringlyOptionsMap(v any) map[uint32]string {
 	return nil
 }
 
-// ComplianceProfile returns the session-scoped compliance profile.
-// Returns nil if Connect hasn't been called yet. Safe to call from
-// any goroutine.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
 // subKey canonicalises a ValueRequest for map lookup.
 type subKey struct {
 	slot  int
@@ -227,13 +222,6 @@ type activeSubscription struct {
 	req       consumer.ValueRequest
 	fn        consumer.EventFunc
 	sessionID int
-}
-
-// SetRecorder attaches a traffic recorder. Call before Connect.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
 }
 
 // SetWalkProgress sets a callback invoked for each object during Walk.
@@ -257,9 +245,10 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("acp2: already connected")
 	}
 
-	s := NewSession(p.logger)
-	if p.recorder != nil {
-		s.SetRecorder(p.recorder)
+	s := NewSession(p.net, p.logger)
+	s.SetMetrics(p.Metrics())
+	if rec := p.Recorder(); rec != nil {
+		s.SetRecorder(rec)
 	}
 	if err := s.Connect(ctx, ip, port); err != nil {
 		return err
@@ -270,6 +259,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.walker.OnProgress = p.walkProgress
 	p.host = ip
 	p.port = port
+	p.Opened("tcp", ip, port, s)
 	if p.trees == nil {
 		// TTL=0 → never expire. ACP2 schema is immutable for the
 		// session; the cache is the only label/type source after a
@@ -282,8 +272,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if p.activeSubs == nil {
 		p.activeSubs = make(map[subKey]*activeSubscription)
 	}
-	p.profile = &compliance.Profile{}
-	s.SetProfile(p.profile)
+	// The profile is connector-scoped, not per-session: it used to be
+	// replaced on every Connect, which threw away every deviation observed
+	// before a reconnect. probel already kept its own across Disconnect for
+	// exactly that reason.
+	s.SetProfile(p.ComplianceProfile())
 	// Start the keep-alive prober + watchdog (mirrors ACP1).
 	// context.Background() is intentional: the keepalive lives for the
 	// life of the session, not the caller's Connect ctx — we cancel
@@ -311,6 +304,11 @@ func (p *Plugin) Disconnect() error {
 	err := p.session.Disconnect()
 	p.session = nil
 	p.walker = nil
+	p.Closed()
+	// One-line session summary, the same shape probel has emitted since the
+	// metrics work landed. Most consumer verbs are one-shot, so this is
+	// where the counters become visible at all.
+	p.logger.Info("acp2 session metrics", slog.String("summary", p.Metrics().Summary()))
 	if p.trees != nil {
 		p.trees.Clear()
 	}
@@ -471,7 +469,7 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 
 	// req.PID overrides pid=8 (value); req.Idx overrides idx=0 (active).
 	// Zero defaults preserve historical behaviour.
-	targetPID := uint8(codec.PIDValue)
+	targetPID := codec.PIDValue
 	if req.PID > 0 {
 		targetPID = uint8(req.PID)
 	}
@@ -625,6 +623,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 	slot := req.Slot
 	wantID := req.ID
 	wantLabel := req.Label
+	wantPath := req.Path
 
 	return func(annSlot uint8, msg *codec.ACP2Message) {
 		if slot >= 0 && int(annSlot) != slot {
@@ -645,6 +644,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 
 		// Find object index in tree.
 		treeIdx := -1
+		var objPath []string
 		if tree != nil {
 			for ti, tobj := range tree.Objects {
 				if tobj.ID == int(msg.ObjID) {
@@ -653,6 +653,7 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 					ev.Unit = tobj.Unit
 					ev.Group = tobj.Group
 					ev.Access = tobj.Access
+					objPath = tobj.Path
 					if len(tobj.Path) > 0 {
 						ev.Path = strings.Join(tobj.Path, ".")
 					}
@@ -662,6 +663,12 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 		}
 
 		if wantLabel != "" && ev.Label != wantLabel {
+			return
+		}
+
+		// --path filter: same connector-agnostic rule get/set use (full or
+		// root-stripped path), via consumer.PathMatches.
+		if wantPath != "" && !consumer.PathMatches(objPath, wantPath) {
 			return
 		}
 
@@ -706,32 +713,29 @@ func (p *Plugin) buildAnnounceClosure(req consumer.ValueRequest, fn consumer.Eve
 // resolveRequest translates a ValueRequest into an ACP2 obj-id, object type,
 // number type, and (optionally) the cached consumer.Object.
 func (p *Plugin) resolveRequest(req consumer.ValueRequest, tree *WalkedTree) (uint32, codec.ACP2ObjType, codec.NumberType, *consumer.Object, error) {
-	if req.Label != "" {
-		if tree == nil {
-			return 0, 0, 0, nil, fmt.Errorf("%w: no walked tree for slot %d",
-				consumer.ErrUnknownLabel, req.Slot)
-		}
-		idx := tree.Lookup(req.Label)
-		if idx < 0 {
-			return 0, 0, 0, nil, fmt.Errorf("%w: label %q not found on slot %d",
-				consumer.ErrUnknownLabel, req.Label, req.Slot)
-		}
+	var objs []consumer.Object
+	if tree != nil {
+		objs = tree.Objects
+	}
+	// Connector-agnostic resolution rule (id, then label, then path — full or
+	// root-stripped) shared across all plugins via consumer.ResolveObjectIndex,
+	// so addressing is identical on every protocol.
+	if idx, ok := consumer.ResolveObjectIndex(objs, req.Path, req.Label, req.ID); ok {
 		obj := &tree.Objects[idx]
 		return uint32(obj.ID), tree.ObjTypes[idx], tree.NumTypes[idx], obj, nil
 	}
-
-	// Address by explicit ID.
-	objID := uint32(req.ID)
-	if tree != nil {
-		for i, obj := range tree.Objects {
-			if obj.ID == req.ID {
-				return objID, tree.ObjTypes[i], tree.NumTypes[i], &tree.Objects[i], nil
-			}
-		}
+	// Not in the tree. An explicit id is still usable directly (type unknown;
+	// caller may fetch metadata or work with raw bytes). An unresolved
+	// label/path is a hard error.
+	switch {
+	case req.Label != "":
+		return 0, 0, 0, nil, fmt.Errorf("%w: label %q not found on slot %d",
+			consumer.ErrUnknownLabel, req.Label, req.Slot)
+	case req.Path != "":
+		return 0, 0, 0, nil, fmt.Errorf("%w: path %q not found on slot %d",
+			consumer.ErrObjectNotFound, req.Path, req.Slot)
 	}
-	// No tree or not found — return with unknown type. The caller may
-	// still work with raw bytes.
-	return objID, 0, 0, nil, nil
+	return uint32(req.ID), 0, 0, nil, nil
 }
 
 // objTypeFromVType maps an ACP2 §5.2.2 number-type byte (the data byte

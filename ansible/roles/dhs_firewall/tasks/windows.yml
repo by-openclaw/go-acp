@@ -1,0 +1,69 @@
+---
+# One reconciliation pass for ALL dhs-* rules in a single PowerShell run
+# (#790): 30+ win_firewall_rule tasks at ~15 s each became one task.
+# Desired rules come from dhs_firewall_rules (state present|absent, program
+# scoping for connector rules); legacy un-scoped names are removed; the
+# task is idempotent — it reports CHANGED only when a rule was created,
+# corrected or removed.
+- name: "Defender inbound rules — reconcile all dhs-* rules in one pass"
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    $desired = @'
+    {{ dhs_firewall_rules | to_json }}
+    '@ | ConvertFrom-Json
+    $legacy = @'
+    {{ dhs_firewall_legacy | map(attribute='name') | list | to_json }}
+    '@ | ConvertFrom-Json
+    $program = '{{ dhs_firewall_windows_program }}'
+    $changed = 0
+
+    # Query the firewall ONCE and join in memory. Per-rule Get-NetFirewallRule +
+    # Get-NetFirewall*Filter costs ~3 s each; with ~30 rules that was 111 s of a
+    # 305 s pass (measured 2026-08-23). Filters key back to the rule by
+    # InstanceID == rule .Name.
+    $rules = @{}
+    Get-NetFirewallRule -DisplayName 'dhs-*' -ErrorAction SilentlyContinue |
+      ForEach-Object { $rules[$_.DisplayName] = $_ }
+    $portOf = @{}
+    Get-NetFirewallPortFilter -ErrorAction SilentlyContinue |
+      ForEach-Object { $portOf[$_.InstanceID] = $_ }
+    $appOf = @{}
+    Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue |
+      ForEach-Object { $appOf[$_.InstanceID] = $_ }
+
+    foreach ($r in $desired) {
+      $rule = $rules[$r.name]
+      if ($r.state -eq 'absent') {
+        if ($rule) { $rule | Remove-NetFirewallRule; $changed++ }
+        continue
+      }
+      $wantProg = if ($r.program) { $program } else { 'Any' }
+      $ok = $false
+      if ($rule) {
+        $pf = $portOf[$rule.Name]
+        $af = $appOf[$rule.Name]
+        $ok = ($rule.Enabled -eq 'True') -and ($rule.Direction -eq 'Inbound') -and ($rule.Action -eq 'Allow') `
+              -and ($pf -and $pf.Protocol -eq $r.proto.ToUpper()) -and ("$($pf.LocalPort)" -eq "$($r.port)") `
+              -and ($af -and $af.Program -eq $wantProg) `
+              -and ($rule.Profile -eq 'Domain, Private, Public' -or $rule.Profile -eq 'Any')
+      }
+      if (-not $ok) {
+        if ($rule) { $rule | Remove-NetFirewallRule }
+        $params = @{ DisplayName=$r.name; Direction='Inbound'; Action='Allow'; Enabled='True'; Profile='Domain,Private,Public'; Protocol=$r.proto.ToUpper(); LocalPort=$r.port }
+        if ($r.program) { $params.Program = $program }
+        New-NetFirewallRule @params | Out-Null
+        $changed++
+      }
+    }
+    foreach ($n in $legacy) {
+      if ($rules.ContainsKey($n)) { $rules[$n] | Remove-NetFirewallRule; $changed++ }
+    }
+    "CHANGED=$changed"
+  register: dhs_firewall_win
+  changed_when: "'CHANGED=0' not in dhs_firewall_win.stdout"
+
+- name: Firewall profiles ON (enforce mode only)
+  community.windows.win_firewall:
+    profiles: [Domain, Private, Public]
+    state: enabled
+  when: dhs_firewall_enforce | bool

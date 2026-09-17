@@ -1,9 +1,9 @@
 package acp2
 
 import (
+	"dhs/internal/acp2/codec"
 	"fmt"
 	"log/slog"
-	"dhs/internal/acp2/codec"
 )
 
 // Version constants advertised by this provider.
@@ -55,10 +55,10 @@ func (s *session) dispatch(f *codec.AN2Frame) {
 // handleAN2Internal implements the proto=0 handshake a consumer runs
 // before sending any ACP2 traffic. Reply byte layouts per spec:
 //
-//	1. GetVersion           §3.3.1 -> [0, ver_hi, ver_lo]      ver=u16BE
-//	2. GetDeviceInfo        §3.3.2 -> [1, slot_count]          dlen=2
-//	3. GetSlotInfo(slot)    §3.3.3 -> [2, status, num, protos] dlen=3+num
-//	4. EnableProtocolEvents §3.3.4 -> [3]                      dlen=1
+//  1. GetVersion           §3.3.1 -> [0, ver_hi, ver_lo]      ver=u16BE
+//  2. GetDeviceInfo        §3.3.2 -> [1, slot_count]          dlen=2
+//  3. GetSlotInfo(slot)    §3.3.3 -> [2, status, num, protos] dlen=3+num
+//  4. EnableProtocolEvents §3.3.4 -> [3]                      dlen=1
 //
 // All replies mirror the request's AN2 mtid + slot per spec §3.3 so
 // the consumer's waiter table correlates them cleanly.
@@ -442,9 +442,31 @@ func (s *server) slotInfo(slot uint8) (status uint8, protos []uint8) {
 	s.tree.mu.RLock()
 	defer s.tree.mu.RUnlock()
 	if _, ok := s.tree.perSlot[slot]; ok {
+		// Fixture-declared advertisement wins (manifest slot "protos"):
+		// emulation fidelity requires stating what the emulated hardware
+		// states — Cerebrum's Neuron driver polls GetSlotInfo and refuses
+		// to proceed past a [2]-only reply where the real card says
+		// [2,3,4] / [2,3] (wire-proven 2026-08-20, staging capture).
+		// Frames on the advertised-but-unimplemented protos (ACMP,
+		// vendor proto 4) are ignored by the session read loop, exactly
+		// like a real card ignores protocols the peer never speaks.
+		if p, ok := s.slotProtos[slot]; ok {
+			return slotStatusPresent, p
+		}
 		return slotStatusPresent, []uint8{uint8(codec.AN2ProtoACP2)}
 	}
 	return slotStatusEmpty, nil
+}
+
+// SetSlotProtos installs per-slot GetSlotInfo proto advertisements
+// (from the manifest's slot "protos" lists). Exported on the concrete
+// type — the neutral provider.Provider interface is untouched; the
+// producer command wires it when serving from a manifest. Call before
+// Serve; nil/empty clears back to the default advertisement.
+func (s *server) SetSlotProtos(protos map[uint8][]uint8) {
+	s.tree.mu.Lock()
+	defer s.tree.mu.Unlock()
+	s.slotProtos = protos
 }
 
 // -----------------------------------------------------------------
@@ -470,5 +492,9 @@ func (s *session) write(f *codec.AN2Frame) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	_, err = s.conn.Write(raw)
+	// raw already includes the 8-byte AN2 header — count it whole. No
+	// per-handler latency axis here: replies fan out from the same
+	// synchronous dispatch, so byte/frame counters carry the signal.
+	s.srv.metrics.ObserveCmdTx(uint8(f.Type), len(raw), 0)
 	return err
 }

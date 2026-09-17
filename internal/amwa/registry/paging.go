@@ -90,6 +90,24 @@ func splitTAI(s string) (int64, int64) {
 	return secs, nanos
 }
 
+// taiBump returns the TAI instant one nanosecond after s.
+//
+// Exists for cursor uniqueness: paging.since is an EXCLUSIVE bound,
+// so two resources sharing one update_ts at a page boundary would
+// both be skipped by the next page. A registry accepting a burst of
+// registrations inside one clock tick (any bridge refill; any coarse
+// clock) mints exactly that tie — found live 2026-08-29 when a walk
+// of a 211-sender plant returned 100 with page 2 empty.
+func taiBump(s string) string {
+	secs, nanos := splitTAI(s)
+	nanos++
+	if nanos > 999999999 {
+		secs++
+		nanos = 0
+	}
+	return fmt.Sprintf("%d:%d", secs, nanos)
+}
+
 // PageOptions controls a paged ListPaged call.
 type PageOptions struct {
 	Since string // exclusive lower bound; "" means "0:0"
@@ -129,14 +147,23 @@ const (
 	MaxPageLimit     = 1000
 )
 
+// SetDefaultPageLimit overrides the page size applied when a request
+// carries no paging.limit. n <= 0 restores the spec-parity default.
+// Clamped to MaxPageLimit like every other limit.
+func (s *Store) SetDefaultPageLimit(n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.defaultPageLimit = n
+}
+
 // ListPaged returns a page of resources of type t whose update_ts
 // falls in the half-open interval (Since, Until]. Page direction
 // depends on which cursor the caller pinned:
 //
 //   - opts.Since set                     → ascending: oldest items
-//                                          ABOVE the cursor first
+//     ABOVE the cursor first
 //   - opts.Until set OR neither set      → descending: newest items
-//                                          AT-OR-BELOW the cursor first
+//     AT-OR-BELOW the cursor first
 //
 // The body is always returned newest-first per IS-04 §6.1.6. The
 // X-Paging-{Since,Until} cursors anchor the side the caller asked for
@@ -146,6 +173,11 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 	limitProvided := opts.Limit > 0 // 0 / negative → default
 	if !limitProvided {
 		limit = DefaultPageLimit
+		s.mu.RLock()
+		if s.defaultPageLimit > 0 {
+			limit = s.defaultPageLimit
+		}
+		s.mu.RUnlock()
 	}
 	if limit > MaxPageLimit {
 		limit = MaxPageLimit
@@ -156,13 +188,22 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 	if since == "" {
 		since = taiBeforeAll
 	}
-	until := opts.Until
-	if until == "" {
-		until = nowTAI()
-	}
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	until := opts.Until
+	if until == "" {
+		// The head bound is the newest update the store has HANDED OUT,
+		// not the wall clock: markUpdated keeps update_ts strictly
+		// monotonic, which during a registration burst can place
+		// timestamps a few nanoseconds ahead of now — and a wall-clock
+		// ceiling would exclude exactly those freshest items from every
+		// default page. Empty bucket falls back to now.
+		until = s.maxUpdateTSLocked(t)
+		if until == "" {
+			until = nowTAI()
+		}
+	}
 	idx := s.updateTSByType[t]
 	type kv struct {
 		id  string
@@ -352,4 +393,3 @@ func collectTyped(t is04.ResourceType, items []any) any {
 	}
 	return items
 }
-

@@ -11,17 +11,18 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
 )
 
 // Session manages a single TCP connection to an Ember+ provider.
 type Session struct {
-	conn     net.Conn
-	reader   *s101.Reader
-	writer   *s101.Writer
-	logger   *slog.Logger
-	mu       sync.Mutex
-	closed   bool
+	conn   net.Conn
+	reader *s101.Reader
+	writer *s101.Writer
+	logger *slog.Logger
+	mu     sync.Mutex
+	closed bool
 
 	// Callbacks for received elements.
 	onElement func([]glow.Element)
@@ -41,11 +42,15 @@ type Session struct {
 	// traffic has been seen for deadManThreshold. onStateChange is
 	// the plugin-side notifier fired on true/false transitions;
 	// guarded against double-fire by the plugin, not by Session.
-	lastRX            time.Time
-	lastRXMu          sync.RWMutex
-	onStateChange     func(connected bool, reason string)
-	deadManThreshold  time.Duration
-	deadManDone       chan struct{}
+	lastRX   time.Time
+	lastRXMu sync.RWMutex
+
+	// met counts every S101 frame in and out, attributed by command byte.
+	// Guarded by mu. Nil until SetMetrics.
+	met              *metrics.Connector
+	onStateChange    func(connected bool, reason string)
+	deadManThreshold time.Duration
+	deadManDone      chan struct{}
 
 	// profile records tolerance events (spec deviations absorbed on
 	// the fly) per connection. Set by the Plugin via SetProfile.
@@ -56,6 +61,12 @@ type Session struct {
 	// before Connect via SetRecorder.
 	recorder *transport.Recorder
 
+	// dialer opens the TCP connection Connect establishes. Injected rather
+	// than built inline so the pipe is substitutable — a test supplies a
+	// fake, and a supervisor driving reconnect has something to ASK for a
+	// new connection. NewSession installs the shared transport.TCPDialer.
+	dialer transport.Dialer
+
 	// useLegacyGlow is set by the walker when the provider emits
 	// non-qualified Glow elements (DTD <2.10). Subscribe / Unsubscribe
 	// / SetValue must then emit the nested Node/Parameter chain form
@@ -63,8 +74,8 @@ type Session struct {
 	// index their tree by the nested form and reject QualifiedParameter
 	// paths with "parameter not found". Both forms are spec; we pick
 	// to match the provider.
-	glowFormMu     sync.RWMutex
-	useLegacyGlow  bool
+	glowFormMu    sync.RWMutex
+	useLegacyGlow bool
 
 	// dtdSeen latches the first DTD version advertised by the provider
 	// via S101 app-bytes (header offsets 7+8 = minor/major). Captured
@@ -184,6 +195,11 @@ func NewSession(logger *slog.Logger) *Session {
 		deadManThreshold:  30 * time.Second, // 3× keep-alive interval
 		invocations:       make(map[int32]chan *glow.InvocationResult),
 		dtdReady:          make(chan struct{}),
+		// Same 10 s connect bound as before. What the shared dialer adds is
+		// SO_KEEPALIVE: S101 has its own keep-alive at the framing layer,
+		// but that only covers a peer that is still speaking S101 — a
+		// half-open socket needs the OS probe underneath it.
+		dialer: transport.TCPDialer{Timeout: 10 * time.Second},
 	}
 }
 
@@ -198,10 +214,44 @@ func (s *Session) SetOnStateChange(fn func(connected bool, reason string)) {
 	s.mu.Unlock()
 }
 
+// SetMetrics attaches the connector's counter set. Called by the Plugin
+// right after NewSession, before Connect. Frames are attributed by S101
+// command byte, which separates EmBER payloads from keep-alives — the
+// distinction that matters when reading a scrape, since a link can be busy
+// with keep-alives and carrying no data at all.
+func (s *Session) SetMetrics(m *metrics.Connector) {
+	if m == nil {
+		return
+	}
+	m.RegisterCmd(s101.CmdEmBER, "ember")
+	m.RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
+	m.RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
+	s.mu.Lock()
+	s.met = m
+	s.mu.Unlock()
+}
+
+// metrics returns the connector under the lock, or nil.
+func (s *Session) metricsConn() *metrics.Connector {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.met
+}
+
 func (s *Session) touchRX() {
 	s.lastRXMu.Lock()
 	s.lastRX = time.Now()
 	s.lastRXMu.Unlock()
+}
+
+// LastRx is the wall-clock time of the last frame received on this session,
+// or the zero time if nothing has arrived. rxAge answers a different
+// question — it collapses "nothing yet" to a zero duration, which reads as
+// "just now" — so liveness needs the instant itself.
+func (s *Session) LastRx() time.Time {
+	s.lastRXMu.RLock()
+	defer s.lastRXMu.RUnlock()
+	return s.lastRX
 }
 
 func (s *Session) rxAge() time.Duration {
@@ -305,8 +355,7 @@ func (s *Session) deliverInvocationResult(result *glow.InvocationResult) {
 // Connect dials the Ember+ provider and starts the read loop.
 func (s *Session) Connect(ctx context.Context, host string, port int) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
-	d := net.Dialer{Timeout: 10 * time.Second}
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := s.dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return WrapS101(fmt.Sprintf("connect %s", addr), err)
 	}
@@ -487,7 +536,13 @@ func (s *Session) sendEmBER(payload []byte) error {
 		return fmt.Errorf("emberplus: not connected")
 	}
 	frame := s101.NewEmBERFrame(payload)
-	return w.WriteFrame(frame)
+	if err := w.WriteFrame(frame); err != nil {
+		return err
+	}
+	if met := s.metricsConn(); met != nil {
+		met.ObserveCmdTx(frame.Command, len(payload), 0)
+	}
+	return nil
 }
 
 func (s *Session) readLoop() {
@@ -519,6 +574,9 @@ func (s *Session) readLoop() {
 		// Any frame arrival — keep-alive response, EmBER payload,
 		// anything — counts as the provider being alive.
 		s.touchRX()
+		if met := s.metricsConn(); met != nil {
+			met.ObserveCmdRx(frame.Command, len(frame.Payload))
+		}
 
 		if frame.IsKeepAlive() {
 			s.logger.Debug("emberplus: keep-alive rx", "cmd", frame.Command)
@@ -546,7 +604,13 @@ func (s *Session) readLoop() {
 		// device's Glow DTD revision without walking the tree. Refs
 		// #470.
 		s.noteDtd(frame.DTDMinor, frame.DTDMajor)
-		if len(frame.Payload) == 0 {
+		// NOTE: an empty payload must NOT short-circuit here. Lawo VSM
+		// Studio's gadgetserver terminates multi-packet messages with a
+		// payload-LESS last packet (flags 0x60) — skipping empty frames
+		// before the reassembly switch left the buffered document
+		// incomplete forever, so a whole VSM reply decoded to nothing
+		// ("connected, 0 objects", issue #728, live capture 2026-08-20).
+		if len(frame.Payload) == 0 && frame.Flags == s101.FlagSingle {
 			continue
 		}
 

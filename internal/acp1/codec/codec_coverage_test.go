@@ -98,9 +98,9 @@ func TestSplitEnumItems(t *testing.T) {
 	}{
 		{"", 0, nil},
 		{"Off,On", 2, []string{"Off", "On"}},
-		{"Off,On,Auto", 2, []string{"Off", "On"}},      // truncate to n
-		{"Off", 3, []string{"Off", "", ""}},            // pad to n
-		{" ", 1, []string{" "}},                        // sub-group marker
+		{"Off,On,Auto", 2, []string{"Off", "On"}}, // truncate to n
+		{"Off", 3, []string{"Off", "", ""}},       // pad to n
+		{" ", 1, []string{" "}},                   // sub-group marker
 	}
 	for _, c := range cases {
 		got := splitEnumItems(c.raw, c.n)

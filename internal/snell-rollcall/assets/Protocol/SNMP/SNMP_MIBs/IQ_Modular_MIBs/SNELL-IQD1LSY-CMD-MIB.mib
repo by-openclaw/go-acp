@@ -1,0 +1,727 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQD1LSY
+--        Module Id#:16
+--       Command Set:6
+--          Filename:SNELL-IQD1LSY-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:13:12
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQD1LSY-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQD1LSY,
+    moduleIQD1LSYMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQD1LSYCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281312Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQD1LSYMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqd1lsyCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqd1lsyCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQD1LSY 1 }
+
+	iqd1lsyCmdEntry OBJECT-TYPE
+		SYNTAX		Iqd1lsyCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqd1lsySlotIndex }
+		::= { iqd1lsyCmdTable 1 }
+
+	Iqd1lsyCmdEntry ::=
+		SEQUENCE {
+			iqd1lsySlotIndex
+				Unsigned32,
+			iqd1lsyLockMode
+				INTEGER,
+			iqd1lsyLockPhaseGenlockHPhase
+				INTEGER,
+			iqd1lsyLockPhaseGenlockVPhase
+				INTEGER,
+			iqd1lsyLockPhaseDelay
+				INTEGER,
+			iqd1lsyTimingYCDelay
+				INTEGER,
+			iqd1lsyTimingPicPos
+				INTEGER,
+			iqd1lsyEDHInputOutputStats
+				INTEGER,
+			iqd1lsyEDHInputResetStats
+				INTEGER,
+			iqd1lsyEDHOutputEDHEnable
+				INTEGER,
+			iqd1lsyOutputFlags
+				INTEGER,
+			iqd1lsyOutputFlagsANEDH
+				INTEGER,
+			iqd1lsyOutputFlagsANEDA
+				INTEGER,
+			iqd1lsyOutputFlagsANIDH
+				INTEGER,
+			iqd1lsyOutputFlagsANIDA
+				INTEGER,
+			iqd1lsyOutputFlagsANUES
+				INTEGER,
+			iqd1lsyOutputFlagsAPEDH
+				INTEGER,
+			iqd1lsyOutputFlagsAPEDA
+				INTEGER,
+			iqd1lsyOutputFlagsAPIDH
+				INTEGER,
+			iqd1lsyOutputFlagsAPIDA
+				INTEGER,
+			iqd1lsyOutputFlagsAPUES
+				INTEGER,
+			iqd1lsyOutputFlagsFFEDH
+				INTEGER,
+			iqd1lsyOutputFlagsFFEDA
+				INTEGER,
+			iqd1lsyOutputFlagsFFIDH
+				INTEGER,
+			iqd1lsyOutputFlagsFFIDA
+				INTEGER,
+			iqd1lsyOutputFlagsFFUES
+				INTEGER,
+			iqd1lsySetupVITSPass
+				INTEGER,
+			iqd1lsySetupTestPattern
+				INTEGER,
+			iqd1lsySetupLoggingInputLoss
+				INTEGER,
+			iqd1lsySetupLoggingRefLoss
+				INTEGER,
+			iqd1lsySetupLoggingEDHErrors
+				INTEGER,
+			iqd1lsySetupPresetUnit
+				INTEGER,
+			iqd1lsySetupSoftwareVersion
+				RollCallString,
+			iqd1lsySetupSerialNo
+				RollCallString
+		}
+
+	iqd1lsySlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqd1lsyCmdEntry 0 }
+
+
+	iqd1lsyLockMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Ext_Reference(2),
+							val_Delay(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					LockMode  cmdID= 4 
+					Ext_Reference  value= 2  
+					Delay  value= 3  "
+		::= { iqd1lsyCmdEntry 4 }
+
+
+	iqd1lsyLockPhaseGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Genlock_H-Phase  cmdID= 5  min= -6000000  max= 600000  step= 3704  format= %1.0f ns  div_scale= 100 
+					Min = -60000 ns  Max = 6000 ns  Step = 37 ns "
+		::= { iqd1lsyCmdEntry 5 }
+
+
+	iqd1lsyLockPhaseGenlockVPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Genlock_V-Phase  cmdID= 6  min= -50  max= 50  step= 1  format= %1.0f lines  div_scale= 1 
+					Min = -50 lines  Max = 50 lines  Step = 1 lines "
+		::= { iqd1lsyCmdEntry 6 }
+
+
+	iqd1lsyLockPhaseDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Delay  cmdID= 7  min= 122232  max= 13000000  step= 3704  format= %1.0f ns  div_scale= 100 
+					Min = 1222 ns  Max = 130000 ns  Step = 37 ns "
+		::= { iqd1lsyCmdEntry 7 }
+
+
+	iqd1lsyTimingYCDelay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC_Delay  cmdID= 9  min= -29632  max= 29632  step= 14816  format= %1.0f ns  div_scale= 100 
+					Min = -296 ns  Max = 296 ns  Step = 148 ns "
+		::= { iqd1lsyCmdEntry 9 }
+
+
+	iqd1lsyTimingPicPos OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Pic_Pos  cmdID= 10  min= -29632  max= 29632  step= 14816  format= %1.0f ns  div_scale= 100 
+					Min = -296 ns  Max = 296 ns  Step = 148 ns "
+		::= { iqd1lsyCmdEntry 10 }
+
+
+	iqd1lsyEDHInputOutputStats OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Show_Stats(1),
+							val_Show_Flags_In(2),
+							val_Show_Flags_Out(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Show_Stats  cmdID= 12  value= 1  
+					Show_Flags_In  cmdID= 12  value= 2  
+					Show_Flags_Out  cmdID= 12  value= 3  "
+		::= { iqd1lsyCmdEntry 12 }
+
+
+	iqd1lsyEDHInputResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 13  value= 1  "
+		::= { iqd1lsyCmdEntry 13 }
+
+
+	iqd1lsyEDHOutputEDHEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Enable  cmdID= 14 "
+		::= { iqd1lsyCmdEntry 14 }
+
+
+	iqd1lsyOutputFlags OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_All_On(1),
+							val_All_Off(0),
+							val_All_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					All_On  cmdID= 15  value= 1  
+					All_Off  cmdID= 15  value= 0  
+					All_Pass  cmdID= 15  value= 2  "
+		::= { iqd1lsyCmdEntry 15 }
+
+
+	iqd1lsyOutputFlagsANEDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					ANEDH  cmdID= 16 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 16 }
+
+
+	iqd1lsyOutputFlagsANEDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					ANEDA  cmdID= 17 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 17 }
+
+
+	iqd1lsyOutputFlagsANIDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					ANIDH  cmdID= 18 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 18 }
+
+
+	iqd1lsyOutputFlagsANIDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					ANIDA  cmdID= 19 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 19 }
+
+
+	iqd1lsyOutputFlagsANUES OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					ANUES  cmdID= 20 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 20 }
+
+
+	iqd1lsyOutputFlagsAPEDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					APEDH  cmdID= 21 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 21 }
+
+
+	iqd1lsyOutputFlagsAPEDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					APEDA  cmdID= 22 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 22 }
+
+
+	iqd1lsyOutputFlagsAPIDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					APIDH  cmdID= 23 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 23 }
+
+
+	iqd1lsyOutputFlagsAPIDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					APIDA  cmdID= 24 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 24 }
+
+
+	iqd1lsyOutputFlagsAPUES OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					APUES  cmdID= 25 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 25 }
+
+
+	iqd1lsyOutputFlagsFFEDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					FFEDH  cmdID= 26 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 26 }
+
+
+	iqd1lsyOutputFlagsFFEDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					FFEDA  cmdID= 27 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 27 }
+
+
+	iqd1lsyOutputFlagsFFIDH OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					FFIDH  cmdID= 28 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 28 }
+
+
+	iqd1lsyOutputFlagsFFIDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					FFIDA  cmdID= 29 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 29 }
+
+
+	iqd1lsyOutputFlagsFFUES OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_On(1),
+							val_Off(0),
+							val_Pass(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					FFUES  cmdID= 30 
+					On  value= 1  
+					Off  value= 0  
+					Pass  value= 2  "
+		::= { iqd1lsyCmdEntry 30 }
+
+
+	iqd1lsySetupVITSPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VITS_Pass  cmdID= 31 "
+		::= { iqd1lsyCmdEntry 31 }
+
+
+	iqd1lsySetupTestPattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Test_Pattern  cmdID= 32 "
+		::= { iqd1lsyCmdEntry 32 }
+
+
+	iqd1lsySetupLoggingInputLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Input_Loss  cmdID= 34 "
+		::= { iqd1lsyCmdEntry 34 }
+
+
+	iqd1lsySetupLoggingRefLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Ref_Loss  cmdID= 35 "
+		::= { iqd1lsyCmdEntry 35 }
+
+
+	iqd1lsySetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 36 "
+		::= { iqd1lsyCmdEntry 36 }
+
+
+	iqd1lsySetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqd1lsyCmdEntry 3 }
+
+
+	iqd1lsySetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqd1lsyCmdEntry 2 }
+
+
+	iqd1lsySetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqd1lsyCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: RESET
+--				: NONE
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: STDERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: N/A
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

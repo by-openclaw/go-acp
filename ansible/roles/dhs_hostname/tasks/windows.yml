@@ -1,0 +1,12 @@
+---
+# Rename-Computer needs a reboot to take effect; win_reboot waits for the
+# host to come back on the same SSH path, so the play continues.
+- name: "computer name = {{ fleet_hostname }}"
+  ansible.windows.win_hostname:
+    name: "{{ fleet_hostname }}"
+  register: dhs_hostname_win
+
+- name: Reboot to apply the new computer name
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+  when: dhs_hostname_win.reboot_required | default(false)

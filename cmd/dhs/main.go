@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -45,6 +46,7 @@ import (
 	_ "dhs/internal/osc/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
+	_ "dhs/internal/snell-rollcall/consumer"
 	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
@@ -54,6 +56,7 @@ import (
 	_ "dhs/internal/osc/provider"
 	_ "dhs/internal/probel-sw02p/provider"
 	_ "dhs/internal/probel-sw08p/provider"
+	_ "dhs/internal/snell-rollcall/provider"
 	_ "dhs/internal/tsl/provider"
 
 	// Registry plugins — blank imports register with internal/registry.
@@ -71,10 +74,14 @@ import (
 	_ "dhs/internal/amwa/codec/is04/v13"
 	_ "dhs/internal/amwa/codec/is05/v10"
 	_ "dhs/internal/amwa/codec/is05/v11"
+	_ "dhs/internal/amwa/codec/is05/v12"
 	_ "dhs/internal/amwa/codec/is07/v10"
 	_ "dhs/internal/amwa/codec/is08/v10"
 	_ "dhs/internal/amwa/codec/is09/v10"
+	_ "dhs/internal/amwa/codec/is10/v10"
+	_ "dhs/internal/amwa/codec/is11/v10"
 	_ "dhs/internal/amwa/codec/is12/v10"
+	_ "dhs/internal/amwa/codec/is14/v10"
 	_ "dhs/internal/amwa/codec/ms05/v10"
 
 	// BCP validator packages — register into the shared bcp registry
@@ -170,13 +177,20 @@ var commands = []command{
 	{"convert", "translate a snapshot file between json / yaml / csv (offline)", helpConvert, runConvert},
 	{"discover", "passive + active scan for devices on the local subnet", helpDiscover, runDiscover},
 	{"matrix", "set matrix crosspoint connections (Ember+ only)", helpMatrix, runMatrix},
+	{"usage", "matrix reverse tally: where is each source assigned (Ember+ only)", helpEmberUsage, runEmberUsage},
+	{"replace", "substitute matrix source A with B everywhere (Ember+ only; --check dry-run)", helpEmberReplace, runEmberReplace},
 	{"invoke", "invoke an Ember+ function (RPC)", helpInvoke, runInvoke},
 	{"stream", "subscribe to Ember+ stream parameters", helpStream, runStream},
 	{"profile", "classify Ember+ provider compliance (strict / partial)", helpProfile, runProfile},
 	{"diag", "run ACP2 diagnostic probes against a device", helpDiag, runDiag},
 	{"validate", "decode a captured frames.jsonl through the codec offline (per ADR-0021)", helpValidate, runValidate},
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
+	{"status", "one-shot device status: session health + identity (--output json)", helpStatus, runStatus},
 	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
+	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
+	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
+	{"tally", "print a level's crosspoints and follow them live (RollCall only)", helpRollcallTally, runRollcallTally},
+	{"salvo", "list a controller's salvos, or fire one (RollCall only)", helpRollcallSalvo, runRollcallSalvo},
 }
 
 func helpBench() {
@@ -201,6 +215,21 @@ func main() {
 	if len(args) == 0 {
 		printTopHelp()
 		os.Exit(0)
+	}
+
+	// A verb-level `--help` is answered by the verb's own FlagSet (it
+	// prints that verb's usage + flags and Parse returns flag.ErrHelp).
+	// Help is success, not an error — exit 0 silently instead of the
+	// "error: flag: help requested" + catalogue fallback (#462).
+	exitOnErr := func(err error) {
+		if err == nil {
+			return
+		}
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(exitCode(err))
 	}
 
 	switch args[0] {
@@ -229,28 +258,16 @@ func main() {
 		}
 		return
 	case "consumer":
-		if err := dispatchConsumer(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchConsumer(ctx, args[1:]))
 		return
 	case "producer":
-		if err := dispatchProducer(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchProducer(ctx, args[1:]))
 		return
 	case "registry":
-		if err := dispatchRegistry(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(dispatchRegistry(ctx, args[1:]))
 		return
 	case "metrics":
-		if err := runMetrics(ctx, args[1:]); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(exitCode(err))
-		}
+		exitOnErr(runMetrics(ctx, args[1:]))
 		return
 	}
 
@@ -287,6 +304,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "cerebrum-nb" {
 		return runCerebrum(ctx, rest)
 	}
+	if proto == "ccm" {
+		return runCCM(ctx, rest)
+	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
 	}
@@ -297,7 +317,11 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runNMOSConsumer(ctx, rest)
 	}
 
-	if len(rest) == 0 || hasHelpFlag(rest) {
+	// Catalogue help ONLY when help is asked in place of a verb — a help
+	// flag AFTER the verb belongs to the verb (#462: hasHelpFlag over the
+	// whole argv made `walk --help` print this catalogue and shadowed the
+	// per-verb help below).
+	if len(rest) == 0 || isHelpToken(rest[0]) {
 		printConsumerHelp()
 		return nil
 	}
@@ -339,7 +363,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	if proto == "nmos" {
 		return runNMOSProducer(ctx, rest)
 	}
-	if len(rest) == 0 || hasHelpFlag(rest) {
+	// Same rule as dispatchConsumer (#462): help IN PLACE of a verb =
+	// catalogue; help after the verb belongs to the verb's own FlagSet.
+	if len(rest) == 0 || isHelpToken(rest[0]) {
 		printProducerHelp()
 		return nil
 	}
@@ -348,6 +374,28 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runProducer(ctx, proto, rest)
+	case "tree":
+		return runProducerTree(ctx, proto, rest)
+	case "status":
+		// Canonical producer status = the live runtime snapshot of a serving
+		// instance (frames/bytes/latency/errors/uptime), fetched from its
+		// /snapshot.json. Delegates to the existing metrics-show renderer so
+		// there is one implementation. Requires the server started with
+		// --metrics-addr; pass --url http://host:port/snapshot.json.
+		return runMetricsShow(ctx, rest)
+	case "stop":
+		return runProducerStop(ctx, proto, rest)
+	case "ensure":
+		// Canonical ADR-0007 ensure for the serving instance: converge to
+		// --state present|absent keyed on --pidfile (idempotent teardown; drift
+		// report for present). See runProducerEnsure for the honest boundary on
+		// apply-present.
+		return runProducerEnsure(ctx, proto, rest)
+	case "validate":
+		// Offline decode of a captured frames.jsonl through the codec — the
+		// same generic validator the consumer side uses (direction-agnostic);
+		// inject --protocol like dispatchConsumer does.
+		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	case "admin":
 		if proto != "acp1" {
 			return fmt.Errorf("producer %s: admin verb is acp1-only (advances #258)", proto)
@@ -359,7 +407,7 @@ func dispatchProducer(ctx context.Context, args []string) error {
 		}
 		return runACP1Fuzz(ctx, rest)
 	}
-	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | admin | fuzz)", proto, verb)
+	return fmt.Errorf("producer %s: unknown verb %q (expected: serve | tree | status | stop | ensure | validate | admin | fuzz)", proto, verb)
 }
 
 // dispatchRegistry routes `dhs registry <proto> <verb> [args]`. The
@@ -460,6 +508,15 @@ USAGE
   dhs version
   dhs -h | --help                            this page
 
+GLOBAL FLAGS (every verb)
+  --settings <file.yaml>   flag DEFAULTS from a flat YAML file
+                           (flag-name: value, exactly the -h names).
+                           Precedence: explicit flags > file > built-in.
+                           Keys for other verbs are ignored, so ONE file
+                           can serve a whole deployment; DHS_SETTINGS
+                           names a fallback path. Full reference:
+                           docs/cli.md
+
 CONSUMER (outbound — connect to a device, query / control it)
   Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
@@ -515,15 +572,15 @@ func printConsumerHelp() {
 USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
-PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+PROTOCOLS`)
 
+	// From the registry, never from a list kept here. A hardcoded catalogue
+	// goes stale the moment a plugin is added and nobody notices, because the
+	// protocol still works — it is only undiscoverable. Three had accumulated
+	// before this was noticed: rollcall, probel-sw02p and the TSL versions.
+	printRegisteredProtocols()
+
+	fmt.Println(`
 GENERIC VERBS (acp1 / acp2 / emberplus)`)
 	for _, c := range commands {
 		fmt.Printf("  %-10s %s\n", c.name, c.short)
@@ -546,7 +603,15 @@ func printProducerHelp() {
 	fmt.Println(`dhs producer — inbound (serve a canonical tree over the wire)
 
 USAGE
-  dhs producer <protocol> serve [flags]
+  dhs producer <protocol> <verb> [flags]
+
+VERBS
+  serve     bind the transport(s) and serve the canonical tree
+  tree      print the canonical tree that would be served (no bind)
+  status    live runtime snapshot of a serving instance (--url .../snapshot.json)
+  stop      signal a 'serve --pidfile PATH' instance to shut down (--pidfile PATH)
+  ensure    ADR-0007 converge to --state present|absent, keyed on --pidfile
+  validate  offline decode a captured frames.jsonl through the codec
 
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p

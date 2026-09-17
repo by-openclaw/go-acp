@@ -39,14 +39,15 @@ named compliance events emitted from the codec/consumer paths
 internal/cerebrum-nb/
 ├── CLAUDE.md             ← this file (spec entry-point only)
 ├── codec/                stdlib-only XML codec for §2/§4/§5 elements
-│   └── ws/               stdlib-only RFC 6455 WebSocket client
+│                         (WebSocket now lives in internal/transport/ws —
+│                          it is a transport, not a codec)
 ├── consumer/             package cerebrum_nb — implements consumer.Protocol
 ├── wireshark/            dhs_cerebrum_nb.lua — full WS-frame + XML
 │                         payload dissector
 ├── docs/
 │   ├── keys.md           wire-key catalogue (spec extract)
 │   ├── consumer.md       CLI walkthrough
-│   ├── verbs.md          12-section verb + sample reference (0v16)
+│   ├── verbs.md          13-section verb + sample reference (0v16)
 │   ├── runbook.md        operator quick-reference card
 │   ├── provider.md       provider rationale — consumer-only by design (N/A)
 │   └── README.md         one-page overview
@@ -80,9 +81,15 @@ full rationale.
 
 ### WebSocket (RFC 6455) — hand-rolled
 
-Implemented in [codec/ws/](codec/ws/). Stdlib-only, no `dhs/*` imports —
-lift-ready per root CLAUDE.md "Architecture principles" (Library
-independence).
+Implemented in **[`internal/transport/ws/`](../transport/ws/)**, not here.
+It used to sit under `codec/ws/`, which was a layering mistake: WebSocket is
+a *transport*, and `codec/` is bytes-of-this-protocol only (root CLAUDE.md
+"Separation of concerns"). Cerebrum's codec is now purely the XML.
+
+Still stdlib-only with no `dhs/*` imports, so it stays lift-ready — and
+being shared means the 24/7 liveness work (per-frame idle deadline re-armed
+on every frame, Pongs included) is written once for every connector that
+speaks WebSocket rather than per-protocol.
 
 ### XML
 

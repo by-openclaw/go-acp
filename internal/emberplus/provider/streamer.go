@@ -7,20 +7,20 @@ import (
 	"math/rand"
 	"time"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/ber"
 	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
 )
 
 // streamEntry holds the per-parameter state needed to emit StreamEntry
 // values each tick. Type is captured at tree-load time so the streamer
 // doesn't have to re-look-up the Parameter on every tick.
 type streamEntry struct {
-	id      int64  // stream identifier (wire-visible to consumers)
-	oid     string // source parameter OID, for debug
-	kind    string // canonical parameter type (real / integer / boolean)
-	min     float64
-	max     float64
+	id   int64  // stream identifier (wire-visible to consumers)
+	oid  string // source parameter OID, for debug
+	kind string // canonical parameter type (real / integer / boolean)
+	min  float64
+	max  float64
 }
 
 // collectStreams walks the loaded tree for Parameters with a non-nil
@@ -166,4 +166,3 @@ func (s *server) fanoutStreams(entries []streamEntry) {
 		}
 	}
 }
-

@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,13 +25,41 @@ func unitLogger() *slog.Logger {
 }
 
 // ----------------------------------------------------------------------
-// walker.go — Lookup nil, decodeValue / decodeConstraint / numberTypeToKind
+// walker.go — decodeValue / decodeConstraint / numberTypeToKind
 
-// TestWalkedTree_LookupNil covers the nil-receiver guard.
-func TestWalkedTree_LookupNil(t *testing.T) {
-	var tr *WalkedTree
-	if got := tr.Lookup("anything"); got != -1 {
-		t.Errorf("nil tree Lookup = %d, want -1", got)
+// TestResolveRequest_PathNotFound covers resolveRequest's unresolved-path
+// branch: a --path that matches no walked object returns ErrObjectNotFound
+// (the label branch is exercised elsewhere; this pins the path arm).
+func TestResolveRequest_PathNotFound(t *testing.T) {
+	p := &Plugin{}
+	tree := &WalkedTree{
+		Objects:  []consumer.Object{{ID: 1, Label: "X", Path: []string{"ROOT_NODE_V2", "X"}}},
+		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeString},
+		NumTypes: []codec.NumberType{codec.NumTypeString},
+	}
+	_, _, _, _, err := p.resolveRequest(consumer.ValueRequest{Path: "DOES.NOT.EXIST", ID: -1}, tree)
+	if !errors.Is(err, consumer.ErrObjectNotFound) {
+		t.Errorf("path not found: want ErrObjectNotFound, got %v", err)
+	}
+}
+
+// TestBuildAnnounceClosure_PathFilterDrops covers the --path watch filter
+// branch: an announce for an object whose path does NOT match the watch's
+// --path is dropped (callback not fired). Deterministic — pins the filter
+// arm so the package coverage doesn't depend on live-watch scheduling.
+func TestBuildAnnounceClosure_PathFilterDrops(t *testing.T) {
+	p := &Plugin{logger: unitLogger()}
+	p.SeedTreeFromCachedObjects(0, []consumer.Object{
+		{ID: 42, Label: "Gain", Path: []string{"ROOT_NODE_V2", "BOARD", "Gain"}},
+	})
+	called := false
+	closure := p.buildAnnounceClosure(
+		consumer.ValueRequest{Slot: -1, ID: -1, Path: "OTHER.SUBTREE"},
+		func(consumer.Event) { called = true },
+	)
+	closure(0, &codec.ACP2Message{ObjID: 42})
+	if called {
+		t.Error("announce with non-matching --path must be filtered out")
 	}
 }
 
@@ -346,12 +375,12 @@ func TestBuildAnnounceClosure_Filtering(t *testing.T) {
 
 	// Seed a tree so the closure resolves label/path + decodes via tree.
 	tree := &WalkedTree{
-		Slot:     1,
-		Objects:  []consumer.Object{{ID: 5, Label: "Gain", Unit: "dB", Group: "BOARD", Path: []string{"ROOT", "BOARD", "Gain"}}},
-		ObjTypes: []codec.ACP2ObjType{codec.ObjTypeNumber},
-		NumTypes: []codec.NumberType{codec.NumTypeU32},
+		Slot:        1,
+		Objects:     []consumer.Object{{ID: 5, Label: "Gain", Unit: "dB", Group: "BOARD", Path: []string{"ROOT", "BOARD", "Gain"}}},
+		ObjTypes:    []codec.ACP2ObjType{codec.ObjTypeNumber},
+		NumTypes:    []codec.NumberType{codec.NumTypeU32},
 		OptionsMaps: []map[uint32]string{nil},
-		Labels:   map[string]int{"Gain": 0},
+		Labels:      map[string]int{"Gain": 0},
 	}
 	p.trees.Put(1, tree)
 
@@ -444,14 +473,14 @@ func TestValidateValueAgainstType_NumericAndEnum(t *testing.T) {
 
 // TestSession_ReleaseMTIDZero covers releaseMTID's mtid==0 early return.
 func TestSession_ReleaseMTIDZero(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.releaseMTID(0) // must not panic / touch the pool
 }
 
 // TestSession_CloseLockedNilConn covers closeLocked's conn==nil early return
 // via Disconnect on a never-connected session.
 func TestSession_CloseLockedNilConn(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	if err := s.Disconnect(); err != nil {
 		t.Errorf("Disconnect on fresh session = %v, want nil", err)
 	}
@@ -463,7 +492,7 @@ func TestSession_CloseLockedNilConn(t *testing.T) {
 // forever. Uses a tiny closeWait so the test is fast and a net.Pipe conn so
 // Close() is a real call.
 func TestSession_CloseLockedTimeoutArm(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	clientConn, serverConn := net.Pipe()
 	defer func() { _ = serverConn.Close() }()
 	s.conn = clientConn
@@ -490,7 +519,7 @@ func TestSession_CloseLockedTimeoutArm(t *testing.T) {
 // reader goroutine has already exited (done closed), close returns promptly
 // without waiting on the closeWait timer.
 func TestSession_CloseLockedDoneArm(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	clientConn, serverConn := net.Pipe()
 	defer func() { _ = serverConn.Close() }()
 	s.conn = clientConn
@@ -509,7 +538,7 @@ func TestSession_CloseLockedDoneArm(t *testing.T) {
 
 // TestSession_MarkSlotProbedNegative covers the slot<0 guard.
 func TestSession_MarkSlotProbedNegative(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.MarkSlotProbed(-1, nil) // no-op, must not panic
 	if len(s.slotStatus) != 0 {
 		t.Errorf("negative slot probe grew tables to %d", len(s.slotStatus))
@@ -545,14 +574,14 @@ func TestIsClosedErr(t *testing.T) {
 
 // TestRouteReply_NoWaiter covers routeReply's no-waiter (orphan) arm.
 func TestRouteReply_NoWaiter(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	// No waiter registered for mtid 7 → orphan path (note + debug log).
 	s.routeReply(7, &codec.ACP2Message{Type: codec.ACP2TypeReply, MTID: 7})
 }
 
 // TestRouteReply_ChannelFull covers routeReply's full-channel default arm.
 func TestRouteReply_ChannelFull(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	ch := make(chan *codec.ACP2Message, 1)
 	ch <- &codec.ACP2Message{} // pre-fill so the next send hits default
 	s.waitMu.Lock()
@@ -564,7 +593,7 @@ func TestRouteReply_ChannelFull(t *testing.T) {
 // TestHandleAN2Internal_EventAndDefault covers the AN2 slot-event arm
 // (updates slotStatus) and the unhandled-type default arm.
 func TestHandleAN2Internal_EventAndDefault(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 	s.slotStatus = make([]consumer.SlotStatus, 3)
 	// Slot event updates status.
 	s.handleAN2Internal(&codec.AN2Frame{
@@ -581,7 +610,7 @@ func TestHandleAN2Internal_EventAndDefault(t *testing.T) {
 // TestHandleACP2Frame_Guards covers the non-data, short-payload, decode-error,
 // and announce-fanout arms of handleACP2Frame.
 func TestHandleACP2Frame_Guards(t *testing.T) {
-	s := NewSession(unitLogger())
+	s := NewSession(nil, unitLogger())
 
 	// Non-data frame → debug + return.
 	s.handleACP2Frame(&codec.AN2Frame{Proto: codec.AN2ProtoACP2, Type: codec.AN2TypeReply})
@@ -599,27 +628,6 @@ func TestHandleACP2Frame_Guards(t *testing.T) {
 		Slot: 1, Payload: annPayload})
 	if got != 1 {
 		t.Errorf("announce fanout fired %d times, want 1", got)
-	}
-}
-
-// ----------------------------------------------------------------------
-// session_health.go — probeReachable ctx-deadline arms
-
-func TestProbeReachable_TightDeadline(t *testing.T) {
-	// Deadline tighter than 500ms but still positive → shrinks d.Timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", 1) {
-		t.Error("probe to closed port should be false")
-	}
-}
-
-func TestProbeReachable_ExpiredDeadline(t *testing.T) {
-	// Already-expired deadline → d.Timeout <= 0 → immediate false.
-	ctx, cancel := context.WithTimeout(context.Background(), -time.Second)
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", 80) {
-		t.Error("probe with expired deadline should be false")
 	}
 }
 

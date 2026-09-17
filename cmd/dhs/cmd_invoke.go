@@ -25,7 +25,7 @@ func runInvoke(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> invoke <host> --path <func.path> [--args val1,val2,...] [--dm <identity> | --no-walk]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 	if *funcPath == "" {
 		return fmt.Errorf("--path is required (e.g. router.functions.add)")
 	}

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // TestSaveLoadByIdentity_PreservesMetaAndContent pins the per-card DM

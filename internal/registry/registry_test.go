@@ -2,18 +2,26 @@ package registry_test
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"testing"
 
 	"dhs/internal/registry"
 )
 
+// regSeq makes registered names unique per test iteration: the
+// registry is package-global and Register panics on duplicates, so
+// fixed names break `go test -count=N` / stress runs (the flake-hunt
+// tool must be able to re-run every test in one process).
+var regSeq atomic.Int64
+
 type stubFactory struct {
 	meta registry.Meta
 }
 
-func (f *stubFactory) Meta() registry.Meta                       { return f.meta }
-func (f *stubFactory) New(_ *slog.Logger) registry.Registry      { return &stubRegistry{} }
+func (f *stubFactory) Meta() registry.Meta                  { return f.meta }
+func (f *stubFactory) New(_ *slog.Logger) registry.Registry { return &stubRegistry{} }
 
 type stubRegistry struct{}
 
@@ -21,15 +29,18 @@ func (*stubRegistry) Serve(ctx context.Context, _ registry.ServeOptions) error {
 	<-ctx.Done()
 	return nil
 }
-func (*stubRegistry) Stop() error            { return nil }
-func (*stubRegistry) Stats() registry.Stats  { return registry.Stats{} }
+func (*stubRegistry) Stop() error           { return nil }
+func (*stubRegistry) Stats() registry.Stats { return registry.Stats{} }
 
 func TestRegisterLookupList(t *testing.T) {
-	registry.Register(&stubFactory{meta: registry.Meta{Name: "test-a", DefaultPort: 9000}})
-	registry.Register(&stubFactory{meta: registry.Meta{Name: "test-b", DefaultPort: 9001}})
+	n := regSeq.Add(1)
+	nameA := fmt.Sprintf("test-a-%d", n)
+	nameB := fmt.Sprintf("test-b-%d", n)
+	registry.Register(&stubFactory{meta: registry.Meta{Name: nameA, DefaultPort: 9000}})
+	registry.Register(&stubFactory{meta: registry.Meta{Name: nameB, DefaultPort: 9001}})
 
-	if _, ok := registry.Lookup("test-a"); !ok {
-		t.Fatalf("expected test-a registered")
+	if _, ok := registry.Lookup(nameA); !ok {
+		t.Fatalf("expected %s registered", nameA)
 	}
 	if _, ok := registry.Lookup("test-missing"); ok {
 		t.Fatalf("expected test-missing absent")
@@ -39,11 +50,11 @@ func TestRegisterLookupList(t *testing.T) {
 	// Other tests/plugins may register too — assert ours appear in sorted order.
 	var sawA, sawB bool
 	var idxA, idxB int
-	for i, n := range names {
-		if n == "test-a" {
+	for i, nm := range names {
+		if nm == nameA {
 			sawA, idxA = true, i
 		}
-		if n == "test-b" {
+		if nm == nameB {
 			sawB, idxB = true, i
 		}
 	}
@@ -51,16 +62,17 @@ func TestRegisterLookupList(t *testing.T) {
 		t.Fatalf("expected both names registered, got %v", names)
 	}
 	if idxA > idxB {
-		t.Fatalf("expected test-a before test-b in sorted output, got %v", names)
+		t.Fatalf("expected %s before %s in sorted output, got %v", nameA, nameB, names)
 	}
 }
 
 func TestRegisterDuplicatePanics(t *testing.T) {
-	registry.Register(&stubFactory{meta: registry.Meta{Name: "dup-test"}})
+	name := fmt.Sprintf("dup-test-%d", regSeq.Add(1))
+	registry.Register(&stubFactory{meta: registry.Meta{Name: name}})
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatalf("expected panic on duplicate registration")
 		}
 	}()
-	registry.Register(&stubFactory{meta: registry.Meta{Name: "dup-test"}})
+	registry.Register(&stubFactory{meta: registry.Meta{Name: name}})
 }

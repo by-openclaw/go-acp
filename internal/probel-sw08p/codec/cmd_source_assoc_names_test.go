@@ -42,11 +42,11 @@ func TestSingleSourceAssocNameRequestRoundtrip(t *testing.T) {
 
 func TestSourceAssocNamesResponseRoundtrip(t *testing.T) {
 	in := SourceAssocNamesResponseParams{
-		MatrixID:                1,
-		LevelID:                 0,
-		NameLength:              NameLen4,
+		MatrixID:                 1,
+		LevelID:                  0,
+		NameLength:               NameLen4,
 		FirstSourceAssociationID: 10,
-		Names:                   []string{"A", "BB", "CCC"},
+		Names:                    []string{"A", "BB", "CCC"},
 	}
 	f := EncodeSourceAssocNamesResponse(in)
 	back, err := DecodeSourceAssocNamesResponse(f)

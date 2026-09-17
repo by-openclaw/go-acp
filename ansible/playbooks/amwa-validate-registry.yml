@@ -1,0 +1,12 @@
+---
+# Validate the plant REGISTRY (Registration + Query APIs).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-registry.yml
+
+- name: AMWA validate — registry
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: registry

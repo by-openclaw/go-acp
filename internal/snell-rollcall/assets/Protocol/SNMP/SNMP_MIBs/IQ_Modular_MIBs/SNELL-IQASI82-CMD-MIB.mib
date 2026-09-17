@@ -1,0 +1,5608 @@
+-- ************************************************************************************
+--        Snell Card:IQASI82
+--        Module Id#:667
+--       Command Set:6
+--          Filename:SNELL-IQASI82-CMD-MIB.mib
+--       Source File:iqasi82com.xml
+--        Source Ver:5.1.6
+--    Logging Source:asi82logging.csv
+--            Author:nealhewer
+--              Date:17/05/2013
+--              Time:10:52
+--
+-- Copyright (c) 2010 Snell Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQASI82-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQASI82,
+    moduleIQASI82MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+moduleIQASI82CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1305171052Z"
+    ORGANIZATION "Snell Ltd"
+    CONTACT-INFO
+        "Primary Author:nealhewer
+
+         postal:    Hartman House
+                    Danehill
+                    Lower Earley,
+                    Reading, Berks
+                    RG6 4PB
+         phone:     +44 (0)118 9866123
+         email:     support.uk@snellgroup.com"
+    DESCRIPTION
+        "This file defines the Snell card, command set translations."
+    ::= { moduleIQASI82MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+    iqasi82CmdTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF Iqasi82CmdEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+                "Note the instance of this table is relected in the command set Version"
+        ::= { moduleIQASI82 1 }
+
+    iqasi82CmdEntry OBJECT-TYPE
+        SYNTAX          Iqasi82CmdEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+                "Entry in command table."
+        INDEX   { iqasi82SlotIndex }
+        ::= { iqasi82CmdTable 1 }
+
+    Iqasi82CmdEntry ::=
+        SEQUENCE {
+            iqasi82SlotIndex
+                Unsigned32,
+            iqasi82InformationWindow
+                INTEGER,
+            iqasi82OutputSelectOutputALocal
+                INTEGER,
+            iqasi82OutputSelectOutputASelect
+                INTEGER,
+            iqasi82OutputSelectOutputBLocal
+                INTEGER,
+            iqasi82OutputSelectOutputBSelect
+                INTEGER,
+            iqasi82Channel1Input1StatusLevelFail
+                INTEGER,
+            iqasi82Channel1Input1StatusTSSlowStop
+                INTEGER,
+            iqasi82Channel1Input1StatusTSSyncLoss
+                INTEGER,
+            iqasi82Channel1Input1StatusSyncByteError
+                INTEGER,
+            iqasi82Channel1Input1StatusPATUDError
+                INTEGER,
+            iqasi82Channel1Input1StatusDataRateLow
+                INTEGER,
+            iqasi82Channel1Input1StatusDataRateHigh
+                INTEGER,
+            iqasi82Channel1Input1StatusPIDFail
+                INTEGER,
+            iqasi82Channel1AlarmOutputsExternalOutput1
+                INTEGER,
+            iqasi82Channel1AlarmOutputsExternalOutput2
+                INTEGER,
+            iqasi82Channel1AlarmOutputsRelay1
+                INTEGER,
+            iqasi82Channel2Input2StatusLevelFail
+                INTEGER,
+            iqasi82Channel2Input2StatusTSSlowStop
+                INTEGER,
+            iqasi82Channel2Input2StatusTSSyncLoss
+                INTEGER,
+            iqasi82Channel2Input2StatusSyncByteError
+                INTEGER,
+            iqasi82Channel2Input2StatusPATUDError
+                INTEGER,
+            iqasi82Channel2Input2StatusDataRateLow
+                INTEGER,
+            iqasi82Channel2Input2StatusDataRateHigh
+                INTEGER,
+            iqasi82Channel2Input2StatusPIDFail
+                INTEGER,
+            iqasi82Channel2AlarmOutputsExternalOutput5
+                INTEGER,
+            iqasi82Channel2AlarmOutputsExternalOutput6
+                INTEGER,
+            iqasi82Channel2AlarmOutputsRelay2
+                INTEGER,
+            iqasi82PrimaryConfigSwitchType
+                INTEGER,
+            iqasi82PrimaryConfigSwitchMode
+                INTEGER,
+            iqasi82PrimaryConfigRemoteExtMode
+                INTEGER,
+            iqasi82PrimaryConfigMultiSubAlarmConfig
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsLevelFail
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsTSSlowStopMan
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsTSSyncLossMan
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsSyncByteError
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsPATUDError
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsDataRateLow
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsDataRateHigh
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsPIDFail
+                INTEGER,
+            iqasi82PrimaryConfigInput1ChannelAlarmsLevelAlarmThreshold
+                RollCallString,
+            iqasi82PrimaryConfigInput1ChannelAlarmsPATUpperDistance
+                RollCallString,
+            iqasi82PrimaryConfigInput1ChannelAlarmsLowerDataRate
+                RollCallString,
+            iqasi82PrimaryConfigInput1ChannelAlarmsUpperDataRate
+                RollCallString,
+            iqasi82PrimaryConfigInput2ChannelAlarmsLevelFail
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsTSSlowStopMan
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsTSSyncLossMan
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsSyncByteError
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsPATUDError
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsDataRateLow
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsDataRateHigh
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsPIDFail
+                INTEGER,
+            iqasi82PrimaryConfigInput2ChannelAlarmsLevelAlarmThreshold
+                RollCallString,
+            iqasi82PrimaryConfigInput2ChannelAlarmsPATUpperDistance
+                RollCallString,
+            iqasi82PrimaryConfigInput2ChannelAlarmsLowerDataRate
+                RollCallString,
+            iqasi82PrimaryConfigInput2ChannelAlarmsUpperDataRate
+                RollCallString,
+            iqasi82PIDListInput1SelectPID
+                INTEGER,
+            iqasi82PIDListInput1DeleteSelectedPID
+                INTEGER,
+            iqasi82PIDListInput1AddPID
+                RollCallString,
+            iqasi82PIDListInput1DeleteAll
+                INTEGER,
+            iqasi82PIDListInput1SetPIDUD
+                RollCallString,
+            iqasi82PIDListInput2SelectPID
+                INTEGER,
+            iqasi82PIDListInput2DeleteSelectedPID
+                INTEGER,
+            iqasi82PIDListInput2AddPID
+                RollCallString,
+            iqasi82PIDListInput2DeleteAll
+                INTEGER,
+            iqasi82PIDListInput2SetPIDUD
+                RollCallString,
+            iqasi82PIDListCopy1to2
+                INTEGER,
+            iqasi82PIDListCopy2to1
+                INTEGER,
+            iqasi82PIDListRefresh
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL100
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL101
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL102
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL103
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL104
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL105
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL106
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL107
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL108
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL109
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL110
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL111
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL112
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL113
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL114
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL115
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL116
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL117
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL118
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL119
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL120
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL121
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL122
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL123
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL124
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL125
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL126
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL127
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL128
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL129
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL130
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL131
+                INTEGER,
+            iqasi82PIDTableTable1PIDTBL132
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL200
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL201
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL202
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL203
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL204
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL205
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL206
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL207
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL208
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL209
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL210
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL211
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL212
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL213
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL214
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL215
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL216
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL217
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL218
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL219
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL220
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL221
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL222
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL223
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL224
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL225
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL226
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL227
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL228
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL229
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL230
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL231
+                INTEGER,
+            iqasi82PIDTableTable2PIDTBL232
+                INTEGER,
+            iqasi82Input1Output1LevelFail
+                INTEGER,
+            iqasi82Input1Output1TSSlowStopMan
+                INTEGER,
+            iqasi82Input1Output1TSSyncLossMan
+                INTEGER,
+            iqasi82Input1Output1SyncByteError
+                INTEGER,
+            iqasi82Input1Output1PATUDError
+                INTEGER,
+            iqasi82Input1Output1DataRateLow
+                INTEGER,
+            iqasi82Input1Output1DataRateHigh
+                INTEGER,
+            iqasi82Input1Output1PIDFail
+                INTEGER,
+            iqasi82Input1Output1FollowInput1TS
+                INTEGER,
+            iqasi82Input1Output2LevelFail
+                INTEGER,
+            iqasi82Input1Output2TSSlowStopMan
+                INTEGER,
+            iqasi82Input1Output2TSSyncLossMan
+                INTEGER,
+            iqasi82Input1Output2SyncByteError
+                INTEGER,
+            iqasi82Input1Output2PATUDError
+                INTEGER,
+            iqasi82Input1Output2DataRateLow
+                INTEGER,
+            iqasi82Input1Output2DataRateHigh
+                INTEGER,
+            iqasi82Input1Output2PIDFail
+                INTEGER,
+            iqasi82Input1Output2FollowInput1TS
+                INTEGER,
+            iqasi82Input1RelayOutput1LevelFail
+                INTEGER,
+            iqasi82Input1RelayOutput1TSSlowStopMan
+                INTEGER,
+            iqasi82Input1RelayOutput1TSSyncLossMan
+                INTEGER,
+            iqasi82Input1RelayOutput1SyncByteError
+                INTEGER,
+            iqasi82Input1RelayOutput1PATUDError
+                INTEGER,
+            iqasi82Input1RelayOutput1DataRateLow
+                INTEGER,
+            iqasi82Input1RelayOutput1DataRateHigh
+                INTEGER,
+            iqasi82Input1RelayOutput1PIDFail
+                INTEGER,
+            iqasi82Input1RelayOutput1FollowInput1TS
+                INTEGER,
+            iqasi82Input2Output5LevelFail
+                INTEGER,
+            iqasi82Input2Output5TSSlowStopMan
+                INTEGER,
+            iqasi82Input2Output5TSSyncLossMan
+                INTEGER,
+            iqasi82Input2Output5SyncByteError
+                INTEGER,
+            iqasi82Input2Output5PATUDError
+                INTEGER,
+            iqasi82Input2Output5DataRateLow
+                INTEGER,
+            iqasi82Input2Output5DataRateHigh
+                INTEGER,
+            iqasi82Input2Output5PIDFail
+                INTEGER,
+            iqasi82Input2Output5FollowInput2TS
+                INTEGER,
+            iqasi82Input2Output6LevelFail
+                INTEGER,
+            iqasi82Input2Output6TSSlowStopMan
+                INTEGER,
+            iqasi82Input2Output6TSSyncLossMan
+                INTEGER,
+            iqasi82Input2Output6SyncByteError
+                INTEGER,
+            iqasi82Input2Output6PATUDError
+                INTEGER,
+            iqasi82Input2Output6DataRateLow
+                INTEGER,
+            iqasi82Input2Output6DataRateHigh
+                INTEGER,
+            iqasi82Input2Output6PIDFail
+                INTEGER,
+            iqasi82Input2Output6FollowInput2TS
+                INTEGER,
+            iqasi82Input2RelayOutput2LevelFail
+                INTEGER,
+            iqasi82Input2RelayOutput2TSSlowStopMan
+                INTEGER,
+            iqasi82Input2RelayOutput2TSSyncLossMan
+                INTEGER,
+            iqasi82Input2RelayOutput2SyncByteError
+                INTEGER,
+            iqasi82Input2RelayOutput2PATUDError
+                INTEGER,
+            iqasi82Input2RelayOutput2DataRateLow
+                INTEGER,
+            iqasi82Input2RelayOutput2DataRateHigh
+                INTEGER,
+            iqasi82Input2RelayOutput2PIDFail
+                INTEGER,
+            iqasi82Input2RelayOutput2FollowInput2TS
+                INTEGER,
+            iqasi82AlarmOutputsCopy1to5
+                INTEGER,
+            iqasi82AlarmOutputsCopy5to2
+                INTEGER,
+            iqasi82AlarmOutputsCopy2to6
+                INTEGER,
+            iqasi82AlarmOutputsCopy6to2
+                INTEGER,
+            iqasi82AlarmOutputsCopyR1toR2
+                INTEGER,
+            iqasi82AlarmOutputsCopyR2toR1
+                INTEGER,
+            iqasi82MemoriesMemoryName1
+                RollCallString,
+            iqasi82MemoriesMemoryName2
+                RollCallString,
+            iqasi82MemoriesMemoryName3
+                RollCallString,
+            iqasi82MemoriesMemoryName4
+                RollCallString,
+            iqasi82MemoriesMemoryName5
+                RollCallString,
+            iqasi82MemoriesMemoryName6
+                RollCallString,
+            iqasi82MemoriesMemoryName7
+                RollCallString,
+            iqasi82MemoriesMemoryName8
+                RollCallString,
+            iqasi82MemoriesMemoryName9
+                RollCallString,
+            iqasi82MemoriesMemoryName10
+                RollCallString,
+            iqasi82MemoriesMemoryName11
+                RollCallString,
+            iqasi82MemoriesMemoryName12
+                RollCallString,
+            iqasi82MemoriesMemoryName13
+                RollCallString,
+            iqasi82MemoriesMemoryName14
+                RollCallString,
+            iqasi82MemoriesMemoryName15
+                RollCallString,
+            iqasi82MemoriesMemoryName16
+                RollCallString,
+            iqasi82LoggingInput1Ident
+                INTEGER,
+            iqasi82LoggingInput1IdentDisp
+                RollCallString,
+            iqasi82LoggingInput1Name
+                INTEGER,
+            iqasi82LoggingInput1NameDisp
+                RollCallString,
+            iqasi82LoggingInput1State
+                INTEGER,
+            iqasi82LoggingInput1StateDisp
+                RollCallString,
+            iqasi82LoggingInput1Type
+                INTEGER,
+            iqasi82LoggingInput1TypeDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusLevelFail
+                INTEGER,
+            iqasi82LoggingInput1StatusLevelFailDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusTSSlowStop
+                INTEGER,
+            iqasi82LoggingInput1StatusTSSlowStopDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusTSSyncLoss
+                INTEGER,
+            iqasi82LoggingInput1StatusTSSyncLossDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusSyncByteError
+                INTEGER,
+            iqasi82LoggingInput1StatusSyncByteErrorDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusPATUDError
+                INTEGER,
+            iqasi82LoggingInput1StatusPATUDErrorDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusDataRateHigh
+                INTEGER,
+            iqasi82LoggingInput1StatusDataRateHighDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusDataRateLow
+                INTEGER,
+            iqasi82LoggingInput1StatusDataRateLowDisp
+                RollCallString,
+            iqasi82LoggingInput1StatusPIDFail
+                INTEGER,
+            iqasi82LoggingInput1StatusPIDFailDisp
+                RollCallString,
+            iqasi82LoggingInput2Ident
+                INTEGER,
+            iqasi82LoggingInput2IdentDisp
+                RollCallString,
+            iqasi82LoggingInput2Name
+                INTEGER,
+            iqasi82LoggingInput2NameDisp
+                RollCallString,
+            iqasi82LoggingInput2State
+                INTEGER,
+            iqasi82LoggingInput2StateDisp
+                RollCallString,
+            iqasi82LoggingInput2Type
+                INTEGER,
+            iqasi82LoggingInput2TypeDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusLevelFail
+                INTEGER,
+            iqasi82LoggingInput2StatusLevelFailDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusTSSlowStop
+                INTEGER,
+            iqasi82LoggingInput2StatusTSSlowStopDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusTSSyncLoss
+                INTEGER,
+            iqasi82LoggingInput2StatusTSSyncLossDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusSyncByteError
+                INTEGER,
+            iqasi82LoggingInput2StatusSyncByteErrorDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusPATUDError
+                INTEGER,
+            iqasi82LoggingInput2StatusPATUDErrorDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusDataRateHigh
+                INTEGER,
+            iqasi82LoggingInput2StatusDataRateHighDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusDataRateLow
+                INTEGER,
+            iqasi82LoggingInput2StatusDataRateLowDisp
+                RollCallString,
+            iqasi82LoggingInput2StatusPIDFail
+                INTEGER,
+            iqasi82LoggingInput2StatusPIDFailDisp
+                RollCallString,
+            iqasi82LoggingAlarm1OutputsOutput1
+                INTEGER,
+            iqasi82LoggingAlarm1OutputsOutput1Disp
+                RollCallString,
+            iqasi82LoggingAlarm1OutputsOutput2
+                INTEGER,
+            iqasi82LoggingAlarm1OutputsOutput2Disp
+                RollCallString,
+            iqasi82LoggingAlarm1OutputsRelay1
+                INTEGER,
+            iqasi82LoggingAlarm1OutputsRelay1Disp
+                RollCallString,
+            iqasi82LoggingAlarm2OutputsOutput5
+                INTEGER,
+            iqasi82LoggingAlarm2OutputsOutput5Disp
+                RollCallString,
+            iqasi82LoggingAlarm2OutputsOutput6
+                INTEGER,
+            iqasi82LoggingAlarm2OutputsOutput6Disp
+                RollCallString,
+            iqasi82LoggingAlarm2OutputsRelay2
+                INTEGER,
+            iqasi82LoggingAlarm2OutputsRelay2Disp
+                RollCallString,
+            iqasi82LoggingOutputAStatusInputSelected
+                INTEGER,
+            iqasi82LoggingOutputAStatusInputSelectedDisp
+                RollCallString,
+            iqasi82LoggingOutputAStatusSwitchMode
+                INTEGER,
+            iqasi82LoggingOutputAStatusSwitchModeDisp
+                RollCallString,
+            iqasi82LoggingOutputBStatusInputSelected
+                INTEGER,
+            iqasi82LoggingOutputBStatusInputSelectedDisp
+                RollCallString,
+            iqasi82LoggingOutputBStatusSwitchMode
+                INTEGER,
+            iqasi82LoggingOutputBStatusSwitchModeDisp
+                RollCallString,
+            iqasi82LoggingMiscLogSerialNo
+                INTEGER,
+            iqasi82LoggingMiscSerialNoDisp
+                RollCallString,
+            iqasi82LoggingMiscLogOSVersion
+                INTEGER,
+            iqasi82LoggingMiscOSVersionDisp
+                RollCallString,
+            iqasi82LoggingMiscLogBuildNo
+                INTEGER,
+            iqasi82LoggingMiscBuildNoDisp
+                RollCallString,
+            iqasi82LoggingMiscLogHardwareVer
+                INTEGER,
+            iqasi82LoggingMiscHardwareVerDisp
+                RollCallString,
+            iqasi82LoggingMiscLogHardwareMod
+                INTEGER,
+            iqasi82LoggingMiscHardwareModDisp
+                RollCallString,
+            iqasi82LoggingMiscLogASISoftwareVer
+                INTEGER,
+            iqasi82LoggingMiscASISoftwareVerDisp
+                RollCallString,
+            iqasi82LoggingMiscLogFirmwareVer
+                INTEGER,
+            iqasi82LoggingMiscFirmwareVerDisp
+                RollCallString,
+            iqasi82LoggingMiscLogUpTime
+                INTEGER,
+            iqasi82LoggingMiscUpTimeDisp
+                RollCallString,
+            iqasi82LoggingMiscLogRollTracks
+                INTEGER,
+            iqasi82LoggingMiscRollTracksDisp
+                RollCallString,
+            iqasi82LoggingMiscLogRearID
+                INTEGER,
+            iqasi82LoggingMiscRearIDDisp
+                RollCallString,
+            iqasi82LoggingMiscLogRearStatus
+                INTEGER,
+            iqasi82LoggingMiscRearSTATUSDisp
+                RollCallString,
+            iqasi82LoggingMiscLogSlotWidth
+                INTEGER,
+            iqasi82LoggingMiscSlotWidthDisp
+                RollCallString,
+            iqasi82LoggingMiscLogSlotStart
+                INTEGER,
+            iqasi82LoggingMiscSlotStartDisp
+                RollCallString,
+            iqasi82LoggingMiscLogPowerUsage
+                INTEGER,
+            iqasi82LoggingMiscPowerUsageDisp
+                RollCallString,
+            iqasi82RollTrackDisableAll
+                INTEGER,
+            iqasi82RollTrackIndex
+                INTEGER,
+            iqasi82RollTrackSource
+                INTEGER,
+            iqasi82RollTrackAddress
+                RollCallString,
+            iqasi82RollTrackCommand
+                RollCallString,
+            iqasi82RollTrackStatus
+                RollCallString,
+            iqasi82RollTrackSending
+                RollCallString,
+            iqasi82SetupProduct
+                RollCallString,
+            iqasi82SetupRelease
+                RollCallString,
+            iqasi82SetupBuild
+                RollCallString,
+            iqasi82SetupKOS
+                RollCallString,
+            iqasi82SetupSerialNo
+                RollCallString,
+            iqasi82SetupPCB
+                RollCallString,
+            iqasi82SetupRearID
+                RollCallString,
+            iqasi82SetupInput1Name
+                RollCallString,
+            iqasi82SetupInput2Name
+                RollCallString,
+            iqasi82SetupFactoryDefault
+                INTEGER,
+            iqasi82SetupDefaultsSettings
+                INTEGER,
+            iqasi82SetupRestart
+                INTEGER,
+            iqasi82SetupSerialNumber
+                RollCallString,
+            iqasi82SetupBoardID
+                INTEGER,
+            iqasi82SetupSaveID
+                INTEGER
+        }
+
+    iqasi82SlotIndex OBJECT-TYPE
+        SYNTAX            Unsigned32
+        MAX-ACCESS        not-accessible
+        STATUS            current
+        DESCRIPTION
+                "The unique Index value for each slot.  Its value
+                ranges between 1 and the value of slotNumber."
+        ::= { iqasi82CmdEntry 99999 }
+
+
+    iqasi82InformationWindow OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valInput(0),
+                            valOutput(1)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - COM_PRIME_CFG_SAD
+                    Information Window  cmdID= 3500
+                    Input  value= 0
+                    Output  value= 1  "
+        ::= { iqasi82CmdEntry 3500 }
+
+
+    iqasi82OutputSelectOutputALocal OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Output Select
+                    Output A Local  cmdID= 3510  "
+        ::= { iqasi82CmdEntry 3510 }
+
+
+    iqasi82OutputSelectOutputASelect OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valAuto(0),
+                            valInput1(1),
+                            valInput2(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Output Select
+                    Output A Select  cmdID= 3511
+                    Auto  value= 0
+                    Input 1  value= 1
+                    Input 2  value= 2  "
+        ::= { iqasi82CmdEntry 3511 }
+
+
+    iqasi82OutputSelectOutputBLocal OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Output Select
+                    Output B Local  cmdID= 3520  "
+        ::= { iqasi82CmdEntry 3520 }
+
+
+    iqasi82OutputSelectOutputBSelect OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valAuto(0),
+                            valInput1(1),
+                            valInput2(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Output Select
+                    Output B Select  cmdID= 3521
+                    Auto  value= 0
+                    Input 1  value= 1
+                    Input 2  value= 2  "
+        ::= { iqasi82CmdEntry 3521 }
+
+
+    iqasi82Channel1Input1StatusLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    Level Fail  cmdID= 3911  "
+        ::= { iqasi82CmdEntry 3911 }
+
+
+    iqasi82Channel1Input1StatusTSSlowStop OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    TS Slow/Stop  cmdID= 3912  "
+        ::= { iqasi82CmdEntry 3912 }
+
+
+    iqasi82Channel1Input1StatusTSSyncLoss OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    TS Sync Loss  cmdID= 3913  "
+        ::= { iqasi82CmdEntry 3913 }
+
+
+    iqasi82Channel1Input1StatusSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    Sync Byte Error  cmdID= 3914  "
+        ::= { iqasi82CmdEntry 3914 }
+
+
+    iqasi82Channel1Input1StatusPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    PAT UD Error  cmdID= 3915  "
+        ::= { iqasi82CmdEntry 3915 }
+
+
+    iqasi82Channel1Input1StatusDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    Data Rate Low  cmdID= 3916  "
+        ::= { iqasi82CmdEntry 3916 }
+
+
+    iqasi82Channel1Input1StatusDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    Data Rate High  cmdID= 3917  "
+        ::= { iqasi82CmdEntry 3917 }
+
+
+    iqasi82Channel1Input1StatusPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    PID Fail  cmdID= 3918  "
+        ::= { iqasi82CmdEntry 3918 }
+
+
+    iqasi82Channel1AlarmOutputsExternalOutput1 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    External Output 1  cmdID= 3931  "
+        ::= { iqasi82CmdEntry 3931 }
+
+
+    iqasi82Channel1AlarmOutputsExternalOutput2 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    External Output 2  cmdID= 3932  "
+        ::= { iqasi82CmdEntry 3932 }
+
+
+    iqasi82Channel1AlarmOutputsRelay1 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 1
+                    Relay 1  cmdID= 3933  "
+        ::= { iqasi82CmdEntry 3933 }
+
+
+    iqasi82Channel2Input2StatusLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    Level Fail  cmdID= 3921  "
+        ::= { iqasi82CmdEntry 3921 }
+
+
+    iqasi82Channel2Input2StatusTSSlowStop OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    TS Slow/Stop  cmdID= 3922  "
+        ::= { iqasi82CmdEntry 3922 }
+
+
+    iqasi82Channel2Input2StatusTSSyncLoss OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    TS Sync Loss  cmdID= 3923  "
+        ::= { iqasi82CmdEntry 3923 }
+
+
+    iqasi82Channel2Input2StatusSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    Sync Byte Error  cmdID= 3924  "
+        ::= { iqasi82CmdEntry 3924 }
+
+
+    iqasi82Channel2Input2StatusPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    PAT UD Error  cmdID= 3925  "
+        ::= { iqasi82CmdEntry 3925 }
+
+
+    iqasi82Channel2Input2StatusDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    Data Rate Low  cmdID= 3926  "
+        ::= { iqasi82CmdEntry 3926 }
+
+
+    iqasi82Channel2Input2StatusDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    Data Rate High  cmdID= 3927  "
+        ::= { iqasi82CmdEntry 3927 }
+
+
+    iqasi82Channel2Input2StatusPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    PID Fail  cmdID= 3928  "
+        ::= { iqasi82CmdEntry 3928 }
+
+
+    iqasi82Channel2AlarmOutputsExternalOutput5 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    External Output 5  cmdID= 3941  "
+        ::= { iqasi82CmdEntry 3941 }
+
+
+    iqasi82Channel2AlarmOutputsExternalOutput6 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    External Output 6  cmdID= 3942  "
+        ::= { iqasi82CmdEntry 3942 }
+
+
+    iqasi82Channel2AlarmOutputsRelay2 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Channel 2
+                    Relay 2  cmdID= 3943  "
+        ::= { iqasi82CmdEntry 3943 }
+
+
+    iqasi82PrimaryConfigSwitchType OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valNearnSeamless(1),
+                            valNonnSeamless(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Primary Config
+                    Switch Type  cmdID= 4000
+                    Near-Seamless  value= 1
+                    Non-Seamless  value= 2  "
+        ::= { iqasi82CmdEntry 4000 }
+
+
+    iqasi82PrimaryConfigSwitchMode OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valABnobias(1),
+                            valAto1Bnobias(2),
+                            valAnobiasBto2(3),
+                            valAto1Bto2(4),
+                            valPreviewnobias(5),
+                            valPreviewbias(6),
+                            valAutonswitchdisabled(7)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Primary Config
+                    Switch Mode  cmdID= 4001
+                    A & B no bias  value= 1
+                    A to 1, B no bias  value= 2
+                    A no bias, B to 2  value= 3
+                    A to 1, B to 2  value= 4
+                    Preview, no bias  value= 5
+                    Preview, bias  value= 6
+                    Auto-switch, disabled  value= 7  "
+        ::= { iqasi82CmdEntry 4001 }
+
+
+    iqasi82PrimaryConfigRemoteExtMode OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valGPIODefault(1),
+                            valRollCall(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Primary Config
+                    Remote Ext Mode  cmdID= 4002
+                    GPIO (Default)  value= 1
+                    RollCall  value= 2  "
+        ::= { iqasi82CmdEntry 4002 }
+
+
+    iqasi82PrimaryConfigMultiSubAlarmConfig OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valInnocentUntilProvenGuiltyDefault(1),
+                            valGuiltyUntilProvenInnocent(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Primary Config
+                    Multi Sub-Alarm Config  cmdID= 4003
+                    Innocent Until Proven Guilty (Default)  value= 1
+                    Guilty Until Proven Innocent  value= 2  "
+        ::= { iqasi82CmdEntry 4003 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Level Fail  cmdID= 4011  "
+        ::= { iqasi82CmdEntry 4011 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsTSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    TS Slow/Stop (Man)  cmdID= 4012  "
+        ::= { iqasi82CmdEntry 4012 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsTSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    TS Sync Loss (Man)  cmdID= 4013  "
+        ::= { iqasi82CmdEntry 4013 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Sync Byte Error  cmdID= 4014  "
+        ::= { iqasi82CmdEntry 4014 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    PAT UD Error  cmdID= 4015  "
+        ::= { iqasi82CmdEntry 4015 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Data Rate Low  cmdID= 4016  "
+        ::= { iqasi82CmdEntry 4016 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Data Rate High  cmdID= 4017  "
+        ::= { iqasi82CmdEntry 4017 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    PID Fail  cmdID= 4018  "
+        ::= { iqasi82CmdEntry 4018 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsLevelAlarmThreshold OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Level Alarm Threshold  cmdID= 4030
+                    preset= -12"
+        ::= { iqasi82CmdEntry 4030 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsPATUpperDistance OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    PAT Upper Distance  cmdID= 4043
+                    preset= 0.50"
+        ::= { iqasi82CmdEntry 4043 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsLowerDataRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Lower Data Rate  cmdID= 4037
+                    preset= 1"
+        ::= { iqasi82CmdEntry 4037 }
+
+
+    iqasi82PrimaryConfigInput1ChannelAlarmsUpperDataRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Upper Data Rate  cmdID= 4035
+                    preset= 65535"
+        ::= { iqasi82CmdEntry 4035 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Level Fail  cmdID= 4021  "
+        ::= { iqasi82CmdEntry 4021 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsTSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    TS Slow/Stop (Man)  cmdID= 4022  "
+        ::= { iqasi82CmdEntry 4022 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsTSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    TS Sync Loss (Man)  cmdID= 4023  "
+        ::= { iqasi82CmdEntry 4023 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Sync Byte Error  cmdID= 4024  "
+        ::= { iqasi82CmdEntry 4024 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    PAT UD Error  cmdID= 4025  "
+        ::= { iqasi82CmdEntry 4025 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Data Rate Low  cmdID= 4026  "
+        ::= { iqasi82CmdEntry 4026 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    Data Rate High  cmdID= 4027  "
+        ::= { iqasi82CmdEntry 4027 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Primary Config
+                    PID Fail  cmdID= 4028  "
+        ::= { iqasi82CmdEntry 4028 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsLevelAlarmThreshold OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Level Alarm Threshold  cmdID= 4032
+                    preset= -12"
+        ::= { iqasi82CmdEntry 4032 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsPATUpperDistance OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    PAT Upper Distance  cmdID= 4045
+                    preset= 0.50"
+        ::= { iqasi82CmdEntry 4045 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsLowerDataRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Lower Data Rate  cmdID= 4041
+                    preset= 1"
+        ::= { iqasi82CmdEntry 4041 }
+
+
+    iqasi82PrimaryConfigInput2ChannelAlarmsUpperDataRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Primary Config
+                    Upper Data Rate  cmdID= 4039
+                    preset= 65535"
+        ::= { iqasi82CmdEntry 4039 }
+
+
+    iqasi82PIDListInput1SelectPID OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valPIDLIST100(0),
+                            valPIDLIST101(1),
+                            valPIDLIST102(2),
+                            valPIDLIST103(3),
+                            valPIDLIST104(4),
+                            valPIDLIST105(5),
+                            valPIDLIST106(6),
+                            valPIDLIST107(7),
+                            valPIDLIST108(8),
+                            valPIDLIST109(9),
+                            valPIDLIST110(10),
+                            valPIDLIST111(11),
+                            valPIDLIST112(12),
+                            valPIDLIST113(13),
+                            valPIDLIST114(14),
+                            valPIDLIST115(15),
+                            valPIDLIST116(16),
+                            valPIDLIST117(17),
+                            valPIDLIST118(18),
+                            valPIDLIST119(19),
+                            valPIDLIST120(20),
+                            valPIDLIST121(21),
+                            valPIDLIST122(22),
+                            valPIDLIST123(23),
+                            valPIDLIST124(24),
+                            valPIDLIST125(25),
+                            valPIDLIST126(26),
+                            valPIDLIST127(27),
+                            valPIDLIST128(28),
+                            valPIDLIST129(29),
+                            valPIDLIST130(30),
+                            valPIDLIST131(31),
+                            valPIDLIST132(32)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - PID List
+                    Select PID  cmdID= 4050
+                    PID_LIST1_00  value= 0
+                    PID_LIST1_01  value= 1
+                    PID_LIST1_02  value= 2
+                    PID_LIST1_03  value= 3
+                    PID_LIST1_04  value= 4
+                    PID_LIST1_05  value= 5
+                    PID_LIST1_06  value= 6
+                    PID_LIST1_07  value= 7
+                    PID_LIST1_08  value= 8
+                    PID_LIST1_09  value= 9
+                    PID_LIST1_10  value= 10
+                    PID_LIST1_11  value= 11
+                    PID_LIST1_12  value= 12
+                    PID_LIST1_13  value= 13
+                    PID_LIST1_14  value= 14
+                    PID_LIST1_15  value= 15
+                    PID_LIST1_16  value= 16
+                    PID_LIST1_17  value= 17
+                    PID_LIST1_18  value= 18
+                    PID_LIST1_19  value= 19
+                    PID_LIST1_20  value= 20
+                    PID_LIST1_21  value= 21
+                    PID_LIST1_22  value= 22
+                    PID_LIST1_23  value= 23
+                    PID_LIST1_24  value= 24
+                    PID_LIST1_25  value= 25
+                    PID_LIST1_26  value= 26
+                    PID_LIST1_27  value= 27
+                    PID_LIST1_28  value= 28
+                    PID_LIST1_29  value= 29
+                    PID_LIST1_30  value= 30
+                    PID_LIST1_31  value= 31
+                    PID_LIST1_32  value= 32  "
+        ::= { iqasi82CmdEntry 4050 }
+
+
+    iqasi82PIDListInput1DeleteSelectedPID OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDeleteSelectedPID(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Delete Selected PID  cmdID= 4052
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4052 }
+
+
+    iqasi82PIDListInput1AddPID OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - PID List
+                    Add PID  cmdID= 4051
+                    preset= -"
+        ::= { iqasi82CmdEntry 4051 }
+
+
+    iqasi82PIDListInput1DeleteAll OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDeleteAll(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Delete All  cmdID= 4053
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4053 }
+
+
+    iqasi82PIDListInput1SetPIDUD OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - PID List
+                    Set PID UD  cmdID= 4072
+                    preset= 10"
+        ::= { iqasi82CmdEntry 4072 }
+
+
+    iqasi82PIDListInput2SelectPID OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valPIDLIST200(0),
+                            valPIDLIST201(1),
+                            valPIDLIST202(2),
+                            valPIDLIST203(3),
+                            valPIDLIST204(4),
+                            valPIDLIST205(5),
+                            valPIDLIST206(6),
+                            valPIDLIST207(7),
+                            valPIDLIST208(8),
+                            valPIDLIST209(9),
+                            valPIDLIST210(10),
+                            valPIDLIST211(11),
+                            valPIDLIST212(12),
+                            valPIDLIST213(13),
+                            valPIDLIST214(14),
+                            valPIDLIST215(15),
+                            valPIDLIST216(16),
+                            valPIDLIST217(17),
+                            valPIDLIST218(18),
+                            valPIDLIST219(19),
+                            valPIDLIST220(20),
+                            valPIDLIST221(21),
+                            valPIDLIST222(22),
+                            valPIDLIST223(23),
+                            valPIDLIST224(24),
+                            valPIDLIST225(25),
+                            valPIDLIST226(26),
+                            valPIDLIST227(27),
+                            valPIDLIST228(28),
+                            valPIDLIST229(29),
+                            valPIDLIST230(30),
+                            valPIDLIST231(31),
+                            valPIDLIST232(32)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - PID List
+                    Select PID  cmdID= 4060
+                    PID_LIST2_00  value= 0
+                    PID_LIST2_01  value= 1
+                    PID_LIST2_02  value= 2
+                    PID_LIST2_03  value= 3
+                    PID_LIST2_04  value= 4
+                    PID_LIST2_05  value= 5
+                    PID_LIST2_06  value= 6
+                    PID_LIST2_07  value= 7
+                    PID_LIST2_08  value= 8
+                    PID_LIST2_09  value= 9
+                    PID_LIST2_10  value= 10
+                    PID_LIST2_11  value= 11
+                    PID_LIST2_12  value= 12
+                    PID_LIST2_13  value= 13
+                    PID_LIST2_14  value= 14
+                    PID_LIST2_15  value= 15
+                    PID_LIST2_16  value= 16
+                    PID_LIST2_17  value= 17
+                    PID_LIST2_18  value= 18
+                    PID_LIST2_19  value= 19
+                    PID_LIST2_20  value= 20
+                    PID_LIST2_21  value= 21
+                    PID_LIST2_22  value= 22
+                    PID_LIST2_23  value= 23
+                    PID_LIST2_24  value= 24
+                    PID_LIST2_25  value= 25
+                    PID_LIST2_26  value= 26
+                    PID_LIST2_27  value= 27
+                    PID_LIST2_28  value= 28
+                    PID_LIST2_29  value= 29
+                    PID_LIST2_30  value= 30
+                    PID_LIST2_31  value= 31
+                    PID_LIST2_32  value= 32  "
+        ::= { iqasi82CmdEntry 4060 }
+
+
+    iqasi82PIDListInput2DeleteSelectedPID OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDeleteSelectedPID(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Delete Selected PID  cmdID= 4062
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4062 }
+
+
+    iqasi82PIDListInput2AddPID OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - PID List
+                    Add PID  cmdID= 4061
+                    preset= -"
+        ::= { iqasi82CmdEntry 4061 }
+
+
+    iqasi82PIDListInput2DeleteAll OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDeleteAll(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Delete All  cmdID= 4063
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4063 }
+
+
+    iqasi82PIDListInput2SetPIDUD OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - PID List
+                    Set PID UD  cmdID= 4073
+                    preset= 10"
+        ::= { iqasi82CmdEntry 4073 }
+
+
+    iqasi82PIDListCopy1to2 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy1to2(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Copy 1 to 2  cmdID= 4070
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4070 }
+
+
+    iqasi82PIDListCopy2to1 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy2to1(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Copy 2 to 1  cmdID= 4071
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4071 }
+
+
+    iqasi82PIDListRefresh OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valRefresh(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - PID List
+                    Refresh  cmdID= 4074
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4074 }
+
+
+    iqasi82PIDTableTable1PIDTBL100 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_00  cmdID= 4100
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4100 }
+
+
+    iqasi82PIDTableTable1PIDTBL101 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_01  cmdID= 4101
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4101 }
+
+
+    iqasi82PIDTableTable1PIDTBL102 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_02  cmdID= 4102
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4102 }
+
+
+    iqasi82PIDTableTable1PIDTBL103 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_03  cmdID= 4103
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4103 }
+
+
+    iqasi82PIDTableTable1PIDTBL104 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_04  cmdID= 4104
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4104 }
+
+
+    iqasi82PIDTableTable1PIDTBL105 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_05  cmdID= 4105
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4105 }
+
+
+    iqasi82PIDTableTable1PIDTBL106 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_06  cmdID= 4106
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4106 }
+
+
+    iqasi82PIDTableTable1PIDTBL107 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_07  cmdID= 4107
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4107 }
+
+
+    iqasi82PIDTableTable1PIDTBL108 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_08  cmdID= 4108
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4108 }
+
+
+    iqasi82PIDTableTable1PIDTBL109 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_09  cmdID= 4109
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4109 }
+
+
+    iqasi82PIDTableTable1PIDTBL110 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_10  cmdID= 4110
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4110 }
+
+
+    iqasi82PIDTableTable1PIDTBL111 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_11  cmdID= 4111
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4111 }
+
+
+    iqasi82PIDTableTable1PIDTBL112 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_12  cmdID= 4112
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4112 }
+
+
+    iqasi82PIDTableTable1PIDTBL113 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_13  cmdID= 4113
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4113 }
+
+
+    iqasi82PIDTableTable1PIDTBL114 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_14  cmdID= 4114
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4114 }
+
+
+    iqasi82PIDTableTable1PIDTBL115 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_15  cmdID= 4115
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4115 }
+
+
+    iqasi82PIDTableTable1PIDTBL116 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_16  cmdID= 4116
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4116 }
+
+
+    iqasi82PIDTableTable1PIDTBL117 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_17  cmdID= 4117
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4117 }
+
+
+    iqasi82PIDTableTable1PIDTBL118 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_18  cmdID= 4118
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4118 }
+
+
+    iqasi82PIDTableTable1PIDTBL119 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_19  cmdID= 4119
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4119 }
+
+
+    iqasi82PIDTableTable1PIDTBL120 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_20  cmdID= 4120
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4120 }
+
+
+    iqasi82PIDTableTable1PIDTBL121 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_21  cmdID= 4121
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4121 }
+
+
+    iqasi82PIDTableTable1PIDTBL122 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_22  cmdID= 4122
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4122 }
+
+
+    iqasi82PIDTableTable1PIDTBL123 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_23  cmdID= 4123
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4123 }
+
+
+    iqasi82PIDTableTable1PIDTBL124 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_24  cmdID= 4124
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4124 }
+
+
+    iqasi82PIDTableTable1PIDTBL125 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_25  cmdID= 4125
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4125 }
+
+
+    iqasi82PIDTableTable1PIDTBL126 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_26  cmdID= 4126
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4126 }
+
+
+    iqasi82PIDTableTable1PIDTBL127 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_27  cmdID= 4127
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4127 }
+
+
+    iqasi82PIDTableTable1PIDTBL128 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_28  cmdID= 4128
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4128 }
+
+
+    iqasi82PIDTableTable1PIDTBL129 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_29  cmdID= 4129
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4129 }
+
+
+    iqasi82PIDTableTable1PIDTBL130 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_30  cmdID= 4130
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4130 }
+
+
+    iqasi82PIDTableTable1PIDTBL131 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_31  cmdID= 4131
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4131 }
+
+
+    iqasi82PIDTableTable1PIDTBL132 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL1_32  cmdID= 4132
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4132 }
+
+
+    iqasi82PIDTableTable2PIDTBL200 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_00  cmdID= 4200
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4200 }
+
+
+    iqasi82PIDTableTable2PIDTBL201 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_01  cmdID= 4201
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4201 }
+
+
+    iqasi82PIDTableTable2PIDTBL202 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_02  cmdID= 4202
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4202 }
+
+
+    iqasi82PIDTableTable2PIDTBL203 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_03  cmdID= 4203
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4203 }
+
+
+    iqasi82PIDTableTable2PIDTBL204 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_04  cmdID= 4204
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4204 }
+
+
+    iqasi82PIDTableTable2PIDTBL205 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_05  cmdID= 4205
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4205 }
+
+
+    iqasi82PIDTableTable2PIDTBL206 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_06  cmdID= 4206
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4206 }
+
+
+    iqasi82PIDTableTable2PIDTBL207 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_07  cmdID= 4207
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4207 }
+
+
+    iqasi82PIDTableTable2PIDTBL208 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_08  cmdID= 4208
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4208 }
+
+
+    iqasi82PIDTableTable2PIDTBL209 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_09  cmdID= 4209
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4209 }
+
+
+    iqasi82PIDTableTable2PIDTBL210 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_10  cmdID= 4210
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4210 }
+
+
+    iqasi82PIDTableTable2PIDTBL211 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_11  cmdID= 4211
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4211 }
+
+
+    iqasi82PIDTableTable2PIDTBL212 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_12  cmdID= 4212
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4212 }
+
+
+    iqasi82PIDTableTable2PIDTBL213 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_13  cmdID= 4213
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4213 }
+
+
+    iqasi82PIDTableTable2PIDTBL214 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_14  cmdID= 4214
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4214 }
+
+
+    iqasi82PIDTableTable2PIDTBL215 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_15  cmdID= 4215
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4215 }
+
+
+    iqasi82PIDTableTable2PIDTBL216 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_16  cmdID= 4216
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4216 }
+
+
+    iqasi82PIDTableTable2PIDTBL217 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_17  cmdID= 4217
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4217 }
+
+
+    iqasi82PIDTableTable2PIDTBL218 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_18  cmdID= 4218
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4218 }
+
+
+    iqasi82PIDTableTable2PIDTBL219 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_19  cmdID= 4219
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4219 }
+
+
+    iqasi82PIDTableTable2PIDTBL220 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_20  cmdID= 4220
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4220 }
+
+
+    iqasi82PIDTableTable2PIDTBL221 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_21  cmdID= 4221
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4221 }
+
+
+    iqasi82PIDTableTable2PIDTBL222 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_22  cmdID= 4222
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4222 }
+
+
+    iqasi82PIDTableTable2PIDTBL223 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_23  cmdID= 4223
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4223 }
+
+
+    iqasi82PIDTableTable2PIDTBL224 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_24  cmdID= 4224
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4224 }
+
+
+    iqasi82PIDTableTable2PIDTBL225 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_25  cmdID= 4225
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4225 }
+
+
+    iqasi82PIDTableTable2PIDTBL226 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_26  cmdID= 4226
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4226 }
+
+
+    iqasi82PIDTableTable2PIDTBL227 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_27  cmdID= 4227
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4227 }
+
+
+    iqasi82PIDTableTable2PIDTBL228 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_28  cmdID= 4228
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4228 }
+
+
+    iqasi82PIDTableTable2PIDTBL229 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_29  cmdID= 4229
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4229 }
+
+
+    iqasi82PIDTableTable2PIDTBL230 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_30  cmdID= 4230
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4230 }
+
+
+    iqasi82PIDTableTable2PIDTBL231 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_31  cmdID= 4231
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4231 }
+
+
+    iqasi82PIDTableTable2PIDTBL232 OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Number
+                 PAGE: - PID Table
+                    PID_TBL2_32  cmdID= 4232
+                    min= 0  max= 8191  step= 1  format= %f  div_scale= 1  preset= 0
+                    Min = 0.000000  Max = 8191.000000  Step = 1.000000  Preset = 0.000000  "
+        ::= { iqasi82CmdEntry 4232 }
+
+
+    iqasi82Input1Output1LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Level Fail  cmdID= 4311  "
+        ::= { iqasi82CmdEntry 4311 }
+
+
+    iqasi82Input1Output1TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Slow/Stop (Man)  cmdID= 4312  "
+        ::= { iqasi82CmdEntry 4312 }
+
+
+    iqasi82Input1Output1TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Sync Loss (Man)  cmdID= 4313  "
+        ::= { iqasi82CmdEntry 4313 }
+
+
+    iqasi82Input1Output1SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Sync Byte Error  cmdID= 4314  "
+        ::= { iqasi82CmdEntry 4314 }
+
+
+    iqasi82Input1Output1PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PAT UD Error  cmdID= 4315  "
+        ::= { iqasi82CmdEntry 4315 }
+
+
+    iqasi82Input1Output1DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate Low  cmdID= 4316  "
+        ::= { iqasi82CmdEntry 4316 }
+
+
+    iqasi82Input1Output1DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate High  cmdID= 4317  "
+        ::= { iqasi82CmdEntry 4317 }
+
+
+    iqasi82Input1Output1PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PID Fail  cmdID= 4318  "
+        ::= { iqasi82CmdEntry 4318 }
+
+
+    iqasi82Input1Output1FollowInput1TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Follow Input 1 TS  cmdID= 4319  "
+        ::= { iqasi82CmdEntry 4319 }
+
+
+    iqasi82Input1Output2LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Level Fail  cmdID= 4321  "
+        ::= { iqasi82CmdEntry 4321 }
+
+
+    iqasi82Input1Output2TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Slow/Stop (Man)  cmdID= 4322  "
+        ::= { iqasi82CmdEntry 4322 }
+
+
+    iqasi82Input1Output2TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Sync Loss (Man)  cmdID= 4323  "
+        ::= { iqasi82CmdEntry 4323 }
+
+
+    iqasi82Input1Output2SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Sync Byte Error  cmdID= 4324  "
+        ::= { iqasi82CmdEntry 4324 }
+
+
+    iqasi82Input1Output2PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PAT UD Error  cmdID= 4325  "
+        ::= { iqasi82CmdEntry 4325 }
+
+
+    iqasi82Input1Output2DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate Low  cmdID= 4326  "
+        ::= { iqasi82CmdEntry 4326 }
+
+
+    iqasi82Input1Output2DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate High  cmdID= 4327  "
+        ::= { iqasi82CmdEntry 4327 }
+
+
+    iqasi82Input1Output2PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PID Fail  cmdID= 4328  "
+        ::= { iqasi82CmdEntry 4328 }
+
+
+    iqasi82Input1Output2FollowInput1TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Follow Input 1 TS  cmdID= 4329  "
+        ::= { iqasi82CmdEntry 4329 }
+
+
+    iqasi82Input1RelayOutput1LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Level Fail  cmdID= 4331  "
+        ::= { iqasi82CmdEntry 4331 }
+
+
+    iqasi82Input1RelayOutput1TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Slow/Stop (Man)  cmdID= 4332  "
+        ::= { iqasi82CmdEntry 4332 }
+
+
+    iqasi82Input1RelayOutput1TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    TS Sync Loss (Man)  cmdID= 4333  "
+        ::= { iqasi82CmdEntry 4333 }
+
+
+    iqasi82Input1RelayOutput1SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Sync Byte Error  cmdID= 4334  "
+        ::= { iqasi82CmdEntry 4334 }
+
+
+    iqasi82Input1RelayOutput1PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PAT UD Error  cmdID= 4335  "
+        ::= { iqasi82CmdEntry 4335 }
+
+
+    iqasi82Input1RelayOutput1DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate Low  cmdID= 4336  "
+        ::= { iqasi82CmdEntry 4336 }
+
+
+    iqasi82Input1RelayOutput1DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Data Rate High  cmdID= 4337  "
+        ::= { iqasi82CmdEntry 4337 }
+
+
+    iqasi82Input1RelayOutput1PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    PID Fail  cmdID= 4338  "
+        ::= { iqasi82CmdEntry 4338 }
+
+
+    iqasi82Input1RelayOutput1FollowInput1TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 1
+                    Follow Input 1 TS  cmdID= 4339  "
+        ::= { iqasi82CmdEntry 4339 }
+
+
+    iqasi82Input2Output5LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Level Fail  cmdID= 4351  "
+        ::= { iqasi82CmdEntry 4351 }
+
+
+    iqasi82Input2Output5TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Slow/Stop (Man)  cmdID= 4352  "
+        ::= { iqasi82CmdEntry 4352 }
+
+
+    iqasi82Input2Output5TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Sync Loss (Man)  cmdID= 4353  "
+        ::= { iqasi82CmdEntry 4353 }
+
+
+    iqasi82Input2Output5SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Sync Byte Error  cmdID= 4354  "
+        ::= { iqasi82CmdEntry 4354 }
+
+
+    iqasi82Input2Output5PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PAT UD Error  cmdID= 4355  "
+        ::= { iqasi82CmdEntry 4355 }
+
+
+    iqasi82Input2Output5DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate Low  cmdID= 4356  "
+        ::= { iqasi82CmdEntry 4356 }
+
+
+    iqasi82Input2Output5DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate High  cmdID= 4357  "
+        ::= { iqasi82CmdEntry 4357 }
+
+
+    iqasi82Input2Output5PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PID Fail  cmdID= 4358  "
+        ::= { iqasi82CmdEntry 4358 }
+
+
+    iqasi82Input2Output5FollowInput2TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Follow Input 2 TS  cmdID= 4359  "
+        ::= { iqasi82CmdEntry 4359 }
+
+
+    iqasi82Input2Output6LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Level Fail  cmdID= 4361  "
+        ::= { iqasi82CmdEntry 4361 }
+
+
+    iqasi82Input2Output6TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Slow/Stop (Man)  cmdID= 4362  "
+        ::= { iqasi82CmdEntry 4362 }
+
+
+    iqasi82Input2Output6TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Sync Loss (Man)  cmdID= 4363  "
+        ::= { iqasi82CmdEntry 4363 }
+
+
+    iqasi82Input2Output6SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Sync Byte Error  cmdID= 4364  "
+        ::= { iqasi82CmdEntry 4364 }
+
+
+    iqasi82Input2Output6PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PAT UD Error  cmdID= 4365  "
+        ::= { iqasi82CmdEntry 4365 }
+
+
+    iqasi82Input2Output6DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate Low  cmdID= 4366  "
+        ::= { iqasi82CmdEntry 4366 }
+
+
+    iqasi82Input2Output6DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate High  cmdID= 4367  "
+        ::= { iqasi82CmdEntry 4367 }
+
+
+    iqasi82Input2Output6PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PID Fail  cmdID= 4368  "
+        ::= { iqasi82CmdEntry 4368 }
+
+
+    iqasi82Input2Output6FollowInput2TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Follow Input 2 TS  cmdID= 4369  "
+        ::= { iqasi82CmdEntry 4369 }
+
+
+    iqasi82Input2RelayOutput2LevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Level Fail  cmdID= 4341  "
+        ::= { iqasi82CmdEntry 4341 }
+
+
+    iqasi82Input2RelayOutput2TSSlowStopMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Slow/Stop (Man)  cmdID= 4342  "
+        ::= { iqasi82CmdEntry 4342 }
+
+
+    iqasi82Input2RelayOutput2TSSyncLossMan OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    TS Sync Loss (Man)  cmdID= 4343  "
+        ::= { iqasi82CmdEntry 4343 }
+
+
+    iqasi82Input2RelayOutput2SyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Sync Byte Error  cmdID= 4344  "
+        ::= { iqasi82CmdEntry 4344 }
+
+
+    iqasi82Input2RelayOutput2PATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PAT UD Error  cmdID= 4345  "
+        ::= { iqasi82CmdEntry 4345 }
+
+
+    iqasi82Input2RelayOutput2DataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate Low  cmdID= 4346  "
+        ::= { iqasi82CmdEntry 4346 }
+
+
+    iqasi82Input2RelayOutput2DataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Data Rate High  cmdID= 4347  "
+        ::= { iqasi82CmdEntry 4347 }
+
+
+    iqasi82Input2RelayOutput2PIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    PID Fail  cmdID= 4348  "
+        ::= { iqasi82CmdEntry 4348 }
+
+
+    iqasi82Input2RelayOutput2FollowInput2TS OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Input 2
+                    Follow Input 2 TS  cmdID= 4349  "
+        ::= { iqasi82CmdEntry 4349 }
+
+
+    iqasi82AlarmOutputsCopy1to5 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy1to5(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy 1 to 5  cmdID= 4300
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4300 }
+
+
+    iqasi82AlarmOutputsCopy5to2 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy5to2(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy 5 to 2  cmdID= 4301
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4301 }
+
+
+    iqasi82AlarmOutputsCopy2to6 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy2to6(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy 2 to 6  cmdID= 4302
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4302 }
+
+
+    iqasi82AlarmOutputsCopy6to2 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopy6to2(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy 6 to 2  cmdID= 4303
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4303 }
+
+
+    iqasi82AlarmOutputsCopyR1toR2 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopyR1toR2(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy R1 to R2  cmdID= 4304
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4304 }
+
+
+    iqasi82AlarmOutputsCopyR2toR1 OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valCopyR2toR1(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - Alarm Outputs
+                    Copy R2 to R1  cmdID= 4305
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4305 }
+
+
+    iqasi82MemoriesMemoryName1 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name1  cmdID= 37106  "
+        ::= { iqasi82CmdEntry 37106 }
+
+
+    iqasi82MemoriesMemoryName2 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name2  cmdID= 37107  "
+        ::= { iqasi82CmdEntry 37107 }
+
+
+    iqasi82MemoriesMemoryName3 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name3  cmdID= 37108  "
+        ::= { iqasi82CmdEntry 37108 }
+
+
+    iqasi82MemoriesMemoryName4 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name4  cmdID= 37109  "
+        ::= { iqasi82CmdEntry 37109 }
+
+
+    iqasi82MemoriesMemoryName5 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name5  cmdID= 37110  "
+        ::= { iqasi82CmdEntry 37110 }
+
+
+    iqasi82MemoriesMemoryName6 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name6  cmdID= 37111  "
+        ::= { iqasi82CmdEntry 37111 }
+
+
+    iqasi82MemoriesMemoryName7 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name7  cmdID= 37112  "
+        ::= { iqasi82CmdEntry 37112 }
+
+
+    iqasi82MemoriesMemoryName8 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name8  cmdID= 37113  "
+        ::= { iqasi82CmdEntry 37113 }
+
+
+    iqasi82MemoriesMemoryName9 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name9  cmdID= 37114  "
+        ::= { iqasi82CmdEntry 37114 }
+
+
+    iqasi82MemoriesMemoryName10 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name10  cmdID= 37115  "
+        ::= { iqasi82CmdEntry 37115 }
+
+
+    iqasi82MemoriesMemoryName11 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name11  cmdID= 37116  "
+        ::= { iqasi82CmdEntry 37116 }
+
+
+    iqasi82MemoriesMemoryName12 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name12  cmdID= 37117  "
+        ::= { iqasi82CmdEntry 37117 }
+
+
+    iqasi82MemoriesMemoryName13 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name13  cmdID= 37118  "
+        ::= { iqasi82CmdEntry 37118 }
+
+
+    iqasi82MemoriesMemoryName14 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name14  cmdID= 37119  "
+        ::= { iqasi82CmdEntry 37119 }
+
+
+    iqasi82MemoriesMemoryName15 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name15  cmdID= 37120  "
+        ::= { iqasi82CmdEntry 37120 }
+
+
+    iqasi82MemoriesMemoryName16 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name16  cmdID= 37121  "
+        ::= { iqasi82CmdEntry 37121 }
+
+
+    iqasi82LoggingInput1Ident OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 1 Ident  cmdID= 35100  "
+        ::= { iqasi82CmdEntry 35100 }
+
+
+    iqasi82LoggingInput1IdentDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Ident Disp  cmdID= 35110  "
+        ::= { iqasi82CmdEntry 35110 }
+
+
+    iqasi82LoggingInput1Name OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 1 Name  cmdID= 35101  "
+        ::= { iqasi82CmdEntry 35101 }
+
+
+    iqasi82LoggingInput1NameDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Name Disp  cmdID= 35111  "
+        ::= { iqasi82CmdEntry 35111 }
+
+
+    iqasi82LoggingInput1State OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 1 State  cmdID= 35102  "
+        ::= { iqasi82CmdEntry 35102 }
+
+
+    iqasi82LoggingInput1StateDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 State Disp  cmdID= 35112  "
+        ::= { iqasi82CmdEntry 35112 }
+
+
+    iqasi82LoggingInput1Type OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 1 Type  cmdID= 35104  "
+        ::= { iqasi82CmdEntry 35104 }
+
+
+    iqasi82LoggingInput1TypeDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Type Disp  cmdID= 35114  "
+        ::= { iqasi82CmdEntry 35114 }
+
+
+    iqasi82LoggingInput1StatusLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Level Fail  cmdID= 6001  "
+        ::= { iqasi82CmdEntry 6001 }
+
+
+    iqasi82LoggingInput1StatusLevelFailDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Level Fail Disp  cmdID= 6101  "
+        ::= { iqasi82CmdEntry 6101 }
+
+
+    iqasi82LoggingInput1StatusTSSlowStop OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    TS Slow/Stop  cmdID= 6002  "
+        ::= { iqasi82CmdEntry 6002 }
+
+
+    iqasi82LoggingInput1StatusTSSlowStopDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Slow/Stop Disp  cmdID= 6102  "
+        ::= { iqasi82CmdEntry 6102 }
+
+
+    iqasi82LoggingInput1StatusTSSyncLoss OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    TS Sync Loss  cmdID= 6003  "
+        ::= { iqasi82CmdEntry 6003 }
+
+
+    iqasi82LoggingInput1StatusTSSyncLossDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Sync Loss Disp  cmdID= 6103  "
+        ::= { iqasi82CmdEntry 6103 }
+
+
+    iqasi82LoggingInput1StatusSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Sync Byte Error  cmdID= 6004  "
+        ::= { iqasi82CmdEntry 6004 }
+
+
+    iqasi82LoggingInput1StatusSyncByteErrorDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Sync Byte Error Disp  cmdID= 6104  "
+        ::= { iqasi82CmdEntry 6104 }
+
+
+    iqasi82LoggingInput1StatusPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    PAT UD Error  cmdID= 6005  "
+        ::= { iqasi82CmdEntry 6005 }
+
+
+    iqasi82LoggingInput1StatusPATUDErrorDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PAT UD Error Disp  cmdID= 6105  "
+        ::= { iqasi82CmdEntry 6105 }
+
+
+    iqasi82LoggingInput1StatusDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Data Rate High  cmdID= 6006  "
+        ::= { iqasi82CmdEntry 6006 }
+
+
+    iqasi82LoggingInput1StatusDataRateHighDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Data Rate High Disp  cmdID= 6106  "
+        ::= { iqasi82CmdEntry 6106 }
+
+
+    iqasi82LoggingInput1StatusDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Data Rate Low  cmdID= 6007  "
+        ::= { iqasi82CmdEntry 6007 }
+
+
+    iqasi82LoggingInput1StatusDataRateLowDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Data Rate Low Disp  cmdID= 6107  "
+        ::= { iqasi82CmdEntry 6107 }
+
+
+    iqasi82LoggingInput1StatusPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    PID Fail  cmdID= 6008  "
+        ::= { iqasi82CmdEntry 6008 }
+
+
+    iqasi82LoggingInput1StatusPIDFailDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PID Fail Disp  cmdID= 6108  "
+        ::= { iqasi82CmdEntry 6108 }
+
+
+    iqasi82LoggingInput2Ident OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 2 Ident  cmdID= 35200  "
+        ::= { iqasi82CmdEntry 35200 }
+
+
+    iqasi82LoggingInput2IdentDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 2 Ident Disp  cmdID= 35210  "
+        ::= { iqasi82CmdEntry 35210 }
+
+
+    iqasi82LoggingInput2Name OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 2 Name  cmdID= 35201  "
+        ::= { iqasi82CmdEntry 35201 }
+
+
+    iqasi82LoggingInput2NameDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 2 Name Disp  cmdID= 35211  "
+        ::= { iqasi82CmdEntry 35211 }
+
+
+    iqasi82LoggingInput2State OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 2 State  cmdID= 35202  "
+        ::= { iqasi82CmdEntry 35202 }
+
+
+    iqasi82LoggingInput2StateDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 2 State Disp  cmdID= 35212  "
+        ::= { iqasi82CmdEntry 35212 }
+
+
+    iqasi82LoggingInput2Type OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input 2 Type  cmdID= 35204  "
+        ::= { iqasi82CmdEntry 35204 }
+
+
+    iqasi82LoggingInput2TypeDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 2 Type Disp  cmdID= 35214  "
+        ::= { iqasi82CmdEntry 35214 }
+
+
+    iqasi82LoggingInput2StatusLevelFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Level Fail  cmdID= 6011  "
+        ::= { iqasi82CmdEntry 6011 }
+
+
+    iqasi82LoggingInput2StatusLevelFailDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Level Fail Disp  cmdID= 6111  "
+        ::= { iqasi82CmdEntry 6111 }
+
+
+    iqasi82LoggingInput2StatusTSSlowStop OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    TS Slow/Stop  cmdID= 6012  "
+        ::= { iqasi82CmdEntry 6012 }
+
+
+    iqasi82LoggingInput2StatusTSSlowStopDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Slow/Stop Disp  cmdID= 6112  "
+        ::= { iqasi82CmdEntry 6112 }
+
+
+    iqasi82LoggingInput2StatusTSSyncLoss OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    TS Sync Loss  cmdID= 6013  "
+        ::= { iqasi82CmdEntry 6013 }
+
+
+    iqasi82LoggingInput2StatusTSSyncLossDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Sync Loss Disp  cmdID= 6113  "
+        ::= { iqasi82CmdEntry 6113 }
+
+
+    iqasi82LoggingInput2StatusSyncByteError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Sync Byte Error  cmdID= 6014  "
+        ::= { iqasi82CmdEntry 6014 }
+
+
+    iqasi82LoggingInput2StatusSyncByteErrorDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Sync Byte Error Disp  cmdID= 6114  "
+        ::= { iqasi82CmdEntry 6114 }
+
+
+    iqasi82LoggingInput2StatusPATUDError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    PAT UD Error  cmdID= 6015  "
+        ::= { iqasi82CmdEntry 6015 }
+
+
+    iqasi82LoggingInput2StatusPATUDErrorDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PAT UD Error Disp  cmdID= 6115  "
+        ::= { iqasi82CmdEntry 6115 }
+
+
+    iqasi82LoggingInput2StatusDataRateHigh OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Data Rate High  cmdID= 6016  "
+        ::= { iqasi82CmdEntry 6016 }
+
+
+    iqasi82LoggingInput2StatusDataRateHighDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Data Rate High Disp  cmdID= 6116  "
+        ::= { iqasi82CmdEntry 6116 }
+
+
+    iqasi82LoggingInput2StatusDataRateLow OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Data Rate Low  cmdID= 6017  "
+        ::= { iqasi82CmdEntry 6017 }
+
+
+    iqasi82LoggingInput2StatusDataRateLowDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Data Rate Low Disp  cmdID= 6117  "
+        ::= { iqasi82CmdEntry 6117 }
+
+
+    iqasi82LoggingInput2StatusPIDFail OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    PID Fail  cmdID= 6018  "
+        ::= { iqasi82CmdEntry 6018 }
+
+
+    iqasi82LoggingInput2StatusPIDFailDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PID Fail Disp  cmdID= 6118  "
+        ::= { iqasi82CmdEntry 6118 }
+
+
+    iqasi82LoggingAlarm1OutputsOutput1 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Output 1  cmdID= 6021  "
+        ::= { iqasi82CmdEntry 6021 }
+
+
+    iqasi82LoggingAlarm1OutputsOutput1Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Output 1 Disp  cmdID= 6121  "
+        ::= { iqasi82CmdEntry 6121 }
+
+
+    iqasi82LoggingAlarm1OutputsOutput2 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Output 2  cmdID= 6022  "
+        ::= { iqasi82CmdEntry 6022 }
+
+
+    iqasi82LoggingAlarm1OutputsOutput2Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Output 2 Disp  cmdID= 6122  "
+        ::= { iqasi82CmdEntry 6122 }
+
+
+    iqasi82LoggingAlarm1OutputsRelay1 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Relay 1  cmdID= 6023  "
+        ::= { iqasi82CmdEntry 6023 }
+
+
+    iqasi82LoggingAlarm1OutputsRelay1Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Relay 1 Disp  cmdID= 6123  "
+        ::= { iqasi82CmdEntry 6123 }
+
+
+    iqasi82LoggingAlarm2OutputsOutput5 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Output 5  cmdID= 6031  "
+        ::= { iqasi82CmdEntry 6031 }
+
+
+    iqasi82LoggingAlarm2OutputsOutput5Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Output 5 Disp  cmdID= 6131  "
+        ::= { iqasi82CmdEntry 6131 }
+
+
+    iqasi82LoggingAlarm2OutputsOutput6 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Output 6  cmdID= 6032  "
+        ::= { iqasi82CmdEntry 6032 }
+
+
+    iqasi82LoggingAlarm2OutputsOutput6Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Output 6 Disp  cmdID= 6132  "
+        ::= { iqasi82CmdEntry 6132 }
+
+
+    iqasi82LoggingAlarm2OutputsRelay2 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Relay 2  cmdID= 6033  "
+        ::= { iqasi82CmdEntry 6033 }
+
+
+    iqasi82LoggingAlarm2OutputsRelay2Disp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Relay 2 Disp  cmdID= 6133  "
+        ::= { iqasi82CmdEntry 6133 }
+
+
+    iqasi82LoggingOutputAStatusInputSelected OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input Selected  cmdID= 6041  "
+        ::= { iqasi82CmdEntry 6041 }
+
+
+    iqasi82LoggingOutputAStatusInputSelectedDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input Selected Disp  cmdID= 6141  "
+        ::= { iqasi82CmdEntry 6141 }
+
+
+    iqasi82LoggingOutputAStatusSwitchMode OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Switch Mode  cmdID= 6042  "
+        ::= { iqasi82CmdEntry 6042 }
+
+
+    iqasi82LoggingOutputAStatusSwitchModeDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Switch Mode Disp  cmdID= 6142  "
+        ::= { iqasi82CmdEntry 6142 }
+
+
+    iqasi82LoggingOutputBStatusInputSelected OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Input Selected  cmdID= 6051  "
+        ::= { iqasi82CmdEntry 6051 }
+
+
+    iqasi82LoggingOutputBStatusInputSelectedDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input Selected Disp  cmdID= 6151  "
+        ::= { iqasi82CmdEntry 6151 }
+
+
+    iqasi82LoggingOutputBStatusSwitchMode OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Switch Mode  cmdID= 6052  "
+        ::= { iqasi82CmdEntry 6052 }
+
+
+    iqasi82LoggingOutputBStatusSwitchModeDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Switch Mode Disp  cmdID= 6152  "
+        ::= { iqasi82CmdEntry 6152 }
+
+
+    iqasi82LoggingMiscLogSerialNo OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Serial No.  cmdID= 35015  "
+        ::= { iqasi82CmdEntry 35015 }
+
+
+    iqasi82LoggingMiscSerialNoDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Serial No.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Serial No. Disp  cmdID= 36115  "
+        ::= { iqasi82CmdEntry 36115 }
+
+
+    iqasi82LoggingMiscLogOSVersion OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for OS Version
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log OS Version  cmdID= 35993  "
+        ::= { iqasi82CmdEntry 35993 }
+
+
+    iqasi82LoggingMiscOSVersionDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for OS Version
+                 TYPE: - Display
+                 PAGE: - Logging
+                    OS Version Disp  cmdID= 36993  "
+        ::= { iqasi82CmdEntry 36993 }
+
+
+    iqasi82LoggingMiscLogBuildNo OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Build No.
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Build No.  cmdID= 35990  "
+        ::= { iqasi82CmdEntry 35990 }
+
+
+    iqasi82LoggingMiscBuildNoDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Build No.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Build No. Disp  cmdID= 36990  "
+        ::= { iqasi82CmdEntry 36990 }
+
+
+    iqasi82LoggingMiscLogHardwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Hardware Ver.
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Hardware Ver.  cmdID= 35992  "
+        ::= { iqasi82CmdEntry 35992 }
+
+
+    iqasi82LoggingMiscHardwareVerDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Hardware Ver.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Hardware Ver. Disp  cmdID= 36992  "
+        ::= { iqasi82CmdEntry 36992 }
+
+
+    iqasi82LoggingMiscLogHardwareMod OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Hardware Mod.  cmdID= 35980  "
+        ::= { iqasi82CmdEntry 35980 }
+
+
+    iqasi82LoggingMiscHardwareModDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Hardware Mod. Disp  cmdID= 36980  "
+        ::= { iqasi82CmdEntry 36980 }
+
+
+    iqasi82LoggingMiscLogASISoftwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log ASI Software Ver.  cmdID= 35979  "
+        ::= { iqasi82CmdEntry 35979 }
+
+
+    iqasi82LoggingMiscASISoftwareVerDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    ASI Software Ver. Disp  cmdID= 36979  "
+        ::= { iqasi82CmdEntry 36979 }
+
+
+    iqasi82LoggingMiscLogFirmwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Firmware Ver.  cmdID= 35982  "
+        ::= { iqasi82CmdEntry 35982 }
+
+
+    iqasi82LoggingMiscFirmwareVerDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Firmware Ver. Disp  cmdID= 36982  "
+        ::= { iqasi82CmdEntry 36982 }
+
+
+    iqasi82LoggingMiscLogUpTime OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Up Time
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Up Time  cmdID= 35994  "
+        ::= { iqasi82CmdEntry 35994 }
+
+
+    iqasi82LoggingMiscUpTimeDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Up Time
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Up Time Disp  cmdID= 36994  "
+        ::= { iqasi82CmdEntry 36994 }
+
+
+    iqasi82LoggingMiscLogRollTracks OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log RollTracks  cmdID= 35000  "
+        ::= { iqasi82CmdEntry 35000 }
+
+
+    iqasi82LoggingMiscRollTracksDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    RollTracks Disp  cmdID= 36000  "
+        ::= { iqasi82CmdEntry 36000 }
+
+
+    iqasi82LoggingMiscLogRearID OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Rear Id
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Rear ID  cmdID= 35997  "
+        ::= { iqasi82CmdEntry 35997 }
+
+
+    iqasi82LoggingMiscRearIDDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Rear ID
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Rear ID  Disp  cmdID= 36997  "
+        ::= { iqasi82CmdEntry 36997 }
+
+
+    iqasi82LoggingMiscLogRearStatus OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Rear Status
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log RearStatus  cmdID= 35996  "
+        ::= { iqasi82CmdEntry 35996 }
+
+
+    iqasi82LoggingMiscRearSTATUSDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Rear Status
+                 TYPE: - Display
+                 PAGE: - Logging
+                    RearSTATUS Disp  cmdID= 36996  "
+        ::= { iqasi82CmdEntry 36996 }
+
+
+    iqasi82LoggingMiscLogSlotWidth OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Slot Width
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Slot Width  cmdID= 35998  "
+        ::= { iqasi82CmdEntry 35998 }
+
+
+    iqasi82LoggingMiscSlotWidthDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Slot width
+                 TYPE: - Display
+                 PAGE: - Logging
+                    SlotWidth Disp  cmdID= 36998  "
+        ::= { iqasi82CmdEntry 36998 }
+
+
+    iqasi82LoggingMiscLogSlotStart OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Slot Start
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Slot Start  cmdID= 35999  "
+        ::= { iqasi82CmdEntry 35999 }
+
+
+    iqasi82LoggingMiscSlotStartDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Slot start
+                 TYPE: - Display
+                 PAGE: - Logging
+                    SlotStart Disp  cmdID= 36999  "
+        ::= { iqasi82CmdEntry 36999 }
+
+
+    iqasi82LoggingMiscLogPowerUsage OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Power Status
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Power Usage  cmdID= 35995  "
+        ::= { iqasi82CmdEntry 35995 }
+
+
+    iqasi82LoggingMiscPowerUsageDisp OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Power usage
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PowerUsage Disp  cmdID= 36995  "
+        ::= { iqasi82CmdEntry 36995 }
+
+
+    iqasi82RollTrackDisableAll OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Disable all rolltrack outputs
+                 TYPE: - Checkbox
+                 PAGE: - RollTrack
+                    Disable All  cmdID= 36104  "
+        ::= { iqasi82CmdEntry 36104 }
+
+
+    iqasi82RollTrackIndex OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Select rolltrack to edit
+                 TYPE: - BarGraph
+                 PAGE: - RollTrack
+                    Index  cmdID= 36100
+                    min= 1  max= 16  step= 1  format= %0.0f  div_scale= 1  preset= 1
+                    Min = 1  Max = 16  Step = 1  Preset = 1  "
+        ::= { iqasi82CmdEntry 36100 }
+
+
+    iqasi82RollTrackSource OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valUnused(-1),
+                            valInput1OK(0),
+                            valInput1Fail(1),
+                            valOutputAInput1(2),
+                            valOutputAInput2(3),
+                            valOutputAAuto(4),
+                            valOutputASerial(5),
+                            valOutputAExternal(6),
+                            valOutputALocal(7),
+                            valInput2OK(8),
+                            valInput2Fail(9),
+                            valOutputBInput1(10),
+                            valOutputBInput2(11),
+                            valOutputBAuto(12),
+                            valOutputBSerial(13),
+                            valOutputBExternal(14),
+                            valOutputBLocal(15)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Source for Rolltrack
+                 TYPE: - RadiobuttonList
+                 PAGE: - RollTrack
+                    Source  cmdID= 36101
+                    Unused  value= -1
+                    Input 1 OK  value= 0
+                    Input 1 Fail  value= 1
+                    Output A = Input 1  value= 2
+                    Output A = Input 2  value= 3
+                    Output A = Auto  value= 4
+                    Output A = Serial  value= 5
+                    Output A = External  value= 6
+                    Output A = Local  value= 7
+                    Input 2 OK  value= 8
+                    Input 2 Fail  value= 9
+                    Output B = Input 1  value= 10
+                    Output B = Input 2  value= 11
+                    Output B = Auto  value= 12
+                    Output B = Serial  value= 13
+                    Output B = External  value= 14
+                    Output B = Local  value= 15  "
+        ::= { iqasi82CmdEntry 36101 }
+
+
+    iqasi82RollTrackAddress OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit address for Rolltrack message
+                 TYPE: - Editstring
+                 PAGE: - RollTrack
+                    Address  cmdID= 36102
+                    preset= 0000:00:00*0\0*"
+        ::= { iqasi82CmdEntry 36102 }
+
+
+    iqasi82RollTrackCommand OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Command to send for Rolltrack message
+                 TYPE: - Editstring
+                 PAGE: - RollTrack
+                    Command  cmdID= 36103
+                    preset= 000:000\0"
+        ::= { iqasi82CmdEntry 36103 }
+
+
+    iqasi82RollTrackStatus OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Rolltrack status
+                 TYPE: - Display
+                 PAGE: - RollTrack
+                    Status  cmdID= 36105  "
+        ::= { iqasi82CmdEntry 36105 }
+
+
+    iqasi82RollTrackSending OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Rolltrack sending status: true/false
+                 TYPE: - Display
+                 PAGE: - RollTrack
+                    Sending  cmdID= 36106  "
+        ::= { iqasi82CmdEntry 36106 }
+
+
+    iqasi82SetupProduct OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Product  cmdID= 32771  "
+        ::= { iqasi82CmdEntry 32771 }
+
+
+    iqasi82SetupRelease OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit version number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Release  cmdID= 2  "
+        ::= { iqasi82CmdEntry 2 }
+
+
+    iqasi82SetupBuild OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit build number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Build  cmdID= 5  "
+        ::= { iqasi82CmdEntry 5 }
+
+
+    iqasi82SetupKOS OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    KOS  cmdID= 32772  "
+        ::= { iqasi82CmdEntry 32772 }
+
+
+    iqasi82SetupSerialNo OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit serial number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Serial No.  cmdID= 1  "
+        ::= { iqasi82CmdEntry 1 }
+
+
+    iqasi82SetupPCB OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Display PCB revision
+                 TYPE: - Display
+                 PAGE: - Setup
+                    PCB  cmdID= 32770  "
+        ::= { iqasi82CmdEntry 32770 }
+
+
+    iqasi82SetupRearID OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Rear ID  cmdID= 32780  "
+        ::= { iqasi82CmdEntry 32780 }
+
+
+    iqasi82SetupInput1Name OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Setup
+                    Input 1 Name  cmdID= 9000
+                    preset= ASI_IN_1"
+        ::= { iqasi82CmdEntry 9000 }
+
+
+    iqasi82SetupInput2Name OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Setup
+                    Input 2 Name  cmdID= 9001
+                    preset= ASI_IN_2"
+        ::= { iqasi82CmdEntry 9001 }
+
+
+    iqasi82SetupFactoryDefault OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valFactoryDefault(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Recall factory defaults
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Factory Default  cmdID= 37002
+                    value= 1  "
+        ::= { iqasi82CmdEntry 37002 }
+
+
+    iqasi82SetupDefaultsSettings OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDefaultsSettings(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Recall factory defaults
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Defaults Settings  cmdID= 37001
+                    value= 1  "
+        ::= { iqasi82CmdEntry 37001 }
+
+
+    iqasi82SetupRestart OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valRestart(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Restart unit
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Restart  cmdID= 4
+                    value= 1  "
+        ::= { iqasi82CmdEntry 4 }
+
+
+    iqasi82SetupSerialNumber OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Edit serial number (On Factory Test Only)
+                 TYPE: - Editstring
+                 PAGE: - Setup
+                    Serial Number  cmdID= 32774
+                    preset= unknown"
+        ::= { iqasi82CmdEntry 32774 }
+
+
+    iqasi82SetupBoardID OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valIQASI(615)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Edit product type (On Factory Test Only)
+                 TYPE: - RadiobuttonList
+                 PAGE: - Setup
+                    BoardID  cmdID= 32776
+                    IQASI  value= 615  "
+        ::= { iqasi82CmdEntry 32776 }
+
+
+    iqasi82SetupSaveID OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valSaveID(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Save serial number/board type (On Factory Test Only)
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Save ID  cmdID= 32775
+                    value= 1  "
+        ::= { iqasi82CmdEntry 32775 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  The OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |        base            |Slt|Len| F  A  U  L  T|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+--
+-- Value(s)		: S12345678
+-- Comments		: Serial number of unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: State of module presence.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+--
+-- Value(s)		: 000:01:26:00
+-- Comments		: Uptime of unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_ID
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.65.82.95.73.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.65.82.95.73.68
+--
+-- Value(s)		: 237
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+--
+-- Value(s)		: 0
+-- Comments		: Number of current control sessions.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: V115 Release
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+--
+-- Value(s)		: DISABLED
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_START
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.83.84.65.82.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.83.84.65.82.84
+--
+-- Value(s)		: 1
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_WIDTH
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.87.73.68.84.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.87.73.68.84.72
+--
+-- Value(s)		: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: POWER_USAGE
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.80.79.87.69.82.95.85.83.65.71.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.80.79.87.69.82.95.85.83.65.71.69
+--
+-- Value(s)		: 6.5W/6.5LU
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.82.69.65.82.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.82.69.65.82.95.83.84.65.84.85.83
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+--
+-- Value(s)		: 3731.3731.3731
+-- Comments		: Embedded code build number
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_MOD
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.72.65.82.68.87.65.82.69.95.77.79.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.72.65.82.68.87.65.82.69.95.77.79.68
+--
+-- Value(s)		: 0
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.78.65.77.69
+--
+-- Value(s)		: INPUT_1_NAME
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+--
+-- Value(s)		: ASI
+-- Comments		: Input 1 type
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.78.65.77.69
+--
+-- Value(s)		: INPUT_2_NAME
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.50.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.50.95.84.89.80.69
+--
+-- Value(s)		: ASI
+-- Comments		: Input 2 type
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+--
+-- Value(s)		: 2010-01-27T10:41:47Z
+-- Comments		: Time of last restart
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+--
+-- Value(s)		: ASI_IN_1
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.73.68.69.78.84
+--
+-- Value(s)		: ASI_IN_2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.50.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.50.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: FAIL:Lost
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MOFIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.70.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.70.73.70.73.69.68
+--
+-- Value(s)		: 2010-01-27T10:45:05Z
+-- Comments		: Time of last control modification.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_A_MODE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.65.95.77.79.68.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.65.95.77.79.68.69
+--
+-- Value(s)		: AUTO
+--				: REMOTE_EXT
+--				: LOCAL
+--				: REMOTE_SERIAL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_B_MODE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.66.95.77.79.68.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.66.95.77.79.68.69
+--
+-- Value(s)		: AUTO
+--				: REMOTE_EXT
+--				: LOCAL
+--				: REMOTE_SERIAL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_A_INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.79.85.84.80.85.84.95.65.95.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.79.85.84.80.85.84.95.65.95.73.78.80.85.84
+--
+-- Value(s)		: 1
+--				: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_B_INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.79.85.84.80.85.84.95.66.95.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.79.85.84.80.85.84.95.66.95.73.78.80.85.84
+--
+-- Value(s)		: 1
+--				: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FIRMWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 11110
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: IQASI80-0100
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_PID_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.80.73.68.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.80.73.68.95.70.65.73.76
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_PID_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.50.95.80.73.68.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.50.95.80.73.68.95.70.65.73.76
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SOFTWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 5.0.5
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_RELAY_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.65.76.65.82.77.95.69.88.84.95.82.69.76.65.89.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.65.76.65.82.77.95.69.88.84.95.82.69.76.65.89.95.49
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_RELAY_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.65.76.65.82.77.95.69.88.84.95.82.69.76.65.89.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.65.76.65.82.77.95.69.88.84.95.82.69.76.65.89.95.50
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_OUTPUT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.49
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_OUTPUT_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.50
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_OUTPUT_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.53
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ALARM_EXT_OUTPUT_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.65.76.65.82.77.95.69.88.84.95.79.85.84.80.85.84.95.54
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_LEVEL_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.49.95.76.69.86.69.76.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.49.95.76.69.86.69.76.95.70.65.73.76
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_LEVEL_FAIL
+--
+-- MIB ref		: swCardEventLogSlotXX       .18.73.78.80.85.84.95.50.95.76.69.86.69.76.95.70.65.73.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.18.73.78.80.85.84.95.50.95.76.69.86.69.76.95.70.65.73.76
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ASI_SOFTWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.65.83.73.95.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.65.83.73.95.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_PAT_UD_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.49.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.49.95.80.65.84.95.85.68.95.69.82.82.79.82
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TS_SLOW_STOP
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.49.95.84.83.95.83.76.79.87.95.83.84.79.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.49.95.84.83.95.83.76.79.87.95.83.84.79.80
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TS_SYNC_LOSS
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.49.95.84.83.95.83.89.78.67.95.76.79.83.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.49.95.84.83.95.83.89.78.67.95.76.79.83.83
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_PAT_UD_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.50.95.80.65.84.95.85.68.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.50.95.80.65.84.95.85.68.95.69.82.82.79.82
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TS_SLOW_STOP
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.50.95.84.83.95.83.76.79.87.95.83.84.79.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.50.95.84.83.95.83.76.79.87.95.83.84.79.80
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_TS_SYNC_LOSS
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.73.78.80.85.84.95.50.95.84.83.95.83.89.78.67.95.76.79.83.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.73.78.80.85.84.95.50.95.84.83.95.83.89.78.67.95.76.79.83.83
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_DATA_RATE_LOW
+--
+-- MIB ref		: swCardEventLogSlotXX       .21.73.78.80.85.84.95.49.95.68.65.84.65.95.82.65.84.69.95.76.79.87
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.21.73.78.80.85.84.95.49.95.68.65.84.65.95.82.65.84.69.95.76.79.87
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_DATA_RATE_LOW
+--
+-- MIB ref		: swCardEventLogSlotXX       .21.73.78.80.85.84.95.50.95.68.65.84.65.95.82.65.84.69.95.76.79.87
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.21.73.78.80.85.84.95.50.95.68.65.84.65.95.82.65.84.69.95.76.79.87
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_DATA_RATE_HIGH
+--
+-- MIB ref		: swCardEventLogSlotXX       .22.73.78.80.85.84.95.49.95.68.65.84.65.95.82.65.84.69.95.72.73.71.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.22.73.78.80.85.84.95.49.95.68.65.84.65.95.82.65.84.69.95.72.73.71.72
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_DATA_RATE_HIGH
+--
+-- MIB ref		: swCardEventLogSlotXX       .22.73.78.80.85.84.95.50.95.68.65.84.65.95.82.65.84.69.95.72.73.71.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.22.73.78.80.85.84.95.50.95.68.65.84.65.95.82.65.84.69.95.72.73.71.72
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_SYNC_BYTE_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .23.73.78.80.85.84.95.49.95.83.89.78.67.95.66.89.84.69.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.23.73.78.80.85.84.95.49.95.83.89.78.67.95.66.89.84.69.95.69.82.82.79.82
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_SYNC_BYTE_ERROR
+--
+-- MIB ref		: swCardEventLogSlotXX       .23.73.78.80.85.84.95.50.95.83.89.78.67.95.66.89.84.69.95.69.82.82.79.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.23.73.78.80.85.84.95.50.95.83.89.78.67.95.66.89.84.69.95.69.82.82.79.82
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

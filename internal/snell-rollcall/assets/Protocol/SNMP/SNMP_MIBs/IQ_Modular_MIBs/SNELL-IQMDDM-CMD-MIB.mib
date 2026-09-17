@@ -1,0 +1,3617 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQMDDM
+--        Module Id#:151
+--       Command Set:31
+--          Filename:SNELL-IQMDDM-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:06/02/2009
+--              Time:10:26
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQMDDM-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQMDDM,
+    moduleIQMDDMMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQMDDMCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0902061026Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQMDDMMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqmddmCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqmddmCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQMDDM 1 }
+
+	iqmddmCmdEntry OBJECT-TYPE
+		SYNTAX		IqmddmCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqmddmSlotIndex }
+		::= { iqmddmCmdTable 1 }
+
+	IqmddmCmdEntry ::=
+		SEQUENCE {
+			iqmddmSlotIndex
+				Unsigned32,
+			iqmddmErrorsInputCarrierCurrIPStatus
+				RollCallString,
+			iqmddmErrorsInputCarrierShowIPStats
+				INTEGER,
+			iqmddmErrorsInputCarrierResetStats
+				INTEGER,
+			iqmddmErrorsAllStatsAllErrorsStatus
+				RollCallString,
+			iqmddmErrorsAllStatsShowStats
+				INTEGER,
+			iqmddmErrorsAllStatsResetStats
+				INTEGER,
+			iqmddmErrorsMonInputCarrierMonInputStatus
+				RollCallString,
+			iqmddmErrorsMonInputCarrierShowMonIPStats
+				INTEGER,
+			iqmddmErrorsMonInputCarrierResetStats
+				INTEGER,
+			iqmddmErrorsRVSRVSStatus
+				RollCallString,
+			iqmddmErrorsRVSShowRVSStats
+				INTEGER,
+			iqmddmErrorsRVSResetStats
+				INTEGER,
+			iqmddmErrorsMonSyncSyncStatus
+				RollCallString,
+			iqmddmErrorsMonSyncShowSyncStats
+				INTEGER,
+			iqmddmErrorsMonSyncResetStats
+				INTEGER,
+			iqmddmErrorsETR290ETR290Status
+				RollCallString,
+			iqmddmErrorsETR290ShowETR290Stats
+				INTEGER,
+			iqmddmErrorsETR290ResetStats
+				INTEGER,
+			iqmddmErrorsTMPTMPStatus
+				RollCallString,
+			iqmddmErrorsTMPShowTMPStats
+				INTEGER,
+			iqmddmErrorsTMPResetStats
+				INTEGER,
+			iqmddmErrorsBitrateBitrateStatus
+				RollCallString,
+			iqmddmErrorsBitrateShowBitrateStats
+				INTEGER,
+			iqmddmErrorsBitrateResetStats
+				INTEGER,
+			iqmddmSIPrograms
+				INTEGER,
+			iqmddmSIPMTS
+				INTEGER,
+			iqmddmSITSID
+				RollCallString,
+			iqmddmSIPCRPID
+				RollCallString,
+			iqmddmSIProgName
+				RollCallString,
+			iqmddmSIESName
+				RollCallString,
+			iqmddmSIOptions
+				INTEGER,
+			iqmddmGPIGPI1Mode
+				INTEGER,
+			iqmddmGPIGPI1ModeInvertGPI1Output
+				INTEGER,
+			iqmddmGPIGPI1ModeInvertGPI1Input
+				INTEGER,
+			iqmddmGPIGPI1ModeGPI1InputStatus
+				RollCallString,
+			iqmddmGPIGPI1OP
+				INTEGER,
+			iqmddmGPIGPI2Mode
+				INTEGER,
+			iqmddmGPIGPI2ModeInvertGPI2Output
+				INTEGER,
+			iqmddmGPIGPI2ModeInvertGPI2Input
+				INTEGER,
+			iqmddmGPIGPI2ModeGPI2InputStatus
+				RollCallString,
+			iqmddmGPIGPI2OP
+				INTEGER,
+			iqmddmInputsIPDA
+				INTEGER,
+			iqmddmInputsIPDAInputStatus
+				RollCallString,
+			iqmddmInputsIPMon
+				INTEGER,
+			iqmddmInputsIPMonMonitorStatus
+				RollCallString,
+			iqmddmInputsInput1NewInputName
+				RollCallString,
+			iqmddmInputsInput1InputStatus
+				RollCallString,
+			iqmddmInputsInput2NewInputName
+				RollCallString,
+			iqmddmInputsInput2InputStatus
+				RollCallString,
+			iqmddmSetupRadix
+				INTEGER,
+			iqmddmSetupLoggingLogDAInputLoss
+				INTEGER,
+			iqmddmSetupLoggingLogMONInputLoss
+				INTEGER,
+			iqmddmSetupLoggingLogAllErrors
+				INTEGER,
+			iqmddmSetupLoggingLogMonSyncErrors
+				INTEGER,
+			iqmddmSetupLoggingLogETR290Errors
+				INTEGER,
+			iqmddmSetupLoggingLogRVSErrors
+				INTEGER,
+			iqmddmSetupLoggingLogTMPErrors
+				INTEGER,
+			iqmddmSetupLoggingLogBRviolation
+				INTEGER,
+			iqmddmBitrateMinimumThresholdMinThresholdbs
+				RollCallString,
+			iqmddmBitrateMinimumThresholdEnable
+				INTEGER,
+			iqmddmBitrateMaximumThresholdMaxThresholdbs
+				RollCallString,
+			iqmddmBitrateMaximumThresholdEnable
+				INTEGER,
+			iqmddmBitrateMaximumThresholdSyncLossif0
+				INTEGER,
+			iqmddmBitrateBitrateBSEnableUpdates
+				INTEGER,
+			iqmddmBitrateBitrateBSCurrentBitrate
+				RollCallString,
+			iqmddmBitrateBitrateBSMinBitrate
+				RollCallString,
+			iqmddmBitrateBitrateBSMaxBitrate
+				RollCallString,
+			iqmddmTemplatesCategoriesNetworkId
+				INTEGER,
+			iqmddmTemplatesCategoriesScramblingCtl
+				INTEGER,
+			iqmddmTemplatesCategoriesTSId
+				INTEGER,
+			iqmddmTemplatesCategoriesPacketFormat
+				INTEGER,
+			iqmddmTemplatesCategoriesServiceId
+				INTEGER,
+			iqmddmTemplatesCategoriesPCRPIDs
+				INTEGER,
+			iqmddmTemplatesCategoriesCompontPIDs
+				INTEGER,
+			iqmddmTemplatesCategoriesCompontTypes
+				INTEGER,
+			iqmddmTemplatesCategoriesNumberofServices
+				INTEGER,
+			iqmddmTemplatesCategoriesNumberofComponts
+				INTEGER,
+			iqmddmTemplatesCategoriesTSBitRates
+				INTEGER,
+			iqmddmTemplatesCategoriesSeviceBitRates
+				INTEGER,
+			iqmddmTemplatesCategoriesCompontBitRates
+				INTEGER,
+			iqmddmTemplatesCategoriesTemplatedelay
+				RollCallString,
+			iqmddmTemplatesSelect
+				INTEGER,
+			iqmddmTemplatesSelectSequence
+				INTEGER,
+			iqmddmTemplatesSelectTemplatesAddtoSequence
+				INTEGER,
+			iqmddmTemplatesSelectTemplatesRemovefromSeq
+				INTEGER,
+			iqmddmTemplatesSelectTemplatesUp
+				INTEGER,
+			iqmddmTemplatesSelectTemplatesDn
+				INTEGER,
+			iqmddmSetupTemplatesAddSITemplate
+				INTEGER,
+			iqmddmSetupTemplatesDeleteTemplate
+				INTEGER,
+			iqmddmSetupTemplatesSetSequence
+				INTEGER,
+			iqmddmSetupTemplatesTMPDescription
+				RollCallString,
+			iqmddmSetupTemplatesTMPActiveName
+				RollCallString,
+			iqmddmSetupTemplatesTMPActiveDesc
+				RollCallString,
+			iqmddmSetupTemplatesTMPActiveStatus
+				RollCallString,
+			iqmddmTemplatesChangeTemplate
+				INTEGER,
+			iqmddmTemplatesChangeTemplateNewText
+				RollCallString,
+			iqmddmSetupETR290ExceptExList
+				INTEGER,
+			iqmddmSetupETR290ExceptAddPID
+				RollCallString,
+			iqmddmSetupETR290ExceptDeleteException
+				RollCallString,
+			iqmddmSetupETR290ExceptUnrefPIDExclude
+				INTEGER,
+			iqmddmSetupETR290ExceptPIDErrExclude
+				INTEGER,
+			iqmddmSetupETR290ExceptUseCustomTime
+				INTEGER,
+			iqmddmSetupETR290ExceptTime
+				RollCallString,
+			iqmddmMemoriesSaveToMem1
+				INTEGER,
+			iqmddmMemoriesSaveToMem2
+				INTEGER,
+			iqmddmMemoriesSaveToMem3
+				INTEGER,
+			iqmddmMemoriesSaveToMem4
+				INTEGER,
+			iqmddmMemoriesSaveToMem5
+				INTEGER,
+			iqmddmMemoriesSaveToMem6
+				INTEGER,
+			iqmddmMemoriesSaveToMem7
+				INTEGER,
+			iqmddmMemoriesSaveToMem8
+				INTEGER,
+			iqmddmMemoriesRetrieveMem1
+				INTEGER,
+			iqmddmMemoriesRetrieveMem2
+				INTEGER,
+			iqmddmMemoriesRetrieveMem3
+				INTEGER,
+			iqmddmMemoriesRetrieveMem4
+				INTEGER,
+			iqmddmMemoriesRetrieveMem5
+				INTEGER,
+			iqmddmMemoriesRetrieveMem6
+				INTEGER,
+			iqmddmMemoriesRetrieveMem7
+				INTEGER,
+			iqmddmMemoriesRetrieveMem8
+				INTEGER,
+			iqmddmSetupMemoriesDefaultConfig
+				INTEGER,
+			iqmddmSetupResetETR290
+				INTEGER,
+			iqmddmSetupSoftwareVersion
+				RollCallString,
+			iqmddmSetupSerialNo
+				RollCallString,
+			iqmddmSetupRestart
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_1
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_2
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_3
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_4
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_5
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_6
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_7
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_8
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_9
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_10
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_11
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_12
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_13
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_14
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_15
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_16
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_17
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_18
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_19
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_20
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_21
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_22
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_23
+				INTEGER,
+			iqmddmPCOnlyPCOnlyLabel_24
+				INTEGER,
+			iqmddmPCOnlyPCOnlyEditLabel_1
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_2
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_3
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_4
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_5
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_6
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_7
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_8
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_9
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_10
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_11
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_12
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_13
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_14
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_15
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_16
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_17
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_18
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_19
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_20
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_21
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_22
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_23
+				RollCallString,
+			iqmddmPCOnlyPCOnlyEditLabel_24
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label1
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label2
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label3
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label4
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label5
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label6
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label7
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label8
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label9
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label10
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label11
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label12
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label13
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label14
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Label15
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status1
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status2
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status3
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status4
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status5
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status6
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status7
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status8
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status9
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status10
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status11
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status12
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status13
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status14
+				RollCallString,
+			iqmddmPCOnlyDontUseETR290ErrorsETR290Status15
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine13
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine14
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine15
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine16
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine17
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine18
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine19
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine20
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine21
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine22
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine23
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine24
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine25
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine0
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine1
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine2
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine3
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine4
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine5
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine6
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine7
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine8
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine9
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine10
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine11
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine12
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLines223
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLines224
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLines225
+				RollCallString,
+			iqmddmPCOnlyDontUseTMPStatusLines226
+				RollCallString
+		}
+
+	iqmddmSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqmddmCmdEntry 0 }
+
+
+	iqmddmErrorsInputCarrierCurrIPStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Curr. I/P Status  cmdID= 31  format=   "
+		::= { iqmddmCmdEntry 31 }
+
+
+	iqmddmErrorsInputCarrierShowIPStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show I/P Stats  cmdID= 39 "
+		::= { iqmddmCmdEntry 39 }
+
+
+	iqmddmErrorsInputCarrierResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 47  value= 1  "
+		::= { iqmddmCmdEntry 47 }
+
+
+	iqmddmErrorsAllStatsAllErrorsStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					All Errors Status  cmdID= 29  format=   "
+		::= { iqmddmCmdEntry 29 }
+
+
+	iqmddmErrorsAllStatsShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Stats  cmdID= 37 "
+		::= { iqmddmCmdEntry 37 }
+
+
+	iqmddmErrorsAllStatsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 45  value= 1  "
+		::= { iqmddmCmdEntry 45 }
+
+
+	iqmddmErrorsMonInputCarrierMonInputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Mon Input Status  cmdID= 34  format=   "
+		::= { iqmddmCmdEntry 34 }
+
+
+	iqmddmErrorsMonInputCarrierShowMonIPStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Mon I/P Stats  cmdID= 42 "
+		::= { iqmddmCmdEntry 42 }
+
+
+	iqmddmErrorsMonInputCarrierResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 50  value= 1  "
+		::= { iqmddmCmdEntry 50 }
+
+
+	iqmddmErrorsRVSRVSStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RVS Status  cmdID= 30  format=   "
+		::= { iqmddmCmdEntry 30 }
+
+
+	iqmddmErrorsRVSShowRVSStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show RVS Stats  cmdID= 38 "
+		::= { iqmddmCmdEntry 38 }
+
+
+	iqmddmErrorsRVSResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 46  value= 1  "
+		::= { iqmddmCmdEntry 46 }
+
+
+	iqmddmErrorsMonSyncSyncStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sync Status  cmdID= 27  format=   "
+		::= { iqmddmCmdEntry 27 }
+
+
+	iqmddmErrorsMonSyncShowSyncStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Sync Stats  cmdID= 35 "
+		::= { iqmddmCmdEntry 35 }
+
+
+	iqmddmErrorsMonSyncResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 43  value= 1  "
+		::= { iqmddmCmdEntry 43 }
+
+
+	iqmddmErrorsETR290ETR290Status OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					ETR290 Status  cmdID= 28  format=   "
+		::= { iqmddmCmdEntry 28 }
+
+
+	iqmddmErrorsETR290ShowETR290Stats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show ETR290 Stats  cmdID= 36 "
+		::= { iqmddmCmdEntry 36 }
+
+
+	iqmddmErrorsETR290ResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 44  value= 1  "
+		::= { iqmddmCmdEntry 44 }
+
+
+	iqmddmErrorsTMPTMPStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					TMP Status  cmdID= 32  format=   "
+		::= { iqmddmCmdEntry 32 }
+
+
+	iqmddmErrorsTMPShowTMPStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show TMP Stats  cmdID= 40 "
+		::= { iqmddmCmdEntry 40 }
+
+
+	iqmddmErrorsTMPResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 48  value= 1  "
+		::= { iqmddmCmdEntry 48 }
+
+
+	iqmddmErrorsBitrateBitrateStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Bitrate Status  cmdID= 33  format=   "
+		::= { iqmddmCmdEntry 33 }
+
+
+	iqmddmErrorsBitrateShowBitrateStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show Bitrate Stats  cmdID= 41 "
+		::= { iqmddmCmdEntry 41 }
+
+
+	iqmddmErrorsBitrateResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 49  value= 1  "
+		::= { iqmddmCmdEntry 49 }
+
+
+	iqmddmSIPrograms OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_SI(65535),
+							val_SI_Prog_01(0),
+							val_SI_Prog_02(1),
+							val_SI_Prog_03(2),
+							val_SI_Prog_04(3),
+							val_SI_Prog_05(4),
+							val_SI_Prog_06(5),
+							val_SI_Prog_07(6),
+							val_SI_Prog_08(7),
+							val_SI_Prog_09(8),
+							val_SI_Prog_10(9),
+							val_SI_Prog_11(10),
+							val_SI_Prog_12(11),
+							val_SI_Prog_13(12),
+							val_SI_Prog_14(13),
+							val_SI_Prog_15(14),
+							val_SI_Prog_16(15),
+							val_SI_Prog_17(16),
+							val_SI_Prog_18(17),
+							val_SI_Prog_19(18),
+							val_SI_Prog_20(19),
+							val_SI_Prog_21(20),
+							val_SI_Prog_22(21),
+							val_SI_Prog_23(22),
+							val_SI_Prog_24(23),
+							val_SI_Prog_25(24),
+							val_SI_Prog_26(25),
+							val_SI_Prog_27(26),
+							val_SI_Prog_28(27),
+							val_SI_Prog_29(28),
+							val_SI_Prog_30(29),
+							val_SI_Prog_31(30)
+							val_SI_Prog_32(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - SI
+					Program's  cmdID= 51
+					Values = 0 - 31, 65535
+                    In order to display the string associated with this program name, re-read
+					iqmddmSIProgName. If the ID is not valid, the value returned is val_No_SI, and
+					iqmddmSIProgName is set to NULL string."
+		::= { iqmddmCmdEntry 51 }
+
+
+	iqmddmSIPMTS OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_ES_PIDS(65535),
+							val_ES_PIDS_01(0),
+							val_ES_PIDS_02(1),
+							val_ES_PIDS_03(2),
+							val_ES_PIDS_04(3),
+							val_ES_PIDS_05(4),
+							val_ES_PIDS_06(5),
+							val_ES_PIDS_07(6),
+							val_ES_PIDS_08(7),
+							val_ES_PIDS_09(8),
+							val_ES_PIDS_10(9),
+							val_ES_PIDS_11(10),
+							val_ES_PIDS_12(11),
+							val_ES_PIDS_13(12),
+							val_ES_PIDS_14(13),
+							val_ES_PIDS_15(14),
+							val_ES_PIDS_16(15),
+							val_ES_PIDS_17(16),
+							val_ES_PIDS_18(17),
+							val_ES_PIDS_19(18),
+							val_ES_PIDS_20(19),
+							val_ES_PIDS_21(20),
+							val_ES_PIDS_22(21),
+							val_ES_PIDS_23(22),
+							val_ES_PIDS_24(23),
+							val_ES_PIDS_25(24),
+							val_ES_PIDS_26(25),
+							val_ES_PIDS_27(26),
+							val_ES_PIDS_28(27),
+							val_ES_PIDS_29(28),
+							val_ES_PIDS_30(29),
+							val_ES_PIDS_31(30),
+							val_ES_PIDS_32(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - SI
+					PMTS  cmdID= 52
+					  value= 0 - 31, 65535
+                    In order to display the PackedId associated with this Elementary Stream, re-read
+					iqmddmSIESName. If the ID is not valid, the value returned is val_No_ES_PIDS, and
+					iqmddmSIESName is set to NULL string."
+		::= { iqmddmCmdEntry 52 }
+
+
+	iqmddmSITSID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - SI
+					TS ID  cmdID= 107  format=   "
+		::= { iqmddmCmdEntry 107 }
+
+
+	iqmddmSIPCRPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - SI
+					PCR PID  cmdID= 108  format=   "
+		::= { iqmddmCmdEntry 108 }
+
+
+	iqmddmSIProgName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - SI
+					Prog Name  cmdID= 241  format=
+					This String displays the current iqmddmSIPrograms Name, in order to update
+					each program name, change iqmddmSIPrograms and re-read this string."
+		::= { iqmddmCmdEntry 241 }
+
+
+	iqmddmSIESName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - SI
+					ES Name  cmdID= 242  format=
+					This String displays the current iqmddmSIPMTS Name, in order to update
+					each Elementary Stream PacketId, change iqmddmSIPMTS and re-read this string."
+		::= { iqmddmCmdEntry 242 }
+
+
+	iqmddmSIOptions OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Show_Service_Names(0),
+							val_Programme_Numbers(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - SI
+					Options  cmdID= 106
+					Show Service Names  value= 0
+					Programme Numbers  value= 1  "
+		::= { iqmddmCmdEntry 106 }
+
+
+	iqmddmGPIGPI1Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI
+					Off  cmdID= 5  value= 0
+					Output  cmdID= 5  value= 1
+					Input  cmdID= 5  value= 2  "
+		::= { iqmddmCmdEntry 5 }
+
+
+	iqmddmGPIGPI1ModeInvertGPI1Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 1 Output  cmdID= 15 "
+		::= { iqmddmCmdEntry 15 }
+
+
+	iqmddmGPIGPI1ModeInvertGPI1Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 1 Input  cmdID= 16 "
+		::= { iqmddmCmdEntry 16 }
+
+
+	iqmddmGPIGPI1ModeGPI1InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPI
+					GPI1 Input Status  cmdID= 13  format=   "
+		::= { iqmddmCmdEntry 13 }
+
+
+	iqmddmGPIGPI1OP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_Fail(0),
+							val_Input_2_Fail(1),
+							val_Either_Input_Fail(2),
+							val_ETR290_Error(4),
+							val_Mon_Car_Loss(7),
+							val_Mon_Sync_Loss(3),
+							val_Mon_Bitrate(9),
+							val_Mon_Car_Syn_BR_Fail(8),
+							val_Mon_Tally(6),
+							val_DA_Tally(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI
+					GPI1 O/P  cmdID= 54
+					Input 1 Fail  value= 0
+					Input 2 Fail  value= 1
+					Either Input Fail  value= 2
+					ETR290 Error  value= 4
+					Mon Car. Loss  value= 7
+					Mon Sync Loss  value= 3
+					Mon Bitrate  value= 9
+					Mon Car/Syn/BR Fail  value= 8
+					Mon Tally  value= 6
+					DA Tally  value= 5  "
+		::= { iqmddmCmdEntry 54 }
+
+
+	iqmddmGPIGPI2Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI
+					Off  cmdID= 6  value= 0
+					Output  cmdID= 6  value= 1
+					Input  cmdID= 6  value= 2  "
+		::= { iqmddmCmdEntry 6 }
+
+
+	iqmddmGPIGPI2ModeInvertGPI2Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 2 Output  cmdID= 17 "
+		::= { iqmddmCmdEntry 17 }
+
+
+	iqmddmGPIGPI2ModeInvertGPI2Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 2 Input  cmdID= 18 "
+		::= { iqmddmCmdEntry 18 }
+
+
+	iqmddmGPIGPI2ModeGPI2InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPI
+					GPI2 Input Status  cmdID= 14  format=   "
+		::= { iqmddmCmdEntry 14 }
+
+
+	iqmddmGPIGPI2OP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_Fail(0),
+							val_Input_2_Fail(1),
+							val_Either_Input_Fail(2),
+							val_ETR290_Error(4),
+							val_Mon_Car_Loss(7),
+							val_Mon_Sync_Loss(3),
+							val_Mon_Bitrate(9),
+							val_Mon_Car_Syn_BR_Fail(8),
+							val_Mon_Tally(6),
+							val_DA_Tally(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPI
+					GPI2 O/P  cmdID= 55
+					Input 1 Fail  value= 0
+					Input 2 Fail  value= 1
+					Either Input Fail  value= 2
+					ETR290 Error  value= 4
+					Mon Car. Loss  value= 7
+					Mon Sync Loss  value= 3
+					Mon Bitrate  value= 9
+					Mon Car/Syn/BR Fail  value= 8
+					Mon Tally  value= 6
+					DA Tally  value= 5  "
+		::= { iqmddmCmdEntry 55 }
+
+
+	iqmddmInputsIPDA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_GPI_I_P_1_Level(2),
+							val_GPI_I_P_1_Level_Once(7),
+							val_GPI_I_P_2_Level(3),
+							val_GPI_I_P_2_Level_Once(8),
+							val_Auto_Select(5),
+							val_Auto_Car_Sync_BR(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input 1  cmdID= 53  value= 0
+					Input 2  cmdID= 53  value= 1
+					GPI I/P 1 Level  cmdID= 53  value= 2
+					GPI I/P 1 Level Once  cmdID= 53  value= 7
+					GPI I/P 2 Level  cmdID= 53  value= 3
+					GPI I/P 2 Level Once  cmdID= 53  value= 8
+					Auto Select  cmdID= 53  value= 5
+					Auto (Car/Sync/BR)  cmdID= 53  value= 6  "
+		::= { iqmddmCmdEntry 53 }
+
+
+	iqmddmInputsIPDAInputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 7  format=   "
+		::= { iqmddmCmdEntry 7 }
+
+
+	iqmddmInputsIPMon OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_GPI_I_P_1_Level(2),
+							val_GPI_I_P_1_Level_Once(7),
+							val_GPI_I_P_2_Level(3),
+							val_GPI_I_P_2_Level_Once(8),
+							val_Auto_Select(5),
+							val_Auto_Car_Sync_BR(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input 1  cmdID= 109  value= 0
+					Input 2  cmdID= 109  value= 1
+					GPI I/P 1 Level  cmdID= 109  value= 2
+					GPI I/P 1 Level Once  cmdID= 109  value= 7
+					GPI I/P 2 Level  cmdID= 109  value= 3
+					GPI I/P 2 Level Once  cmdID= 109  value= 8
+					Auto Select  cmdID= 109  value= 5
+					Auto (Car/Sync/BR)  cmdID= 109  value= 6  "
+		::= { iqmddmCmdEntry 109 }
+
+
+	iqmddmInputsIPMonMonitorStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Monitor Status  cmdID= 8  format=   "
+		::= { iqmddmCmdEntry 8 }
+
+
+	iqmddmInputsInput1NewInputName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					New Input Name  cmdID= 9  "
+		::= { iqmddmCmdEntry 9 }
+
+
+	iqmddmInputsInput1InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 11  format=   "
+		::= { iqmddmCmdEntry 11 }
+
+
+	iqmddmInputsInput2NewInputName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					New Input Name  cmdID= 10  "
+		::= { iqmddmCmdEntry 10 }
+
+
+	iqmddmInputsInput2InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 12  format=   "
+		::= { iqmddmCmdEntry 12 }
+
+
+	iqmddmSetupRadix OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Base_10_Dec(0),
+							val_Base_16_Hex(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Radix  cmdID= 227
+					Base 10 (Dec)  value= 0
+					Base 16 (Hex)  value= 1  "
+		::= { iqmddmCmdEntry 227 }
+
+
+	iqmddmSetupLoggingLogDAInputLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log DA Input Loss  cmdID= 23 "
+		::= { iqmddmCmdEntry 23 }
+
+
+	iqmddmSetupLoggingLogMONInputLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log MON Input Loss  cmdID= 26 "
+		::= { iqmddmCmdEntry 26 }
+
+
+	iqmddmSetupLoggingLogAllErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log All Errors  cmdID= 21 "
+		::= { iqmddmCmdEntry 21 }
+
+
+	iqmddmSetupLoggingLogMonSyncErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Mon Sync Errors  cmdID= 19 "
+		::= { iqmddmCmdEntry 19 }
+
+
+	iqmddmSetupLoggingLogETR290Errors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log ETR290 Errors  cmdID= 20 "
+		::= { iqmddmCmdEntry 20 }
+
+
+	iqmddmSetupLoggingLogRVSErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log RVS Errors  cmdID= 22 "
+		::= { iqmddmCmdEntry 22 }
+
+
+	iqmddmSetupLoggingLogTMPErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log TMP Errors  cmdID= 24 "
+		::= { iqmddmCmdEntry 24 }
+
+
+	iqmddmSetupLoggingLogBRviolation OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log B/R violation  cmdID= 25 "
+		::= { iqmddmCmdEntry 25 }
+
+
+	iqmddmBitrateMinimumThresholdMinThresholdbs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Min Threshold (b/s)  cmdID= 229  "
+		::= { iqmddmCmdEntry 229 }
+
+
+	iqmddmBitrateMinimumThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable  cmdID= 233 "
+		::= { iqmddmCmdEntry 233 }
+
+
+	iqmddmBitrateMaximumThresholdMaxThresholdbs OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Max Threshold (b/s)  cmdID= 230  "
+		::= { iqmddmCmdEntry 230 }
+
+
+	iqmddmBitrateMaximumThresholdEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable  cmdID= 234 "
+		::= { iqmddmCmdEntry 234 }
+
+
+	iqmddmBitrateMaximumThresholdSyncLossif0 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Sync Loss if 0  cmdID= 238 "
+		::= { iqmddmCmdEntry 238 }
+
+
+	iqmddmBitrateBitrateBSEnableUpdates OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable Updates  cmdID= 232 "
+		::= { iqmddmCmdEntry 232 }
+
+
+	iqmddmBitrateBitrateBSCurrentBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Current Bitrate  cmdID= 231  format=   "
+		::= { iqmddmCmdEntry 231 }
+
+
+	iqmddmBitrateBitrateBSMinBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Min Bitrate  cmdID= 235  format=   "
+		::= { iqmddmCmdEntry 235 }
+
+
+	iqmddmBitrateBitrateBSMaxBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Max Bitrate  cmdID= 236  format=   "
+		::= { iqmddmCmdEntry 236 }
+
+
+	iqmddmTemplatesCategoriesNetworkId OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Network Id  cmdID= 134 "
+		::= { iqmddmCmdEntry 134 }
+
+
+	iqmddmTemplatesCategoriesScramblingCtl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Scrambling Ctl  cmdID= 144 "
+		::= { iqmddmCmdEntry 144 }
+
+
+	iqmddmTemplatesCategoriesTSId OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					TS Id  cmdID= 135 "
+		::= { iqmddmCmdEntry 135 }
+
+
+	iqmddmTemplatesCategoriesPacketFormat OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Packet Format  cmdID= 136 "
+		::= { iqmddmCmdEntry 136 }
+
+
+	iqmddmTemplatesCategoriesServiceId OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Service Id  cmdID= 138 "
+		::= { iqmddmCmdEntry 138 }
+
+
+	iqmddmTemplatesCategoriesPCRPIDs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					PCR PIDs  cmdID= 139 "
+		::= { iqmddmCmdEntry 139 }
+
+
+	iqmddmTemplatesCategoriesCompontPIDs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Compon't PIDs  cmdID= 141 "
+		::= { iqmddmCmdEntry 141 }
+
+
+	iqmddmTemplatesCategoriesCompontTypes OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Compon't Types  cmdID= 142 "
+		::= { iqmddmCmdEntry 142 }
+
+
+	iqmddmTemplatesCategoriesNumberofServices OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Number of Services  cmdID= 145 "
+		::= { iqmddmCmdEntry 145 }
+
+
+	iqmddmTemplatesCategoriesNumberofComponts OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Number of Compon'ts  cmdID= 146 "
+		::= { iqmddmCmdEntry 146 }
+
+
+	iqmddmTemplatesCategoriesTSBitRates OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					TS Bit Rates  cmdID= 137 "
+		::= { iqmddmCmdEntry 137 }
+
+
+	iqmddmTemplatesCategoriesSeviceBitRates OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Sevice Bit Rates  cmdID= 140 "
+		::= { iqmddmCmdEntry 140 }
+
+
+	iqmddmTemplatesCategoriesCompontBitRates OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Templates
+					Compon't Bit Rates  cmdID= 143 "
+		::= { iqmddmCmdEntry 143 }
+
+
+	iqmddmTemplatesCategoriesTemplatedelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Templates
+					Template delay  cmdID= 147  "
+		::= { iqmddmCmdEntry 147 }
+
+
+	iqmddmTemplatesSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val(0),
+							val(1),
+							val(2),
+							val(3),
+							val(4),
+							val(5),
+							val(6),
+							val(7),
+							val(8),
+							val(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Templates
+					Template List  cmdID= 148
+					  value= 0
+					  value= 1
+					  value= 2
+					  value= 3
+					  value= 4
+					  value= 5
+					  value= 6
+					  value= 7
+					  value= 8
+					  value= 9  "
+		::= { iqmddmCmdEntry 148 }
+
+
+	iqmddmTemplatesSelectSequence OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Template_0(0),
+							val_Template_1(1),
+							val_Template_2(2),
+							val_Template_3(3),
+							val_Template_4(4),
+							val_Template_5(5),
+							val_Template_6(6),
+							val_Template_7(7),
+							val_Template_8(8),
+							val_Template_9(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Templates
+					Template Sequence  cmdID= 149
+					  value= 0 - 9 "
+		::= { iqmddmCmdEntry 149 }
+
+
+	iqmddmTemplatesSelectTemplatesAddtoSequence OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Add_to_Sequence(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Add to Sequence  cmdID= 150  value= 1  "
+		::= { iqmddmCmdEntry 150 }
+
+
+	iqmddmTemplatesSelectTemplatesRemovefromSeq OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Remove_from_Seq(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Remove from Seq  cmdID= 151  value= 1  "
+		::= { iqmddmCmdEntry 151 }
+
+
+	iqmddmTemplatesSelectTemplatesUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Up  cmdID= 152  value= 1  "
+		::= { iqmddmCmdEntry 152 }
+
+
+	iqmddmTemplatesSelectTemplatesDn OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Dn(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Dn  cmdID= 153  value= 1  "
+		::= { iqmddmCmdEntry 153 }
+
+
+	iqmddmSetupTemplatesAddSITemplate OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Add_SI_Template(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Add SI Template  cmdID= 154  value= 1  "
+		::= { iqmddmCmdEntry 154 }
+
+
+	iqmddmSetupTemplatesDeleteTemplate OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Delete_Template(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Delete Template  cmdID= 155  value= 1  "
+		::= { iqmddmCmdEntry 155 }
+
+
+	iqmddmSetupTemplatesSetSequence OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Set_Sequence(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					Set Sequence  cmdID= 156  value= 1  "
+		::= { iqmddmCmdEntry 156 }
+
+
+	iqmddmSetupTemplatesTMPDescription OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Templates
+					TMP Description  cmdID= 159  format=   "
+		::= { iqmddmCmdEntry 159 }
+
+
+	iqmddmSetupTemplatesTMPActiveName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Templates
+					TMP Active Name  cmdID= 160  format=   "
+		::= { iqmddmCmdEntry 160 }
+
+
+	iqmddmSetupTemplatesTMPActiveDesc OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Templates
+					TMP Active Desc  cmdID= 161  format=   "
+		::= { iqmddmCmdEntry 161 }
+
+
+	iqmddmSetupTemplatesTMPActiveStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Templates
+					TMP Active Status  cmdID= 162  format=   "
+		::= { iqmddmCmdEntry 162 }
+
+
+	iqmddmTemplatesChangeTemplate OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_New_Name(0),
+							val_New_Description(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Templates
+					New Name  cmdID= 157  value= 0
+					New Description  cmdID= 157  value= 1  "
+		::= { iqmddmCmdEntry 157 }
+
+
+	iqmddmTemplatesChangeTemplateNewText OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Templates
+					New Text  cmdID= 158  "
+		::= { iqmddmCmdEntry 158 }
+
+
+	iqmddmSetupETR290ExceptExList OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Exception_0(0),
+							val_Exception_1(1),
+							val_Exception_2(2),
+							val_Exception_3(3),
+							val_Exception_4(4),
+							val_Exception_5(5),
+							val_Exception_6(6),
+							val_Exception_7(7),
+							val_Exception_8(8),
+							val_Exception_9(9),
+							val_Exception_10(10),
+							val_Exception_11(11),
+							val_Exception_12(12),
+							val_Exception_13(13),
+							val_Exception_14(14),
+							val_Exception_15(15),
+							val_Exception_16(16),
+							val_Exception_17(17),
+							val_Exception_18(18),
+							val_Exception_19(19),
+							val_Exception_20(20),
+							val_Exception_21(21),
+							val_Exception_22(22),
+							val_Exception_23(23),
+							val_Exception_24(24),
+							val_Exception_25(25),
+							val_Exception_26(26),
+							val_Exception_27(27),
+							val_Exception_28(28),
+							val_Exception_29(29),
+							val_Exception_30(30),
+							val_Exception_31(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Ex. List  cmdID= 127
+					  value= 0 - 31 "
+		::= { iqmddmCmdEntry 127 }
+
+
+	iqmddmSetupETR290ExceptAddPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Add PID  cmdID= 128  "
+		::= { iqmddmCmdEntry 128 }
+
+
+	iqmddmSetupETR290ExceptDeleteException OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Delete Exception  cmdID= 133  "
+		::= { iqmddmCmdEntry 133 }
+
+
+	iqmddmSetupETR290ExceptUnrefPIDExclude OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Unref_PID_Exclude(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Unref PID Exclude  cmdID= 129  value= 1  "
+		::= { iqmddmCmdEntry 129 }
+
+
+	iqmddmSetupETR290ExceptPIDErrExclude OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_PID_Err_Exclude(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					PID Err Exclude  cmdID= 130  value= 1  "
+		::= { iqmddmCmdEntry 130 }
+
+
+	iqmddmSetupETR290ExceptUseCustomTime OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Use_Custom_Time(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Use Custom Time  cmdID= 132  value= 1  "
+		::= { iqmddmCmdEntry 132 }
+
+
+	iqmddmSetupETR290ExceptTime OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Time  cmdID= 131  "
+		::= { iqmddmCmdEntry 131 }
+
+
+	iqmddmMemoriesSaveToMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #1  cmdID= 110  value= 1  "
+		::= { iqmddmCmdEntry 110 }
+
+
+	iqmddmMemoriesSaveToMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #2  cmdID= 111  value= 1  "
+		::= { iqmddmCmdEntry 111 }
+
+
+	iqmddmMemoriesSaveToMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #3  cmdID= 112  value= 1  "
+		::= { iqmddmCmdEntry 112 }
+
+
+	iqmddmMemoriesSaveToMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #4  cmdID= 113  value= 1  "
+		::= { iqmddmCmdEntry 113 }
+
+
+	iqmddmMemoriesSaveToMem5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #5  cmdID= 114  value= 1  "
+		::= { iqmddmCmdEntry 114 }
+
+
+	iqmddmMemoriesSaveToMem6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #6  cmdID= 115  value= 1  "
+		::= { iqmddmCmdEntry 115 }
+
+
+	iqmddmMemoriesSaveToMem7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #7  cmdID= 116  value= 1  "
+		::= { iqmddmCmdEntry 116 }
+
+
+	iqmddmMemoriesSaveToMem8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #8  cmdID= 117  value= 1  "
+		::= { iqmddmCmdEntry 117 }
+
+
+	iqmddmMemoriesRetrieveMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #1  cmdID= 118  value= 1  "
+		::= { iqmddmCmdEntry 118 }
+
+
+	iqmddmMemoriesRetrieveMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #2  cmdID= 119  value= 1  "
+		::= { iqmddmCmdEntry 119 }
+
+
+	iqmddmMemoriesRetrieveMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #3  cmdID= 120  value= 1  "
+		::= { iqmddmCmdEntry 120 }
+
+
+	iqmddmMemoriesRetrieveMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #4  cmdID= 121  value= 1  "
+		::= { iqmddmCmdEntry 121 }
+
+
+	iqmddmMemoriesRetrieveMem5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #5  cmdID= 122  value= 1  "
+		::= { iqmddmCmdEntry 122 }
+
+
+	iqmddmMemoriesRetrieveMem6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #6  cmdID= 123  value= 1  "
+		::= { iqmddmCmdEntry 123 }
+
+
+	iqmddmMemoriesRetrieveMem7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #7  cmdID= 124  value= 1  "
+		::= { iqmddmCmdEntry 124 }
+
+
+	iqmddmMemoriesRetrieveMem8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #8  cmdID= 125  value= 1  "
+		::= { iqmddmCmdEntry 125 }
+
+
+	iqmddmSetupMemoriesDefaultConfig OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Default_Config(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Default Config  cmdID= 126  value= 1  "
+		::= { iqmddmCmdEntry 126 }
+
+
+	iqmddmSetupResetETR290 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_ETR290(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset ETR290  cmdID= 81  value= 1  "
+		::= { iqmddmCmdEntry 81 }
+
+
+	iqmddmSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqmddmCmdEntry 2 }
+
+
+	iqmddmSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqmddmCmdEntry 1 }
+
+
+	iqmddmSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqmddmCmdEntry 4 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 56  value= 1  "
+		::= { iqmddmCmdEntry 56 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 57  value= 1  "
+		::= { iqmddmCmdEntry 57 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 58  value= 1  "
+		::= { iqmddmCmdEntry 58 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 59  value= 1  "
+		::= { iqmddmCmdEntry 59 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 60  value= 1  "
+		::= { iqmddmCmdEntry 60 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 61  value= 1  "
+		::= { iqmddmCmdEntry 61 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 62  value= 1  "
+		::= { iqmddmCmdEntry 62 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 63  value= 1  "
+		::= { iqmddmCmdEntry 63 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_9 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 64  value= 1  "
+		::= { iqmddmCmdEntry 64 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_10 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 65  value= 1  "
+		::= { iqmddmCmdEntry 65 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_11 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 66  value= 1  "
+		::= { iqmddmCmdEntry 66 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_12 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 67  value= 1  "
+		::= { iqmddmCmdEntry 67 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_13 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 68  value= 1  "
+		::= { iqmddmCmdEntry 68 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_14 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 69  value= 1  "
+		::= { iqmddmCmdEntry 69 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_15 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 70  value= 1  "
+		::= { iqmddmCmdEntry 70 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_16 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 71  value= 1  "
+		::= { iqmddmCmdEntry 71 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_17 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 72  value= 1  "
+		::= { iqmddmCmdEntry 72 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_18 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 73  value= 1  "
+		::= { iqmddmCmdEntry 73 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_19 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 74  value= 1  "
+		::= { iqmddmCmdEntry 74 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_20 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 75  value= 1  "
+		::= { iqmddmCmdEntry 75 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_21 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 76  value= 1  "
+		::= { iqmddmCmdEntry 76 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_22 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 77  value= 1  "
+		::= { iqmddmCmdEntry 77 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_23 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 78  value= 1  "
+		::= { iqmddmCmdEntry 78 }
+
+
+	iqmddmPCOnlyPCOnlyLabel_24 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - [PC Only]
+					  cmdID= 79  value= 1  "
+		::= { iqmddmCmdEntry 79 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 82  "
+		::= { iqmddmCmdEntry 82 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 83  "
+		::= { iqmddmCmdEntry 83 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 84  "
+		::= { iqmddmCmdEntry 84 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 85  "
+		::= { iqmddmCmdEntry 85 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 86  "
+		::= { iqmddmCmdEntry 86 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 87  "
+		::= { iqmddmCmdEntry 87 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 88  "
+		::= { iqmddmCmdEntry 88 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 89  "
+		::= { iqmddmCmdEntry 89 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 90  "
+		::= { iqmddmCmdEntry 90 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 91  "
+		::= { iqmddmCmdEntry 91 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 92  "
+		::= { iqmddmCmdEntry 92 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 93  "
+		::= { iqmddmCmdEntry 93 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 94  "
+		::= { iqmddmCmdEntry 94 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 95  "
+		::= { iqmddmCmdEntry 95 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 96  "
+		::= { iqmddmCmdEntry 96 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 97  "
+		::= { iqmddmCmdEntry 97 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 98  "
+		::= { iqmddmCmdEntry 98 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_18 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 99  "
+		::= { iqmddmCmdEntry 99 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_19 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 100  "
+		::= { iqmddmCmdEntry 100 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_20 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 101  "
+		::= { iqmddmCmdEntry 101 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_21 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 102  "
+		::= { iqmddmCmdEntry 102 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_22 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 103  "
+		::= { iqmddmCmdEntry 103 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 104  "
+		::= { iqmddmCmdEntry 104 }
+
+
+	iqmddmPCOnlyPCOnlyEditLabel_24 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - [PC Only]
+					  cmdID= 105  "
+		::= { iqmddmCmdEntry 105 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 1  cmdID= 190  format=   "
+		::= { iqmddmCmdEntry 190 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 2  cmdID= 191  format=   "
+		::= { iqmddmCmdEntry 191 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 3  cmdID= 192  format=   "
+		::= { iqmddmCmdEntry 192 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 4  cmdID= 193  format=   "
+		::= { iqmddmCmdEntry 193 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 5  cmdID= 194  format=   "
+		::= { iqmddmCmdEntry 194 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 6  cmdID= 195  format=   "
+		::= { iqmddmCmdEntry 195 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 7  cmdID= 196  format=   "
+		::= { iqmddmCmdEntry 196 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 8  cmdID= 197  format=   "
+		::= { iqmddmCmdEntry 197 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 9  cmdID= 198  format=   "
+		::= { iqmddmCmdEntry 198 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 10  cmdID= 199  format=   "
+		::= { iqmddmCmdEntry 199 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 11  cmdID= 200  format=   "
+		::= { iqmddmCmdEntry 200 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 12  cmdID= 201  format=   "
+		::= { iqmddmCmdEntry 201 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 13  cmdID= 202  format=   "
+		::= { iqmddmCmdEntry 202 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 14  cmdID= 203  format=   "
+		::= { iqmddmCmdEntry 203 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Label15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Label 15  cmdID= 204  format=   "
+		::= { iqmddmCmdEntry 204 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 1  cmdID= 205  format=   "
+		::= { iqmddmCmdEntry 205 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 2  cmdID= 206  format=   "
+		::= { iqmddmCmdEntry 206 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 3  cmdID= 207  format=   "
+		::= { iqmddmCmdEntry 207 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 4  cmdID= 208  format=   "
+		::= { iqmddmCmdEntry 208 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 5  cmdID= 209  format=   "
+		::= { iqmddmCmdEntry 209 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 6  cmdID= 210  format=   "
+		::= { iqmddmCmdEntry 210 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 7  cmdID= 211  format=   "
+		::= { iqmddmCmdEntry 211 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 8  cmdID= 212  format=   "
+		::= { iqmddmCmdEntry 212 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 9  cmdID= 213  format=   "
+		::= { iqmddmCmdEntry 213 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 10  cmdID= 214  format=   "
+		::= { iqmddmCmdEntry 214 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 11  cmdID= 215  format=   "
+		::= { iqmddmCmdEntry 215 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 12  cmdID= 216  format=   "
+		::= { iqmddmCmdEntry 216 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 13  cmdID= 217  format=   "
+		::= { iqmddmCmdEntry 217 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 14  cmdID= 218  format=   "
+		::= { iqmddmCmdEntry 218 }
+
+
+	iqmddmPCOnlyDontUseETR290ErrorsETR290Status15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					ETR290 Status 15  cmdID= 219  format=   "
+		::= { iqmddmCmdEntry 219 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 13  cmdID= 177  format=   "
+		::= { iqmddmCmdEntry 177 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 14  cmdID= 178  format=   "
+		::= { iqmddmCmdEntry 178 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 15  cmdID= 179  format=   "
+		::= { iqmddmCmdEntry 179 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 16  cmdID= 180  format=   "
+		::= { iqmddmCmdEntry 180 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 17  cmdID= 181  format=   "
+		::= { iqmddmCmdEntry 181 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine18 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 18  cmdID= 182  format=   "
+		::= { iqmddmCmdEntry 182 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine19 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 19  cmdID= 183  format=   "
+		::= { iqmddmCmdEntry 183 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine20 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 20  cmdID= 184  format=   "
+		::= { iqmddmCmdEntry 184 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine21 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 21  cmdID= 185  format=   "
+		::= { iqmddmCmdEntry 185 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine22 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 22  cmdID= 186  format=   "
+		::= { iqmddmCmdEntry 186 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 23  cmdID= 187  format=   "
+		::= { iqmddmCmdEntry 187 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine24 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 24  cmdID= 188  format=   "
+		::= { iqmddmCmdEntry 188 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine25 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 25  cmdID= 189  format=   "
+		::= { iqmddmCmdEntry 189 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine0 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 0  cmdID= 164  format=   "
+		::= { iqmddmCmdEntry 164 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 1  cmdID= 165  format=   "
+		::= { iqmddmCmdEntry 165 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 2  cmdID= 166  format=   "
+		::= { iqmddmCmdEntry 166 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 3  cmdID= 167  format=   "
+		::= { iqmddmCmdEntry 167 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 4  cmdID= 168  format=   "
+		::= { iqmddmCmdEntry 168 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 5  cmdID= 169  format=   "
+		::= { iqmddmCmdEntry 169 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 6  cmdID= 170  format=   "
+		::= { iqmddmCmdEntry 170 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 7  cmdID= 171  format=   "
+		::= { iqmddmCmdEntry 171 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 8  cmdID= 172  format=   "
+		::= { iqmddmCmdEntry 172 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 9  cmdID= 173  format=   "
+		::= { iqmddmCmdEntry 173 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 10  cmdID= 174  format=   "
+		::= { iqmddmCmdEntry 174 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 11  cmdID= 175  format=   "
+		::= { iqmddmCmdEntry 175 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLinesTMPStatusLine12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					TMP Status Line 12  cmdID= 176  format=   "
+		::= { iqmddmCmdEntry 176 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLines223 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					  cmdID= 223  format=   "
+		::= { iqmddmCmdEntry 223 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLines224 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					  cmdID= 224  format=   "
+		::= { iqmddmCmdEntry 224 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLines225 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					  cmdID= 225  format=   "
+		::= { iqmddmCmdEntry 225 }
+
+
+	iqmddmPCOnlyDontUseTMPStatusLines226 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - [PC Only]
+					  cmdID= 226  format=   "
+		::= { iqmddmCmdEntry 226 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: No Serial No. Set
+--				:
+-- Comments		: Factory defined serial number
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: Presence of unit in Rollcall logging network
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RVS
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.82.86.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.82.86.83
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: TMP
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.84.77.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.84.77.80
+-- Vary			: YES
+--
+-- Value(s)		: NO TEMPLATE
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SYNC
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.83.89.78.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.89.78.67
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DA IP
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.68.65.32.73.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.68.65.32.73.80
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: FAIL: Xilinx program failed.
+--				: FAIL: Xilinx <-> CPU Bus Failure
+--				: FAIL: PSI FIFO Failure (Write)
+--				: FAIL: PSI FIFO Failure (Read
+--				: FAIL: PSI FIFO Failure (Write)
+--				: FAIL: PSI FIFO Failure (Read)
+--				: FAIL: Line Clock Failure
+--				: FAIL: Local 27Mhz osc. ct. failur
+--				: FAIL: Interrupt #1 Failure
+--				: FAIL: Interrupt #2 Failure
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ETR290
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.84.82.50.57.48
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.84.82.50.57.48
+-- Vary			: YES
+--
+-- Value(s)		: I/P FAIL
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.49
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.50
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MON IP
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.77.79.78.32.73.80
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.77.79.78.32.73.80
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: B/R Viol
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.66.47.82.32.86.105.111.108
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.66.47.82.32.86.105.111.108
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				:
+-- Comments		: Number of current RollCall control sessions.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: All Stats
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.65.108.108.32.83.116.97.116.115
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.65.108.108.32.83.116.97.116.115
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DA Carrier
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.68.65.32.67.97.114.114.105.101.114
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.68.65.32.67.97.114.114.105.101.114
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: All Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.65.108.108.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.65.108.108.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 2
+--				:
+-- Comments		: Error count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Mon Carrier
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.77.111.110.32.67.97.114.114.105.101.114
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.77.111.110.32.67.97.114.114.105.101.114
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: OK
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RVS Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.82.86.83.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.82.86.83.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: TMP Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.84.77.80.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.84.77.80.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: B/R Viol Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.47.82.32.86.105.111.108.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.47.82.32.86.105.111.108.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION1
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.70.79.82.77.65.84.73.79.78.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.70.79.82.77.65.84.73.79.78.49
+-- Vary			: YES
+--
+-- Value(s)		: string
+--				:
+-- Comments		: User information field
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INFORMATION2
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.70.79.82.77.65.84.73.79.78.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.70.79.82.77.65.84.73.79.78.50
+-- Vary			: YES
+--
+-- Value(s)		: string
+--				:
+-- Comments		: User information field
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2008-11-14T10:43:12Z
+--				:
+-- Comments		: Last known restart time
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Sync Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.83.121.110.99.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.83.121.110.99.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: -
+--				:
+-- Comments		: Last modified time
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DA IP Loss Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.68.65.32.73.80.32.76.111.115.115.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.68.65.32.73.80.32.76.111.115.115.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Etr290 Err Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.69.116.114.50.57.48.32.69.114.114.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.69.116.114.50.57.48.32.69.114.114.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Mon IP Loss Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.77.111.110.32.73.80.32.76.111.115.115.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.77.111.110.32.73.80.32.76.111.115.115.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number count
+--
+---------------------------------------------------------------------------------------------------

@@ -32,9 +32,9 @@
 #   ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
 #
 #   # plus a live tally listener (lab, VPN):
-#   TSL_TEST_HOST=10.100.0.42 \
+#   TSL_TEST_HOST=10.6.250.42 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/tsl-integration.yml
-#   TSL_TEST_HOST=10.100.0.42 TSL_TEST_PORT=8901 ansible-playbook ...
+#   TSL_TEST_HOST=10.6.250.42 TSL_TEST_PORT=8901 ansible-playbook ...
 - name: TSL UMD integration (loopback verb-drive v5.0 + optional live listener)
   hosts: localhost
   connection: local

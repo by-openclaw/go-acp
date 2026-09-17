@@ -24,8 +24,8 @@ func TestValidate_FullScan(t *testing.T) {
 	p := &Plugin{}
 	bigBad := make([]byte, 20) // PVER byte (offset 4) = 0 → decode error; >16 → shortHex truncation
 	trames := []wiretrace.Trame{
-		{Direction: wiretrace.DirectionTx, Hex: "zz"},               // hex decode error
-		{Direction: wiretrace.DirectionRx, Hex: "0102"},             // too short → decode error + shortHex
+		{Direction: wiretrace.DirectionTx, Hex: "zz"},                       // hex decode error
+		{Direction: wiretrace.DirectionRx, Hex: "0102"},                     // too short → decode error + shortHex
 		{Direction: wiretrace.DirectionRx, Hex: hex.EncodeToString(bigBad)}, // >16 bytes, bad PVER → shortHex >16 branch
 		{Direction: wiretrace.DirectionTx, Hex: hexFrame(t, &codec.Message{
 			MTID: 5, MType: codec.MTypeRequest, MCode: byte(codec.MethodGetObject), ObjGroup: codec.GroupControl, ObjID: 0})},

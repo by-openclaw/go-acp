@@ -88,18 +88,18 @@ func TestACP2ObjType_String(t *testing.T) {
 
 func TestNumberType_String(t *testing.T) {
 	cases := map[NumberType]string{
-		NumTypeS8:     "s8",
-		NumTypeS16:    "s16",
-		NumTypeS32:    "s32",
-		NumTypeS64:    "s64",
-		NumTypeU8:     "u8",
-		NumTypeU16:    "u16",
-		NumTypeU32:    "u32",
-		NumTypeU64:    "u64",
-		NumTypeFloat:  "float",
-		NumTypePreset: "preset",
-		NumTypeIPv4:   "ipv4",
-		NumTypeString: "string",
+		NumTypeS8:      "s8",
+		NumTypeS16:     "s16",
+		NumTypeS32:     "s32",
+		NumTypeS64:     "s64",
+		NumTypeU8:      "u8",
+		NumTypeU16:     "u16",
+		NumTypeU32:     "u32",
+		NumTypeU64:     "u64",
+		NumTypeFloat:   "float",
+		NumTypePreset:  "preset",
+		NumTypeIPv4:    "ipv4",
+		NumTypeString:  "string",
 		NumberType(99): "numtype(99)",
 	}
 	for in, want := range cases {

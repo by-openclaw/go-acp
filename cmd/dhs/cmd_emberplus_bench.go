@@ -26,7 +26,7 @@ func runEmberplusBench(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer emberplus bench <host> --port N --path <matrix.path> --dm <id> [--n 100] [--op connect|absolute|disconnect] [--targets N] [--sources N]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *matrixPath == "" {
 		return fmt.Errorf("--path is required")

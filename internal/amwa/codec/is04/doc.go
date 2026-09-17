@@ -5,12 +5,12 @@
 //
 // Resources covered (one Go struct per top-level resource):
 //
-//   Node      — the device itself; Node API root
-//   Device    — coherent control surface inside a Node
-//   Source    — essence origin (audio/video/data/mux)
-//   Flow      — specific encoding of a Source
-//   Sender    — network egress carrying a Flow
-//   Receiver  — network ingress consuming someone else's Sender
+//	Node      — the device itself; Node API root
+//	Device    — coherent control surface inside a Node
+//	Source    — essence origin (audio/video/data/mux)
+//	Flow      — specific encoding of a Source
+//	Sender    — network egress carrying a Flow
+//	Receiver  — network ingress consuming someone else's Sender
 //
 // Plus the Registration envelope (`{type, data}`) used to POST resources
 // to a Registry.

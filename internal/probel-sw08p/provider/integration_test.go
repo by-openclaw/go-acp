@@ -9,6 +9,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"sync"
@@ -36,7 +37,7 @@ func emptyExport() *canonical.Export {
 // listener never comes up within 2 s.
 func startProvider(t *testing.T, exp *canonical.Export) (string, func()) {
 	t.Helper()
-	srv := newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(ctx, "127.0.0.1:0") }()
@@ -89,7 +90,7 @@ func portOf(addr string) int {
 // the integration tests use the same construction path as production.
 func newConsumer() *cons.Plugin {
 	f := &cons.Factory{}
-	return f.New(slog.New(slog.NewTextHandler(io.Discard, nil))).(*cons.Plugin)
+	return f.New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*cons.Plugin)
 }
 
 // TestIntegrationMaintenanceRoundTrip (S-Int-A): consumer issues a
@@ -283,11 +284,11 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 	// sides. Payloads captured so the test asserts dst/src correctness,
 	// not just the count.
 	var (
-		aMu            sync.Mutex
-		aConnected     []codec.CrosspointConnectedParams
-		aGoDoneStatus  []codec.SalvoGoDoneStatus
-		bMu            sync.Mutex
-		bConnected     []codec.CrosspointConnectedParams
+		aMu           sync.Mutex
+		aConnected    []codec.CrosspointConnectedParams
+		aGoDoneStatus []codec.SalvoGoDoneStatus
+		bMu           sync.Mutex
+		bConnected    []codec.CrosspointConnectedParams
 	)
 	cliA, err := pA.ExposeClient()
 	if err != nil {

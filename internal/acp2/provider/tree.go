@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 )
 
 // entry is one object in the served tree. Holds the canonical source
@@ -17,13 +17,13 @@ import (
 type entry struct {
 	objID    uint32
 	slot     uint8
-	parent   uint32             // 0 for the slot root (ROOT_NODE_V2)
+	parent   uint32 // 0 for the slot root (ROOT_NODE_V2)
 	label    string
-	access   uint8              // bit 0 read, bit 1 write (spec pid=3)
-	objType  codec.ACP2ObjType  // node / number / enum / ipv4 / string / preset
-	numType  codec.NumberType   // meaningful for codec.ObjTypeNumber, codec.ObjTypeEnum (u32 index)
-	children []uint32           // pid=14 u32[] — direct child obj-ids
-	node     *canonical.Node    // set when objType=node
+	access   uint8                // bit 0 read, bit 1 write (spec pid=3)
+	objType  codec.ACP2ObjType    // node / number / enum / ipv4 / string / preset
+	numType  codec.NumberType     // meaningful for codec.ObjTypeNumber, codec.ObjTypeEnum (u32 index)
+	children []uint32             // pid=14 u32[] — direct child obj-ids
+	node     *canonical.Node      // set when objType=node
 	param    *canonical.Parameter // set for leaf types
 	// presetDepth is the N of a preset child's idx list (pid 7). Zero
 	// means "not a preset" — every other object type leaves this at 0.
@@ -48,6 +48,11 @@ type tree struct {
 	mu      sync.RWMutex
 	perSlot map[uint8]map[uint32]*entry
 	slotN   uint8
+	// labelDeviations counts entries whose wire label violates the
+	// ACP2 §"Versions" charset — served VERBATIM (emulation fidelity,
+	// see wireLabel) and surfaced here so newServer can log the count
+	// as the observable spec-deviation event.
+	labelDeviations int
 }
 
 func emptyTree() *tree {
@@ -120,6 +125,16 @@ func newTree(exp *canonical.Export) (*tree, error) {
 		}
 	}
 	t.slotN = maxSlot
+	for _, index := range t.perSlot {
+		for id, e := range index {
+			if id == 0 && e.objID != 0 {
+				continue // obj-id 0 alias of the slot root — counted once
+			}
+			if labelDeviatesSpec(e.label) {
+				t.labelDeviations++
+			}
+		}
+	}
 	return t, nil
 }
 
@@ -152,7 +167,7 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			objID:   id,
 			slot:    slot,
 			parent:  parent,
-			label:   sanitizeLabel(x.Identifier),
+			label:   wireLabel(x.Identifier),
 			access:  deriveAccess(x.Access),
 			objType: codec.ObjTypeNode,
 			node:    x,
@@ -187,14 +202,14 @@ func flatten(slot uint8, parent uint32, el canonical.Element, index map[uint32]*
 			return fmt.Errorf("obj %d (%q): %w", id, x.Identifier, err)
 		}
 		e := &entry{
-			objID:       id,
-			slot:        slot,
-			parent:      parent,
-			label:       sanitizeLabel(x.Identifier),
-			access:      deriveAccess(x.Access),
-			objType:     objType,
-			numType:     numType,
-			param:       x,
+			objID:         id,
+			slot:          slot,
+			parent:        parent,
+			label:         wireLabel(x.Identifier),
+			access:        deriveAccess(x.Access),
+			objType:       objType,
+			numType:       numType,
+			param:         x,
 			presetDepth:   presetDepthHint(x),
 			presetIdxList: presetIdxHint(x),
 		}
@@ -233,46 +248,39 @@ func isDisabledParameter(p *canonical.Parameter) bool {
 	return false
 }
 
-// sanitizeLabel returns the spec-compliant form of an ACP2 object
-// label. Per acp2_protocol.docx §"Versions" line 357 the wire allows
-// only [A-Za-z0-9 \-]; any other character is replaced with `-`.
+// wireLabel returns the label to serve on the wire (pid=2) —
+// VERBATIM, empty defaulting to "obj" (spec mandates non-empty).
 //
-// Real EVS Neuron firmware emits labels like "ROOT_NODE_V2" with an
-// underscore — non-compliant per spec. Sanitising here keeps OUR
-// wire spec-clean (per internal/acp2/CLAUDE.md); the
-// canonical element is unchanged so other consumers see the
-// original.
-//
-// Returns "obj" when the input becomes empty after stripping
-// (defensive — spec mandates a non-empty label).
-func sanitizeLabel(label string) string {
+// History: from 2026-05-08 (cd7af27e) to 2026-08-20 the provider
+// REWROTE labels to the spec charset of acp2_protocol.docx §"Versions"
+// line 357 ([A-Za-z0-9 \-]), turning the real Neuron's "ROOT_NODE_V2"
+// into "ROOT-NODE-V2". That mutation broke emulation: Cerebrum's
+// Neuron driver binds its default object model by exact label paths,
+// so a renamed root orphaned the whole tree (wire-proven live
+// 2026-08-20, staging capture vs a real-device walk of 10.44.72.18).
+// Per the repo's spec-strict posture the deviation is the DEVICE's,
+// and our job is to absorb and surface it — never to alter the data:
+// the emulator must state what the emulated hardware states.
+// labelDeviatesSpec reports the deviation so newTree can count + log
+// it (the observable event), replacing the silent rewrite.
+func wireLabel(label string) string {
 	if label == "" {
 		return "obj"
 	}
-	dirty := false
+	return label
+}
+
+// labelDeviatesSpec reports whether a label violates the ACP2
+// §"Versions" charset ([A-Za-z0-9 \-]). Real EVS Neuron firmware
+// does (underscores) — surfaced as a count at tree build, served
+// verbatim.
+func labelDeviatesSpec(label string) bool {
 	for _, r := range label {
 		if !isSpecLabelByte(r) {
-			dirty = true
-			break
+			return true
 		}
 	}
-	if !dirty {
-		return label
-	}
-	var b strings.Builder
-	b.Grow(len(label))
-	for _, r := range label {
-		if isSpecLabelByte(r) {
-			b.WriteRune(r)
-		} else {
-			b.WriteByte('-')
-		}
-	}
-	out := b.String()
-	if out == "" || strings.Trim(out, "-") == "" {
-		return "obj"
-	}
-	return out
+	return false
 }
 
 // isSpecLabelByte reports whether r is in the ACP2 §"Versions"

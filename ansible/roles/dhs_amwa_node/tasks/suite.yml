@@ -1,0 +1,29 @@
+---
+# One suite at one IS-04 minor -- if that combination has a subject.
+#
+# Some suites only mean something above a given minor, and the tool
+# says so itself: IS-05-02 test_01 is literally "Node API must be
+# running v1.2 or greater". IS-05 is advertised through the Device
+# `controls` array, which arrived in IS-04 v1.1, and IS-07 needs a Flow
+# `media_type` that v1.0 has no field for. Running those suites at v1.0
+# measures a device that cannot exist and reports the impossibility as
+# our defect.
+#
+# This is a SCOPING rule, not a way to duck a failure. A suite is
+# skipped only where the spec it tests is not expressible at that
+# minor, and every minor still runs every suite that does apply to it.
+
+- name: "{{ api_ver }} / {{ suite.id }} — not applicable at this minor"
+  ansible.builtin.debug:
+    msg: >-
+      skipped: {{ suite.id }} needs IS-04 {{ suite.min_node_ver }} or
+      greater; this round serves {{ api_ver }}
+  when:
+    - suite.min_node_ver is defined
+    - api_ver is version(suite.min_node_ver, '<')
+
+- name: "{{ api_ver }} / {{ suite.id }} — score it"
+  ansible.builtin.include_tasks: suite_run.yml
+  when: >-
+    suite.min_node_ver is not defined
+    or api_ver is version(suite.min_node_ver, '>=')

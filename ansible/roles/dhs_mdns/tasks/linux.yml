@@ -1,0 +1,23 @@
+---
+- name: Avahi packages present
+  ansible.builtin.package:
+    name: "{{ dhs_mdns_linux_packages[ansible_os_family] }}"
+    state: present
+
+# Docker hosts: never announce on docker0 (172.17.0.1 is useless to peers
+# and wins the A-record race — seen on dhs-debian). Keyed on the interface
+# list so hosts without Docker stay untouched.
+- name: Avahi ignores docker0 on Docker hosts
+  ansible.builtin.lineinfile:
+    path: /etc/avahi/avahi-daemon.conf
+    regexp: '^\s*#?\s*deny-interfaces\s*='
+    line: "deny-interfaces=docker0"
+    insertafter: '^\[server\]'
+  when: "'docker0' in ansible_interfaces"
+  notify: restart avahi (mdns)
+
+- name: avahi-daemon enabled and running
+  ansible.builtin.service:
+    name: "{{ dhs_mdns_linux_service }}"
+    state: started
+    enabled: true

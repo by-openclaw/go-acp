@@ -124,7 +124,49 @@ Three device classes:
 | `SNMP` | SNMP-managed device |
 | `Device` | Generic non-router, non-SNMP device |
 
+> **Wire-actual, NOT spec (live 2026-08-16):** the server is
+> case-sensitive on this attribute's VALUE and accepts only the
+> UPPERCASE forms — `DEVICE_TYPE="Router"` (the spec's own spelling)
+> NACKs 10, `DEVICE_TYPE="ROUTER"` answers. Same spec-vs-wire case
+> pattern as element names ("Element case on the wire" above). Encoder
+> policy: always emit UPPERCASE; CLI flags accept any case.
+
 ### LOCK (§3.2)
+
+> **Wire-actual, NOT spec (live NOC 2026-08-16, DEST_LOCK on the
+> route-master) — SOLVED:** the server accepts the five-mode set values
+> (`LOCKED`, `PROTECTED` verified; lock visible in the Matrix View) and
+> clears with **`LOCK="RELEASED"`** — a SIXTH value absent from the
+> §3.2 table and the worked examples, discovered by listening while the
+> UI released (DEST_LOCK events carry `LOCK_STATE` + **`LOCKED_BY`**;
+> cleared locks report `LOCK_STATE="RELEASED"`). The spec's documented
+> clearing forms all NACK 8: §4.1.2/4.1.3 `RELEASE`, legacy `PROTECT`,
+> §3.2 `UNLOCKED`. Cross-session release by the same NB user works with
+> RELEASED. `unlock` sends RELEASED by default. **All-level form
+> verified** (2026-08-16): omitting LEVEL locks every existing level in
+> one action (14 per-level events observed; nonexistent levels no-op
+> silently). **Ownership between ADMIN-privileged actors is not
+> enforced** (verified: the XY panel's Admin lock was overwritten by
+> YOB's LOCK — LOCKED_BY flipped — and vice-versa; both actors carry
+> admin rights, so this proves admin-level override, NOT the absence
+> of enforcement in general — whether a NON-admin user can override /
+> release is untested, owner's TODO). LOCKED_BY is at minimum display
+> metadata. RELEASED is IDEMPOTENT: re-releasing a free cell ACKs and
+> re-emits the event. EVS follow-ups: confirm RELEASED is the
+> sanctioned clearing action; document the lock permission model.
+
+> **Wire-actual (live NOC 2026-08-16): NB DEST_LOCK ≠ device-native
+> module locks.** The DEST_LOCK table exists per addressing target —
+> route-master AND physical routers (obtain granted on a ROUTER-class
+> device, RELEASED baseline returned). But a lock set in the Cerebrum
+> UI on a device's own module view (Snell SW-P-08, shelf slot 00)
+> NEVER surfaces in NB: no DEST_LOCK event on `listen --router` while
+> toggling, and the cell reads RELEASED. Those locks are device-native
+> protect state driven through Cerebrum's device driver — read/write
+> them via the device's own protocol (SW-P-08 protect verbs), not NB.
+> Consequence: `-lock.csv` snapshots exactly the NB lock domain; a
+> whole-system snapshot needs the probel protect verbs for module
+> locks on SW-P-08-class devices.
 
 Valid values for the `LOCK` / `lock` attribute on routing
 actions/events. Observed from spec examples:

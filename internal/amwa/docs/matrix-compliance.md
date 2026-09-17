@@ -64,9 +64,9 @@ deployment topology. Each mode maps to a CLI flag set:
 |---|---|---|
 | **Full mDNS + Registry** | Greenfield / lab / spec-compliant peers (nmos-cpp). | `dhs registry nmos serve --mdns`<br>`dhs producer nmos serve` (Node auto-discovers Registry)<br>`dhs consumer nmos walk` (Controller auto-discovers Registry) |
 | **Unicast Registry** (mDNS off, static Registry hint) | Hardened deployments where mDNS is firewalled but a Registry still exists. | `dhs registry nmos serve --no-mdns --advertise-host <ip>:<port>`<br>`dhs producer nmos serve --no-mdns --registry <ip>:<port>`<br>`dhs consumer nmos walk <registry-ip>:<port>` |
-| **Direct-Node** (no Registry at all) | Lawo VSM, vendor environments without IS-04 registration support, end-user environments where mDNS is blocked. | `dhs producer nmos serve --no-mdns --no-registry`<br>`dhs consumer nmos walk-nodes --peer-list peers.csv`<br>`dhs consumer nmos walk-node <node-ip>:<port>` |
-| **mDNS direct-Node** (mDNS on, no Registry) | EVS Cerebrum peer-to-peer mode and any deployment where mDNS works but no Registry is provisioned. Nodes are mDNS-discovered on `_nmos-node._tcp` (peer service type) and addressed directly. See [`cerebrum-interop.md`](cerebrum-interop.md). | `dhs producer nmos serve --mdns --no-registry`<br>`dhs consumer nmos walk-nodes --mdns --no-registry` |
-| **CSV bootstrap** | Operations team gives dhs a static list of Node URLs (Lawo VSM convention). | `--peer-list peers.csv` (one Node URL per line) |
+| **Direct-Node** (no Registry at all) | Lawo VSM, vendor environments without IS-04 registration support, end-user environments where mDNS is blocked. | `dhs producer nmos serve --no-mdns --no-registry`<br>`dhs consumer nmos walk --node http://<node-ip>:<port>` (one call per Node) |
+| **mDNS direct-Node** (mDNS on, no Registry) | EVS Cerebrum peer-to-peer mode and any deployment where mDNS works but no Registry is provisioned. Nodes are mDNS-discovered on `_nmos-node._tcp` (peer service type) and addressed directly. See [`cerebrum-interop.md`](cerebrum-interop.md). | `dhs producer nmos serve --mdns --no-registry`<br>`dhs consumer nmos discover --mdns --service _nmos-node._tcp`, then `walk --node http://<host>:<port>` |
+| **CSV bootstrap** | Operations team gives dhs a static list of Node addresses (Lawo VSM convention). | `--peer-list peers.csv` on `discover` / `system` (CSV: `host,port[,api_ver]` per line) |
 
 Default mode: **Full mDNS + Registry**. Deviations fire a startup-log
 banner naming the chosen mode so debugging is unambiguous.
@@ -75,41 +75,36 @@ banner naming the chosen mode so debugging is unambiguous.
 
 ## Compliance event catalogue (NMOS)
 
-Each event is fired at most once per (session, peer, deviation) tuple
-to avoid log spam. All names use snake_case prefixed with `nmos_`.
+The events the code emits today (every emission site lives under
+`internal/amwa/`). All names use snake_case prefixed with `nmos_`.
+Events fire on each occurrence — there is no per-(session, peer,
+deviation) deduplication in the reporter today.
 
 ```
 # IS-04 deviations
-nmos_registry_not_supported          peer rejects POST /resource → fall back to direct-Node mode
-nmos_query_api_missing               peer has no /x-nmos/query/* → can't browse, must walk per-Node
-nmos_node_api_version_downgrade      peer offers only v1.0/v1.1, we wanted v1.3
-nmos_p2p_only                        no Registry discovered, falling back to peer-to-peer
+nmos_is04_schema_deviation           decoded resource does not match the AMWA schema at that minor; absorbed at Warn
+nmos_is04_unknown_field              peer sent a field the modelled resource does not carry; absorbed + recorded
 
 # IS-05 deviations
-nmos_scheduled_activation_unsupported peer rejected activate_scheduled_*; retried as activate_immediate
-nmos_constraints_endpoint_missing    GET /constraints returned 404
-nmos_bulk_unsupported                POST /bulk/* returned 404 or 405
-nmos_master_enable_ignored           PATCH set master_enable=true, GET /active still shows false
+nmos_is05_no_transport_file          sender served no transport file; receiver still targeted by sender id
+nmos_is05_empty_transport_file       sender served an empty transport file
+nmos_is05_active_unreadable          receiver's /active state unreadable during a dry-run read-back
+nmos_is05_master_enable_ignored      stage accepted but device reports master_enable=false; no signal will flow
+nmos_is05_destination_ignored        device kept destination_ip empty / 0.0.0.0 after a stage that set it
 
-# IS-07 / IS-12 / MS-05 deviations
-nmos_is07_unsupported                Source advertises events but no WS/MQTT endpoint
-nmos_is12_unsupported                Device controls array has no urn:x-nmos:control:ncp/*
-nmos_ms05_class_missing              ClassManager doesn't expose class we expected (per BCP-008)
+# IS-09 deviations
+nmos_is09_global_deviation           /global fails the IS-09 schema; absorbed and used anyway
 
-# Discovery deviations
-nmos_mdns_disabled                   user passed --no-mdns
-nmos_mdns_no_response                mDNS browser ran for full timeout, found nothing
-nmos_csv_peer_unreachable            entry in --peer-list refused TCP connect
+# Version negotiation
+nmos_no_common_api_ver               no common IS-04 api_ver between us and the peer's advertised set
 
-# Wire deviations
-nmos_resource_schema_violation       resource JSON failed BCP-004 / IS-04 schema validation but parsed
-nmos_subscription_dropped            WS subscription closed unexpectedly; reconnect attempted
-nmos_heartbeat_late                  Node missed POST /health by > 1× ttl interval (warn before purge)
+# Query API
+nmos_query_collection_failed         one catalogue collection failed during a walk; snapshot is partial
 ```
 
-Every event is also surfaced via the standard dhs metrics counter
-(`dhs_connector_compliance_events_total{proto="nmos",event="..."}`)
-once Phase 4+ wires NMOS into `internal/metrics/`.
+Events surface through `spec.Reporter` (`codec/spec/compliance.go`):
+production wires a logger-backed reporter in `cmd/dhs/cmd_nmos.go`;
+tests assert against `spec.SliceReporter`.
 
 ---
 

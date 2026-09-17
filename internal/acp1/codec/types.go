@@ -151,20 +151,20 @@ const (
 
 // String field maximums per spec §"Object details" p. 20.
 const (
-	MaxLabelLen   = 16 // max chars excluding the NUL terminator
-	MaxUnitLen    = 4  // max chars excluding NUL
-	MaxAlarmMsg   = 32 // alarm on/off event message, excluding NUL
+	MaxLabelLen = 16 // max chars excluding the NUL terminator
+	MaxUnitLen  = 4  // max chars excluding NUL
+	MaxAlarmMsg = 32 // alarm on/off event message, excluding NUL
 )
 
 // ACP transport errors (MType=3, MCODE < 16). Spec §"ACP Header" p. 11.
 type TransportErrCode uint8
 
 const (
-	TErrUndefined         TransportErrCode = 0
-	TErrInternalBusComm   TransportErrCode = 1
+	TErrUndefined          TransportErrCode = 0
+	TErrInternalBusComm    TransportErrCode = 1
 	TErrInternalBusTimeout TransportErrCode = 2
 	TErrTransactionTimeout TransportErrCode = 3
-	TErrOutOfResources    TransportErrCode = 4
+	TErrOutOfResources     TransportErrCode = 4
 )
 
 // AxonNet object errors (MType=3, MCODE >= 16). Spec §"AxonNet error codes" p. 29.

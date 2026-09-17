@@ -92,7 +92,7 @@ func printAdminResp(resp *acp1provider.AdminResponse) error {
 func acp1AdminPing(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("admin ping", flag.ExitOnError)
 	name := fs.String("name", "dhs-acp1", "provider instance name")
-	_ = fs.Parse(args)
+	_ = parseVerbFlags(fs, args)
 	resp, err := adminCall(ctx, *name, "ping", nil)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func acp1AdminSlot(ctx context.Context, args []string) error {
 	switch sub {
 	case "load":
 		card := fs.String("card", "", "DM-library card path: vendor/product/model-rev/proto")
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 		if *slot < 0 || *card == "" {
 			return fmt.Errorf("admin slot load: --slot and --card are required")
 		}
@@ -125,7 +125,7 @@ func acp1AdminSlot(ctx context.Context, args []string) error {
 		}
 		return printAdminResp(resp)
 	case "unload":
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 		if *slot < 0 {
 			return fmt.Errorf("admin slot unload: --slot is required")
 		}
@@ -136,7 +136,7 @@ func acp1AdminSlot(ctx context.Context, args []string) error {
 		return printAdminResp(resp)
 	case "state":
 		state := fs.String("state", "", "target state: no_card / powerup / boot / present / error / removed")
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 		if *slot < 0 || *state == "" {
 			return fmt.Errorf("admin slot state: --slot and --state are required")
 		}
@@ -164,7 +164,7 @@ func acp1AdminValue(ctx context.Context, args []string) error {
 	case "set":
 		path := fs.String("path", "", `object path "1.<slot+1>.<group>.<id>"`)
 		valStr := fs.String("value", "", "new value (parsed as int if numeric, else string)")
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 		if *path == "" || *valStr == "" {
 			return fmt.Errorf("admin value set: --path and --value are required")
 		}
@@ -186,7 +186,7 @@ func acp1AdminValue(ctx context.Context, args []string) error {
 		slot := fs.Int("slot", -1, "slot number")
 		group := fs.Int("group", -1, "object group (0..6)")
 		id := fs.Int("id", -1, "object id (0..255)")
-		_ = fs.Parse(rest)
+		_ = parseVerbFlags(fs, rest)
 		if *slot < 0 || *group < 0 || *id < 0 {
 			return fmt.Errorf("admin value get: --slot --group --id all required")
 		}
@@ -206,7 +206,7 @@ func acp1AdminValue(ctx context.Context, args []string) error {
 func acp1AdminReload(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("admin reload", flag.ExitOnError)
 	name := fs.String("name", "dhs-acp1", "provider instance name")
-	_ = fs.Parse(args)
+	_ = parseVerbFlags(fs, args)
 	resp, err := adminCall(ctx, *name, "reload", nil)
 	if err != nil {
 		return err

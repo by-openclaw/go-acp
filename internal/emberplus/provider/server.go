@@ -9,13 +9,24 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/emberplus/codec/s101"
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
+	"dhs/internal/transport"
 )
 
 // server is the provider runtime. One listener, many sessions, a shared
 // tree, and a per-OID subscription table.
 type server struct {
-	logger    *slog.Logger
+	logger *slog.Logger
+
+	// metrics is the server-wide connector snapshot exposed via Metrics()
+	// so `producer emberplus serve --metrics-addr` scrapes it. Frames are
+	// attributed by S101 command byte, which separates EmBER payloads from
+	// keep-alives. Always non-nil.
+	metrics *metrics.Connector
+
 	tree      *tree
 	templates []*canonical.TemplateEntry
 	funcs     *functionRegistry
@@ -32,13 +43,16 @@ type server struct {
 	stopped  chan struct{}
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	met := deps.Metrics
+	met.RegisterCmd(s101.CmdEmBER, "ember")
+	met.RegisterCmd(s101.CmdKeepAliveReq, "keepalive-req")
+	met.RegisterCmd(s101.CmdKeepAliveResp, "keepalive-resp")
 	t, err := newTree(exp)
 	s := &server{
-		logger:   logger.With(slog.String("plugin", "emberplus-provider")),
+		metrics:  met,
+		logger:   deps.Logger.With(slog.String("plugin", "emberplus-provider")),
 		funcs:    newFunctionRegistry(),
 		sessions: map[*session]struct{}{},
 		subs:     map[string]map[*session]struct{}{},
@@ -61,11 +75,30 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if s.tree == nil {
 		return fmt.Errorf("emberplus-provider: tree not loaded")
 	}
-	lc := net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp", addr)
+	ln, err := transport.ListenTCP(ctx, "tcp", addr, transport.SocketOptions{})
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
+	// The embedded listener, not the wrapper: serveListener's accept loop
+	// applies the socket policy itself, so an injected listener from
+	// ServeListener gets it too. Passing the wrapper would apply it twice.
+	return s.serveListener(ctx, ln.Listener)
+}
+
+// ServeListener serves on a pre-bound listener. Exported on the concrete
+// type (not part of the neutral provider.Provider interface) so tests in
+// other packages can bind "127.0.0.1:0" themselves and skip the
+// close-then-rebind window of the addr-based path — in a parallel test
+// sweep another process can steal the freed port (issue #694 flake class).
+func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
+	if s.tree == nil {
+		_ = ln.Close()
+		return fmt.Errorf("emberplus-provider: tree not loaded")
+	}
+	return s.serveListener(ctx, ln)
+}
+
+func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.listener = ln
 	s.mu.Unlock()
@@ -117,6 +150,11 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 			s.logger.Debug("accept", slog.String("err", err.Error()))
 			continue
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever. Applied in the accept loop rather than at
+		// bind time so ServeListener's injected listener gets it too.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go sess.run(ctx)
@@ -299,3 +337,8 @@ func (s *server) broadcastParam(oid string, p *canonical.Parameter) {
 		sess.send(payload)
 	}
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// emberplus provider. Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }

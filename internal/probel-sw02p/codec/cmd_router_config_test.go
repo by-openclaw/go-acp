@@ -185,7 +185,7 @@ func TestDecodeRouterConfigResponse2IgnoresReservedGarbage(t *testing.T) {
 	for _, b := range wire[1 : 1+1+payloadLen] {
 		sum += b
 	}
-	wire[1+1+payloadLen] = byte(-sum) & 0x7F
+	wire[1+1+payloadLen] = -sum & 0x7F
 	parsed, _, err := Unpack(wire)
 	if err != nil {
 		t.Fatalf("Unpack: %v", err)

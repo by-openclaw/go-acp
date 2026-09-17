@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,20 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 )
+
+// putUnchanged reports whether a re-registered document is
+// byte-identical to the stored copy. An identical re-registration is
+// a no-op: IS-04 §5.2 grain grammar gives `pre` to modified/removed
+// events only, and a same-body "modified" grain is a spec violation
+// on the wire (AMWA IS-04-02 test_24_1 catches it — the tool sees an
+// unexpected `pre` where it awaited `added`). Both structs decoded
+// through the same codec marshal deterministically, so byte equality
+// is semantic equality.
+func putUnchanged(prev, next any) bool {
+	a, errA := json.Marshal(prev)
+	b, errB := json.Marshal(next)
+	return errA == nil && errB == nil && bytes.Equal(a, b)
+}
 
 // ErrNotFound is returned by every getter when the resource is unknown.
 var ErrNotFound = errors.New("registry: resource not found")
@@ -34,7 +49,7 @@ type Change struct {
 	Kind         ChangeKind
 	ResourceType is04.ResourceType
 	ID           string
-	APIVer       string // wire version this resource was registered at
+	APIVer       string          // wire version this resource was registered at
 	Pre          json.RawMessage // nil on create
 	Post         json.RawMessage // nil on delete
 	Timestamp    time.Time
@@ -58,15 +73,42 @@ type Store struct {
 	senders   map[string]is04.Sender
 	receivers map[string]is04.Receiver
 
+	// defaultPageLimit overrides DefaultPageLimit for requests that
+	// carry no paging.limit. 0 keeps the spec-parity default (100).
+	// Exists because first-page-only clients are real: Cerebrum's
+	// Network Media reader takes page one per collection and stops, so
+	// on a plant where one device owns 208 senders, everything
+	// registered earlier silently vanishes from such a controller.
+	// Raising the DEFAULT is the operator's spec-legal lever — an
+	// explicit paging.limit from the client always wins.
+	defaultPageLimit int
+
 	// health tracks the last heartbeat per Node ID. The GC loop walks
 	// this map every tick.
 	health map[string]time.Time
+
+	// owners maps a resource id to the IS-10 client_id that registered
+	// it (BCP-003-02: the Registration API rejects updates from a
+	// DIFFERENT client with 403 — IS-04-02 test_33/test_33_1). Entries
+	// are overwritten on every authenticated create, so a stale entry
+	// left by an evicted resource can never block a re-registration.
+	// Empty when auth is off.
+	owners map[string]string
 
 	// updateTSByType tracks the per-resource last-update TAI timestamp
 	// per IS-04 §6.1.6 — Query API pagination indexes resources by
 	// this. Keyed type → id → "<secs>:<nanos>". Maintained on every
 	// Put and pruned on every Delete.
 	updateTSByType map[is04.ResourceType]map[string]string
+
+	// lastUpdateTS is the most recent timestamp handed out by
+	// markUpdated, kept strictly monotonic across the whole store.
+	// Without it, a burst of registrations inside one clock tick mints
+	// resources with IDENTICAL update_ts, and paging's exclusive
+	// `since` cursor then skips every tied item past a page boundary —
+	// a walk of a 211-sender plant returned 100 with page 2 empty
+	// (found live 2026-08-29, reproduced by paging_walk_test.go).
+	lastUpdateTS string
 
 	// apiVerByType tracks the IS-04 wire version each resource was
 	// registered at. Drives the no-downgrade-by-default Query
@@ -89,6 +131,7 @@ func NewStore() *Store {
 		senders:        make(map[string]is04.Sender),
 		receivers:      make(map[string]is04.Receiver),
 		health:         make(map[string]time.Time),
+		owners:         make(map[string]string),
 		updateTSByType: make(map[is04.ResourceType]map[string]string, 6),
 		apiVerByType:   make(map[is04.ResourceType]map[string]string, 6),
 	}
@@ -102,7 +145,16 @@ func (s *Store) markUpdated(t is04.ResourceType, id string) {
 		bucket = make(map[string]string)
 		s.updateTSByType[t] = bucket
 	}
-	bucket[id] = nowTAI()
+	// Strictly monotonic across the store: a wall-clock reading that
+	// ties or precedes the last handed-out timestamp is bumped by one
+	// nanosecond past it. Cursor pagination depends on update_ts being
+	// a total order — see the lastUpdateTS field comment.
+	ts := nowTAI()
+	if s.lastUpdateTS != "" && taiCmp(ts, s.lastUpdateTS) <= 0 {
+		ts = taiBump(s.lastUpdateTS)
+	}
+	s.lastUpdateTS = ts
+	bucket[id] = ts
 }
 
 // dropUpdated drops id from the type bucket on delete. Caller MUST
@@ -204,6 +256,9 @@ func (s *Store) PutNode(n is04.Node) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	prev, hadPrev := s.nodes[n.ID]
+	if hadPrev && putUnchanged(prev, n) {
+		return nil // identical re-registration: no grain, no update_ts bump
+	}
 	s.nodes[n.ID] = n
 	s.markUpdated(is04.ResourceNode, n.ID)
 	// On insert, mark health = now so the GC doesn't immediately evict.
@@ -235,6 +290,9 @@ func (s *Store) PutDevice(d is04.Device) error {
 		return fmt.Errorf("registry: device %s.node_id %q not registered", d.ID, d.NodeID)
 	}
 	prev, hadPrev := s.devices[d.ID]
+	if hadPrev && putUnchanged(prev, d) {
+		return nil
+	}
 	s.devices[d.ID] = d
 	s.markUpdated(is04.ResourceDevice, d.ID)
 	post, _ := json.Marshal(d)
@@ -261,6 +319,9 @@ func (s *Store) PutSource(src is04.Source) error {
 		return fmt.Errorf("registry: source %s.device_id %q not registered", src.ID, src.DeviceID)
 	}
 	prev, hadPrev := s.sources[src.ID]
+	if hadPrev && putUnchanged(prev, src) {
+		return nil
+	}
 	s.sources[src.ID] = src
 	s.markUpdated(is04.ResourceSource, src.ID)
 	post, _ := json.Marshal(src)
@@ -295,6 +356,9 @@ func (s *Store) PutFlow(f is04.Flow) error {
 		return fmt.Errorf("registry: flow %s.source_id %q not registered", f.ID, f.SourceID)
 	}
 	prev, hadPrev := s.flows[f.ID]
+	if hadPrev && putUnchanged(prev, f) {
+		return nil
+	}
 	s.flows[f.ID] = f
 	s.markUpdated(is04.ResourceFlow, f.ID)
 	post, _ := json.Marshal(f)
@@ -321,6 +385,9 @@ func (s *Store) PutSender(snd is04.Sender) error {
 		return fmt.Errorf("registry: sender %s.device_id %q not registered", snd.ID, snd.DeviceID)
 	}
 	prev, hadPrev := s.senders[snd.ID]
+	if hadPrev && putUnchanged(prev, snd) {
+		return nil
+	}
 	s.senders[snd.ID] = snd
 	s.markUpdated(is04.ResourceSender, snd.ID)
 	post, _ := json.Marshal(snd)
@@ -347,6 +414,9 @@ func (s *Store) PutReceiver(r is04.Receiver) error {
 		return fmt.Errorf("registry: receiver %s.device_id %q not registered", r.ID, r.DeviceID)
 	}
 	prev, hadPrev := s.receivers[r.ID]
+	if hadPrev && putUnchanged(prev, r) {
+		return nil
+	}
 	s.receivers[r.ID] = r
 	s.markUpdated(is04.ResourceReceiver, r.ID)
 	post, _ := json.Marshal(r)
@@ -371,6 +441,19 @@ func (s *Store) DeleteNode(id string) {
 	s.deleteNodeLocked(id)
 }
 
+// deletionChangeLocked builds a stamped ChangeDeleted for (t, id).
+// MUST be called BEFORE dropUpdated clears the api_ver stamp: an
+// unstamped deletion Change fans out to EVERY minor's subscribers
+// (versionAllowed treats "" as any-version), so one source-side
+// delete would reach v1.0 through v1.3 sockets alike — a downstream
+// mirror then issues one DELETE per minor and earns 409s from a
+// version-locking target. Stamped, the removal partitions exactly
+// like the add that preceded it.
+func (s *Store) deletionChangeLocked(t is04.ResourceType, id string, pre json.RawMessage, now time.Time) Change {
+	return Change{Kind: ChangeDeleted, ResourceType: t, ID: id,
+		APIVer: s.apiVerOfLocked(t, id), Pre: pre, Timestamp: now}
+}
+
 func (s *Store) deleteNodeLocked(id string) {
 	if _, ok := s.nodes[id]; !ok {
 		return
@@ -390,47 +473,53 @@ func (s *Store) deleteNodeLocked(id string) {
 		for sid, src := range s.sources {
 			if src.DeviceID == did {
 				pre, _ := json.Marshal(src)
+				c := s.deletionChangeLocked(is04.ResourceSource, sid, pre, now)
 				delete(s.sources, sid)
 				s.dropUpdated(is04.ResourceSource, sid)
 				removedSourceIDs[sid] = struct{}{}
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSource, ID: sid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for fid, f := range s.flows {
 			_, sourceGone := removedSourceIDs[f.SourceID]
 			if f.DeviceID == did || sourceGone {
 				pre, _ := json.Marshal(f)
+				c := s.deletionChangeLocked(is04.ResourceFlow, fid, pre, now)
 				delete(s.flows, fid)
 				s.dropUpdated(is04.ResourceFlow, fid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceFlow, ID: fid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for sid, snd := range s.senders {
 			if snd.DeviceID == did {
 				pre, _ := json.Marshal(snd)
+				c := s.deletionChangeLocked(is04.ResourceSender, sid, pre, now)
 				delete(s.senders, sid)
 				s.dropUpdated(is04.ResourceSender, sid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceSender, ID: sid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		for rid, r := range s.receivers {
 			if r.DeviceID == did {
 				pre, _ := json.Marshal(r)
+				c := s.deletionChangeLocked(is04.ResourceReceiver, rid, pre, now)
 				delete(s.receivers, rid)
 				s.dropUpdated(is04.ResourceReceiver, rid)
-				s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceReceiver, ID: rid, Pre: pre, Timestamp: now})
+				s.fanOut(c)
 			}
 		}
 		pre, _ := json.Marshal(d)
+		c := s.deletionChangeLocked(is04.ResourceDevice, did, pre, now)
 		delete(s.devices, did)
 		s.dropUpdated(is04.ResourceDevice, did)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceDevice, ID: did, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	}
 	pre, _ := json.Marshal(s.nodes[id])
+	c := s.deletionChangeLocked(is04.ResourceNode, id, pre, now)
 	delete(s.nodes, id)
 	delete(s.health, id)
 	s.dropUpdated(is04.ResourceNode, id)
-	s.fanOut(Change{Kind: ChangeDeleted, ResourceType: is04.ResourceNode, ID: id, Pre: pre, Timestamp: now})
+	s.fanOut(c)
 }
 
 // DeleteResource evicts a non-Node resource. For Node, use DeleteNode.
@@ -448,45 +537,50 @@ func (s *Store) DeleteResource(t is04.ResourceType, id string) error {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(d)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.devices, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceSource:
 		v, ok := s.sources[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.sources, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceFlow:
 		v, ok := s.flows[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.flows, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceSender:
 		v, ok := s.senders[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.senders, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	case is04.ResourceReceiver:
 		v, ok := s.receivers[id]
 		if !ok {
 			return ErrNotFound
 		}
 		pre, _ := json.Marshal(v)
+		c := s.deletionChangeLocked(t, id, pre, now)
 		delete(s.receivers, id)
 		s.dropUpdated(t, id)
-		s.fanOut(Change{Kind: ChangeDeleted, ResourceType: t, ID: id, Pre: pre, Timestamp: now})
+		s.fanOut(c)
 	default:
 		return fmt.Errorf("registry: invalid resource type %q", t)
 	}
@@ -515,6 +609,21 @@ func (s *Store) HealthFor(nodeID string) (time.Time, error) {
 		return time.Time{}, ErrNotFound
 	}
 	return t, nil
+}
+
+// Owner returns the client_id that registered a resource, "" when
+// unknown (auth off, or registered before auth was armed).
+func (s *Store) Owner(id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.owners[id]
+}
+
+// SetOwner records the registering client for a resource.
+func (s *Store) SetOwner(id, client string) {
+	s.mu.Lock()
+	s.owners[id] = client
+	s.mu.Unlock()
 }
 
 // EvictStale walks the health map and DeleteNodes any whose last
@@ -843,7 +952,7 @@ func (s *Store) ingestTyped(env *is04.RegistrationRequest) error {
 // inbound JSON shape differs across minors:
 //
 //   - v1.0:        required = {id, version, label}
-//                  (`tags` and `description` were added in v1.1)
+//     (`tags` and `description` were added in v1.1)
 //   - v1.1, v1.2:  required = {id, version, label, description, tags}
 //   - v1.3:        required = {id, version, label, description, tags}
 //

@@ -1,0 +1,807 @@
+<HTML>
+<HEAD>
+<TITLE>Building RollCall Templates</TITLE>
+</HEAD>
+<BODY>
+<H1>Building RollCall Templates</H1>
+
+<H3>In this page:</H3>
+<UL>
+	<LI><A HREF="#basic">Basic idea</A>
+	<LI><A HREF="#rules">Rules</A>
+	<LI><A HREF="#hints">Hints</A>
+	<LI><A HREF="#hiding">Hiding and disabling</A>
+
+	<LI><A HREF="#templatecontrols">
+	Syntax for individual controls</A>
+	<UL>
+		<LI><A HREF="#syntax">
+		Basic Syntax</A>
+
+		<LI><A HREF="#controls">
+		Control types</A>
+
+		<LI><A HREF="#PageList">
+		Page list control</A>
+
+		<LI><A HREF="#Substitution">
+		Substitution strings</A>
+	</UL>
+
+	<LI><A HREF="#templatecompilers">
+	Build tools</A>
+	<UL>
+		<LI><A HREF="#rctran2">
+		<CODE>.RC</CODE> to <CODE>.TPL</CODE> compilation</A>
+
+		<LI><A HREF="#rcexpand">
+		<CODE>.RC</CODE> to <CODE>.RC</CODE> pre-processing</A>
+
+		<LI><A HREF="#make">
+		Example make environment</A>
+	</UL>
+
+
+	<LI><A HREF="#templatefileformat">
+	TPL file format</A>
+</UL>
+
+
+
+
+<A NAME="basic"></A>
+<H2>The Basic Idea</H2>
+You are trying to make a text file, called a template or <CODE>.TPL</CODE>,
+which can be used by the RollCall PC Software Suite to present the
+user with a GUI to control your box, even though the box may not
+have been around when the Software App itself was written.
+<P>
+The GUI consists of 1 or more pages, each containing Windowsy controls
+like buttons, scroll bars etc.&nbsp; You need to specify the
+layout of the controls, how they should appear to the user,
+and which functions of your box they should affect, (via the RollCall
+commands and menus already defined for your box).
+<P>
+To provide the 2D layout of pages, we currently use 
+AppStudio or DevStudio, included in various Micro$oft development
+suites, designed for editing Windows dialog boxes.&nbsp; This
+gives you a drag and drop 2D size'n'position editor.&nbsp; All the other
+parameters are defined by the text "caption" field in the editor.&nbsp;
+It is important to note that the type of control visible in the
+template, (e.g. scrollbar or
+radio button), is also defined purely by the text in the caption field,
+and <EM>not</EM> by the AppStudio control type that you create.&nbsp;
+<P>
+The template design process using App/DevStudio is not ideal, and better
+design tools are intended for the future!&nbsp; If you are interested
+in using or contributing to future design tools, please contact Maurice.
+
+
+
+
+<A NAME="rules"></A>
+<H2>Some rules</H2>
+<UL>
+	<LI>The page structure is flat, not nested.
+	<LI>If you have >1 pages, page 0 must contain a page list box,
+	and all other pages must have empty space in the same place.
+	<LI>All pages must be the same total size in pixels.
+	<LI>A command must be mentioned in the menus, and not hidden,
+	for its controls to appear in the template.
+	<LI>Pages mentioned in the page list box must be present in
+	the template unless always hidden.
+	<LI>For clients to find your template automatically, it should
+	be called "TEMPLATE.TPL", 
+	pkzipped in "TEMPLATE.ZIP", and exposed as a RollCall file.
+</UL>
+
+
+
+<A NAME="hints"></A>
+<H2>Some hints</H2>
+<UL>
+	<LI>Design your menus against your template as well as a shoebox.&nbsp;
+	Not all things that happen to work on a shoebox will
+	neccessarily make sense to a PC!
+	<LI>User interface should be designed around the Commands, not the menu
+	structure, if the interface is to work well on both the front panel and
+	the PC.
+	<LI>Don't make the pages too big - continously scrolling around
+	on a low-res display is boring.
+	<LI>Look at some existing templates to get an idea of visual style
+	for consistency.
+	<LI>Use cut and paste lots from an existing template to get going.
+	<LI>Cut and paste all 4 bits for a scrollbar together: Scrollbar,
+	Number display, Preset button, surrounding Group box.
+	<LI>Keep an information pane, (same as shoebox left window),
+	to the right of the page list box on each page.
+	<LI>Use group boxes to separate functional blocks.&nbsp; N.B. they are
+	purely visual, (i.e. they do not specify heirarchy).
+
+</UL>
+
+
+
+
+<A NAME="hiding"></A>
+<H2>Hiding and disabling</H2>
+<H3>Disabling</H3>
+Things can be dynamically disabled or enabled
+by the server, (the product being controlled).&nbsp; On a shoebox,
+disabled things are visible in the menus, but do nothing when you
+push the buttons.&nbsp; On a PC, disabled things are "greyed out".
+
+<H3>Hiding</H3>
+Things can be
+dynamically hidden or un-hidden
+by the server, (the product being controlled).&nbsp;On a shoebox,
+hidden things do not appear in the menu&nbsp;
+On a PC, hidden things do not appear in the template pages.
+
+<H3>What is a "thing?"</H3>
+<UL>
+	<LI>Individual RollCall menus can be hidden or disabled.
+	<LI>On a pure menu browser, (e.g. shoebox), this has the obvious
+	effect.
+	<LI>On the PC, all controls are attached to command numbers,
+	not menu lines.&nbsp; The template controls will take the
+	state, (active, disabled or hidden), from the menu line(s)
+	with matching command number.
+	<BR>
+	For example, consider a menu line called "NTSC Hue" which
+	adjusts the value of command number CM_HUE.&nbsp;
+	On the template, there are 4 items, (ScrollBar, Preset Button,
+	Display Text, Bounding Group Box), all of which are bound to
+	CM_HUE.&nbsp; When not in NTSC mode, the unit disables
+	the hue menu line.&nbsp; On the shoebox, this causes
+	the action icon, ("&lt;"), to
+	dissappear from the menu line, and the menu line doesn't action
+	when pressed.&nbsp; On the PC, the 4 template items
+	are shown "greyed out"
+	<LI>A complete template page can be hidden, but not disabled.&nbsp;
+	See <A HREF="templatecontrols.html#PageList">
+	<CODE>CM_PAGELIST</CODE> definition</A>
+</UL>
+
+
+<H3>More than 1 menu for a command number</H3>
+Details to follow.
+
+<H3>Child/parents</H3>
+	Hiding or disabling a menu forces that state to all
+	child menus.  Details to follow.
+
+
+<BR><BR><BR>
+
+</BODY>
+</HTML>
+
+<HTML>
+<HEAD>
+<TITLE>Template controls</TITLE>
+</HEAD>
+<BODY>
+<A NAME="templatecontrols"></A>
+<H1>Template controls</H1>
+
+Some hints about the syntax of the caption field
+in the App/DevStudio resource dialogs for RollCall
+template pages.&nbsp; Work in progress!
+
+<A NAME="syntax"></A>
+<H2>Basic syntax</H2>
+<CODE>Text,CommandNumber,CommandValue,ObjectType</CODE>
+<P>
+I.e. 4 comma separated fields.
+<P>
+Generally, the <B>Text</B> field
+is what will be displayed on the screen, 
+and can include the
+<A HREF="#Substitution">special substitution strings explained below</A>.
+<P>
+The <B>CommandNumber</B> can be numeric or, more usually,
+the string token <CODE>#define</CODE>d in a
+<CODE>.H</CODE> file somewhere.&nbsp;
+0 is a valid command number, so -1 should be used
+to indicate "no command number".
+<P>
+The <B>CommandValue</B> corresponds to
+<CODE>FUNC_STR.rMinRange</CODE> for button objects,
+and is related to 
+<CODE>rValue</CODE> in the <CODE>FUNCSTATUS_STR</CODE>.
+<P>
+The <B>ObjectType</B> defines which GUI control will be displayed,
+e.g. scroll-bar or check box.  There are two sets of control types,
+those specific to templates, and those equivalent to the
+menu style flags defined for
+<CODE>FUNC_STR.rStyle</CODE>.&nbsp;
+N.B. a command number can be bound to many controls,
+of different types.&nbsp;
+For example, a command number with a single menu line of,
+say, <CODE>CM_NUMBER</CODE>
+menu style can be bound to a scrollbar,
+and a read-only display, and a preset button, etc.
+<P>
+Fields listed as "Not used" in the table below
+should be filled with a zero, except command numbers which should
+be set to -1.
+
+
+
+<A NAME="controls"></A>
+<H2>Template-only control types</H2>
+<TABLE BORDER=2>
+
+<TR>
+<TH>ObjectType</TH>
+<TH>Text</TH>
+<TH>CommandNumber</TH>
+<TH>CommandValue</TH>
+<TH>Typical use</TH>
+</TR>
+
+<TR>
+<TD><CODE>CM_DISPDATA</CODE></TD>
+<TD>Not used</TD>
+<TD>Display line, (<CODE>DISP_STR.rLine</CODE>)</TD>
+<TD><CODE>CM_DISPDATA_DEFAULT, CM_DISPDATA_LEFT,
+CM_DISPDATA_CENTRE</CODE>
+or <CODE>CM_DISPDATA_RIGHT</CODE> to define
+text justification</TD>
+<TD>Display the information as shown on the shoebox
+left hand screen.  By convention, this is visible
+at the top of every template page, to the right of the
+page list box.
+</TR>
+
+
+<TR>
+<TD><CODE>CM_STATIC</CODE></TD>
+<TD>Static text</TD>
+<TD>Not used (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Windows group box, i.e. text display with bounding rectangle, which typically encloses other controls</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_LEFTTITLE</CODE></TD>
+<TD>Static text</TD>
+<TD>Not used (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Show help hints etc., not bound to a control, left justified</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_CENTRETITLE</CODE></TD>
+<TD>Static text</TD>
+<TD>Not used (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Show help hints etc., not bound to a control, centre justified</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_RIGHTTITLE</CODE></TD>
+<TD>Static text</TD>
+<TD>Not used (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Show help hints etc., not bound to a control, right justified</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_EDITBOX</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be edited</TD>
+<TD>Not used (0)</TD>
+<TD>User input of text parameter</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_VSCROLLBAR</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be controlled</TD>
+<TD>Not used (0)</TD>
+<TD>User adjustment of number parameter
+via vertical scrollbar</TD>
+</TR>
+
+<TR>
+<TD><CODE>CM_HSCROLLBAR</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be controlled</TD>
+<TD>Not used (0)</TD>
+<TD>User adjustment of number parameter
+via horizontal scrollbar</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_PUSHBUTTON</CODE></TD>
+<TD>Button label</TD>
+<TD>Command number to be actioned</TD>
+<TD>Command value to be actioned</TD>
+<TD>User trigger for state-free action, e.g.
+reset error counter</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_LISTBOX</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number of parameter</TD>
+<TD>Not used (0)</TD>
+<TD>User selection of items from a list, defined
+at run time by the menu items sent with matching command
+number, (each with a different <CODE>rValue</CODE>).</TD>
+</TR>
+
+
+
+<TR>
+<TD><CODE>CM_LEFTTEXT</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be displayed</TD>
+<TD>Not used (0)</TD>
+<TD>Read only display of control value, left justified</TD>
+</TR>
+
+
+
+<TR>
+<TD><CODE>CM_DISPTEXT</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be displayed</TD>
+<TD>Not used (0)</TD>
+<TD>Read only display of control value, centre justified</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_RIGHTTEXT</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be displayed</TD>
+<TD>Not used (0)</TD>
+<TD>Read only display of control value, right justified</TD>
+</TR>
+
+
+
+
+<TR>
+<TD><CODE>CM_PRESET</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be preset</TD>
+<TD>Not used (0)</TD>
+<TD>Preset parameter, (same as built-in Preset button
+on shoebox edit screen), i.e. ask the unit to
+set the value to the
+preset value.</TD>
+</TR>
+
+<TR>
+<TD><CODE>CM_SENDBUTTON</CODE></TD>
+<TD>Not used</TD>
+<TD>Command number to be sent</TD>
+<TD>Not used (0)</TD>
+<TD>Sends current string from PC edit box to unit</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_FILESEND</CODE></TD>
+<TD>File path, relative to default save set directory</TD>
+<TD>Not used? (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Trigger download of locally stored save settings file,
+(<CODE>.RCT</CODE>)
+to unit.</TD>
+</TR>
+
+
+<TR>
+<TD><CODE>CM_PAGELIST</CODE></TD>
+<TD>List of pages in template.&nbsp;
+	<A HREF="#PageList">See below for syntax.</A></TD>
+<TD>Not used (-1)</TD>
+<TD>Not used (0)</TD>
+<TD>Put one of these on page 0 to define template pages</TD>
+</TR>
+
+</TABLE>
+
+Plus you can use any of the menu styles - more
+documentation to follow....
+
+
+
+<A NAME=PageList></A>
+<H2>Syntax for <CODE>CM_PAGELIST</CODE> control</H2>
+<CODE>"p0=u0[^c0]:p1=u1[^c1]:p2=u2[^c2] [...],-1,0,CM_PAGELIST"</CODE>
+<P>
+Page <I>n</I> is specified by
+<UL>
+	<LI><CODE>p<EM>n</EM></CODE> is the textual page name
+	shown in the list box.&nbsp; When the user chooses
+	this entry in the list box, the template numbered 
+	<EM>n</EM> will be displayed.
+	<BR>
+	<SMALL>This text string is also used by
+	<A HREF="templatecompilers.html#rctran2">
+	the template compiler</A>
+	to convert textual dialog names to page numbers.</SMALL>
+
+	<LI><CODE>u<EM>n</EM></CODE> defines which user levels
+	see this page.&nbsp; The value is a bit flag sum of
+	1,2,4,8 for user, engineer, supervisor, and
+	factory respectively, in decimal,&nbsp; E.g. value 15
+	means that the page is visible at all user levels, but
+	value 12 is hidden at engineer or user access.
+
+	<LI><CODE>^c<EM>n</EM></CODE> is optional.&nbsp;
+	If present, it binds the page to
+	<STRIKE>a command number</STRIKE><I>something</I>.&nbsp;
+	The page visibility then follows the same rules as
+	other controls bound to
+	<STRIKE>a command number</STRIKE><I>something</I>, allowing
+	the whole page to be hidden by the server.
+	<P>
+	The full syntax for <CODE>^c<EM>n</EM></CODE> looks something
+	like this: <CODE>^$[x]yz</CODE>, where
+	<UL>
+		<LI><CODE>y</CODE> specifies which bit of the menu line
+		<CODE>FUNC_STR</CODE> you want to match to:
+		<UL>
+			<LI><CODE>S1</CODE> - <CODE>szText</CODE>
+			<LI><CODE>S2</CODE> - <CODE>szParamString</CODE>
+			<LI><CODE>c</CODE> - <CODE>rCommand</CODE>
+			<LI><CODE>i</CODE> - <CODE>rMenuIndex</CODE>
+			<LI><CODE>m</CODE> - <CODE>rMinRange</CODE>
+		</UL>
+		<LI><CODE>z</CODE> is the value to match against.
+		<LI><CODE>x</CODE> (optional) is the occurence count for the match, defaulting
+		to 1.
+	</UL>
+	But there are some short-hands - see examples below.
+	<BR>
+	<SMALL>In RollCall.EXE 3.1, any non-command number binding
+	would only match partial menu lines.&nbsp;
+	In RollCall.EXE 3.2beta 27.5.1999 or later, the binding
+	now matches any menu line, partial or not.</SMALL>
+	</UL>
+
+<H3>Example page list</H3>
+<CODE>
+"Control=15:Optional Features=15^12345:Silly Features=12^$5S1Silly:Factory=8,-1,0,CM_PAGELIST"
+</CODE>
+<P>
+This defines 4 pages:
+<UL>
+	<LI>Page 0 is named "Control", and is always visible at
+	all user levels.
+	<LI>Page 1 is named "Optional Features", and is visible at
+	all user levels except when command number 12345 is hidden,
+	<LI>Page 2 is named "Silly Features", and is visible at
+	factory and supervisor levels except when the 5th menu line found to
+	have string name "Silly" is hidden,
+	<LI>Page 3 is named "Factory", and is visible only
+	if connected at factory user level,
+</UL>
+
+<BR><BR>
+
+<A NAME=Substitution></A>
+<H2>Text substitution strings</H2>
+
+<TABLE BORDER=2>
+
+<TR>
+<TH>Code</TH>
+<TH>Replaced with</TH>
+</TR>
+
+<TR>
+<TD><CODE>$S1</CODE></TD>
+<TD>Current string name of RollCall
+Menu item, i.e. <CODE>FUNC_STR.szText</CODE></TD>
+</TR>
+
+<TR>
+<TD><CODE>$S2</CODE></TD>
+<TD>Current format string of RollCall
+Menu item, i.e. <CODE>FUNC_STR.szParamString</CODE></TD>
+</TR>
+
+<TR>
+<TD><CODE>$V</CODE></TD>
+<TD>String representation of RollCall Command Value,
+i.e. string value if returned by server, or
+number value, (<CODE>FUNCSTATUS_STR.rValue</CODE>),
+ <CODE>printf</CODE> formatted with 
+<CODE>FUNC_STR.szParamString</CODE></TD>
+</TR>
+
+</TABLE>
+
+
+<BR><BR><BR>
+
+</BODY>
+</HTML>
+
+<HTML>
+<HEAD>
+<TITLE>Template compilers</TITLE>
+</HEAD>
+<BODY>
+<A NAME="templatecompilers"></A>
+<H1>Template compilers</H1>
+
+
+<A NAME="rctran2"></A>
+<H2><CODE>.RC</CODE> to <CODE>.TPL</CODE> compilation</H2>
+
+A recent template compiler is <A HREF="rctran2.awk">
+<CODE>rctran2.awk</CODE></A>.&nbsp; (Look in source code
+to see RCS revision.)
+<P>
+Typical use: Use the wonderful M$ App/DevStudio to
+design "dialogs" or template pages, then use this awk script
+to convert the <CODE>.RC</CODE> source file to the 
+<CODE>.TPL</CODE> file as used by <CODE>RollCall.EXE</CODE>.
+
+<P>
+Recent new features: Dialog page names now take the form
+<CODE>ID_ii_cc_uu_pagename</CODE> where
+<BR><CODE>ii</CODE> is the RollCall ID
+<BR><CODE>cc</CODE> is the RollCall Cmd Set version
+<BR><CODE>uu</CODE> is the set of userlevel bits
+<BR><CODE>pagename</CODE> is either <CODE>0</CODE> for the first page,
+or a string which will be matched to the page name in the list box
+on the first page.&nbsp; (Spaces in the page name should
+be replaced with "!" characters in the dialog name.)
+<P>
+Example dialogs: Dialog <CODE>ID_99_1_15_0</CODE> contains
+a list box with caption<BR>
+<CODE>Control=15:Genlock Mode=15:Setup=15,-1,0,CM_PAGELIST</CODE>.&nbsp;
+Dialogs <CODE>ID_99_1_15_GENLOCK!MODE</CODE> and <CODE>ID_99_1_15_SETUP</CODE>
+will get compiled to pages 1 and 2 respectively, to match their
+position in the list box.
+
+
+
+<A NAME="rcexpand"></A>
+<H2><CODE>.RC</CODE> to <CODE>.RC</CODE> pre-processing</H2>
+
+A recent template expander is 
+<A HREF="rcexpand.awk"><CODE>rcexpand.awk</CODE></A>.&nbsp; (Run with no parameters
+to see RCS revision.)
+<P>
+Typical use: Maintain a single <CODE>.RC</CODE> source file
+covering multiple products in a shared project.  A single
+dialog page can be used as one or more template pages
+across different product IDs and command set versions.
+<P>
+
+
+
+The basic feature of <CODE>rcexpand</CODE> is to use
+dialog names like <CODE>ID_28.63.64.65_1.2_15_0</CODE>.&nbsp;
+This single maintainable source dialog will get expanded to
+target IDs 28, 63, 64 and 65, at both command set versions 1 and 2.
+<P>
+<PRE>
+#makefile snippet
+expanded.rc :   $(RCEXPAND) myproj.rc rcexpand.txt
+   $(AWK) -f $(RCEXPAND) myproj.rc @rcexpand.txt 
+</PRE>
+<PRE>
+#rcexpand.txt
+#This puts all the IDs in one output file
+#You can put different IDs in different output files
+28:expanded.rc
+63:expanded.rc
+64:expanded.rc
+65:expanded.rc
+119:expanded.rc
+</PRE>
+It is also possible to use tag substitution in dialog names.&nbsp;
+E.g. you can define a tag
+<PRE>
+ALLVER;0.1.2.3
+</PRE>
+and then name a dialog <CODE>ID_23_ALLVER_15_Genlock</CODE>.&nbsp;
+This will get expanded to all the listed command set versions.&nbsp;
+
+
+<A NAME="make"></A>
+<H2>Example make environment using the above tools</H2>
+
+This is an unneccessarily complicated example - sorry!&nbsp;
+Expand <A HREF="tplexample.zip">this zip file</A>
+to a temporary directory and run <CODE>nmake</CODE>.&nbsp;
+You may need to edit the paths to the awk scripts
+and interpreter.
+
+
+<BR><BR><BR>
+
+
+</BODY>
+</HTML>
+<HTML>
+<HEAD>
+<TITLE>TPL File Format</TITLE>
+</HEAD>
+<BODY>
+
+Notice: This information is intended for <EM>developers</EM> of template design
+tools.&nbsp;
+To <EM>use</EM> any of our template design tools to develop templates,
+it should not be neccesary
+to be familiar with this information!
+<P>
+<A NAME="templatefileformat"></A>
+<h1>TPL File Format</h1>
+
+The TPL format appears similar to the DOS/Windows ‘.ini’ file format consisting of section headers of the form:<br>
+[<I>section</I>]<br>
+
+and name/value list pairs within these sections of the form<br>
+<I>Name</I>=<I>Value</I>,<I>MoreValue</I>,<I>AnotherBit</I>
+<p>
+
+It must however be noted that, whilst the order of lines and sections within windows ini files is supposedly 
+variable, TPL files are parsed sequentially and should be created in the order specified in this document.
+<p>
+
+Note: A template file may contain templates for multiple product command sets.
+
+<h2>Sections</h2>
+Two types of section are defined: Version and <I>templatepage</I>.<br>
+Version is simple: the section header is<br>
+
+<h3>[Version]</h3>
+
+and the only Name/Value pair currently used is<br>
+<b>Version=<I>value</I></b><br>
+where <I>value</I> is a positive integer.
+However the tool chain is being changed to support date-stamping based on the original file date, 
+with this information held on a per-ID and CommandSet in this section.<br>
+Only one Version section is permitted in a file.
+<p>
+
+The templatepage section contains most of the file data. Multiple templatepage sections are permitted, 
+one for each page of the Rollcall template. The section header is of the form:<br>
+
+<h3>[<i>TemplatePage</i>]</h3>
+This takes the form of:
+<b>[<I>Device_ID</I>:<I>CommandSet_Version</I>:<I>Userlevel_Flags</I>:<I>Page_Number</I>]</b><br>
+Each of these is a non-negative integer. 
+<ul>
+<li>Device ID is the Rollcall ID specified for the product. 
+<li>CommandSet_Version is the RollCall ComandSet Version specified for the product. 
+<li>Userlevel Flags is a 4-bit bitmask specifying whether the 
+page is visible in User, Engineer, Supervisor and/or Factory userlevels. 
+<li>Page Numbering starts at 0. Pages should be consecutively numbered but need not be in order
+(although this makes the files easier to read manually).
+</ul>
+
+eg: The MFXNRS TPL file has the first page header [179:1:15:0]
+<P>
+
+Within the templatepage section the following Name=Value sets are permitted, and should be present in the order 
+specified:
+<P>
+
+<B>Size= <I>Left</I>,<I>Top</I>,<I>Width</I>,<I>Height</i></b><br>
+(required, one only per section, should be identical for each page)<br>
+Each field is an integer, counted in pixels from the top left corner.
+<p>
+
+<B>Ctl<I>number</I>=<I>Name</I>,<I>Command</I>,<I>Value</I>,<I>Type</I>,<I>Left</I>,<I>Top</I>,<I>Width</I>,<I>Height</i></b><br>
+Multiple allowed but <I>number</I> should never be the same for two Ctl lines within one templatepage section. 
+<I>number</I> should start at 0 and be consecutive and ordered.
+<P>
+
+Page 0 of the template should contains a PAGELIST item detailing the names and visibility of all pages in the list. 
+The Name field of this item matches the syntax of the first section
+(ie p0=u0[^c0]:p1=u1[^c1]:p2=u2[^c2] [...]) of the CM_PAGELIST control
+used in the resource files; please see the document
+<a href=templatecontrols.html#PageList>Template Controls</a>
+for full information.<br>
+
+PAGELIST items on subsequent pages within the same template are discouraged and will be ignored. A file of multiple 
+templates may however contain multiple pagelists.
+<p>
+
+For all other controls, Name is a simple text label of alphanumeric characters and spaces, or simply the digit ‘0’ 
+if no label is required.
+<P>
+
+Most (if not all) pages tend to contain a special block allowing the device status to be displayed:<BR>
+Ctl1=Unit Status,-1,0,-1,84,8,128,52 (this string is free text)<br>
+Ctl2=INVISIBLE,0,0,-15,98,21,100,8<br>
+Ctl3=INVISIBLE,1,0,-15,98,29,100,8<br>
+Ctl4=INVISIBLE,2,0,-15,98,37,100,8<br>
+Ctl5=INVISIBLE,3,0,-15,98,45,100,8<P>
+
+It appears that the 'INVISIBLE' strings are replaced with text showing the device status on each page, usually 
+to the right of the pagelist.<p>
+
+
+
+
+For all controls, all fields except <i>Name</I> are integers, as follows:
+<ul>
+<li>Command is the Command number corresponding to the control, or -1 if no command applies. The Command number -1 is 
+always considered to be unhidden and enabled.
+
+<li>Value is the rMin binding for Radio buttons, and a style specifier for some of the text-display fields. Usually set to 
+0 if unused.
+<li>Type is the numeric value of the <a href=#controltypes>control type</a>.
+
+<li>Left,Top,Width,Height are as specified in ‘Size’ above, and specify the placement of the control.
+</ul>
+
+<b>SaveSet=<I>Command</I>,<I>Command</I>,<I>Command</I></b><br>
+Multiple allowed, only permitted in the first page.<br>
+This is a list of commands that will be saved and restored by the Rollcall control application in the precise order 
+given in this file. Multiple SaveSet lines will exist, each with up to 10 commands listed, and will be concatenated to 
+give a full list.</P>
+
+<a name=controltypes><h2>Control Types</h2></a>
+<TABLE BORDER WIDTH=217>
+<tr><th>Command Name</th><th>Value</th></tr>
+<TR><TD> CM_PAGELIST</TD> <TD> -100</TD> </TR>
+<TR><TD> CM_CENTREPSTRING</TD> <TD> -31</TD> </TR>
+<TR><TD> CM_RIGHTPSTRING</TD> <TD> -30</TD> </TR>
+<TR><TD> CM_LEFTPSTRING</TD> <TD> -29</TD> </TR>
+<TR><TD> CM_CENTRETITLE</TD> <TD> -28</TD> </TR>
+<TR><TD> CM_RIGHTTITLE</TD> <TD> -27</TD> </TR>
+<TR><TD> CM_LEFTTITLE</TD> <TD> -26</TD> </TR>
+<TR><TD> CM_WINDOW</TD> <TD> -25</TD> </TR>
+<TR><TD> CM_GLASSTTY</TD> <TD> -24</TD> </TR>
+<TR><TD> CM_DLLCTL</TD> <TD> -23</TD> </TR>
+<TR><TD> CM_FILESEND</TD> <TD> -22</TD> </TR>
+<TR><TD> CM_RIGHTDATA</TD> <TD> -21</TD> </TR>
+<TR><TD> CM_LEFTDATA</TD> <TD> -20</TD> </TR>
+<TR><TD> CM_RIGHTTEXT</TD> <TD> -19</TD> </TR>
+<TR><TD> CM_LEFTTEXT</TD> <TD> -18</TD> </TR>
+<TR><TD> CM_PUSHBUTTON</TD> <TD> -17</TD> </TR>
+<TR><TD> CM_SENDBUTTON</TD> <TD> -16</TD> </TR>
+<TR><TD> CM_DISPDATA</TD> <TD> -15</TD> </TR>
+<TR><TD> CM_PRESET</TD> <TD> -14</TD> </TR>
+<TR><TD> CM_DISPTEXT</TD> <TD> -13</TD> </TR>
+<TR><TD> CM_EDITBOX</TD> <TD> -12</TD> </TR>
+<TR><TD> CM_CHECKBUTTON</TD> <TD> -11</TD> </TR>
+<TR><TD> CM_LISTBOX</TD> <TD> -10</TD> </TR>
+<TR><TD> CM_HSCROLLBAR</TD> <TD> -9</TD> </TR>
+<TR><TD> CM_VSCROLLBAR</TD> <TD> -8</TD> </TR>
+<TR><TD> CM_STATIC</TD> <TD> -1</TD> </TR>
+<TR><TD> CM_TILED</TD> <TD> 0</TD> </TR>
+<TR><TD> CM_LIST</TD> <TD> 16</TD> </TR>
+<TR><TD> CM_DISPLAY</TD> <TD> 32</TD> </TR>
+<TR><TD> CM_BUTTON</TD> <TD> 48</TD> </TR>
+<TR><TD> CM_CHECKBOX</TD> <TD> 64</TD> </TR>
+<TR><TD> CM_NUMBER</TD> <TD> 80</TD> </TR>
+<TR><TD> CM_VGRAPH</TD> <TD> 96</TD> </TR>
+<TR><TD> CM_HGRAPH</TD> <TD> 112</TD> </TR>
+<TR><TD> CM_EDITSTRING</TD> <TD> 128</TD> </TR>
+<TR><TD> CM_VLEVEL</TD> <TD> 144</TD> </TR>
+<TR><TD> CM_HLEVEL</TD> <TD> 160</TD> </TR>
+</TABLE>
+
+<h2>Document Revisions:</h2>
+Draft A : Richard George, 11<SUP>th</SUP> May 2000.<BR>
+Draft B : Maurice Snell, 11<SUP>th</SUP> May 2000.&nbsp; Notice added at top,
+href made relative.<br>
+Draft C : Richard George, 12<SUP>th</SUP> May 2000. In response to feedback from Stephan Segschneider: <br>
+Clarified actual appearance of templatepage section, added some 
+information on order, added info on special device status block.<p>
+</BODY>
+</HTML>

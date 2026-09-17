@@ -1,0 +1,18 @@
+{
+  "description": "Property restore notice type enumeration",
+  "name": "NcPropertyRestoreNoticeType",
+  "type": 3,
+  "items": [
+    {
+      "description": "Warning property restore notice",
+      "name": "Warning",
+      "value": 300
+    },
+    {
+      "description": "Error property restore notice",
+      "name": "Error",
+      "value": 400
+    }
+  ],
+  "constraints": null
+}

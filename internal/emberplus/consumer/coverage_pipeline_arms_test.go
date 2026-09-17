@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -10,9 +11,9 @@ import (
 
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/datastore"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
-	"dhs/internal/datastore"
 	"dhs/internal/transport"
 )
 
@@ -107,7 +108,7 @@ func TestProcessParameter_StreamIDCollision(t *testing.T) {
 		{Parameter: &glow.Parameter{Number: 2, Identifier: "b", Type: glow.ParamTypeInteger,
 			HasStreamIdentifier: true, StreamIdentifier: 5}},
 	})
-	if p.profile.Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
+	if p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
 		t.Error("expected StreamIDCollisionNoDescriptor compliance event")
 	}
 }
@@ -155,10 +156,12 @@ func TestProcessMatrix_AnnounceDeltaNotifies(t *testing.T) {
 		return &glow.Matrix{Number: 1, Identifier: "m", MatrixType: glow.MatrixTypeNToN,
 			TargetCount: 4, SourceCount: 4, Connections: conns}
 	}
-	// First sighting (initial) â€” has a connection but does NOT notify.
+	// First sighting (initial) â€” target 0 routed from source 0; does NOT notify.
 	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 0, Sources: []int32{0}}})}})
-	// Second processMatrix â€” announced delta fires notifyMatrixSubscribers.
-	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 1, Sources: []int32{2}, Disposition: glow.ConnDispLocked}})}})
+	// Second processMatrix â€” target 0 (already KNOWN) reroutes 0 -> 2: a real
+	// change, fires notifyMatrixSubscribers. (A brand-new target would be
+	// treated as initial population and stay silent.)
+	p.handleElements([]glow.Element{{Matrix: mat([]glow.Connection{{Target: 0, Sources: []int32{2}, Disposition: glow.ConnDispLocked}})}})
 	select {
 	case e := <-got:
 		if e.MatrixChange == nil {
@@ -253,7 +256,7 @@ func TestSession_ConnectWithRecorder(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Attach a recorder so Plugin.Connect's recorder!=nil arm + the
 	// session writer/reader SetTap arms execute.
 	rec, err := transport.NewRecorder(filepath.Join(t.TempDir(), "cap.jsonl"))

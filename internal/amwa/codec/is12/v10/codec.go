@@ -19,8 +19,8 @@ func (Codec) SpecID() string    { return is12.SpecID }
 func (Codec) APIVer() string    { return "v1.0" }
 func (Codec) SpecPatch() string { return SpecPatch }
 
-func (Codec) Encode(m is12.Message) ([]byte, error)    { return is12.Encode(m) }
-func (Codec) Decode(raw []byte) (is12.Message, error)  { return is12.Decode(raw) }
+func (Codec) Encode(m is12.Message) ([]byte, error)   { return is12.Encode(m) }
+func (Codec) Decode(raw []byte) (is12.Message, error) { return is12.Decode(raw) }
 
 func init() {
 	is12.Register(Codec{})

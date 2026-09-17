@@ -1,10 +1,11 @@
 package emberplus
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/emberplus/codec/glow"
+	"dhs/internal/export/canonical"
 )
 
 // buildMatrixTree constructs a minimal tree: router(Node 1) → mat(Matrix 1.1)
@@ -29,7 +30,7 @@ func buildMatrixTree(t *testing.T, m *canonical.Matrix) *server {
 			Children: []canonical.Element{m},
 		},
 	}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	if srv.tree == nil {
 		t.Fatal("tree failed to build")
 	}

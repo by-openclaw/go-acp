@@ -14,7 +14,7 @@
 //	IO                       — full /map/io view (inputs + outputs)
 //	InputProperties / Caps / Channels / Parent
 //	OutputProperties / Caps / Channels / SourceID
-//	MapActive / MapStaged    — current vs desired channel-routing map
+//	MapActive                — the active channel-routing map
 //	MapActivationRequest     — POST /map/activations body
 //	MapActivationResponse    — GET /map/activations[/{id}]
 //	Activation / ActivationResponse

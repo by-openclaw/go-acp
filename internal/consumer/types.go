@@ -7,9 +7,9 @@ package consumer
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"time"
 )
 
@@ -78,12 +78,12 @@ func (s *SlotStatus) UnmarshalJSON(data []byte) error {
 }
 
 const (
-	SlotNoCard    SlotStatus = 0
-	SlotPowerUp   SlotStatus = 1
-	SlotPresent   SlotStatus = 2
-	SlotError     SlotStatus = 3
-	SlotRemoved   SlotStatus = 4
-	SlotBootMode  SlotStatus = 5
+	SlotNoCard   SlotStatus = 0
+	SlotPowerUp  SlotStatus = 1
+	SlotPresent  SlotStatus = 2
+	SlotError    SlotStatus = 3
+	SlotRemoved  SlotStatus = 4
+	SlotBootMode SlotStatus = 5
 )
 
 func (s SlotStatus) String() string {
@@ -116,12 +116,12 @@ func (s SlotStatus) String() string {
 type SlotState string
 
 const (
-	SlotStateNoCard  SlotState = "no_card"  // physically empty
-	SlotStatePowerup SlotState = "powerup"  // card inserted, power ramping
-	SlotStateBoot    SlotState = "boot"     // firmware booting
-	SlotStatePresent SlotState = "present"  // card up, normal operation
-	SlotStateError   SlotState = "error"    // card present, fault flagged
-	SlotStateRemoved SlotState = "removed"  // hot-removed, transient before no_card
+	SlotStateNoCard  SlotState = "no_card" // physically empty
+	SlotStatePowerup SlotState = "powerup" // card inserted, power ramping
+	SlotStateBoot    SlotState = "boot"    // firmware booting
+	SlotStatePresent SlotState = "present" // card up, normal operation
+	SlotStateError   SlotState = "error"   // card present, fault flagged
+	SlotStateRemoved SlotState = "removed" // hot-removed, transient before no_card
 )
 
 // State returns the semantic SlotState for a wire-level SlotStatus. Unknown
@@ -183,15 +183,15 @@ type ValueKind uint8
 const (
 	KindUnknown ValueKind = iota
 	KindBool
-	KindInt      // signed integer, any width
-	KindUint     // unsigned integer, any width
-	KindFloat    // IEEE-754 float32 or float64
-	KindEnum     // ordinal with named items
+	KindInt   // signed integer, any width
+	KindUint  // unsigned integer, any width
+	KindFloat // IEEE-754 float32 or float64
+	KindEnum  // ordinal with named items
 	KindString
 	KindIPAddr
-	KindAlarm    // alarm priority + event strings
-	KindFrame    // frame-status slot array
-	KindRaw      // opaque bytes
+	KindAlarm // alarm priority + event strings
+	KindFrame // frame-status slot array
+	KindRaw   // opaque bytes
 )
 
 // String returns the canonical lowercase name for a ValueKind. Also
@@ -513,9 +513,9 @@ func (v Value) MarshalJSON() ([]byte, error) {
 
 // Event is a decoded announcement forwarded by Subscribe.
 type Event struct {
-	Slot      int
-	Group     string
-	ID        int
+	Slot  int
+	Group string
+	ID    int
 
 	// Path is the dot-joined identifier path of the element the
 	// event originates from, e.g. "router.oneToN.sources.src-1".
@@ -528,7 +528,7 @@ type Event struct {
 	// without OIDs.
 	OID string
 
-	Label     string
+	Label string
 
 	// Description is the human-readable description of the element
 	// (Ember+ Parameter/Node/Matrix Description field). Empty for
@@ -648,7 +648,11 @@ type ProtocolMeta struct {
 
 // ProtocolFactory builds Protocol instances. Registered via Register() in
 // each plugin's init().
+//
+// New takes the whole dependency set rather than a logger: a connector that
+// is handed its transport, clock and metrics cannot construct its own, which
+// is what makes CLAUDE.md principle 2 enforceable instead of aspirational.
 type ProtocolFactory interface {
 	Meta() ProtocolMeta
-	New(logger *slog.Logger) Protocol
+	New(deps plugin.Deps) Protocol
 }

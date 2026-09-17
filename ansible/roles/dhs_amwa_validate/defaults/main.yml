@@ -1,0 +1,397 @@
+---
+# dhs_amwa_validate — the AMWA conformance regression gate.
+#
+# The catalog below is baselines-as-code: every suite the AMWA NMOS
+# Testing tool ships for the roles we implement, with the EXACT
+# invocation shape each one needs (per-suite endpoint rows — the part
+# that cannot be guessed and was learned run by run), the target it is
+# scored against, and the score the plant reached on 2026-08-31.
+#
+# Naming follows AMWA verbatim: suite ids are the tool's own
+# (IS-12-01, BCP-008-01-01, …) and the end report names failing tests
+# by the tool's test names (test_13, auto_query_5, test_ms05_22 …).
+#
+# Gate rules, enforced by files/parse_suite.py:
+#   - any Fail/Error row fails the play;
+#   - Pass below baseline_pass fails the play (regression);
+#   - Could-Not-Test above baseline_cnt fails the play (a lost fixture
+#     shows up as CNT before it shows up as Fail);
+#   - Pass ABOVE baseline is a warning to raise the number in git.
+
+# Tool + fleet endpoints.
+dhs_amwa_validate_tool_url: "http://localhost:5000/api"
+dhs_amwa_validate_tool_container: nmos-testing
+dhs_amwa_validate_tool_image: "nmos-testing:cachefix"
+dhs_amwa_validate_results_dir: /root/amwa-validate
+
+# The plant (all addresses live on the plant host, group [plant]).
+dhs_amwa_validate_plant_host: "10.6.250.101"
+dhs_amwa_validate_node_port: 18080
+dhs_amwa_validate_registry_port: 8235
+# The mirror's served read-only Query face (--serve on the resident
+# mirror unit — dhs_amwa_plant_mirror_serve). Mirror-scope query rows
+# score THROUGH it via the per-row port override.
+dhs_amwa_validate_mirror_serve_port: 8335
+dhs_amwa_validate_cut_port: 18500
+# The token-bearing companion node the armed registry window registers
+# into the transient armed registry (#942 S3c).
+dhs_amwa_validate_cutnode_port: 18510
+dhs_amwa_validate_plant_bin: /opt/dhs-amwa-plant/dhs
+dhs_amwa_validate_plant_config: /opt/dhs-amwa-plant/amwa-test-node.json
+dhs_amwa_validate_registry_unit: dhs-nmos-registry
+dhs_amwa_validate_node_unit: dhs-nmos-test-node
+
+# Per-suite POST timeout (seconds). IS-11's stable-state loops are the
+# slowest legitimate runner.
+dhs_amwa_validate_suite_timeout: 1800
+
+# Subset filter: AMWA suite ids ("-e dhs_amwa_validate_only='[\"IS-08-01\"]'").
+# Empty = every enabled suite of the play's scope.
+dhs_amwa_validate_only: []
+
+# Safety window for CuT units: transient services self-destruct and a
+# paused registry self-restores after this many seconds even if the
+# play dies mid-suite.
+dhs_amwa_validate_window_safety_sec: 900
+
+# The isolated window (mDNS suites): a second tool instance + a fresh
+# node container on a private docker bridge on the tooling host —
+# nothing else lives there, so no LAN device can race the tool's
+# mocks.
+dhs_amwa_validate_isolated_net: dhs-validate-mdns
+dhs_amwa_validate_isolated_tool: nmos-testing-validate
+dhs_amwa_validate_isolated_tool_port: 5001
+
+# Auth-mode windows (issue #942): every upgrade is proven WITHOUT and
+# WITH IS-10/BCP-003-02 authorization. A THIRD tool instance carries
+# the armed profile — the resident tool stays auth-DISARMED (preflight
+# asserts it), because flipping ENABLE_AUTH on the shared arbiter
+# mid-gate would change the exam for the suites around it.
+#
+# The armed instance runs on HOST networking like the resident: the
+# tool's mock Authorization Server builds its issuer / token_endpoint
+# / jwks_uri from the machine's own default IP (nmos-testing
+# mocks/Auth.py make_issuer -> get_default_ip), so on a docker bridge
+# the RFC 8414 metadata would name a 172.x address the plant-side CuT
+# can never reach. Host networking in turn forces a shifted PORT_BASE
+# — the resident already owns 5000 — so the mock auth server lands on
+# PORT_BASE+10 = 5510. (The manual sweep receipts show :5010 only
+# because that sweep's tool was the sole instance at PORT_BASE 5000.)
+dhs_amwa_validate_tooling_host: "10.6.250.104"
+dhs_amwa_validate_auth_tool_container: nmos-testing-auth
+dhs_amwa_validate_auth_port_base: 5500
+# WS mocks shift with the instance too, so an auth suite can never
+# race the resident tool for the 6000+ websocket mock range.
+dhs_amwa_validate_auth_ws_port_base: 6500
+dhs_amwa_validate_auth_tool_url: "http://localhost:{{ dhs_amwa_validate_auth_port_base }}/api"
+# What the transient CuT is armed with (--auth-url): the armed tool's
+# mock Authorization Server, reachable from the plant host.
+dhs_amwa_validate_auth_server_url: "http://{{ dhs_amwa_validate_tooling_host }}:{{ dhs_amwa_validate_auth_port_base + 10 }}"
+
+# Auth-mode scope selector: set true by the amwa-validate-*-auth.yml
+# playbooks. A play runs EITHER a scope's plain entries or its
+# auth: true twins, never a mix — armed and disarmed windows score
+# against different tool instances and must not interleave.
+dhs_amwa_validate_auth_mode: false
+
+# TLS window (issue #948): BCP-003-01 needs an HTTPS-scoring tool and
+# an HTTPS/WSS-only CuT. FOURTH container, same created-stopped-then-
+# pin pattern as the armed one (the #942 crash-loop lesson).
+# ENABLE_HTTPS (Config.py line 92, default False) flips the tool's
+# scheme GLOBALLY — GenericTest.py derives protocol/ws_protocol from
+# it and the tool's POST /api body carries NO per-row scheme field —
+# so selecting the TLS container IS the https knob for a suite. With
+# ENABLE_HTTPS=True every flask app INCLUDING the GUI/API serves
+# https using the shipped CERTS_MOCKS defaults (mocks.testsuite.
+# nmos.tv chains — left untouched), hence the https tool URL below at
+# a hosts-pinned name that the mock certificate actually names (SAN
+# verified: DNS:mocks.testsuite.nmos.tv, DNS:nmos-mocks.local).
+dhs_amwa_validate_tls_tool_container: nmos-testing-tls
+# 5800, not 5600: an instance's real footprint is ~PORT_BASE..+110 —
+# the per-suite mock APIs bind at PORT_BASE+100+n, so the armed
+# instance (5500) owns 5601-5606 and a 5600 base crash-loops on
+# "port may already be in use" (first fleet run of #948). Resident
+# 5000-5110, armed 5500-5610, TLS 5800-5910.
+dhs_amwa_validate_tls_port_base: 5800
+dhs_amwa_validate_tls_ws_port_base: 6800
+dhs_amwa_validate_tls_tool_host: mocks.testsuite.nmos.tv
+# The window serves BOTH premade CuT pairs — dual-certificate TLS is
+# the compliant posture, not a choice (single-algo runs proved it on
+# the fleet): RSA-only scores 6 with test_08 warning "Server is not
+# providing an ECDSA certificate"; ECDSA-only scores 6 with test_02
+# FAILING outright ("Implementation of the following TLS 1.2 ciphers
+# is required: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" — the spec's
+# mandatory cipher is an RSA one). Serving RSA AND ECDSA together
+# lets the handshake pick per client and satisfies both tests, so the
+# former single-algo selector var is gone; the algo list below drives
+# the copy-out, the plant install, and the transient's repeated
+# --tls-cert/--tls-key pairs.
+dhs_amwa_validate_tls_cut_algos: [rsa, ecdsa]
+# http, not https: in this tool build ENABLE_HTTPS wraps only the
+# MOCK apps (PORT_BASE+100+n serve https, verified in the container
+# logs) — the core GUI/API at PORT_BASE stays plain http, and an
+# https probe dies with SSL WRONG_VERSION_NUMBER (first #948 fleet
+# rerun). TLS on the wire lives between the tool and the CuT.
+dhs_amwa_validate_tls_tool_url: "http://localhost:{{ dhs_amwa_validate_tls_port_base }}/api"
+# The CuT's TLS identity: the tool image ships a PREMADE pair for
+# dhs-node.testsuite.nmos.tv (the historic 7/0 run's identity — SAN
+# DNS:dhs-node.testsuite.nmos.tv, notAfter 2076) under
+# test_data/BCP00301/ca/intermediate. No cert minting per window: the
+# generate scripts live at ca/generateCerts in this image build, but
+# `openssl ca` mutates CA state (index.txt/serial) per issue and
+# refuses same-CN re-issues — copying the premade pair is
+# deterministic. Both algorithms' chains+keys are docker-cp'd out
+# once and the CuT serves them via repeated --tls-cert/--tls-key
+# pairs; tooling /etc/hosts pins the name at the plant IP (host-net
+# tool containers read the host's /etc/hosts).
+dhs_amwa_validate_tls_cut_fqdn: dhs-node.testsuite.nmos.tv
+# In-container CA tree (image workdir is /home/nmos-testing) and the
+# tooling-host staging dir the material is copied to; the plant-side
+# dir the window installs the CuT pair into.
+dhs_amwa_validate_tls_image_ca_dir: /home/nmos-testing/test_data/BCP00301/ca
+dhs_amwa_validate_tls_dir: /opt/dhs-validate-tls
+dhs_amwa_validate_tls_plant_dir: /opt/dhs-amwa-plant/tls
+
+# TLS-mode scope selector: set true by the amwa-validate-*-tls.yml
+# playbooks — same exclusivity rule as auth mode: a play scores
+# against exactly one tool instance (resident / armed / TLS).
+dhs_amwa_validate_tls_mode: false
+
+# Controller scope (issue #954): the CuT is OUR testing facade
+# (`dhs consumer nmos facade`) answering the tool's testquestion
+# POSTs by driving the consumer Controller against the tool's own
+# mock registry. The RESIDENT tool instance scores these suites: the
+# controller path does no zeroconf at all (ControllerTest.py — the
+# mock registries are named by URL, never announced, and IS-04-04
+# test_01, the one DNS-SD round, self-DISABLEs unless
+# DNS_SD_MODE=unicast), so the LAN-pollution concern that sends
+# IS-04-01 to the isolated instance does not apply; neither auth nor
+# tls is in play either. The facade runs as a CONTAINER on the
+# tooling host (window_facade.yml, host networking) — tooling-host
+# transients follow the window_isolated container pattern because
+# this LXC's systemd never holds its dbus name (tooling.yml's
+# cgroupfs note); systemd-run windows stay a plant-host thing.
+dhs_amwa_validate_facade_container: dhs-validate-facade
+# 5320 sits in the gap between the resident instance's real footprint
+# (5000..5110 — per-suite mock APIs bind PORT_BASE+100+n) and the
+# armed one (5500..5610). The facade verb's own default :5001 would
+# collide with the isolated tool's published port.
+dhs_amwa_validate_facade_port: 5320
+# The tool's PRIMARY mock registry: mocks/Registry.py binds instance
+# i at PORT_BASE+100+(i+1) and ControllerTest picks registries[1] —
+# resident PORT_BASE 5000 + 102. The facade is pointed straight at
+# it: in multicast mode nothing announces it and the tool's own
+# pre-test question hands a human this URL — the URL IS the
+# discovery contract, so --registry is the honest automated twin.
+dhs_amwa_validate_mock_registry_port: 5102
+
+# The catalog. Fields:
+#   id            AMWA suite id, verbatim
+#   scope         node | registry | controller | mirror
+#   target        node | registry | cut  (which host:port the rows use)
+#   window        absent | isolated | p2p | registry | tls | facade
+#                 (CuT window around the run — window_<name>.yml)
+#   auth          true = IS-10 window (issue #942): the window's CuT
+#                 is armed with --auth-url and the ARMED tool instance
+#                 scores it; plant resident units are never armed
+#   rows          endpoint rows in the suite's declared order; each row
+#                 may carry ver / urlpath / selector; host+port come
+#                 from the target unless the row overrides them (null
+#                 host rows are IS-09-02's mock-System-API shape)
+#   baseline_pass / baseline_cnt   the gate
+#   enabled: false + note          suites we cannot yet drive here
+dhs_amwa_validate_suites:
+  # ---- node scope, plant node :18080 ----
+  - { id: IS-05-01, scope: node, target: node,
+      rows: [{ver: v1.2}], baseline_pass: 60, baseline_cnt: 0 }
+  # baseline 55: historically the tool's mux-SDP round (test_18)
+  # returned MANUAL(warn_sdp_untested) because the MP2T receiver's
+  # media_types[0] had no tool SDP template; the fixture now leads
+  # that receiver with video/SMPTE2022-6 (templatable; MP2T stays a
+  # member for BCP-006-04), so test_18 is tool-scored — confirmed 56
+  # on the 2026-09-02 fleet rescore (#950 phase 1).
+  - { id: IS-05-02, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 56, baseline_cnt: 0 }
+  - { id: IS-07-01, scope: node, target: node,
+      rows: [{ver: v1.0}], baseline_pass: 19, baseline_cnt: 0 }
+  # fresh: earlier suites in a sequential run leave staged IS-05 state
+  # (a receiver patched at a previous suite's mock URL); IS-07-02 then
+  # reads a device mid-someone-else's-test. A restart resets it.
+  - { id: IS-07-02, scope: node, target: node, fresh: true,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0}],
+      # test_06 (MQTT senders) covered since the MQTT transport unit.
+      baseline_pass: 53, baseline_cnt: 0 }
+  - { id: IS-08-01, scope: node, target: node,
+      rows: [{ver: v1.0}], baseline_pass: 36, baseline_cnt: 0 }
+  - { id: IS-08-02, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0}], baseline_pass: 43, baseline_cnt: 0 }
+  - { id: IS-11-01, scope: node, target: node,
+      rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
+      baseline_pass: 103, baseline_cnt: 0 }
+  - { id: IS-12-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}, {ver: v1.0}],
+      # baseline_cnt 2 = tool-side auto_ms05 "Not Implemented" +
+      # test_ms05_07 (we declare no deprecated properties — by design).
+      baseline_pass: 135, baseline_cnt: 2 }
+  - { id: IS-14-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
+      baseline_pass: 150, baseline_cnt: 1 }
+  - { id: BCP-005-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 16, baseline_cnt: 0 }
+  - { id: BCP-006-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 23, baseline_cnt: 0 }
+  - { id: BCP-006-04, scope: node, target: node,
+      rows: [{ver: v1.3}], baseline_pass: 20, baseline_cnt: 0 }
+  - { id: BCP-007-03-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
+  - { id: BCP-008-01-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
+      baseline_pass: 98, baseline_cnt: 0 }
+  - { id: BCP-008-02-01, scope: node, target: node,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}],
+      baseline_pass: 98, baseline_cnt: 0 }
+  # ---- TLS window (issue #948): BCP-003-01 against an HTTPS-only CuT ----
+  # tls: true selects the TLS tool instance (ENABLE_HTTPS=True — the
+  # tool's GLOBAL https/wss switch; there is no per-row scheme field
+  # on its API) and rides only the amwa-validate-*-tls.yml plays. The
+  # row addresses the CuT by the certificate's DNS identity — the
+  # premade dhs-node.testsuite.nmos.tv pair names no IP SAN, and the
+  # tool validates against its own CA — with the port defaulting to
+  # the CuT window port; tooling /etc/hosts resolves the name.
+  # baseline_pass 7 is the historic 7/0 score — first fleet rerun
+  # confirms whether the current tool version still scores 7.
+  # ver v1.0 is the BCP-003-01 SPEC version (its repo has only v1.0.x
+  # branches), not an IS-04 api_ver — v1.3 made the tool die with
+  # "No branch matching ... secure v1.3 cache/bcp-003-01".
+  - { id: BCP-003-01, scope: node, target: cut, window: tls, tls: true,
+      rows: [{host: dhs-node.testsuite.nmos.tv, ver: v1.0}],
+      baseline_pass: 7, baseline_cnt: 0 }
+
+  # ---- node scope, CuT windows :18500 ----
+  # IS-04-01 scores a REGISTERED node against the tool's own mock
+  # registries, which it announces over mDNS: the transient node runs
+  # mDNS-discovery mode and the plant registry pauses so it cannot win
+  # the election (safety timer restores it regardless).
+  # isolated: on the LAN the real Neuron mDNS-registers with the
+  # tool's mock registries (tool-visible as "Heartbeats matched a
+  # different Node ID"), so the mDNS suites score on the private
+  # bridge. flaky_retry stays as belt-and-braces; retries are
+  # reported.
+  # test_13's SDP round is tool-scored since the fixture leads every
+  # RTP receiver with a templatable media_types[0] (#950 phase 1) —
+  # expect 58 (confirm from the fleet before raising).
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
+      rows: [{ver: v1.3}], baseline_pass: 59, baseline_cnt: 0 }
+  # IS-09-02 drives our node's System API CLIENT against the tool's
+  # mock System API (mDNS-announced) — same window; note the suite's
+  # own two-row shape with a null first endpoint.
+  # Two rows: the NODE row (must carry the CuT address — the tool
+  # matches observed /global requests against this IP) and the System
+  # API slot the tool itself serves (null host+port, per its docs:
+  # a null slot skips pre-validation of an API the TOOL provides).
+  - { id: IS-09-02, scope: node, target: cut, window: isolated, flaky_retry: true,
+      rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  # IS-09-01 scores our System API SERVER (issue #958) — the one
+  # registered tool suite that had no row and no receipt anywhere. A
+  # pure GenericTest (auto RAML/schema rows only); the window serves a
+  # transient `--role system` with an authored /global on the CuT port.
+  - { id: IS-09-01, scope: node, target: cut, window: system,
+      rows: [{ver: v1.0}], baseline_pass: 5, baseline_cnt: 0 }
+  # IS-04-03 scores peer-to-peer mode: a registered node MUST NOT
+  # advertise _nmos-node._tcp (IS-04 §4.2.1), so P2P needs its own
+  # --no-registry transient.
+  - { id: IS-04-03, scope: node, target: cut, window: p2p,
+      rows: [{ver: v1.3}], baseline_pass: 17, baseline_cnt: 0 }
+
+  # ---- registry scope, plant registry :8235 ----
+  # baseline_cnt 2 = auto_registration_5/6: the tool substitutes ids
+  # from RAML listing GETs and the registration RAML defines none
+  # under /resource — structurally untestable for ANY implementation
+  # (nmos-cpp included).
+  - { id: IS-04-02, scope: registry, target: registry,
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
+
+  # ---- mirror scope, plant registry :8235 + mirror served face :8335 ----
+  # IS-04-02 end-to-end THROUGH the mirror (issue #946, S2b). The
+  # suite's two rows split across the mirrored path: the registration
+  # row targets the SOURCE plant registry (:8235, the target default —
+  # the mirror's own upstream), the query row overrides the port to the
+  # mirror's served read-only Query face (:8335; suite_attempt.yml's
+  # row normalisation honours row.host/row.port). The tool registers
+  # its mock resources at the source and scores every Query read
+  # THROUGH the audited mirror. No window: the resident registry and
+  # resident mirror already run, exactly like the plant-resident
+  # entries above. The row port is a literal per this file's row style
+  # (rows never template vars — a templated port would reach the tool
+  # as a string, not an int) and must match
+  # dhs_amwa_validate_mirror_serve_port / dhs_amwa_plant_mirror_serve.
+  # Baselines (2026-09-01, #946 fleet receipts after the ws_href,
+  # announce, per-minor-fidelity and identical-put fixes plus the
+  # seeded subscription): pass=73 fail=0, cnt=2 = the same structural
+  # auto_registration 5/6 pair every registry-shaped entry carries.
+  - { id: IS-04-02, scope: mirror, target: registry,
+      rows: [{ver: v1.3}, {ver: v1.3, port: 8335}],
+      baseline_pass: 73, baseline_cnt: 2 }
+
+  # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
+  # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +
+  # IS-05-01-auth.json on dhs-tools) proved the recipe: tool
+  # ENABLE_AUTH=True, transient CuT armed via --auth-url at the tool's
+  # mock Authorization Server, every request tokened. Auth activates
+  # the per-endpoint 401/403/WWW-Authenticate auto rounds, so pass
+  # counts sit ABOVE the non-auth twins once baselined.
+  # baseline_pass 0 = baseline set from first fleet run: the gate
+  # still fails on any Fail/Error and on cnt above baseline (the
+  # parse_suite.py rules are unchanged — pass >= 0 is trivially true,
+  # so the pass-regression arm only bites once the real number lands
+  # here in git).
+  # Armed baseline from the 2026-09-01 first fleet run: the full
+  # connection suite passes against the Bearer-gated node, no CNTs.
+  - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.2}], baseline_pass: 67, baseline_cnt: 0 }
+  # Armed baselines (2026-09-01, #944): the token-bearing companion
+  # node + seeded persistent subscription give every Query round a
+  # resource, so the armed window sits the SAME exam shape as the
+  # disarmed twin — cnt 2 is the identical structural
+  # auto_registration 5/6 pair (RAML id substitution, untestable for
+  # any implementation).
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 88, baseline_cnt: 2 }
+
+  # ---- controller scope (issue #954): the four testing-facade exams,
+  # driven by our shipped facade (window_facade.yml). Row shapes are
+  # the tool's own TEST_DEFINITIONS, verified from NMOSTesting.py:
+  # row 1 is the testing-facade/testquestion slot — the ONLY row that
+  # names the CuT (our facade on the tooling host; host:port literals
+  # per this file's row style, matching dhs_amwa_validate_facade_port);
+  # the is-04/query and is-05/connection rows carry
+  # disable_fields host+port — the TOOL fills its own mocks — spelled
+  # as the explicit-null row shape IS-09-02 already uses. Row versions
+  # are the tool's spec defaults (testquestion v1.0, query v1.3,
+  # connection v1.1). IS-04-04 has NO connection row (2-row suite).
+  # baseline 0/0 placeholders — the fleet fills them. Expected first
+  # run: IS-04-04 test_01 reports DISABLED (multicast mode);
+  # BCP-006-01-02 test_03/test_04 FAIL — a named facade coverage gap
+  # (TR-08 compatibility with the counterpart identified only in
+  # prose; the facade answers the question's own "unable to
+  # identify" branch) — keep-or-disable is the post-fleet decision.
+  - { id: IS-04-04, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-05-03, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: BCP-006-01-02, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 5, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, window: facade,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 4, baseline_cnt: 0 }

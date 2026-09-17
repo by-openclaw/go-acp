@@ -2,6 +2,7 @@ package probelsw02p_test
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"net"
@@ -10,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	consumer "dhs/internal/probel-sw02p/consumer"
-	"dhs/internal/probel-sw02p/codec"
-	provider "dhs/internal/probel-sw02p/provider"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw02p/codec"
+	consumer "dhs/internal/probel-sw02p/consumer"
+	provider "dhs/internal/probel-sw02p/provider"
 )
 
 var _ = os.Getenv
@@ -58,40 +59,37 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	}
 
 	srv := &provider.Factory{}
-	prov := srv.New(logger, exp)
+	prov := srv.New(plugin.Deps{Logger: logger}, exp)
 
+	// Pre-bind the listener and hand it to the provider: no
+	// close-then-rebind window (another process in a parallel test
+	// sweep can steal the freed port — #694 flake class), and no
+	// dial-poll needed — the kernel backlog queues connects from the
+	// moment Listen returns.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
 	addr := ln.Addr().String()
-	if err := ln.Close(); err != nil {
-		t.Fatalf("close probe listener: %v", err)
+	sl, ok := prov.(interface {
+		ServeListener(context.Context, net.Listener) error
+	})
+	if !ok {
+		t.Fatal("provider does not expose ServeListener")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	serveDone := make(chan error, 1)
 	go func() {
-		serveDone <- prov.Serve(ctx, addr)
+		serveDone <- sl.ServeListener(ctx, ln)
 	}()
-
-	// Wait up to 1 s for the listener to come online.
-	deadline := time.Now().Add(1 * time.Second)
-	for time.Now().Before(deadline) {
-		c, derr := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-		if derr == nil {
-			_ = c.Close()
-			break
-		}
-		time.Sleep(25 * time.Millisecond)
-	}
 
 	// Two consumer plugins connect to the same provider.
 	fA := &consumer.Factory{}
 	fB := &consumer.Factory{}
-	plA, _ := fA.New(logger).(*consumer.Plugin)
-	plB, _ := fB.New(logger).(*consumer.Plugin)
+	plA, _ := fA.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
+	plB, _ := fB.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
 
 	host, port := splitHostPort(t, addr)
 	if err := plA.Connect(ctx, host, port); err != nil {
@@ -102,6 +100,20 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 		t.Fatalf("B connect: %v", err)
 	}
 	defer func() { _ = plB.Disconnect() }()
+
+	// Registration barrier (#936): Connect returning only proves the
+	// TCP handshake — the kernel backlog completes it before the
+	// provider's accept loop runs. On a starved CI container, A's
+	// stages + GO can all execute before the accept goroutine puts B
+	// into s.sessions, so B joins mid-broadcast and permanently
+	// misses the leading tx 04 frames. acceptLoop registers a session
+	// BEFORE starting its goroutine, so a reply on B proves B is a
+	// fan-out target. rx 50 → tx 51 is the cheapest round-trip.
+	barrierCtx, barrierCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer barrierCancel()
+	if _, err := plB.SendDualControllerStatusRequest(barrierCtx); err != nil {
+		t.Fatalf("B registration barrier: %v", err)
+	}
 
 	// Subscribe B to every incoming frame. We need to observe the
 	// fan-out from A's rx 36 GO command. Also subscribe A for
@@ -148,8 +160,12 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	})
 	_ = aSawGoDone
 
-	// A stages three crosspoints under salvo 5.
-	sendCtx, sendCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// A stages three crosspoints under salvo 5. Deadlines here and
+	// below are generous: the success path exits as soon as the frames
+	// land (loopback, microseconds), so the budget is only ever spent
+	// when something is genuinely broken — a tight budget just lets a
+	// stalled CI runner fake a failure.
+	sendCtx, sendCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer sendCancel()
 	for _, s := range []struct{ dst, src uint16 }{{0, 1}, {1, 2}, {2, 3}} {
 		if _, err := plA.SendConnectOnGoGroupSalvo(sendCtx, s.dst, s.src, 5, false); err != nil {
@@ -166,8 +182,8 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 		t.Fatalf("A fire: %v (subscribe saw tx 38 on A? %v)", err, saw)
 	}
 
-	// Wait up to 2 s for B to observe 3 × tx 04 + 1 × tx 38.
-	deadline = time.Now().Add(2 * time.Second)
+	// Wait for B to observe 3 × tx 04 + 1 × tx 38 (early-exit poll).
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		bMu.Lock()
 		ready := len(bConnected) >= 3 && bGoDone != nil
@@ -200,7 +216,7 @@ func TestIntegrationSalvoBroadcastsConnectedAcrossSessions(t *testing.T) {
 	cancel()
 	select {
 	case <-serveDone:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Error("provider Serve did not return after ctx cancel")
 	}
 }

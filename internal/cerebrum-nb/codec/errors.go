@@ -8,28 +8,28 @@ import "fmt"
 type NackCode int
 
 const (
-	NackInvalidUserOrPass         NackCode = 0
-	NackMtidError                 NackCode = 1
-	NackUnknownCommand            NackCode = 2
-	NackInvalidXML                NackCode = 3
-	NackServerInactive            NackCode = 4
-	NackUnknownConnection         NackCode = 5
-	NackNotLoggedIn               NackCode = 6
-	NackCommandMissingParameters  NackCode = 7
-	NackOneOrMoreActionsInvalid   NackCode = 8
-	NackOneOrMoreEventsInvalid    NackCode = 9
-	NackOneOrMoreObtainsInvalid   NackCode = 10
-	NackResponseTooLarge          NackCode = 11
-	NackNoLicenceAvailable        NackCode = 12
-	NackOK                        NackCode = 13
+	NackInvalidUserOrPass        NackCode = 0
+	NackMtidError                NackCode = 1
+	NackUnknownCommand           NackCode = 2
+	NackInvalidXML               NackCode = 3
+	NackServerInactive           NackCode = 4
+	NackUnknownConnection        NackCode = 5
+	NackNotLoggedIn              NackCode = 6
+	NackCommandMissingParameters NackCode = 7
+	NackOneOrMoreActionsInvalid  NackCode = 8
+	NackOneOrMoreEventsInvalid   NackCode = 9
+	NackOneOrMoreObtainsInvalid  NackCode = 10
+	NackResponseTooLarge         NackCode = 11
+	NackNoLicenceAvailable       NackCode = 12
+	NackOK                       NackCode = 13
 )
 
 // nackTable maps id ↔ canonical code string ↔ description, exactly per
 // keys.md §6.
 var nackTable = []struct {
-	ID    NackCode
-	Code  string
-	Desc  string
+	ID   NackCode
+	Code string
+	Desc string
 }{
 	{NackInvalidUserOrPass, "INVALID_USER_OR_PASS", "specified username or password is invalid"},
 	{NackMtidError, "MTID_ERROR", "a message type identifier was not specified"},

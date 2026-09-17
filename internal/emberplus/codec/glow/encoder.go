@@ -1,6 +1,7 @@
 // Glow encoder — builds BER payloads for all Ember+ Glow messages.
 // Encoding pattern per Ember+ spec v2.50 (Lawo GmbH):
-//   ApplicationTag → Context(0)=number/path → Context(1)=contents(SET) → Context(2)=children
+//
+//	ApplicationTag → Context(0)=number/path → Context(1)=contents(SET) → Context(2)=children
 //
 // Reference: internal/emberplus/assets/Ember+ Documentation.pdf
 package glow
@@ -270,6 +271,11 @@ func EncodeMatrixConnect(matrixPath []int32, target int32, sources []int32, oper
 func EncodeMatrixGetDirectory(matrixPath []int32) []byte {
 	cmd := ber.AppConstructed(TagCommand,
 		ber.ContextConstructed(CmdCtxNumber, ber.Integer(CmdGetDirectory)),
+		// dirFieldMask = All (-1). Spec p.31: a GetDirectory WITHOUT a mask
+		// makes the provider return only the element's number — no contents
+		// (no identifier / targetCount / labels). This is why the matrix
+		// came back blank; the reference viewer sets the mask, so must we.
+		ber.ContextConstructed(CmdCtxDirMask, ber.Integer(-1)),
 	)
 	matrix := ber.AppConstructed(TagQualifiedMatrix,
 		ber.ContextConstructed(0, ber.RelOID(encodeRelativeOID(matrixPath))),

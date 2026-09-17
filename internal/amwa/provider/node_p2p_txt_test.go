@@ -5,9 +5,11 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	"dhs/internal/amwa/codec/is04"
+	"dhs/internal/amwa/codec/is05"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 )
 
@@ -219,6 +221,67 @@ func TestBumpResourceVersionNoResponderInRegisteredMode(t *testing.T) {
 	if staged != strconv.Itoa(5) {
 		t.Errorf("staged TXT[ver_flw] = %q, want %q (counter must persist while suspended)",
 			staged, "5")
+	}
+}
+
+// TestActivationBumpsVerTXT: an IS-05 immediate activation rewrites
+// the IS-04 receiver resource, and IS-04 §3.1.1 says a P2P peer learns
+// of that ONLY through the matching ver_* TXT counter — so the promote
+// path must land a ver_rcv bump on the responder (the behaviour the
+// AMWA suite's IS-04-03 test_02 names). Driven through the REAL chain:
+// connection store applyPatch → promoteLocked → afterActivation →
+// updateIS04Subscription → resource-changed hook → BumpResourceVersion.
+func TestActivationBumpsVerTXT(t *testing.T) {
+	bundle := routableBundle(t)
+	s, err := NewIS04NodeServer(nil, bundle, IS04NodeConfig{
+		Bind:          ":0",
+		AdvertiseHost: "node.local:18080",
+		DiscoveryMode: "mdns",
+		APIVer:        "v1.3",
+	})
+	if err != nil {
+		t.Fatalf("NewIS04NodeServer: %v", err)
+	}
+	mr := &mockResponder{}
+	s.mu.Lock()
+	s.announceInstance = dnssdcodec.Instance{
+		Name:    "test-node",
+		Service: dnssdcodec.ServiceNode,
+		Host:    "test-node.local",
+		Port:    18080,
+		TXT:     s.buildNodeTXTLocked("v1.3"),
+	}
+	s.responder = mr
+	s.announceCtx = context.Background()
+	s.mu.Unlock()
+
+	rcvID := bundle.Receivers[0].ID
+	patch := is05.StagedSender{
+		MasterEnableField: is05.MasterEnableField{MasterEnable: true},
+		Activation:        is05.Activation{Mode: is05.ActivationModeImmediate},
+	}
+	if _, code, err := s.connection.store.applyPatch("receivers", rcvID, patch,
+		patchFields{MasterEnable: true}); err != nil || code != 200 {
+		t.Fatalf("activate: code=%d err=%v", code, err)
+	}
+
+	// The bump runs detached (the hook fires under the connection
+	// store's lock), so poll for the TXT republish.
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if ins, ok := mr.lastUpdate(); ok {
+			if got := ins.TXT[dnssdcodec.TXTKeyVerRcv]; got == "1" {
+				if snd := ins.TXT[dnssdcodec.TXTKeyVerSnd]; snd != "0" {
+					t.Errorf("ver_snd = %q after a RECEIVER activation, want 0", snd)
+				}
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			ins, ok := mr.lastUpdate()
+			t.Fatalf("no ver_rcv=1 TXT republish after activation (update seen=%v txt=%v)", ok, ins.TXT)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

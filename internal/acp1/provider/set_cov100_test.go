@@ -26,9 +26,9 @@ func TestMutate_BadValueType(t *testing.T) {
 	if _, err := s.mutateFloat(bad(codec.TypeFloat), codec.MethodSetIncValue, nil); err == nil {
 		t.Error("float bad value: want error")
 	}
-	// IPAddr expects a dotted-quad string / [4]byte; a bare int is invalid.
+	// IPAddr takes a dotted-quad string or a u32; a list is neither.
 	if _, err := s.mutateIPAddr(&entry{acpType: codec.TypeIPAddr,
-		param: &canonical.Parameter{Value: int64(7)}}, codec.MethodSetIncValue, nil); err == nil {
+		param: &canonical.Parameter{Value: []string{"1.2.3.4"}}}, codec.MethodSetIncValue, nil); err == nil {
 		t.Error("ipaddr bad value: want error")
 	}
 }

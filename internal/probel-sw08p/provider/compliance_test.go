@@ -1,12 +1,13 @@
 package probelsw08p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/export/canonical"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // newComplianceServer builds a minimal provider against a 4×4 single-level
@@ -29,7 +30,7 @@ func newComplianceServer(t *testing.T) *server {
 			},
 		},
 	}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 // TestProfileUnsupportedCommand: dispatching a frame with a CMD byte

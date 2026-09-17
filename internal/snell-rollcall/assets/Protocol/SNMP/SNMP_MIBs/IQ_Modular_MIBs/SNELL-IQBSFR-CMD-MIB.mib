@@ -1,0 +1,1058 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBSFR
+--        Module Id#:97
+--       Command Set:8
+--          Filename:SNELL-IQBSFR-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:17/06/2005
+--              Time:10:58
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBSFR-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBSFR,
+    moduleIQBSFRMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBSFRCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506171058Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBSFRMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbsfrCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbsfrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBSFR 1 }
+
+	iqbsfrCmdEntry OBJECT-TYPE
+		SYNTAX		IqbsfrCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbsfrSlotIndex }
+		::= { iqbsfrCmdTable 1 }
+
+	IqbsfrCmdEntry ::=
+		SEQUENCE {
+			iqbsfrSlotIndex
+				Unsigned32,
+			iqbsfrRouterOutputA
+				INTEGER,
+			iqbsfrRouterOutputASFSwap
+				INTEGER,
+			iqbsfrRouterOutputB
+				INTEGER,
+			iqbsfrRouterOutputBSFSwap
+				INTEGER,
+			iqbsfrReMapperOutputASubFrame1
+				INTEGER,
+			iqbsfrReMapperOutputASubFrame2
+				INTEGER,
+			iqbsfrReMapperOutputBSubFrame1
+				INTEGER,
+			iqbsfrReMapperOutputBSubFrame2
+				INTEGER,
+			iqbsfrPolarityInvertInputASF1
+				INTEGER,
+			iqbsfrPolarityInvertInputASF2
+				INTEGER,
+			iqbsfrPolarityInvertInputBSF1
+				INTEGER,
+			iqbsfrPolarityInvertInputBSF2
+				INTEGER,
+			iqbsfrGainInputAMuteInputASF1
+				INTEGER,
+			iqbsfrGainInputAMuteInputASF2
+				INTEGER,
+			iqbsfrGainInputAInputASF1Gain
+				INTEGER,
+			iqbsfrGainInputAInputASF2Gain
+				INTEGER,
+			iqbsfrGainInputAStereoGain
+				INTEGER,
+			iqbsfrGainInputBMuteInputBSF1
+				INTEGER,
+			iqbsfrGainInputBMuteInputBSF2
+				INTEGER,
+			iqbsfrGainInputBInputBSF1Gain
+				INTEGER,
+			iqbsfrGainInputBInputBSF2Gain
+				INTEGER,
+			iqbsfrGainInputBStereoGain
+				INTEGER,
+			iqbsfrChannelStatOutputAInsertEditedCS
+				INTEGER,
+			iqbsfrOutputAEditChannelStatOrigin
+				RollCallString,
+			iqbsfrOutputAEditChannelStatDestination
+				RollCallString,
+			iqbsfrChannelStatOutputAStatusToUse
+				INTEGER,
+			iqbsfrChannelStatOutputBInsertEditedCS
+				INTEGER,
+			iqbsfrOutputBEditChannelStatOrigin
+				RollCallString,
+			iqbsfrOutputBEditChannelStatDestination
+				RollCallString,
+			iqbsfrChannelStatOutputBStatusToUse
+				INTEGER,
+			iqbsfrLock
+				INTEGER,
+			iqbsfrDisplay
+				INTEGER,
+			iqbsfrDisplayChannelStatusInf
+				INTEGER,
+			iqbsfrDisplayChannelStatusSetupUp
+				INTEGER,
+			iqbsfrDisplayChannelStatusSetupSubFrame
+				INTEGER,
+			iqbsfrDisplayChannelStatusSetupDown
+				INTEGER,
+			iqbsfrDisplayChannelStatusSetup
+				INTEGER,
+			iqbsfrMemorySave
+				INTEGER,
+			iqbsfrMemoryRead
+				INTEGER,
+			iqbsfrMemoryPreset
+				INTEGER,
+			iqbsfrMemoryNamesMemory1
+				RollCallString,
+			iqbsfrMemoryNamesMemory2
+				RollCallString,
+			iqbsfrMemoryNamesMemory3
+				RollCallString,
+			iqbsfrMemoryNamesMemory4
+				RollCallString,
+			iqbsfrSetupPPM0dBuRefInA
+				INTEGER,
+			iqbsfrSetupPPM0dBuRefInB
+				INTEGER,
+			iqbsfrSetupGPISetupEnable
+				INTEGER,
+			iqbsfrSetupGPISetupGPILevelLow
+				INTEGER,
+			iqbsfrSetupGPISetupGPILevelHigh
+				INTEGER,
+			iqbsfrSetupLoggingAESInputA
+				INTEGER,
+			iqbsfrSetupLoggingAESInputB
+				INTEGER,
+			iqbsfrSetupLoggingAESReference
+				INTEGER,
+			iqbsfrSetupPresetUnit
+				INTEGER,
+			iqbsfrSetupSoftwareVersion
+				RollCallString,
+			iqbsfrSetupSerialNo
+				RollCallString
+		}
+
+	iqbsfrSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbsfrCmdEntry 0 }
+
+
+	iqbsfrRouterOutputA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A(0),
+							val_input_B(1),
+							val_mute(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 30  value= 0
+					Input_B  cmdID= 30  value= 1
+					Mute  cmdID= 30  value= 3  "
+		::= { iqbsfrCmdEntry 30 }
+
+
+	iqbsfrRouterOutputASFSwap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					SF_Swap  cmdID= 32 "
+		::= { iqbsfrCmdEntry 32 }
+
+
+	iqbsfrRouterOutputB OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A(0),
+							val_input_B(1),
+							val_mute(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 31  value= 0
+					Input_B  cmdID= 31  value= 1
+					Mute  cmdID= 31  value= 3  "
+		::= { iqbsfrCmdEntry 31 }
+
+
+	iqbsfrRouterOutputBSFSwap OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					SF_Swap  cmdID= 33 "
+		::= { iqbsfrCmdEntry 33 }
+
+
+	iqbsfrReMapperOutputASubFrame1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(0),
+							val_input_A_SF2(1),
+							val_input_B_SF1(2),
+							val_input_B_SF2(3),
+							val_input_A_SF1plusSF2(4),
+							val_input_A_SF1minusSF2(5),
+							val_input_A_SF2minusSF1(6),
+							val_input_B_SF1plusSF2(7),
+							val_input_B_SF1minusSF2(8),
+							val_input_B_SF2minusSF1(9),
+							val_mute(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SubFrame1  cmdID= 26
+					Input_A_SF1  value= 0
+					Input_A_SF2  value= 1
+					Input_B_SF1  value= 2
+					Input_B_SF2  value= 3
+					Input_A_SF1+SF2  value= 4
+					Input_A_SF1-SF2  value= 5
+					Input_A_SF2-SF1  value= 6
+					Input_B_SF1+SF2  value= 7
+					Input_B_SF1-SF2  value= 8
+					Input_B_SF2-SF1  value= 9
+					Mute  value= 10  "
+		::= { iqbsfrCmdEntry 26 }
+
+
+	iqbsfrReMapperOutputASubFrame2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(0),
+							val_input_A_SF2(1),
+							val_input_B_SF1(2),
+							val_input_B_SF2(3),
+							val_input_A_SF1plusSF2(4),
+							val_input_A_SF1minusSF2(5),
+							val_input_A_SF2minusSF1(6),
+							val_input_B_SF1plusSF2(7),
+							val_input_B_SF1minusSF2(8),
+							val_input_B_SF2minusSF1(9),
+							val_mute(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SubFrame2  cmdID= 27
+					Input_A_SF1  value= 0
+					Input_A_SF2  value= 1
+					Input_B_SF1  value= 2
+					Input_B_SF2  value= 3
+					Input_A_SF1+SF2  value= 4
+					Input_A_SF1-SF2  value= 5
+					Input_A_SF2-SF1  value= 6
+					Input_B_SF1+SF2  value= 7
+					Input_B_SF1-SF2  value= 8
+					Input_B_SF2-SF1  value= 9
+					Mute  value= 10  "
+		::= { iqbsfrCmdEntry 27 }
+
+
+	iqbsfrReMapperOutputBSubFrame1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(0),
+							val_input_A_SF2(1),
+							val_input_B_SF1(2),
+							val_input_B_SF2(3),
+							val_input_A_SF1plusSF2(4),
+							val_input_A_SF1minusSF2(5),
+							val_input_A_SF2minusSF1(6),
+							val_input_B_SF1plusSF2(7),
+							val_input_B_SF1minusSF2(8),
+							val_input_B_SF2minusSF1(9),
+							val_mute(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SubFrame1  cmdID= 28
+					Input_A_SF1  value= 0
+					Input_A_SF2  value= 1
+					Input_B_SF1  value= 2
+					Input_B_SF2  value= 3
+					Input_A_SF1+SF2  value= 4
+					Input_A_SF1-SF2  value= 5
+					Input_A_SF2-SF1  value= 6
+					Input_B_SF1+SF2  value= 7
+					Input_B_SF1-SF2  value= 8
+					Input_B_SF2-SF1  value= 9
+					Mute  value= 10  "
+		::= { iqbsfrCmdEntry 28 }
+
+
+	iqbsfrReMapperOutputBSubFrame2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(0),
+							val_input_A_SF2(1),
+							val_input_B_SF1(2),
+							val_input_B_SF2(3),
+							val_input_A_SF1plusSF2(4),
+							val_input_A_SF1minusSF2(5),
+							val_input_A_SF2minusSF1(6),
+							val_input_B_SF1plusSF2(7),
+							val_input_B_SF1minusSF2(8),
+							val_input_B_SF2minusSF1(9),
+							val_mute(10)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					SubFrame2  cmdID= 29
+					Input_A_SF1  value= 0
+					Input_A_SF2  value= 1
+					Input_B_SF1  value= 2
+					Input_B_SF2  value= 3
+					Input_A_SF1+SF2  value= 4
+					Input_A_SF1-SF2  value= 5
+					Input_A_SF2-SF1  value= 6
+					Input_B_SF1+SF2  value= 7
+					Input_B_SF1-SF2  value= 8
+					Input_B_SF2-SF1  value= 9
+					Mute  value= 10  "
+		::= { iqbsfrCmdEntry 29 }
+
+
+	iqbsfrPolarityInvertInputASF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_Input_A_SF1  cmdID= 34 "
+		::= { iqbsfrCmdEntry 34 }
+
+
+	iqbsfrPolarityInvertInputASF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_Input_A_SF2  cmdID= 35 "
+		::= { iqbsfrCmdEntry 35 }
+
+
+	iqbsfrPolarityInvertInputBSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_Input_B_SF1  cmdID= 36 "
+		::= { iqbsfrCmdEntry 36 }
+
+
+	iqbsfrPolarityInvertInputBSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_Input_B_SF2  cmdID= 37 "
+		::= { iqbsfrCmdEntry 37 }
+
+
+	iqbsfrGainInputAMuteInputASF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute_Input_A_SF1  cmdID= 73 "
+		::= { iqbsfrCmdEntry 73 }
+
+
+	iqbsfrGainInputAMuteInputASF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute_Input_A_SF2  cmdID= 74 "
+		::= { iqbsfrCmdEntry 74 }
+
+
+	iqbsfrGainInputAInputASF1Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Input_A_SF1_Gain  cmdID= 69  min= -1200  max= 600  step= 25  format= %1.2f dB  div_scale= 100
+					Min = -12.00 dB  Max = 6.00 dB  Step = 0.25 dB "
+		::= { iqbsfrCmdEntry 69 }
+
+
+	iqbsfrGainInputAInputASF2Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Input_A_SF2_Gain  cmdID= 70  min= -1200  max= 600  step= 25  format= %1.2f dB  div_scale= 100
+					Min = -12.00 dB  Max = 6.00 dB  Step = 0.25 dB "
+		::= { iqbsfrCmdEntry 70 }
+
+
+	iqbsfrGainInputAStereoGain OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Stereo_Gain  cmdID= 77 "
+		::= { iqbsfrCmdEntry 77 }
+
+
+	iqbsfrGainInputBMuteInputBSF1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute_Input_B_SF1  cmdID= 75 "
+		::= { iqbsfrCmdEntry 75 }
+
+
+	iqbsfrGainInputBMuteInputBSF2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mute_Input_B_SF2  cmdID= 76 "
+		::= { iqbsfrCmdEntry 76 }
+
+
+	iqbsfrGainInputBInputBSF1Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Input_B_SF1_Gain  cmdID= 71  min= -1200  max= 600  step= 25  format= %1.2f dB  div_scale= 100
+					Min = -12.00 dB  Max = 6.00 dB  Step = 0.25 dB "
+		::= { iqbsfrCmdEntry 71 }
+
+
+	iqbsfrGainInputBInputBSF2Gain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Input_B_SF2_Gain  cmdID= 72  min= -1200  max= 600  step= 25  format= %1.2f dB  div_scale= 100
+					Min = -12.00 dB  Max = 6.00 dB  Step = 0.25 dB "
+		::= { iqbsfrCmdEntry 72 }
+
+
+	iqbsfrGainInputBStereoGain OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Stereo_Gain  cmdID= 78 "
+		::= { iqbsfrCmdEntry 78 }
+
+
+	iqbsfrChannelStatOutputAInsertEditedCS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Edited_CS  cmdID= 6 "
+		::= { iqbsfrCmdEntry 6 }
+
+
+	iqbsfrOutputAEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 15  "
+		::= { iqbsfrCmdEntry 15 }
+
+
+	iqbsfrOutputAEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 13  "
+		::= { iqbsfrCmdEntry 13 }
+
+
+	iqbsfrChannelStatOutputAStatusToUse OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(1),
+							val_input_A_SF2(2),
+							val_input_B_SF1(4),
+							val_input_B_SF2(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Status_To_Use  cmdID= 24
+					Input_A_SF1  value= 1
+					Input_A_SF2  value= 2
+					Input_B_SF1  value= 4
+					Input_B_SF2  value= 8  "
+		::= { iqbsfrCmdEntry 24 }
+
+
+	iqbsfrChannelStatOutputBInsertEditedCS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_Edited_CS  cmdID= 7 "
+		::= { iqbsfrCmdEntry 7 }
+
+
+	iqbsfrOutputBEditChannelStatOrigin OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Origin  cmdID= 16  "
+		::= { iqbsfrCmdEntry 16 }
+
+
+	iqbsfrOutputBEditChannelStatDestination OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Destination  cmdID= 14  "
+		::= { iqbsfrCmdEntry 14 }
+
+
+	iqbsfrChannelStatOutputBStatusToUse OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A_SF1(1),
+							val_input_A_SF2(2),
+							val_input_B_SF1(4),
+							val_input_B_SF2(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Status_To_Use  cmdID= 25
+					Input_A_SF1  value= 1
+					Input_A_SF2  value= 2
+					Input_B_SF1  value= 4
+					Input_B_SF2  value= 8  "
+		::= { iqbsfrCmdEntry 25 }
+
+
+	iqbsfrLock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A(3),
+							val_input_B(4),
+							val_aES_Reference(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Lock  cmdID= 5
+					Input_A  value= 3
+					Input_B  value= 4
+					AES_Reference  value= 1  "
+		::= { iqbsfrCmdEntry 5 }
+
+
+	iqbsfrDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_aES_Inputs(5),
+							val_aES_Output_A(6),
+							val_aES_Output_B(12),
+							val_input_A_Gain(10),
+							val_input_B_Gain(11),
+							val_input_A_PPM(7),
+							val_input_B_PPM(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					AES_Inputs  cmdID= 21  value= 5
+					AES_Output_A  cmdID= 21  value= 6
+					AES_Output_B  cmdID= 21  value= 12
+					Input_A_Gain  cmdID= 21  value= 10
+					Input_B_Gain  cmdID= 21  value= 11
+					Input_A_PPM  cmdID= 21  value= 7
+					Input_B_PPM  cmdID= 21  value= 8  "
+		::= { iqbsfrCmdEntry 21 }
+
+
+	iqbsfrDisplayChannelStatusInf OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel_Status_Inf  cmdID= 22 "
+		::= { iqbsfrCmdEntry 22 }
+
+
+	iqbsfrDisplayChannelStatusSetupUp OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),up(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Up  cmdID= 17  value= 1  "
+		::= { iqbsfrCmdEntry 17 }
+
+
+	iqbsfrDisplayChannelStatusSetupSubFrame OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_subFrame_1(0),
+							val_subFrame_2(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SubFrame_1  cmdID= 19  value= 0
+					SubFrame_2  cmdID= 19  value= 1  "
+		::= { iqbsfrCmdEntry 19 }
+
+
+	iqbsfrDisplayChannelStatusSetupDown OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),down(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Down  cmdID= 18  value= 1  "
+		::= { iqbsfrCmdEntry 18 }
+
+
+	iqbsfrDisplayChannelStatusSetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_input_A(0),
+							val_output_A(3),
+							val_input_B(1),
+							val_output_B(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input_A  cmdID= 20  value= 0
+					Output_A  cmdID= 20  value= 3
+					Input_B  cmdID= 20  value= 1
+					Output_B  cmdID= 20  value= 4  "
+		::= { iqbsfrCmdEntry 20 }
+
+
+	iqbsfrMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_memory_1(1),
+							val_memory_2(2),
+							val_memory_3(3),
+							val_memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 49
+					Memory_1  value= 1
+					Memory_2  value= 2
+					Memory_3  value= 3
+					Memory_4  value= 4  "
+		::= { iqbsfrCmdEntry 49 }
+
+
+	iqbsfrMemoryRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_memory_1(1),
+							val_memory_2(2),
+							val_memory_3(3),
+							val_memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 48
+					Memory_1  value= 1
+					Memory_2  value= 2
+					Memory_3  value= 3
+					Memory_4  value= 4  "
+		::= { iqbsfrCmdEntry 48 }
+
+
+	iqbsfrMemoryPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_memory_1(1),
+							val_memory_2(2),
+							val_memory_3(3),
+							val_memory_4(4),
+							val_preset_All_Memories(5),
+							val_preset_All_Names(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset  cmdID= 50
+					Memory_1  value= 1
+					Memory_2  value= 2
+					Memory_3  value= 3
+					Memory_4  value= 4
+					Preset_All_Memories  value= 5
+					Preset_All_Names  cmdID= 50  value= 6  "
+		::= { iqbsfrCmdEntry 50 }
+
+
+	iqbsfrMemoryNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 51  "
+		::= { iqbsfrCmdEntry 51 }
+
+
+	iqbsfrMemoryNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 52  "
+		::= { iqbsfrCmdEntry 52 }
+
+
+	iqbsfrMemoryNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 53  "
+		::= { iqbsfrCmdEntry 53 }
+
+
+	iqbsfrMemoryNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 54  "
+		::= { iqbsfrCmdEntry 54 }
+
+
+	iqbsfrSetupPPM0dBuRefInA OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_A  cmdID= 10  min= -24  max= -12  step= 1  format= %1.0f dBFS  div_scale= 1
+					Min = -24 dBFS  Max = -12 dBFS  Step = 1 dBFS "
+		::= { iqbsfrCmdEntry 10 }
+
+
+	iqbsfrSetupPPM0dBuRefInB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PPM_0dBu_Ref_In_B  cmdID= 11  min= -24  max= -12  step= 1  format= %1.0f dBFS  div_scale= 1
+					Min = -24 dBFS  Max = -12 dBFS  Step = 1 dBFS "
+		::= { iqbsfrCmdEntry 11 }
+
+
+	iqbsfrSetupGPISetupEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable  cmdID= 62 "
+		::= { iqbsfrCmdEntry 62 }
+
+
+	iqbsfrSetupGPISetupGPILevelLow OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_memory_1(1),
+							val_memory_2(2),
+							val_memory_3(3),
+							val_memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI_Level_Low  cmdID= 79
+					Memory_1  value= 1
+					Memory_2  value= 2
+					Memory_3  value= 3
+					Memory_4  value= 4  "
+		::= { iqbsfrCmdEntry 79 }
+
+
+	iqbsfrSetupGPISetupGPILevelHigh OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_memory_1(1),
+							val_memory_2(2),
+							val_memory_3(3),
+							val_memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI_Level_High  cmdID= 80
+					Memory_1  value= 1
+					Memory_2  value= 2
+					Memory_3  value= 3
+					Memory_4  value= 4  "
+		::= { iqbsfrCmdEntry 80 }
+
+
+	iqbsfrSetupLoggingAESInputA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_A  cmdID= 8 "
+		::= { iqbsfrCmdEntry 8 }
+
+
+	iqbsfrSetupLoggingAESInputB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Input_B  cmdID= 9 "
+		::= { iqbsfrCmdEntry 9 }
+
+
+	iqbsfrSetupLoggingAESReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					AES_Reference  cmdID= 38 "
+		::= { iqbsfrCmdEntry 38 }
+
+
+	iqbsfrSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbsfrCmdEntry 3 }
+
+
+	iqbsfrSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbsfrCmdEntry 2 }
+
+
+	iqbsfrSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbsfrCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		:
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FREQ
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.70.82.69.81
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.70.82.69.81
+-- Vary			: YES
+--
+-- Value(s)		: **
+--				: 48kHz
+--				: 44.1kHz
+--				: 32kHz
+--				: 48kHz
+--				: 44.1kHz
+--				: 44.1kHz
+--				: 32kHz
+--				: ??
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST CH_A
+--				: LOST CH_B
+--              : OK CH_A
+--              : OK CH_B
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: N/A
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

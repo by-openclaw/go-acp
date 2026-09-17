@@ -1,0 +1,49 @@
+---
+# One suite: (optional fresh-node restart) -> attempt -> (optional one
+# retry for third-party-interference suites) -> collect the verdict.
+
+- name: "{{ suite.id }} — resolve the target"
+  ansible.builtin.set_fact:
+    _suite_host: "{{ dhs_amwa_validate_plant_host }}"
+    _suite_port: >-
+      {{ dhs_amwa_validate_cut_port if suite.target == 'cut'
+         else (dhs_amwa_validate_registry_port if suite.target == 'registry'
+         else dhs_amwa_validate_node_port) }}
+    _suite_verdict: !!null
+
+# fresh: true — restart the plant node first. Long sequential runs
+# leave staged IS-05 state behind (a receiver patched at a previous
+# suite's mock URL) and the next suite then reads a live device that
+# is mid-someone-else's-test.
+- name: "{{ suite.id }} — restart the plant node for a clean state"
+  ansible.builtin.systemd:
+    name: "{{ dhs_amwa_validate_node_unit }}"
+    state: restarted
+  delegate_to: "{{ groups['plant'][0] }}"
+  when: suite.fresh | default(false)
+
+- name: "{{ suite.id }} — wait for the fresh node"
+  ansible.builtin.uri:
+    url: "http://{{ _suite_host }}:{{ dhs_amwa_validate_node_port }}/x-nmos/node/v1.3/self"
+  register: _fresh_up
+  retries: 15
+  delay: 2
+  until: _fresh_up.status == 200
+  when: suite.fresh | default(false)
+
+- name: "{{ suite.id }} — first attempt"
+  ansible.builtin.include_tasks: suite_attempt.yml
+
+# flaky_retry: true — one retry with a FRESH window. Reserved for
+# suites where a third party we do not control races the tool's mocks
+# (the lab's real Neuron mDNS-registers with them, IS-04-01); the
+# retry is recorded in the verdict so it never hides silently.
+- name: "{{ suite.id }} — retry once (third-party interference)"
+  ansible.builtin.include_tasks: suite_attempt.yml
+  when:
+    - suite.flaky_retry | default(false)
+    - not (_suite_verdict.ok | default(false))
+
+- name: "{{ suite.id }} — collect the verdict"
+  ansible.builtin.set_fact:
+    _validate_verdicts: "{{ _validate_verdicts + [_suite_verdict] }}"

@@ -58,8 +58,8 @@ func DecodeConnectOnGo(f Frame) (ConnectOnGoParams, error) {
 	}
 	mult := f.Payload[0]
 	return ConnectOnGoParams{
-		Destination: (uint16(mult>>4) & 0x07) * 128 + uint16(f.Payload[1]),
-		Source:      (uint16(mult) & 0x07) * 128 + uint16(f.Payload[2]),
+		Destination: (uint16(mult>>4)&0x07)*128 + uint16(f.Payload[1]),
+		Source:      (uint16(mult)&0x07)*128 + uint16(f.Payload[2]),
 		BadSource:   mult&0x08 != 0,
 	}, nil
 }

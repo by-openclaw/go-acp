@@ -14,26 +14,37 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
 	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is09"
 	"dhs/internal/amwa/codec/spec"
 	"dhs/internal/amwa/consumer"
 	"dhs/internal/amwa/provider"
+	amwaregistry "dhs/internal/amwa/registry"
 	session "dhs/internal/amwa/session/dnssd"
+	"dhs/internal/amwa/session/query"
 	registryslot "dhs/internal/registry"
 )
 
 // runNMOSConsumer dispatches `dhs consumer nmos <verb> [args]`.
 func runNMOSConsumer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	var lf *logFlags // uniform logging flags (epic #987), stripped before dispatch
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSConsumerHelp()
 		return nil
 	}
@@ -46,15 +57,31 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSystem(ctx, rest)
 	case "walk":
 		return runNMOSWalk(ctx, rest)
+	case "watch":
+		return runNMOSWatch(ctx, rest)
+	case "connect":
+		return runNMOSConnect(ctx, rest)
+	case "set":
+		return runNMOSSet(ctx, rest)
+	case "facade":
+		return runNMOSFacade(ctx, rest)
 	case "events":
 		return runNMOSEventsConsumer(ctx, rest)
+	case "export":
+		return runNMOSExport(ctx, rest)
+	case "audit":
+		return runNMOSAudit(ctx, rest)
+	case "probe":
+		return runNMOSProfile(ctx, rest)
+	case "registers":
+		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, events)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
 func runNMOSProducer(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSProducerHelp()
 		return nil
 	}
@@ -71,7 +98,7 @@ func runNMOSProducer(ctx context.Context, args []string) error {
 
 // runNMOSRegistry dispatches `dhs registry nmos <verb> [args]`.
 func runNMOSRegistry(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printNMOSRegistryHelp()
 		return nil
 	}
@@ -80,8 +107,10 @@ func runNMOSRegistry(ctx context.Context, args []string) error {
 	switch verb {
 	case "serve":
 		return runNMOSRegistryServe(ctx, rest)
+	case "mirror":
+		return runNMOSRegistryMirror(ctx, rest)
 	}
-	return fmt.Errorf("registry nmos: unknown verb %q (expected: serve)", verb)
+	return fmt.Errorf("registry nmos: unknown verb %q (expected: serve, mirror)", verb)
 }
 
 // ---- discover ---------------------------------------------------------------
@@ -95,7 +124,7 @@ func runNMOSDiscover(ctx context.Context, args []string) error {
 	peerList := fs.String("peer-list", "", "static CSV peer list (Mode C: host,port[,api_ver])")
 	service := fs.String("service", codec.ServiceRegister, "DNS-SD service type to discover")
 	timeout := fs.Duration("timeout", 5*time.Second, "discovery deadline")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 
@@ -152,7 +181,9 @@ func runNMOSDiscoverUnicast(ctx context.Context, resolver, service string, timeo
 }
 
 func runNMOSDiscoverMDNS(ctx context.Context, service string, timeout time.Duration) error {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 	br, err := session.NewBrowser(logger)
 	if err != nil {
 		return err
@@ -220,6 +251,25 @@ func printInstances(service string, insts []codec.Instance) {
 		if v, ok := ins.TXT[codec.TXTKeyAPIAuth]; ok {
 			fmt.Printf("    auth = %s\n", v)
 		}
+		// Every remaining TXT key, sorted — for _nmos-node._tcp that is
+		// the six IS-04 §3.1.1 ver_* counters, which ARE the peer-to-peer
+		// change signal (a P2P peer re-reads a Node only when one of
+		// them moves), so a discovery tool that hides them hides the
+		// mechanism.
+		shown := map[string]bool{
+			codec.TXTKeyPriority: true, codec.TXTKeyAPIProto: true,
+			codec.TXTKeyAPIVer: true, codec.TXTKeyAPIAuth: true,
+		}
+		rest := make([]string, 0, len(ins.TXT))
+		for k := range ins.TXT {
+			if !shown[k] {
+				rest = append(rest, k)
+			}
+		}
+		sort.Strings(rest)
+		for _, k := range rest {
+			fmt.Printf("    txt  = %s=%s\n", k, ins.TXT[k])
+		}
 		for _, ip := range ins.IPv4 {
 			fmt.Printf("    ipv4 = %s\n", ip)
 		}
@@ -262,17 +312,40 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	advertise := fs.String("advertise-host", "", "host[:port] placed in DNS-SD A/SRV records (default: hostname + bind port)")
 	mdns := fs.Bool("mdns", true, "advertise via mDNS")
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
+	unicast := fs.Bool("unicast", false, "discover the Registry via unicast DNS-SD instead of mDNS (IS-04 §3.1 for multicast-blocked plants)")
+	resolver := fs.String("resolver", "", "DNS server `IP[:port]` holding the _nmos-register._tcp records (with --unicast)")
+	domain := fs.String("domain", "", "search domain the registration SRV records live under (with --unicast)")
 	apiVer := fs.String("api-ver", "v1.3", "IS-04 wire version exposed under /x-nmos/node/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats every 5 s")
-	if err := fs.Parse(args); err != nil {
+	registry := fs.String("registry", "", "Registration API base URL — when set, the Node POSTs to /resource + heartbeats at the --heartbeat cadence")
+	heartbeat := fs.Duration("heartbeat", 5*time.Second, "heartbeat cadence for POST /health (IS-04 §6.1 default 5s). An IS-09 System API's heartbeat_interval outranks it when one is found. Sub-second cadences work — the loop's tick and early-fire slack scale down with the value")
+	noConnection := fs.Bool("no-connection-api", false, "do not serve IS-05. The Node stays discoverable and becomes unroutable — useful only to reproduce a discovery-only device")
+	connectionAPIVer := fs.String("connection-api-ver", "", "pin IS-05 to one wire minor (v1.0/v1.1/v1.2). Empty serves every registered minor in parallel, which is what a real product does")
+	systemURL := fs.String("system", "", "IS-09 System API as `host:port`, skipping discovery. Empty browses for one; a Node that finds none serves normally, because IS-09 makes the System API optional")
+	noRegistry := fs.Bool("no-registry", false, "stay peer-to-peer: neither register nor browse for a Registry. IS-04 §4.2.1 makes the modes exclusive — a registered Node stops advertising _nmos-node._tcp — so a Node that may find a Registry cannot also be a peer-to-peer Node")
+	authURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, every served API validates Bearer tokens, api_auth=true is advertised, and registration requests carry a client_credentials token")
+	authClientID := fs.String("auth-client-id", "", "OAuth client id for the client_credentials grant (with --auth-url)")
+	authClientSecret := fs.String("auth-client-secret", "", "OAuth client secret for the client_credentials grant (with --auth-url)")
+	estHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the Node bootstraps the network Root CA + enrolls for its TLS certificate there, then serves HTTPS/WSS only")
+	estLabel := fs.String("est-label", "", "EST api_selector arbitrary label (appended to /.well-known/est)")
+	var tlsCerts, tlsKeys stringSliceFlag
+	fs.Var(&tlsCerts, "tls-cert", "manually installed TLS certificate (PEM, leaf+chain) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair (the mandatory cipher set needs RSA, the recommended posture ECDSA) — paired with --tls-key positionally; the handshake picks per client")
+	fs.Var(&tlsKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
+	tlsCA := fs.String("tls-ca", "", "trust root PEM for OUTBOUND https verification (registry over https)")
+	tlsDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-tls)")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if len(tlsCerts) != len(tlsKeys) {
+		return fmt.Errorf("producer nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(tlsCerts), len(tlsKeys))
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	bundle, err := provider.LoadNodeConfigFromFile(*configPath)
 	if err != nil {
@@ -283,13 +356,35 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	if !*mdns || *noMDNS {
 		mode = "static"
 	}
+	if *unicast {
+		if *resolver == "" {
+			return fmt.Errorf("producer nmos serve: --unicast requires --resolver IP[:port]")
+		}
+		mode = "unicast"
+	}
 	cfg := provider.IS04NodeConfig{
-		Bind:          *bind,
-		AdvertiseHost: *advertise,
-		DiscoveryMode: mode,
-		Priority:      *priority,
-		APIVer:        *apiVer,
-		RegistryURL:   *registry,
+		Bind:              *bind,
+		AdvertiseHost:     *advertise,
+		DiscoveryMode:     mode,
+		Priority:          *priority,
+		APIVer:            *apiVer,
+		RegistryURL:       *registry,
+		UnicastResolver:   *resolver,
+		UnicastDomain:     *domain,
+		NoConnectionAPI:   *noConnection,
+		ConnectionAPIVer:  *connectionAPIVer,
+		SystemURL:         *systemURL,
+		NoRegistry:        *noRegistry,
+		HeartbeatInterval: *heartbeat,
+		AuthURL:           *authURL,
+		AuthClientID:      *authClientID,
+		AuthClientSecret:  *authClientSecret,
+		ESTHost:           *estHost,
+		ESTLabel:          *estLabel,
+		TLSCertFile:       tlsCerts.String(),
+		TLSKeyFile:        tlsKeys.String(),
+		TLSCAFile:         *tlsCA,
+		TLSDataDir:        *tlsDir,
 	}
 	srv, err := provider.NewIS04NodeServer(logger, bundle, cfg)
 	if err != nil {
@@ -298,12 +393,18 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("Node API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
-	fmt.Printf("  GET http://<host>%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", *bind, *apiVer)
+	if !*noConnection {
+		fmt.Printf("Connection API (IS-05): %s\n", strings.Join(srv.ConnectionVersions(), ", "))
+	}
+	fmt.Printf("  GET http://%s/x-nmos/node/%s/{,self,devices,sources,flows,senders,receivers}\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-node._tcp via mDNS.")
 	}
 	if *registry != "" {
-		fmt.Printf("Registering against %s every %s + heartbeat.\n", *registry, "5s")
+		// The banner prints the cadence actually configured, not a
+		// hard-coded default (#855); a discovered IS-09 System API can
+		// still override it live.
+		fmt.Printf("Registering against %s + heartbeat every %s (IS-09 may override).\n", *registry, *heartbeat)
 	}
 	return srv.Serve(ctx)
 }
@@ -322,11 +423,13 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version (TXT api_ver filter + URL prefix)")
 	apiProto := fs.String("api-proto", "http", "TXT api_proto filter (http | https)")
 	timeout := fs.Duration("timeout", 5*time.Second, "discovery deadline")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	// Direct override — skip discovery entirely.
 	if *direct != "" {
@@ -453,14 +556,16 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	noMDNS := fs.Bool("no-mdns", false, "disable mDNS announce (Mode B / static)")
 	apiVer := fs.String("api-ver", is09.APIVersion, "IS-09 wire version exposed under /x-nmos/system/<v>")
 	priority := fs.Int("priority", 0, "DNS-SD `pri` TXT (0-99 production, 100+ dev)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *configPath == "" {
 		return fmt.Errorf("producer nmos serve --role system: --config FILE required")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	g, err := provider.LoadIS09GlobalFromFile(*configPath)
 	if err != nil {
@@ -485,8 +590,8 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 	defer func() { _ = srv.Stop() }()
 
 	fmt.Printf("System API: bind=%s, mode=%s, api_ver=%s, priority=%d\n", *bind, mode, *apiVer, *priority)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/        (index)\n", *bind, *apiVer)
-	fmt.Printf("  GET http://<host>%s/x-nmos/system/%s/global  (global resource)\n", *bind, *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/        (index)\n", displayBind(*bind), *apiVer)
+	fmt.Printf("  GET http://%s/x-nmos/system/%s/global  (global resource)\n", displayBind(*bind), *apiVer)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-system._tcp via mDNS.")
 	} else {
@@ -507,15 +612,29 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "", "IS-04 wire version exposed at /x-nmos/{registration,query}/<v>. Empty (default) mounts every codec registered (v1.0/v1.1/v1.2/v1.3 in parallel) — pin to one minor for per-version integration testing.")
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
-	if err := fs.Parse(args); err != nil {
+	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
+	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
+	regAuthURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, both faces validate Bearer tokens and api_auth=true is advertised")
+	regESTHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the registry enrolls for its TLS certificate there, then serves HTTPS/WSS only")
+	regESTLabel := fs.String("est-label", "", "EST api_selector arbitrary label")
+	var regTLSCerts, regTLSKeys stringSliceFlag
+	fs.Var(&regTLSCerts, "tls-cert", "manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client")
+	fs.Var(&regTLSKeys, "tls-key", "private key for --tls-cert (repeatable, one per certificate, same order)")
+	regTLSDir := fs.String("tls-dir", "", "directory for EST-provisioned material (default .cache/nmos-registry-tls)")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if len(regTLSCerts) != len(regTLSKeys) {
+		return fmt.Errorf("registry nmos serve: %d --tls-cert but %d --tls-key — every certificate needs its private key, given in the same order", len(regTLSCerts), len(regTLSKeys))
 	}
 	mode := "mdns"
 	if !*mdns || *noMDNS {
 		mode = "static"
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	f, ok := registryslot.Lookup("nmos")
 	if !ok {
@@ -531,15 +650,23 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		APIVer:           *apiVer,
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
+		PageLimitDefault: *pageLimitDefault,
+		InstanceName:     *instanceName,
+		AuthURL:          *regAuthURL,
+		ESTHost:          *regESTHost,
+		ESTLabel:         *regESTLabel,
+		TLSCertFile:      regTLSCerts.String(),
+		TLSKeyFile:       regTLSKeys.String(),
+		TLSDataDir:       *regTLSDir,
 	}
 	verLabel := *apiVer
 	if verLabel == "" {
 		verLabel = "<all>"
 	}
 	fmt.Printf("Registry: bind=%s, mode=%s, priority=%d, api_ver=%s\n", *bind, mode, *priority, verLabel)
-	fmt.Printf("  Registration: POST/GET/DELETE under http://<host>%s/x-nmos/registration/%s/...\n", *bind, verLabel)
-	fmt.Printf("  Query:        GET + POST /subscriptions under http://<host>%s/x-nmos/query/%s/...\n", *bind, verLabel)
-	fmt.Printf("  WS subs:      ws://<host>%s/x-nmos/query/%s/subscriptions/<id>/ws\n", *bind, verLabel)
+	fmt.Printf("  Registration: POST/GET/DELETE under http://%s/x-nmos/registration/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  Query:        GET + POST /subscriptions under http://%s/x-nmos/query/%s/...\n", displayBind(*bind), verLabel)
+	fmt.Printf("  WS subs:      ws://%s/x-nmos/query/%s/subscriptions/<id>/ws\n", displayBind(*bind), verLabel)
 	fmt.Printf("  GC: tick=%s, heartbeat-timeout=%s\n", *gcInterval, *heartbeatTimeout)
 	if mode == "mdns" {
 		fmt.Println("Announcing _nmos-register._tcp + _nmos-query._tcp via mDNS.")
@@ -553,7 +680,50 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 func printNMOSConsumerHelp() {
 	fmt.Println(`Usage:
   dhs consumer nmos discover [flags]
+  dhs consumer nmos walk     [flags]
+  dhs consumer nmos connect  [flags]
+  dhs consumer nmos set      [flags]
   dhs consumer nmos system   [flags]
+  dhs consumer nmos events   [flags]
+
+Start here — read one device with no Registry, no mDNS, no config:
+
+  dhs consumer nmos walk --node http://10.6.255.102:3000 -l
+
+walk — read a catalogue. Point it at ONE device or at a Registry.
+  --node URL            one Node directly (IS-04 peer-to-peer). The only way
+                        to reach a device that has not registered anywhere.
+  --registry URL        a Registry's Query API
+  --mdns / --unicast    discover a Registry instead of naming one
+  --api-ver V           pin a wire minor (v1.0/v1.1/v1.2/v1.3); default highest
+  -l                    list every resource with its UUID, not just counts
+  --json                emit the whole catalogue as JSON
+
+connect — route a Sender to a Receiver over IS-05. Addresses resources by
+UUID, because NMOS labels are mutable and non-unique. Use "walk -l" to get
+the UUIDs. The IS-05 endpoint is discovered from IS-04, never guessed.
+  --receiver UUID       required
+  --sender UUID         omit (or pass --disconnect) to disconnect
+  --dry-run             print the endpoint, the PATCH body and the receiver's
+                        CURRENT route, and send nothing. Do this first:
+                        routing moves real signal and IS-05 has no undo.
+  --mode M              activate_immediate (default) | activate_scheduled_relative
+                        | activate_scheduled_absolute
+  --when S:NS           TAI time for the scheduled modes (TAI = UTC + 37s)
+  (any of walk's --node / --registry / discovery flags)
+
+set — configure a Sender's IS-05 transport. connect points a Receiver at a
+Sender; this points a Sender at a network. A device can be fully connected
+and still move nothing: a real EVS Neuron ships every Sender enabled with
+destination_ip 0.0.0.0 — addressed nowhere.
+  --sender UUID         required
+  --destination IP,IP   one per transport leg, in device order. ST 2022-7
+                        senders have two legs and must not share a group.
+  --port N,N            one per leg; empty leaves the device's own
+  --enable / --disable  also set master_enable
+  --dry-run             print the PATCH body and the sender's current legs
+  --mode / --when       as for connect
+  (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
   --mdns                Use mDNS multicast (Mode A; default)
@@ -571,7 +741,54 @@ JSON Schema, prints the parsed fields.
   (any of the discovery flags above)
   --direct host:port    Skip discovery; fetch /global directly from this peer
   --api-ver V           Requested IS-09 version (default v1.0)
-  --api-proto P         Requested protocol filter (default http)`)
+  --api-proto P         Requested protocol filter (default http)
+
+export — capture a device, or a registry and every node it lists, into the
+layout the audit verb reads. Failures are recorded, never worked around: a
+502, a stuck paging cursor or an unreachable node all land in report.txt and
+the walk continues.
+  --target host:port    Device or registry to capture (required)
+  --out DIR             Output directory (default nmos-export)
+  --https               Use TLS
+  --deep                Also fetch staged / constraints / transporttype per IS-05 endpoint
+  --all-versions        Walk every minor of every API
+  --no-sdp              Skip SDP retrieval
+  --raw                 Also keep every verbatim response body under raw/
+                        (tree.json already holds them; raw/ was 14,719 of
+                        27,299 files on a real plant, and every path that
+                        exceeded the Windows 260-character limit)
+  --max-nodes N         Cap how many registered nodes to follow (0 = no cap)
+  --workers N           Capture N nodes at once (default 6)
+  --page-limit N        Resources per Query API page (default 100). A registry
+                        may clamp it; the applied value is on the PAGING line
+                        in report.txt
+  --timeout DURATION    Per-request deadline (default 10s)
+  --no-stamp            Name folders without a timestamp
+  --quiet / --json      Suppress progress / print the summary as JSON
+
+audit — compliance-audit a captured plant, offline. Reads an export directory
+(device.json + tree.json + report.txt + raw/ + sdp/ per device, nested under
+nodes/ for a registry export) and reports what each device exposes and where it
+deviates from IS-04, IS-05, BCP-002-01 and BCP-004-01. No network access; the
+same bytes always produce the same report.
+  --dir PATH            Export directory to audit (required)
+  --format FORMAT       text (default) | json | jsonl
+  --min-severity SEV    info (default) | warn | error | critical
+  --out FILE            Write the report to FILE instead of stdout
+  --fail-on SEV         Exit non-zero when a finding at or above SEV is present
+
+probe — live protocol conformance against one device, plus per-endpoint latency.
+Answers what a capture cannot: whether an unknown API version is rejected,
+whether CORS is present, whether a paging limit is honoured and reported back,
+whether health for an unregistered node 404s. Strictly read-only — it never
+PATCHes, activates, or registers, so it is safe against a plant that is on air.
+  --target host:port    Device to probe (required)
+  --https               Use TLS
+  --deep                Assert every IS-05 endpoint, not just the first
+  --format FORMAT       text (default) | json | jsonl
+  --out FILE            Write the report to FILE instead of stdout
+  --fail-on STATUS      Exit non-zero at or above this status: warn | fail
+  --timeout DURATION    Per-request deadline (default 10s)`)
 }
 
 func printNMOSProducerHelp() {
@@ -624,32 +841,161 @@ announce of _nmos-register._tcp + _nmos-query._tcp.
   --priority N             DNS-SD pri TXT (0-99 prod, 100+ dev)
   --gc-interval D          Heartbeat watchdog tick rate (default 1s)
   --heartbeat-timeout D    Evict Nodes that miss heartbeats this long
-                           (default 12s, IS-04 §6.1)`)
+                           (default 12s, IS-04 §6.1)
+
+  dhs registry nmos mirror --source URL --target URL [--api-ver v1.3]
+
+Bridges one Registry into another: subscribes to every collection on
+the source's Query-WS (controller role) and forwards each change to
+the target's Registration API (node role), proxying one heartbeat per
+source node. Use case: dhs Registry as the plant's source of truth
+feeding a controller vendor's own registry.
+
+With --serve ADDR the mirror also serves the mirrored catalogue as a
+read-only IS-04 Query API (REST + WebSocket subscriptions), so a
+controller reads the plant THROUGH the audited mirror. Served reads,
+WS subscription opens/closes, and refused registration attempts all
+land in the same --audit-log trail and /status.json counters.
+
+With --auth-url URL (requires --serve) the served Query face validates
+BCP-003-02 Bearer tokens against that Authorization Server, the same
+gate "registry nmos serve --auth-url" arms: tokenless or invalid
+requests answer 401 with WWW-Authenticate, WS upgrades included.
+/status.json reports the armed state as "serve_auth". The mirror's
+outbound legs (source Query-WS, target forwards) stay untouched.
+
+With --serve-advertise-host H[:P] the served face mints ws_href from
+that identity instead of the bound address (a bare host takes the
+--serve port) and announces itself as _nmos-query._tcp via mDNS with
+--serve-pri (default 100 — dev range, so the mirror never outranks
+the production source registry). The announce's api_auth TXT tracks
+--auth-url.
+
+With --serve-tls-cert/--serve-tls-key (requires --serve) the served
+face speaks HTTPS/WSS ONLY per BCP-003-01 — the same manual pair path
+"registry nmos serve --tls-cert" arms: ws_href becomes wss://, the
+announce carries api_proto=https, and /status.json reports
+"serve_tls". Outbound legs stay untouched.`)
+}
+
+// runNMOSRegistryMirror bridges a source Registry into a target one.
+func runNMOSRegistryMirror(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("mirror", flag.ContinueOnError)
+	source := fs.String("source", "", "source Registry origin (http://host:port) — Query API side")
+	targetURL := fs.String("target", "", "target Registry origin (http://host:port) — Registration API side")
+	apiVer := fs.String("api-ver", "", "IS-04 wire version used on both faces (default v1.3)")
+	auditLog := fs.String("audit-log", "",
+		"append one JSONL observation per external-registry behaviour "+
+			"(refused forwards with the target's own words, evictions, WS drops) — "+
+			"the evidence trail for auditing the registry on the far side")
+	statusAddr := fs.String("status-addr", "",
+		"serve /status.json (counters, per-collection cache sizes for parity "+
+			"checks, recent audit ring) on this address, e.g. :9101")
+	serveAddr := fs.String("serve", "",
+		"serve the mirrored catalogue as a read-only IS-04 Query API "+
+			"(REST + WS subscriptions) on this address, e.g. :8335 — "+
+			"controllers read the plant THROUGH the audited mirror; "+
+			"registration attempts are refused and audited")
+	serveAuthURL := fs.String("auth-url", "",
+		"BCP-003-02 Authorization Server base (scheme://host[:port]). "+
+			"When set with --serve, the served Query face validates Bearer "+
+			"tokens (WS upgrades included) exactly like the registry's own "+
+			"--auth-url; the mirror's outbound source/target legs are untouched. "+
+			"Requires --serve")
+	serveAdvertiseHost := fs.String("serve-advertise-host", "",
+		"identity minted into the served face's ws_href and mDNS announce, "+
+			"as host or host:port (a bare host takes the bound --serve port). "+
+			"Precedence: this flag wins; empty derives from the bound address "+
+			"(concrete IP, else OS hostname — which off-link controllers may "+
+			"not resolve). Setting it also enables the _nmos-query._tcp "+
+			"announce of the served face")
+	servePri := fs.Int("serve-pri", 100,
+		"DNS-SD pri TXT for the served face's announce (with "+
+			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
+			"mirror never wins a production Registry election against its own "+
+			"source registry at pri 0")
+	var serveTLSCerts, serveTLSKeys stringSliceFlag
+	fs.Var(&serveTLSCerts, "serve-tls-cert",
+		"BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query "+
+			"face — with --serve-tls-key the face serves HTTPS/WSS ONLY, mints "+
+			"wss:// ws_hrefs and announces api_proto=https, the same manual "+
+			"pair path as the registry's --tls-cert. Repeatable for "+
+			"dual-certificate serving (RSA + ECDSA), paired with "+
+			"--serve-tls-key positionally. Requires --serve; the mirror's "+
+			"outbound source/target legs are untouched")
+	fs.Var(&serveTLSKeys, "serve-tls-key",
+		"private key for --serve-tls-cert (repeatable, one per certificate, same order)")
+	if err := parseVerbFlags(fs, args); err != nil {
+		return err
+	}
+	if len(serveTLSCerts) != len(serveTLSKeys) {
+		return fmt.Errorf("nmos mirror: %d --serve-tls-cert but %d --serve-tls-key — every certificate needs its private key, given in the same order", len(serveTLSCerts), len(serveTLSKeys))
+	}
+	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
+		Source:             *source,
+		Target:             *targetURL,
+		APIVer:             *apiVer,
+		Logger:             slog.Default(),
+		AuditPath:          *auditLog,
+		StatusAddr:         *statusAddr,
+		ServeAddr:          *serveAddr,
+		ServeAuthURL:       *serveAuthURL,
+		ServeAdvertiseHost: *serveAdvertiseHost,
+		ServePri:           *servePri,
+		ServeTLSCert:       serveTLSCerts.String(),
+		ServeTLSKey:        serveTLSKeys.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("nmos mirror: %w", err)
+	}
+	fmt.Printf("Mirroring %s -> %s. Interrupt to stop.\n", *source, *targetURL)
+	if *serveAddr != "" {
+		fmt.Printf("Serving the mirrored Query API on %s.\n", *serveAddr)
+	}
+	err = m.Run(ctx)
+	st := m.Stats()
+	fmt.Fprintf(os.Stderr, "forwarded=%d deleted=%d heartbeats=%d resyncs=%d failures=%d\n",
+		st.Forwarded, st.Deleted, st.Heartbeats, st.Resyncs, st.Failures)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("nmos mirror: %w", err)
+	}
+	return nil
 }
 
 // ---- consumer walk (IS-04 Controller) ---------------------------------------
 
-func runNMOSWalk(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
+// runNMOSWatch streams live resource changes from a Registry's Query API
+// WebSocket subscription (IS-04 §5.2).
+//
+// This is the ONLY push surface IS-04 defines. A Node publishes no resource
+// changes of its own, so "watch what is happening in the plant" means
+// subscribing to a Registry — not polling a Node.
+func runNMOSWatch(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
 	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry is set")
 	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
 	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
 	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
 	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.1 / v1.2 / v1.3); empty = highest mutual")
-	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
-	if err := fs.Parse(args); err != nil {
+	discTimeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	resource := fs.String("resource", "/nodes", "resource path to subscribe to: /nodes /devices /sources /flows /senders /receivers (IS-04 spells these without a trailing slash)")
+	params := fs.String("params", "", "subscription filter as k=v[,k=v...] (e.g. label=CAM1)")
+	persist := fs.Bool("persist", false, "ask the Registry to keep the subscription after the socket closes")
+	rate := fs.Int("rate", 0, "max_update_rate_ms; 0 lets the Registry choose")
+	duration := fs.Duration("duration", 0, "stop after this long; 0 = until interrupted")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *registry == "" && !*mdns && !*unicast {
-		return fmt.Errorf("nmos walk: pick exactly one of --registry / --mdns / --unicast")
+		return fmt.Errorf("nmos watch: pick exactly one of --registry / --mdns / --unicast")
 	}
 
 	mode := ""
 	switch {
 	case *unicast:
 		if *resolver == "" {
-			return fmt.Errorf("nmos walk --unicast: --resolver is required")
+			return fmt.Errorf("nmos watch --unicast: --resolver is required")
 		}
 		mode = "unicast"
 	case *mdns:
@@ -657,10 +1003,167 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 	}
 
 	rep := &spec.SliceReporter{}
-	logger := slog.Default()
 	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
-		Logger:           logger,
+		Logger:           slog.Default(),
 		Reporter:         rep,
+		RegistryURL:      *registry,
+		DiscoveryMode:    mode,
+		DiscoveryTimeout: *discTimeout,
+		UnicastResolver:  *resolver,
+		UnicastDomain:    *domain,
+		APIVer:           *apiVer,
+	})
+	if err != nil {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+
+	qc, err := query.NewClient(c.BaseURL(), c.Codec())
+	if err != nil {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+
+	filter := map[string]string{}
+	for _, kv := range strings.Split(*params, ",") {
+		kv = strings.TrimSpace(kv)
+		if kv == "" {
+			continue
+		}
+		i := strings.IndexByte(kv, '=')
+		if i < 0 {
+			return fmt.Errorf("nmos watch: --params entry %q is not k=v", kv)
+		}
+		filter[strings.TrimSpace(kv[:i])] = strings.TrimSpace(kv[i+1:])
+	}
+
+	sub, err := qc.Subscribe(ctx, query.SubscribeRequest{
+		ResourcePath:  *resource,
+		Params:        filter,
+		Persist:       *persist,
+		MaxUpdateRate: *rate,
+	})
+	if err != nil {
+		return fmt.Errorf("nmos watch: subscribe: %w", err)
+	}
+
+	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
+	fmt.Printf("Subscribed %s -> %s (id=%s, persist=%v, max_update_rate_ms=%d)\n",
+		sub.ResourcePath, sub.WSHref, sub.ID, sub.Persist, sub.MaxUpdateRate)
+	fmt.Println("Watching. The first grain is the current state; later grains are changes.")
+
+	if *duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *duration)
+		defer cancel()
+	}
+
+	var grains, changes int
+	onGrain := func(g *is04.Grain) error {
+		grains++
+		for _, row := range g.Grain.Data {
+			changes++
+			label := row.Label()
+			if label != "" {
+				label = " " + label
+			}
+			fmt.Printf("%-8s %-12s %s%s\n",
+				row.Kind(), strings.Trim(g.Grain.Topic, "/"), row.Path, label)
+		}
+		return nil
+	}
+
+	// A Query WS watch runs 24/7, so a dropped subscription must be
+	// re-established rather than ending the verb. Two things can go: the
+	// socket (reconnect to the same wsHref) and the subscription itself,
+	// which the Registry garbage-collects — so a failed re-dial re-POSTs
+	// the subscription before trying again.
+	//
+	// Liveness comes from query.WatchOptions defaults (30s client ping /
+	// 90s idle deadline): a quiet plant is normal, so silence alone proves
+	// nothing and only our own pings distinguish idle from dead.
+	backoff := time.Second
+	const backoffMax = 30 * time.Second
+	for {
+		err = query.Watch(ctx, sub.WSHref, onGrain, query.WatchOptions{})
+		if err == nil || ctx.Err() != nil {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "nmos watch: stream lost (%v) — reconnecting in %s…\n",
+			err, backoff)
+		select {
+		case <-ctx.Done():
+		case <-time.After(backoff):
+		}
+		if ctx.Err() != nil {
+			err = nil
+			break
+		}
+		if backoff *= 2; backoff > backoffMax {
+			backoff = backoffMax
+		}
+		// Re-POST the subscription: after a Registry restart or a GC the old
+		// wsHref is gone, and re-dialling it forever would never recover.
+		if newSub, serr := qc.Subscribe(ctx, query.SubscribeRequest{
+			ResourcePath:  *resource,
+			Params:        filter,
+			Persist:       *persist,
+			MaxUpdateRate: *rate,
+		}); serr == nil {
+			sub = newSub
+			fmt.Fprintf(os.Stderr, "nmos watch: re-subscribed -> %s (id=%s)\n", sub.WSHref, sub.ID)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "\n%d grain(s), %d change row(s)\n", grains, changes)
+	if events := rep.Snapshot(); len(events) > 0 {
+		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
+		for _, ev := range events {
+			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n", ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+		}
+	}
+	// A deadline or interrupt is how a watch normally ends, not a failure.
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("nmos watch: %w", err)
+	}
+	return nil
+}
+
+func runNMOSWalk(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
+	node := fs.String("node", "", "walk ONE Node directly (http://host:port) — IS-04 peer-to-peer, no Registry in the path")
+	registry := fs.String("registry", "", "Registry origin (Mode B unicast — http://host:port). When empty, --mdns or --unicast triggers DNS-SD discovery.")
+	mdns := fs.Bool("mdns", true, "discover the Registry via mDNS (Mode A); ignored if --registry or --node is set")
+	unicast := fs.Bool("unicast", false, "discover via unicast DNS-SD (Mode B); requires --resolver")
+	resolver := fs.String("resolver", "", "unicast DNS resolver IP")
+	domain := fs.String("domain", "by-systems.arpa", "unicast DNS-SD discovery domain")
+	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor (v1.0 / v1.1 / v1.2 / v1.3); empty = highest mutual")
+	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
+	asJSON := fs.Bool("json", false, "emit the whole catalogue as JSON instead of a summary")
+	long := fs.Bool("l", false, "list every resource, not just the counts")
+	if err := parseVerbFlags(fs, args); err != nil {
+		return err
+	}
+	if *node == "" && *registry == "" && !*mdns && !*unicast {
+		return fmt.Errorf("nmos walk: pick one of --node / --registry / --mdns / --unicast")
+	}
+
+	mode := ""
+	if *node == "" && *registry == "" {
+		switch {
+		case *unicast:
+			if *resolver == "" {
+				return fmt.Errorf("nmos walk --unicast: --resolver is required")
+			}
+			mode = "unicast"
+		case *mdns:
+			mode = "mdns"
+		}
+	}
+
+	rep := &spec.SliceReporter{}
+	c, err := consumer.NewController(ctx, consumer.ControllerOptions{
+		Logger:           slog.Default(),
+		Reporter:         rep,
+		NodeURL:          *node,
 		RegistryURL:      *registry,
 		DiscoveryMode:    mode,
 		DiscoveryTimeout: *timeout,
@@ -672,25 +1175,125 @@ func runNMOSWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("nmos walk: %w", err)
 	}
 
-	fmt.Printf("Registry %s (api_ver=%s, spec=%s)\n", c.BaseURL(), c.Codec().APIVer(), c.Codec().SpecPatch())
-
 	snap, errs := c.Walk(ctx)
-	fmt.Printf("Catalogue:\n")
-	fmt.Printf("  nodes:     %d\n", len(snap.Nodes))
-	fmt.Printf("  devices:   %d\n", len(snap.Devices))
-	fmt.Printf("  sources:   %d\n", len(snap.Sources))
-	fmt.Printf("  flows:     %d\n", len(snap.Flows))
-	fmt.Printf("  senders:   %d\n", len(snap.Senders))
-	fmt.Printf("  receivers: %d\n", len(snap.Receivers))
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(snap); err != nil {
+			return err
+		}
+	} else {
+		printWalkSummary(c, snap, *long)
+	}
+
 	for _, e := range errs {
 		fmt.Fprintf(os.Stderr, "warn: %v\n", e)
 	}
-	if events := rep.Snapshot(); len(events) > 0 {
-		fmt.Fprintf(os.Stderr, "%d compliance event(s) fired:\n", len(events))
-		for _, ev := range events {
-			fmt.Fprintf(os.Stderr, "  [%s] %s/%s %s: %s\n",
-				ev.Severity, ev.SpecID, ev.APIVer, ev.Code, ev.Detail)
+	printComplianceSummary(rep.Snapshot())
+	return nil
+}
+
+// printWalkSummary renders a catalogue for a human: counts first,
+// because that is the question being asked most of the time. -l adds
+// the per-resource detail an engineer needs to pick an id to route.
+func printWalkSummary(c *consumer.Controller, snap *consumer.CatalogueSnapshot, long bool) {
+	kind := "Registry"
+	if c.IsNodeFace() {
+		kind = "Node"
+	}
+	fmt.Printf("%s %s  (IS-04 %s, spec %s)\n\n", kind, c.BaseURL(),
+		c.Codec().APIVer(), c.Codec().SpecPatch())
+
+	for _, row := range []struct {
+		name string
+		n    int
+	}{
+		{"nodes", len(snap.Nodes)},
+		{"devices", len(snap.Devices)},
+		{"sources", len(snap.Sources)},
+		{"flows", len(snap.Flows)},
+		{"senders", len(snap.Senders)},
+		{"receivers", len(snap.Receivers)},
+	} {
+		fmt.Printf("  %-10s %d\n", row.name, row.n)
+	}
+
+	if !long {
+		fmt.Printf("\n  -l lists every resource; --json emits the whole catalogue\n")
+		return
+	}
+
+	for _, n := range snap.Nodes {
+		fmt.Printf("\nNODE      %s  %s\n", n.ID, n.Label)
+		fmt.Printf("          href=%s\n", n.Href)
+	}
+	for _, d := range snap.Devices {
+		fmt.Printf("\nDEVICE    %s  %s\n", d.ID, d.Label)
+		for _, ctl := range d.Controls {
+			fmt.Printf("          control  %-46s %s\n", ctl.Type, ctl.Href)
 		}
 	}
-	return nil
+	if len(snap.Senders) > 0 {
+		fmt.Printf("\nSENDERS (%d)\n", len(snap.Senders))
+		for _, s := range snap.Senders {
+			fmt.Printf("  %s  %-28s %s\n", s.ID, trunc(s.Label, 28), s.Transport)
+		}
+	}
+	if len(snap.Receivers) > 0 {
+		fmt.Printf("\nRECEIVERS (%d)\n", len(snap.Receivers))
+		for _, r := range snap.Receivers {
+			sub := "-"
+			if r.Subscription.SenderID != nil {
+				sub = *r.Subscription.SenderID
+			}
+			fmt.Printf("  %s  %-28s %-34s <- %s\n", r.ID, trunc(r.Label, 28), r.Transport, sub)
+		}
+	}
+}
+
+func trunc(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
+// printComplianceSummary collapses identical events before printing.
+// A 208-resource Node with one systematic deviation would otherwise
+// emit 208 identical lines and bury everything else.
+func printComplianceSummary(events []spec.ComplianceEvent) {
+	if len(events) == 0 {
+		return
+	}
+	type key struct{ sev, code, detail string }
+	counts := map[key]int{}
+	var order []key
+	for _, e := range events {
+		k := key{e.Severity.String(), e.Code, e.Detail}
+		if counts[k] == 0 {
+			order = append(order, k)
+		}
+		counts[k]++
+	}
+	fmt.Fprintf(os.Stderr, "\n%d compliance event(s), %d distinct:\n", len(events), len(order))
+	for _, k := range order {
+		fmt.Fprintf(os.Stderr, "  x%-4d [%s] %s: %s\n", counts[k], k.sev, k.code, k.detail)
+	}
+}
+
+// displayBind turns a listen address into one a reader can paste.
+//
+// "0.0.0.0:8235" and ":8235" are correct to bind and useless to click:
+// they name every interface, not an address. Printing 127.0.0.1 is the
+// honest minimum — it always works from the machine reading the banner.
+func displayBind(bind string) string {
+	host, port, err := net.SplitHostPort(bind)
+	if err != nil {
+		return bind
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" || host == "[::]" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
 }

@@ -1,0 +1,76 @@
+---
+# TLS CuT window (BCP-003-01, issue #948): the transient node serves
+# HTTPS/WSS ONLY — --tls-cert/--tls-key flip the whole server per
+# BCP-003-01 (a secured server SHALL NOT accept plain HTTP) — using
+# the tool CA's premade dhs-node.testsuite.nmos.tv identity, and the
+# TLS tool instance (ENABLE_HTTPS=True) scores it. Same transient
+# unit name + safety-timer + teardown as the P2P window, so
+# window_teardown.yml already covers this window.
+
+- name: The plant holds the CuT TLS material directory
+  ansible.builtin.file:
+    path: "{{ dhs_amwa_validate_tls_plant_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ groups['plant'][0] }}"
+
+# Tooling → plant via slurp+copy: the PEMs are small and the role has
+# no controller-side staging of its own. BOTH algorithms travel —
+# dual-certificate serving (see defaults: test_02 needs RSA for the
+# mandatory cipher, test_08 wants ECDSA alongside).
+- name: Read the staged CuT chains + keys
+  ansible.builtin.slurp:
+    src: "{{ dhs_amwa_validate_tls_dir }}/{{ item.0 }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.{{ item.1 }}"
+  register: _tls_material
+  loop: "{{ dhs_amwa_validate_tls_cut_algos | product(['cert.chain.pem', 'key.pem']) | list }}"
+  loop_control:
+    label: "{{ item.0 }}.{{ item.1 }}"
+
+- name: Install the CuT chains + keys on the plant
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "{{ dhs_amwa_validate_tls_plant_dir }}/{{ item.source | basename }}"
+    mode: "0600"
+  loop: "{{ _tls_material.results }}"
+  loop_control:
+    label: "{{ item.source | basename }}"
+  delegate_to: "{{ groups['plant'][0] }}"
+
+# Advertise the certificate's DNS identity, not the IP — every URL
+# the node mints must carry the name the certificates vouch for. The
+# repeated --tls-cert/--tls-key flags pair positionally: certificates
+# and keys ride in the same algorithm order, and the handshake picks
+# the pair each client can use.
+- name: Start the transient TLS node
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cut --collect
+    {{ dhs_amwa_validate_plant_bin }} producer nmos serve
+    --bind 0.0.0.0:{{ dhs_amwa_validate_cut_port }}
+    --no-registry
+    --advertise-host {{ dhs_amwa_validate_tls_cut_fqdn }}:{{ dhs_amwa_validate_cut_port }}
+    --api-ver v1.3
+    --config {{ dhs_amwa_validate_plant_config }}
+    {% for algo in dhs_amwa_validate_tls_cut_algos %}--tls-cert {{ dhs_amwa_validate_tls_plant_dir }}/{{ algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.cert.chain.pem {% endfor %}
+    {% for algo in dhs_amwa_validate_tls_cut_algos %}--tls-key {{ dhs_amwa_validate_tls_plant_dir }}/{{ algo }}.{{ dhs_amwa_validate_tls_cut_fqdn }}.key.pem {% endfor %}
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+- name: Arm the CuT safety-stop timer
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-cutstop --collect
+    --on-active={{ dhs_amwa_validate_window_safety_sec }}
+    systemctl stop dhs-nmos-validate-cut
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+# Readiness over TLS, CA-validated at the certificate's name (the
+# tooling /etc/hosts pin resolves it) — a plain-http 200 can never
+# count as ready because the handshake itself must succeed first.
+- name: Wait for the transient TLS node
+  ansible.builtin.uri:
+    url: "https://{{ dhs_amwa_validate_tls_cut_fqdn }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/node/v1.3/self"
+    ca_path: "{{ dhs_amwa_validate_tls_dir }}/ca.cert.pem"
+  register: _cut_up
+  retries: 15
+  delay: 2
+  until: _cut_up.status == 200

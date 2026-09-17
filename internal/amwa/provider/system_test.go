@@ -110,6 +110,25 @@ func TestServeEndToEnd(t *testing.T) {
 		t.Fatal("server never came up")
 	}
 
+	// The base-path indexes above the versioned tree (the AMWA
+	// IS-09-01 auto_system_1/2 rows — 404 until #958).
+	for path, want := range map[string]string{
+		"/x-nmos/":        "system/",
+		"/x-nmos/system/": "v1.0/",
+	} {
+		br, err := stdhttp.Get("http://" + addr + path)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		bb, _ := io.ReadAll(br.Body)
+		_ = br.Body.Close()
+		var listing []string
+		_ = json.Unmarshal(bb, &listing)
+		if br.StatusCode != 200 || len(listing) != 1 || listing[0] != want {
+			t.Fatalf("GET %s = %d %s, want [%q]", path, br.StatusCode, bb, want)
+		}
+	}
+
 	// GET / index
 	resp, err := stdhttp.Get("http://" + addr + "/x-nmos/system/v1.0/")
 	if err != nil {

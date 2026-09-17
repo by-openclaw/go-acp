@@ -1,0 +1,2437 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQMDMO
+--        Module Id#:216
+--       Command Set:1
+--          Filename:SNELL-IQMDMO-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:12:43
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQMDMO-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQMDMO,
+    moduleIQMDMOMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQMDMOCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291243Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQMDMOMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqmdmoCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqmdmoCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQMDMO 1 }
+
+	iqmdmoCmdEntry OBJECT-TYPE
+		SYNTAX		IqmdmoCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqmdmoSlotIndex }
+		::= { iqmdmoCmdTable 1 }
+
+	IqmdmoCmdEntry ::=
+		SEQUENCE {
+			iqmdmoSlotIndex
+				Unsigned32,
+			iqmdmoProgramPMTsPrograms
+				INTEGER,
+			iqmdmoProgramProgramPMTsPrograminfo
+				RollCallString,
+			iqmdmoProgramProgramPMTsLockprogram
+				INTEGER,
+			iqmdmoProgramPMTsESPIDs
+				INTEGER,
+			iqmdmoProgramPMTsBitratesTSrate
+				RollCallString,
+			iqmdmoProgramPMTsBitratesVideoPES
+				RollCallString,
+			iqmdmoProgramPMTsBitratesAudiodata1
+				RollCallString,
+			iqmdmoProgramPMTsBitratesAudiodata2
+				RollCallString,
+			iqmdmoProgramPMTsBitratesAudiodata3
+				RollCallString,
+			iqmdmoProgramPMTsBitratesAudiodata4
+				RollCallString,
+			iqmdmoProgramProgramPMTsTSID
+				RollCallString,
+			iqmdmoProgramProgramPMTsPCRPID
+				RollCallString,
+			iqmdmoProgramProgramPMTsProgramview
+				INTEGER,
+			iqmdmoProgramProgramPMTsProgramvieworder
+				INTEGER,
+			iqmdmoProgramProgramPMTsPIDformatRadix
+				INTEGER,
+			iqmdmoLockMode
+				INTEGER,
+			iqmdmoLockModeVideorefstatus
+				RollCallString,
+			iqmdmoLockModeVideooutstatus
+				RollCallString,
+			iqmdmoLockModeMPEGlockstatus
+				RollCallString,
+			iqmdmoLockModeGenlockHphase
+				INTEGER,
+			iqmdmoLockModeGenlockVphase
+				INTEGER,
+			iqmdmoInputsStatusSelectedinput
+				RollCallString,
+			iqmdmoInputsStatusTSpacketlength
+				RollCallString,
+			iqmdmoInputsStatusInput1
+				RollCallString,
+			iqmdmoInputsStatusInput2
+				RollCallString,
+			iqmdmoInputsSelect
+				INTEGER,
+			iqmdmoInputsAutopriority
+				INTEGER,
+			iqmdmoOptionsInput1Name
+				RollCallString,
+			iqmdmoOptionsInput1
+				INTEGER,
+			iqmdmoOptionsInput2Name
+				RollCallString,
+			iqmdmoOptionsInput2
+				INTEGER,
+			iqmdmoOutputsAESoutput1Streamselect
+				INTEGER,
+			iqmdmoOutputsAESoutput1Outputmode
+				INTEGER,
+			iqmdmoOutputsAESoutput1Preferredlanguage
+				INTEGER,
+			iqmdmoAESoutput1Options
+				INTEGER,
+			iqmdmoAESoutput1OptionsTone
+				INTEGER,
+			iqmdmoAESoutput1OptionsMute
+				INTEGER,
+			iqmdmoAESoutput1OptionsDisable
+				INTEGER,
+			iqmdmoAESoutput1StatusPID
+				RollCallString,
+			iqmdmoAESoutput1StatusLanguage
+				RollCallString,
+			iqmdmoAESoutput1StatusBitrate
+				RollCallString,
+			iqmdmoAESoutput1StatusSamplerate
+				RollCallString,
+			iqmdmoOutputsAESoutput1Delay
+				INTEGER,
+			iqmdmoOutputsAESoutput1Delaystatus
+				RollCallString,
+			iqmdmoOutputsAESoutput2Streamselect
+				INTEGER,
+			iqmdmoOutputsAESoutput2Outputmode
+				INTEGER,
+			iqmdmoOutputsAESoutput2Preferedlanguage
+				INTEGER,
+			iqmdmoAESoutput2Options
+				INTEGER,
+			iqmdmoAESoutput2OptionsTone
+				INTEGER,
+			iqmdmoAESoutput2OptionsMute
+				INTEGER,
+			iqmdmoAESoutput2OptionsDisable
+				INTEGER,
+			iqmdmoAESoutput2StatusPID
+				RollCallString,
+			iqmdmoAESoutput2StatusLanguage
+				RollCallString,
+			iqmdmoAESoutput2StatusBitrate
+				RollCallString,
+			iqmdmoAESoutput2StatusSamplerate
+				RollCallString,
+			iqmdmoOutputsAESoutput2Delay
+				INTEGER,
+			iqmdmoOutputsAESoutput2Delaystatus
+				RollCallString,
+			iqmdmoOutputsAESoutput3Streamselect
+				INTEGER,
+			iqmdmoOutputsAESoutput3Outputmode
+				INTEGER,
+			iqmdmoOutputsAESoutput3Preferedlanguage
+				INTEGER,
+			iqmdmoAESoutput3Options
+				INTEGER,
+			iqmdmoAESoutput3OptionsTone
+				INTEGER,
+			iqmdmoAESoutput3OptionsMute
+				INTEGER,
+			iqmdmoAESoutput3OptionsDisable
+				INTEGER,
+			iqmdmoAESoutput3StatusPID
+				RollCallString,
+			iqmdmoAESoutput3StatusLanguage
+				RollCallString,
+			iqmdmoAESoutput3StatusBitrate
+				RollCallString,
+			iqmdmoAESoutput3StatusSamplerate
+				RollCallString,
+			iqmdmoOutputsAESoutput3Delay
+				INTEGER,
+			iqmdmoOutputsAESoutput3Delaystatus
+				RollCallString,
+			iqmdmoOutputsAESoutput4Streamselect
+				INTEGER,
+			iqmdmoOutputsAESoutput4Outputmode
+				INTEGER,
+			iqmdmoOutputsAESoutput4Preferedlanguage
+				INTEGER,
+			iqmdmoAESoutput4Options
+				INTEGER,
+			iqmdmoAESoutput4OptionsTone
+				INTEGER,
+			iqmdmoAESoutput4OptionsMute
+				INTEGER,
+			iqmdmoAESoutput4OptionsDisable
+				INTEGER,
+			iqmdmoAESoutput4StatusPID
+				RollCallString,
+			iqmdmoAESoutput4StatusLanguage
+				RollCallString,
+			iqmdmoAESoutput4StatusBitrate
+				RollCallString,
+			iqmdmoAESoutput4StatusSamplerate
+				RollCallString,
+			iqmdmoOutputsAESoutput4Delay
+				INTEGER,
+			iqmdmoOutputsAESoutput4Delaystatus
+				RollCallString,
+			iqmdmoSetupLoggingAllfields
+				INTEGER,
+			iqmdmoSetupLoggingInput1loss
+				INTEGER,
+			iqmdmoSetupLoggingInput2loss
+				INTEGER,
+			iqmdmoSetupLoggingInputused
+				INTEGER,
+			iqmdmoSetupLoggingVideostandard
+				INTEGER,
+			iqmdmoSetupLoggingRefinput
+				INTEGER,
+			iqmdmoSetupLoggingRefstandard
+				INTEGER,
+			iqmdmoErrorsErrorstatusAllerrors
+				RollCallString,
+			iqmdmoErrorsErrorstatusInput
+				RollCallString,
+			iqmdmoErrorsErrorstatusMPEGlock
+				RollCallString,
+			iqmdmoErrorsErrorstatusReflock
+				RollCallString,
+			iqmdmoErrorsErrorstatusRefmismatch
+				RollCallString,
+			iqmdmoErrorsErrorenableAllerrors
+				INTEGER,
+			iqmdmoErrorsErrorenableInput
+				INTEGER,
+			iqmdmoErrorsErrorenableMPEGlock
+				INTEGER,
+			iqmdmoErrorsErrorenableReflock
+				INTEGER,
+			iqmdmoErrorsErrorenableRefmismatch
+				INTEGER,
+			iqmdmoSetupErrorsClearerrors
+				INTEGER,
+			iqmdmoVideoTestpatternTestmode
+				INTEGER,
+			iqmdmoVideoTestpatternPatterntype
+				INTEGER,
+			iqmdmoSetupVideoChromafiltering
+				INTEGER,
+			iqmdmoVideoClippingLumaclipHi
+				INTEGER,
+			iqmdmoVideoClippingLumaclipLo
+				INTEGER,
+			iqmdmoVideoClippingChromaclipHi
+				INTEGER,
+			iqmdmoVideoClippingChromaclipLo
+				INTEGER,
+			iqmdmoVideoClippingSetRec601range
+				INTEGER,
+			iqmdmoVideoTeletextinsertEnable
+				INTEGER,
+			iqmdmoSetupAudioembeddingEnableaudioembed
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair1
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair2
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair3
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair4
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair5
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair6
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair7
+				INTEGER,
+			iqmdmoSetupAudioembeddingOutputpair8
+				INTEGER,
+			iqmdmoSetupMemoriesRecall
+				INTEGER,
+			iqmdmoSetupMemoriesSave
+				INTEGER,
+			iqmdmoSetupMemoriesDefault
+				INTEGER,
+			iqmdmoMemoriesNamesMemory1
+				RollCallString,
+			iqmdmoMemoriesNamesMemory2
+				RollCallString,
+			iqmdmoMemoriesNamesMemory3
+				RollCallString,
+			iqmdmoMemoriesNamesMemory4
+				RollCallString,
+			iqmdmoSetupEnableupdate
+				INTEGER,
+			iqmdmoSetupSWversion
+				RollCallString,
+			iqmdmoSetupHWrevision
+				RollCallString,
+			iqmdmoSetupSerialno
+				RollCallString,
+			iqmdmoSetupPresetunit
+				INTEGER
+		}
+
+	iqmdmoSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqmdmoCmdEntry 0 }
+
+
+	iqmdmoProgramPMTsPrograms OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_service(0),
+							val_Ch01(1),
+							val_Ch02(2),
+							val_Ch03(3),
+							val_Ch04(4),
+							val_Ch05(5),
+							val_Ch06(6),
+							val_Ch07(7),
+							val_Ch08(8),
+							val_Ch09(9),
+							val_Ch10(10),
+							val_Ch11(11),
+							val_Ch12(12),
+							val_Ch13(13),
+							val_Ch14(14),
+							val_Ch15(15),
+							val_Ch16(16),
+							val_Ch17(17),
+							val_Ch18(18),
+							val_Ch19(19),
+							val_Ch20(20),
+							val_Ch21(21),
+							val_Ch22(22),
+							val_Ch23(23),
+							val_Ch24(24),
+							val_Ch25(25),
+							val_Ch26(26),
+							val_Ch27(27),
+							val_Ch28(28),
+							val_Ch29(29),
+							val_Ch30(30),
+							val_The_End(31)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Program- Programs
+					No service  cmdID= 9  value= 0  
+					 Channel           value = 1 - 30
+					The End  cmdID= 9  value= 31  "
+		::= { iqmdmoCmdEntry 9 }
+
+
+	iqmdmoProgramProgramPMTsPrograminfo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Program info  cmdID= 133  format=   "
+		::= { iqmdmoCmdEntry 133 }
+
+
+	iqmdmoProgramProgramPMTsLockprogram OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Program
+					Lock program  cmdID= 148 "
+		::= { iqmdmoCmdEntry 148 }
+
+
+	iqmdmoProgramPMTsESPIDs OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_streams(0),
+							val_Select01(1),
+							val_Select02(2),
+							val_Select03(3),
+							val_Select04(4),
+							val_Select05(5),
+							val_Select06(6),
+							val_Select07(7),
+							val_Select08(8),
+							val_Select09(9),
+							val_Select10(10),
+							val_Select11(11),
+							val_Select12(12),
+							val_Select13(13),
+							val_Select14(14),
+							val_Select15(15),
+							val_Select16(16),
+							val_Select17(17),
+							val_Select18(18),
+							val_Select19(19),
+							val_Select20(20),
+							val_Select21(21),
+							val_Select22(22),
+							val_Select23(23),
+							val_Select24(24)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Program- ES PIDs
+					No streams  cmdID= 48  value= 0  
+					Select   1 - 24"
+		::= { iqmdmoCmdEntry 48 }
+
+
+	iqmdmoProgramPMTsBitratesTSrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					TS rate  cmdID= 10  format=   "
+		::= { iqmdmoCmdEntry 10 }
+
+
+	iqmdmoProgramPMTsBitratesVideoPES OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Video PES  cmdID= 11  format=   "
+		::= { iqmdmoCmdEntry 11 }
+
+
+	iqmdmoProgramPMTsBitratesAudiodata1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Audio/data 1  cmdID= 12  format=   "
+		::= { iqmdmoCmdEntry 12 }
+
+
+	iqmdmoProgramPMTsBitratesAudiodata2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Audio/data 2  cmdID= 13  format=   "
+		::= { iqmdmoCmdEntry 13 }
+
+
+	iqmdmoProgramPMTsBitratesAudiodata3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Audio/data 3  cmdID= 14  format=   "
+		::= { iqmdmoCmdEntry 14 }
+
+
+	iqmdmoProgramPMTsBitratesAudiodata4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					Audio/data 4  cmdID= 15  format=   "
+		::= { iqmdmoCmdEntry 15 }
+
+
+	iqmdmoProgramProgramPMTsTSID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					TS ID  cmdID= 16  format=   "
+		::= { iqmdmoCmdEntry 16 }
+
+
+	iqmdmoProgramProgramPMTsPCRPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Program
+					PCR PID  cmdID= 20  format=   "
+		::= { iqmdmoCmdEntry 20 }
+
+
+	iqmdmoProgramProgramPMTsProgramview OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Name_only(1),
+							val_Number_only(3),
+							val_Both_name_no(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Program
+					Program view  cmdID= 19 
+					Name only  value= 1  
+					Number only  value= 3  
+					Both name & no  value= 2  "
+		::= { iqmdmoCmdEntry 19 }
+
+
+	iqmdmoProgramProgramPMTsProgramvieworder OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Sort_by_name(1),
+							val_Sort_by_number(2),
+							val_PAT_order(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Program
+					Program view order  cmdID= 18 
+					Sort by name  value= 1  
+					Sort by number  value= 2  
+					PAT order  value= 3  "
+		::= { iqmdmoCmdEntry 18 }
+
+
+	iqmdmoProgramProgramPMTsPIDformatRadix OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Base_10_Dec(1),
+							val_Base_16_Hex(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Program
+					PID format (Radix)  cmdID= 104 
+					Base 10 (Dec)  value= 1  
+					Base 16 (Hex)  value= 2  "
+		::= { iqmdmoCmdEntry 104 }
+
+
+	iqmdmoLockMode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video_Ref(1),
+							val_MPEG_Ref(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - LockMode
+					Video Ref  cmdID= 29  value= 1  
+					MPEG Ref  cmdID= 29  value= 2  "
+		::= { iqmdmoCmdEntry 29 }
+
+
+	iqmdmoLockModeVideorefstatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - LockMode
+					Video ref status  cmdID= 114  format=   "
+		::= { iqmdmoCmdEntry 114 }
+
+
+	iqmdmoLockModeVideooutstatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - LockMode
+					Video out status  cmdID= 115  format=   "
+		::= { iqmdmoCmdEntry 115 }
+
+
+	iqmdmoLockModeMPEGlockstatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - LockMode
+					MPEG lock status  cmdID= 116  format=   "
+		::= { iqmdmoCmdEntry 116 }
+
+
+	iqmdmoLockModeGenlockHphase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - LockMode
+					Genlock H-phase  cmdID= 118  min= -37000  max= 37000  step= 37  format= %.0f ns  div_scale= 1 
+					Min = -37000 ns  Max = 37000 ns  Step = 37 ns "
+		::= { iqmdmoCmdEntry 118 }
+
+
+	iqmdmoLockModeGenlockVphase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - LockMode
+					Genlock V-phase  cmdID= 119  min= -350  max= 350  step= 1  format= %.0f lines  div_scale= 1 
+					Min = -350 lines  Max = 350 lines  Step = 1 lines "
+		::= { iqmdmoCmdEntry 119 }
+
+
+	iqmdmoInputsStatusSelectedinput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Inputs
+					Selected input  cmdID= 6  format=   "
+		::= { iqmdmoCmdEntry 6 }
+
+
+	iqmdmoInputsStatusTSpacketlength OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Inputs
+					TS packet length  cmdID= 8  format=   "
+		::= { iqmdmoCmdEntry 8 }
+
+
+	iqmdmoInputsStatusInput1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Inputs
+					Input 1  cmdID= 112  format=   "
+		::= { iqmdmoCmdEntry 112 }
+
+
+	iqmdmoInputsStatusInput2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Inputs
+					Input 2  cmdID= 113  format=   "
+		::= { iqmdmoCmdEntry 113 }
+
+
+	iqmdmoInputsSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto_select(3),
+							val_Input_1(1),
+							val_Input_2(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Inputs
+					Select  cmdID= 5 
+					Auto select  value= 3  
+					Input 1  value= 1  
+					Input 2  value= 2  "
+		::= { iqmdmoCmdEntry 5 }
+
+
+	iqmdmoInputsAutopriority OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(1),
+							val_Input_2(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Inputs
+					Auto priority  cmdID= 7 
+					Input 1  value= 1  
+					Input 2  value= 2  "
+		::= { iqmdmoCmdEntry 7 }
+
+
+	iqmdmoOptionsInput1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Inputs
+					Name  cmdID= 22  "
+		::= { iqmdmoCmdEntry 22 }
+
+
+	iqmdmoOptionsInput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Invert_auto(3),
+							val_Invert_off(1),
+							val_Invert_on(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Inputs
+					Invert auto  cmdID= 23  value= 3  
+					Invert off  cmdID= 23  value= 1  
+					Invert on  cmdID= 23  value= 2  "
+		::= { iqmdmoCmdEntry 23 }
+
+
+	iqmdmoOptionsInput2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Inputs
+					Name  cmdID= 26  "
+		::= { iqmdmoCmdEntry 26 }
+
+
+	iqmdmoOptionsInput2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Invert_auto(3),
+							val_Invert_off(1),
+							val_Invert_on(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Inputs
+					Invert auto  cmdID= 27  value= 3  
+					Invert off  cmdID= 27  value= 1  
+					Invert on  cmdID= 27  value= 2  "
+		::= { iqmdmoCmdEntry 27 }
+
+
+	iqmdmoOutputsAESoutput1Streamselect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Streams(0),
+							val_Select01(1),
+							val_Select02(2),
+							val_Select03(3),
+							val_Select04(4),
+							val_Select05(5),
+							val_Select06(6),
+							val_Select07(7),
+							val_Select08(8),
+							val_Select09(9),
+							val_Select10(10),
+							val_Select11(11),
+							val_Select12(12),
+							val_Select13(13),
+							val_Select14(14),
+							val_Select15(15),
+							val_Select16(16),
+							val_Select17(17),
+							val_Select18(18),
+							val_Select19(19),
+							val_Select20(20),
+							val_Select21(21),
+							val_Select22(22),
+							val_Select23(23),
+							val_Select24(24)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 1
+					Stream select  cmdID= 56 
+					No Streams  value= 0  
+					Select   value = 1-24"
+		::= { iqmdmoCmdEntry 56 }
+
+
+	iqmdmoOutputsAESoutput1Outputmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Layer_I_II_auto(1),
+							val_Layer_I_II_manual(2),
+							val_AC_3_auto_language(3),
+							val_AC_3_manual(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 1
+					Output mode  cmdID= 57 
+					Layer I/II auto  value= 1  
+					Layer I/II manual  value= 2  
+					AC-3 auto language  value= 3  
+					AC-3 manual  value= 4  "
+		::= { iqmdmoCmdEntry 57 }
+
+
+	iqmdmoOutputsAESoutput1Preferredlanguage OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_English(0),
+							val_Spanish(1),
+							val_French(2),
+							val_German(3),
+							val_Dutch(4),
+							val_Italian(5),
+							val_Portugese(6),
+							val_Korean(7),
+							val_Japanese(8),
+							val_Chinese(9),
+							val_Arabic(10),
+							val_Malayalam(11),
+							val_Welsh(12)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 1
+					Preferred language  cmdID= 58 
+					English  value= 0  
+					Spanish  value= 1  
+					French  value= 2  
+					German  value= 3  
+					Dutch  value= 4  
+					Italian  value= 5  
+					Portugese  value= 6  
+					Korean  value= 7  
+					Japanese  value= 8  
+					Chinese  value= 9  
+					Arabic  value= 10  
+					Malayalam  value= 11  
+					Welsh  value= 12  "
+		::= { iqmdmoCmdEntry 58 }
+
+
+	iqmdmoAESoutput1Options OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto_tone(1),
+							val_Auto_mute(2),
+							val_Auto_disable(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Outputs- AES output 1
+					Auto tone  cmdID= 59  value= 1  
+					Auto mute  cmdID= 59  value= 2  
+					Auto disable  cmdID= 59  value= 3  "
+		::= { iqmdmoCmdEntry 59 }
+
+
+	iqmdmoAESoutput1OptionsTone OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 1
+					Tone  cmdID= 60 "
+		::= { iqmdmoCmdEntry 60 }
+
+
+	iqmdmoAESoutput1OptionsMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 1
+					Mute  cmdID= 61 "
+		::= { iqmdmoCmdEntry 61 }
+
+
+	iqmdmoAESoutput1OptionsDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 1
+					Disable  cmdID= 62 "
+		::= { iqmdmoCmdEntry 62 }
+
+
+	iqmdmoAESoutput1StatusPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 1
+					PID  cmdID= 63  format=   "
+		::= { iqmdmoCmdEntry 63 }
+
+
+	iqmdmoAESoutput1StatusLanguage OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 1
+					Language  cmdID= 64  format=   "
+		::= { iqmdmoCmdEntry 64 }
+
+
+	iqmdmoAESoutput1StatusBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 1
+					Bit rate  cmdID= 65  format=   "
+		::= { iqmdmoCmdEntry 65 }
+
+
+	iqmdmoAESoutput1StatusSamplerate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 1
+					Sample rate  cmdID= 66  format=   "
+		::= { iqmdmoCmdEntry 66 }
+
+
+	iqmdmoOutputsAESoutput1Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Outputs- AES output 1
+					Delay  cmdID= 67  min= -1000  max= 1000  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -1000 ms  Max = 1000 ms  Step = 1 ms "
+		::= { iqmdmoCmdEntry 67 }
+
+
+	iqmdmoOutputsAESoutput1Delaystatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 1
+					Delay status  cmdID= 134  format=   "
+		::= { iqmdmoCmdEntry 134 }
+
+
+	iqmdmoOutputsAESoutput2Streamselect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Streams(0),
+							val_Select01(1),
+							val_Select02(2),
+							val_Select03(3),
+							val_Select04(4),
+							val_Select05(5),
+							val_Select06(6),
+							val_Select07(7),
+							val_Select08(8),
+							val_Select09(9),
+							val_Select10(10),
+							val_Select11(11),
+							val_Select12(12),
+							val_Select13(13),
+							val_Select14(14),
+							val_Select15(15),
+							val_Select16(16),
+							val_Select17(17),
+							val_Select18(18),
+							val_Select19(19),
+							val_Select20(20),
+							val_Select21(21),
+							val_Select22(22),
+							val_Select23(23),
+							val_Select24(24)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 2
+					Stream select  cmdID= 68 
+					No Streams  value= 0  
+					Select  value = 1 - 24 "
+		::= { iqmdmoCmdEntry 68 }
+
+
+	iqmdmoOutputsAESoutput2Outputmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Layer_I_II_auto(1),
+							val_Layer_I_II_manual(2),
+							val_AC_3_auto_language(3),
+							val_AC_3_manual(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 2
+					Output mode  cmdID= 69 
+					Layer I/II auto  value= 1  
+					Layer I/II manual  value= 2  
+					AC-3 auto language  value= 3  
+					AC-3 manual  value= 4  "
+		::= { iqmdmoCmdEntry 69 }
+
+
+	iqmdmoOutputsAESoutput2Preferedlanguage OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_English(0),
+							val_Spanish(1),
+							val_French(2),
+							val_German(3),
+							val_Dutch(4),
+							val_Italian(5),
+							val_Portugese(6),
+							val_Korean(7),
+							val_Japanese(8),
+							val_Chinese(9),
+							val_Arabic(10),
+							val_Malayalam(11),
+							val_Welsh(12)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 2
+					Prefered language  cmdID= 70 
+					English  value= 0  
+					Spanish  value= 1  
+					French  value= 2  
+					German  value= 3  
+					Dutch  value= 4  
+					Italian  value= 5  
+					Portugese  value= 6  
+					Korean  value= 7  
+					Japanese  value= 8  
+					Chinese  value= 9  
+					Arabic  value= 10  
+					Malayalam  value= 11  
+					Welsh  value= 12  "
+		::= { iqmdmoCmdEntry 70 }
+
+
+	iqmdmoAESoutput2Options OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto_tone(1),
+							val_Auto_mute(2),
+							val_Auto_disable(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Outputs- AES output 2
+					Auto tone  cmdID= 71  value= 1  
+					Auto mute  cmdID= 71  value= 2  
+					Auto disable  cmdID= 71  value= 3  "
+		::= { iqmdmoCmdEntry 71 }
+
+
+	iqmdmoAESoutput2OptionsTone OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 2
+					Tone  cmdID= 72 "
+		::= { iqmdmoCmdEntry 72 }
+
+
+	iqmdmoAESoutput2OptionsMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 2
+					Mute  cmdID= 73 "
+		::= { iqmdmoCmdEntry 73 }
+
+
+	iqmdmoAESoutput2OptionsDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 2
+					Disable  cmdID= 74 "
+		::= { iqmdmoCmdEntry 74 }
+
+
+	iqmdmoAESoutput2StatusPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 2
+					PID  cmdID= 75  format=   "
+		::= { iqmdmoCmdEntry 75 }
+
+
+	iqmdmoAESoutput2StatusLanguage OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 2
+					Language  cmdID= 76  format=   "
+		::= { iqmdmoCmdEntry 76 }
+
+
+	iqmdmoAESoutput2StatusBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 2
+					Bit rate  cmdID= 77  format=   "
+		::= { iqmdmoCmdEntry 77 }
+
+
+	iqmdmoAESoutput2StatusSamplerate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 2
+					Sample rate  cmdID= 78  format=   "
+		::= { iqmdmoCmdEntry 78 }
+
+
+	iqmdmoOutputsAESoutput2Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Outputs- AES output 2
+					Delay  cmdID= 79  min= -1000  max= 1000  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -1000 ms  Max = 1000 ms  Step = 1 ms "
+		::= { iqmdmoCmdEntry 79 }
+
+
+	iqmdmoOutputsAESoutput2Delaystatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 2
+					Delay status  cmdID= 135  format=   "
+		::= { iqmdmoCmdEntry 135 }
+
+
+	iqmdmoOutputsAESoutput3Streamselect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Streams(0),
+							val_Select01(1),
+							val_Select02(2),
+							val_Select03(3),
+							val_Select04(4),
+							val_Select05(5),
+							val_Select06(6),
+							val_Select07(7),
+							val_Select08(8),
+							val_Select09(9),
+							val_Select10(10),
+							val_Select11(11),
+							val_Select12(12),
+							val_Select13(13),
+							val_Select14(14),
+							val_Select15(15),
+							val_Select16(16),
+							val_Select17(17),
+							val_Select18(18),
+							val_Select19(19),
+							val_Select20(20),
+							val_Select21(21),
+							val_Select22(22),
+							val_Select23(23),
+							val_Select24(24)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 3
+					Stream select  cmdID= 80 
+					No Streams  value= 0  
+					  value= 1 - 24 "
+		::= { iqmdmoCmdEntry 80 }
+
+
+	iqmdmoOutputsAESoutput3Outputmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Layer_I_II_auto(1),
+							val_Layer_I_II_manual(2),
+							val_AC_3_auto_language(3),
+							val_AC_3_manual(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 3
+					Output mode  cmdID= 81 
+					Layer I/II auto  value= 1  
+					Layer I/II manual  value= 2  
+					AC-3 auto language  value= 3  
+					AC-3 manual  value= 4  "
+		::= { iqmdmoCmdEntry 81 }
+
+
+	iqmdmoOutputsAESoutput3Preferedlanguage OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_English(0),
+							val_Spanish(1),
+							val_French(2),
+							val_German(3),
+							val_Dutch(4),
+							val_Italian(5),
+							val_Portugese(6),
+							val_Korean(7),
+							val_Japanese(8),
+							val_Chinese(9),
+							val_Arabic(10),
+							val_Malayalam(11),
+							val_Welsh(12)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 3
+					Prefered language  cmdID= 82 
+					English  value= 0  
+					Spanish  value= 1  
+					French  value= 2  
+					German  value= 3  
+					Dutch  value= 4  
+					Italian  value= 5  
+					Portugese  value= 6  
+					Korean  value= 7  
+					Japanese  value= 8  
+					Chinese  value= 9  
+					Arabic  value= 10  
+					Malayalam  value= 11  
+					Welsh  value= 12  "
+		::= { iqmdmoCmdEntry 82 }
+
+
+	iqmdmoAESoutput3Options OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto_tone(1),
+							val_Auto_mute(2),
+							val_Auto_disable(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Outputs- AES output 3
+					Auto tone  cmdID= 83  value= 1  
+					Auto mute  cmdID= 83  value= 2  
+					Auto disable  cmdID= 83  value= 3  "
+		::= { iqmdmoCmdEntry 83 }
+
+
+	iqmdmoAESoutput3OptionsTone OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 3
+					Tone  cmdID= 84 "
+		::= { iqmdmoCmdEntry 84 }
+
+
+	iqmdmoAESoutput3OptionsMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 3
+					Mute  cmdID= 85 "
+		::= { iqmdmoCmdEntry 85 }
+
+
+	iqmdmoAESoutput3OptionsDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 3
+					Disable  cmdID= 86 "
+		::= { iqmdmoCmdEntry 86 }
+
+
+	iqmdmoAESoutput3StatusPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 3
+					PID  cmdID= 87  format=   "
+		::= { iqmdmoCmdEntry 87 }
+
+
+	iqmdmoAESoutput3StatusLanguage OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 3
+					Language  cmdID= 88  format=   "
+		::= { iqmdmoCmdEntry 88 }
+
+
+	iqmdmoAESoutput3StatusBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 3
+					Bit rate  cmdID= 89  format=   "
+		::= { iqmdmoCmdEntry 89 }
+
+
+	iqmdmoAESoutput3StatusSamplerate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 3
+					Sample rate  cmdID= 90  format=   "
+		::= { iqmdmoCmdEntry 90 }
+
+
+	iqmdmoOutputsAESoutput3Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Outputs- AES output 3
+					Delay  cmdID= 91  min= -1000  max= 1000  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -1000 ms  Max = 1000 ms  Step = 1 ms "
+		::= { iqmdmoCmdEntry 91 }
+
+
+	iqmdmoOutputsAESoutput3Delaystatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 3
+					Delay status  cmdID= 136  format=   "
+		::= { iqmdmoCmdEntry 136 }
+
+
+	iqmdmoOutputsAESoutput4Streamselect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_No_Streams(0),
+							val_Select01(1),
+							val_Select02(2),
+							val_Select03(3),
+							val_Select04(4),
+							val_Select05(5),
+							val_Select06(6),
+							val_Select07(7),
+							val_Select08(8),
+							val_Select09(9),
+							val_Select10(10),
+							val_Select11(11),
+							val_Select12(12),
+							val_Select13(13),
+							val_Select14(14),
+							val_Select15(15),
+							val_Select16(16),
+							val_Select17(17),
+							val_Select18(18),
+							val_Select19(19),
+							val_Select20(20),
+							val_Select21(21),
+							val_Select22(22),
+							val_Select23(23),
+							val_Select24(24)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 4
+					Stream select  cmdID= 92 
+					No Streams  value= 0  
+					  value= 1 - 24 "
+		::= { iqmdmoCmdEntry 92 }
+
+
+	iqmdmoOutputsAESoutput4Outputmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Layer_I_II_auto(1),
+							val_Layer_I_II_manual(2),
+							val_AC_3_auto_language(3),
+							val_AC_3_manual(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 4
+					Output mode  cmdID= 93 
+					Layer I/II auto  value= 1  
+					Layer I/II manual  value= 2  
+					AC-3 auto language  value= 3  
+					AC-3 manual  value= 4  "
+		::= { iqmdmoCmdEntry 93 }
+
+
+	iqmdmoOutputsAESoutput4Preferedlanguage OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_English(0),
+							val_Spanish(1),
+							val_French(2),
+							val_German(3),
+							val_Dutch(4),
+							val_Italian(5),
+							val_Portugese(6),
+							val_Korean(7),
+							val_Japanese(8),
+							val_Chinese(9),
+							val_Arabic(10),
+							val_Malayalam(11),
+							val_Welsh(12)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Outputs- AES output 4
+					Prefered language  cmdID= 94 
+					English  value= 0  
+					Spanish  value= 1  
+					French  value= 2  
+					German  value= 3  
+					Dutch  value= 4  
+					Italian  value= 5  
+					Portugese  value= 6  
+					Korean  value= 7  
+					Japanese  value= 8  
+					Chinese  value= 9  
+					Arabic  value= 10  
+					Malayalam  value= 11  
+					Welsh  value= 12  "
+		::= { iqmdmoCmdEntry 94 }
+
+
+	iqmdmoAESoutput4Options OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Auto_tone(1),
+							val_Auto_mute(2),
+							val_Auto_disable(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Outputs- AES output 4
+					Auto tone  cmdID= 95  value= 1  
+					Auto mute  cmdID= 95  value= 2  
+					Auto disable  cmdID= 95  value= 3  "
+		::= { iqmdmoCmdEntry 95 }
+
+
+	iqmdmoAESoutput4OptionsTone OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 4
+					Tone  cmdID= 96 "
+		::= { iqmdmoCmdEntry 96 }
+
+
+	iqmdmoAESoutput4OptionsMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 4
+					Mute  cmdID= 97 "
+		::= { iqmdmoCmdEntry 97 }
+
+
+	iqmdmoAESoutput4OptionsDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Outputs- AES output 4
+					Disable  cmdID= 98 "
+		::= { iqmdmoCmdEntry 98 }
+
+
+	iqmdmoAESoutput4StatusPID OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 4
+					PID  cmdID= 99  format=   "
+		::= { iqmdmoCmdEntry 99 }
+
+
+	iqmdmoAESoutput4StatusLanguage OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 4
+					Language  cmdID= 100  format=   "
+		::= { iqmdmoCmdEntry 100 }
+
+
+	iqmdmoAESoutput4StatusBitrate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 4
+					Bit rate  cmdID= 101  format=   "
+		::= { iqmdmoCmdEntry 101 }
+
+
+	iqmdmoAESoutput4StatusSamplerate OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 4
+					Sample rate  cmdID= 102  format=   "
+		::= { iqmdmoCmdEntry 102 }
+
+
+	iqmdmoOutputsAESoutput4Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Outputs- AES output 4
+					Delay  cmdID= 103  min= -1000  max= 1000  step= 1  format= %.0f ms  div_scale= 1 
+					Min = -1000 ms  Max = 1000 ms  Step = 1 ms "
+		::= { iqmdmoCmdEntry 103 }
+
+
+	iqmdmoOutputsAESoutput4Delaystatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Outputs- AES output 4
+					Delay status  cmdID= 137  format=   "
+		::= { iqmdmoCmdEntry 137 }
+
+
+	iqmdmoSetupLoggingAllfields OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					All fields  cmdID= 30 "
+		::= { iqmdmoCmdEntry 30 }
+
+
+	iqmdmoSetupLoggingInput1loss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 1 loss  cmdID= 31 "
+		::= { iqmdmoCmdEntry 31 }
+
+
+	iqmdmoSetupLoggingInput2loss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input 2 loss  cmdID= 36 "
+		::= { iqmdmoCmdEntry 36 }
+
+
+	iqmdmoSetupLoggingInputused OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Input used  cmdID= 32 "
+		::= { iqmdmoCmdEntry 32 }
+
+
+	iqmdmoSetupLoggingVideostandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Video standard  cmdID= 35 "
+		::= { iqmdmoCmdEntry 35 }
+
+
+	iqmdmoSetupLoggingRefinput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Ref input  cmdID= 33 "
+		::= { iqmdmoCmdEntry 33 }
+
+
+	iqmdmoSetupLoggingRefstandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Ref standard  cmdID= 34 "
+		::= { iqmdmoCmdEntry 34 }
+
+
+	iqmdmoErrorsErrorstatusAllerrors OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Errors
+					All errors  cmdID= 138  format=   "
+		::= { iqmdmoCmdEntry 138 }
+
+
+	iqmdmoErrorsErrorstatusInput OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Errors
+					Input  cmdID= 139  format=   "
+		::= { iqmdmoCmdEntry 139 }
+
+
+	iqmdmoErrorsErrorstatusMPEGlock OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Errors
+					MPEG lock  cmdID= 140  format=   "
+		::= { iqmdmoCmdEntry 140 }
+
+
+	iqmdmoErrorsErrorstatusReflock OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Errors
+					Ref lock  cmdID= 141  format=   "
+		::= { iqmdmoCmdEntry 141 }
+
+
+	iqmdmoErrorsErrorstatusRefmismatch OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Errors
+					Ref mismatch  cmdID= 142  format=   "
+		::= { iqmdmoCmdEntry 142 }
+
+
+	iqmdmoErrorsErrorenableAllerrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Errors
+					All errors  cmdID= 147 "
+		::= { iqmdmoCmdEntry 147 }
+
+
+	iqmdmoErrorsErrorenableInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Errors
+					Input  cmdID= 143 "
+		::= { iqmdmoCmdEntry 143 }
+
+
+	iqmdmoErrorsErrorenableMPEGlock OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Errors
+					MPEG lock  cmdID= 144 "
+		::= { iqmdmoCmdEntry 144 }
+
+
+	iqmdmoErrorsErrorenableReflock OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Errors
+					Ref lock  cmdID= 145 "
+		::= { iqmdmoCmdEntry 145 }
+
+
+	iqmdmoErrorsErrorenableRefmismatch OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Errors
+					Ref mismatch  cmdID= 146 "
+		::= { iqmdmoCmdEntry 146 }
+
+
+	iqmdmoSetupErrorsClearerrors OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_errors(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Errors
+					Clear errors  cmdID= 28  value= 1  "
+		::= { iqmdmoCmdEntry 28 }
+
+
+	iqmdmoVideoTestpatternTestmode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Force_freeze(1),
+							val_Force_625_pattern(2),
+							val_Force_525_pattern(3),
+							val_Auto_freeze(4),
+							val_Auto_pattern(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Test mode  cmdID= 38 
+					Force freeze  value= 1  
+					Force 625 pattern  value= 2  
+					Force 525 pattern  value= 3  
+					Auto freeze  value= 4  
+					Auto pattern  value= 5  "
+		::= { iqmdmoCmdEntry 38 }
+
+
+	iqmdmoVideoTestpatternPatterntype OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(2),
+							val_EBU_bars(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Pattern type  cmdID= 37 
+					Black  value= 2  
+					EBU bars  value= 1  "
+		::= { iqmdmoCmdEntry 37 }
+
+
+	iqmdmoSetupVideoChromafiltering OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Field_based(1),
+							val_Frame_based(2),
+							val_Auto(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Video
+					Chroma filtering  cmdID= 46 
+					Field based  value= 1  
+					Frame based  value= 2  
+					Auto  value= 3  "
+		::= { iqmdmoCmdEntry 46 }
+
+
+	iqmdmoVideoClippingLumaclipHi OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma clip Hi  cmdID= 122  min= 1  max= 254  step= 1  format= %.0f  div_scale= 1 
+					Min = 1  Max = 254  Step = 1 "
+		::= { iqmdmoCmdEntry 122 }
+
+
+	iqmdmoVideoClippingLumaclipLo OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Luma clip Lo  cmdID= 123  min= 1  max= 254  step= 1  format= %.0f  div_scale= 1 
+					Min = 1  Max = 254  Step = 1 "
+		::= { iqmdmoCmdEntry 123 }
+
+
+	iqmdmoVideoClippingChromaclipHi OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Chroma clip Hi  cmdID= 120  min= 1  max= 254  step= 1  format= %.0f  div_scale= 1 
+					Min = 1  Max = 254  Step = 1 "
+		::= { iqmdmoCmdEntry 120 }
+
+
+	iqmdmoVideoClippingChromaclipLo OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video
+					Chroma clip Lo  cmdID= 121  min= 1  max= 254  step= 1  format= %.0f  div_scale= 1 
+					Min = 1  Max = 254  Step = 1 "
+		::= { iqmdmoCmdEntry 121 }
+
+
+	iqmdmoVideoClippingSetRec601range OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Set_Rec601_range(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video
+					Set Rec601 range  cmdID= 124  value= 1  "
+		::= { iqmdmoCmdEntry 124 }
+
+
+	iqmdmoVideoTeletextinsertEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video
+					Enable  cmdID= 40 "
+		::= { iqmdmoCmdEntry 40 }
+
+
+	iqmdmoSetupAudioembeddingEnableaudioembed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio embedding
+					Enable audio embed  cmdID= 105 "
+		::= { iqmdmoCmdEntry 105 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 1  cmdID= 125 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 125 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 2  cmdID= 126 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 126 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 3  cmdID= 127 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 127 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 4  cmdID= 128 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 128 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 5  cmdID= 129 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 129 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair6 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 6  cmdID= 130 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 130 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair7 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 7  cmdID= 131 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 131 }
+
+
+	iqmdmoSetupAudioembeddingOutputpair8 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_None(0),
+							val_AES_out_1(1),
+							val_AES_out_2(2),
+							val_AES_out_3(3),
+							val_AES_out_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio embedding
+					Output pair 8  cmdID= 132 
+					None  value= 0  
+					AES out 1  value= 1  
+					AES out 2  value= 2  
+					AES out 3  value= 3  
+					AES out 4  value= 4  "
+		::= { iqmdmoCmdEntry 132 }
+
+
+	iqmdmoSetupMemoriesRecall OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Recall  cmdID= 49 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  "
+		::= { iqmdmoCmdEntry 49 }
+
+
+	iqmdmoSetupMemoriesSave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Save  cmdID= 50 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  "
+		::= { iqmdmoCmdEntry 50 }
+
+
+	iqmdmoSetupMemoriesDefault OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Memories
+					Default  cmdID= 51 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  "
+		::= { iqmdmoCmdEntry 51 }
+
+
+	iqmdmoMemoriesNamesMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Memory 1  cmdID= 52  "
+		::= { iqmdmoCmdEntry 52 }
+
+
+	iqmdmoMemoriesNamesMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Memory 2  cmdID= 53  "
+		::= { iqmdmoCmdEntry 53 }
+
+
+	iqmdmoMemoriesNamesMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Memory 3  cmdID= 54  "
+		::= { iqmdmoCmdEntry 54 }
+
+
+	iqmdmoMemoriesNamesMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Memory 4  cmdID= 55  "
+		::= { iqmdmoCmdEntry 55 }
+
+
+
+
+	iqmdmoSetupEnableupdate OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable update  cmdID= 149 "
+		::= { iqmdmoCmdEntry 149 }
+
+
+	iqmdmoSetupSWversion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					SW version  cmdID= 2  format=   "
+		::= { iqmdmoCmdEntry 2 }
+
+
+	iqmdmoSetupHWrevision OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					HW revision  cmdID= 24  format=   "
+		::= { iqmdmoCmdEntry 24 }
+
+
+	iqmdmoSetupSerialno OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial no  cmdID= 1  format=   "
+		::= { iqmdmoCmdEntry 1 }
+
+
+	iqmdmoSetupPresetunit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset unit  cmdID= 41  value= 1  "
+		::= { iqmdmoCmdEntry 41 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: Not defined
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.73.78.80.85.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.73.78.80.85.84.95.49
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.73.78.80.85.84.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.73.78.80.85.84.95.50
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REF_STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.70.95.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.70.95.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REF_INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.82.69.70.95.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.82.69.70.95.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: VIDEO_STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.86.73.68.69.79.95.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.86.73.68.69.79.95.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_SELECT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.83.69.76.69.67.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.83.69.76.69.67.84
+-- Vary			: YES
+--
+-- Value(s)		: 1
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

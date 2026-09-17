@@ -4,17 +4,19 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"dhs/internal/consumer"
+	"dhs/internal/datastore"
 	"dhs/internal/devicemodel"
 	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
-	"dhs/internal/consumer"
-	"dhs/internal/datastore"
 )
 
 // runWatch subscribes to live announcements and prints each event as it
@@ -41,8 +43,22 @@ import (
 // present slot at connect time. This caused walk-storm latency and
 // surprised operators who only wanted frame-status. New default is no
 // walks; opt in via --slot, --slots, or --auto-walk-on-plug.
+// watchCanRecover reports whether this plugin can tell us its session died,
+// which is the one thing recovery cannot be built without.
+//
+// A nil channel means "no session to lose" rather than "not implemented":
+// ACP1 over UDP is connectionless, so silence from the device carries no
+// liveness information and there is nothing to reconnect. Treating that as
+// recoverable would give the operator a watcher that reconnects a socket
+// that never broke.
+func watchCanRecover(plug consumer.Protocol) bool {
+	d, ok := plug.(consumer.SessionDoneAccessor)
+	return ok && d.SessionDone() != nil
+}
+
 func runWatch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ExitOnError)
+	fs.Usage = verbUsageFn(fs, helpWatch) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	slot := fs.Int("slot", -1, "slot filter (-1 = any); also walks this slot at startup")
 	slotsArg := fs.String("slots", "",
@@ -69,7 +85,7 @@ func runWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L] [--path P1,P2] [--no-streams | --streams-only]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	if *noStreams && *streamsOnly {
 		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")
@@ -204,29 +220,90 @@ func runWatch(ctx context.Context, args []string) error {
 		Group: *group,
 		Label: *label,
 		ID:    *id,
+		// Path filter — Ember+ applies it via the wildcard subscribe filter
+		// above; acp2/acp1 apply it in their announce closure. Plugins that
+		// don't use req.Path ignore it.
+		Path: *pathFilter,
 	}
-
-	// Apply Ember+ wildcard-subscribe filters (--path / --no-streams /
-	// --streams-only) BEFORE Subscribe registers the wildcard. Optional
-	// capability — plugins that don't satisfy the interface (ACP1/ACP2,
-	// Probel, …) silently ignore the flags. No protocol-name compare.
-	applyWildcardFilter(plug, *pathFilter, *noStreams, *streamsOnly)
 
 	// Subscribe. The plugin pushes decoded Event values into our channel
 	// via the callback; we print them from the main goroutine so output
 	// is serialised cleanly with Ctrl-C handling.
 	events := make(chan consumer.Event, 128)
-	if err := plug.Subscribe(req, func(ev consumer.Event) {
-		select {
-		case events <- ev:
-		default:
-			// Drop on full buffer — better than blocking the receive
-			// goroutine and missing unrelated events.
-		}
-	}); err != nil {
-		return fmt.Errorf("subscribe: %w", err)
+
+	// setup is everything that has to be re-established on a NEW session,
+	// not just the first one: the wildcard filters and the subscription
+	// itself. A subscription lives on the far side of the socket and dies
+	// with it, so a reconnect that skipped this would give you a connected
+	// watcher that shows nothing.
+	//
+	// The wildcard filters (--path / --no-streams / --streams-only) are an
+	// optional capability — plugins that don't satisfy the interface
+	// (ACP1/ACP2, Probel, …) silently ignore them. No protocol-name compare.
+	setup := func(context.Context, consumer.Protocol) error {
+		applyWildcardFilter(plug, *pathFilter, *noStreams, *streamsOnly)
+		return plug.Subscribe(req, func(ev consumer.Event) {
+			select {
+			case events <- ev:
+			default:
+				// Drop on full buffer — better than blocking the receive
+				// goroutine and missing unrelated events.
+			}
+		})
 	}
 	defer func() { _ = plug.Unsubscribe(req) }()
+
+	// supErr carries the supervisor's terminal error, or stays empty when
+	// this protocol has no recovery (see below).
+	supErr := make(chan error, 1)
+
+	if watchCanRecover(plug) {
+		// The plugin reports session death, so the watch is supervised:
+		// on loss it reconnects with backoff and re-runs setup. Both
+		// transitions are announced on stderr, because a silent gap in the
+		// table was the operator's original complaint.
+		//
+		// The supervisor owns the FIRST setup too — connectWithRetry above
+		// already established this session, so Dial hands it back untouched
+		// the first time and reconnects in place afterwards.
+		firstDial := true
+		sup := &consumer.Supervisor[consumer.Protocol]{
+			Dial: func(c context.Context) (consumer.Protocol, error) {
+				if firstDial {
+					firstDial = false
+					return plug, nil
+				}
+				if err := reconnectPlugin(c, plug, host, cf); err != nil {
+					return nil, err
+				}
+				return plug, nil
+			},
+			Setup: setup,
+			Done: func(p consumer.Protocol) <-chan struct{} {
+				return p.(consumer.SessionDoneAccessor).SessionDone()
+			},
+			// No Close: the session is torn down by reconnectPlugin on the
+			// way in, and by the outer cleanup() on the way out. Closing
+			// here as well would disconnect twice.
+			OnLost: func(err error) {
+				fmt.Fprintf(os.Stderr, "watch: connection lost (%v) — reconnecting…\n", err)
+			},
+			OnReconnected: func(attempt int, downtime time.Duration) {
+				fmt.Fprintf(os.Stderr,
+					"watch: reconnected after %s (attempt %d) — subscriptions restored\n",
+					downtime.Round(time.Second), attempt)
+			},
+		}
+		go func() { supErr <- sup.Run(ctx) }()
+	} else {
+		// No death signal from this protocol — connectionless transports
+		// (ACP1 over UDP) have no session to lose, and a plugin that has
+		// not implemented the capability yet keeps exactly today's
+		// behaviour: subscribe once, run until Ctrl-C.
+		if err := setup(ctx, plug); err != nil {
+			return fmt.Errorf("subscribe: %w", err)
+		}
+	}
 
 	fmt.Println("watching — Ctrl-C to stop")
 	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  value\n",
@@ -242,6 +319,11 @@ func runWatch(ctx context.Context, args []string) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case err := <-supErr:
+			// The supervisor gave up: the initial setup failed, or the
+			// attempt budget ran out. Either way the watch is over and the
+			// operator needs the reason, not a silent exit.
+			return err
 		case ev := <-events:
 			// Frame-status announce drives hot-plug enrichment (#254).
 			// ACP1 emits group=frame, id=0 with a SlotStatus[] payload.
@@ -263,6 +345,38 @@ func runWatch(ctx context.Context, args []string) error {
 			oid := ev.OID
 			if oid == "" {
 				oid = fmt.Sprintf("s%d.%s.%d", ev.Slot, ev.Group, ev.ID)
+			}
+			// Strip the device root (ROOT_NODE_V2 / ROOT) from the
+			// displayed path so it matches Cerebrum's UI and the
+			// root-stripped form --path accepts. Display only; ev.Path
+			// is not used for resolution past this point.
+			ev.Path = stripDisplayRoot(ev.Path)
+
+			// Uniform logging (epic #987, Model B): the terminal keeps the
+			// human table below; when a structured sink (--log/--syslog-addr)
+			// is configured, ALSO emit each change as one structured record
+			// to that sink — the Loki/server path — never to the terminal.
+			if cf.logHasSink && cf.eventLogger != nil {
+				attrs := []any{
+					slog.String("proto", cf.protocol),
+					slog.String("oid", oid),
+					slog.Int("slot", ev.Slot),
+					slog.String("group", ev.Group),
+					slog.Int("id", ev.ID),
+					slog.String("path", ev.Path),
+					slog.String("label", label),
+					slog.String("access", accessStr(ev.Access)),
+				}
+				if mc := ev.MatrixChange; mc != nil {
+					attrs = append(attrs, slog.String("kind", "matrix"))
+				} else {
+					v := formatValueInline(ev.Value)
+					if ev.Unit != "" {
+						v += " " + ev.Unit
+					}
+					attrs = append(attrs, slog.String("value", v))
+				}
+				cf.eventLogger.Info("value_change", attrs...)
 			}
 
 			// Matrix crosspoint events render differently —
@@ -754,8 +868,9 @@ func fallbackIdentity(host string) string {
 // acp* / probel; emberplus uses splitDMByMatrix directly because its
 // "slots" are derived from a single Walk's canonical tree.
 //
-// deviceName is the human-readable label that becomes the manifest
-// slug (.cache/manifest/<slug>.json); when empty, derives from the
+// deviceName is the human-readable device label stored in the
+// manifest (the file itself is IP-keyed per ADR-0028:
+// .cache/manifest/<proto>/<ip>.json); when empty, derives from the
 // first identity's Model part.
 type slotBinding struct {
 	Slot     int
@@ -777,6 +892,9 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 		Device: manifest.Device{
 			Name:     deviceName,
 			Protocol: proto,
+			// Direct protocols: the device IS the endpoint — its host
+			// IP is the ADR-0028 identity key.
+			IP: host,
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
 			},
@@ -873,7 +991,7 @@ func saveIdentityCache(store *datastore.TreeStore, identity, host, proto string,
 // walkSlotAndCache after the full provider DM lands; emits one
 // additional DM per slot-worthy root child so each matrix / function
 // subtree gets its own file under .cache/dm/emberplus/. Also writes
-// a manifest at .cache/manifest/<device-slug>.json so a future
+// a manifest at .cache/manifest/<proto>/<ip>.json (ADR-0028) so a future
 // consumer can resolve host:port → slot DMs without re-walking.
 // Quiet on success; warns on per-slot save errors.
 type dmSplitter interface {
@@ -907,6 +1025,7 @@ func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, p
 		Device: manifest.Device{
 			Name:     deviceName,
 			Protocol: "emberplus",
+			IP:       host, // direct protocol: device == endpoint (ADR-0028 key)
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: "tcp"},
 			},

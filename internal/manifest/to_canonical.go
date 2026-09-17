@@ -17,7 +17,7 @@ import (
 // Two shapes are supported on disk:
 //   - flat / legacy : Objects populated (ACP1, ACP2)
 //   - canonical     : Root populated (Ember+ — per ADR-0022 chunk
-//                     e0d585a); Templates may also be present
+//     e0d585a); Templates may also be present
 type dmFile struct {
 	Model     string                     `json:"model"`
 	SwRev     string                     `json:"sw_rev"`
@@ -29,23 +29,23 @@ type dmFile struct {
 
 // dmObject mirrors consumer.Object — only the fields we use.
 type dmObject struct {
-	Slot   int            `json:"slot"`
-	Group  string         `json:"group,omitempty"`
-	Path   []string       `json:"path,omitempty"`
-	ID     int            `json:"id"`
-	OID    string         `json:"oid,omitempty"`
-	Meta   map[string]any `json:"meta,omitempty"`
-	Label  string         `json:"label"`
-	Unit   string         `json:"unit,omitempty"`
-	Kind   string         `json:"kind"`
-	Access uint8          `json:"access"`
-	Min    any            `json:"min,omitempty"`
-	Max    any            `json:"max,omitempty"`
-	Step   any            `json:"step,omitempty"`
-	Def       any      `json:"default,omitempty"`
-	EnumItems []string `json:"enum_items,omitempty"`
-	MaxLen    int      `json:"max_len,omitempty"`
-	Value  json.RawMessage `json:"value,omitempty"`
+	Slot      int             `json:"slot"`
+	Group     string          `json:"group,omitempty"`
+	Path      []string        `json:"path,omitempty"`
+	ID        int             `json:"id"`
+	OID       string          `json:"oid,omitempty"`
+	Meta      map[string]any  `json:"meta,omitempty"`
+	Label     string          `json:"label"`
+	Unit      string          `json:"unit,omitempty"`
+	Kind      string          `json:"kind"`
+	Access    uint8           `json:"access"`
+	Min       any             `json:"min,omitempty"`
+	Max       any             `json:"max,omitempty"`
+	Step      any             `json:"step,omitempty"`
+	Def       any             `json:"default,omitempty"`
+	EnumItems []string        `json:"enum_items,omitempty"`
+	MaxLen    int             `json:"max_len,omitempty"`
+	Value     json.RawMessage `json:"value,omitempty"`
 }
 
 // loadDM reads `.cache/dm/<proto>/<Model@SwRev>.json`.
@@ -66,9 +66,10 @@ func loadDM(path string) (*dmFile, error) {
 // tree)`. Each manifest slot becomes a child node under the root,
 // containing the DM's object tree.
 //
-// Slot order is the manifest's `frames[].slots[]` order. Each slot's
-// `addr` is preserved as a description annotation but does not affect
-// tree shape.
+// Slot order is the manifest's `frames[].slots[]` order. `addr` does not
+// affect tree shape, and a canonical-shape DM is grafted as it is, so the
+// tree does not say where each card sits: a provider that needs to know reads
+// Manifest.SlotDMs beside it.
 //
 // The conversion is lossy by design — we surface what the ACP1/ACP2
 // providers need to answer walks (obj-id, label, kind, value, access)
@@ -375,12 +376,23 @@ func buildSlotNode(slotNum int, sl Slot, dm *dmFile, devName string) (*canonical
 			f := formatHint
 			param.Format = &f
 		}
-		if typeStr == "enum" && len(o.EnumItems) > 0 {
-			entries := make([]canonical.EnumEntry, len(o.EnumItems))
-			for i, name := range o.EnumItems {
-				entries[i] = canonical.EnumEntry{Key: name, Value: int64(i)}
+		if typeStr == "enum" {
+			// acp2 walks store the REAL option map (wire value -> name)
+			// in meta acp2.optionsMap — real cards use arbitrary u32
+			// option values (e.g. CONVERT Hybrid "Manual"=1271), not
+			// 0..n-1 indexes. Serving index-valued options broke every
+			// enum on replay (9,774 wrong values on the real tree,
+			// live 2026-08-20). Fall back to sequential indexes only
+			// when no real map exists.
+			if entries := enumEntriesFromMeta(o.Meta); len(entries) > 0 {
+				param.EnumMap = entries
+			} else if len(o.EnumItems) > 0 {
+				entries := make([]canonical.EnumEntry, len(o.EnumItems))
+				for i, name := range o.EnumItems {
+					entries[i] = canonical.EnumEntry{Key: name, Value: int64(i)}
+				}
+				param.EnumMap = entries
 			}
-			param.EnumMap = entries
 		}
 		// Unwrap the consumer.Value envelope into a scalar the
 		// provider's tree builder accepts. The DM stores values as
@@ -450,6 +462,57 @@ func isContainerKind(k string) bool {
 //     6=frame, 7=alarm, 8=file, 9=int32, 10=uint8).
 //  2. o.Kind  — falls back to the ValueKind enum (cross-protocol).
 func paramTypeAndFormat(o dmObject) (string, string) {
+	// acp2 walks store the exact wire types (meta acp2.objType +
+	// acp2.numType, spec §5.1 / §"Number types"). Emit the acp2
+	// provider's format-hint vocabulary (s8..u64 | float | ipv4 |
+	// preset — comma-joined tokens) so replay is byte-faithful. The
+	// generic kind fallback below mapped kind "uint" to hint "uint8",
+	// which the acp2 tree builder rejects — a real CONVERT Hybrid walk
+	// then served an EMPTY tree (found live 2026-08-20, fleet
+	// emulation).
+	if ot, ok := o.Meta["acp2.objType"]; ok {
+		numHint := ""
+		switch toUint8(o.Meta["acp2.numType"]) {
+		case 0:
+			numHint = "s8"
+		case 1:
+			numHint = "s16"
+		case 2:
+			numHint = "s32"
+		case 3:
+			numHint = "s64"
+		case 4:
+			numHint = "u8"
+		case 5:
+			numHint = "u16"
+		case 6:
+			numHint = "u32"
+		case 7:
+			numHint = "u64"
+		case 8:
+			numHint = "float"
+		}
+		switch toUint8(ot) {
+		case 1: // preset — numeric wire type rides the same hints
+			if numHint == "" {
+				return "integer", "preset"
+			}
+			return "integer", "preset," + numHint
+		case 2:
+			return "enum", ""
+		case 3: // number
+			if numHint == "float" {
+				return "real", ""
+			}
+			return "integer", numHint
+		case 4:
+			return "string", "ipv4"
+		case 5:
+			return "string", ""
+		}
+		// objType 0 (node) leaves reaching here (kind != raw) and
+		// unknown objTypes fall through to the generic mapping.
+	}
 	if v, ok := o.Meta["acp1_type"]; ok {
 		switch toUint8(v) {
 		case 1:
@@ -575,6 +638,35 @@ func sanitiseScalar(typeStr, formatHint string, v any) any {
 	return v
 }
 
+// enumEntriesFromMeta builds the canonical EnumMap from an acp2 walk's
+// meta acp2.optionsMap ({"1271":"Manual", ...} — JSON object keys are
+// the wire values as decimal strings). Entries are sorted by wire
+// value for deterministic output. Returns nil when the meta is absent
+// or carries no parseable entries.
+func enumEntriesFromMeta(meta map[string]any) []canonical.EnumEntry {
+	m, ok := meta["acp2.optionsMap"].(map[string]any)
+	if !ok || len(m) == 0 {
+		return nil
+	}
+	entries := make([]canonical.EnumEntry, 0, len(m))
+	for k, v := range m {
+		val, err := strconv.ParseInt(k, 10, 64)
+		if err != nil {
+			continue
+		}
+		name, ok := v.(string)
+		if !ok {
+			continue
+		}
+		entries = append(entries, canonical.EnumEntry{Key: name, Value: val})
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Value < entries[j].Value })
+	return entries
+}
+
 // unwrapValue pulls the scalar out of a serialised consumer.Value
 // envelope:  {"kind":"int","int":42} → int64(42).
 // Returns (nil, false) on null, empty, or unsupported envelopes; the
@@ -589,17 +681,26 @@ func unwrapValue(raw []byte) (any, bool) {
 		return nil, false
 	}
 	var env struct {
-		Kind  string  `json:"kind"`
-		Bool  *bool   `json:"bool"`
-		Int   *int64  `json:"int"`
-		Uint  *uint64 `json:"uint"`
+		Kind  string   `json:"kind"`
+		Bool  *bool    `json:"bool"`
+		Int   *int64   `json:"int"`
+		Uint  *uint64  `json:"uint"`
 		Float *float64 `json:"float"`
-		Str   *string `json:"str"`
-		IP    string  `json:"ip"`
-		Enum  *uint8  `json:"enum"`
+		Str   *string  `json:"str"`
+		IP    string   `json:"ip"`
+		Enum  *uint8   `json:"enum"`
+		Raw   []byte   `json:"raw"` // base64 wire bytes (acp2 walks)
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return nil, false
+	}
+	// Enum envelopes: the `enum` field is a u8 and TRUNCATES real acp2
+	// option values (u32 on the wire — CONVERT Hybrid "Manual"=1271
+	// became 247 on replay, live 2026-08-20). The raw wire bytes carry
+	// the full value; prefer them.
+	if env.Kind == "enum" && len(env.Raw) == 4 {
+		return int64(env.Raw[0])<<24 | int64(env.Raw[1])<<16 |
+			int64(env.Raw[2])<<8 | int64(env.Raw[3]), true
 	}
 	switch env.Kind {
 	case "string":

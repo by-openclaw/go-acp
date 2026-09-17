@@ -1,0 +1,142 @@
+---
+# acp2 Tier-2/3 oracle: every READ consumer verb against the REAL EVS
+# Neuron, Ansible-driven per ADR-0025 #5 (issue #969). Read-only by
+# ruling — mutations are proven against our own provider + Cerebrum,
+# never against the lab device.
+#
+# Every command task registers its result, so each receipt carries the
+# module's own start/end/delta — per-verb timing without shell
+# portability games. All tasks are changed_when: false (pure reads),
+# so run-twice = 0 changes is inherent.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/acp2-neuron-verify.yml
+
+- name: acp2 — real-Neuron read-verb oracle
+  hosts: plant
+  gather_facts: false
+  vars:
+    a2_bin: /usr/local/bin/dhs
+    a2_host: 10.6.255.102
+    a2_port: 2072
+    # The big card (slot 1, CONVERT Hybrid) must expose a real tree —
+    # thousands of objects, not the toy fixture's dozens.
+    a2_slot1_min_objects: 10000
+    a2_watch_secs: 20
+  tasks:
+    # Frozen once — a lazy lookup in vars: re-evaluates per task and
+    # every task would compute a different timestamp directory.
+    - name: Receipts path (one timestamp for the whole run)
+      ansible.builtin.set_fact:
+        a2_out: "/root/acp2-neuron-verify/{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
+
+    - name: Receipts directory
+      ansible.builtin.file:
+        path: "{{ a2_out }}"
+        state: directory
+        mode: "0755"
+
+    - name: info — device identity + slot status
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 info {{ a2_host }} --port {{ a2_port }}
+      register: a2_info
+      changed_when: false
+      failed_when: a2_info.rc != 0 or 'slots' not in a2_info.stdout
+
+    - name: walk slot 0 — full DFS with JSONL capture
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 walk {{ a2_host }} --port {{ a2_port }}
+        --slot 0 --capture {{ a2_out }}/walk-slot0.jsonl
+      register: a2_walk0
+      changed_when: false
+      failed_when: a2_walk0.rc != 0 or not (a2_walk0.stdout is regex('slot 0 — [0-9]+ objects'))
+
+    - name: walk slot 1 — the 40k-object card, captured
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 walk {{ a2_host }} --port {{ a2_port }}
+        --slot 1 --capture {{ a2_out }}/walk-slot1.jsonl
+      register: a2_walk1
+      changed_when: false
+      failed_when: a2_walk1.rc != 0
+
+    - name: walk slot 1 — a real tree, not a toy
+      ansible.builtin.assert:
+        that:
+          - (a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') | regex_replace('[^0-9]', '') | int) >= a2_slot1_min_objects
+        fail_msg: >-
+          slot 1 walked {{ a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') }}
+          — below the {{ a2_slot1_min_objects }}-object floor of a real CONVERT Hybrid
+
+    - name: get — one known leaf by numeric id
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 get {{ a2_host }} --port {{ a2_port }}
+        --slot 0 --id 20783
+      register: a2_get
+      changed_when: false
+      failed_when: a2_get.rc != 0 or 'value =' not in a2_get.stdout
+
+    - name: export — json / yaml / csv of slot 0
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 export {{ a2_host }} --port {{ a2_port }}
+        --slot 0 --format {{ item }} --out {{ a2_out }}/slot0.{{ item }}
+      loop: [json, yaml, csv]
+      register: a2_export
+      changed_when: false
+
+    - name: export files are non-empty
+      ansible.builtin.stat:
+        path: "{{ a2_out }}/slot0.{{ item }}"
+      loop: [json, yaml, csv]
+      register: a2_export_stat
+      failed_when: not a2_export_stat.stat.exists or a2_export_stat.stat.size == 0
+
+    - name: diag — AN2 diagnostic probes
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 diag {{ a2_host }} --port {{ a2_port }}
+      register: a2_diag
+      changed_when: false
+
+    - name: watch — live announces for {{ a2_watch_secs }}s, captured
+      ansible.builtin.command: >-
+        timeout {{ a2_watch_secs + 5 }} {{ a2_bin }} consumer acp2 watch
+        {{ a2_host }} --port {{ a2_port }} --slot 1
+        --capture {{ a2_out }}/announces.jsonl
+      register: a2_watch
+      changed_when: false
+      # timeout(1) exits 124 when it cuts the watch — that IS the pass.
+      failed_when: a2_watch.rc not in [0, 124]
+
+    - name: announces actually flowed (a silent Neuron is a dead session)
+      ansible.builtin.stat:
+        path: "{{ a2_out }}/announces.jsonl"
+      register: a2_ann
+      failed_when: not a2_ann.stat.exists or a2_ann.stat.size == 0
+
+    - name: validate — offline decode of the slot-1 capture
+      ansible.builtin.command: >-
+        {{ a2_bin }} consumer acp2 validate {{ a2_out }}/walk-slot1.jsonl
+      register: a2_validate
+      changed_when: false
+      failed_when: a2_validate.rc != 0 or 'decoded' not in a2_validate.stdout
+
+    - name: Per-verb timing receipts (module start/end deltas)
+      ansible.builtin.copy:
+        content: |
+          acp2 real-Neuron oracle — {{ a2_host }}:{{ a2_port }} — per-verb timing
+          info           {{ a2_info.delta }}
+          walk slot0     {{ a2_walk0.delta }}   ({{ a2_walk0.stdout | regex_search('slot 0 — [0-9]+ objects') }})
+          walk slot1     {{ a2_walk1.delta }}   ({{ a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') }})
+          get            {{ a2_get.delta }}
+          diag           {{ a2_diag.delta }}
+          export json    {{ a2_export.results[0].delta }}
+          export yaml    {{ a2_export.results[1].delta }}
+          export csv     {{ a2_export.results[2].delta }}
+          validate       {{ a2_validate.delta }}   ({{ a2_validate.stdout_lines | select('search', 'decoded') | first | default('') }})
+        dest: "{{ a2_out }}/TIMINGS.txt"
+        mode: "0644"
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          acp2 oracle green vs {{ a2_host }}:{{ a2_port }} —
+          {{ a2_walk1.stdout | regex_search('slot 1 — [0-9]+ objects') }},
+          walk1 {{ a2_walk1.delta }}, receipts in {{ a2_out }}

@@ -1,0 +1,2990 @@
+-- ************************************************************************************
+--        Snell Card:IQDB105
+--        Module Id#:732
+--       Command Set:5
+--          Filename:SNELL-IQDB105-CMD-MIB.mib
+--       Source File:iqdbt105com.xml
+--        Source Ver:5.0.5
+--    Logging Source:dbt105logging.csv
+--            Author:nealhewer
+--              Date:11/11/2013
+--              Time:15:14
+--
+-- Copyright (c) 2010 Snell Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDB105-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDB105,
+    moduleIQDB105MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+moduleIQDB105CmdMi MODULE-IDENTITY
+    LAST-UPDATED "1311111514Z"
+    ORGANIZATION "Snell Ltd"
+    CONTACT-INFO
+        "Primary Author:nealhewer
+
+         postal:    Hartman House
+                    Danehill
+                    Lower Earley,
+                    Reading, Berks
+                    RG6 4PB
+         phone:     +44 (0)118 9866123
+         email:     support.uk@snellgroup.com"
+    DESCRIPTION
+        "This file defines the Snell card, command set translations."
+    ::= { moduleIQDB105MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+    iqdb105CmdTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF Iqdb105CmdEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+                "Note the instance of this table is relected in the command set Version"
+        ::= { moduleIQDB105 1 }
+
+    iqdb105CmdEntry OBJECT-TYPE
+        SYNTAX          Iqdb105CmdEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+                "Entry in command table."
+        INDEX   { iqdb105SlotIndex }
+        ::= { iqdb105CmdTable 1 }
+
+    Iqdb105CmdEntry ::=
+        SEQUENCE {
+            iqdb105SlotIndex
+                Unsigned32,
+            iqdb105ModeDVBMode
+                INTEGER,
+            iqdb105AlarmstatusReceiverLock
+                INTEGER,
+            iqdb105AlarmstatusRF
+                INTEGER,
+            iqdb105AlarmstatusMER
+                INTEGER,
+            iqdb105AlarmstatusBERPreViterbi
+                INTEGER,
+            iqdb105AlarmstatusBERPostViterbi
+                INTEGER,
+            iqdb105AlarmstatusLDPCMeanError
+                INTEGER,
+            iqdb105AlarmstatusPreLDPCBER
+                INTEGER,
+            iqdb105AlarmstatusTSBitRate
+                INTEGER,
+            iqdb105AlarmstatusTSSync
+                INTEGER,
+            iqdb105AlarmstatusTEI
+                INTEGER,
+            iqdb105AlarmstatusRelay
+                INTEGER,
+            iqdb105DVBTMonitorModulationPropertiesFEC
+                RollCallString,
+            iqdb105DVBTMonitorModulationPropertiesMI
+                RollCallString,
+            iqdb105DVBTMonitorModulationPropertiesGI
+                RollCallString,
+            iqdb105DVBTMonitorModulationPropertiesFFT
+                RollCallString,
+            iqdb105DVBTMonitorModulationPropertiesMode
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsRFInputLevel
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsPreViterbiBER
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsPostViterbiBER
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsTSBitRate
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsUCE
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsUCETotal
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsUCEReset
+                INTEGER,
+            iqdb105DVBTMonitorMeasurementsFrequency
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsFrequencyError
+                RollCallString,
+            iqdb105DVBTMonitorMeasurementsMER
+                RollCallString,
+            iqdb105DVBTConfigurationTuningFrequency
+                RollCallString,
+            iqdb105DVBTConfigurationTuningOffset
+                INTEGER,
+            iqdb105DVBTConfigurationTuningBandwidth
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsRFInputLevel
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsLowerRF
+                RollCallString,
+            iqdb105DVBTConfigurationAlarmsUpperRF
+                RollCallString,
+            iqdb105DVBTConfigurationAlarmsMER
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsLowerMER
+                RollCallString,
+            iqdb105DVBTConfigurationAlarmsBERPreViterbi4065
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsBERPreViterbi4066
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsBERPostViterbi4067
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsBERPostViterbi4068
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsTSBitRate
+                INTEGER,
+            iqdb105DVBTConfigurationAlarmsLowerTSBitRate
+                RollCallString,
+            iqdb105DVBTConfigurationAlarmsUpperTSBitRate
+                RollCallString,
+            iqdb105DVBTConfigurationAlarmsTSErrorIndicator
+                INTEGER,
+            iqdb105DVBT2MonitorModulationPropertiesFEC
+                RollCallString,
+            iqdb105DVBT2MonitorModulationPropertiesMI
+                RollCallString,
+            iqdb105DVBT2MonitorModulationPropertiesGI
+                RollCallString,
+            iqdb105DVBT2MonitorModulationPropertiesFFT
+                RollCallString,
+            iqdb105DVBT2MonitorModulationPropertiesNumofPLPs
+                RollCallString,
+            iqdb105DVBT2MonitorModulationPropertiesMode
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsRFInputLevel
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsPreLDPCBER
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsLDPCMeanError
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsTSBitRate
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsMER
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsFrequency
+                RollCallString,
+            iqdb105DVBT2MonitorMeasurementsFrequencyError
+                RollCallString,
+            iqdb105DVBT2ConfigurationTuningFrequency
+                RollCallString,
+            iqdb105DVBT2ConfigurationTuningOffset
+                INTEGER,
+            iqdb105DVBT2ConfigurationTuningBandwidth
+                INTEGER,
+            iqdb105DVBT2ConfigurationTuningPLP
+                RollCallString,
+            iqdb105DVBT2ConfigurationTuningMERSEL
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsRFInputLevel
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsLowerRF
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsUpperRF
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsMER
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsLowerMER
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsPreLDPCBER
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsPreLDPCUpper
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsLDPCMeanBER
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsLDPCMeanUpper
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsTSBitRate
+                INTEGER,
+            iqdb105DVBT2ConfigurationAlarmsTSBitRateLower
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsTSBitRateUpper
+                RollCallString,
+            iqdb105DVBT2ConfigurationAlarmsTSErrorIndicator
+                INTEGER,
+            iqdb105MemoriesMemoryName1
+                RollCallString,
+            iqdb105MemoriesMemoryName2
+                RollCallString,
+            iqdb105MemoriesMemoryName3
+                RollCallString,
+            iqdb105MemoriesMemoryName4
+                RollCallString,
+            iqdb105MemoriesMemoryName5
+                RollCallString,
+            iqdb105MemoriesMemoryName6
+                RollCallString,
+            iqdb105MemoriesMemoryName7
+                RollCallString,
+            iqdb105MemoriesMemoryName8
+                RollCallString,
+            iqdb105MemoriesMemoryName9
+                RollCallString,
+            iqdb105MemoriesMemoryName10
+                RollCallString,
+            iqdb105MemoriesMemoryName11
+                RollCallString,
+            iqdb105MemoriesMemoryName12
+                RollCallString,
+            iqdb105MemoriesMemoryName13
+                RollCallString,
+            iqdb105MemoriesMemoryName14
+                RollCallString,
+            iqdb105MemoriesMemoryName15
+                RollCallString,
+            iqdb105MemoriesMemoryName16
+                RollCallString,
+            iqdb105LoggingInput1LogInput1Ident
+                INTEGER,
+            iqdb105LoggingInput1Ident
+                RollCallString,
+            iqdb105LoggingInput1LogInput1Name
+                INTEGER,
+            iqdb105LoggingInput1Name
+                RollCallString,
+            iqdb105LoggingInput1LogInput1State
+                INTEGER,
+            iqdb105LoggingInput1State
+                RollCallString,
+            iqdb105LoggingInput1LogInput1Type
+                INTEGER,
+            iqdb105LoggingInput1Type
+                RollCallString,
+            iqdb105LoggingAlarmsLogReceiverLock
+                INTEGER,
+            iqdb105LoggingAlarmsReceiverLock
+                RollCallString,
+            iqdb105LoggingAlarmsLogRFLevel
+                INTEGER,
+            iqdb105LoggingAlarmsRFLevel
+                RollCallString,
+            iqdb105LoggingAlarmsLogMER
+                INTEGER,
+            iqdb105LoggingAlarmsMER
+                RollCallString,
+            iqdb105LoggingAlarmsLogPreViterbi
+                INTEGER,
+            iqdb105LoggingAlarmsPreViterbi
+                RollCallString,
+            iqdb105LoggingAlarmsLogPostViterbi
+                INTEGER,
+            iqdb105LoggingAlarmsPostViterbi
+                RollCallString,
+            iqdb105LoggingAlarmsLogLDPCMean
+                INTEGER,
+            iqdb105LoggingAlarmsLDPCMean
+                RollCallString,
+            iqdb105LoggingAlarmsLogPreLDPCBER
+                INTEGER,
+            iqdb105LoggingAlarmsPreLDPCBER
+                RollCallString,
+            iqdb105LoggingAlarmsLogTSBitRate
+                INTEGER,
+            iqdb105LoggingAlarmsTSBitRate
+                RollCallString,
+            iqdb105LoggingAlarmsLogTSSync
+                INTEGER,
+            iqdb105LoggingAlarmsTSSync
+                RollCallString,
+            iqdb105LoggingAlarmsLogTEI
+                INTEGER,
+            iqdb105LoggingAlarmsTEI
+                RollCallString,
+            iqdb105LoggingAlarmsLogRelay
+                INTEGER,
+            iqdb105LoggingAlarmsRelay
+                RollCallString,
+            iqdb105LoggingMiscLogSerialNo
+                INTEGER,
+            iqdb105LoggingMiscSerialNo
+                RollCallString,
+            iqdb105LoggingMiscLogOSVersion
+                INTEGER,
+            iqdb105LoggingMiscOSVersion
+                RollCallString,
+            iqdb105LoggingMiscLogBuildNo
+                INTEGER,
+            iqdb105LoggingMiscBuildNo
+                RollCallString,
+            iqdb105LoggingMiscLogHardwareVer
+                INTEGER,
+            iqdb105LoggingMiscHardwareVer
+                RollCallString,
+            iqdb105LoggingMiscLogHardwareMod
+                INTEGER,
+            iqdb105LoggingMiscHardwareMod
+                RollCallString,
+            iqdb105LoggingMiscLogDBTSoftwareVer
+                INTEGER,
+            iqdb105LoggingMiscDBTSoftwareVer
+                RollCallString,
+            iqdb105LoggingMiscLogFirmwareVer
+                INTEGER,
+            iqdb105LoggingMiscFirmwareVer
+                RollCallString,
+            iqdb105LoggingMiscLogUpTime
+                INTEGER,
+            iqdb105LoggingMiscUpTime
+                RollCallString,
+            iqdb105LoggingMiscLogRollTracks
+                INTEGER,
+            iqdb105LoggingMiscRollTracks
+                RollCallString,
+            iqdb105LoggingMiscLogRearID
+                INTEGER,
+            iqdb105LoggingMiscRearID
+                RollCallString,
+            iqdb105LoggingMiscLogRearStatus
+                INTEGER,
+            iqdb105LoggingMiscRearSTATUS
+                RollCallString,
+            iqdb105LoggingMiscLogSlotWidth
+                INTEGER,
+            iqdb105LoggingMiscSlotWidth
+                RollCallString,
+            iqdb105LoggingMiscLogSlotStart
+                INTEGER,
+            iqdb105LoggingMiscSlotStart
+                RollCallString,
+            iqdb105LoggingMiscLogPowerUsage
+                INTEGER,
+            iqdb105LoggingMiscPowerUsage
+                RollCallString,
+            iqdb105RollTrackDisableAll
+                INTEGER,
+            iqdb105RollTrackIndex
+                INTEGER,
+            iqdb105RollTrackSource
+                INTEGER,
+            iqdb105RollTrackAddress
+                RollCallString,
+            iqdb105RollTrackCommand
+                RollCallString,
+            iqdb105RollTrackStatus
+                RollCallString,
+            iqdb105RollTrackSending
+                RollCallString,
+            iqdb105SetupProduct
+                RollCallString,
+            iqdb105SetupRelease
+                RollCallString,
+            iqdb105SetupBuild
+                RollCallString,
+            iqdb105SetupKOS
+                RollCallString,
+            iqdb105SetupSerialNo
+                RollCallString,
+            iqdb105SetupPCB
+                RollCallString,
+            iqdb105SetupRearID
+                RollCallString,
+            iqdb105SetupInput1Name
+                RollCallString,
+            iqdb105SetupFactoryDefault
+                INTEGER,
+            iqdb105SetupDefaultsSettings
+                INTEGER,
+            iqdb105SetupRestart
+                INTEGER,
+            iqdb105SetupSerialNumber
+                RollCallString,
+            iqdb105SetupBoardID
+                INTEGER,
+            iqdb105SetupSaveID
+                INTEGER,
+            iqdb105CloakDVBT
+                RollCallString,
+            iqdb105CloakDVBT2
+                RollCallString
+        }
+
+    iqdb105SlotIndex OBJECT-TYPE
+        SYNTAX            Unsigned32
+        MAX-ACCESS        not-accessible
+        STATUS            current
+        DESCRIPTION
+                "The unique Index value for each slot.  Its value
+                ranges between 1 and the value of slotNumber."
+        ::= { iqdb105CmdEntry 99999 }
+
+
+    iqdb105ModeDVBMode OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valDVBnT(1),
+                            valDVBnT2(2)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - Mode
+                    DVB Mode  cmdID= 4000
+                    DVB-T  value= 1
+                    DVB-T2  value= 2  "
+        ::= { iqdb105CmdEntry 4000 }
+
+
+    iqdb105AlarmstatusReceiverLock OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    Receiver Lock  cmdID= 4506  "
+        ::= { iqdb105CmdEntry 4506 }
+
+
+    iqdb105AlarmstatusRF OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    RF  cmdID= 4500  "
+        ::= { iqdb105CmdEntry 4500 }
+
+
+    iqdb105AlarmstatusMER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    MER  cmdID= 4501  "
+        ::= { iqdb105CmdEntry 4501 }
+
+
+    iqdb105AlarmstatusBERPreViterbi OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    BER Pre Viterbi  cmdID= 4520  "
+        ::= { iqdb105CmdEntry 4520 }
+
+
+    iqdb105AlarmstatusBERPostViterbi OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    BER Post Viterbi  cmdID= 4521  "
+        ::= { iqdb105CmdEntry 4521 }
+
+
+    iqdb105AlarmstatusLDPCMeanError OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    LDPC Mean Error  cmdID= 4522  "
+        ::= { iqdb105CmdEntry 4522 }
+
+
+    iqdb105AlarmstatusPreLDPCBER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    Pre LDPC BER  cmdID= 4523  "
+        ::= { iqdb105CmdEntry 4523 }
+
+
+    iqdb105AlarmstatusTSBitRate OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    TS Bit Rate  cmdID= 4503  "
+        ::= { iqdb105CmdEntry 4503 }
+
+
+    iqdb105AlarmstatusTSSync OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    TS Sync  cmdID= 4504  "
+        ::= { iqdb105CmdEntry 4504 }
+
+
+    iqdb105AlarmstatusTEI OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    TEI  cmdID= 4507  "
+        ::= { iqdb105CmdEntry 4507 }
+
+
+    iqdb105AlarmstatusRelay OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Alarm status
+                    Relay  cmdID= 4505  "
+        ::= { iqdb105CmdEntry 4505 }
+
+
+    iqdb105DVBTMonitorModulationPropertiesFEC OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    FEC  cmdID= 4030  "
+        ::= { iqdb105CmdEntry 4030 }
+
+
+    iqdb105DVBTMonitorModulationPropertiesMI OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    MI  cmdID= 4032  "
+        ::= { iqdb105CmdEntry 4032 }
+
+
+    iqdb105DVBTMonitorModulationPropertiesGI OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    GI  cmdID= 4033  "
+        ::= { iqdb105CmdEntry 4033 }
+
+
+    iqdb105DVBTMonitorModulationPropertiesFFT OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    FFT  cmdID= 4031  "
+        ::= { iqdb105CmdEntry 4031 }
+
+
+    iqdb105DVBTMonitorModulationPropertiesMode OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    Mode  cmdID= 4034  "
+        ::= { iqdb105CmdEntry 4034 }
+
+
+    iqdb105DVBTMonitorMeasurementsRFInputLevel OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    RF Input Level  cmdID= 4040  "
+        ::= { iqdb105CmdEntry 4040 }
+
+
+    iqdb105DVBTMonitorMeasurementsPreViterbiBER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    Pre-Viterbi BER  cmdID= 4041  "
+        ::= { iqdb105CmdEntry 4041 }
+
+
+    iqdb105DVBTMonitorMeasurementsPostViterbiBER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    Post-Viterbi BER  cmdID= 4042  "
+        ::= { iqdb105CmdEntry 4042 }
+
+
+    iqdb105DVBTMonitorMeasurementsTSBitRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    TS Bit Rate  cmdID= 4043  "
+        ::= { iqdb105CmdEntry 4043 }
+
+
+    iqdb105DVBTMonitorMeasurementsUCE OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    UCE  cmdID= 4045  "
+        ::= { iqdb105CmdEntry 4045 }
+
+
+    iqdb105DVBTMonitorMeasurementsUCETotal OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    UCE Total  cmdID= 4048  "
+        ::= { iqdb105CmdEntry 4048 }
+
+
+    iqdb105DVBTMonitorMeasurementsUCEReset OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valUCEReset(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Button
+                 PAGE: - DVB-T Monitor
+                    UCE Reset  cmdID= 4049
+                    value= 1  "
+        ::= { iqdb105CmdEntry 4049 }
+
+
+    iqdb105DVBTMonitorMeasurementsFrequency OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    Frequency  cmdID= 4046  "
+        ::= { iqdb105CmdEntry 4046 }
+
+
+    iqdb105DVBTMonitorMeasurementsFrequencyError OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    Frequency Error  cmdID= 4047  "
+        ::= { iqdb105CmdEntry 4047 }
+
+
+    iqdb105DVBTMonitorMeasurementsMER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T Monitor
+                    MER  cmdID= 4039  "
+        ::= { iqdb105CmdEntry 4039 }
+
+
+    iqdb105DVBTConfigurationTuningFrequency OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Frequency  cmdID= 4050
+                    preset= 474167"
+        ::= { iqdb105CmdEntry 4050 }
+
+
+    iqdb105DVBTConfigurationTuningOffset OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valNone(78),
+                            valLower(76),
+                            valUpper(85)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T Configuration
+                    Offset  cmdID= 4051
+                    None  value= 78
+                    Lower  value= 76
+                    Upper  value= 85  "
+        ::= { iqdb105CmdEntry 4051 }
+
+
+    iqdb105DVBTConfigurationTuningBandwidth OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            val7MHz(7),
+                            val8MHz(8)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T Configuration
+                    Bandwidth  cmdID= 4052
+                    7MHz  value= 7
+                    8MHz  value= 8  "
+        ::= { iqdb105CmdEntry 4052 }
+
+
+    iqdb105DVBTConfigurationAlarmsRFInputLevel OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    RF Input Level  cmdID= 4060  "
+        ::= { iqdb105CmdEntry 4060 }
+
+
+    iqdb105DVBTConfigurationAlarmsLowerRF OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Lower RF  cmdID= 4061
+                    preset= -80"
+        ::= { iqdb105CmdEntry 4061 }
+
+
+    iqdb105DVBTConfigurationAlarmsUpperRF OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Upper RF  cmdID= 4062
+                    preset= -20"
+        ::= { iqdb105CmdEntry 4062 }
+
+
+    iqdb105DVBTConfigurationAlarmsMER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    MER  cmdID= 4063  "
+        ::= { iqdb105CmdEntry 4063 }
+
+
+    iqdb105DVBTConfigurationAlarmsLowerMER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Lower MER  cmdID= 4064
+                    preset= 12.0"
+        ::= { iqdb105CmdEntry 4064 }
+
+
+    iqdb105DVBTConfigurationAlarmsBERPreViterbi4065 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    BER Pre-Viterbi4065  cmdID= 4065  "
+        ::= { iqdb105CmdEntry 4065 }
+
+
+    iqdb105DVBTConfigurationAlarmsBERPreViterbi4066 OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valLess25x10en5(0),
+                            val25x10en5(1),
+                            val50x10en5(2),
+                            val75x10en5(3),
+                            val10x10en4(4),
+                            val25x10en4(5),
+                            val50x10en4(6),
+                            val75x10en4(7),
+                            val10x10en3(8),
+                            val25x10en3(9),
+                            val50x10en3(10),
+                            val75x10en3(11),
+                            val10x10en2(12),
+                            val25x10en2(13),
+                            val50x10en2(14),
+                            val75x10en2(15)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T Configuration
+                    BER Pre-Viterbi4066  cmdID= 4066
+                    Less 2.5x10e-5  value= 0
+                    2.5x10e-5  value= 1
+                    5.0x10e-5  value= 2
+                    7.5x10e-5  value= 3
+                    1.0x10e-4  value= 4
+                    2.5x10e-4  value= 5
+                    5.0x10e-4  value= 6
+                    7.5x10e-4  value= 7
+                    1.0x10e-3  value= 8
+                    2.5x10e-3  value= 9
+                    5.0x10e-3  value= 10
+                    7.5x10e-3  value= 11
+                    1.0x10e-2  value= 12
+                    2.5x10e-2  value= 13
+                    5.0x10e-2  value= 14
+                    7.5x10e-2  value= 15  "
+        ::= { iqdb105CmdEntry 4066 }
+
+
+    iqdb105DVBTConfigurationAlarmsBERPostViterbi4067 OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    BER Post-Viterbi4067  cmdID= 4067  "
+        ::= { iqdb105CmdEntry 4067 }
+
+
+    iqdb105DVBTConfigurationAlarmsBERPostViterbi4068 OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valLess25x10en5(0),
+                            val25x10en5(1),
+                            val50x10en5(2),
+                            val75x10en5(3),
+                            val10x10en4(4),
+                            val25x10en4(5),
+                            val50x10en4(6),
+                            val75x10en4(7),
+                            val10x10en3(8),
+                            val25x10en3(9),
+                            val50x10en3(10),
+                            val75x10en3(11),
+                            val10x10en2(12),
+                            val25x10en2(13),
+                            val50x10en2(14),
+                            val75x10en2(15)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T Configuration
+                    BER Post-Viterbi4068  cmdID= 4068
+                    Less 2.5x10e-5  value= 0
+                    2.5x10e-5  value= 1
+                    5.0x10e-5  value= 2
+                    7.5x10e-5  value= 3
+                    1.0x10e-4  value= 4
+                    2.5x10e-4  value= 5
+                    5.0x10e-4  value= 6
+                    7.5x10e-4  value= 7
+                    1.0x10e-3  value= 8
+                    2.5x10e-3  value= 9
+                    5.0x10e-3  value= 10
+                    7.5x10e-3  value= 11
+                    1.0x10e-2  value= 12
+                    2.5x10e-2  value= 13
+                    5.0x10e-2  value= 14
+                    7.5x10e-2  value= 15  "
+        ::= { iqdb105CmdEntry 4068 }
+
+
+    iqdb105DVBTConfigurationAlarmsTSBitRate OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    TS Bit Rate  cmdID= 4069  "
+        ::= { iqdb105CmdEntry 4069 }
+
+
+    iqdb105DVBTConfigurationAlarmsLowerTSBitRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Lower TS Bit Rate  cmdID= 4070
+                    preset= 0"
+        ::= { iqdb105CmdEntry 4070 }
+
+
+    iqdb105DVBTConfigurationAlarmsUpperTSBitRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T Configuration
+                    Upper TS Bit Rate  cmdID= 4071
+                    preset= 51187500"
+        ::= { iqdb105CmdEntry 4071 }
+
+
+    iqdb105DVBTConfigurationAlarmsTSErrorIndicator OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T Configuration
+                    TS Error Indicator  cmdID= 4072  "
+        ::= { iqdb105CmdEntry 4072 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesFEC OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    FEC  cmdID= 4100  "
+        ::= { iqdb105CmdEntry 4100 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesMI OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    MI  cmdID= 4102  "
+        ::= { iqdb105CmdEntry 4102 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesGI OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    GI  cmdID= 4103  "
+        ::= { iqdb105CmdEntry 4103 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesFFT OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    FFT  cmdID= 4101  "
+        ::= { iqdb105CmdEntry 4101 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesNumofPLPs OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    Num of PLPs  cmdID= 4105  "
+        ::= { iqdb105CmdEntry 4105 }
+
+
+    iqdb105DVBT2MonitorModulationPropertiesMode OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    Mode  cmdID= 4104  "
+        ::= { iqdb105CmdEntry 4104 }
+
+
+    iqdb105DVBT2MonitorMeasurementsRFInputLevel OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    RF Input Level  cmdID= 4110  "
+        ::= { iqdb105CmdEntry 4110 }
+
+
+    iqdb105DVBT2MonitorMeasurementsPreLDPCBER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    Pre-LDPC BER  cmdID= 4111  "
+        ::= { iqdb105CmdEntry 4111 }
+
+
+    iqdb105DVBT2MonitorMeasurementsLDPCMeanError OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    LDPC Mean Error  cmdID= 4112  "
+        ::= { iqdb105CmdEntry 4112 }
+
+
+    iqdb105DVBT2MonitorMeasurementsTSBitRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    TS Bit Rate  cmdID= 4113  "
+        ::= { iqdb105CmdEntry 4113 }
+
+
+    iqdb105DVBT2MonitorMeasurementsMER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    MER  cmdID= 4114  "
+        ::= { iqdb105CmdEntry 4114 }
+
+
+    iqdb105DVBT2MonitorMeasurementsFrequency OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    Frequency  cmdID= 4115  "
+        ::= { iqdb105CmdEntry 4115 }
+
+
+    iqdb105DVBT2MonitorMeasurementsFrequencyError OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - DVB-T2 Monitor
+                    Frequency Error  cmdID= 4116  "
+        ::= { iqdb105CmdEntry 4116 }
+
+
+    iqdb105DVBT2ConfigurationTuningFrequency OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    Frequency  cmdID= 4120
+                    preset= 474167"
+        ::= { iqdb105CmdEntry 4120 }
+
+
+    iqdb105DVBT2ConfigurationTuningOffset OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valNone(78),
+                            valLower(76),
+                            valUpper(85)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T2 Configuration
+                    Offset  cmdID= 4121
+                    None  value= 78
+                    Lower  value= 76
+                    Upper  value= 85  "
+        ::= { iqdb105CmdEntry 4121 }
+
+
+    iqdb105DVBT2ConfigurationTuningBandwidth OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            val7MHz(7),
+                            val8MHz(8)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T2 Configuration
+                    Bandwidth  cmdID= 4122
+                    7MHz  value= 7
+                    8MHz  value= 8  "
+        ::= { iqdb105CmdEntry 4122 }
+
+
+    iqdb105DVBT2ConfigurationTuningPLP OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    PLP  cmdID= 4123
+                    preset= -"
+        ::= { iqdb105CmdEntry 4123 }
+
+
+    iqdb105DVBT2ConfigurationTuningMERSEL OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valStandard(0),
+                            valL1Post(1)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T2 Configuration
+                    MERSEL  cmdID= 4125
+                    Standard  value= 0
+                    L1 Post  value= 1  "
+        ::= { iqdb105CmdEntry 4125 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsRFInputLevel OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    RF Input Level  cmdID= 4130  "
+        ::= { iqdb105CmdEntry 4130 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsLowerRF OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    Lower RF  cmdID= 4131
+                    preset= -80"
+        ::= { iqdb105CmdEntry 4131 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsUpperRF OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    Upper RF  cmdID= 4132
+                    preset= -20"
+        ::= { iqdb105CmdEntry 4132 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsMER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    MER  cmdID= 4133  "
+        ::= { iqdb105CmdEntry 4133 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsLowerMER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    Lower MER  cmdID= 4134
+                    preset= 12.0"
+        ::= { iqdb105CmdEntry 4134 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsPreLDPCBER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    Pre-LDPC BER  cmdID= 4135  "
+        ::= { iqdb105CmdEntry 4135 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsPreLDPCUpper OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            val0(0),
+                            val25x10en5(1),
+                            val50x10en5(2),
+                            val75x10en5(3),
+                            val10x10en4(4),
+                            val25x10en4(5),
+                            val50x10en4(6),
+                            val75x10en4(7),
+                            val10x10en3(8),
+                            val25x10en3(9),
+                            val50x10en3(10),
+                            val75x10en3(11),
+                            val10x10en2(12),
+                            val25x10en2(13),
+                            val50x10en2(14),
+                            val75x10en2(15)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - RadiobuttonList
+                 PAGE: - DVB-T2 Configuration
+                    Pre-LDPC Upper  cmdID= 4136
+                    0  value= 0
+                    2.5x10e-5  value= 1
+                    5.0x10e-5  value= 2
+                    7.5x10e-5  value= 3
+                    1.0x10e-4  value= 4
+                    2.5x10e-4  value= 5
+                    5.0x10e-4  value= 6
+                    7.5x10e-4  value= 7
+                    1.0x10e-3  value= 8
+                    2.5x10e-3  value= 9
+                    5.0x10e-3  value= 10
+                    7.5x10e-3  value= 11
+                    1.0x10e-2  value= 12
+                    2.5x10e-2  value= 13
+                    5.0x10e-2  value= 14
+                    7.5x10e-2  value= 15  "
+        ::= { iqdb105CmdEntry 4136 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsLDPCMeanBER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    LDPC Mean BER  cmdID= 4137  "
+        ::= { iqdb105CmdEntry 4137 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsLDPCMeanUpper OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    LDPC Mean Upper  cmdID= 4139
+                    preset= 15"
+        ::= { iqdb105CmdEntry 4139 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsTSBitRate OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    TS Bit Rate  cmdID= 4140  "
+        ::= { iqdb105CmdEntry 4140 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsTSBitRateLower OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    TS Bit Rate Lower  cmdID= 4141
+                    preset= 0"
+        ::= { iqdb105CmdEntry 4141 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsTSBitRateUpper OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - DVB-T2 Configuration
+                    TS Bit Rate Upper  cmdID= 4142
+                    preset= 51187500"
+        ::= { iqdb105CmdEntry 4142 }
+
+
+    iqdb105DVBT2ConfigurationAlarmsTSErrorIndicator OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - DVB-T2 Configuration
+                    TS Error Indicator  cmdID= 4143  "
+        ::= { iqdb105CmdEntry 4143 }
+
+
+    iqdb105MemoriesMemoryName1 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name1  cmdID= 37106  "
+        ::= { iqdb105CmdEntry 37106 }
+
+
+    iqdb105MemoriesMemoryName2 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name2  cmdID= 37107  "
+        ::= { iqdb105CmdEntry 37107 }
+
+
+    iqdb105MemoriesMemoryName3 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name3  cmdID= 37108  "
+        ::= { iqdb105CmdEntry 37108 }
+
+
+    iqdb105MemoriesMemoryName4 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name4  cmdID= 37109  "
+        ::= { iqdb105CmdEntry 37109 }
+
+
+    iqdb105MemoriesMemoryName5 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name5  cmdID= 37110  "
+        ::= { iqdb105CmdEntry 37110 }
+
+
+    iqdb105MemoriesMemoryName6 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name6  cmdID= 37111  "
+        ::= { iqdb105CmdEntry 37111 }
+
+
+    iqdb105MemoriesMemoryName7 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name7  cmdID= 37112  "
+        ::= { iqdb105CmdEntry 37112 }
+
+
+    iqdb105MemoriesMemoryName8 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name8  cmdID= 37113  "
+        ::= { iqdb105CmdEntry 37113 }
+
+
+    iqdb105MemoriesMemoryName9 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name9  cmdID= 37114  "
+        ::= { iqdb105CmdEntry 37114 }
+
+
+    iqdb105MemoriesMemoryName10 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name10  cmdID= 37115  "
+        ::= { iqdb105CmdEntry 37115 }
+
+
+    iqdb105MemoriesMemoryName11 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name11  cmdID= 37116  "
+        ::= { iqdb105CmdEntry 37116 }
+
+
+    iqdb105MemoriesMemoryName12 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name12  cmdID= 37117  "
+        ::= { iqdb105CmdEntry 37117 }
+
+
+    iqdb105MemoriesMemoryName13 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name13  cmdID= 37118  "
+        ::= { iqdb105CmdEntry 37118 }
+
+
+    iqdb105MemoriesMemoryName14 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name14  cmdID= 37119  "
+        ::= { iqdb105CmdEntry 37119 }
+
+
+    iqdb105MemoriesMemoryName15 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name15  cmdID= 37120  "
+        ::= { iqdb105CmdEntry 37120 }
+
+
+    iqdb105MemoriesMemoryName16 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Memories
+                    Memory Name16  cmdID= 37121  "
+        ::= { iqdb105CmdEntry 37121 }
+
+
+    iqdb105LoggingInput1LogInput1Ident OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Input 1 Ident  cmdID= 35100  "
+        ::= { iqdb105CmdEntry 35100 }
+
+
+    iqdb105LoggingInput1Ident OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Ident=  cmdID= 35110  "
+        ::= { iqdb105CmdEntry 35110 }
+
+
+    iqdb105LoggingInput1LogInput1Name OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Input 1 Name  cmdID= 35101  "
+        ::= { iqdb105CmdEntry 35101 }
+
+
+    iqdb105LoggingInput1Name OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Name=  cmdID= 35111  "
+        ::= { iqdb105CmdEntry 35111 }
+
+
+    iqdb105LoggingInput1LogInput1State OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Input 1 State  cmdID= 35102  "
+        ::= { iqdb105CmdEntry 35102 }
+
+
+    iqdb105LoggingInput1State OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 State=  cmdID= 35112  "
+        ::= { iqdb105CmdEntry 35112 }
+
+
+    iqdb105LoggingInput1LogInput1Type OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Input 1 Type  cmdID= 35104  "
+        ::= { iqdb105CmdEntry 35104 }
+
+
+    iqdb105LoggingInput1Type OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Input 1 Type=  cmdID= 35114  "
+        ::= { iqdb105CmdEntry 35114 }
+
+
+    iqdb105LoggingAlarmsLogReceiverLock OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Receiver Lock  cmdID= 5111  "
+        ::= { iqdb105CmdEntry 5111 }
+
+
+    iqdb105LoggingAlarmsReceiverLock OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Receiver Lock=  cmdID= 5011  "
+        ::= { iqdb105CmdEntry 5011 }
+
+
+    iqdb105LoggingAlarmsLogRFLevel OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log RF Level  cmdID= 5100  "
+        ::= { iqdb105CmdEntry 5100 }
+
+
+    iqdb105LoggingAlarmsRFLevel OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    RF Level=  cmdID= 5000  "
+        ::= { iqdb105CmdEntry 5000 }
+
+
+    iqdb105LoggingAlarmsLogMER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log MER  cmdID= 5101  "
+        ::= { iqdb105CmdEntry 5101 }
+
+
+    iqdb105LoggingAlarmsMER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    MER=  cmdID= 5001  "
+        ::= { iqdb105CmdEntry 5001 }
+
+
+    iqdb105LoggingAlarmsLogPreViterbi OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Pre Viterbi  cmdID= 5103  "
+        ::= { iqdb105CmdEntry 5103 }
+
+
+    iqdb105LoggingAlarmsPreViterbi OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Pre Viterbi=  cmdID= 5003  "
+        ::= { iqdb105CmdEntry 5003 }
+
+
+    iqdb105LoggingAlarmsLogPostViterbi OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Post Viterbi  cmdID= 5104  "
+        ::= { iqdb105CmdEntry 5104 }
+
+
+    iqdb105LoggingAlarmsPostViterbi OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Post Viterbi=  cmdID= 5004  "
+        ::= { iqdb105CmdEntry 5004 }
+
+
+    iqdb105LoggingAlarmsLogLDPCMean OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log LDPC Mean  cmdID= 5105  "
+        ::= { iqdb105CmdEntry 5105 }
+
+
+    iqdb105LoggingAlarmsLDPCMean OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    LDPC Mean=  cmdID= 5005  "
+        ::= { iqdb105CmdEntry 5005 }
+
+
+    iqdb105LoggingAlarmsLogPreLDPCBER OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Pre LDPC BER  cmdID= 5106  "
+        ::= { iqdb105CmdEntry 5106 }
+
+
+    iqdb105LoggingAlarmsPreLDPCBER OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Pre LDPC BER=  cmdID= 5006  "
+        ::= { iqdb105CmdEntry 5006 }
+
+
+    iqdb105LoggingAlarmsLogTSBitRate OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log TS Bit Rate  cmdID= 5107  "
+        ::= { iqdb105CmdEntry 5107 }
+
+
+    iqdb105LoggingAlarmsTSBitRate OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Bit Rate=  cmdID= 5007  "
+        ::= { iqdb105CmdEntry 5007 }
+
+
+    iqdb105LoggingAlarmsLogTSSync OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log TS Sync  cmdID= 5108  "
+        ::= { iqdb105CmdEntry 5108 }
+
+
+    iqdb105LoggingAlarmsTSSync OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TS Sync=  cmdID= 5008  "
+        ::= { iqdb105CmdEntry 5008 }
+
+
+    iqdb105LoggingAlarmsLogTEI OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log TEI  cmdID= 5109  "
+        ::= { iqdb105CmdEntry 5109 }
+
+
+    iqdb105LoggingAlarmsTEI OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    TEI=  cmdID= 5009  "
+        ::= { iqdb105CmdEntry 5009 }
+
+
+    iqdb105LoggingAlarmsLogRelay OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Relay  cmdID= 5110  "
+        ::= { iqdb105CmdEntry 5110 }
+
+
+    iqdb105LoggingAlarmsRelay OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Relay=  cmdID= 5010  "
+        ::= { iqdb105CmdEntry 5010 }
+
+
+    iqdb105LoggingMiscLogSerialNo OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Serial No.  cmdID= 35015  "
+        ::= { iqdb105CmdEntry 35015 }
+
+
+    iqdb105LoggingMiscSerialNo OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Serial No.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Serial No.=  cmdID= 36115  "
+        ::= { iqdb105CmdEntry 36115 }
+
+
+    iqdb105LoggingMiscLogOSVersion OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for OS Version
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log OS Version  cmdID= 35993  "
+        ::= { iqdb105CmdEntry 35993 }
+
+
+    iqdb105LoggingMiscOSVersion OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for OS Version
+                 TYPE: - Display
+                 PAGE: - Logging
+                    OS Version=  cmdID= 36993  "
+        ::= { iqdb105CmdEntry 36993 }
+
+
+    iqdb105LoggingMiscLogBuildNo OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Build No.
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Build No.  cmdID= 35990  "
+        ::= { iqdb105CmdEntry 35990 }
+
+
+    iqdb105LoggingMiscBuildNo OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Build No.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Build No.=  cmdID= 36990  "
+        ::= { iqdb105CmdEntry 36990 }
+
+
+    iqdb105LoggingMiscLogHardwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Hardware Ver.
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Hardware Ver.  cmdID= 35992  "
+        ::= { iqdb105CmdEntry 35992 }
+
+
+    iqdb105LoggingMiscHardwareVer OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Hardware Ver.
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Hardware Ver.=  cmdID= 36992  "
+        ::= { iqdb105CmdEntry 36992 }
+
+
+    iqdb105LoggingMiscLogHardwareMod OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Hardware Mod.  cmdID= 35980  "
+        ::= { iqdb105CmdEntry 35980 }
+
+
+    iqdb105LoggingMiscHardwareMod OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Hardware Mod.=  cmdID= 36980  "
+        ::= { iqdb105CmdEntry 36980 }
+
+
+    iqdb105LoggingMiscLogDBTSoftwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log DBT Software Ver.  cmdID= 35979  "
+        ::= { iqdb105CmdEntry 35979 }
+
+
+    iqdb105LoggingMiscDBTSoftwareVer OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    DBT Software Ver.=  cmdID= 36979  "
+        ::= { iqdb105CmdEntry 36979 }
+
+
+    iqdb105LoggingMiscLogFirmwareVer OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Firmware Ver.  cmdID= 35982  "
+        ::= { iqdb105CmdEntry 35982 }
+
+
+    iqdb105LoggingMiscFirmwareVer OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Firmware Ver.=  cmdID= 36982  "
+        ::= { iqdb105CmdEntry 36982 }
+
+
+    iqdb105LoggingMiscLogUpTime OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Up Time
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Up Time  cmdID= 35994  "
+        ::= { iqdb105CmdEntry 35994 }
+
+
+    iqdb105LoggingMiscUpTime OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging state for Up Time
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Up Time=  cmdID= 36994  "
+        ::= { iqdb105CmdEntry 36994 }
+
+
+    iqdb105LoggingMiscLogRollTracks OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log RollTracks  cmdID= 35000  "
+        ::= { iqdb105CmdEntry 35000 }
+
+
+    iqdb105LoggingMiscRollTracks OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Logging
+                    RollTracks=  cmdID= 36000  "
+        ::= { iqdb105CmdEntry 36000 }
+
+
+    iqdb105LoggingMiscLogRearID OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Rear Id
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Rear ID  cmdID= 35997  "
+        ::= { iqdb105CmdEntry 35997 }
+
+
+    iqdb105LoggingMiscRearID OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Rear ID
+                 TYPE: - Display
+                 PAGE: - Logging
+                    Rear ID  cmdID= 36997  "
+        ::= { iqdb105CmdEntry 36997 }
+
+
+    iqdb105LoggingMiscLogRearStatus OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Rear Status
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log RearStatus  cmdID= 35996  "
+        ::= { iqdb105CmdEntry 35996 }
+
+
+    iqdb105LoggingMiscRearSTATUS OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Rear Status
+                 TYPE: - Display
+                 PAGE: - Logging
+                    RearSTATUS=  cmdID= 36996  "
+        ::= { iqdb105CmdEntry 36996 }
+
+
+    iqdb105LoggingMiscLogSlotWidth OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Slot Width
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Slot Width  cmdID= 35998  "
+        ::= { iqdb105CmdEntry 35998 }
+
+
+    iqdb105LoggingMiscSlotWidth OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Slot width
+                 TYPE: - Display
+                 PAGE: - Logging
+                    SlotWidth=  cmdID= 36998  "
+        ::= { iqdb105CmdEntry 36998 }
+
+
+    iqdb105LoggingMiscLogSlotStart OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Display Slot Start
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Slot Start  cmdID= 35999  "
+        ::= { iqdb105CmdEntry 35999 }
+
+
+    iqdb105LoggingMiscSlotStart OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Slot start
+                 TYPE: - Display
+                 PAGE: - Logging
+                    SlotStart=  cmdID= 36999  "
+        ::= { iqdb105CmdEntry 36999 }
+
+
+    iqdb105LoggingMiscLogPowerUsage OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Enable/Disable logging for Power Status
+                 TYPE: - Checkbox
+                 PAGE: - Logging
+                    Log Power Usage  cmdID= 35995  "
+        ::= { iqdb105CmdEntry 35995 }
+
+
+    iqdb105LoggingMiscPowerUsage OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Logging Power usage
+                 TYPE: - Display
+                 PAGE: - Logging
+                    PowerUsage=  cmdID= 36995  "
+        ::= { iqdb105CmdEntry 36995 }
+
+
+    iqdb105RollTrackDisableAll OBJECT-TYPE
+        SYNTAX            INTEGER { disable(0), enable(1)  }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Disable all rolltrack outputs
+                 TYPE: - Checkbox
+                 PAGE: - RollTrack
+                    Disable All  cmdID= 36104  "
+        ::= { iqdb105CmdEntry 36104 }
+
+
+    iqdb105RollTrackIndex OBJECT-TYPE
+        SYNTAX            INTEGER
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Select rolltrack to edit
+                 TYPE: - BarGraph
+                 PAGE: - RollTrack
+                    Index  cmdID= 36100
+                    min= 1  max= 16  step= 1  format= %0.0f  div_scale= 1  preset= 1
+                    Min = 1  Max = 16  Step = 1  Preset = 1  "
+        ::= { iqdb105CmdEntry 36100 }
+
+
+    iqdb105RollTrackSource OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valUnused(-1),
+                            valInput1OK(0),
+                            valInput1Fail(1)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Source for Rolltrack
+                 TYPE: - RadiobuttonList
+                 PAGE: - RollTrack
+                    Source  cmdID= 36101
+                    Unused  value= -1
+                    Input 1 OK  value= 0
+                    Input 1 Fail  value= 1  "
+        ::= { iqdb105CmdEntry 36101 }
+
+
+    iqdb105RollTrackAddress OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit address for Rolltrack message
+                 TYPE: - Editstring
+                 PAGE: - RollTrack
+                    Address  cmdID= 36102
+                    preset= 0000:00:00*0\0*"
+        ::= { iqdb105CmdEntry 36102 }
+
+
+    iqdb105RollTrackCommand OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Command to send for Rolltrack message
+                 TYPE: - Editstring
+                 PAGE: - RollTrack
+                    Command  cmdID= 36103
+                    preset= 000:000\0"
+        ::= { iqdb105CmdEntry 36103 }
+
+
+    iqdb105RollTrackStatus OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Rolltrack status
+                 TYPE: - Display
+                 PAGE: - RollTrack
+                    Status  cmdID= 36105  "
+        ::= { iqdb105CmdEntry 36105 }
+
+
+    iqdb105RollTrackSending OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Rolltrack sending status: true/false
+                 TYPE: - Display
+                 PAGE: - RollTrack
+                    Sending  cmdID= 36106  "
+        ::= { iqdb105CmdEntry 36106 }
+
+
+    iqdb105SetupProduct OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Product  cmdID= 32771  "
+        ::= { iqdb105CmdEntry 32771 }
+
+
+    iqdb105SetupRelease OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit version number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Release  cmdID= 2  "
+        ::= { iqdb105CmdEntry 2 }
+
+
+    iqdb105SetupBuild OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit build number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Build  cmdID= 5  "
+        ::= { iqdb105CmdEntry 5 }
+
+
+    iqdb105SetupKOS OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    KOS  cmdID= 32772  "
+        ::= { iqdb105CmdEntry 32772 }
+
+
+    iqdb105SetupSerialNo OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Unit serial number
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Serial No.  cmdID= 1  "
+        ::= { iqdb105CmdEntry 1 }
+
+
+    iqdb105SetupPCB OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Display PCB revision
+                 TYPE: - Display
+                 PAGE: - Setup
+                    PCB  cmdID= 32770  "
+        ::= { iqdb105CmdEntry 32770 }
+
+
+    iqdb105SetupRearID OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Setup
+                    Rear ID  cmdID= 32780  "
+        ::= { iqdb105CmdEntry 32780 }
+
+
+    iqdb105SetupInput1Name OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Editstring
+                 PAGE: - Setup
+                    Input 1 Name  cmdID= 9000
+                    preset= RF_IN_1"
+        ::= { iqdb105CmdEntry 9000 }
+
+
+    iqdb105SetupFactoryDefault OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valFactoryDefault(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Recall factory defaults
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Factory Default  cmdID= 37002
+                    value= 1  "
+        ::= { iqdb105CmdEntry 37002 }
+
+
+    iqdb105SetupDefaultsSettings OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valDefaultsSettings(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Recall factory defaults
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Defaults Settings  cmdID= 37001
+                    value= 1  "
+        ::= { iqdb105CmdEntry 37001 }
+
+
+    iqdb105SetupRestart OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valRestart(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Restart unit
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Restart  cmdID= 4
+                    value= 1  "
+        ::= { iqdb105CmdEntry 4 }
+
+
+    iqdb105SetupSerialNumber OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Edit serial number (On Factory Test Only)
+                 TYPE: - Editstring
+                 PAGE: - Setup
+                    Serial Number  cmdID= 32774
+                    preset= unknown"
+        ::= { iqdb105CmdEntry 32774 }
+
+
+    iqdb105SetupBoardID OBJECT-TYPE
+        SYNTAX            INTEGER {
+                            valIQDBT(999)
+                            }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Edit product type (On Factory Test Only)
+                 TYPE: - RadiobuttonList
+                 PAGE: - Setup
+                    BoardID  cmdID= 32776
+                    IQDBT  value= 999  "
+        ::= { iqdb105CmdEntry 32776 }
+
+
+    iqdb105SetupSaveID OBJECT-TYPE
+        SYNTAX            INTEGER { noAction(0),valSaveID(1) }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - Save serial number/board type (On Factory Test Only)
+                 TYPE: - Button
+                 PAGE: - Setup
+                    Save ID  cmdID= 32775
+                    value= 1  "
+        ::= { iqdb105CmdEntry 32775 }
+
+
+    iqdb105CloakDVBT OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Cloak
+                    Cloak DVB-T  cmdID= 10000  "
+        ::= { iqdb105CmdEntry 10000 }
+
+
+    iqdb105CloakDVBT2 OBJECT-TYPE
+        SYNTAX            RollCallString
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+                "CMNT: - 
+                 TYPE: - Display
+                 PAGE: - Cloak
+                    Cloak DVB-T2  cmdID= 10001  "
+        ::= { iqdb105CmdEntry 10001 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  The OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |        base            |Slt|Len| F  A  U  L  T|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+--
+-- Value(s)		: S12345678
+-- Comments		: Serial number of unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: State of module presence.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: UPTIME
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.85.80.84.73.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.85.80.84.73.77.69
+--
+-- Value(s)		: 000:01:26:00
+-- Comments		: Uptime of unit
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_ID
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.82.69.65.82.95.73.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.82.69.65.82.95.73.68
+--
+-- Value(s)		: 217
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+--
+-- Value(s)		: 0
+-- Comments		: Number of current control sessions.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_RF
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.73.78.80.85.84.95.49.95.82.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.73.78.80.85.84.95.49.95.82.70
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OS_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.79.83.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.79.83.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: V115 Release
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+--
+-- Value(s)		: DISABLED
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_START
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.83.84.65.82.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.83.84.65.82.84
+--
+-- Value(s)		: 1
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SLOT_WIDTH
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.83.76.79.84.95.87.73.68.84.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.83.76.79.84.95.87.73.68.84.72
+--
+-- Value(s)		: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_MER
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.49.95.77.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.49.95.77.69.82
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TEI
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.73.78.80.85.84.95.49.95.84.69.73
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.73.78.80.85.84.95.49.95.84.69.73
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: POWER_USAGE
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.80.79.87.69.82.95.85.83.65.71.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.80.79.87.69.82.95.85.83.65.71.69
+--
+-- Value(s)		: 4.5W/4.5LU
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: REAR_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .11.82.69.65.82.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.11.82.69.65.82.95.83.84.65.84.85.83
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUILD_NUMBER
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.66.85.73.76.68.95.78.85.77.66.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.66.85.73.76.68.95.78.85.77.66.69.82
+--
+-- Value(s)		: 3731.3731.3731
+-- Comments		: Embedded code build number
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_MOD
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.72.65.82.68.87.65.82.69.95.77.79.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.72.65.82.68.87.65.82.69.95.77.79.68
+--
+-- Value(s)		: 0
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_NAME
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.78.65.77.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.78.65.77.69
+--
+-- Value(s)		: INPUT_1_NAME
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.73.78.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.73.78.80.85.84.95.49.95.84.89.80.69
+--
+-- Value(s)		: DVB-T
+--				: DVB-T2
+-- Comments		: Input 1 type
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+--
+-- Value(s)		: 2010-01-27T10:41:47Z
+-- Comments		: Time of last restart
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_IDENT
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.73.68.69.78.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.73.68.69.78.84
+--
+-- Value(s)		: IN1
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_RELAY
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.82.69.76.65.89
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.82.69.76.65.89
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.73.78.80.85.84.95.49.95.83.84.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.73.78.80.85.84.95.49.95.83.84.65.84.69
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MOFIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.70.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.70.73.70.73.69.68
+--
+-- Value(s)		: 2010-01-27T10:45:05Z
+-- Comments		: Time of last control modification.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_PREVIT
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.49.95.80.82.69.86.73.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.49.95.80.82.69.86.73.84
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TSSYNC
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.49.95.84.83.83.89.78.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.49.95.84.83.83.89.78.67
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_LDPCPRE
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.73.78.80.85.84.95.49.95.76.68.80.67.80.82.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.73.78.80.85.84.95.49.95.76.68.80.67.80.82.69
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_POSTVIT
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.73.78.80.85.84.95.49.95.80.79.83.84.86.73.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.73.78.80.85.84.95.49.95.80.79.83.84.86.73.84
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_RX_LOCK
+--
+-- MIB ref		: swCardEventLogSlotXX       .15.73.78.80.85.84.95.49.95.82.88.95.76.79.67.75
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.15.73.78.80.85.84.95.49.95.82.88.95.76.79.67.75
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FIRMWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.70.73.82.77.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 11110
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: HARDWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.72.65.82.68.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: IQDBT105-010
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_LDPCMEAN
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.73.78.80.85.84.95.49.95.76.68.80.67.77.69.65.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.73.78.80.85.84.95.49.95.76.68.80.67.77.69.65.78
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_TSBITRATE
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.73.78.80.85.84.95.49.95.84.83.66.73.84.82.65.84.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.73.78.80.85.84.95.49.95.84.83.66.73.84.82.65.84.69
+--
+-- Value(s)		: OK
+--				: FAIL
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DBT_SOFTWARE_VERSION
+--
+-- MIB ref		: swCardEventLogSlotXX       .20.68.66.84.95.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.20.68.66.84.95.83.79.70.84.87.65.82.69.95.86.69.82.83.73.79.78
+--
+-- Value(s)		: 2
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

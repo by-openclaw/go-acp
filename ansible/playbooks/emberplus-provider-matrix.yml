@@ -1,0 +1,174 @@
+---
+# Tier-3/4 integration - drive the DEPLOYED Ember+ provider through every matrix
+# behaviour and assert the applied result. Ansible is the mandatory integration
+# / verify driver (ADR-0025 deliverable 5) - no PowerShell .ps1.
+#
+# The behaviours pinned here were verified live on the wire against
+# EmberPlusViewer 2.40 and are re-asserted against the running provider so a
+# regression is caught without a GUI:
+#   - oneToN   (1.1.3): connect + re-route; re-selecting the CURRENT source is a
+#              confirming no-op - NEVER a disconnect.
+#   - oneToOne (1.2.3): connect; re-selecting the CURRENT source TOGGLES OFF.
+#   - nToN     (1.3.4): explicit connect(1) / disconnect(2), multi-source.
+#   - lock:    setLock rejects a change (disp=locked); listLocks reports; unlock
+#              restores control.
+#   - salvo:   store / list builtin functions.
+#
+# Runs ON the provider host: the consumer drives localhost:9000 and the matrix
+# post-state is read from the provider's structured applied-connection log
+# (msg="matrix connection post" ... disp=...), while function results are
+# asserted straight from `invoke` stdout. Each assert reads the LATEST post for
+# its oid+target with `tail -1` (the op run immediately above it), so no journal
+# cursor is needed and re-runs converge.
+#
+# Prereq: the provider serves the integration manifest with --log-level debug
+# (playbooks/emberplus-producers.yml deploys it). Run:
+#   ansible-playbook -i inventory/fleet.ini playbooks/emberplus-provider-matrix.yml \
+#     -e target=dhs-debian
+
+- name: Ember+ provider matrix behaviour integration
+  hosts: "{{ target | default('dhs-debian') }}"
+  gather_facts: false
+  vars:
+    dhs_bin: /usr/local/bin/dhs
+    host: 127.0.0.1
+    port: 9000
+    unit: dhs-emberplus
+    m_oneton: "1.1.3"
+    m_onetoone: "1.2.3"
+    m_nton: "1.3.4"
+    fn_setlock: "1.5.1"
+    fn_listlocks: "1.5.2"
+    fn_storesalvo: "1.5.3"
+    fn_listsalvos: "1.5.5"
+  tasks:
+    - name: ASSERT the provider is serving on {{ port }}
+      ansible.builtin.wait_for:
+        port: "{{ port }}"
+        host: "{{ host }}"
+        timeout: 5
+
+    # ---- oneToN: connect, and NO-toggle on re-select ------------------------
+    - name: "oneToN - connect t0 <- s5"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_oneton }} --target 0 --sources 5 --op absolute"
+      changed_when: true
+    - name: "oneToN - re-select s5 (must NOT disconnect)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_oneton }} --target 0 --sources 5 --op absolute"
+      changed_when: true
+    - name: "oneToN - read applied post-state"
+      ansible.builtin.shell: "journalctl -u {{ unit }} --no-pager -o cat | grep 'matrix connection post' | grep 'oid={{ m_oneton }} target=0' | tail -1"
+      register: oneton_post
+      changed_when: false
+    - name: ASSERT oneToN keeps its source on re-select (no toggle)
+      ansible.builtin.assert:
+        that: "'sources=[5]' in oneton_post.stdout"
+        fail_msg: "oneToN re-select cleared the target - toggle wrongly applied. Got: {{ oneton_post.stdout }}"
+        success_msg: "oneToN re-select kept [5] (no toggle)"
+
+    # ---- oneToOne: connect then toggle-off on re-select --------------------
+    - name: "oneToOne - connect t0 <- s4"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_onetoone }} --target 0 --sources 4 --op absolute"
+      changed_when: true
+    - name: "oneToOne - re-select s4 (toggle-off = disconnect)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_onetoone }} --target 0 --sources 4 --op absolute"
+      changed_when: true
+    - name: "oneToOne - read applied post-state"
+      ansible.builtin.shell: "journalctl -u {{ unit }} --no-pager -o cat | grep 'matrix connection post' | grep 'oid={{ m_onetoone }} target=0' | tail -1"
+      register: onetoone_post
+      changed_when: false
+    - name: ASSERT oneToOne re-select toggles OFF (empty sources)
+      ansible.builtin.assert:
+        that: "'sources=[]' in onetoone_post.stdout"
+        fail_msg: "oneToOne re-select did not disconnect. Got: {{ onetoone_post.stdout }}"
+        success_msg: "oneToOne re-select toggled off to []"
+
+    # ---- nToN: explicit connect + disconnect, multi-source ----------------
+    - name: "nToN - connect t0 <- s1 (op=connect)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_nton }} --target 0 --sources 1 --op connect"
+      changed_when: true
+    - name: "nToN - connect t0 <- s2 (union)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_nton }} --target 0 --sources 2 --op connect"
+      changed_when: true
+    - name: "nToN - disconnect s1 (leaves s2)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_nton }} --target 0 --sources 1 --op disconnect"
+      changed_when: true
+    - name: "nToN - read applied post-state"
+      ansible.builtin.shell: "journalctl -u {{ unit }} --no-pager -o cat | grep 'matrix connection post' | grep 'oid={{ m_nton }} target=0' | tail -1"
+      register: nton_post
+      changed_when: false
+    - name: ASSERT nToN disconnect removes only the named source
+      ansible.builtin.assert:
+        that: "'sources=[2]' in nton_post.stdout"
+        fail_msg: "nToN disconnect did not leave [2]. Got: {{ nton_post.stdout }}"
+        success_msg: "nToN connect/disconnect left [2]"
+
+    # ---- lock / unlock ----------------------------------------------------
+    - name: "lock - setLock(oneToOne, target 0, true)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus invoke {{ host }} --port {{ port }} --path {{ fn_setlock }} --args {{ m_onetoone }},0,true"
+      register: setlock
+      changed_when: true
+    - name: ASSERT setLock succeeded
+      ansible.builtin.assert:
+        that: "'success=true' in setlock.stdout"
+        fail_msg: "setLock failed: {{ setlock.stdout }}"
+        success_msg: "setLock ok"
+
+    - name: "lock - connect while locked (must be rejected)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_onetoone }} --target 0 --sources 9 --op absolute"
+      changed_when: true
+    - name: "lock - read applied post-state (expect disp=locked)"
+      ansible.builtin.shell: "journalctl -u {{ unit }} --no-pager -o cat | grep 'matrix connection post' | grep 'oid={{ m_onetoone }} target=0' | tail -1"
+      register: locked_post
+      changed_when: false
+    - name: ASSERT locked target rejects the change (disp=locked)
+      ansible.builtin.assert:
+        that: "'disp=locked' in locked_post.stdout"
+        fail_msg: "locked target accepted a change. Got: {{ locked_post.stdout }}"
+        success_msg: "locked target rejected the change (disp=locked)"
+
+    - name: "lock - listLocks reports target 0"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus invoke {{ host }} --port {{ port }} --path {{ fn_listlocks }} --args {{ m_onetoone }}"
+      register: listlocks
+      changed_when: false
+    - name: ASSERT listLocks contains target 0
+      ansible.builtin.assert:
+        that: "'0' in listlocks.stdout"
+        fail_msg: "listLocks did not report the locked target: {{ listlocks.stdout }}"
+        success_msg: "listLocks reports the locked target"
+
+    - name: "unlock - setLock(oneToOne, target 0, false)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus invoke {{ host }} --port {{ port }} --path {{ fn_setlock }} --args {{ m_onetoone }},0,false"
+      register: unlock
+      changed_when: true
+    - name: ASSERT unlock succeeded
+      ansible.builtin.assert:
+        that: "'success=true' in unlock.stdout"
+        fail_msg: "unlock failed: {{ unlock.stdout }}"
+        success_msg: "unlock ok"
+
+    # ---- salvo functions --------------------------------------------------
+    - name: "salvo - connect a crosspoint then storeSalvo(1)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus matrix {{ host }} --port {{ port }} --path {{ m_nton }} --target 1 --sources 3 --op connect"
+      changed_when: true
+    - name: "salvo - storeSalvo(nToN, 1)"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus invoke {{ host }} --port {{ port }} --path {{ fn_storesalvo }} --args {{ m_nton }},1"
+      register: storesalvo
+      changed_when: true
+    - name: "salvo - listSalvos"
+      ansible.builtin.command: "{{ dhs_bin }} consumer emberplus invoke {{ host }} --port {{ port }} --path {{ fn_listsalvos }} --args {{ m_nton }}"
+      register: listsalvos
+      changed_when: false
+    - name: ASSERT salvo stored + listed
+      ansible.builtin.assert:
+        that:
+          - "'success=true' in storesalvo.stdout"
+          - "'1' in listsalvos.stdout"
+        fail_msg: "salvo store/list failed. store={{ storesalvo.stdout }} list={{ listsalvos.stdout }}"
+        success_msg: "salvo stored and listed"
+
+    - name: Integration result
+      ansible.builtin.debug:
+        msg: >-
+          Ember+ provider matrix integration PASS on {{ inventory_hostname }} -
+          oneToN(no-toggle), oneToOne(toggle-off), nToN(connect/disconnect),
+          lock/unlock, salvo - all asserted against the running provider.

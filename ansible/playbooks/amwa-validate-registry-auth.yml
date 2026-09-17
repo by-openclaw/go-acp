@@ -1,0 +1,18 @@
+---
+# Validate the REGISTRY (Registration + Query APIs) WITH IS-10/
+# BCP-003-02 authorization armed (issue #942): the plant registry
+# stays running and disarmed — a transient registry CuT gets
+# --auth-url, and the armed tool instance (ENABLE_AUTH=True) does the
+# scoring. Receipts follow the manual sweep's <SUITE>-auth.json
+# convention.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-registry-auth.yml
+
+- name: AMWA validate — registry (auth)
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: registry
+        dhs_amwa_validate_auth_mode: true

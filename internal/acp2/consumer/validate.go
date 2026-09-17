@@ -65,12 +65,12 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 		case codec.AN2ProtoInternal:
 			if frame.Type != codec.AN2TypeData && frame.MTID == 0 {
 				report.Invariants = append(report.Invariants,
-					fmt.Sprintf("trame %d: an2 internal req/reply with mtid=0 (must be 1-255)", i))
+					fmt.Sprintf("frame %d: an2 internal req/reply with mtid=0 (must be 1-255)", i))
 			}
 		case codec.AN2ProtoACP2:
 			if frame.Type != codec.AN2TypeData {
 				report.Invariants = append(report.Invariants,
-					fmt.Sprintf("trame %d: ACP2 frame must use AN2TypeData (4), got %d", i, frame.Type))
+					fmt.Sprintf("frame %d: ACP2 frame must use AN2TypeData (4), got %d", i, frame.Type))
 				continue
 			}
 			msg, err := codec.DecodeACP2Message(frame.Payload)
@@ -87,28 +87,28 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts co
 			case codec.ACP2TypeRequest:
 				if msg.MTID == 0 {
 					report.Invariants = append(report.Invariants,
-						fmt.Sprintf("trame %d: ACP2 request with mtid=0 (spec: 1-255)", i))
+						fmt.Sprintf("frame %d: ACP2 request with mtid=0 (spec: 1-255)", i))
 				}
 				lastReqMTID = msg.MTID
 			case codec.ACP2TypeReply:
 				if msg.MTID != lastReqMTID {
 					report.Invariants = append(report.Invariants,
-						fmt.Sprintf("trame %d: ACP2 reply mtid=%d does not match last request mtid=%d", i, msg.MTID, lastReqMTID))
+						fmt.Sprintf("frame %d: ACP2 reply mtid=%d does not match last request mtid=%d", i, msg.MTID, lastReqMTID))
 				}
 			case codec.ACP2TypeAnnounce:
 				if msg.MTID != 0 {
 					report.Invariants = append(report.Invariants,
-						fmt.Sprintf("trame %d: ACP2 announce with mtid=%d (spec: must be 0)", i, msg.MTID))
+						fmt.Sprintf("frame %d: ACP2 announce with mtid=%d (spec: must be 0)", i, msg.MTID))
 				}
 			case codec.ACP2TypeError:
 				stat := codec.ACP2ErrStatus(msg.Func)
 				if stat > codec.ErrInvalidValue {
 					report.Invariants = append(report.Invariants,
-						fmt.Sprintf("trame %d: ACP2 error stat=%d outside spec range [0..5]", i, stat))
+						fmt.Sprintf("frame %d: ACP2 error stat=%d outside spec range [0..5]", i, stat))
 				}
 			default:
 				report.Invariants = append(report.Invariants,
-					fmt.Sprintf("trame %d: ACP2 unknown msg type %d (spec: 0..3)", i, msg.Type))
+					fmt.Sprintf("frame %d: ACP2 unknown msg type %d (spec: 0..3)", i, msg.Type))
 			}
 		}
 

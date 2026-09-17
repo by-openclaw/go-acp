@@ -1,0 +1,29 @@
+---
+- name: Assert the host declares fleet_hostname
+  ansible.builtin.assert:
+    that:
+      - fleet_hostname is defined
+      - fleet_hostname is match('^[a-z][a-z0-9-]{1,62}$')
+    fail_msg: "dhs_hostname: {{ inventory_hostname }} needs a valid fleet_hostname in host_vars"
+
+- name: Converge (Linux guest)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family != "Windows"
+
+- name: Converge (Windows guest)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"
+
+- name: Converge (Proxmox CT config hostname)
+  ansible.builtin.include_tasks: proxmox.yml
+  when:
+    - pve_vmid is defined
+    - ansible_os_family != "Windows"   # VMs carry no hostname= in their config
+
+- name: Proxmox layer skipped (no token vars) — guest rename will revert at next CT start
+  ansible.builtin.debug:
+    msg: "dhs_hostname: pass -e @/root/.secrets/proxmox.yml to also converge the Proxmox CT hostname"
+  when:
+    - pve_vmid is defined
+    - ansible_os_family != "Windows"
+    - not (dhs_hostname_proxmox_enabled | bool)

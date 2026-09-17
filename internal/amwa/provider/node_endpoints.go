@@ -21,21 +21,36 @@ import (
 //     0.0.0.0 / IPv6-:: case where net.Listen reports only ::);
 //   - port comes from --advertise-host:port if set, else from --bind.
 //
-// The protocol is currently fixed to "http" — IS-10 / TLS lands later.
-func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string) {
+// The protocol is currently fixed to "http" (BCP-003-01 TLS is its
+// own unit); authOn stamps every endpoint's `authorization` member —
+// test_20 cross-checks it against the mode the tool is running in.
+func expandNodeEndpoints(n *is04.Node, advertiseHost, bind string, authOn bool) {
 	host, port := endpointHostPort(advertiseHost, bind)
-	want := []is04.NodeEndpoint{}
+	for i := range n.API.Endpoints {
+		n.API.Endpoints[i].Authorization = authOn
+	}
+	// The advertised endpoint goes FIRST, not last: firstNodeIP picks
+	// the first IP literal, and every derived address — control
+	// hrefs, IS-05 source_ip, the SDP origin — follows it. Appending
+	// let stale entries riding in from the bundle keep winning: a
+	// dead 10.6.239.113 in a fixture put every registered control
+	// href on a host that no longer exists, and the controller showed
+	// empty connection panels with no error anywhere.
 	if host != "" && port != 0 && !isWildcard(host) {
-		want = append(want, is04.NodeEndpoint{Host: host, Port: port, Protocol: "http"})
+		adv := is04.NodeEndpoint{Host: host, Port: port, Protocol: "http", Authorization: authOn}
+		out := []is04.NodeEndpoint{adv}
+		for _, ep := range n.API.Endpoints {
+			if !endpointAlreadyListed(out, ep) {
+				out = append(out, ep)
+			}
+		}
+		n.API.Endpoints = out
 	}
 	for _, ip := range localIPv4() {
-		want = append(want, is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http"})
-	}
-	for _, candidate := range want {
-		if endpointAlreadyListed(n.API.Endpoints, candidate) {
-			continue
+		candidate := is04.NodeEndpoint{Host: ip, Port: port, Protocol: "http", Authorization: authOn}
+		if !endpointAlreadyListed(n.API.Endpoints, candidate) {
+			n.API.Endpoints = append(n.API.Endpoints, candidate)
 		}
-		n.API.Endpoints = append(n.API.Endpoints, candidate)
 	}
 }
 
@@ -87,12 +102,21 @@ func sdpFor(s is04.Sender) string {
 // non-null URI string; v1.3 permits null. Either way the URL must
 // be reachable (AMWA test_20_01 tests this on v1.3). Pairing this
 // with the matching transportfile handler is the strict-spec answer.
-func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer string) {
+func rewriteManifestHrefs(senders []is04.Sender, advertiseHost, apiVer, scheme string) {
 	if advertiseHost == "" || apiVer == "" {
 		return
 	}
+	if scheme == "" {
+		scheme = "http"
+	}
 	for i := range senders {
-		url := "http://" + advertiseHost + "/x-nmos/node/" + apiVer +
+		// BCP-007-03: an MXL sender has no transport file — its
+		// manifest_href MUST stay null and /transportfile MUST 404.
+		if senders[i].Transport == is04.TransportMXL {
+			senders[i].ManifestHref = nil
+			continue
+		}
+		url := scheme + "://" + advertiseHost + "/x-nmos/node/" + apiVer +
 			"/senders/" + senders[i].ID + "/transportfile"
 		senders[i].ManifestHref = &url
 	}

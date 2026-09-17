@@ -17,7 +17,7 @@
 package probelsw02p
 
 import (
-	"log/slog"
+	"dhs/internal/plugin"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/probel-sw02p/codec"
@@ -45,6 +45,7 @@ func (f *Factory) Meta() provider.Meta {
 }
 
 // New constructs a fresh provider bound to the supplied tree.
-func (f *Factory) New(logger *slog.Logger, tree *canonical.Export) provider.Provider {
-	return newServer(logger, tree)
+func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
+	deps = deps.WithDefaults()
+	return newServer(deps, tree)
 }

@@ -1,0 +1,1066 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQBAAX
+--        Module Id#:112
+--       Command Set:7
+--          Filename:SNELL-IQBAAX-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:15:43
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQBAAX-CMD-MIB.mib 244 2007-08-31 07:48:50Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQBAAX-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQBAAX,
+    moduleIQBAAXMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQBAAXCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101543Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQBAAXMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqbaaxCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqbaaxCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQBAAX 1 }
+
+	iqbaaxCmdEntry OBJECT-TYPE
+		SYNTAX		IqbaaxCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqbaaxSlotIndex }
+		::= { iqbaaxCmdTable 1 }
+
+	IqbaaxCmdEntry ::=
+		SEQUENCE {
+			iqbaaxSlotIndex
+				Unsigned32,
+			iqbaaxOutputsAnalogueOutputA
+				INTEGER,
+			iqbaaxOutputsAnalogueOutputB
+				INTEGER,
+			iqbaaxDisplay
+				INTEGER,
+			iqbaaxExtractAnalogueOutputAInvertL
+				INTEGER,
+			iqbaaxExtractAnalogueOutputAInvertR
+				INTEGER,
+			iqbaaxExtractAnalogueOutputAExtract
+				INTEGER,
+			iqbaaxExtractAnalogueOutputBInvertL
+				INTEGER,
+			iqbaaxExtractAnalogueOutputBInvertR
+				INTEGER,
+			iqbaaxExtractAnalogueOutputBExtract
+				INTEGER,
+			iqbaaxEDHShowStats
+				INTEGER,
+			iqbaaxEDHResetStats
+				INTEGER,
+			iqbaaxMemoryReadMemory
+				INTEGER,
+			iqbaaxMemorySaveMemory
+				INTEGER,
+			iqbaaxMemoryNameUserMemoryMemory1
+				RollCallString,
+			iqbaaxMemoryNameUserMemoryMemory2
+				RollCallString,
+			iqbaaxMemoryNameUserMemoryMemory3
+				RollCallString,
+			iqbaaxMemoryNameUserMemoryMemory4
+				RollCallString,
+			iqbaaxMemoryClearUserMemory
+				INTEGER,
+			iqbaaxSetupGPIGPITriggerSetup
+				INTEGER,
+			iqbaaxSetupGPIGPIFunction
+				INTEGER,
+			iqbaaxSetupSetDefaultOutput
+				INTEGER,
+			iqbaaxSetupToneOutputsToneOutputA
+				INTEGER,
+			iqbaaxSetupToneOutputsToneOutputB
+				INTEGER,
+			iqbaaxNamesOutputNamesOutputA
+				RollCallString,
+			iqbaaxNamesOutputNamesOutputB
+				RollCallString,
+			iqbaaxNamesInputNamesGroup1Pair1
+				RollCallString,
+			iqbaaxNamesInputNamesGroup1Pair2
+				RollCallString,
+			iqbaaxNamesInputNamesGroup2Pair1
+				RollCallString,
+			iqbaaxNamesInputNamesGroup2Pair2
+				RollCallString,
+			iqbaaxNamesInputNamesGroup3Pair1
+				RollCallString,
+			iqbaaxNamesInputNamesGroup3Pair2
+				RollCallString,
+			iqbaaxNamesInputNamesGroup4Pair1
+				RollCallString,
+			iqbaaxNamesInputNamesGroup4Pair2
+				RollCallString,
+			iqbaaxSetupNamesPresetNames
+				INTEGER,
+			iqbaaxSetupLoggingVideoInputChange
+				INTEGER,
+			iqbaaxSetupLoggingD1AudioChange
+				INTEGER,
+			iqbaaxSetupLoggingEDHErrors
+				INTEGER,
+			iqbaaxSetupPresetUnit
+				INTEGER,
+			iqbaaxSetupSoftwareVersion
+				RollCallString,
+			iqbaaxSetupSerialNo
+				RollCallString
+		}
+
+	iqbaaxSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqbaaxCmdEntry 0 }
+
+
+	iqbaaxOutputsAnalogueOutputA OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_1_Group1_Pair_1(0),
+							val_2_Group1_Pair_2(1),
+							val_3_Group2_Pair_1(2),
+							val_4_Group2_Pair_2(3),
+							val_5_Group3_Pair_1(4),
+							val_6_Group3_Pair_2(5),
+							val_7_Group4_Pair_1(6),
+							val_8_Group4_Pair_2(7),
+							val_Tone(8),
+							val_Silence(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue_Output_A  cmdID= 38
+					1:Group1_Pair_1  value= 0
+					2:Group1_Pair_2  value= 1
+					3:Group2_Pair_1  value= 2
+					4:Group2_Pair_2  value= 3
+					5:Group3_Pair_1  value= 4
+					6:Group3_Pair_2  value= 5
+					7:Group4_Pair_1  value= 6
+					8:Group4_Pair_2  value= 7
+					Tone  value= 8
+					Silence  value= 9  "
+		::= { iqbaaxCmdEntry 38 }
+
+
+	iqbaaxOutputsAnalogueOutputB OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_1_Group1_Pair_1(0),
+							val_2_Group1_Pair_2(1),
+							val_3_Group2_Pair_1(2),
+							val_4_Group2_Pair_2(3),
+							val_5_Group3_Pair_1(4),
+							val_6_Group3_Pair_2(5),
+							val_7_Group4_Pair_1(6),
+							val_8_Group4_Pair_2(7),
+							val_Tone(8),
+							val_Silence(9)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Analogue_Output_B  cmdID= 39
+					1:Group1_Pair_1  value= 0
+					2:Group1_Pair_2  value= 1
+					3:Group2_Pair_1  value= 2
+					4:Group2_Pair_2  value= 3
+					5:Group3_Pair_1  value= 4
+					6:Group3_Pair_2  value= 5
+					7:Group4_Pair_1  value= 6
+					8:Group4_Pair_2  value= 7
+					Tone  value= 8
+					Silence  value= 9  "
+		::= { iqbaaxCmdEntry 39 }
+
+
+	iqbaaxDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Embedded_D1(0),
+							val_Audio_Outputs(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Display  cmdID= 6
+					Embedded_D1  value= 0
+					Audio_Outputs  value= 1  "
+		::= { iqbaaxCmdEntry 6 }
+
+
+	iqbaaxExtractAnalogueOutputAInvertL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_L  cmdID= 50 "
+		::= { iqbaaxCmdEntry 50 }
+
+
+	iqbaaxExtractAnalogueOutputAInvertR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_R  cmdID= 51 "
+		::= { iqbaaxCmdEntry 51 }
+
+
+	iqbaaxExtractAnalogueOutputAExtract OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Out_A_Left_Right(0),
+							val_Out_A_Right_Left(1),
+							val_Out_A_Left_Left(2),
+							val_Out_A_Right_Right(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Extract  cmdID= 27
+					Out_A_Left/Right  value= 0
+					Out_A_Right/Left  value= 1
+					Out_A_Left/Left  value= 2
+					Out_A_Right/Right  value= 3  "
+		::= { iqbaaxCmdEntry 27 }
+
+
+	iqbaaxExtractAnalogueOutputBInvertL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_L  cmdID= 52 "
+		::= { iqbaaxCmdEntry 52 }
+
+
+	iqbaaxExtractAnalogueOutputBInvertR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Invert_R  cmdID= 53 "
+		::= { iqbaaxCmdEntry 53 }
+
+
+	iqbaaxExtractAnalogueOutputBExtract OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Out_B_Left_Right(0),
+							val_Out_B_Right_Left(1),
+							val_Out_B_Left_Left(2),
+							val_Out_B_Right_Right(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Extract  cmdID= 28
+					Out_B_Left/Right  value= 0
+					Out_B_Right/Left  value= 1
+					Out_B_Left/Left  value= 2
+					Out_B_Right/Right  value= 3  "
+		::= { iqbaaxCmdEntry 28 }
+
+
+	iqbaaxEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 5 "
+		::= { iqbaaxCmdEntry 5 }
+
+
+	iqbaaxEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 7  value= 1  "
+		::= { iqbaaxCmdEntry 7 }
+
+
+	iqbaaxMemoryReadMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read_Memory  cmdID= 35
+					Memory_1  value= 0
+					Memory_2  value= 1
+					Memory_3  value= 2
+					Memory_4  value= 3  "
+		::= { iqbaaxCmdEntry 35 }
+
+
+	iqbaaxMemorySaveMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save_Memory  cmdID= 36
+					Memory_1  value= 0
+					Memory_2  value= 1
+					Memory_3  value= 2
+					Memory_4  value= 3  "
+		::= { iqbaaxCmdEntry 36 }
+
+
+	iqbaaxMemoryNameUserMemoryMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_1  cmdID= 16  "
+		::= { iqbaaxCmdEntry 16 }
+
+
+	iqbaaxMemoryNameUserMemoryMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_2  cmdID= 17  "
+		::= { iqbaaxCmdEntry 17 }
+
+
+	iqbaaxMemoryNameUserMemoryMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_3  cmdID= 18  "
+		::= { iqbaaxCmdEntry 18 }
+
+
+	iqbaaxMemoryNameUserMemoryMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Memory_4  cmdID= 19  "
+		::= { iqbaaxCmdEntry 19 }
+
+
+	iqbaaxMemoryClearUserMemory OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(0),
+							val_Memory_2(1),
+							val_Memory_3(2),
+							val_Memory_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Clear_User_Memory  cmdID= 37
+					Memory_1  value= 0
+					Memory_2  value= 1
+					Memory_3  value= 2
+					Memory_4  value= 3  "
+		::= { iqbaaxCmdEntry 37 }
+
+
+	iqbaaxSetupGPIGPITriggerSetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Latch(2),
+							val_Edge(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI_Trigger_Setup  cmdID= 46
+					Off  value= 0
+					Latch  value= 2
+					Edge  value= 1  "
+		::= { iqbaaxCmdEntry 46 }
+
+
+	iqbaaxSetupGPIGPIFunction OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output_A_Silence(0),
+							val_Output_B_Silence(1),
+							val_Output_A_Tone(4),
+							val_Output_B_Tone(5),
+							val_Trigger_Memory_1(8),
+							val_Trigger_Memory_2(9),
+							val_Trigger_Memory_3(10),
+							val_Trigger_Memory_4(11)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI_Function  cmdID= 47
+					Output_A_Silence  value= 0
+					Output_B_Silence  value= 1
+					Output_A_Tone  value= 4
+					Output_B_Tone  value= 5
+					Trigger_Memory_1  value= 8
+					Trigger_Memory_2  value= 9
+					Trigger_Memory_3  value= 10
+					Trigger_Memory_4  value= 11  "
+		::= { iqbaaxCmdEntry 47 }
+
+
+	iqbaaxSetupSetDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Set_Default_Output  cmdID= 25  min= 0  max= 7  step= 1  format= %f  div_scale= 1
+					Min = 0.000000  Max = 7.000000  Step = 1.000000 "
+		::= { iqbaaxCmdEntry 25 }
+
+
+	iqbaaxSetupToneOutputsToneOutputA OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Tone_Output_A  cmdID= 42  min= 1  max= 7  step= 1  format= %f  div_scale= 1
+					Min = 1.000000  Max = 7.000000  Step = 1.000000 "
+		::= { iqbaaxCmdEntry 42 }
+
+
+	iqbaaxSetupToneOutputsToneOutputB OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Tone_Output_B  cmdID= 43  min= 1  max= 7  step= 1  format= %f  div_scale= 1
+					Min = 1.000000  Max = 7.000000  Step = 1.000000 "
+		::= { iqbaaxCmdEntry 43 }
+
+
+	iqbaaxNamesOutputNamesOutputA OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Output_A  cmdID= 20  "
+		::= { iqbaaxCmdEntry 20 }
+
+
+	iqbaaxNamesOutputNamesOutputB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Output_B  cmdID= 21  "
+		::= { iqbaaxCmdEntry 21 }
+
+
+	iqbaaxNamesInputNamesGroup1Pair1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group1_Pair_1  cmdID= 8  "
+		::= { iqbaaxCmdEntry 8 }
+
+
+	iqbaaxNamesInputNamesGroup1Pair2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group1_Pair_2  cmdID= 9  "
+		::= { iqbaaxCmdEntry 9 }
+
+
+	iqbaaxNamesInputNamesGroup2Pair1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group2_Pair_1  cmdID= 10  "
+		::= { iqbaaxCmdEntry 10 }
+
+
+	iqbaaxNamesInputNamesGroup2Pair2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group2_Pair_2  cmdID= 11  "
+		::= { iqbaaxCmdEntry 11 }
+
+
+	iqbaaxNamesInputNamesGroup3Pair1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group3_Pair_1  cmdID= 12  "
+		::= { iqbaaxCmdEntry 12 }
+
+
+	iqbaaxNamesInputNamesGroup3Pair2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group3_Pair_2  cmdID= 13  "
+		::= { iqbaaxCmdEntry 13 }
+
+
+	iqbaaxNamesInputNamesGroup4Pair1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group4_Pair_1  cmdID= 14  "
+		::= { iqbaaxCmdEntry 14 }
+
+
+	iqbaaxNamesInputNamesGroup4Pair2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Group4_Pair_2  cmdID= 15  "
+		::= { iqbaaxCmdEntry 15 }
+
+
+	iqbaaxSetupNamesPresetNames OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Preset_Names(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Preset_Names  cmdID= 24
+					Preset_Names  value= 1  "
+		::= { iqbaaxCmdEntry 24 }
+
+
+	iqbaaxSetupLoggingVideoInputChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Video_Input_Change  cmdID= 31 "
+		::= { iqbaaxCmdEntry 31 }
+
+
+	iqbaaxSetupLoggingD1AudioChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					D1_Audio_Change  cmdID= 34 "
+		::= { iqbaaxCmdEntry 34 }
+
+
+	iqbaaxSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 32 "
+		::= { iqbaaxCmdEntry 32 }
+
+
+	iqbaaxSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqbaaxCmdEntry 3 }
+
+
+	iqbaaxSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqbaaxCmdEntry 2 }
+
+
+	iqbaaxSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqbaaxCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		:
+--				:
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: This log field shows the EDH status of the SDI
+--				: input.
+--				: EDH (Error Detection Handling) as specified by
+--				: SMPTE RP 165-1994 and by the ITU standard ITU-R BT.1304.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: UNKNOWN
+--				: 625
+--				: 525
+-- Comments		: This log field shows the detected video standard of the detected SDI input.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AUDIO
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.85.68.73.79
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.85.68.73.79
+-- Vary			: YES
+--
+-- Value(s)		: ----------------
+--				: --------------8-
+--				: ------------7---
+--				: ------------7-8-
+--				: ----------6-----
+--				: ----------6---8-
+--				: ----------6-7---
+--				: ----------6-7-8-
+--				: --------5-------
+--				: --------5-----8-
+--				: --------5---7---
+--				: --------5---7-8-
+--				: --------5-6-----
+--				: --------5-6---8-
+--				: --------5-6-7---
+--				: --------5-6-7-8-
+--				: ------4---------
+--				: ------4-------8-
+--				: ------4-----7---
+--				: ------4-----7-8-
+--				: ------4---6-----
+--				: ------4---6---8-
+--				: ------4---6-7---
+--				: ------4---6-7-8-
+--				: ------4-5-------
+--				: ------4-5-----8-
+--				: ------4-5---7---
+--				: ------4-5---7-8-
+--				: ------4-5-6-----
+--				: ------4-5-6---8-
+--				: ------4-5-6-7---
+--				: ------4-5-6-7-8-
+--				: ----3-----------
+--				: ----3---------8-
+--				: ----3-------7---
+--				: ----3-------7-8-
+--				: ----3-----6-----
+--				: ----3-----6---8-
+--				: ----3-----6-7---
+--				: ----3-----6-7-8-
+--				: ----3---5-------
+--				: ----3---5-----8-
+--				: ----3---5---7---
+--				: ----3---5---7-8-
+--				: ----3---5-6-----
+--				: ----3---5-6---8-
+--				: ----3---5-6-7---
+--				: ----3---5-6-7-8-
+--				: ----3-4---------
+--				: ----3-4-------8-
+--				: ----3-4-----7---
+--				: ----3-4-----7-8-
+--				: ----3-4---6-----
+--				: ----3-4---6---8-
+--				: ----3-4---6-7---
+--				: ----3-4---6-7-8-
+--				: ----3-4-5-------
+--				: ----3-4-5-----8-
+--				: ----3-4-5---7---
+--				: ----3-4-5---7-8-
+--				: ----3-4-5-6-----
+--				: ----3-4-5-6---8-
+--				: ----3-4-5-6-7---
+--				: ----3-4-5-6-7-8-
+--				: --2-------------
+--				: --2-----------8-
+--				: --2---------7---
+--				: --2---------7-8-
+--				: --2-------6-----
+--				: --2-------6---8-
+--				: --2-------6-7---
+--				: --2-------6-7-8-
+--				: --2-----5-------
+--				: --2-----5-----8-
+--				: --2-----5---7---
+--				: --2-----5---7-8-
+--				: --2-----5-6-----
+--				: --2-----5-6---8-
+--				: --2-----5-6-7---
+--				: --2-----5-6-7-8-
+--				: --2---4---------
+--				: --2---4-------8-
+--				: --2---4-----7---
+--				: --2---4-----7-8-
+--				: --2---4---6-----
+--				: --2---4---6---8-
+--				: --2---4---6-7---
+--				: --2---4---6-7-8-
+--				: --2---4-5-------
+--				: --2---4-5-----8-
+--				: --2---4-5---7---
+--				: --2---4-5---7-8-
+--				: --2---4-5-6-----
+--				: --2---4-5-6---8-
+--				: --2---4-5-6-7---
+--				: --2---4-5-6-7-8-
+--				: --2-3-----------
+--				: --2-3---------8-
+--				: --2-3-------7---
+--				: --2-3-------7-8-
+--				: --2-3-----6-----
+--				: --2-3-----6---8-
+--				: --2-3-----6-7---
+--				: --2-3-----6-7-8-
+--				: --2-3---5-------
+--				: --2-3---5-----8-
+--				: --2-3---5---7---
+--				: --2-3---5---7-8-
+--				: --2-3---5-6-----
+--				: --2-3---5-6---8-
+--				: --2-3---5-6-7---
+--				: --2-3---5-6-7-8-
+--				: --2-3-4---------
+--				: --2-3-4-------8-
+--				: --2-3-4-----7---
+--				: --2-3-4-----7-8-
+--				: --2-3-4---6-----
+--				: --2-3-4---6---8-
+--				: --2-3-4---6-7---
+--				: --2-3-4---6-7-8-
+--				: --2-3-4-5-------
+--				: --2-3-4-5-----8-
+--				: --2-3-4-5---7---
+--				: --2-3-4-5---7-8-
+--				: --2-3-4-5-6-----
+--				: --2-3-4-5-6---8-
+--				: --2-3-4-5-6-7---
+--				: --2-3-4-5-6-7-8-
+--				: 1---------------
+--				: 1-------------8-
+--				: 1-----------7---
+--				: 1-----------7-8-
+--				: 1---------6-----
+--				: 1---------6---8-
+--				: 1---------6-7---
+--				: 1---------6-7-8-
+--				: 1-------5-------
+--				: 1-------5-----8-
+--				: 1-------5---7---
+--				: 1-------5---7-8-
+--				: 1-------5-6-----
+--				: 1-------5-6---8-
+--				: 1-------5-6-7---
+--				: 1-------5-6-7-8-
+--				: 1-----4---------
+--				: 1-----4-------8-
+--				: 1-----4-----7---
+--				: 1-----4-----7-8-
+--				: 1-----4---6-----
+--				: 1-----4---6---8-
+--				: 1-----4---6-7---
+--				: 1-----4---6-7-8-
+--				: 1-----4-5-------
+--				: 1-----4-5-----8-
+--				: 1-----4-5---7---
+--				: 1-----4-5---7-8-
+--				: 1-----4-5-6-----
+--				: 1-----4-5-6---8-
+--				: 1-----4-5-6-7---
+--				: 1-----4-5-6-7-8-
+--				: 1---3-----------
+--				: 1---3---------8-
+--				: 1---3-------7---
+--				: 1---3-------7-8-
+--				: 1---3-----6-----
+--				: 1---3-----6---8-
+--				: 1---3-----6-7---
+--				: 1---3-----6-7-8-
+--				: 1---3---5-------
+--				: 1---3---5-----8-
+--				: 1---3---5---7---
+--				: 1---3---5---7-8-
+--				: 1---3---5-6-----
+--				: 1---3---5-6---8-
+--				: 1---3---5-6-7---
+--				: 1---3---5-6-7-8-
+--				: 1---3-4---------
+--				: 1---3-4-------8-
+--				: 1---3-4-----7---
+--				: 1---3-4-----7-8-
+--				: 1---3-4---6-----
+--				: 1---3-4---6---8-
+--				: 1---3-4---6-7---
+--				: 1---3-4---6-7-8-
+--				: 1---3-4-5-------
+--				: 1---3-4-5-----8-
+--				: 1---3-4-5---7---
+--				: 1---3-4-5---7-8-
+--				: 1---3-4-5-6-----
+--				: 1---3-4-5-6---8-
+--				: 1---3-4-5-6-7---
+--				: 1---3-4-5-6-7-8-
+--				: 1-2-------------
+--				: 1-2-----------8-
+--				: 1-2---------7---
+--				: 1-2---------7-8-
+--				: 1-2-------6-----
+--				: 1-2-------6---8-
+--				: 1-2-------6-7---
+--				: 1-2-------6-7-8-
+--				: 1-2-----5-------
+--				: 1-2-----5-----8-
+--				: 1-2-----5---7---
+--				: 1-2-----5---7-8-
+--				: 1-2-----5-6-----
+--				: 1-2-----5-6---8-
+--				: 1-2-----5-6-7---
+--				: 1-2-----5-6-7-8-
+--				: 1-2---4---------
+--				: 1-2---4-------8-
+--				: 1-2---4-----7---
+--				: 1-2---4-----7-8-
+--				: 1-2---4---6-----
+--				: 1-2---4---6---8-
+--				: 1-2---4---6-7---
+--				: 1-2---4---6-7-8-
+--				: 1-2---4-5-------
+--				: 1-2---4-5-----8-
+--				: 1-2---4-5---7---
+--				: 1-2---4-5---7-8-
+--				: 1-2---4-5-6-----
+--				: 1-2---4-5-6---8-
+--				: 1-2---4-5-6-7---
+--				: 1-2---4-5-6-7-8-
+--				: 1-2-3-----------
+--				: 1-2-3---------8-
+--				: 1-2-3-------7---
+--				: 1-2-3-------7-8-
+--				: 1-2-3-----6-----
+--				: 1-2-3-----6---8-
+--				: 1-2-3-----6-7---
+--				: 1-2-3-----6-7-8-
+--				: 1-2-3---5-------
+--				: 1-2-3---5-----8-
+--				: 1-2-3---5---7---
+--				: 1-2-3---5---7-8-
+--				: 1-2-3---5-6-----
+--				: 1-2-3---5-6---8-
+--				: 1-2-3---5-6-7---
+--				: 1-2-3---5-6-7-8-
+--				: 1-2-3-4---------
+--				: 1-2-3-4-------8-
+--				: 1-2-3-4-----7---
+--				: 1-2-3-4-----7-8-
+--				: 1-2-3-4---6-----
+--				: 1-2-3-4---6---8-
+--				: 1-2-3-4---6-7---
+--				: 1-2-3-4---6-7-8-
+--				: 1-2-3-4-5-------
+--				: 1-2-3-4-5-----8-
+--				: 1-2-3-4-5---7---
+--				: 1-2-3-4-5---7-8-
+--				: 1-2-3-4-5-6-----
+--				: 1-2-3-4-5-6---8-
+--				: 1-2-3-4-5-6-7---
+--				: 1-2-3-4-5-6-7-8-
+-- Comments		: This log field reports the detected state of embedded audio pairs in the input SDI stream.
+--				: Each digit represents presence of that pair and a ( - ) the absence of that pair.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+-- Comments		: This log field shows the detected state of the SDI input signal.
+--				: LOST indicates no input detected. 
+--				: ERROR indicates that the detected input is not valid.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		:
+--				:
+-- Comments		: The number of EDH errors raised since initialization or the last EDH stats reset.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: NO
+--
+-- Comments		: This log field has no meanning for this product.
+--
+---------------------------------------------------------------------------------------------------

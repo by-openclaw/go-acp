@@ -15,8 +15,8 @@ type ProtectState uint8
 
 // Protect state values — §3.2.60.
 const (
-	ProtectNone          ProtectState = 0
-	ProtectProBel        ProtectState = 1
+	ProtectNone           ProtectState = 0
+	ProtectProBel         ProtectState = 1
 	ProtectProBelOverride ProtectState = 2
-	ProtectOEM           ProtectState = 3
+	ProtectOEM            ProtectState = 3
 )

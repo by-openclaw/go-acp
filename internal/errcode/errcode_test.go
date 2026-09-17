@@ -11,10 +11,10 @@ import (
 // Sentinel codes used by the tests — mirror the per-layer pattern callers
 // will adopt in R1b.
 var (
-	errTestRefused     = errcode.New(errcode.LayerTransport, "refused", errcode.ClassRuntime)
-	errTestTimeout     = errcode.New(errcode.LayerTransport, "timeout", errcode.ClassRuntime)
-	errTestInvalidInt  = errcode.New(errcode.LayerValidation, "invalid-integer", errcode.ClassUsage)
-	errTestNotFound    = errcode.New(errcode.LayerPlugin, "object-not-found", errcode.ClassUsage)
+	errTestRefused      = errcode.New(errcode.LayerTransport, "refused", errcode.ClassRuntime)
+	errTestTimeout      = errcode.New(errcode.LayerTransport, "timeout", errcode.ClassRuntime)
+	errTestInvalidInt   = errcode.New(errcode.LayerValidation, "invalid-integer", errcode.ClassUsage)
+	errTestNotFound     = errcode.New(errcode.LayerPlugin, "object-not-found", errcode.ClassUsage)
 	errTestMatrixLocked = errcode.New(errcode.LayerMatrix, "target-locked", errcode.ClassRuntime)
 )
 

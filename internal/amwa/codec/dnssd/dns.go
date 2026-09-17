@@ -31,10 +31,10 @@ const (
 
 // RFC 1035 §3.2.4 classes; mDNS uses IN with the cache-flush bit (RFC 6762 §10.2).
 const (
-	ClassIN          uint16 = 1
-	ClassMask        uint16 = 0x7FFF // RR class with cache-flush bit stripped
-	ClassFlushBit    uint16 = 0x8000 // mDNS cache-flush bit
-	ClassUnicastBit  uint16 = 0x8000 // mDNS QU bit on questions (RFC 6762 §5.4)
+	ClassIN         uint16 = 1
+	ClassMask       uint16 = 0x7FFF // RR class with cache-flush bit stripped
+	ClassFlushBit   uint16 = 0x8000 // mDNS cache-flush bit
+	ClassUnicastBit uint16 = 0x8000 // mDNS QU bit on questions (RFC 6762 §5.4)
 )
 
 // RFC 1035 §4.1.1 header flags.
@@ -57,12 +57,12 @@ const MaxNameLen = 255
 // Errors returned by the decoder. Callers should errors.Is(err, ErrTruncated)
 // etc. rather than string-matching.
 var (
-	ErrTruncated     = errors.New("dnssd: truncated message")
-	ErrLabelTooLong  = errors.New("dnssd: label exceeds 63 bytes")
-	ErrNameTooLong   = errors.New("dnssd: encoded name exceeds 255 bytes")
-	ErrPointerLoop   = errors.New("dnssd: name compression pointer loop")
-	ErrBadPointer    = errors.New("dnssd: name compression pointer out of range")
-	ErrInvalidLabel  = errors.New("dnssd: invalid label byte")
+	ErrTruncated    = errors.New("dnssd: truncated message")
+	ErrLabelTooLong = errors.New("dnssd: label exceeds 63 bytes")
+	ErrNameTooLong  = errors.New("dnssd: encoded name exceeds 255 bytes")
+	ErrPointerLoop  = errors.New("dnssd: name compression pointer loop")
+	ErrBadPointer   = errors.New("dnssd: name compression pointer out of range")
+	ErrInvalidLabel = errors.New("dnssd: invalid label byte")
 )
 
 // Header is the 12-byte RFC 1035 §4.1.1 message header.
@@ -520,7 +520,7 @@ func (d *decoder) readName() (string, error) {
 	jumps := 0
 	pos := d.pos
 	advanced := false // tracks whether we've followed a pointer yet
-	finalPos := -1   // position to set d.pos to when we're done
+	finalPos := -1    // position to set d.pos to when we're done
 	var labels []string
 	totalLen := 0
 	for {

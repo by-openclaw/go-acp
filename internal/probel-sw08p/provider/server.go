@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,10 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
 	"dhs/internal/probel-sw08p/codec"
-	"dhs/internal/consumer/compliance"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete Probel provider. Mirrors
@@ -26,6 +28,9 @@ type Server = server
 // own goroutine reading framed commands and dispatching them to per-CMD
 // handlers (added per-command PRs).
 type server struct {
+	// net is the only way this server binds a socket. Injected, so the
+	// process owns the transport posture.
+	net    transport.Net
 	logger *slog.Logger
 	tree   *tree
 
@@ -34,6 +39,10 @@ type server struct {
 	sessions map[*session]struct{}
 	closed   bool
 	stopped  chan struct{}
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
 
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started. See compliance_events.go.
@@ -59,21 +68,21 @@ func (s *server) ComplianceProfile() *compliance.Profile {
 	return s.profile
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	t, err := newTree(exp)
 	if err != nil {
 		logger.Error("probel provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := metrics.NewConnector()
+	met := deps.Metrics
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
 	return &server{
 		logger:   logger,
+		net:      deps.Net,
 		tree:     t,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
@@ -95,8 +104,9 @@ var listenHook func(ctx context.Context, addr string) (net.Listener, error)
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
 	listen := func(ctx context.Context, addr string) (net.Listener, error) {
-		lc := &net.ListenConfig{}
-		return lc.Listen(ctx, "tcp", addr)
+		// The embedded listener, not the wrapper: acceptLoop applies the
+		// socket policy itself, so a listener from listenHook gets it too.
+		return s.net.Listen(ctx, "tcp", addr)
 	}
 	if listenHook != nil {
 		listen = listenHook
@@ -189,6 +199,12 @@ func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
 		if err != nil {
 			return err
 		}
+		// OS-level dead-peer probe, in addition to the app-layer cmd 08
+		// keepalive below: the two answer different questions, and a peer
+		// that never implements cmd 09 still needs a dead-socket detector.
+		// Applied in the accept loop rather than at bind time so an
+		// injected listener (listenHook) gets it too.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.mu.Lock()
 		s.sessions[sess] = struct{}{}
@@ -279,3 +295,31 @@ func coerceSource(val any) (uint16, error) {
 	return 0, fmt.Errorf("probel: cannot coerce %T to source index", val)
 }
 
+// DefaultSessionIdleTimeout is the reaper window a caller gets by asking for
+// the default. It is 3x the provider's own keep-alive cadence, so a client
+// that answers our pings is never reaped on a single missed round.
+//
+// It is NOT applied unless SetSessionIdleTimeout is called: SW-P-08 mandates
+// no keep-alive (§2), so on a link with no heartbeat silence carries no
+// liveness information and reaping by default would disconnect healthy,
+// idle controllers.
+const DefaultSessionIdleTimeout = 3 * DefaultKeepaliveInterval
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Enable it when something guarantees inbound traffic — the provider's own
+// keep-alive is on, or the controller polls (VSM interrogates on a timer).
+// Without such a guarantee, leave it off.
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
+}

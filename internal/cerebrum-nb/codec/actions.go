@@ -72,10 +72,18 @@ const (
 	LockLockedPath    LockKind = "LOCKED_PATH"
 	LockProtectedPath LockKind = "PROTECTED_PATH"
 
+	// Wire-actual, NOT spec (live NOC 2026-08-16): the clearing action a
+	// real Cerebrum ACCEPTS — and the LOCK_STATE it reports for cleared
+	// locks — is RELEASED, a sixth value absent from the §3.2 table and
+	// the worked examples. The spec's RELEASE/PROTECT and §3.2's
+	// UNLOCKED are all NACKed 8 as actions on that server.
+	LockReleased LockKind = "RELEASED"
+
 	// Deprecated: not in the §3.2 table. The 4.1.2/4.1.3 worked
 	// examples (p11-12) still show LOCK="RELEASE"/"PROTECT" verbs, so
-	// these remain valid action arguments, but they are not LOCK_STATE
-	// values a device reports back.
+	// these remain valid action arguments per the PDF, but a live NOC
+	// Cerebrum NACKs both (see LockReleased) and they are not
+	// LOCK_STATE values a device reports back.
 	LockProtect LockKind = "PROTECT"
 	LockRelease LockKind = "RELEASE"
 )
@@ -135,22 +143,36 @@ type RoutingAction struct {
 	Mnemonic string
 	AltMne   string
 	OnDevice string
+	// EmptyMnemonic forces MNEMONIC="" onto the wire (normally empty attrs
+	// are omitted) — the label-CLEAR form. 0v16 does not document clearing;
+	// an explicit empty string is the plausible mechanism (RX announces a
+	// cleared alt by omitting its slot). Live server behaviour unverified.
+	EmptyMnemonic bool
 
 	// ASSOC actions
-	LogicalSrceID    string
-	LogicalDestID    string
-	LogicalLevelID   string
-	TargetDeviceName string
-	TargetDeviceType DeviceType
-	TargetLevelID    string
-	TargetSrceID     string
-	TargetDestID     string
-	TargetSenderName string
+	LogicalSrceID      string
+	LogicalDestID      string
+	LogicalLevelID     string
+	TargetDeviceName   string
+	TargetDeviceType   DeviceType
+	TargetLevelID      string
+	TargetSrceID       string
+	TargetDestID       string
+	TargetSenderName   string
 	TargetReceiverName string
-	SubDevice        string
+	SubDevice          string
 
 	// RM_TAGS actions
 	Tags string
+}
+
+// addMnemonic emits MNEMONIC normally (omitted when empty), or force-emits
+// MNEMONIC="" for the clear form (RoutingAction.EmptyMnemonic).
+func (a AttrsBuilder) addMnemonic(v string, forceEmpty bool) AttrsBuilder {
+	if forceEmpty {
+		return a.ForceAdd("MNEMONIC", v)
+	}
+	return a.Add("MNEMONIC", v)
 }
 
 // encodeAction satisfies ActionBody. Spec §4.1 attributes use
@@ -174,7 +196,7 @@ func (r *RoutingAction) encodeAction(b *strings.Builder) {
 		Add("LEVEL_NAME", r.LevelName).
 		Add("LOCK", string(r.Lock)).
 		Add("DURATION", r.Duration).
-		Add("MNEMONIC", r.Mnemonic).
+		addMnemonic(r.Mnemonic, r.EmptyMnemonic).
 		Add("ALT_MNE", r.AltMne).
 		Add("ON_DEVICE", r.OnDevice).
 		Add("LOGICAL_SRCE_ID", r.LogicalSrceID).
@@ -212,11 +234,20 @@ type CategoryAction struct {
 }
 
 func (c *CategoryAction) encodeAction(b *strings.Builder) {
+	// Wire-actual TX normalisation (live staging RM 2026-08-18): the
+	// server WRITES accept ITEM_TYPE="SRCE" and NACK 8 on "SOURCE",
+	// yet READS report the item back as TYPE="SOURCE" — an asymmetric
+	// enum. Emit the accepted spelling; the decoder keeps accepting
+	// both, and CSVs/round-trips keep the read shape (SOURCE).
+	itemType := c.ItemType
+	if itemType == ItemSource {
+		itemType = ItemSrce
+	}
 	a := AttrsBuilder{}.
 		ForceAdd("TYPE", c.Type).
 		Add("CATEGORY", c.Category).
 		Add("INDEX", c.Index).
-		Add("ITEM_TYPE", string(c.ItemType)).
+		Add("ITEM_TYPE", string(itemType)).
 		Add("VALUE", c.Value).
 		Add("NAME", c.Name).
 		Add("LABEL", c.Label).
@@ -321,10 +352,10 @@ const (
 type ConnectionType string
 
 const (
-	ConnAsyncHTTP        ConnectionType = "ASYNC_HTTP"
-	ConnUDP              ConnectionType = "UDP"
-	ConnTCP              ConnectionType = "TCP"
-	ConnWebsocketServer  ConnectionType = "WEBSOCKET_SERVER"
+	ConnAsyncHTTP       ConnectionType = "ASYNC_HTTP"
+	ConnUDP             ConnectionType = "UDP"
+	ConnTCP             ConnectionType = "TCP"
+	ConnWebsocketServer ConnectionType = "WEBSOCKET_SERVER"
 )
 
 // DeviceConfiguration is one §4.5 device CRUD command. Type selects the

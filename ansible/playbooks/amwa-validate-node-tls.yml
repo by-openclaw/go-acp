@@ -1,0 +1,18 @@
+---
+# Validate the NODE suites over BCP-003-01 TLS (issue #948): the plant
+# residents stay plain-HTTP — only the window's transient CuT serves
+# HTTPS/WSS (--tls-cert/--tls-key with the tool CA's premade
+# dhs-node.testsuite.nmos.tv identity), and the TLS tool instance
+# (ENABLE_HTTPS=True) does the scoring. Receipts carry the -tls
+# suffix, mirroring the auth twins' convention.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-node-tls.yml
+
+- name: AMWA validate — node (tls)
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: node
+        dhs_amwa_validate_tls_mode: true

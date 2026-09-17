@@ -11,10 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/metrics"
 	"dhs/internal/transport"
-	"dhs/internal/acp2/codec"
 )
 
 // Session manages an AN2/TCP connection to an ACP2 device. It handles:
@@ -40,14 +41,32 @@ type Session struct {
 	slotStatus      []consumer.SlotStatus
 	acp2Version     uint8
 
+	// idleTimeout, when > 0, bounds how long the peer may be silent before
+	// a read fails. Re-armed before EVERY frame, so it means "no bytes at
+	// all", and the keep-alive prober's replies keep a healthy but quiet
+	// session alive.
+	//
+	// Without it, ReadAN2Frame blocks forever on a half-open connection —
+	// a NAT/firewall drop with no RST — and the reader parks in the kernel
+	// with no error to bubble up. The keepAliveWatchdog deliberately does
+	// not close the socket (see keepalive.go) on the assumption that "a
+	// real socket break is detected by the read loop independently"; that
+	// assumption only holds once the read loop actually has a deadline.
+	// This is what makes the existing warm-restart reconnect fire.
+	idle transport.Idle
+
 	// mtid pool: 1-255 available, 0 reserved for announces.
 	mtidMu   sync.Mutex
 	mtidPool [255]bool // mtidPool[i] true = mtid (i+1) is in use
 	mtidCond *sync.Cond
 
-	// Pending request waiters: keyed by ACP2 mtid.
-	waitMu  sync.Mutex
-	waiters map[uint8]chan *codec.ACP2Message
+	// Pending request waiters: keyed by ACP2 mtid. waitersDead flips to
+	// true (under waitMu) when the read loop exits — after that no reply
+	// can ever arrive, so addWaiter refuses new registrations and
+	// failWaiters has already delivered the nil sentinel to existing ones.
+	waitMu      sync.Mutex
+	waiters     map[uint8]chan *codec.ACP2Message
+	waitersDead bool
 
 	// Announce listeners.
 	annMu     sync.Mutex
@@ -63,6 +82,14 @@ type Session struct {
 	// timeout arm without a real 2 s wall-clock wait; defaults to 2 * time.Second
 	// in NewSession for production.
 	closeWait time.Duration
+
+	// dialer opens the TCP connection Connect establishes. Injected rather
+	// than built inline so the pipe is substitutable — a test supplies a
+	// fake, and a supervisor driving reconnect has something to ASK for a
+	// new connection, which a package-local net.Dialer is not.
+	// NewSession installs the shared transport.TCPDialer for production.
+	// net is the ONLY way this session reaches a socket.
+	net transport.Net
 
 	// Write serialisation.
 	writeMu sync.Mutex
@@ -83,6 +110,17 @@ type Session struct {
 	// of type, so announces, replies, and keep-alive responses all
 	// refresh liveness.
 	lastRxNS atomic.Int64
+
+	// lastTxNS is the same instant for the write side, stored by
+	// sendFrame after a successful write. Health reports both, so a
+	// silent link can be told apart from one we stopped talking on.
+	lastTxNS atomic.Int64
+
+	// met counts every frame in and out, attributed by AN2 Type — the
+	// natural command axis for AN2, and the same one the acp2 provider
+	// registers. Never nil after SetMetrics; nil-checked so a Session built
+	// directly by a test still works.
+	met *metrics.Connector
 
 	// slotLastSeen records the wall-clock time we last had wire evidence
 	// of a particular slot's status (handshake AN2 GetSlotInfo or a
@@ -121,13 +159,27 @@ func (s *Session) note(event string) {
 
 // NewSession creates an uninitialised Session. Call Connect to establish
 // the TCP connection and run the AN2 handshake.
-func NewSession(logger *slog.Logger) *Session {
+// NewSession builds a session that dials through n.
+//
+// The Net is injected rather than constructed here: the process owns the
+// transport posture, and a test hands in a fake without a real socket. A nil
+// Net falls back to the shared dialler with ACP2's own posture — Nagle off,
+// because ACP2 frames are small and latency-sensitive.
+func NewSession(n transport.Net, logger *slog.Logger) *Session {
+	if n == nil {
+		n = transport.New(transport.Config{NoDelay: true})
+	}
 	s := &Session{
 		logger:    logger,
 		waiters:   make(map[uint8]chan *codec.ACP2Message),
 		annSubs:   make(map[int]AnnounceFunc),
 		done:      make(chan struct{}),
 		closeWait: 2 * time.Second,
+		// ACP2 frames are small and latency-sensitive, so Nagle stays off —
+		// that part is unchanged. What the shared dialer adds is
+		// SO_KEEPALIVE, which this session never set: an outbound session to
+		// a device that goes half-open had no OS-level dead-peer probe.
+		net: n,
 	}
 	s.mtidCond = sync.NewCond(&s.mtidMu)
 	return s
@@ -148,19 +200,18 @@ func (s *Session) Connect(ctx context.Context, ip string, port int) error {
 
 	s.logger.Debug("acp2: dialing", "host", ip, "port", port)
 
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
+	conn, err := s.net.Dial(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
-	}
-	if tc, ok := conn.(*net.TCPConn); ok {
-		_ = tc.SetNoDelay(true)
 	}
 	s.conn = conn
 	s.host = ip
 	s.port = port
 	s.done = make(chan struct{})
+	s.waitMu.Lock()
 	s.waiters = make(map[uint8]chan *codec.ACP2Message)
+	s.waitersDead = false
+	s.waitMu.Unlock()
 
 	// Start the reader goroutine before the handshake so replies are routed.
 	// Pass conn explicitly: the loop must read from the exact connection this
@@ -298,15 +349,11 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	// with a convention: AN2 internal replies come back with proto=0 and
 	// AN2 mtid matching. The reader goroutine routes them to a synthetic
 	// ACP2Message with MTID=an2MTID.
-	ch := make(chan *codec.ACP2Message, 1)
-	s.waitMu.Lock()
-	s.waiters[an2MTID] = ch
-	s.waitMu.Unlock()
-	defer func() {
-		s.waitMu.Lock()
-		delete(s.waiters, an2MTID)
-		s.waitMu.Unlock()
-	}()
+	ch, err := s.addWaiter(an2MTID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.removeWaiter(an2MTID)
 
 	if err := s.sendFrame(ctx, frame); err != nil {
 		return nil, err
@@ -315,11 +362,11 @@ func (s *Session) an2Request(ctx context.Context, funcID uint8, slot uint8, payl
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-s.done:
-		return nil, fmt.Errorf("acp2: connection closed")
 	case msg := <-ch:
-		// unreachable nil check: routeReply only ever sends a non-nil
-		// *ACP2Message into the waiter channel, so msg is never nil here.
+		if msg == nil {
+			// failWaiters' sentinel: the connection died before a reply.
+			return nil, fmt.Errorf("acp2: connection closed")
+		}
 		return msg.Body, nil
 	}
 }
@@ -353,15 +400,11 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 		Payload: payload,
 	}
 
-	ch := make(chan *codec.ACP2Message, 1)
-	s.waitMu.Lock()
-	s.waiters[mtid] = ch
-	s.waitMu.Unlock()
-	defer func() {
-		s.waitMu.Lock()
-		delete(s.waiters, mtid)
-		s.waitMu.Unlock()
-	}()
+	ch, err := s.addWaiter(mtid)
+	if err != nil {
+		return nil, err
+	}
+	defer s.removeWaiter(mtid)
 
 	s.logger.Debug("acp2: sending request",
 		"slot", slot, "mtid", mtid, "func", req.Func,
@@ -375,11 +418,11 @@ func (s *Session) DoACP2(ctx context.Context, slot uint8, req *codec.ACP2Message
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-s.done:
-		return nil, fmt.Errorf("acp2: connection closed while waiting for reply mtid=%d", mtid)
 	case reply := <-ch:
-		// unreachable nil check: routeReply only ever sends a non-nil
-		// *ACP2Message into the waiter channel, so reply is never nil here.
+		if reply == nil {
+			// failWaiters' sentinel: the connection died before a reply.
+			return nil, fmt.Errorf("acp2: connection closed while waiting for reply mtid=%d", mtid)
+		}
 		if reply.Type == codec.ACP2TypeError {
 			// Fire the per-stat-code compliance event so the session
 			// profile reflects spec-listed error frequencies. Status
@@ -429,6 +472,10 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 	if _, err := s.conn.Write(data); err != nil {
 		return &consumer.TransportError{Op: "send", Err: err}
 	}
+	s.lastTxNS.Store(time.Now().UnixNano())
+	if s.met != nil {
+		s.met.ObserveCmdTx(uint8(f.Type), len(data), 0)
+	}
 	return nil
 }
 
@@ -442,8 +489,12 @@ func (s *Session) sendFrame(ctx context.Context, f *codec.AN2Frame) error {
 // pattern of capturing the conn locally and tolerating a closed socket.
 func (s *Session) readLoop(conn net.Conn) {
 	defer close(s.done)
+	defer s.failWaiters() // LIFO: waiters are swept before done closes
 
 	for {
+		// Arm via the shared bound: Arm and SetOn share a mutex there, so a
+		// concurrent tighten cannot be clobbered by a stale value read here.
+		_ = s.idle.Arm(conn)
 		frame, err := codec.ReadAN2Frame(conn)
 		if err != nil {
 			// ReadAN2Frame wraps the underlying I/O error with %w, so a bare
@@ -461,6 +512,9 @@ func (s *Session) readLoop(conn net.Conn) {
 		// Touch lastRx on every frame so SessionLive / dead-man see
 		// announces, replies, AND keep-alive probe answers (#365).
 		s.lastRxNS.Store(time.Now().UnixNano())
+		if s.met != nil {
+			s.met.ObserveCmdRx(uint8(frame.Type), an2FrameLen(frame))
+		}
 
 		// Record raw frame for capture (includes announces — tests need them).
 		if s.recorder != nil {
@@ -596,6 +650,52 @@ func (s *Session) routeReply(mtid uint8, msg *codec.ACP2Message) {
 	} else {
 		s.logger.Debug("acp2: no waiter for mtid", "mtid", mtid)
 		s.note(OrphanReplyMtid)
+	}
+}
+
+// addWaiter registers a buffered reply channel for a mtid. It refuses
+// once the read loop has exited: after that point no reply can ever
+// arrive, and failWaiters' nil-sentinel sweep has already run, so a
+// late registrant would block until its context expired.
+func (s *Session) addWaiter(mtid uint8) (chan *codec.ACP2Message, error) {
+	ch := make(chan *codec.ACP2Message, 1)
+	s.waitMu.Lock()
+	defer s.waitMu.Unlock()
+	if s.waitersDead {
+		return nil, fmt.Errorf("acp2: connection closed")
+	}
+	s.waiters[mtid] = ch
+	return ch, nil
+}
+
+// removeWaiter drops the reply channel registered for a mtid.
+func (s *Session) removeWaiter(mtid uint8) {
+	s.waitMu.Lock()
+	delete(s.waiters, mtid)
+	s.waitMu.Unlock()
+}
+
+// failWaiters marks the waiter table dead and delivers a nil sentinel to
+// every registered waiter. It runs from readLoop's exit path, before done
+// is closed. waitMu serialises the sweep against addWaiter, so every
+// waiter deterministically receives exactly one value: the real reply
+// when routeReply delivered it before the connection died (the buffered
+// channel is already full, so the sentinel send is skipped), or nil.
+//
+// This is what makes "reply then immediate close" deterministic: waiters
+// used to select on s.done next to the reply channel, and when the peer
+// replied and hung up in one burst both arms were ready — Go picks a
+// ready select arm pseudo-randomly, so the outcome (and the statement
+// coverage) was a coin flip (issue #694 flake class).
+func (s *Session) failWaiters() {
+	s.waitMu.Lock()
+	defer s.waitMu.Unlock()
+	s.waitersDead = true
+	for _, ch := range s.waiters {
+		select {
+		case ch <- nil:
+		default: // real reply already buffered — the waiter takes that
+		}
 	}
 }
 
@@ -765,11 +865,36 @@ func (s *Session) SlotInfoFromAN2(slot int) consumer.SlotInfo {
 	return si
 }
 
+// SetMetrics attaches the connector's counter set. Called by the Plugin
+// right after NewSession, before Connect.
+func (s *Session) SetMetrics(m *metrics.Connector) {
+	if m == nil {
+		return
+	}
+	for _, t := range []codec.AN2Type{
+		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
+		codec.AN2TypeError, codec.AN2TypeData,
+	} {
+		m.RegisterCmd(uint8(t), t.String())
+	}
+	s.met = m
+}
+
 // LastRx is the wall-clock time of the last frame received on this
 // session. Lock-free atomic load; zero when nothing has been received
 // yet.
 func (s *Session) LastRx() time.Time {
 	ns := s.lastRxNS.Load()
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
+// LastTx is the wall-clock time of the last frame written on this
+// session. Zero when nothing has been sent yet.
+func (s *Session) LastTx() time.Time {
+	ns := s.lastTxNS.Load()
 	if ns == 0 {
 		return time.Time{}
 	}
@@ -820,4 +945,25 @@ func (s *Session) Port() int {
 // Done returns a channel that is closed when the session is disconnected.
 func (s *Session) Done() <-chan struct{} {
 	return s.done
+}
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-frame read
+// deadline. Applied to the socket immediately so a reader already blocked on
+// the previous (or absent) deadline picks the new bound up at once, rather
+// than waiting out a deadline that may never expire.
+func (s *Session) SetIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	conn := s.conn
+	s.mu.Unlock()
+	_ = s.idle.SetOn(conn, d)
+}
+
+// IdleTimeout reports the currently armed per-frame read deadline.
+func (s *Session) IdleTimeout() time.Duration { return s.idle.Get() }
+
+// an2FrameLen is the byte count a frame occupied on the wire: the fixed
+// 8-byte AN2 header plus its payload. Taken from the decoded frame rather
+// than re-encoding it, so counting costs nothing on the read path.
+func an2FrameLen(f *codec.AN2Frame) int {
+	return 8 + len(f.Payload)
 }

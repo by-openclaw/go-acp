@@ -1,0 +1,84 @@
+{
+ "unit": {
+  "addr": "0000-81-00",
+  "net": 0,
+  "unit": 129,
+  "port": 0,
+  "id": 734,
+  "version": "3.0 ",
+  "cmdSet": 12,
+  "name": "XY Panel",
+  "services": [
+   "MENUS",
+   "CONTROL",
+   "FILE",
+   "LONGSTR"
+  ],
+  "serviceBits": 32779
+ },
+ "longStrings": true,
+ "partials": {
+  "0": {
+   "count": 3
+  }
+ },
+ "itemCount": 3,
+ "items": [
+  {
+   "index": 0,
+   "style": "LIST",
+   "styleRaw": 16,
+   "flags": [],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 2,
+   "divScale": 0,
+   "text": "Menu",
+   "format": ""
+  },
+  {
+   "index": 1,
+   "style": "PARTIAL",
+   "styleRaw": 184,
+   "flags": [
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "RETURN",
+   "format": ""
+  },
+  {
+   "index": 2,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 99,
+   "min": -32767,
+   "max": 23767,
+   "step": 0,
+   "divScale": 1,
+   "text": "Status",
+   "format": "%s"
+  }
+ ],
+ "sampledValues": [
+  {
+   "cmd": 99,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Active. Compatible client required for dynamic interface."
+  }
+ ]
+}

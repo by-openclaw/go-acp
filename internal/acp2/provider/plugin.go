@@ -13,7 +13,7 @@
 package acp2
 
 import (
-	"log/slog"
+	"dhs/internal/plugin"
 
 	"dhs/internal/acp2/codec"
 	"dhs/internal/export/canonical"
@@ -40,6 +40,7 @@ func (f *Factory) Meta() provider.Meta {
 }
 
 // New constructs a fresh provider around the supplied tree.
-func (f *Factory) New(logger *slog.Logger, tree *canonical.Export) provider.Provider {
-	return newServer(logger, tree)
+func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
+	deps = deps.WithDefaults()
+	return newServer(deps, tree)
 }

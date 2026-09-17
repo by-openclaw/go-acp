@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"io"
 	"log/slog"
@@ -258,7 +259,7 @@ func (c *fakeClient) lastAnnounce() *codec.ACP2Message {
 // server, the dial address, and a stop func that cancels Serve + Stops.
 func startServe(t *testing.T, exp *canonical.Export) (*server, string, func()) {
 	t.Helper()
-	srv := newServer(quietLogger(), exp)
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, exp)
 
 	// Bind ephemeral ourselves to read back the port, then hand the
 	// listener to Serve via a tiny shim: Serve binds its own listener,
@@ -422,9 +423,13 @@ func TestServe_SetProperty_AnnounceFanout(t *testing.T) {
 	if ann.PID != codec.PIDValue {
 		t.Fatalf("announce pid=%d want %d", ann.PID, codec.PIDValue)
 	}
-	// The unsubscribed client must receive zero announces.
-	if n := unsub.announceCount(); n != 0 {
-		t.Fatalf("unsubscribed client got %d announces, want 0", n)
+	// The unsubscribed client receives the announce too — real Neurons
+	// deliver announces regardless of the EnableProtocolEvents gate
+	// (spec §3.3.4 says otherwise, but Lawo VSM's gadgetserver never
+	// sends the enable and depends on receiving announces; documented
+	// ecosystem exception, see broadcastAnnounce).
+	if !waitFor(t, time.Second, func() bool { return unsub.announceCount() >= 1 }) {
+		t.Fatal("unsubscribed client got no announce (ecosystem delivery)")
 	}
 
 	// Tree was actually mutated.
@@ -552,7 +557,7 @@ func TestServe_ListenError(t *testing.T) {
 	defer func() { _ = ln.Close() }()
 	addr := ln.Addr().String()
 
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	err = srv.Serve(context.Background(), addr)
 	if err == nil {
 		t.Fatal("Serve on an occupied port should error")
@@ -562,7 +567,7 @@ func TestServe_ListenError(t *testing.T) {
 // TestProviderSetValue_NotImplemented pins the documented Step-2e stub:
 // Provider.SetValue returns an error until that step ships.
 func TestProviderSetValue_NotImplemented(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	_, err := srv.SetValue(context.Background(), "/some/path", 1)
 	if err == nil {
 		t.Fatal("SetValue should return the not-implemented error")

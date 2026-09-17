@@ -11,17 +11,17 @@
 //
 // Resources covered:
 //
-//   StagedSender   — target state being staged, then activated
-//   StagedReceiver — same on Receiver side
-//   ActiveSender   — read-only mirror of currently-running Sender state
-//   ActiveReceiver — same on Receiver side
-//   Activation     — sub-object on staged that triggers the
-//                    activate_immediate / activate_scheduled_relative
-//                    / activate_scheduled_absolute mode
-//   TransportParams — polymorphic per transport URN (rtp / rtp.mcast /
-//                    rtp.ucast / dash / websocket / mqtt). v1.0 ships
-//                    rtp + rtp.mcast + rtp.ucast only; v1.1 adds the
-//                    rest.
+//	StagedSender   — target state being staged, then activated
+//	StagedReceiver — same on Receiver side
+//	ActiveSender   — read-only mirror of currently-running Sender state
+//	ActiveReceiver — same on Receiver side
+//	Activation     — sub-object on staged that triggers the
+//	                 activate_immediate / activate_scheduled_relative
+//	                 / activate_scheduled_absolute mode
+//	TransportParams — polymorphic per transport URN (rtp / rtp.mcast /
+//	                 rtp.ucast / dash / websocket / mqtt). v1.0 ships
+//	                 rtp + rtp.mcast + rtp.ucast only; v1.1 adds the
+//	                 rest.
 //
 // This package follows the locked NMOS-wide codec pattern from
 // `internal/amwa/codec/spec/`: canonical Go structs in this package,

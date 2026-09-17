@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // newPipePlugin returns a Plugin wired to one end of a net.Pipe plus
@@ -16,7 +17,7 @@ func newPipePlugin(t *testing.T) (*Plugin, net.Conn) {
 	a, b := net.Pipe()
 	logger := quietLogger()
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 	p := &Plugin{logger: logger}
 	p.client = client
 	t.Cleanup(func() {

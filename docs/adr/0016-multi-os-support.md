@@ -58,6 +58,33 @@ Every per-OS dep entry in `0005-deps.json` (per ADR-0005) carries:
 - CVE history + transitive dep count
 - Per-OS install command
 
+These live in that manifest's `host_deps` array — separate from `deps`,
+which is Go modules only. A host dep is software the OPERATOR installs;
+it never enters `go.mod`, and `tools/check-deps.sh` does not gate it
+(the script matches on `module`, which host entries do not carry).
+
+Every host dep is OPTIONAL by the stdlib-floor rule above: without it
+the connector runs degraded, never broken. The array records what each
+one buys, what happens without it, and — because two of them are not
+freely redistributable — whether we may ship it. We may not ship any of
+them, so all of them are operator-installed:
+
+| Host dep | OS | Buys | Without it |
+|---|---|---|---|
+| `avahi-daemon` | Linux | DNS-SD via system daemon | stdlib mDNS, cascade-timing jitter |
+| `bonjour-windows` | Windows | DNS-SD via `dnssd.dll` | stdlib mDNS, same jitter |
+| `bonjour-macos` | macOS | DNS-SD via libSystem | stdlib mDNS, same jitter |
+| `npcap` | Windows | local LLDP frame capture | no local capture at all |
+| `raw-capture-privilege` | Linux/macOS | local LLDP frame capture | typed permission error |
+
+**Npcap is the one to read before planning around it.** Its free edition
+allows at most five systems and NO redistribution; unlimited use applies
+only when it is deployed exclusively alongside Wireshark, Nmap or
+Microsoft Defender for Identity. Anything fleet-wide needs a paid OEM
+licence. That is why the preferred source of LLDP is the device's own
+API rather than capturing on the host — see the entry's
+`decision_pending`.
+
 ### Per-connector deliverables
 
 | File | Required content |

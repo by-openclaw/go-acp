@@ -157,7 +157,18 @@ func (c *slotCounts) hasCard() bool {
 //	Root Node                              "device"  oid="1"
 //	 └── Slot Node   number=N              "slot-N"  oid="1.N+1"
 //	      └── Group Node identifier="identity|control|..."
-//	           └── Parameter number=objID  (leaf)
+//	           ├── Parameter number=objID  (leaf)
+//	           └── Sub-group Node          (Synapse section header)
+//	                └── Parameter number=objID  (leaf)
+//
+// Sub-group nodes are why registration recurses. A real Synapse rack nests
+// most of its objects under section headers ("DOWN CONV", "INSERTER", …),
+// and the consumer canonicalises those as parent Nodes — presentation only,
+// as buildGroupNode documents: every Parameter keeps its (group, id) wire
+// address whatever its depth. A loop that took only direct Parameter
+// children therefore dropped everything below the first section: extracting
+// slot 1 of the rack at 10.6.250.105 gave 182 parameters, of which 106 sat
+// under 8 sub-group nodes, and the provider served the 76 that did not.
 //
 // Unknown group names are skipped with a warning; unknown parameter
 // types fall through to Integer (most common) with a warning.
@@ -196,11 +207,7 @@ func newTree(exp *canonical.Export) (*tree, error) {
 				continue
 			}
 
-			for _, paramEl := range groupNode.Children {
-				p, ok := paramEl.(*canonical.Parameter)
-				if !ok {
-					continue
-				}
+			for _, p := range collectParams(groupNode.Children) {
 				id := uint8(p.Number)
 				acpType, err := deriveACPType(p)
 				if err != nil {
@@ -242,6 +249,31 @@ func newTree(exp *canonical.Export) (*tree, error) {
 	}
 
 	return t, nil
+}
+
+// collectParams gathers every Parameter under els, descending through
+// sub-group Nodes. Depth carries no wire meaning in ACP1 — an object is
+// addressed by (group, id) wherever it sits — so a nested parameter is
+// registered exactly like a top-level one.
+//
+// The sub-group markers themselves are NOT reconstructed. On the wire a
+// marker is either an enum with a single " " item or a read-only string
+// whose label starts with a space (codec.IsSubGroupMarker); the canonical
+// Node keeps the trimmed name and the id but not which convention produced
+// it, so a served copy of the Synapse rack has its 182 objects and not the
+// 8 markers that separate them. Restoring those needs the canonical format
+// to carry the marker's own type, not a guess here.
+func collectParams(els []canonical.Element) []*canonical.Parameter {
+	var out []*canonical.Parameter
+	for _, el := range els {
+		switch v := el.(type) {
+		case *canonical.Parameter:
+			out = append(out, v)
+		case *canonical.Node:
+			out = append(out, collectParams(v.Children)...)
+		}
+	}
+	return out
 }
 
 // lookup returns the entry at the given (slot, group, id) under RLock.

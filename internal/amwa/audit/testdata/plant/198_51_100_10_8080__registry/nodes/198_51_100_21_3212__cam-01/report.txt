@@ -1,0 +1,7 @@
+200   /x-nmos
+200   /x-nmos/node/v1.3/self
+200   /x-nmos/node/v1.3/senders
+502   http://198.51.100.21:3212/x-nmos/connection/v1.1/single/senders/44444444-4444-4444-8444-444444444444/transportfile  [The remote server returned an error: (502) Bad Gateway.]
+502   http://198.51.100.21:3212/x-nmos/connection/v1.1/single/senders/55555555-5555-4555-8555-555555555555/transportfile  [The remote server returned an error: (502) Bad Gateway.]
+404   /x-nmos/events/
+NOSDP sender 55555555-5555-4555-8555-555555555555 has no manifest_href (legal for an inactive sender)

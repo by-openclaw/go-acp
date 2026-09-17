@@ -1,0 +1,18 @@
+---
+# win11 — Proxmox VM 654 "dhs.win11", Windows 11 Pro (10.0.26200),
+# guest hostname dhs-win11, single NIC 10.6.250.105 (static, #786, VLAN 600
+# since 2026-08-29). Windows producer-parity row (ADR-0016), reached over
+# SSH as `by-rune` (local Administrators group).
+pve_vmid: 654
+pve_name: dhs.win11
+os_label: "Windows 11 Pro"
+nics:
+  - { name: "Ethernet 2", mac: "BC:24:11:10:AE:F8", ip: 10.6.250.105 }
+fleet_hostname: dhs-win11
+
+# Ember+ producer: our integration DM (matrix + salvo/lock functions).
+ember_tree_src: "{{ playbook_dir }}/../files/trees/our-dm.tree.json"
+
+# Connectors this host serves -> dhs_firewall opens exactly these rule groups
+# (nmos also needs the dhs_mdns daemon). Add/remove with the producer deploy.
+dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos]

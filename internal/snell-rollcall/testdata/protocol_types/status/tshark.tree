@@ -1,0 +1,48 @@
+Frame 1: Packet, 64 bytes on wire (512 bits), 64 bytes captured (512 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 1, Ack: 1, Len: 20
+Snell RollCall: GETSTAT
+    TX flags: 12
+    TX length: 16
+    Destination: 0000-08-00:2
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 2
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 2
+    Type: 4 (GETSTAT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+
+Frame 2: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 1, Ack: 21, Len: 24
+Snell RollCall: RETSTAT online|present
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-08-00:2
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 2
+    RollCall length: 6
+    Type: 5 (RETSTAT)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 0000000a
+        Status: 0x000a (online|present)
+

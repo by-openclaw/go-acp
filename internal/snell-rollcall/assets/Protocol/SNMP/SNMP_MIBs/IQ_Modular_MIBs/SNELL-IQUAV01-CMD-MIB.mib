@@ -1,0 +1,7400 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQUAV01
+--        Module Id#:381
+--       Command Set:5
+--          Filename:SNELL-IQUAV01-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:09/06/2005
+--              Time:14:59
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQUAV01-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQUAV01,
+    moduleIQUAV01MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQUAV01CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506091459Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQUAV01MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iquav01CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iquav01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQUAV01 1 }
+
+	iquav01CmdEntry OBJECT-TYPE
+		SYNTAX		Iquav01CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iquav01SlotIndex }
+		::= { iquav01CmdTable 1 }
+
+	Iquav01CmdEntry ::=
+		SEQUENCE {
+			iquav01SlotIndex
+				Unsigned32,
+			iquav01VideoInput
+				INTEGER,
+			iquav01VideoInput525
+				INTEGER,
+			iquav01VideoInput625
+				INTEGER,
+			iquav01VideoProcAmp1In1ProcAmpEnable
+				INTEGER,
+			iquav01VideoProcAmp1LumaGain
+				INTEGER,
+			iquav01VideoProcAmp1ChromaGain
+				INTEGER,
+			iquav01VideoProcAmp1BlackLevel
+				INTEGER,
+			iquav01VideoProcAmp1PicturePosition
+				INTEGER,
+			iquav01VideoProcAmp1YCTiming
+				INTEGER,
+			iquav01VideoProcAmp2In2ProcAmpEnable
+				INTEGER,
+			iquav01VideoProcAmp2LumaGain
+				INTEGER,
+			iquav01VideoProcAmp2ChromaGain
+				INTEGER,
+			iquav01VideoProcAmp2BlackLevel
+				INTEGER,
+			iquav01VideoProcAmp2PicturePosition
+				INTEGER,
+			iquav01VideoProcAmp2YCTiming
+				INTEGER,
+			iquav01AudioDeembed
+				INTEGER,
+			iquav01AudioAESOutputAES1Source
+				INTEGER,
+			iquav01AudioAESOutputAES2Source
+				INTEGER,
+			iquav01AudioAnalogOutAnalog1Source
+				INTEGER,
+			iquav01AudioAnalogOutAnalog2Source
+				INTEGER,
+			iquav01AudioProcAmpStereo1
+				INTEGER,
+			iquav01ProcAmpDeembed1LGainDeembed1L
+				INTEGER,
+			iquav01ProcAmpDeembed1LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed1LMute
+				INTEGER,
+			iquav01ProcAmpDeembed1RGainDeembed1R
+				INTEGER,
+			iquav01ProcAmpDeembed1RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed1RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo2
+				INTEGER,
+			iquav01ProcAmpDeembed2LGainDeembed2L
+				INTEGER,
+			iquav01ProcAmpDeembed2LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed2LMute
+				INTEGER,
+			iquav01ProcAmpDeembed2RGainDeembed2R
+				INTEGER,
+			iquav01ProcAmpDeembed2RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed2RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo3
+				INTEGER,
+			iquav01ProcAmpDeembed3LGainDeembed3L
+				INTEGER,
+			iquav01ProcAmpDeembed3LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed3LMute
+				INTEGER,
+			iquav01ProcAmpDeembed3RGainDeembed3R
+				INTEGER,
+			iquav01ProcAmpDeembed3RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed3RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo4
+				INTEGER,
+			iquav01ProcAmpDeembed4LGainDeembed4L
+				INTEGER,
+			iquav01ProcAmpDeembed4LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed4LMute
+				INTEGER,
+			iquav01ProcAmpDeembed4RGainDeembed4R
+				INTEGER,
+			iquav01ProcAmpDeembed4RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed4RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo5
+				INTEGER,
+			iquav01ProcAmpDeembed5LGainDeembed5L
+				INTEGER,
+			iquav01ProcAmpDeembed5LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed5LMute
+				INTEGER,
+			iquav01ProcAmpDeembed5RGainDeembed5R
+				INTEGER,
+			iquav01ProcAmpDeembed5RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed5RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo6
+				INTEGER,
+			iquav01ProcAmpDeembed6LGainDeembed6L
+				INTEGER,
+			iquav01ProcAmpDeembed6LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed6LMute
+				INTEGER,
+			iquav01ProcAmpDeembed6RGainDeembed6R
+				INTEGER,
+			iquav01ProcAmpDeembed6RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed6RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo7
+				INTEGER,
+			iquav01ProcAmpDeembed7LGainDeembed7L
+				INTEGER,
+			iquav01ProcAmpDeembed7LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed7LMute
+				INTEGER,
+			iquav01ProcAmpDeembed7RGainDeembed7R
+				INTEGER,
+			iquav01ProcAmpDeembed7RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed7RMute
+				INTEGER,
+			iquav01AudioProcAmpStereo8
+				INTEGER,
+			iquav01ProcAmpDeembed8LGainDeembed8L
+				INTEGER,
+			iquav01ProcAmpDeembed8LInvert
+				INTEGER,
+			iquav01ProcAmpDeembed8LMute
+				INTEGER,
+			iquav01ProcAmpDeembed8RGainDeembed8R
+				INTEGER,
+			iquav01ProcAmpDeembed8RInvert
+				INTEGER,
+			iquav01ProcAmpDeembed8RMute
+				INTEGER,
+			iquav01ProcAmpAES1Stereo
+				INTEGER,
+			iquav01ProcAmpAES1LGainAES1L
+				INTEGER,
+			iquav01ProcAmpAES1LInvert
+				INTEGER,
+			iquav01ProcAmpAES1LMute
+				INTEGER,
+			iquav01ProcAmpAES1RGainAES1R
+				INTEGER,
+			iquav01ProcAmpAES1RInvert
+				INTEGER,
+			iquav01ProcAmpAES1RMute
+				INTEGER,
+			iquav01ProcAmpAES2Stereo
+				INTEGER,
+			iquav01ProcAmpAES2LGainAES2L
+				INTEGER,
+			iquav01ProcAmpAES2LInvert
+				INTEGER,
+			iquav01ProcAmpAES2LMute
+				INTEGER,
+			iquav01ProcAmpAES2RGainAES2R
+				INTEGER,
+			iquav01ProcAmpAES2RInvert
+				INTEGER,
+			iquav01ProcAmpAES2RMute
+				INTEGER,
+			iquav01EmbedEmbedder1Embed1Source
+				INTEGER,
+			iquav01EmbedEmbedder1PairSelection
+				INTEGER,
+			iquav01EmbedEmbedder1Disable
+				INTEGER,
+			iquav01EmbedEmbedder2Embed2Source
+				INTEGER,
+			iquav01EmbedEmbedder2PairSelection
+				INTEGER,
+			iquav01EmbedEmbedder2Disable
+				INTEGER,
+			iquav01EmbedEmbedder3Embed3Source
+				INTEGER,
+			iquav01EmbedEmbedder3PairSelection
+				INTEGER,
+			iquav01EmbedEmbedder3Disable
+				INTEGER,
+			iquav01EmbedEmbedder4Embed4Source
+				INTEGER,
+			iquav01EmbedEmbedder4PairSelection
+				INTEGER,
+			iquav01EmbedEmbedder4Disable
+				INTEGER,
+			iquav01Mixer1Mix1Source1
+				INTEGER,
+			iquav01MixMixer1Gain1
+				INTEGER,
+			iquav01Mixer1Mix1Source2
+				INTEGER,
+			iquav01MixMixer1Gain2
+				INTEGER,
+			iquav01Mixer1Mix1Source3
+				INTEGER,
+			iquav01MixMixer1Gain3
+				INTEGER,
+			iquav01Mixer1Mix1Source4
+				INTEGER,
+			iquav01MixMixer1Gain4
+				INTEGER,
+			iquav01Mixer2Mix2Source1
+				INTEGER,
+			iquav01MixMixer2Gain1
+				INTEGER,
+			iquav01Mixer2Mix2Source2
+				INTEGER,
+			iquav01MixMixer2Gain2
+				INTEGER,
+			iquav01Mixer2Mix2Source3
+				INTEGER,
+			iquav01MixMixer2Gain3
+				INTEGER,
+			iquav01Mixer2Mix2Source4
+				INTEGER,
+			iquav01MixMixer2Gain4
+				INTEGER,
+			iquav01Mixer3Mix3Source1
+				INTEGER,
+			iquav01MixMixer3Gain1
+				INTEGER,
+			iquav01Mixer3Mix3Source2
+				INTEGER,
+			iquav01MixMixer3Gain2
+				INTEGER,
+			iquav01Mixer3Mix3Source3
+				INTEGER,
+			iquav01MixMixer3Gain3
+				INTEGER,
+			iquav01Mixer3Mix3Source4
+				INTEGER,
+			iquav01MixMixer3Gain4
+				INTEGER,
+			iquav01Mixer4Mix4Source1
+				INTEGER,
+			iquav01MixMixer4Gain1
+				INTEGER,
+			iquav01Mixer4Mix4Source2
+				INTEGER,
+			iquav01MixMixer4Gain2
+				INTEGER,
+			iquav01Mixer4Mix4Source3
+				INTEGER,
+			iquav01MixMixer4Gain3
+				INTEGER,
+			iquav01Mixer4Mix4Source4
+				INTEGER,
+			iquav01MixMixer4Gain4
+				INTEGER,
+			iquav01BusSourceBusALSource
+				INTEGER,
+			iquav01BusSourceBusARSource
+				INTEGER,
+			iquav01BusSourceBusBLSource
+				INTEGER,
+			iquav01BusSourceBusBRSource
+				INTEGER,
+			iquav01BusSourceBusCLSource
+				INTEGER,
+			iquav01BusSourceBusCRSource
+				INTEGER,
+			iquav01BusSourceBusDLSource
+				INTEGER,
+			iquav01BusSourceBusDRSource
+				INTEGER,
+			iquav01BusesBusProcAmpStereoA
+				INTEGER,
+			iquav01BusProcAmpBusALGainBusAL
+				INTEGER,
+			iquav01BusProcAmpBusALInvert
+				INTEGER,
+			iquav01BusProcAmpBusALMute
+				INTEGER,
+			iquav01BusProcAmpBusARGainBusAR
+				INTEGER,
+			iquav01BusProcAmpBusARInvert
+				INTEGER,
+			iquav01BusProcAmpBusARMute
+				INTEGER,
+			iquav01BusesBusProcAmpStereoB
+				INTEGER,
+			iquav01BusProcAmpBusBLGainBusBL
+				INTEGER,
+			iquav01BusProcAmpBusBLInvert
+				INTEGER,
+			iquav01BusProcAmpBusBLMute
+				INTEGER,
+			iquav01BusProcAmpBusBRGainBusBR
+				INTEGER,
+			iquav01BusProcAmpBusBRInvert
+				INTEGER,
+			iquav01BusProcAmpBusBRMute
+				INTEGER,
+			iquav01BusesBusProcAmpStereoC
+				INTEGER,
+			iquav01BusProcAmpBusCLGainBusCL
+				INTEGER,
+			iquav01BusProcAmpBusCLInvert
+				INTEGER,
+			iquav01BusProcAmpBusCLMute
+				INTEGER,
+			iquav01BusProcAmpBusCRGainBusCR
+				INTEGER,
+			iquav01BusProcAmpBusCRInvert
+				INTEGER,
+			iquav01BusProcAmpBusCRMute
+				INTEGER,
+			iquav01BusesBusProcAmpStereoD
+				INTEGER,
+			iquav01BusProcAmpBusDLGainBusDL
+				INTEGER,
+			iquav01BusProcAmpBusDLInvert
+				INTEGER,
+			iquav01BusProcAmpBusDLMute
+				INTEGER,
+			iquav01BusProcAmpBusDRGainBusDR
+				INTEGER,
+			iquav01BusProcAmpBusDRInvert
+				INTEGER,
+			iquav01BusProcAmpBusDRMute
+				INTEGER,
+			iquav01AudioDelayAESInput1Delay
+				INTEGER,
+			iquav01AudioDelayAESInput2Delay
+				INTEGER,
+			iquav01DelayDelaySelectInternal
+				INTEGER,
+			iquav01DelayDelaySelectManual
+				INTEGER,
+			iquav01DelayDelaySelectRolltrack14
+				INTEGER,
+			iquav01DelayDelaySelectRolltrack15
+				INTEGER,
+			iquav01DelayDelaySelectRolltrack16
+				INTEGER,
+			iquav01DelayDelaySelectRolltrack17
+				INTEGER,
+			iquav01DelayDelaySelectGPIDelaySelect
+				INTEGER,
+			iquav01DelayDelayStatusManual
+				INTEGER,
+			iquav01DelayDelayStatusInternal
+				RollCallString,
+			iquav01DelayDelayStatusRolltrack14
+				RollCallString,
+			iquav01DelayDelayStatusRolltrack15
+				RollCallString,
+			iquav01DelayDelayStatusRolltrack16
+				RollCallString,
+			iquav01DelayDelayStatusRolltrack17
+				RollCallString,
+			iquav01DelayDelayStatusGPIDelayDisplay
+				RollCallString,
+			iquav01DelayDelayStatusTotalDelayDisplay
+				RollCallString,
+			iquav01AudioMonitorSilenceLevel
+				INTEGER,
+			iquav01AudioMonitorLowLevel
+				INTEGER,
+			iquav01AudioMonitorHighLevel
+				INTEGER,
+			iquav01AudioMonitorOverloadLevel
+				INTEGER,
+			iquav01AudioMonitorWarningTimer
+				INTEGER,
+			iquav01Freeze
+				INTEGER,
+			iquav01Genlock
+				INTEGER,
+			iquav01GenlockGenlockPhase625HPhase
+				INTEGER,
+			iquav01GenlockGenlockPhase625VPhase
+				INTEGER,
+			iquav01GenlockGenlockPhase525HPhase
+				INTEGER,
+			iquav01GenlockGenlockPhase525VPhase
+				INTEGER,
+			iquav01GenlockFreerunFreq
+				INTEGER,
+			iquav01GenlockFrameDelay
+				INTEGER,
+			iquav01GenlockDelayPhase625HPhase
+				INTEGER,
+			iquav01GenlockDelayPhase625VPhase
+				INTEGER,
+			iquav01GenlockDelayPhase525HPhase
+				INTEGER,
+			iquav01GenlockDelayPhase525VPhase
+				INTEGER,
+			iquav01UserMemMemory1Save1
+				INTEGER,
+			iquav01UserMemMemory1Recall1
+				INTEGER,
+			iquav01UserMemMemory1Clear1
+				INTEGER,
+			iquav01UserMemMemory1Name1
+				RollCallString,
+			iquav01UserMemMemory2Save2
+				INTEGER,
+			iquav01UserMemMemory2Recall2
+				INTEGER,
+			iquav01UserMemMemory2Clear2
+				INTEGER,
+			iquav01UserMemMemory2Name2
+				RollCallString,
+			iquav01UserMemMemory3Save3
+				INTEGER,
+			iquav01UserMemMemory3Recall3
+				INTEGER,
+			iquav01UserMemMemory3Clear3
+				INTEGER,
+			iquav01UserMemMemory3Name3
+				RollCallString,
+			iquav01UserMemMemory4Save4
+				INTEGER,
+			iquav01UserMemMemory4Recall4
+				INTEGER,
+			iquav01UserMemMemory4Clear4
+				INTEGER,
+			iquav01UserMemMemory4Name4
+				RollCallString,
+			iquav01UserMemMemory5Save5
+				INTEGER,
+			iquav01UserMemMemory5Recall5
+				INTEGER,
+			iquav01UserMemMemory5Clear5
+				INTEGER,
+			iquav01UserMemMemory5Name5
+				RollCallString,
+			iquav01UserMemMemory6Save6
+				INTEGER,
+			iquav01UserMemMemory6Recall6
+				INTEGER,
+			iquav01UserMemMemory6Clear6
+				INTEGER,
+			iquav01UserMemMemory6Name6
+				RollCallString,
+			iquav01UserMemMemory7Save7
+				INTEGER,
+			iquav01UserMemMemory7Recall7
+				INTEGER,
+			iquav01UserMemMemory7Clear7
+				INTEGER,
+			iquav01UserMemMemory7Name7
+				RollCallString,
+			iquav01UserMemMemory8Save8
+				INTEGER,
+			iquav01UserMemMemory8Recall8
+				INTEGER,
+			iquav01UserMemMemory8Clear8
+				INTEGER,
+			iquav01UserMemMemory8Name8
+				RollCallString,
+			iquav01SetupPatternAnimatedPattern
+				INTEGER,
+			iquav01SetupPatternEnablePattern
+				INTEGER,
+			iquav01SetupPattern
+				INTEGER,
+			iquav01SetupCaptionEditCaption
+				RollCallString,
+			iquav01SetupCaption
+				INTEGER,
+			iquav01BlankingVIPass525BlankAll
+				INTEGER,
+			iquav01BlankingVIPass525PassAll
+				INTEGER,
+			iquav01BlankingVIPass525Line11
+				INTEGER,
+			iquav01BlankingVIPass525Line274
+				INTEGER,
+			iquav01BlankingVIPass525Line12
+				INTEGER,
+			iquav01BlankingVIPass525Line275
+				INTEGER,
+			iquav01BlankingVIPass525Line13
+				INTEGER,
+			iquav01BlankingVIPass525Line276
+				INTEGER,
+			iquav01BlankingVIPass525Line14
+				INTEGER,
+			iquav01BlankingVIPass525Line277
+				INTEGER,
+			iquav01BlankingVIPass525Line15
+				INTEGER,
+			iquav01BlankingVIPass525Line278
+				INTEGER,
+			iquav01BlankingVIPass525Line16
+				INTEGER,
+			iquav01BlankingVIPass525Line279
+				INTEGER,
+			iquav01BlankingVIPass525Line17
+				INTEGER,
+			iquav01BlankingVIPass525Line280
+				INTEGER,
+			iquav01BlankingVIPass525Line18
+				INTEGER,
+			iquav01BlankingVIPass525Line281
+				INTEGER,
+			iquav01BlankingVIPass525Line19
+				INTEGER,
+			iquav01BlankingVIPass525Line282
+				INTEGER,
+			iquav01BlankingVIPass525Line20
+				INTEGER,
+			iquav01BlankingVIPass525Line283
+				INTEGER,
+			iquav01BlankingVIPass525Line21
+				INTEGER,
+			iquav01BlankingVIPass625BlankAll
+				INTEGER,
+			iquav01BlankingVIPass625PassAll
+				INTEGER,
+			iquav01BlankingVIPass625Line7
+				INTEGER,
+			iquav01BlankingVIPass625Line320
+				INTEGER,
+			iquav01BlankingVIPass625Line8
+				INTEGER,
+			iquav01BlankingVIPass625Line321
+				INTEGER,
+			iquav01BlankingVIPass625Line9
+				INTEGER,
+			iquav01BlankingVIPass625Line322
+				INTEGER,
+			iquav01BlankingVIPass625Line10
+				INTEGER,
+			iquav01BlankingVIPass625Line323
+				INTEGER,
+			iquav01BlankingVIPass625Line11
+				INTEGER,
+			iquav01BlankingVIPass625Line324
+				INTEGER,
+			iquav01BlankingVIPass625Line12
+				INTEGER,
+			iquav01BlankingVIPass625Line325
+				INTEGER,
+			iquav01BlankingVIPass625Line13
+				INTEGER,
+			iquav01BlankingVIPass625Line326
+				INTEGER,
+			iquav01BlankingVIPass625Line14
+				INTEGER,
+			iquav01BlankingVIPass625Line327
+				INTEGER,
+			iquav01BlankingVIPass625Line15
+				INTEGER,
+			iquav01BlankingVIPass625Line328
+				INTEGER,
+			iquav01BlankingVIPass625Line16
+				INTEGER,
+			iquav01BlankingVIPass625Line329
+				INTEGER,
+			iquav01BlankingVIPass625Line17
+				INTEGER,
+			iquav01BlankingVIPass625Line330
+				INTEGER,
+			iquav01BlankingVIPass625Line18
+				INTEGER,
+			iquav01BlankingVIPass625Line331
+				INTEGER,
+			iquav01BlankingVIPass625Line19
+				INTEGER,
+			iquav01BlankingVIPass625Line332
+				INTEGER,
+			iquav01BlankingVIPass625Line20
+				INTEGER,
+			iquav01BlankingVIPass625Line333
+				INTEGER,
+			iquav01BlankingVIPass625Line21
+				INTEGER,
+			iquav01BlankingVIPass625Line334
+				INTEGER,
+			iquav01BlankingVIPass625Line22
+				INTEGER,
+			iquav01BlankingVIPass625Line335
+				INTEGER,
+			iquav01BlankingVIPass625Line23
+				INTEGER,
+			iquav01SetupBlankingHancBlank
+				INTEGER,
+			iquav01SetupAudioToneIdentEnable
+				INTEGER,
+			iquav01SetupAudioToneFrequency
+				INTEGER,
+			iquav01SetupAudioToneFrequencyR
+				INTEGER,
+			iquav01SetupAudioToneHeadRoom
+				INTEGER,
+			iquav01SetupAudioToneLineUp
+				INTEGER,
+			iquav01SetupSlewRate
+				INTEGER,
+			iquav01SetupChannelStatus
+				RollCallString,
+			iquav01GPIIOGPIInputDisableInputs
+				INTEGER,
+			iquav01GPIIOGPIInputInputTimerEnable
+				INTEGER,
+			iquav01GPIIOGPIInputTimerActiveHigh
+				INTEGER,
+			iquav01GPIIOGPIInputInputSelection
+				INTEGER,
+			iquav01GPIIOGPIInputGPIInStatus
+				RollCallString,
+			iquav01GPIIOGPIOutputOutActiveHigh
+				INTEGER,
+			iquav01GPIIOGPIOutputOutputSelection
+				INTEGER,
+			iquav01GPIIOGPIOutputGPIOutStatus
+				RollCallString,
+			iquav01GPIIOGPIInputOutputGPIO1
+				INTEGER,
+			iquav01SetupGPIIOInputSelection
+				INTEGER,
+			iquav01SetupGPIIOOutputSelection
+				INTEGER,
+			iquav01SetupRollTrackRollTrackIndex
+				INTEGER,
+			iquav01SetupRollTrackRollTrackSource
+				INTEGER,
+			iquav01SetupRollTrackRollTrackDisable
+				INTEGER,
+			iquav01SetupRollTrackRollTrackAddress
+				RollCallString,
+			iquav01SetupRollTrackRollTrackCommand
+				RollCallString,
+			iquav01SetupRollTrackRollTrackSending
+				RollCallString,
+			iquav01SetupRollTrackRollTrackStatus
+				RollCallString,
+			iquav01SetupRollTrackRollTrack_Index
+				INTEGER,
+			iquav01SetupRollTrackRollTrack_Source
+				INTEGER,
+			iquav01SetupRollTrackRollTrack_Address
+				RollCallString,
+			iquav01SetupRollTrackRollTrack_Command
+				RollCallString,
+			iquav01SetupLoggingInput
+				INTEGER,
+			iquav01SetupLoggingStd
+				INTEGER,
+			iquav01SetupLoggingInput1
+				INTEGER,
+			iquav01SetupLoggingStd1
+				INTEGER,
+			iquav01SetupLoggingInput2
+				INTEGER,
+			iquav01SetupLoggingStd2
+				INTEGER,
+			iquav01SetupLoggingReference
+				INTEGER,
+			iquav01SetupLoggingEDH
+				INTEGER,
+			iquav01SetupLoggingEDHErrors
+				INTEGER,
+			iquav01SetupLoggingRollTrack
+				INTEGER,
+			iquav01SetupLoggingDeembed1
+				INTEGER,
+			iquav01SetupLoggingDeembed2
+				INTEGER,
+			iquav01SetupLoggingDeembed3
+				INTEGER,
+			iquav01SetupLoggingDeembed4
+				INTEGER,
+			iquav01SetupLoggingDeembed5
+				INTEGER,
+			iquav01SetupLoggingDeembed6
+				INTEGER,
+			iquav01SetupLoggingDeembed7
+				INTEGER,
+			iquav01SetupLoggingDeembed8
+				INTEGER,
+			iquav01SetupLoggingnPCM1
+				INTEGER,
+			iquav01SetupLoggingnPCM2
+				INTEGER,
+			iquav01SetupLoggingnPCM3
+				INTEGER,
+			iquav01SetupLoggingnPCM4
+				INTEGER,
+			iquav01SetupLoggingnPCM5
+				INTEGER,
+			iquav01SetupLoggingnPCM6
+				INTEGER,
+			iquav01SetupLoggingnPCM7
+				INTEGER,
+			iquav01SetupLoggingnPCM8
+				INTEGER,
+			iquav01SetupLoggingAES1
+				INTEGER,
+			iquav01SetupLoggingAES2
+				INTEGER,
+			iquav01SetupLoggingBusAL
+				INTEGER,
+			iquav01SetupLoggingBusAR
+				INTEGER,
+			iquav01SetupLoggingBusBL
+				INTEGER,
+			iquav01SetupLoggingBusBR
+				INTEGER,
+			iquav01SetupLoggingBusCL
+				INTEGER,
+			iquav01SetupLoggingBusCR
+				INTEGER,
+			iquav01SetupLoggingBusDL
+				INTEGER,
+			iquav01SetupLoggingBusDR
+				INTEGER,
+			iquav01SetupLoggingFault
+				INTEGER,
+			iquav01SetupLoggingStatusINPUT
+				RollCallString,
+			iquav01SetupLoggingStatusSTD
+				RollCallString,
+			iquav01SetupLoggingStatusINPUT1
+				RollCallString,
+			iquav01SetupLoggingStatusSTD1
+				RollCallString,
+			iquav01SetupLoggingStatusINPUT2
+				RollCallString,
+			iquav01SetupLoggingStatusSTD2
+				RollCallString,
+			iquav01SetupLoggingStatusEXTREF
+				RollCallString,
+			iquav01SetupLoggingStatusEDH
+				RollCallString,
+			iquav01SetupLoggingStatusERRSEC
+				RollCallString,
+			iquav01SetupLoggingStatusROLLTRACK
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED1
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED2
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED3
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED4
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED5
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED6
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED7
+				RollCallString,
+			iquav01SetupLoggingStatusDEEMBED8
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM1
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM2
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM3
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM4
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM5
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM6
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM7
+				RollCallString,
+			iquav01SetupLoggingStatusNPCM8
+				RollCallString,
+			iquav01SetupLoggingStatusAES1
+				RollCallString,
+			iquav01SetupLoggingStatusAES2
+				RollCallString,
+			iquav01SetupLoggingStatusBUSAL
+				RollCallString,
+			iquav01SetupLoggingStatusBUSAR
+				RollCallString,
+			iquav01SetupLoggingStatusBUSBL
+				RollCallString,
+			iquav01SetupLoggingStatusBUSBR
+				RollCallString,
+			iquav01SetupLoggingStatusBUSCL
+				RollCallString,
+			iquav01SetupLoggingStatusBUSCR
+				RollCallString,
+			iquav01SetupLoggingStatusBUSDL
+				RollCallString,
+			iquav01SetupLoggingStatusBUSDR
+				RollCallString,
+			iquav01SetupLoggingStatusFAULT
+				RollCallString,
+			iquav01SetupInformationWindow
+				INTEGER,
+			iquav01SetupInformationWindowResetErrors
+				INTEGER,
+			iquav01SetupDefaultOutput
+				INTEGER,
+			iquav01SetupDefaultOutputPattern
+				INTEGER,
+			iquav01SetupUnitSoftwareVersion
+				RollCallString,
+			iquav01SetupUnitSerialNo
+				RollCallString,
+			iquav01SetupUnitPresetUnit
+				INTEGER,
+			iquav01SetupUnitRestart
+				INTEGER,
+			iquav01SetupUnitBuildNo
+				RollCallString
+		}
+
+	iquav01SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iquav01CmdEntry 0 }
+
+
+	iquav01VideoInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_SDI(0),
+							val_Input_2_SDI(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Video- Input
+					Input 1 SDI  cmdID= 2251  value= 0  
+					Input 2 SDI  cmdID= 2251  value= 1  "
+		::= { iquav01CmdEntry 2251 }
+
+
+	iquav01VideoInput525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- Input
+					525  cmdID= 1405 "
+		::= { iquav01CmdEntry 1405 }
+
+
+	iquav01VideoInput625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- Input
+					625  cmdID= 1406 "
+		::= { iquav01CmdEntry 1406 }
+
+
+	iquav01VideoProcAmp1In1ProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- ProcAmp 1
+					In1 ProcAmp Enable  cmdID= 2864 "
+		::= { iquav01CmdEntry 2864 }
+
+
+	iquav01VideoProcAmp1LumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Luma Gain  cmdID= 2707  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iquav01CmdEntry 2707 }
+
+
+	iquav01VideoProcAmp1ChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Chroma Gain  cmdID= 2706  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iquav01CmdEntry 2706 }
+
+
+	iquav01VideoProcAmp1BlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Black Level  cmdID= 2708  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iquav01CmdEntry 2708 }
+
+
+	iquav01VideoProcAmp1PicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Picture Position  cmdID= 2709  min= -592  max= 592  step= 148  format= %3.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iquav01CmdEntry 2709 }
+
+
+	iquav01VideoProcAmp1YCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 1
+					Y/C Timing  cmdID= 2924  min= -592  max= 592  step= 148  format= %3.0fns  div_scale= 1 
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iquav01CmdEntry 2924 }
+
+
+	iquav01VideoProcAmp2In2ProcAmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Video- ProcAmp 2
+					In2 ProcAmp Enable  cmdID= 2865 "
+		::= { iquav01CmdEntry 2865 }
+
+
+	iquav01VideoProcAmp2LumaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Luma Gain  cmdID= 2711  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iquav01CmdEntry 2711 }
+
+
+	iquav01VideoProcAmp2ChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Chroma Gain  cmdID= 2710  min= -60  max= 60  step= 1  format= %1.1f dB  div_scale= 10 
+					Min = -6.0 dB  Max = 6.0 dB  Step = 0.1 dB "
+		::= { iquav01CmdEntry 2710 }
+
+
+	iquav01VideoProcAmp2BlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Black Level  cmdID= 2712  min= -1000  max= 1000  step= 8  format= %1.1f mV  div_scale= 10 
+					Min = -100.0 mV  Max = 100.0 mV  Step = 0.8 mV "
+		::= { iquav01CmdEntry 2712 }
+
+
+	iquav01VideoProcAmp2PicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Picture Position  cmdID= 2713  min= -592  max= 592  step= 148  format= %3.0f ns  div_scale= 1 
+					Min = -592 ns  Max = 592 ns  Step = 148 ns "
+		::= { iquav01CmdEntry 2713 }
+
+
+	iquav01VideoProcAmp2YCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Video- ProcAmp 2
+					Y/C Timing  cmdID= 2925  min= -592  max= 592  step= 148  format= %3.0fns  div_scale= 1 
+					Min = -592ns  Max = 592ns  Step = 148ns "
+		::= { iquav01CmdEntry 2925 }
+
+
+	iquav01AudioDeembed OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_SDI(0),
+							val_Input_2_SDI(1),
+							val_Follow_Video(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Audio- De-embed
+					Input 1 SDI  cmdID= 2923  value= 0  
+					Input 2 SDI  cmdID= 2923  value= 1  
+					Follow Video  cmdID= 2923  value= 2  "
+		::= { iquav01CmdEntry 2923 }
+
+
+	iquav01AudioAESOutputAES1Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_DeEmbed_1(6),
+							val_DeEmbed_2(7),
+							val_DeEmbed_3(8),
+							val_DeEmbed_4(9),
+							val_DeEmbed_5(10),
+							val_DeEmbed_6(11),
+							val_DeEmbed_7(12),
+							val_DeEmbed_8(13),
+							val_Test_tone(14),
+							val_Silence(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- AES Output
+					AES 1 Source  cmdID= 2951 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					DeEmbed 1  value= 6  
+					DeEmbed 2  value= 7  
+					DeEmbed 3  value= 8  
+					DeEmbed 4  value= 9  
+					DeEmbed 5  value= 10  
+					DeEmbed 6  value= 11  
+					DeEmbed 7  value= 12  
+					DeEmbed 8  value= 13  
+					Test tone  value= 14  
+					Silence  value= 15  "
+		::= { iquav01CmdEntry 2951 }
+
+
+	iquav01AudioAESOutputAES2Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_DeEmbed_1(6),
+							val_DeEmbed_2(7),
+							val_DeEmbed_3(8),
+							val_DeEmbed_4(9),
+							val_DeEmbed_5(10),
+							val_DeEmbed_6(11),
+							val_DeEmbed_7(12),
+							val_DeEmbed_8(13),
+							val_Test_tone(14),
+							val_Silence(15)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- AES Output
+					AES 2 Source  cmdID= 2952 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					DeEmbed 1  value= 6  
+					DeEmbed 2  value= 7  
+					DeEmbed 3  value= 8  
+					DeEmbed 4  value= 9  
+					DeEmbed 5  value= 10  
+					DeEmbed 6  value= 11  
+					DeEmbed 7  value= 12  
+					DeEmbed 8  value= 13  
+					Test tone  value= 14  
+					Silence  value= 15  "
+		::= { iquav01CmdEntry 2952 }
+
+
+	iquav01AudioAnalogOutAnalog1Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_Test_tone(4),
+							val_Silence(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Analog Out
+					Analog 1 Source  cmdID= 2961 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					Test tone  value= 4  
+					Silence  value= 5  "
+		::= { iquav01CmdEntry 2961 }
+
+
+	iquav01AudioAnalogOutAnalog2Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_Test_tone(4),
+							val_Silence(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Analog Out
+					Analog 2 Source  cmdID= 2962 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					Test tone  value= 4  
+					Silence  value= 5  "
+		::= { iquav01CmdEntry 2962 }
+
+
+	iquav01AudioProcAmpStereo1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 1  cmdID= 3324 "
+		::= { iquav01CmdEntry 3324 }
+
+
+	iquav01ProcAmpDeembed1LGainDeembed1L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 1L  cmdID= 3088  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3088 }
+
+
+	iquav01ProcAmpDeembed1LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3168 "
+		::= { iquav01CmdEntry 3168 }
+
+
+	iquav01ProcAmpDeembed1LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3248 "
+		::= { iquav01CmdEntry 3248 }
+
+
+	iquav01ProcAmpDeembed1RGainDeembed1R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 1R  cmdID= 3089  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3089 }
+
+
+	iquav01ProcAmpDeembed1RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3169 "
+		::= { iquav01CmdEntry 3169 }
+
+
+	iquav01ProcAmpDeembed1RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3249 "
+		::= { iquav01CmdEntry 3249 }
+
+
+	iquav01AudioProcAmpStereo2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 2  cmdID= 3325 "
+		::= { iquav01CmdEntry 3325 }
+
+
+	iquav01ProcAmpDeembed2LGainDeembed2L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 2L  cmdID= 3090  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3090 }
+
+
+	iquav01ProcAmpDeembed2LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3170 "
+		::= { iquav01CmdEntry 3170 }
+
+
+	iquav01ProcAmpDeembed2LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3250 "
+		::= { iquav01CmdEntry 3250 }
+
+
+	iquav01ProcAmpDeembed2RGainDeembed2R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 2R  cmdID= 3091  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3091 }
+
+
+	iquav01ProcAmpDeembed2RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3171 "
+		::= { iquav01CmdEntry 3171 }
+
+
+	iquav01ProcAmpDeembed2RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3251 "
+		::= { iquav01CmdEntry 3251 }
+
+
+	iquav01AudioProcAmpStereo3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 3  cmdID= 3326 "
+		::= { iquav01CmdEntry 3326 }
+
+
+	iquav01ProcAmpDeembed3LGainDeembed3L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 3L  cmdID= 3092  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3092 }
+
+
+	iquav01ProcAmpDeembed3LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3172 "
+		::= { iquav01CmdEntry 3172 }
+
+
+	iquav01ProcAmpDeembed3LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3252 "
+		::= { iquav01CmdEntry 3252 }
+
+
+	iquav01ProcAmpDeembed3RGainDeembed3R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 3R  cmdID= 3093  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3093 }
+
+
+	iquav01ProcAmpDeembed3RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3173 "
+		::= { iquav01CmdEntry 3173 }
+
+
+	iquav01ProcAmpDeembed3RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3253 "
+		::= { iquav01CmdEntry 3253 }
+
+
+	iquav01AudioProcAmpStereo4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 4  cmdID= 3327 "
+		::= { iquav01CmdEntry 3327 }
+
+
+	iquav01ProcAmpDeembed4LGainDeembed4L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 4L  cmdID= 3094  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3094 }
+
+
+	iquav01ProcAmpDeembed4LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3174 "
+		::= { iquav01CmdEntry 3174 }
+
+
+	iquav01ProcAmpDeembed4LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3254 "
+		::= { iquav01CmdEntry 3254 }
+
+
+	iquav01ProcAmpDeembed4RGainDeembed4R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 4R  cmdID= 3095  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3095 }
+
+
+	iquav01ProcAmpDeembed4RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3175 "
+		::= { iquav01CmdEntry 3175 }
+
+
+	iquav01ProcAmpDeembed4RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3255 "
+		::= { iquav01CmdEntry 3255 }
+
+
+	iquav01AudioProcAmpStereo5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 5  cmdID= 3328 "
+		::= { iquav01CmdEntry 3328 }
+
+
+	iquav01ProcAmpDeembed5LGainDeembed5L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 5L  cmdID= 3096  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3096 }
+
+
+	iquav01ProcAmpDeembed5LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3176 "
+		::= { iquav01CmdEntry 3176 }
+
+
+	iquav01ProcAmpDeembed5LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3256 "
+		::= { iquav01CmdEntry 3256 }
+
+
+	iquav01ProcAmpDeembed5RGainDeembed5R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 5R  cmdID= 3097  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3097 }
+
+
+	iquav01ProcAmpDeembed5RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3177 "
+		::= { iquav01CmdEntry 3177 }
+
+
+	iquav01ProcAmpDeembed5RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3257 "
+		::= { iquav01CmdEntry 3257 }
+
+
+	iquav01AudioProcAmpStereo6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 6  cmdID= 3329 "
+		::= { iquav01CmdEntry 3329 }
+
+
+	iquav01ProcAmpDeembed6LGainDeembed6L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 6L  cmdID= 3098  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3098 }
+
+
+	iquav01ProcAmpDeembed6LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3178 "
+		::= { iquav01CmdEntry 3178 }
+
+
+	iquav01ProcAmpDeembed6LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3258 "
+		::= { iquav01CmdEntry 3258 }
+
+
+	iquav01ProcAmpDeembed6RGainDeembed6R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 6R  cmdID= 3099  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3099 }
+
+
+	iquav01ProcAmpDeembed6RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3179 "
+		::= { iquav01CmdEntry 3179 }
+
+
+	iquav01ProcAmpDeembed6RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3259 "
+		::= { iquav01CmdEntry 3259 }
+
+
+	iquav01AudioProcAmpStereo7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 7  cmdID= 3330 "
+		::= { iquav01CmdEntry 3330 }
+
+
+	iquav01ProcAmpDeembed7LGainDeembed7L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 7L  cmdID= 3100  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3100 }
+
+
+	iquav01ProcAmpDeembed7LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3180 "
+		::= { iquav01CmdEntry 3180 }
+
+
+	iquav01ProcAmpDeembed7LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3260 "
+		::= { iquav01CmdEntry 3260 }
+
+
+	iquav01ProcAmpDeembed7RGainDeembed7R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 7R  cmdID= 3101  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3101 }
+
+
+	iquav01ProcAmpDeembed7RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3181 "
+		::= { iquav01CmdEntry 3181 }
+
+
+	iquav01ProcAmpDeembed7RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3261 "
+		::= { iquav01CmdEntry 3261 }
+
+
+	iquav01AudioProcAmpStereo8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 8  cmdID= 3331 "
+		::= { iquav01CmdEntry 3331 }
+
+
+	iquav01ProcAmpDeembed8LGainDeembed8L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 8L  cmdID= 3102  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3102 }
+
+
+	iquav01ProcAmpDeembed8LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3182 "
+		::= { iquav01CmdEntry 3182 }
+
+
+	iquav01ProcAmpDeembed8LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3262 "
+		::= { iquav01CmdEntry 3262 }
+
+
+	iquav01ProcAmpDeembed8RGainDeembed8R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain De-embed 8R  cmdID= 3103  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3103 }
+
+
+	iquav01ProcAmpDeembed8RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3183 "
+		::= { iquav01CmdEntry 3183 }
+
+
+	iquav01ProcAmpDeembed8RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3263 "
+		::= { iquav01CmdEntry 3263 }
+
+
+	iquav01ProcAmpAES1Stereo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 1  cmdID= 3332 "
+		::= { iquav01CmdEntry 3332 }
+
+
+	iquav01ProcAmpAES1LGainAES1L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain AES 1L  cmdID= 3104  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3104 }
+
+
+	iquav01ProcAmpAES1LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3184 "
+		::= { iquav01CmdEntry 3184 }
+
+
+	iquav01ProcAmpAES1LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3264 "
+		::= { iquav01CmdEntry 3264 }
+
+
+	iquav01ProcAmpAES1RGainAES1R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain AES 1R  cmdID= 3105  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3105 }
+
+
+	iquav01ProcAmpAES1RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3185 "
+		::= { iquav01CmdEntry 3185 }
+
+
+	iquav01ProcAmpAES1RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3265 "
+		::= { iquav01CmdEntry 3265 }
+
+
+	iquav01ProcAmpAES2Stereo OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Stereo 2  cmdID= 3333 "
+		::= { iquav01CmdEntry 3333 }
+
+
+	iquav01ProcAmpAES2LGainAES2L OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain AES 2L  cmdID= 3106  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3106 }
+
+
+	iquav01ProcAmpAES2LInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3186 "
+		::= { iquav01CmdEntry 3186 }
+
+
+	iquav01ProcAmpAES2LMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3266 "
+		::= { iquav01CmdEntry 3266 }
+
+
+	iquav01ProcAmpAES2RGainAES2R OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- ProcAmp
+					Gain AES 2R  cmdID= 3107  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3107 }
+
+
+	iquav01ProcAmpAES2RInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Invert  cmdID= 3187 "
+		::= { iquav01CmdEntry 3187 }
+
+
+	iquav01ProcAmpAES2RMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- ProcAmp
+					Mute  cmdID= 3267 "
+		::= { iquav01CmdEntry 3267 }
+
+
+	iquav01EmbedEmbedder1Embed1Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_Test_tone(6),
+							val_Silence(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 1
+					Embed 1 Source  cmdID= 2941 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					Test tone  value= 6  
+					Silence  value= 7  "
+		::= { iquav01CmdEntry 2941 }
+
+
+	iquav01EmbedEmbedder1PairSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_Pair_1(0),
+							val_Select_Pair_2(1),
+							val_Select_Pair_3(2),
+							val_Select_Pair_4(3),
+							val_Select_Pair_5(4),
+							val_Select_Pair_6(5),
+							val_Select_Pair_7(6),
+							val_Select_Pair_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 1
+					Pair Selection  cmdID= 2531 
+					Select Pair 1  value= 0  
+					Select Pair 2  value= 1  
+					Select Pair 3  value= 2  
+					Select Pair 4  value= 3  
+					Select Pair 5  value= 4  
+					Select Pair 6  value= 5  
+					Select Pair 7  value= 6  
+					Select Pair 8  value= 7  "
+		::= { iquav01CmdEntry 2531 }
+
+
+	iquav01EmbedEmbedder1Disable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embed- Embedder 1
+					Disable  cmdID= 2541 "
+		::= { iquav01CmdEntry 2541 }
+
+
+	iquav01EmbedEmbedder2Embed2Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_Test_tone(6),
+							val_Silence(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 2
+					Embed 2 Source  cmdID= 2942 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					Test tone  value= 6  
+					Silence  value= 7  "
+		::= { iquav01CmdEntry 2942 }
+
+
+	iquav01EmbedEmbedder2PairSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_Pair_1(0),
+							val_Select_Pair_2(1),
+							val_Select_Pair_3(2),
+							val_Select_Pair_4(3),
+							val_Select_Pair_5(4),
+							val_Select_Pair_6(5),
+							val_Select_Pair_7(6),
+							val_Select_Pair_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 2
+					Pair Selection  cmdID= 2532 
+					Select Pair 1  value= 0  
+					Select Pair 2  value= 1  
+					Select Pair 3  value= 2  
+					Select Pair 4  value= 3  
+					Select Pair 5  value= 4  
+					Select Pair 6  value= 5  
+					Select Pair 7  value= 6  
+					Select Pair 8  value= 7  "
+		::= { iquav01CmdEntry 2532 }
+
+
+	iquav01EmbedEmbedder2Disable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embed- Embedder 2
+					Disable  cmdID= 2542 "
+		::= { iquav01CmdEntry 2542 }
+
+
+	iquav01EmbedEmbedder3Embed3Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_Test_tone(6),
+							val_Silence(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 3
+					Embed 3 Source  cmdID= 2943 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					Test tone  value= 6  
+					Silence  value= 7  "
+		::= { iquav01CmdEntry 2943 }
+
+
+	iquav01EmbedEmbedder3PairSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_Pair_1(0),
+							val_Select_Pair_2(1),
+							val_Select_Pair_3(2),
+							val_Select_Pair_4(3),
+							val_Select_Pair_5(4),
+							val_Select_Pair_6(5),
+							val_Select_Pair_7(6),
+							val_Select_Pair_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 3
+					Pair Selection  cmdID= 2533 
+					Select Pair 1  value= 0  
+					Select Pair 2  value= 1  
+					Select Pair 3  value= 2  
+					Select Pair 4  value= 3  
+					Select Pair 5  value= 4  
+					Select Pair 6  value= 5  
+					Select Pair 7  value= 6  
+					Select Pair 8  value= 7  "
+		::= { iquav01CmdEntry 2533 }
+
+
+	iquav01EmbedEmbedder3Disable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embed- Embedder 3
+					Disable  cmdID= 2543 "
+		::= { iquav01CmdEntry 2543 }
+
+
+	iquav01EmbedEmbedder4Embed4Source OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BUS_A(0),
+							val_BUS_B(1),
+							val_BUS_C(2),
+							val_BUS_D(3),
+							val_AES_1_Direct(4),
+							val_AES_2_Direct(5),
+							val_Test_tone(6),
+							val_Silence(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 4
+					Embed 4 Source  cmdID= 2944 
+					BUS A  value= 0  
+					BUS B  value= 1  
+					BUS C  value= 2  
+					BUS D  value= 3  
+					AES 1 Direct  value= 4  
+					AES 2 Direct  value= 5  
+					Test tone  value= 6  
+					Silence  value= 7  "
+		::= { iquav01CmdEntry 2944 }
+
+
+	iquav01EmbedEmbedder4PairSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Select_Pair_1(0),
+							val_Select_Pair_2(1),
+							val_Select_Pair_3(2),
+							val_Select_Pair_4(3),
+							val_Select_Pair_5(4),
+							val_Select_Pair_6(5),
+							val_Select_Pair_7(6),
+							val_Select_Pair_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Embed- Embedder 4
+					Pair Selection  cmdID= 2534 
+					Select Pair 1  value= 0  
+					Select Pair 2  value= 1  
+					Select Pair 3  value= 2  
+					Select Pair 4  value= 3  
+					Select Pair 5  value= 4  
+					Select Pair 6  value= 5  
+					Select Pair 7  value= 6  
+					Select Pair 8  value= 7  "
+		::= { iquav01CmdEntry 2534 }
+
+
+	iquav01EmbedEmbedder4Disable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Embed- Embedder 4
+					Disable  cmdID= 2544 "
+		::= { iquav01CmdEntry 2544 }
+
+
+	iquav01Mixer1Mix1Source1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 1- Mix1 Source1
+					Mix1 Source1  cmdID= 3440 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3440 }
+
+
+	iquav01MixMixer1Gain1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 1
+					Gain1  cmdID= 3360  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3360 }
+
+
+	iquav01Mixer1Mix1Source2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 1- Mix1 Source2
+					Mix1 Source2  cmdID= 3441 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3441 }
+
+
+	iquav01MixMixer1Gain2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 1
+					Gain2  cmdID= 3361  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3361 }
+
+
+	iquav01Mixer1Mix1Source3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 1- Mix1 Source3
+					Mix1 Source3  cmdID= 3442 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3442 }
+
+
+	iquav01MixMixer1Gain3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 1
+					Gain3  cmdID= 3362  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3362 }
+
+
+	iquav01Mixer1Mix1Source4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 1- Mix1 Source4
+					Mix1 Source4  cmdID= 3443 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3443 }
+
+
+	iquav01MixMixer1Gain4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 1
+					Gain4  cmdID= 3363  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3363 }
+
+
+	iquav01Mixer2Mix2Source1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 2- Mix2 Source1
+					Mix2 Source1  cmdID= 3444 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3444 }
+
+
+	iquav01MixMixer2Gain1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 2
+					Gain1  cmdID= 3364  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3364 }
+
+
+	iquav01Mixer2Mix2Source2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 2- Mix2 Source2
+					Mix2 Source2  cmdID= 3445 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3445 }
+
+
+	iquav01MixMixer2Gain2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 2
+					Gain2  cmdID= 3365  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3365 }
+
+
+	iquav01Mixer2Mix2Source3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 2- Mix2 Source3
+					Mix2 Source3  cmdID= 3446 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3446 }
+
+
+	iquav01MixMixer2Gain3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 2
+					Gain3  cmdID= 3366  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3366 }
+
+
+	iquav01Mixer2Mix2Source4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 2- Mix2 Source4
+					Mix2 Source4  cmdID= 3447 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3447 }
+
+
+	iquav01MixMixer2Gain4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 2
+					Gain4  cmdID= 3367  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3367 }
+
+
+	iquav01Mixer3Mix3Source1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 3- Mix3 Source1
+					Mix3 Source1  cmdID= 3448 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3448 }
+
+
+	iquav01MixMixer3Gain1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 3
+					Gain1  cmdID= 3368  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3368 }
+
+
+	iquav01Mixer3Mix3Source2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 3- Mix3 Source2
+					Mix3 Source2  cmdID= 3449 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3449 }
+
+
+	iquav01MixMixer3Gain2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 3
+					Gain2  cmdID= 3369  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3369 }
+
+
+	iquav01Mixer3Mix3Source3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 3- Mix3 Source3
+					Mix3 Source3  cmdID= 3450 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3450 }
+
+
+	iquav01MixMixer3Gain3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 3
+					Gain3  cmdID= 3370  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3370 }
+
+
+	iquav01Mixer3Mix3Source4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 3- Mix3 Source4
+					Mix3 Source4  cmdID= 3451 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3451 }
+
+
+	iquav01MixMixer3Gain4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 3
+					Gain4  cmdID= 3371  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3371 }
+
+
+	iquav01Mixer4Mix4Source1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 4- Mix4 Source1
+					Mix4 Source1  cmdID= 3452 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3452 }
+
+
+	iquav01MixMixer4Gain1 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 4
+					Gain1  cmdID= 3372  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3372 }
+
+
+	iquav01Mixer4Mix4Source2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 4- Mix4 Source2
+					Mix4 Source2  cmdID= 3453 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3453 }
+
+
+	iquav01MixMixer4Gain2 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 4
+					Gain2  cmdID= 3373  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3373 }
+
+
+	iquav01Mixer4Mix4Source3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 4- Mix4 Source3
+					Mix4 Source3  cmdID= 3454 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3454 }
+
+
+	iquav01MixMixer4Gain3 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 4
+					Gain3  cmdID= 3374  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3374 }
+
+
+	iquav01Mixer4Mix4Source4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Mix- Mixer 4- Mix4 Source4
+					Mix4 Source4  cmdID= 3455 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  "
+		::= { iquav01CmdEntry 3455 }
+
+
+	iquav01MixMixer4Gain4 OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Mix- Mixer 4
+					Gain4  cmdID= 3375  min= -71  max= 0  step= 1  format= %0.0fdB  div_scale= 1 
+					Min = -71dB  Max = 0dB  Step = 1dB "
+		::= { iquav01CmdEntry 3375 }
+
+
+	iquav01BusSourceBusALSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusAL Source
+					BusAL Source  cmdID= 3520 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3520 }
+
+
+	iquav01BusSourceBusARSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusAR Source
+					BusAR Source  cmdID= 3521 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3521 }
+
+
+	iquav01BusSourceBusBLSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusBL Source
+					BusBL Source  cmdID= 3522 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3522 }
+
+
+	iquav01BusSourceBusBRSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusBR Source
+					BusBR Source  cmdID= 3523 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3523 }
+
+
+	iquav01BusSourceBusCLSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusCL Source
+					BusCL Source  cmdID= 3524 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3524 }
+
+
+	iquav01BusSourceBusCRSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusCR Source
+					BusCR Source  cmdID= 3525 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3525 }
+
+
+	iquav01BusSourceBusDLSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusDL Source
+					BusDL Source  cmdID= 3526 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3526 }
+
+
+	iquav01BusSourceBusDRSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_DeEmbed_1L(0),
+							val_DeEmbed_1R(1),
+							val_DeEmbed_2L(2),
+							val_DeEmbed_2R(3),
+							val_DeEmbed_3L(4),
+							val_DeEmbed_3R(5),
+							val_DeEmbed_4L(6),
+							val_DeEmbed_4R(7),
+							val_DeEmbed_5L(8),
+							val_DeEmbed_5R(9),
+							val_DeEmbed_6L(10),
+							val_DeEmbed_6R(11),
+							val_DeEmbed_7L(12),
+							val_DeEmbed_7R(13),
+							val_DeEmbed_8L(14),
+							val_DeEmbed_8R(15),
+							val_AES_1L(16),
+							val_AES_1R(17),
+							val_AES_2L(18),
+							val_AES_2R(19),
+							val_MIX_1(20),
+							val_MIX_2(21),
+							val_MIX_3(22),
+							val_MIX_4(23)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Audio- Buses- Bus Source- BusDR Source
+					BusDR Source  cmdID= 3527 
+					DeEmbed 1L  value= 0  
+					DeEmbed 1R  value= 1  
+					DeEmbed 2L  value= 2  
+					DeEmbed 2R  value= 3  
+					DeEmbed 3L  value= 4  
+					DeEmbed 3R  value= 5  
+					DeEmbed 4L  value= 6  
+					DeEmbed 4R  value= 7  
+					DeEmbed 5L  value= 8  
+					DeEmbed 5R  value= 9  
+					DeEmbed 6L  value= 10  
+					DeEmbed 6R  value= 11  
+					DeEmbed 7L  value= 12  
+					DeEmbed 7R  value= 13  
+					DeEmbed 8L  value= 14  
+					DeEmbed 8R  value= 15  
+					AES 1L  value= 16  
+					AES 1R  value= 17  
+					AES 2L  value= 18  
+					AES 2R  value= 19  
+					MIX 1  value= 20  
+					MIX 2  value= 21  
+					MIX 3  value= 22  
+					MIX 4  value= 23  "
+		::= { iquav01CmdEntry 3527 }
+
+
+	iquav01BusesBusProcAmpStereoA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Stereo A  cmdID= 3320 "
+		::= { iquav01CmdEntry 3320 }
+
+
+	iquav01BusProcAmpBusALGainBusAL OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus AL  cmdID= 3080  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3080 }
+
+
+	iquav01BusProcAmpBusALInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3160 "
+		::= { iquav01CmdEntry 3160 }
+
+
+	iquav01BusProcAmpBusALMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3240 "
+		::= { iquav01CmdEntry 3240 }
+
+
+	iquav01BusProcAmpBusARGainBusAR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus AR  cmdID= 3081  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3081 }
+
+
+	iquav01BusProcAmpBusARInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3161 "
+		::= { iquav01CmdEntry 3161 }
+
+
+	iquav01BusProcAmpBusARMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3241 "
+		::= { iquav01CmdEntry 3241 }
+
+
+	iquav01BusesBusProcAmpStereoB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Stereo B  cmdID= 3321 "
+		::= { iquav01CmdEntry 3321 }
+
+
+	iquav01BusProcAmpBusBLGainBusBL OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus BL  cmdID= 3082  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3082 }
+
+
+	iquav01BusProcAmpBusBLInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3162 "
+		::= { iquav01CmdEntry 3162 }
+
+
+	iquav01BusProcAmpBusBLMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3242 "
+		::= { iquav01CmdEntry 3242 }
+
+
+	iquav01BusProcAmpBusBRGainBusBR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus BR  cmdID= 3083  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3083 }
+
+
+	iquav01BusProcAmpBusBRInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3163 "
+		::= { iquav01CmdEntry 3163 }
+
+
+	iquav01BusProcAmpBusBRMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3243 "
+		::= { iquav01CmdEntry 3243 }
+
+
+	iquav01BusesBusProcAmpStereoC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Stereo C  cmdID= 3322 "
+		::= { iquav01CmdEntry 3322 }
+
+
+	iquav01BusProcAmpBusCLGainBusCL OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus CL  cmdID= 3084  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3084 }
+
+
+	iquav01BusProcAmpBusCLInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3164 "
+		::= { iquav01CmdEntry 3164 }
+
+
+	iquav01BusProcAmpBusCLMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3244 "
+		::= { iquav01CmdEntry 3244 }
+
+
+	iquav01BusProcAmpBusCRGainBusCR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus CR  cmdID= 3085  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3085 }
+
+
+	iquav01BusProcAmpBusCRInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3165 "
+		::= { iquav01CmdEntry 3165 }
+
+
+	iquav01BusProcAmpBusCRMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3245 "
+		::= { iquav01CmdEntry 3245 }
+
+
+	iquav01BusesBusProcAmpStereoD OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Stereo D  cmdID= 3323 "
+		::= { iquav01CmdEntry 3323 }
+
+
+	iquav01BusProcAmpBusDLGainBusDL OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus DL  cmdID= 3086  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3086 }
+
+
+	iquav01BusProcAmpBusDLInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3166 "
+		::= { iquav01CmdEntry 3166 }
+
+
+	iquav01BusProcAmpBusDLMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3246 "
+		::= { iquav01CmdEntry 3246 }
+
+
+	iquav01BusProcAmpBusDRGainBusDR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Buses
+					Gain Bus DR  cmdID= 3087  min= -180  max= 180  step= 1  format= %0.1fdB  div_scale= 10 
+					Min = -18.0dB  Max = 18.0dB  Step = 0.1dB "
+		::= { iquav01CmdEntry 3087 }
+
+
+	iquav01BusProcAmpBusDRInvert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Invert  cmdID= 3167 "
+		::= { iquav01CmdEntry 3167 }
+
+
+	iquav01BusProcAmpBusDRMute OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Buses
+					Mute  cmdID= 3247 "
+		::= { iquav01CmdEntry 3247 }
+
+
+	iquav01AudioDelayAESInput1Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Delay
+					AES Input 1 Delay  cmdID= 2928  min= 0  max= 1500  step= 1  format= %0.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1500 ms  Step = 1 ms "
+		::= { iquav01CmdEntry 2928 }
+
+
+	iquav01AudioDelayAESInput2Delay OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Delay
+					AES Input 2 Delay  cmdID= 2929  min= 0  max= 1500  step= 1  format= %0.0f ms  div_scale= 1 
+					Min = 0 ms  Max = 1500 ms  Step = 1 ms "
+		::= { iquav01CmdEntry 2929 }
+
+
+	iquav01DelayDelaySelectInternal OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Internal  cmdID= 2567 "
+		::= { iquav01CmdEntry 2567 }
+
+
+	iquav01DelayDelaySelectManual OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Manual  cmdID= 2568 "
+		::= { iquav01CmdEntry 2568 }
+
+
+	iquav01DelayDelaySelectRolltrack14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Rolltrack 14  cmdID= 2569 "
+		::= { iquav01CmdEntry 2569 }
+
+
+	iquav01DelayDelaySelectRolltrack15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Rolltrack 15  cmdID= 2570 "
+		::= { iquav01CmdEntry 2570 }
+
+
+	iquav01DelayDelaySelectRolltrack16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Rolltrack 16  cmdID= 2571 "
+		::= { iquav01CmdEntry 2571 }
+
+
+	iquav01DelayDelaySelectRolltrack17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					Rolltrack 17  cmdID= 2572 "
+		::= { iquav01CmdEntry 2572 }
+
+
+	iquav01DelayDelaySelectGPIDelaySelect OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Audio- Delay
+					GPI Delay Select  cmdID= 3051 "
+		::= { iquav01CmdEntry 3051 }
+
+
+	iquav01DelayDelayStatusManual OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Delay
+					Manual Delay  cmdID= 2573  min= -40  max= 1500  step= 1  format= %3.0f ms  div_scale= 1 
+					Manual  cmdID= 2573  format=   
+					Min = -40 ms  Max = 1500 ms  Step =   1 ms "
+		::= { iquav01CmdEntry 2573 }
+
+
+	iquav01DelayDelayStatusInternal OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Internal  cmdID= 2574  format=   "
+		::= { iquav01CmdEntry 2574 }
+
+
+	iquav01DelayDelayStatusRolltrack14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Rolltrack 14  cmdID= 14  format=   "
+		::= { iquav01CmdEntry 14 }
+
+
+	iquav01DelayDelayStatusRolltrack15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Rolltrack 15  cmdID= 15  format=   "
+		::= { iquav01CmdEntry 15 }
+
+
+	iquav01DelayDelayStatusRolltrack16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Rolltrack 16  cmdID= 16  format=   "
+		::= { iquav01CmdEntry 16 }
+
+
+	iquav01DelayDelayStatusRolltrack17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Rolltrack 17  cmdID= 17  format=   "
+		::= { iquav01CmdEntry 17 }
+
+
+	iquav01DelayDelayStatusGPIDelayDisplay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					GPI Delay Display  cmdID= 3052  format=   "
+		::= { iquav01CmdEntry 3052 }
+
+
+	iquav01DelayDelayStatusTotalDelayDisplay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Audio- Delay
+					Total Delay Display  cmdID= 2979  format=   "
+		::= { iquav01CmdEntry 2979 }
+
+
+	iquav01AudioMonitorSilenceLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Monitor
+					Silence Level  cmdID= 3056  min= -96  max= 0  step= 1  format= %1.1f dB  div_scale= 1 
+					Min = -96.0 dB  Max = 0.0 dB  Step = 1.0 dB "
+		::= { iquav01CmdEntry 3056 }
+
+
+	iquav01AudioMonitorLowLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Monitor
+					Low Level  cmdID= 2517  min= -96  max= 0  step= 1  format= %1.1f dB  div_scale= 1 
+					Min = -96.0 dB  Max = 0.0 dB  Step = 1.0 dB "
+		::= { iquav01CmdEntry 2517 }
+
+
+	iquav01AudioMonitorHighLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Monitor
+					High Level  cmdID= 3057  min= -96  max= 0  step= 1  format= %1.1f dB  div_scale= 1 
+					Min = -96.0 dB  Max = 0.0 dB  Step = 1.0 dB "
+		::= { iquav01CmdEntry 3057 }
+
+
+	iquav01AudioMonitorOverloadLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Monitor
+					Overload Level  cmdID= 3058  min= -96  max= 0  step= 1  format= %1.1f dB  div_scale= 1 
+					Min = -96.0 dB  Max = 0.0 dB  Step = 1.0 dB "
+		::= { iquav01CmdEntry 3058 }
+
+
+	iquav01AudioMonitorWarningTimer OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Audio- Monitor
+					Warning Timer  cmdID= 2518  min= 1  max= 20  step= 1  format= %1.0f sec  div_scale= 1 
+					Min = 1 sec  Max = 20 sec  Step = 1 sec "
+		::= { iquav01CmdEntry 2518 }
+
+
+	iquav01Freeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 1208 "
+		::= { iquav01CmdEntry 1208 }
+
+
+	iquav01Genlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Lock_to_Reference(0),
+							val_Lock_to_Input(1),
+							val_Free_Run(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					Lock to Reference  cmdID= 1049  value= 0  
+					Lock to Input  cmdID= 1049  value= 1  
+					Free Run  cmdID= 1049  value= 2  "
+		::= { iquav01CmdEntry 1049 }
+
+
+	iquav01GenlockGenlockPhase625HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 H Phase  cmdID= 1050  min= -31999968  max= 31962931  step= -28499  format=    %.0fns  div_scale= 1000 
+					Min =    -32000ns  Max =    31963ns  Step =    -28ns "
+		::= { iquav01CmdEntry 1050 }
+
+
+	iquav01GenlockGenlockPhase625VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 V Phase  cmdID= 1051  min= -312  max= 312  step= 1  format=    %.0flines  div_scale= 1 
+					Min =    -312lines  Max =    312lines  Step =    1lines "
+		::= { iquav01CmdEntry 1051 }
+
+
+	iquav01GenlockGenlockPhase525HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 H Phase  cmdID= 1052  min= -31777746  max= 31740709  step= -28499  format=    %.0fns  div_scale= 1000 
+					Min =    -31778ns  Max =    31741ns  Step =    -28ns "
+		::= { iquav01CmdEntry 1052 }
+
+
+	iquav01GenlockGenlockPhase525VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 V Phase  cmdID= 1053  min= -262  max= 262  step= 1  format=    %.0flines  div_scale= 1 
+					Min =    -262lines  Max =    262lines  Step =    1lines "
+		::= { iquav01CmdEntry 1053 }
+
+
+	iquav01GenlockFreerunFreq OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					Freerun Freq  cmdID= 2449  min= -60  max= 60  step= 1  format=   %.0f  div_scale= 1 
+					Min =   -60  Max =   60  Step =   1 "
+		::= { iquav01CmdEntry 2449 }
+
+
+	iquav01GenlockFrameDelay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_0_Frame_Delay(0),
+							val_1_Frame_Delay(1),
+							val_2_Frame_Delay(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Genlock
+					0 Frame Delay  cmdID= 2973  value= 0  
+					1 Frame Delay  cmdID= 2973  value= 1  
+					2 Frame Delay  cmdID= 2973  value= 2  "
+		::= { iquav01CmdEntry 2973 }
+
+
+	iquav01GenlockDelayPhase625HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 H Phase  cmdID= 2974  min= 0  max= 63962899  step= -28499  format=  %.0fns  div_scale= 1000 
+					Min =  0ns  Max =  63963ns  Step =  -28ns "
+		::= { iquav01CmdEntry 2974 }
+
+
+	iquav01GenlockDelayPhase625VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					625 V Phase  cmdID= 2975  min= 0  max= 624  step= 1  format=  %.0flines  div_scale= 1 
+					Min =  0lines  Max =  624lines  Step =  1lines "
+		::= { iquav01CmdEntry 2975 }
+
+
+	iquav01GenlockDelayPhase525HPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 H Phase  cmdID= 2976  min= 0  max= 63518455  step= -28499  format=  %.0fns  div_scale= 1000 
+					Min =  0ns  Max =  63518ns  Step =  -28ns "
+		::= { iquav01CmdEntry 2976 }
+
+
+	iquav01GenlockDelayPhase525VPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Genlock
+					525 V Phase  cmdID= 2977  min= 0  max= 524  step= 1  format=  %.0flines  div_scale= 1 
+					Min =  0lines  Max =  524lines  Step =  1lines "
+		::= { iquav01CmdEntry 2977 }
+
+
+	iquav01UserMemMemory1Save1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 1  cmdID= 1600  value= 1  "
+		::= { iquav01CmdEntry 1600 }
+
+
+	iquav01UserMemMemory1Recall1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 1  cmdID= 1601  value= 1  "
+		::= { iquav01CmdEntry 1601 }
+
+
+	iquav01UserMemMemory1Clear1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 1  cmdID= 1602  value= 1  "
+		::= { iquav01CmdEntry 1602 }
+
+
+	iquav01UserMemMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 1  cmdID= 1603  "
+		::= { iquav01CmdEntry 1603 }
+
+
+	iquav01UserMemMemory2Save2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 2  cmdID= 1604  value= 1  "
+		::= { iquav01CmdEntry 1604 }
+
+
+	iquav01UserMemMemory2Recall2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 2  cmdID= 1605  value= 1  "
+		::= { iquav01CmdEntry 1605 }
+
+
+	iquav01UserMemMemory2Clear2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 2  cmdID= 1606  value= 1  "
+		::= { iquav01CmdEntry 1606 }
+
+
+	iquav01UserMemMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 2  cmdID= 1607  "
+		::= { iquav01CmdEntry 1607 }
+
+
+	iquav01UserMemMemory3Save3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 3  cmdID= 1608  value= 1  "
+		::= { iquav01CmdEntry 1608 }
+
+
+	iquav01UserMemMemory3Recall3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 3  cmdID= 1609  value= 1  "
+		::= { iquav01CmdEntry 1609 }
+
+
+	iquav01UserMemMemory3Clear3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 3  cmdID= 1610  value= 1  "
+		::= { iquav01CmdEntry 1610 }
+
+
+	iquav01UserMemMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 3  cmdID= 1611  "
+		::= { iquav01CmdEntry 1611 }
+
+
+	iquav01UserMemMemory4Save4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 4  cmdID= 1612  value= 1  "
+		::= { iquav01CmdEntry 1612 }
+
+
+	iquav01UserMemMemory4Recall4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 4  cmdID= 1613  value= 1  "
+		::= { iquav01CmdEntry 1613 }
+
+
+	iquav01UserMemMemory4Clear4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 4  cmdID= 1614  value= 1  "
+		::= { iquav01CmdEntry 1614 }
+
+
+	iquav01UserMemMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 4  cmdID= 1615  "
+		::= { iquav01CmdEntry 1615 }
+
+
+	iquav01UserMemMemory5Save5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 5  cmdID= 1616  value= 1  "
+		::= { iquav01CmdEntry 1616 }
+
+
+	iquav01UserMemMemory5Recall5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 5  cmdID= 1617  value= 1  "
+		::= { iquav01CmdEntry 1617 }
+
+
+	iquav01UserMemMemory5Clear5 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_5(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 5  cmdID= 1618  value= 1  "
+		::= { iquav01CmdEntry 1618 }
+
+
+	iquav01UserMemMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 5  cmdID= 1619  "
+		::= { iquav01CmdEntry 1619 }
+
+
+	iquav01UserMemMemory6Save6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 6  cmdID= 1620  value= 1  "
+		::= { iquav01CmdEntry 1620 }
+
+
+	iquav01UserMemMemory6Recall6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 6  cmdID= 1621  value= 1  "
+		::= { iquav01CmdEntry 1621 }
+
+
+	iquav01UserMemMemory6Clear6 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_6(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 6  cmdID= 1622  value= 1  "
+		::= { iquav01CmdEntry 1622 }
+
+
+	iquav01UserMemMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 6  cmdID= 1623  "
+		::= { iquav01CmdEntry 1623 }
+
+
+	iquav01UserMemMemory7Save7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 7  cmdID= 1624  value= 1  "
+		::= { iquav01CmdEntry 1624 }
+
+
+	iquav01UserMemMemory7Recall7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 7  cmdID= 1625  value= 1  "
+		::= { iquav01CmdEntry 1625 }
+
+
+	iquav01UserMemMemory7Clear7 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_7(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 7  cmdID= 1626  value= 1  "
+		::= { iquav01CmdEntry 1626 }
+
+
+	iquav01UserMemMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 7  cmdID= 1627  "
+		::= { iquav01CmdEntry 1627 }
+
+
+	iquav01UserMemMemory8Save8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Save_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Save 8  cmdID= 1628  value= 1  "
+		::= { iquav01CmdEntry 1628 }
+
+
+	iquav01UserMemMemory8Recall8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Recall_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Recall 8  cmdID= 1629  value= 1  "
+		::= { iquav01CmdEntry 1629 }
+
+
+	iquav01UserMemMemory8Clear8 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Clear_8(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - User Mem
+					Clear 8  cmdID= 1630  value= 1  "
+		::= { iquav01CmdEntry 1630 }
+
+
+	iquav01UserMemMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - User Mem
+					Name 8  cmdID= 1631  "
+		::= { iquav01CmdEntry 1631 }
+
+
+	iquav01SetupPatternAnimatedPattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern
+					Animated Pattern  cmdID= 2940 "
+		::= { iquav01CmdEntry 2940 }
+
+
+	iquav01SetupPatternEnablePattern OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Pattern
+					Enable Pattern  cmdID= 1035 "
+		::= { iquav01CmdEntry 1035 }
+
+
+	iquav01SetupPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Pattern
+					Black  cmdID= 1036  value= 0  
+					EBU Colour Bars  cmdID= 1036  value= 1  
+					100% Colour Bars  cmdID= 1036  value= 2  
+					Ramp  cmdID= 1036  value= 3  
+					Multiburst  cmdID= 1036  value= 4  
+					Pulse & Bar  cmdID= 1036  value= 5  "
+		::= { iquav01CmdEntry 1036 }
+
+
+	iquav01SetupCaptionEditCaption OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- Caption
+					Edit Caption  cmdID= 1041  "
+		::= { iquav01CmdEntry 1041 }
+
+
+	iquav01SetupCaption OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Caption_Off(0),
+							val_Caption_On(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Caption
+					Caption Off  cmdID= 1037  value= 0  
+					Caption On  cmdID= 1037  value= 1  "
+		::= { iquav01CmdEntry 1037 }
+
+
+	iquav01BlankingVIPass525BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Blank All  cmdID= 1298  value= 1  "
+		::= { iquav01CmdEntry 1298 }
+
+
+	iquav01BlankingVIPass525PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Pass All  cmdID= 1297  value= 1  "
+		::= { iquav01CmdEntry 1297 }
+
+
+	iquav01BlankingVIPass525Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 11  cmdID= 1211 "
+		::= { iquav01CmdEntry 1211 }
+
+
+	iquav01BlankingVIPass525Line274 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 274  cmdID= 1231 "
+		::= { iquav01CmdEntry 1231 }
+
+
+	iquav01BlankingVIPass525Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 12  cmdID= 1212 "
+		::= { iquav01CmdEntry 1212 }
+
+
+	iquav01BlankingVIPass525Line275 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 275  cmdID= 1232 "
+		::= { iquav01CmdEntry 1232 }
+
+
+	iquav01BlankingVIPass525Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 13  cmdID= 1213 "
+		::= { iquav01CmdEntry 1213 }
+
+
+	iquav01BlankingVIPass525Line276 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 276  cmdID= 1233 "
+		::= { iquav01CmdEntry 1233 }
+
+
+	iquav01BlankingVIPass525Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 14  cmdID= 1214 "
+		::= { iquav01CmdEntry 1214 }
+
+
+	iquav01BlankingVIPass525Line277 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 277  cmdID= 1234 "
+		::= { iquav01CmdEntry 1234 }
+
+
+	iquav01BlankingVIPass525Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 15  cmdID= 1215 "
+		::= { iquav01CmdEntry 1215 }
+
+
+	iquav01BlankingVIPass525Line278 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 278  cmdID= 1235 "
+		::= { iquav01CmdEntry 1235 }
+
+
+	iquav01BlankingVIPass525Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 16  cmdID= 1216 "
+		::= { iquav01CmdEntry 1216 }
+
+
+	iquav01BlankingVIPass525Line279 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 279  cmdID= 1236 "
+		::= { iquav01CmdEntry 1236 }
+
+
+	iquav01BlankingVIPass525Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 17  cmdID= 1217 "
+		::= { iquav01CmdEntry 1217 }
+
+
+	iquav01BlankingVIPass525Line280 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 280  cmdID= 1237 "
+		::= { iquav01CmdEntry 1237 }
+
+
+	iquav01BlankingVIPass525Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 18  cmdID= 1218 "
+		::= { iquav01CmdEntry 1218 }
+
+
+	iquav01BlankingVIPass525Line281 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 281  cmdID= 1238 "
+		::= { iquav01CmdEntry 1238 }
+
+
+	iquav01BlankingVIPass525Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 19  cmdID= 1219 "
+		::= { iquav01CmdEntry 1219 }
+
+
+	iquav01BlankingVIPass525Line282 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 282  cmdID= 1239 "
+		::= { iquav01CmdEntry 1239 }
+
+
+	iquav01BlankingVIPass525Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 20  cmdID= 1220 "
+		::= { iquav01CmdEntry 1220 }
+
+
+	iquav01BlankingVIPass525Line283 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 283  cmdID= 1240 "
+		::= { iquav01CmdEntry 1240 }
+
+
+	iquav01BlankingVIPass525Line21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 21  cmdID= 1221 "
+		::= { iquav01CmdEntry 1221 }
+
+
+	iquav01BlankingVIPass625BlankAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Blank_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Blank All  cmdID= 1296  value= 1  "
+		::= { iquav01CmdEntry 1296 }
+
+
+	iquav01BlankingVIPass625PassAll OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Pass_All(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Blanking
+					Pass All  cmdID= 1295  value= 1  "
+		::= { iquav01CmdEntry 1295 }
+
+
+	iquav01BlankingVIPass625Line7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 7  cmdID= 1251 "
+		::= { iquav01CmdEntry 1251 }
+
+
+	iquav01BlankingVIPass625Line320 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 320  cmdID= 1272 "
+		::= { iquav01CmdEntry 1272 }
+
+
+	iquav01BlankingVIPass625Line8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 8  cmdID= 1252 "
+		::= { iquav01CmdEntry 1252 }
+
+
+	iquav01BlankingVIPass625Line321 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 321  cmdID= 1273 "
+		::= { iquav01CmdEntry 1273 }
+
+
+	iquav01BlankingVIPass625Line9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 9  cmdID= 1253 "
+		::= { iquav01CmdEntry 1253 }
+
+
+	iquav01BlankingVIPass625Line322 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 322  cmdID= 1274 "
+		::= { iquav01CmdEntry 1274 }
+
+
+	iquav01BlankingVIPass625Line10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 10  cmdID= 1254 "
+		::= { iquav01CmdEntry 1254 }
+
+
+	iquav01BlankingVIPass625Line323 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 323  cmdID= 1275 "
+		::= { iquav01CmdEntry 1275 }
+
+
+	iquav01BlankingVIPass625Line11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 11  cmdID= 1255 "
+		::= { iquav01CmdEntry 1255 }
+
+
+	iquav01BlankingVIPass625Line324 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 324  cmdID= 1276 "
+		::= { iquav01CmdEntry 1276 }
+
+
+	iquav01BlankingVIPass625Line12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 12  cmdID= 1256 "
+		::= { iquav01CmdEntry 1256 }
+
+
+	iquav01BlankingVIPass625Line325 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 325  cmdID= 1277 "
+		::= { iquav01CmdEntry 1277 }
+
+
+	iquav01BlankingVIPass625Line13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 13  cmdID= 1257 "
+		::= { iquav01CmdEntry 1257 }
+
+
+	iquav01BlankingVIPass625Line326 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 326  cmdID= 1278 "
+		::= { iquav01CmdEntry 1278 }
+
+
+	iquav01BlankingVIPass625Line14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 14  cmdID= 1258 "
+		::= { iquav01CmdEntry 1258 }
+
+
+	iquav01BlankingVIPass625Line327 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 327  cmdID= 1279 "
+		::= { iquav01CmdEntry 1279 }
+
+
+	iquav01BlankingVIPass625Line15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 15  cmdID= 1259 "
+		::= { iquav01CmdEntry 1259 }
+
+
+	iquav01BlankingVIPass625Line328 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 328  cmdID= 1280 "
+		::= { iquav01CmdEntry 1280 }
+
+
+	iquav01BlankingVIPass625Line16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 16  cmdID= 1260 "
+		::= { iquav01CmdEntry 1260 }
+
+
+	iquav01BlankingVIPass625Line329 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 329  cmdID= 1281 "
+		::= { iquav01CmdEntry 1281 }
+
+
+	iquav01BlankingVIPass625Line17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 17  cmdID= 1261 "
+		::= { iquav01CmdEntry 1261 }
+
+
+	iquav01BlankingVIPass625Line330 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 330  cmdID= 1282 "
+		::= { iquav01CmdEntry 1282 }
+
+
+	iquav01BlankingVIPass625Line18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 18  cmdID= 1262 "
+		::= { iquav01CmdEntry 1262 }
+
+
+	iquav01BlankingVIPass625Line331 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 331  cmdID= 1283 "
+		::= { iquav01CmdEntry 1283 }
+
+
+	iquav01BlankingVIPass625Line19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 19  cmdID= 1263 "
+		::= { iquav01CmdEntry 1263 }
+
+
+	iquav01BlankingVIPass625Line332 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 332  cmdID= 1284 "
+		::= { iquav01CmdEntry 1284 }
+
+
+	iquav01BlankingVIPass625Line20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 20  cmdID= 1264 "
+		::= { iquav01CmdEntry 1264 }
+
+
+	iquav01BlankingVIPass625Line333 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 333  cmdID= 1285 "
+		::= { iquav01CmdEntry 1285 }
+
+
+	iquav01BlankingVIPass625Line21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 21  cmdID= 1265 "
+		::= { iquav01CmdEntry 1265 }
+
+
+	iquav01BlankingVIPass625Line334 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 334  cmdID= 1286 "
+		::= { iquav01CmdEntry 1286 }
+
+
+	iquav01BlankingVIPass625Line22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 22  cmdID= 1266 "
+		::= { iquav01CmdEntry 1266 }
+
+
+	iquav01BlankingVIPass625Line335 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 335  cmdID= 1287 "
+		::= { iquav01CmdEntry 1287 }
+
+
+	iquav01BlankingVIPass625Line23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Line 23  cmdID= 1267 "
+		::= { iquav01CmdEntry 1267 }
+
+
+	iquav01SetupBlankingHancBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Blanking
+					Hanc Blank  cmdID= 2971 "
+		::= { iquav01CmdEntry 2971 }
+
+
+	iquav01SetupAudioToneIdentEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Audio Tone
+					Ident Enable  cmdID= 2489 "
+		::= { iquav01CmdEntry 2489 }
+
+
+	iquav01SetupAudioToneFrequency OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Audio Tone
+					Frequency  cmdID= 2487  min= 100  max= 15000  step= 100  format= %.1f Hz  div_scale= 1 
+					Min = 100.0 Hz  Max = 15000.0 Hz  Step = 100.0 Hz "
+		::= { iquav01CmdEntry 2487 }
+
+
+	iquav01SetupAudioToneFrequencyR OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Audio Tone
+					Frequency R  cmdID= 2488  min= 100  max= 15000  step= 100  format= %.1f Hz  div_scale= 1 
+					Min = 100.0 Hz  Max = 15000.0 Hz  Step = 100.0 Hz "
+		::= { iquav01CmdEntry 2488 }
+
+
+	iquav01SetupAudioToneHeadRoom OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Audio Tone
+					HeadRoom  cmdID= 3055  min= 4  max= 24  step= 1  format= %.1f dB  div_scale= 1 
+					Min = 4.0 dB  Max = 24.0 dB  Step = 1.0 dB "
+		::= { iquav01CmdEntry 3055 }
+
+
+	iquav01SetupAudioToneLineUp OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- Audio Tone
+					Line Up  cmdID= 2598  min= -200  max= 200  step= 10  format= %2.0f dBu  div_scale= 10 
+					Min = -20 dBu  Max = 20 dBu  Step =  1 dBu "
+		::= { iquav01CmdEntry 2598 }
+
+
+	iquav01SetupSlewRate OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Instant(0),
+							val_Fast(1),
+							val_Medium(2),
+							val_Slow(3),
+							val_Slowest(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup
+					Slew Rate  cmdID= 2972 
+					Instant  value= 0  
+					Fast  value= 1  
+					Medium  value= 2  
+					Slow  value= 3  
+					Slowest  value= 4  "
+		::= { iquav01CmdEntry 2972 }
+
+
+	iquav01SetupChannelStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup
+					Channel Status  cmdID= 3060  "
+		::= { iquav01CmdEntry 3060 }
+
+
+	iquav01GPIIOGPIInputDisableInputs OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Disable Inputs  cmdID= 2605 "
+		::= { iquav01CmdEntry 2605 }
+
+
+	iquav01GPIIOGPIInputInputTimerEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					InputTimer Enable  cmdID= 3053 "
+		::= { iquav01CmdEntry 3053 }
+
+
+	iquav01GPIIOGPIInputTimerActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					TimerActive High  cmdID= 3054 "
+		::= { iquav01CmdEntry 3054 }
+
+
+	iquav01GPIIOGPIInputInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2011  min= -1  max= 12  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 12  Step = 1 "
+		::= { iquav01CmdEntry 2011 }
+
+
+	iquav01GPIIOGPIInputGPIInStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI In Status  cmdID= 2048  format=   "
+		::= { iquav01CmdEntry 2048 }
+
+
+	iquav01GPIIOGPIOutputOutActiveHigh OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					Out Active High  cmdID= 3540 "
+		::= { iquav01CmdEntry 3540 }
+
+
+	iquav01GPIIOGPIOutputOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Present(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2013 
+					Input Present  value= 0  
+					Standard 625  value= 1  
+					Video Delay  value= 2  
+					Unused  value= 3  "
+		::= { iquav01CmdEntry 2013 }
+
+
+	iquav01GPIIOGPIOutputGPIOutStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- GPI I/O
+					GPI Out Status  cmdID= 2049  format=   "
+		::= { iquav01CmdEntry 2049 }
+
+
+	iquav01GPIIOGPIInputOutputGPIO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- GPI I/O
+					GPI/O 1  cmdID= 2014 "
+		::= { iquav01CmdEntry 2014 }
+
+
+	iquav01SetupGPIIOInputSelection OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- GPI I/O
+					Input Selection  cmdID= 2875  min= -1  max= 12  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 12  Step = 1 "
+		::= { iquav01CmdEntry 2875 }
+
+
+	iquav01SetupGPIIOOutputSelection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Present(0),
+							val_Standard_625(1),
+							val_Video_Delay(2),
+							val_Unused(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Setup- GPI I/O
+					Output Selection  cmdID= 2877 
+					Input Present  value= 0  
+					Standard 625  value= 1  
+					Video Delay  value= 2  
+					Unused  value= 3  "
+		::= { iquav01CmdEntry 2877 }
+
+
+	iquav01SetupRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 1495  min= 0  max= 49  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 49  Step = 1 "
+		::= { iquav01CmdEntry 1495 }
+
+
+	iquav01SetupRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 1496  min= -1  max= 39  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 39  Step = 1 "
+		::= { iquav01CmdEntry 1496 }
+
+
+	iquav01SetupRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- RollTrack
+					RollTrack Disable  cmdID= 1513 "
+		::= { iquav01CmdEntry 1513 }
+
+
+	iquav01SetupRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 1497  "
+		::= { iquav01CmdEntry 1497 }
+
+
+	iquav01SetupRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 1498  "
+		::= { iquav01CmdEntry 1498 }
+
+
+	iquav01SetupRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iquav01CmdEntry 1514 }
+
+
+	iquav01SetupRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- RollTrack
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iquav01CmdEntry 1511 }
+
+
+	iquav01SetupRollTrackRollTrack_Index OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Index  cmdID= 2870  min= 0  max= 49  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 49  Step = 1 "
+		::= { iquav01CmdEntry 2870 }
+
+
+	iquav01SetupRollTrackRollTrack_Source OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - Setup- RollTrack
+					RollTrack Source  cmdID= 2871  min= -1  max= 39  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 39  Step = 1 "
+		::= { iquav01CmdEntry 2871 }
+
+
+	iquav01SetupRollTrackRollTrack_Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Address  cmdID= 2872  "
+		::= { iquav01CmdEntry 2872 }
+
+
+	iquav01SetupRollTrackRollTrack_Command OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Setup- RollTrack
+					RollTrack Command  cmdID= 2873  "
+		::= { iquav01CmdEntry 2873 }
+
+
+	iquav01SetupLoggingInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input  cmdID= 1060 "
+		::= { iquav01CmdEntry 1060 }
+
+
+	iquav01SetupLoggingStd OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std  cmdID= 1061 "
+		::= { iquav01CmdEntry 1061 }
+
+
+	iquav01SetupLoggingInput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input1  cmdID= 1094 "
+		::= { iquav01CmdEntry 1094 }
+
+
+	iquav01SetupLoggingStd1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std1  cmdID= 1097 "
+		::= { iquav01CmdEntry 1097 }
+
+
+	iquav01SetupLoggingInput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Input2  cmdID= 1095 "
+		::= { iquav01CmdEntry 1095 }
+
+
+	iquav01SetupLoggingStd2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Std2  cmdID= 1098 "
+		::= { iquav01CmdEntry 1098 }
+
+
+	iquav01SetupLoggingReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Reference  cmdID= 1062 "
+		::= { iquav01CmdEntry 1062 }
+
+
+	iquav01SetupLoggingEDH OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					EDH  cmdID= 1064 "
+		::= { iquav01CmdEntry 1064 }
+
+
+	iquav01SetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					EDH Errors  cmdID= 1070 "
+		::= { iquav01CmdEntry 1070 }
+
+
+	iquav01SetupLoggingRollTrack OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					RollTrack  cmdID= 1106 "
+		::= { iquav01CmdEntry 1106 }
+
+
+	iquav01SetupLoggingDeembed1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 1  cmdID= 1120 "
+		::= { iquav01CmdEntry 1120 }
+
+
+	iquav01SetupLoggingDeembed2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 2  cmdID= 1121 "
+		::= { iquav01CmdEntry 1121 }
+
+
+	iquav01SetupLoggingDeembed3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 3  cmdID= 1122 "
+		::= { iquav01CmdEntry 1122 }
+
+
+	iquav01SetupLoggingDeembed4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 4  cmdID= 1123 "
+		::= { iquav01CmdEntry 1123 }
+
+
+	iquav01SetupLoggingDeembed5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 5  cmdID= 1124 "
+		::= { iquav01CmdEntry 1124 }
+
+
+	iquav01SetupLoggingDeembed6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 6  cmdID= 1125 "
+		::= { iquav01CmdEntry 1125 }
+
+
+	iquav01SetupLoggingDeembed7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 7  cmdID= 1126 "
+		::= { iquav01CmdEntry 1126 }
+
+
+	iquav01SetupLoggingDeembed8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					De-embed 8  cmdID= 1127 "
+		::= { iquav01CmdEntry 1127 }
+
+
+	iquav01SetupLoggingnPCM1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 1  cmdID= 1128 "
+		::= { iquav01CmdEntry 1128 }
+
+
+	iquav01SetupLoggingnPCM2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 2  cmdID= 1129 "
+		::= { iquav01CmdEntry 1129 }
+
+
+	iquav01SetupLoggingnPCM3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 3  cmdID= 1130 "
+		::= { iquav01CmdEntry 1130 }
+
+
+	iquav01SetupLoggingnPCM4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 4  cmdID= 1131 "
+		::= { iquav01CmdEntry 1131 }
+
+
+	iquav01SetupLoggingnPCM5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 5  cmdID= 1132 "
+		::= { iquav01CmdEntry 1132 }
+
+
+	iquav01SetupLoggingnPCM6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 6  cmdID= 1133 "
+		::= { iquav01CmdEntry 1133 }
+
+
+	iquav01SetupLoggingnPCM7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 7  cmdID= 1134 "
+		::= { iquav01CmdEntry 1134 }
+
+
+	iquav01SetupLoggingnPCM8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					nPCM 8  cmdID= 1135 "
+		::= { iquav01CmdEntry 1135 }
+
+
+	iquav01SetupLoggingAES1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					AES 1  cmdID= 1108 "
+		::= { iquav01CmdEntry 1108 }
+
+
+	iquav01SetupLoggingAES2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					AES 2  cmdID= 1109 "
+		::= { iquav01CmdEntry 1109 }
+
+
+	iquav01SetupLoggingBusAL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus AL  cmdID= 1112 "
+		::= { iquav01CmdEntry 1112 }
+
+
+	iquav01SetupLoggingBusAR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus AR  cmdID= 1113 "
+		::= { iquav01CmdEntry 1113 }
+
+
+	iquav01SetupLoggingBusBL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus BL  cmdID= 1114 "
+		::= { iquav01CmdEntry 1114 }
+
+
+	iquav01SetupLoggingBusBR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus BR  cmdID= 1115 "
+		::= { iquav01CmdEntry 1115 }
+
+
+	iquav01SetupLoggingBusCL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus CL  cmdID= 1116 "
+		::= { iquav01CmdEntry 1116 }
+
+
+	iquav01SetupLoggingBusCR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus CR  cmdID= 1117 "
+		::= { iquav01CmdEntry 1117 }
+
+
+	iquav01SetupLoggingBusDL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus DL  cmdID= 1118 "
+		::= { iquav01CmdEntry 1118 }
+
+
+	iquav01SetupLoggingBusDR OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Bus DR  cmdID= 1119 "
+		::= { iquav01CmdEntry 1119 }
+
+
+	iquav01SetupLoggingFault OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Setup- Logging
+					Fault  cmdID= 1069 "
+		::= { iquav01CmdEntry 1069 }
+
+
+	iquav01SetupLoggingStatusINPUT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT=  cmdID= 2980  format=   "
+		::= { iquav01CmdEntry 2980 }
+
+
+	iquav01SetupLoggingStatusSTD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD=  cmdID= 2981  format=   "
+		::= { iquav01CmdEntry 2981 }
+
+
+	iquav01SetupLoggingStatusINPUT1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT1=  cmdID= 2982  format=   "
+		::= { iquav01CmdEntry 2982 }
+
+
+	iquav01SetupLoggingStatusSTD1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD1=  cmdID= 2983  format=   "
+		::= { iquav01CmdEntry 2983 }
+
+
+	iquav01SetupLoggingStatusINPUT2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					INPUT2=  cmdID= 2984  format=   "
+		::= { iquav01CmdEntry 2984 }
+
+
+	iquav01SetupLoggingStatusSTD2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					STD2=  cmdID= 2985  format=   "
+		::= { iquav01CmdEntry 2985 }
+
+
+	iquav01SetupLoggingStatusEXTREF OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					EXTREF=  cmdID= 2986  format=   "
+		::= { iquav01CmdEntry 2986 }
+
+
+	iquav01SetupLoggingStatusEDH OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					EDH=  cmdID= 2987  format=   "
+		::= { iquav01CmdEntry 2987 }
+
+
+	iquav01SetupLoggingStatusERRSEC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					ERRSEC=  cmdID= 2988  format=   "
+		::= { iquav01CmdEntry 2988 }
+
+
+	iquav01SetupLoggingStatusROLLTRACK OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					ROLLTRACK=  cmdID= 2989  format=   "
+		::= { iquav01CmdEntry 2989 }
+
+
+	iquav01SetupLoggingStatusDEEMBED1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED1=  cmdID= 3014  format=   "
+		::= { iquav01CmdEntry 3014 }
+
+
+	iquav01SetupLoggingStatusDEEMBED2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED2=  cmdID= 3015  format=   "
+		::= { iquav01CmdEntry 3015 }
+
+
+	iquav01SetupLoggingStatusDEEMBED3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED3=  cmdID= 3016  format=   "
+		::= { iquav01CmdEntry 3016 }
+
+
+	iquav01SetupLoggingStatusDEEMBED4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED4=  cmdID= 3017  format=   "
+		::= { iquav01CmdEntry 3017 }
+
+
+	iquav01SetupLoggingStatusDEEMBED5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED5=  cmdID= 3018  format=   "
+		::= { iquav01CmdEntry 3018 }
+
+
+	iquav01SetupLoggingStatusDEEMBED6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED6=  cmdID= 3019  format=   "
+		::= { iquav01CmdEntry 3019 }
+
+
+	iquav01SetupLoggingStatusDEEMBED7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED7=  cmdID= 3020  format=   "
+		::= { iquav01CmdEntry 3020 }
+
+
+	iquav01SetupLoggingStatusDEEMBED8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					DEEMBED8=  cmdID= 3021  format=   "
+		::= { iquav01CmdEntry 3021 }
+
+
+	iquav01SetupLoggingStatusNPCM1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM1=  cmdID= 3022  format=   "
+		::= { iquav01CmdEntry 3022 }
+
+
+	iquav01SetupLoggingStatusNPCM2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM2=  cmdID= 3023  format=   "
+		::= { iquav01CmdEntry 3023 }
+
+
+	iquav01SetupLoggingStatusNPCM3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM3=  cmdID= 3024  format=   "
+		::= { iquav01CmdEntry 3024 }
+
+
+	iquav01SetupLoggingStatusNPCM4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM4=  cmdID= 3025  format=   "
+		::= { iquav01CmdEntry 3025 }
+
+
+	iquav01SetupLoggingStatusNPCM5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM5=  cmdID= 3026  format=   "
+		::= { iquav01CmdEntry 3026 }
+
+
+	iquav01SetupLoggingStatusNPCM6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM6=  cmdID= 3027  format=   "
+		::= { iquav01CmdEntry 3027 }
+
+
+	iquav01SetupLoggingStatusNPCM7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM7=  cmdID= 3028  format=   "
+		::= { iquav01CmdEntry 3028 }
+
+
+	iquav01SetupLoggingStatusNPCM8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					NPCM8=  cmdID= 3029  format=   "
+		::= { iquav01CmdEntry 3029 }
+
+
+	iquav01SetupLoggingStatusAES1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					AES1=  cmdID= 2994  format=   "
+		::= { iquav01CmdEntry 2994 }
+
+
+	iquav01SetupLoggingStatusAES2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					AES2=  cmdID= 2995  format=   "
+		::= { iquav01CmdEntry 2995 }
+
+
+	iquav01SetupLoggingStatusBUSAL OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSAL=  cmdID= 2998  format=   "
+		::= { iquav01CmdEntry 2998 }
+
+
+	iquav01SetupLoggingStatusBUSAR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSAR=  cmdID= 2999  format=   "
+		::= { iquav01CmdEntry 2999 }
+
+
+	iquav01SetupLoggingStatusBUSBL OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSBL=  cmdID= 3000  format=   "
+		::= { iquav01CmdEntry 3000 }
+
+
+	iquav01SetupLoggingStatusBUSBR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSBR=  cmdID= 3001  format=   "
+		::= { iquav01CmdEntry 3001 }
+
+
+	iquav01SetupLoggingStatusBUSCL OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSCL=  cmdID= 3002  format=   "
+		::= { iquav01CmdEntry 3002 }
+
+
+	iquav01SetupLoggingStatusBUSCR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSCR=  cmdID= 3003  format=   "
+		::= { iquav01CmdEntry 3003 }
+
+
+	iquav01SetupLoggingStatusBUSDL OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSDL=  cmdID= 3004  format=   "
+		::= { iquav01CmdEntry 3004 }
+
+
+	iquav01SetupLoggingStatusBUSDR OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					BUSDR=  cmdID= 3005  format=   "
+		::= { iquav01CmdEntry 3005 }
+
+
+	iquav01SetupLoggingStatusFAULT OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Logging Status
+					FAULT=  cmdID= 2990  format=   "
+		::= { iquav01CmdEntry 2990 }
+
+
+	iquav01SetupInformationWindow OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Status(0),
+							val_EDH_ANC_Status(1),
+							val_Audio_Input_Status(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Information Window
+					Input Status  cmdID= 1915  value= 0  
+					EDH & ANC Status  cmdID= 1915  value= 1  
+					Audio Input Status  cmdID= 1915  value= 2  "
+		::= { iquav01CmdEntry 1915 }
+
+
+	iquav01SetupInformationWindowResetErrors OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Errors(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Information Window
+					Reset Errors  cmdID= 2978  value= 1  "
+		::= { iquav01CmdEntry 2978 }
+
+
+	iquav01SetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Video(1),
+							val_Freeze(2),
+							val_Pattern(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Output
+					Video  cmdID= 1202  value= 1  
+					Freeze  cmdID= 1202  value= 2  
+					Pattern  cmdID= 1202  value= 3  "
+		::= { iquav01CmdEntry 1202 }
+
+
+	iquav01SetupDefaultOutputPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_EBU_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_Ramp(3),
+							val_Multiburst(4),
+							val_Pulse_Bar(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Default Output
+					Black  cmdID= 1038  value= 0  
+					EBU Colour Bars  cmdID= 1038  value= 1  
+					100% Colour Bars  cmdID= 1038  value= 2  
+					Ramp  cmdID= 1038  value= 3  
+					Multiburst  cmdID= 1038  value= 4  
+					Pulse & Bar  cmdID= 1038  value= 5  "
+		::= { iquav01CmdEntry 1038 }
+
+
+	iquav01SetupUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Software Version  cmdID= 2  format=   "
+		::= { iquav01CmdEntry 2 }
+
+
+	iquav01SetupUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Serial No  cmdID= 1  format=   "
+		::= { iquav01CmdEntry 1 }
+
+
+	iquav01SetupUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iquav01CmdEntry 3 }
+
+
+	iquav01SetupUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup- Unit
+					Restart  cmdID= 4  value= 1  "
+		::= { iquav01CmdEntry 4 }
+
+
+	iquav01SetupUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup- Unit
+					Build No  cmdID= 5  format=   "
+		::= { iquav01CmdEntry 5 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: xxxxxxxxxxxxxxxxxxx
+--				: 
+-- Comments		: Serial Number   Runtime string  
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE              The unit is not locked to the input signal
+--				: FAIL              EDH errors have been found on the input signal
+--              : OK                No EDH errors found on the input signal
+--              : RESET             EDH statistics have been reset
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: STDERR            Input signal standard not recognized or no signal
+--				: UNKNOWN           Not a selected input standard
+--              : 525               Input standard 525
+--              : 625               Input standard 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD1
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.83.84.68.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.84.68.49
+-- Vary			: YES
+--
+-- Value(s)		: ERR               Not a selected input standard Input 1
+--				: 525               Input 1 standard 525
+--              : 625               Input 1 standard 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD2
+--
+-- MIB ref		: swCardEventLogSlotXX       .4.83.84.68.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.4.83.84.68.50
+-- Vary			: YES
+--
+-- Value(s)		: ERR               Not a selected input standard Input 2
+--				: 525               Input 2 standard 525
+--              : 625               Input 2 standard 625
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.49
+-- Vary			: YES
+--
+-- Value(s)		: NONPCM            Non-PCM signal present on AES input 1
+--				: OK                Valid signal present on AES input 1
+--              : LOST              Signal not present at AES input 1
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: AES_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.65.69.83.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.65.69.83.95.50
+-- Vary			: YES
+--
+-- Value(s)		: NONPCM            Non-PCM signal present on AES input 2
+--				: OK                Valid signal present on AES input 2
+--              : LOST              Signal not present at AES input 2
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: NONE              No Internal errors detected
+--				: FAIL              Internal error detected
+--              : FAIL.FPGA_LOAD    Fpga load failure detected
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: OK                Valid input signal
+--				: ERR               Invalid input signal
+--              : LOST              Input signal lost
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_AL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.65.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.65.76
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS A Left channel has valid signal selected            
+--              : WARNING           Router BUS A Left channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_AR
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.65.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.65.82
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS A Right channel has valid signal selected
+--              : WARNING           Router BUS A Right channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_BL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.66.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.66.76
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS B Left channel has valid signal selected            
+--              : WARNING           Router BUS B Left channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_BR
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.66.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.66.82
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS B Right channel has valid signal selected
+--              : WARNING           Router BUS B Right channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_CL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.67.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.67.76
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS C Left channel has valid signal selected            
+--              : WARNING           Router BUS C Left channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_CR
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.67.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.67.82
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS C Right channel has valid signal selected
+--              : WARNING           Router BUS C Right channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_DL
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.68.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.68.76
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS D Left channel has valid signal selected            
+--              : WARNING           Router BUS D Left channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: BUS_DR
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.66.85.83.95.68.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.66.85.83.95.68.82
+-- Vary			: YES
+--
+-- Value(s)		: OK                Router BUS D Right channel has valid signal selected
+--              : WARNING           Router BUS D Right channel warning
+--              : WARNING.SILENT    Receiving silence
+--              : WARNING.QUIET     Receiving Low level signal
+--              : WARNING.NON_PCM   Non PCM signal detected
+--              : WARNING.HIGH      Receiving High level signal
+--              : WARNING.OVERLOAD  Receiving Overload level signal
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+--
+-- Value(s)		: 0s                Number or Errored Seconds
+--				: 
+-- Comments		: Runtime string
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: NONE              No reference signal present                
+--				: 525               Valid 525 reference signal                 
+--              : ERROR             Reference/Output standard mismatch         
+--              : WARNING           Reference signal available but not selected
+--              : 625               Valid 625 reference signal                 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.49
+-- Vary			: YES
+--
+-- Value(s)		: OK                Valid input 1 signal  
+--				: ERR               Invalid input 1 signal
+--              : LOST              Input 1 signal lost   
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.73.78.80.85.84.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.73.78.80.85.84.50
+-- Vary			: YES
+--
+-- Value(s)		: OK                Valid input 2 signal  
+--				: ERR               Invalid input 2 signal
+--              : LOST              Input 2 signal lost   
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.49
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 1 of selected SDI input
+--				: OK                Non-PCM present on pair 1 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.50
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 2 of selected SDI input
+--				: OK                Non-PCM present on pair 2 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.51
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 3 of selected SDI input
+--				: OK                Non-PCM present on pair 3 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.52
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 4 of selected SDI input
+--				: OK                Non-PCM present on pair 4 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.53
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 5 of selected SDI input
+--				: OK                Non-PCM present on pair 5 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.54
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 6 of selected SDI input
+--				: OK                Non-PCM present on pair 6 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_7
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.55
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.55
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 7 of selected SDI input
+--				: OK                Non-PCM present on pair 7 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: NPCM_8
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.78.80.67.77.95.56
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.78.80.67.77.95.56
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Non-PCM not present on pair 8 of selected SDI input
+--				: OK                Non-PCM present on pair 8 of selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.49
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 1
+--				: OK                Embedded pair 1 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.50
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 2
+--				: OK                Embedded pair 2 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.51
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 3
+--				: OK                Embedded pair 3 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.52
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 4
+--				: OK                Embedded pair 4 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.53
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 5
+--				: OK                Embedded pair 5 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.54
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 6
+--				: OK                Embedded pair 6 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_7
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.55
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.55
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 7
+--				: OK                Embedded pair 7 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: DEEMBED_8
+--
+-- MIB ref		: swCardEventLogSlotXX       .9.68.69.69.77.66.69.68.95.56
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.9.68.69.69.77.66.69.68.95.56
+-- Vary			: YES
+--
+-- Value(s)		: NONE              Nothing present on pair 8
+--				: OK                Embedded pair 8 present on selected SDI input
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ROL_STATES
+--
+-- MIB ref		: swCardEventLogSlotXX       .10.82.79.76.95.83.84.65.84.69.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.10.82.79.76.95.83.84.65.84.69.83
+-- Vary			: YES
+--
+-- Value(s)		: OK                RollTrack message sent and received OK
+--				: FAIL              RollTrack message not acknowledged    
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

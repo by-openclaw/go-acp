@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: dhs_host
+  author: by-rune
+  description: >-
+    dhs host baseline on every fleet OS: environment (PATH, DHS_DATA_DIR),
+    dhs directories, base packages (tshark/curl/jq/...), and the dhs binary
+    installed from a pinned, checksum-verified GitHub release. Idempotent:
+    run-twice = 0 changes; bump dhs_version to roll the fleet.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

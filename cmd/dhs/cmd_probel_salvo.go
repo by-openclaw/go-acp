@@ -42,7 +42,7 @@ func runProbelSalvoConnect(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := fs.Parse(rest); err != nil {
+	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
 	dsts, err := parseDsts(*dstsCSV)

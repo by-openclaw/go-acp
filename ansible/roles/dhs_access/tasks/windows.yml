@@ -1,0 +1,67 @@
+---
+# Admin-group user -> keys live in administrators_authorized_keys with the
+# strict ACL sshd demands (SYSTEM + Administrators only, no inheritance);
+# a looser ACL makes sshd silently ignore the file. Order matters: grant
+# the explicit ACEs first, THEN drop inheritance, so the file is never
+# left without an allow entry.
+- name: administrators_authorized_keys = the fleet actor keys (exclusive)
+  ansible.windows.win_copy:
+    dest: "{{ dhs_access_windows_admin_keys }}"
+    content: "{{ dhs_access_key_lines | join('\n') }}\n"
+
+- name: Grant SYSTEM + Administrators full control
+  ansible.windows.win_acl:
+    path: "{{ dhs_access_windows_admin_keys }}"
+    user: "{{ item }}"
+    rights: FullControl
+    type: allow
+    state: present
+  loop:
+    - NT AUTHORITY\SYSTEM
+    - BUILTIN\Administrators
+
+- name: Disable ACL inheritance on the admin keys file (drop inherited ACEs)
+  ansible.windows.win_acl_inheritance:
+    path: "{{ dhs_access_windows_admin_keys }}"
+    state: absent
+    reorganize: false
+
+- name: Remove any other principal from the admin keys file ACL
+  ansible.windows.win_shell: |
+    $acl = Get-Acl -Path '{{ dhs_access_windows_admin_keys }}'
+    $keep = @('NT AUTHORITY\SYSTEM', 'BUILTIN\Administrators')
+    $removed = 0
+    foreach ($ace in @($acl.Access)) {
+      if ($keep -notcontains $ace.IdentityReference.Value) { $null = $acl.RemoveAccessRule($ace); $removed++ }
+    }
+    if ($removed -gt 0) { Set-Acl -Path '{{ dhs_access_windows_admin_keys }}' -AclObject $acl }
+    Write-Output $removed
+  register: dhs_access_acl_prune
+  changed_when: (dhs_access_acl_prune.stdout | trim | int) > 0
+
+# sshd DefaultShell = PowerShell (#790): with `ansible_shell_type: powershell`
+# every module runs directly in PowerShell instead of cmd.exe spawning it —
+# measured 8–20 s/task over the cmd path. sshd picks the new shell up only
+# after a restart (verified 2026-08-23); the restart drops the current SSH
+# session, Ansible reconnects on the next task. First-time bootstrap of a
+# fresh VM (shell still cmd): playbooks/win-shell-bootstrap.yml.
+- name: sshd DefaultShell = PowerShell
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    type: string
+    state: present
+  register: dhs_access_defshell
+
+- name: Restart sshd so the new default shell applies (only when it changed)
+  ansible.windows.win_service:
+    name: sshd
+    state: restarted
+  when: dhs_access_defshell is changed
+
+- name: sshd service running and automatic
+  ansible.windows.win_service:
+    name: sshd
+    state: started
+    start_mode: auto

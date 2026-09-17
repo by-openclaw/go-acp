@@ -1,0 +1,18 @@
+{
+  "description": "Restore mode enumeration",
+  "name": "NcRestoreMode",
+  "type": 3,
+  "items": [
+    {
+      "description": "Restore mode is Modify",
+      "name": "Modify",
+      "value": 0
+    },
+    {
+      "description": "Restore mode is Rebuild",
+      "name": "Rebuild",
+      "value": 1
+    }
+  ],
+  "constraints": null
+}

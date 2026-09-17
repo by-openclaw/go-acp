@@ -1,0 +1,482 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQD1LPG
+--        Module Id#:8
+--       Command Set:5
+--          Filename:SNELL-IQD1LPG-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:28/06/2005
+--              Time:15:28
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQD1LPG-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQD1LPG,
+    moduleIQD1LPGMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQD1LPGCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506281528Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQD1LPGMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqd1lpgCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqd1lpgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQD1LPG 1 }
+
+	iqd1lpgCmdEntry OBJECT-TYPE
+		SYNTAX		Iqd1lpgCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqd1lpgSlotIndex }
+		::= { iqd1lpgCmdTable 1 }
+
+	Iqd1lpgCmdEntry ::=
+		SEQUENCE {
+			iqd1lpgSlotIndex
+				Unsigned32,
+			iqd1lpg625
+				INTEGER,
+			iqd1lpg525
+				INTEGER,
+			iqd1lpgGenlockHPhase
+				INTEGER,
+			iqd1lpgGenlockVPhase
+				INTEGER,
+			iqd1lpgGenlock
+				INTEGER,
+			iqd1lpgBounce
+				INTEGER,
+			iqd1lpgSetupPresetUnit
+				INTEGER,
+			iqd1lpgSetupLoggingRefLoss
+				INTEGER,
+			iqd1lpgSetupSoftwareVersion
+				RollCallString,
+			iqd1lpgSetupSerialNo
+				RollCallString
+		}
+
+	iqd1lpgSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqd1lpgCmdEntry 0 }
+
+
+	iqd1lpg625 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BLACK(0),
+							val_EBU_COLOUR_BARS(1),
+							val_100_COLOUR_BARS(2),
+							val_EBU_BARS_RED(3),
+							val_WHITE_100(4),
+							val_RAMP_100(5),
+							val_RAMP_115(6),
+							val_ULTRABLACK_RAMP(7),
+							val_MODULATED_RAMP(8),
+							val_SHALLOW_RAMPS(9),
+							val_VALID_RAMP(10),
+							val_STAIRCASE_5(11),
+							val_STAIRCASE_10(12),
+							val_MOD_STAIRCASE_5(13),
+							val_EBU_PLUGE_1_5(14),
+							val_100_WINDOW(15),
+							val_50_WINDOW(16),
+							val_15_WINDOW(17),
+							val_PULSE_BAR_2T(18),
+							val_PULSEBAR_2T4T8T(19),
+							val_PULSEBAR_2T4T10T(20),
+							val_SIN_X_X(21),
+							val_MULTI_PULSE_5_8(22),
+							val_MULTI_BURST_5_75(23),
+							val_MULTI_BURST_5_8(24),
+							val_HORZ_MULTIBURST(25),
+							val_SWEEP_5_5_2_75(26),
+							val_BOWTIE_1ns_RES(27),
+							val_BOWTIE_5ns_RES(28),
+							val_VITS_17(29),
+							val_VITS_18(30),
+							val_UK_ITS_1_LINE_19(31),
+							val_UK_ITS_2_LINE_20(32),
+							val_VITS_330(33),
+							val_VITS_331(34),
+							val_MULTI_VITS(35),
+							val_CROSS_HATCH(36),
+							val_CROSS_HATCH_DOTS(37),
+							val_BLK_CROSS_HATCH(38),
+							val_BLK_CRS_HTH_DOTS(39),
+							val_SDI_EQU_TEST(40),
+							val_SDI_PLL_TEST(41),
+							val_SDI_CHECK_FIELD(42),
+							val_BLANKING_TEST(43),
+							val_AUTO_TEST_MATRIX(44)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					625  cmdID= 7 
+					BLACK             value= 0  
+					EBU COLOUR BARS   value= 1  
+					100% COLOUR BARS  value= 2  
+					EBU BARS & RED    value= 3  
+					WHITE 100%        value= 4  
+					RAMP 100%         value= 5  
+					RAMP 115%         value= 6  
+					ULTRABLACK RAMP   value= 7  
+					MODULATED RAMP    value= 8  
+					SHALLOW RAMPS     value= 9  
+					VALID RAMP        value= 10  
+					STAIRCASE-5       value= 11  
+					STAIRCASE-10      value= 12  
+					MOD/STAIRCASE-5   value= 13  
+					EBU PLUGE 1-5     value= 14  
+					100% WINDOW       value= 15  
+					50% WINDOW        value= 16  
+					15% WINDOW        value= 17  
+					PULSE & BAR 2T    value= 18  
+					PULSEBAR 2T4T8T   value= 19  
+					PULSEBAR 2T4T10T  value= 20  
+					SIN X/X           value= 21  
+					MULTI-PULSE 5.8   value= 22  
+					MULTI-BURST 5.75  value= 23  
+					MULTI-BURST 5.8   value= 24  
+					HORZ. MULTIBURST  value= 25  
+					SWEEP 5.5/2.75    value= 26  
+					BOWTIE (1ns RES)  value= 27  
+					BOWTIE (5ns RES)  value= 28  
+					VITS 17           value= 29  
+					VITS 18           value= 30  
+					UK ITS-1 LINE 19  value= 31  
+					UK ITS-2 LINE 20  value= 32  
+					VITS 330          value= 33  
+					VITS 331          value= 34  
+					MULTI-VITS        value= 35  
+					CROSS HATCH       value= 36  
+					CROSS HATCH/DOTS  value= 37  
+					BLK CROSS HATCH   value= 38  
+					BLK CRS/HTH/DOTS  value= 39  
+					SDI EQU TEST      value= 40  
+					SDI PLL TEST      value= 41  
+					SDI CHECK FIELD   value= 42  
+					BLANKING TEST     value= 43  
+					AUTO-TEST MATRIX  value= 44  "
+		::= { iqd1lpgCmdEntry 7 }
+
+
+	iqd1lpg525 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_BLACK(45),
+							val_SMPTE_COLOR_BARS(46),
+							val_FULL_FIELD_BARS(47),
+							val_100_COLOR_BARS(48),
+							val_EBU_BARS_RED(49),
+							val_WHITE_100(50),
+							val_RAMP_100(51),
+							val_RAMP_115(52),
+							val_MODULATED_RAMP(53),
+							val_ULTRABLACK_RAMP(54),
+							val_SHALLOW_RAMPS(55),
+							val_VALID_RAMP(56),
+							val_STAIRCASE_5(57),
+							val_STAIRCASE_10(58),
+							val_MOD_STAIRCASE_5(59),
+							val_MULTI_BURST_5_8(60),
+							val_MULTI_BURST_4_2(61),
+							val_HORZ_MULTIBURST(62),
+							val_SWEEP_5_5_2_75(63),
+							val_PULSE_BAR_2T(64),
+							val_PULSEBAR_2T4T10T(65),
+							val_SIN_X_X(66),
+							val_MULTI_PULSE_4_2(67),
+							val_NTC_7_COMPOSITE(68),
+							val_NTC_7_COMBINAT_N(69),
+							val_FCC_COMPOSITE(70),
+							val_FCC_MULTI_BURST(71),
+							val_VIRS(72),
+							val_MULTI_VITS(73),
+							val_BOWTIE_1ns_RES(74),
+							val_BOWTIE_5ns_RES(75),
+							val_CROSS_HATCH(76),
+							val_CROSS_HATCH_DOTS(77),
+							val_BLK_CROSS_HATCH(78),
+							val_BLK_CRS_HTH_DOTS(79),
+							val_SDI_EQU_TEST(80),
+							val_SDI_PLL_TEST(81),
+							val_SDI_CHECK_FIELD(82),
+							val_BLANKING_TEST(83),
+							val_AUTO_TEST_MATRIX(84)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					525  cmdID= 8 
+					BLACK             value= 45  
+					SMPTE COLOR BARS  value= 46  
+					FULL FIELD BARS   value= 47  
+					100% COLOR BARS   value= 48  
+					EBU BARS & RED    value= 49  
+					WHITE 100%        value= 50  
+					RAMP  100%        value= 51  
+					RAMP  115%        value= 52  
+					MODULATED RAMP    value= 53  
+					ULTRABLACK RAMP   value= 54  
+					SHALLOW RAMPS     value= 55  
+					VALID RAMP        value= 56  
+					STAIRCASE-5       value= 57  
+					STAIRCASE-10      value= 58  
+					MOD/STAIRCASE-5   value= 59  
+					MULTI-BURST 5.8   value= 60  
+					MULTI-BURST 4.2   value= 61  
+					HORZ. MULTIBURST  value= 62  
+					SWEEP 5.5/2.75    value= 63  
+					PULSE & BAR 2T    value= 64  
+					PULSEBAR 2T4T10T  value= 65  
+					SIN X/X           value= 66  
+					MULTI-PULSE 4.2   value= 67  
+					NTC-7 COMPOSITE   value= 68  
+					NTC-7 COMBINAT'N  value= 69  
+					FCC COMPOSITE     value= 70  
+					FCC MULTI-BURST   value= 71  
+					VIRS              value= 72  
+					MULTI-VITS        value= 73  
+					BOWTIE (1ns RES)  value= 74  
+					BOWTIE (5ns RES)  value= 75  
+					CROSS HATCH       value= 76  
+					CROSS HATCH/DOTS  value= 77  
+					BLK CROSS HATCH   value= 78  
+					BLK CRS/HTH/DOTS  value= 79  
+					SDI EQU TEST      value= 80  
+					SDI PLL TEST      value= 81  
+					SDI CHECK FIELD   value= 82  
+					BLANKING TEST     value= 83  
+					AUTO-TEST MATRIX  value= 84  "
+		::= { iqd1lpgCmdEntry 8 }
+
+
+	iqd1lpgGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					H_Phase  cmdID= 5  min= 0  max= 6400000  step= 3704  format= %.0f ns  div_scale= 100 
+					Min = 0 ns  Max = 64000 ns  Step = 37 ns "
+		::= { iqd1lpgCmdEntry 5 }
+
+
+	iqd1lpgGenlockVPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					V_Phase  cmdID= 6  min= 1  max= 625  step= 1  format= Line: %.0f  div_scale= 1 
+					Min = Line: 1  Max = Line: 625  Step = Line: 1 "
+		::= { iqd1lpgCmdEntry 6 }
+
+
+	iqd1lpgGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Internal(0),
+							val_Ext_Sync(1),
+							val_Ext_Slave(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Internal  cmdID= 4  value= 0  
+					Ext_Sync  cmdID= 4  value= 1  
+					Ext_Slave  cmdID= 4  value= 2  "
+		::= { iqd1lpgCmdEntry 4 }
+
+
+	iqd1lpgBounce OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Bounce  cmdID= 11  min= 0  max= 240  step= 1  format= %.0f secs  div_scale= 1 
+					Min = 0 secs  Max = 240 secs  Step = 1 secs "
+		::= { iqd1lpgCmdEntry 11 }
+
+
+	iqd1lpgSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqd1lpgCmdEntry 3 }
+
+
+	iqd1lpgSetupLoggingRefLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Ref_Loss  cmdID= 12 "
+		::= { iqd1lpgCmdEntry 12 }
+
+
+	iqd1lpgSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqd1lpgCmdEntry 2 }
+
+
+	iqd1lpgSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 14  format=   "
+		::= { iqd1lpgCmdEntry 14 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID		: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: RESET
+--				: FAIL
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 625
+--				: 525
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number	: YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: OK
+--				: LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 package emberplus
 
 import (
+	"dhs/internal/plugin"
 	"testing"
 
 	"dhs/internal/export/canonical"
@@ -24,7 +25,7 @@ func TestEncodeGetDirReply_RootTemplateError(t *testing.T) {
 		Number: 1, Identifier: "root", Path: "root", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: canonical.EmptyChildren(),
 	}}
-	srv := newServer(nil, &canonical.Export{
+	srv := newServer(plugin.Deps{}, &canonical.Export{
 		Root: root,
 		Templates: []*canonical.TemplateEntry{{
 			OID:        "x.y", // non-numeric → encodeQualifiedTemplate errors
@@ -119,7 +120,7 @@ func TestRecallSalvo_ApplyError(t *testing.T) {
 		Number: 1, Identifier: "router", Path: "router", OID: "1", IsOnline: true,
 		Access: canonical.AccessRead, Children: []canonical.Element{mtx},
 	}}
-	srv := newServer(nil, &canonical.Export{Root: root})
+	srv := newServer(plugin.Deps{}, &canonical.Export{Root: root})
 	// Store a salvo under the empty OID key — that is the key recall uses
 	// once resolveMatrix returns "".
 	srv.salvos.store("", 1, []canonical.MatrixConnection{

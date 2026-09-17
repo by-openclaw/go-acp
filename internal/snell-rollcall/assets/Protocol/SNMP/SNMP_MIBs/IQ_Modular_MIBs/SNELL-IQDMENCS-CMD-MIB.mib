@@ -1,0 +1,639 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDMENCS
+--        Module Id#:215
+--       Command Set:6
+--          Filename:SNELL-IQDMENCS-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:15:13
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDMENCS-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDMENCS,
+    moduleIQDMENCSMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDMENCSCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101513Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDMENCSMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdmencsCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdmencsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDMENCS 1 }
+
+	iqdmencsCmdEntry OBJECT-TYPE
+		SYNTAX		IqdmencsCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdmencsSlotIndex }
+		::= { iqdmencsCmdTable 1 }
+
+	IqdmencsCmdEntry ::=
+		SEQUENCE {
+			iqdmencsSlotIndex
+				Unsigned32,
+			iqdmencsStandard
+				INTEGER,
+			iqdmencsGenlock
+				INTEGER,
+			iqdmencsGenlockSCPhase
+				INTEGER,
+			iqdmencsGenlockHPhase
+				INTEGER,
+			iqdmencsGenlockFineHPhase
+				INTEGER,
+			iqdmencsPatternsPatternOn
+				INTEGER,
+			iqdmencsPatterns
+				INTEGER,
+			iqdmencsEDHShowStats
+				INTEGER,
+			iqdmencsEDHResetStats
+				INTEGER,
+			iqdmencsSetupInsertVITS
+				INTEGER,
+			iqdmencsSetupPassVerticalData
+				INTEGER,
+			iqdmencsSetupPassLine23
+				INTEGER,
+			iqdmencsSetupSECAMOptionsNotchFilter
+				INTEGER,
+			iqdmencsSetupSECAMOptionsBottles
+				INTEGER,
+			iqdmencsSetupSECAMOptionsCarrierOff
+				INTEGER,
+			iqdmencsSetupSECAMOptionsChromaPreFilter
+				INTEGER,
+			iqdmencsSetupRollTrackUnit1
+				RollCallString,
+			iqdmencsSetupRollTrackUnit2
+				RollCallString,
+			iqdmencsSetupRollTrackUnit3
+				RollCallString,
+			iqdmencsSetupRollTrackUnit4
+				RollCallString,
+			iqdmencsSetupRollTrackUnit5
+				RollCallString,
+			iqdmencsSetupRollTrackUnit6
+				RollCallString,
+			iqdmencsSetupRollTrackUnit7
+				RollCallString,
+			iqdmencsSetupRollTrackUnit8
+				RollCallString,
+			iqdmencsSetupShowRTErrors
+				INTEGER,
+			iqdmencsSetupPresetUnit
+				INTEGER,
+			iqdmencsSetupLoggingInpStdChange
+				INTEGER,
+			iqdmencsSetupLoggingRefLoss
+				INTEGER,
+			iqdmencsSetupLoggingEDHErrors
+				INTEGER,
+			iqdmencsSetupDefaultOutput
+				INTEGER,
+			iqdmencsSetupSoftwareVersion
+				RollCallString,
+			iqdmencsSetupSerialNo
+				RollCallString
+		}
+
+	iqdmencsSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdmencsCmdEntry 0 }
+
+
+	iqdmencsStandard OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL_NTSC(0),
+							val_SECAM_NTSC(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Standard  cmdID= 5 
+					PAL/NTSC  value= 0  
+					SECAM/NTSC  value= 2  "
+		::= { iqdmencsCmdEntry 5 }
+
+
+	iqdmencsGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Internal(32),
+							val_Zero_SC_H_Lock(0),
+							val_Variable_SC_H_Lock(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Internal  cmdID= 6  value= 32  
+					Zero_SC/H_Lock  cmdID= 6  value= 0  
+					Variable_SC/H_Lock  cmdID= 6  value= 16  "
+		::= { iqdmencsCmdEntry 6 }
+
+
+	iqdmencsGenlockSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					SC_Phase  cmdID= 7  min= 0  max= 3599  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = 0.0 Deg  Max = 359.9 Deg  Step = 0.1 Deg "
+		::= { iqdmencsCmdEntry 7 }
+
+
+	iqdmencsGenlockHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					H_Phase  cmdID= 8  min= 0  max= 1  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = 0 ns  Max = 1 ns  Step = 1 ns "
+		::= { iqdmencsCmdEntry 8 }
+
+
+	iqdmencsGenlockFineHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Fine_H_Phase  cmdID= 9  min= -800  max= 800   step= 1  format= %1.0f  div_scale= 1 
+					Min = -800  Max = 800  Step = 1 "
+		::= { iqdmencsCmdEntry 9 }
+
+
+	iqdmencsPatternsPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern_On  cmdID= 10 "
+		::= { iqdmencsCmdEntry 10 }
+
+
+	iqdmencsPatterns OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_MUTE(0),
+							val_Test_Pattern_1(1),
+							val_Test_Pattern_2(2),
+							val_Test_Pattern_3(3),
+							val_Test_Pattern_4(4),
+							val_Test_Pattern_5(5),
+							val_Test_Pattern_6(6),
+							val_Test_Pattern_7(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					MUTE  cmdID= 11  value= 0  
+					Test_Pattern_1  cmdID= 11  value= 1  
+					Test_Pattern_2  cmdID= 11  value= 2  
+					Test_Pattern_3  cmdID= 11  value= 3  
+					Test_Pattern_4  cmdID= 11  value= 4  
+					Test_Pattern_5  cmdID= 11  value= 5  
+					Test_Pattern_6  cmdID= 11  value= 6  
+					Test_Pattern_7  cmdID= 11  value= 7  "
+		::= { iqdmencsCmdEntry 11 }
+
+
+	iqdmencsEDHShowStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_Stats  cmdID= 12 "
+		::= { iqdmencsCmdEntry 12 }
+
+
+	iqdmencsEDHResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset_Stats  cmdID= 13  value= 1  "
+		::= { iqdmencsCmdEntry 13 }
+
+
+	iqdmencsSetupInsertVITS OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Insert_VITS  cmdID= 14 "
+		::= { iqdmencsCmdEntry 14 }
+
+
+	iqdmencsSetupPassVerticalData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_Vertical_Data  cmdID= 19 "
+		::= { iqdmencsCmdEntry 19 }
+
+
+	iqdmencsSetupPassLine23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass_Line_23  cmdID= 45 "
+		::= { iqdmencsCmdEntry 45 }
+
+
+	iqdmencsSetupSECAMOptionsNotchFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Notch_Filter  cmdID= 29 "
+		::= { iqdmencsCmdEntry 29 }
+
+
+	iqdmencsSetupSECAMOptionsBottles OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bottles  cmdID= 30 "
+		::= { iqdmencsCmdEntry 30 }
+
+
+	iqdmencsSetupSECAMOptionsCarrierOff OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Carrier_Off  cmdID= 31 "
+		::= { iqdmencsCmdEntry 31 }
+
+
+	iqdmencsSetupSECAMOptionsChromaPreFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Chroma_Pre-Filter  cmdID= 33 "
+		::= { iqdmencsCmdEntry 33 }
+
+
+	iqdmencsSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_1  cmdID= 35  "
+		::= { iqdmencsCmdEntry 35 }
+
+
+	iqdmencsSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_2  cmdID= 36  "
+		::= { iqdmencsCmdEntry 36 }
+
+
+	iqdmencsSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_3  cmdID= 37  "
+		::= { iqdmencsCmdEntry 37 }
+
+
+	iqdmencsSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_4  cmdID= 38  "
+		::= { iqdmencsCmdEntry 38 }
+
+
+	iqdmencsSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_5  cmdID= 39  "
+		::= { iqdmencsCmdEntry 39 }
+
+
+	iqdmencsSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_6  cmdID= 40  "
+		::= { iqdmencsCmdEntry 40 }
+
+
+	iqdmencsSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_7  cmdID= 41  "
+		::= { iqdmencsCmdEntry 41 }
+
+
+	iqdmencsSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Unit_8  cmdID= 42  "
+		::= { iqdmencsCmdEntry 42 }
+
+
+	iqdmencsSetupShowRTErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show_RT_Errors  cmdID= 43 "
+		::= { iqdmencsCmdEntry 43 }
+
+
+	iqdmencsSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqdmencsCmdEntry 3 }
+
+
+	iqdmencsSetupLoggingInpStdChange OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Inp/Std_Change  cmdID= 20 "
+		::= { iqdmencsCmdEntry 20 }
+
+
+	iqdmencsSetupLoggingRefLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Ref_Loss  cmdID= 21 "
+		::= { iqdmencsCmdEntry 21 }
+
+
+	iqdmencsSetupLoggingEDHErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					EDH_Errors  cmdID= 22 "
+		::= { iqdmencsCmdEntry 22 }
+
+
+	iqdmencsSetupDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_MUTE(0),
+							val_Test_Pattern_1(1),
+							val_Test_Pattern_2(2),
+							val_Test_Pattern_3(3),
+							val_Test_Pattern_4(4),
+							val_Test_Pattern_5(5),
+							val_Test_Pattern_6(6),
+							val_Test_Pattern_7(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default Output  cmdID= 44 
+					MUTE  value= 0  
+					Test_Pattern_1  value= 1  
+					Test_Pattern_2  value= 2  
+					Test_Pattern_3  value= 3  
+					Test_Pattern_4  value= 4  
+					Test_Pattern_5  value= 5  
+					Test_Pattern_6  value= 6  
+					Test_Pattern_7  value= 7  "
+		::= { iqdmencsCmdEntry 44 }
+
+
+	iqdmencsSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqdmencsCmdEntry 2 }
+
+
+	iqdmencsSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqdmencsCmdEntry 1 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EDH
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.69.68.72
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.69.68.72
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: OK
+--				: FAIL
+--				: RESET
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: PAL  
+--				: NTSC 
+--				: PAL-N
+--				: PAL-M
+--				: SECAM
+--				: NTSC-J
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: ERROR
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: ERRSEC
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.82.82.83.69.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.82.82.83.69.67
+-- Vary			: YES
+-- Vary Number  : YES
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: N/A
+--				: OK
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

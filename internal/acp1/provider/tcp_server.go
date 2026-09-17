@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // Spec ceilings: ACP1 messages are at most ~141 bytes including the
@@ -53,11 +54,12 @@ const (
 // Stops cleanly when ctx is cancelled. ErrClosed is treated as a
 // successful shutdown.
 func (s *server) ServeTCP(ctx context.Context, addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	if err != nil {
-		return fmt.Errorf("acp1 provider tcp: resolve %q: %w", addr, err)
-	}
-	ln, err := net.ListenTCP("tcp4", tcpAddr)
+	// tcp4 preserved: ACP1 is IPv4-only. ListenTCPRaw rather than ListenTCP
+	// because the session, registry, writer and frame-reader signatures below
+	// all take *net.TCPConn, which only AcceptTCP provides. The socket policy
+	// is applied per accepted connection further down, where an injected
+	// listener is covered too.
+	ln, err := transport.ListenTCPRaw(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp1 provider tcp: listen %q: %w", addr, err)
 	}
@@ -91,7 +93,10 @@ func (s *server) ServeTCP(ctx context.Context, addr string) error {
 			s.logger.Warn("acp1 tcp accept failed", slog.String("err", err.Error()))
 			continue
 		}
-		_ = conn.SetNoDelay(true)
+		// NoDelay: ACP1 messages are <=141 bytes and latency-sensitive.
+		// Keepalive: the OS-level dead-peer probe, without which a half-open
+		// client session holds a goroutine and a socket here for ever.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{NoDelay: true})
 		ip := remoteIP(conn.RemoteAddr())
 		if !reg.tryAdd(ip) {
 			s.logger.Warn("acp1 tcp refusing session: per-ip cap exceeded",

@@ -1,0 +1,1797 @@
+
+
+-- Generated file, do not edit
+--
+-- Format: MIBv2
+-- Product: cvr800u3
+-- ProductID: 559
+-- Software: 3.3a.5
+
+-- CreationDate: Mon Aug 16 11:05:11 2010
+
+
+
+SNELL-CVR800UD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, NOTIFICATION-TYPE, MODULE-IDENTITY, OBJECT-IDENTITY,
+	Counter32, Gauge32, IpAddress, Unsigned32, Integer32
+		FROM SNMPv2-SMI
+
+	OBJECT-GROUP, MODULE-COMPLIANCE, AGENT-CAPABILITIES
+		FROM SNMPv2-CONF
+
+	RollCallString
+		FROM SNELL-WILCOX-TC
+
+	conversionCVR800U3, conversionCVR800U3Mib
+		FROM SNELL-WILCOX-PRODUCT-REG;
+
+
+-- ********************************
+-- Notifications
+
+	cvr800u3NoteEntries OBJECT IDENTIFIER ::= { conversionCVR800U3 0 }
+
+	cvr800u3TrapInputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusInputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10001 }
+
+	cvr800u3TrapOutputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusOutputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10002 }
+
+	cvr800u3TrapReferenceStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusReference }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10003 }
+
+	cvr800u3TrapInputSourceStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusInputSource }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10004 }
+
+	cvr800u3TrapSDIAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusSdiAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10005 }
+
+	cvr800u3TrapAESAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusAesAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10006 }
+
+	cvr800u3TrapGenlockModeStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusGenlockMode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10007 }
+
+	cvr800u3TrapClosedCaptionStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusClosedCaptionStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10008 }
+
+	cvr800u3TrapTimecodeStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusTimecode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10009 }
+
+	cvr800u3TrapInputSignalling NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusInputSignalling }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10010 }
+
+	cvr800u3TrapOutputSMPTE NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusOutputSmpte }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10011 }
+
+	cvr800u3TrapOutputL23 NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusOutputL23 }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10012 }
+
+	cvr800u3TrapOutputVI NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusOutputVi }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10013 }
+
+	cvr800u3TrapPowerSupplyStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusPowerSupplyStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10014 }
+
+	cvr800u3TrapSecondaryPSUStatus NOTIFICATION-TYPE
+		OBJECTS      { cvr800u3StatusSecondaryPsuStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3NoteEntries 10015 }
+
+
+-- ********************************
+-- Control
+
+	cvr800u3CtrlEntries OBJECT IDENTIFIER ::= { conversionCVR800U3 1 }
+
+	cvr800u3AudioAdcAHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5071 }
+
+	cvr800u3AudioAdcBHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5072 }
+
+	cvr800u3VideoAnalogAcc OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5279 }
+
+	cvr800u3VideoAnalogCti OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5280 }
+
+	cvr800u3VideoAnalogNr OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5281 }
+
+	cvr800u3VideoAnalogPedestalIn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5277 }
+
+	cvr800u3AudioAudioDelay OBJECT-TYPE
+		SYNTAX		Integer32 (-40..80)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-40..80'
+			units='ms'
+			preset='0'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5433 }
+
+	cvr800u3AudioAAudioInALeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch1'
+			template='Audio A'
+		"
+		::= { cvr800u3CtrlEntries 5075 }
+
+	cvr800u3AudioAAudioInARight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch2'
+			template='Audio A'
+		"
+		::= { cvr800u3CtrlEntries 5076 }
+
+	cvr800u3AudioBAudioInBLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch3'
+			template='Audio B'
+		"
+		::= { cvr800u3CtrlEntries 5079 }
+
+	cvr800u3AudioBAudioInBRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch4'
+			template='Audio B'
+		"
+		::= { cvr800u3CtrlEntries 5080 }
+
+	cvr800u3AudioCAudioInCLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch5'
+			template='Audio C'
+		"
+		::= { cvr800u3CtrlEntries 5083 }
+
+	cvr800u3AudioCAudioInCRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch6'
+			template='Audio C'
+		"
+		::= { cvr800u3CtrlEntries 5084 }
+
+	cvr800u3AudioDAudioInDLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch7'
+			template='Audio D'
+		"
+		::= { cvr800u3CtrlEntries 5087 }
+
+	cvr800u3AudioDAudioInDRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch8'
+			template='Audio D'
+		"
+		::= { cvr800u3CtrlEntries 5088 }
+
+	cvr800u3ImageAutoZoom OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5091 }
+
+	cvr800u3VideoBlackLevel OBJECT-TYPE
+		SYNTAX		Integer32 (-125..125)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-100.0..100.0'
+			stepsize='0.8'
+			units='mV'
+			preset='0.0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5006 }
+
+	cvr800u3OutputCea608ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5288 }
+
+	cvr800u3OutputCea708ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5289 }
+
+	cvr800u3OutputCea708OutputLine OBJECT-TYPE
+		SYNTAX		Integer32 (8..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='8..20'
+			preset='9'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5290 }
+
+	cvr800u3VideoCvbsOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { cvbs(0), yc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='CVBS'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5283 }
+
+	cvr800u3VideoCvbsOutStandard OBJECT-TYPE
+		SYNTAX		INTEGER { palntsc(0), palnpalm(1), palntscj(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='PALNTSC'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5282 }
+
+	cvr800u3VideoCombFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5278 }
+
+	cvr800u3SnmpCommunity OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5364 }
+
+	cvr800u3SnmpContact OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5473 }
+
+	cvr800u3VideoContrast OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5092 }
+
+	cvr800u3AudioDac1Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5093 }
+
+	cvr800u3AudioDac2Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5094 }
+
+	cvr800u3InitialSetupDhcp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5095 }
+
+	cvr800u3InitialSetupDefaultIpAdd OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.100'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5096 }
+
+	cvr800u3InitialSetupDefaultGateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.200'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5097 }
+
+	cvr800u3AudioEmbedGrpAb OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair1'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5098 }
+
+	cvr800u3AudioEmbedGrpCd OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair2'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5099 }
+
+	cvr800u3ImageEnhancedStill OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5318 }
+
+	cvr800u3InitialSetupFactoryDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5335 }
+
+	cvr800u3Signalling2Force2016 OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd8v4x3(8), afd9v4x3(9), afd10v4x3(10), afd11v4x3(11), afd12v4x3(12), afd13v4x3(13), afd14v4x3(14), afd15v4x3(15), afd0v16x9(16), afd1v16x9(17), afd2v16x9(18), afd3v16x9(19), afd4v16x9(20), afd5v16x9(21), afd6v16x9(22), afd7v16x9(23), afd8v16x9(24), afd9v16x9(25), afd10v16x9(26), afd11v16x9(27), afd12v16x9(28), afd13v16x9(29), afd14v16x9(30), afd15v16x9(31) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { cvr800u3CtrlEntries 5100 }
+
+	cvr800u3Signalling2ForceAfd OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd0v16x9(8), afd1v16x9(9), afd2v16x9(10), afd3v16x9(11), afd4v16x9(12), afd5v16x9(13), afd6v16x9(14), afd7v16x9(15) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { cvr800u3CtrlEntries 5101 }
+
+	cvr800u3Signalling2ForceEtsi OBJECT-TYPE
+		SYNTAX		INTEGER { ffv4x3(0), centrev14x9(1), topv14x9(2), centrev16x9(3), topv16x9(4), centrevgt16x9(5), spv4x3v14x9(6), ffv16x9(7) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='ffv4x3'
+			template='Signalling 2'
+		"
+		::= { cvr800u3CtrlEntries 5102 }
+
+	cvr800u3Signalling2ForceRp186 OBJECT-TYPE
+		SYNTAX		INTEGER { v4x3(0), v16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v4x3'
+			template='Signalling 2'
+		"
+		::= { cvr800u3CtrlEntries 5103 }
+
+	cvr800u3ImageFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5012 }
+
+	cvr800u3AudioAGainPairA OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio A'
+		"
+		::= { cvr800u3CtrlEntries 5078 }
+
+	cvr800u3AudioBGainPairB OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio B'
+		"
+		::= { cvr800u3CtrlEntries 5082 }
+
+	cvr800u3AudioCGainPairC OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio C'
+		"
+		::= { cvr800u3CtrlEntries 5086 }
+
+	cvr800u3AudioDGainPairD OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio D'
+		"
+		::= { cvr800u3CtrlEntries 5090 }
+
+	cvr800u3VideoYGamma OBJECT-TYPE
+		SYNTAX		Integer32 (4..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0.4..1.7'
+			stepsize='0.1'
+			preset='1.0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5104 }
+
+	cvr800u3OutputGenlock OBJECT-TYPE
+		SYNTAX		INTEGER { referencelock(0), inputlock(1), freerun(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Freerun'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5105 }
+
+	cvr800u3EnhancerHDetail OBJECT-TYPE
+		SYNTAX		INTEGER { soft2(0), soft1(1), normal(2), sharp1(3), sharp2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5309 }
+
+	cvr800u3EnhancerHEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5295 }
+
+	cvr800u3EnhancerHFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5296 }
+
+	cvr800u3EnhancerHGain OBJECT-TYPE
+		SYNTAX		Integer32 (0..192)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..192'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5298 }
+
+	cvr800u3EnhancerHNoiseRejection OBJECT-TYPE
+		SYNTAX		Integer32 (0..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..100'
+			units='%'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5299 }
+
+	cvr800u3OutputHPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-1320..1320)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-1320..1320'
+			units='pixels'
+			preset='0'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5291 }
+
+	cvr800u3EnhancerHPresets OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2), super(3), custom(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5297 }
+
+	cvr800u3EnhancerHSharpness OBJECT-TYPE
+		SYNTAX		INTEGER { low2(0), low1(1), normal(2), high1(3), high2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5310 }
+
+	cvr800u3TimecodeHdTimecodeSource OBJECT-TYPE
+		SYNTAX		INTEGER { embeddedltc(0), embeddedvitc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='EmbeddedLTC'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5326 }
+
+	cvr800u3Signalling1InSignallingsd OBJECT-TYPE
+		SYNTAX		INTEGER { smpte2016(0), vismpte(1), viafd(2), l23afd(3), l23etsi(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE2016'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5111 }
+
+	cvr800u3VideoInputSelect OBJECT-TYPE
+		SYNTAX		INTEGER { sdia(0), sdib(1), cvbsa(2), cvbsb(3), yc(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SDIA'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5110 }
+
+	cvr800u3Signalling1L23ForceBits OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5113 }
+
+	cvr800u3Signalling1L23InLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5114 }
+
+	cvr800u3Signalling1L23Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5115 }
+
+	cvr800u3Signalling1L23OutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { afd(0), etsi(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='AFD'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5116 }
+
+	cvr800u3Signalling1L23OutLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5117 }
+
+	cvr800u3Signalling1L23UserBits OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5118 }
+
+	cvr800u3VideoLegaliser OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5321 }
+
+	cvr800u3SnmpLocation OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5474 }
+
+	cvr800u3TimecodeManualTrigger OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5330 }
+
+	cvr800u3ImageManualZoom OBJECT-TYPE
+		SYNTAX		Integer32 (80..120)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='80..120'
+			units='%'
+			preset='100'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5120 }
+
+	cvr800u3UserMemoryMemClear OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { cvr800u3CtrlEntries 5361 }
+
+	cvr800u3UserMemoryMemSave OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { cvr800u3CtrlEntries 5360 }
+
+	cvr800u3UserMemoryMemoryRecall OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { cvr800u3CtrlEntries 5317 }
+
+	cvr800u3VideoNtscHue OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-180..180'
+			units='deg'
+			preset='0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5276 }
+
+	cvr800u3InitialSetupIpNetMask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='255.255.255.0'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5121 }
+
+	cvr800u3OutputOutputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { v625i(0), v525i(1), v720p50(2), v720p59(3), v1080i50(4), v1080i59(5), v1080p50a(6), v1080p59a(7), v1080p50b(8), v1080p59b(9) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v625i'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5122 }
+
+	cvr800u3AudioAPairANonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio A'
+		"
+		::= { cvr800u3CtrlEntries 5284 }
+
+	cvr800u3AudioBPairBNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio B'
+		"
+		::= { cvr800u3CtrlEntries 5285 }
+
+	cvr800u3AudioCPairCNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio C'
+		"
+		::= { cvr800u3CtrlEntries 5286 }
+
+	cvr800u3AudioDPairDNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio D'
+		"
+		::= { cvr800u3CtrlEntries 5287 }
+
+	cvr800u3AudioAPairRoutingA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio A'
+		"
+		::= { cvr800u3CtrlEntries 5077 }
+
+	cvr800u3AudioBPairRoutingB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio B'
+		"
+		::= { cvr800u3CtrlEntries 5081 }
+
+	cvr800u3AudioCPairRoutingC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio C'
+		"
+		::= { cvr800u3CtrlEntries 5085 }
+
+	cvr800u3AudioDPairRoutingD OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio D'
+		"
+		::= { cvr800u3CtrlEntries 5089 }
+
+	cvr800u3ImagePattern OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), ramp(1), bars(2), black(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5127 }
+
+	cvr800u3SnmpPort OBJECT-TYPE
+		SYNTAX		Integer32 (0..2047)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..2047'
+			preset='161'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5471 }
+
+	cvr800u3TimecodePresetTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5334 }
+
+	cvr800u3SnmpResendTraps OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5472 }
+
+	cvr800u3InitialSetupUnitReset OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5129 }
+
+	cvr800u3TimecodeSd525InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (11..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='11..17'
+			preset='14'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5331 }
+
+	cvr800u3TimecodeSd625InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (7..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='7..20'
+			preset='19'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5332 }
+
+	cvr800u3ImageSdHalfLineBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5274 }
+
+	cvr800u3ImageSdInputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), lbv16x9(1), anv16x9(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5130 }
+
+	cvr800u3TimecodeSdInsertion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5333 }
+
+	cvr800u3ImageSdOutputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), anv16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5131 }
+
+	cvr800u3Signalling1Smpte2016Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5134 }
+
+	cvr800u3SnmpSnmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5470 }
+
+	cvr800u3ImageSafeAreaMarks OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), v16x9(1), v4x3(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5135 }
+
+	cvr800u3VideoColourSaturation OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { cvr800u3CtrlEntries 5136 }
+
+	cvr800u3ImageConvertScaling OBJECT-TYPE
+		SYNTAX		INTEGER { fittowidth(0), v14x9(1), fittoheight(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Fittowidth'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5137 }
+
+	cvr800u3InitialSetupSelect OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5325 }
+
+	cvr800u3ImageStillProcess OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5312 }
+
+	cvr800u3ImageSyncMode OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5138 }
+
+	cvr800u3TimecodeTimecodeMode OBJECT-TYPE
+		SYNTAX		INTEGER { inputfollow(0), generate(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Inputfollow'
+			template='Timecode'
+		"
+		::= { cvr800u3CtrlEntries 5327 }
+
+	cvr800u3AudioToneFrequency OBJECT-TYPE
+		SYNTAX		Integer32 (1..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='100..10000'
+			stepsize='100'
+			units='Hz'
+			preset='1000'
+			template='Audio'
+		"
+		::= { cvr800u3CtrlEntries 5139 }
+
+	cvr800u3SnmpTrapAddress1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5481 }
+
+	cvr800u3SnmpTrapAddress2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5483 }
+
+	cvr800u3SnmpTrapAddress3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5485 }
+
+	cvr800u3SnmpTrapAddress4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5487 }
+
+	cvr800u3SnmpTrapsEnable1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5482 }
+
+	cvr800u3SnmpTrapsEnable2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5484 }
+
+	cvr800u3SnmpTrapsEnable3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5486 }
+
+	cvr800u3SnmpTrapsEnable4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { cvr800u3CtrlEntries 5488 }
+
+	cvr800u3ImageUnknownIsManual OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5140 }
+
+	cvr800u3ImageUseSignalling OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5141 }
+
+	cvr800u3UserMemoryUserMemNameEditor OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='User Memory'
+		"
+		::= { cvr800u3CtrlEntries 5342 }
+
+	cvr800u3UserMemoryUserMemSelect OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { cvr800u3CtrlEntries 5359 }
+
+	cvr800u3EnhancerVEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5300 }
+
+	cvr800u3EnhancerVFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5301 }
+
+	cvr800u3EnhancerVLevel OBJECT-TYPE
+		SYNTAX		INTEGER { soft(0), normal(1), sharp1(2), sharp2(3), sharp3(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { cvr800u3CtrlEntries 5302 }
+
+	cvr800u3OutputVPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-563..562)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-563..562'
+			units='lines'
+			preset='0'
+			template='Output'
+		"
+		::= { cvr800u3CtrlEntries 5292 }
+
+	cvr800u3ImageVancBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { cvr800u3CtrlEntries 5320 }
+
+	cvr800u3Signalling1ViOut OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5142 }
+
+	cvr800u3Signalling1ViOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { smpte(0), afd(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5143 }
+
+	cvr800u3Signalling1ViPassData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { cvr800u3CtrlEntries 5144 }
+
+	cvr800u3InitialSetupVersionSelection OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Initial Setup'
+		"
+		::= { cvr800u3CtrlEntries 5303 }
+
+
+-- ********************************
+-- Status
+
+	cvr800u3StatEntries OBJECT IDENTIFIER ::= { conversionCVR800U3 2 }
+
+	cvr800u3StatusAesAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5073 }
+
+	cvr800u3StatusClosedCaptionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5313 }
+
+	cvr800u3InitialSetupCodeVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { cvr800u3StatEntries 5323 }
+
+	cvr800u3InitialSetupFlashDirectory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { cvr800u3StatEntries 5322 }
+
+	cvr800u3StatusGenlockMode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5106 }
+
+	cvr800u3StatusInputSource OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5109 }
+
+	cvr800u3StatusInputSignalling OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5145 }
+
+	cvr800u3StatusInputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5112 }
+
+	cvr800u3UserMemoryLastRecalled OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { cvr800u3StatEntries 5362 }
+
+	cvr800u3StatusOutputL23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5123 }
+
+	cvr800u3StatusOutputSmpte OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5124 }
+
+	cvr800u3StatusOutputVi OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5125 }
+
+	cvr800u3StatusOutputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5126 }
+
+	cvr800u3TimecodeOutputTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Timecode'
+		"
+		::= { cvr800u3StatEntries 5328 }
+
+	cvr800u3StatusPowerSupplyStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5294 }
+
+	cvr800u3StatusReference OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5128 }
+
+	cvr800u3StatusSdiAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5133 }
+
+	cvr800u3StatusSecondaryPsuStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5311 }
+
+	cvr800u3StatusTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { cvr800u3StatEntries 5329 }
+
+	cvr800u3UserMemoryUserMemoryPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { cvr800u3StatEntries 5314 }
+
+	cvr800u3InitialSetupVersionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { cvr800u3StatEntries 5324 }
+
+
+END

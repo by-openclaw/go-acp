@@ -8,6 +8,29 @@ import (
 	"dhs/internal/emberplus/codec/glow"
 )
 
+// TestSourceSetEqual covers every branch of the order-independent source-set
+// comparison used by ApplyConnectionReport to decide whether a crosspoint
+// actually changed (length mismatch, empty, reordered-equal, value mismatch).
+func TestSourceSetEqual(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b []int32
+		want bool
+	}{
+		{"both empty", nil, []int32{}, true},
+		{"equal same order", []int32{1, 2, 3}, []int32{1, 2, 3}, true},
+		{"equal reordered", []int32{1, 2, 3}, []int32{3, 1, 2}, true},
+		{"length mismatch", []int32{1, 2}, []int32{1, 2, 3}, false},
+		{"same length different element", []int32{1, 2, 3}, []int32{1, 2, 4}, false},
+		{"duplicate vs distinct", []int32{1, 1, 2}, []int32{1, 2, 2}, false},
+	}
+	for _, c := range cases {
+		if got := sourceSetEqual(c.a, c.b); got != c.want {
+			t.Errorf("%s: sourceSetEqual(%v,%v) = %v, want %v", c.name, c.a, c.b, got, c.want)
+		}
+	}
+}
+
 // TestNewStateFromGlow pins the wholesale build from a decoded Glow Matrix:
 // every static Contents field is mirrored and every Connection becomes a
 // TargetState attributed to ChangeWalk. Spec p.88-89.

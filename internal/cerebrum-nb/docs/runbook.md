@@ -71,9 +71,28 @@ device we serve (see [provider.md](provider.md)).
 | `device-config` | Add / modify / remove a device in the Cerebrum tree (0v16 §4.5) | `add\|modify\|remove --device-type generic\|panel\|router\|snmp --ip IP …` |
 | `set-mnemonic` | Set a level / source / dest mnemonic | `--kind LEVEL_MNE\|SRCE_MNE\|DEST_MNE --mnemonic TXT --level [--alt SLOT]` |
 | `set-tags` | Set Routemaster source / dest tags | `--kind RM_SRCE_TAGS\|RM_DEST_TAGS --tags a,b,c` |
-| `salvo` | Run / save / rename / delete a salvo | `--op run\|save\|rename\|delete --group [--instance --new-name]` |
-| `category` | Create / modify / delete a category | `--op create\|modify\|delete --category` |
+| `salvo` | Run / save / rename / set description / delete a salvo — ENSURE (ADR-0007): description/rename/delete read live state first (already converged = `changed:false`, nothing sent); run/save are events (always fire) | `--op run\|save\|rename\|description\|delete --group [--instance --new-name --description] [--check] [--output json]` |
+| `category` | Create / modify item(s) / set description / delete a category or item | `--op create\|modify\|modify-all\|modify-desc\|delete\|delete-item --category [--index --item-type --value --name --label --inherits --description]` |
 | `set-value` | Write a device object value | `--device --sub-device --object --value` |
+
+## Structured output + exit codes (Ansible contract)
+
+Every read verb takes `--output json` and emits ONE JSON document on
+stdout (the tree verb uses `--format json` — object rows). Every write
+verb converges per ADR-0007: read live state → diff → send only the
+differences → report `{changed|would_change, previous, current, diff[]}`
+(`--check` reports without sending; run-twice = 0 changes).
+
+| Exit code | Meaning |
+|---:|---|
+| 0 | success — read OK, write converged or already converged |
+| 1 | runtime failure — dial, LOGIN, NACK, timeout |
+| 2 | validation error — bad flag / missing argument, nothing sent |
+
+The full catalogue is driven from Ansible by
+[../../../ansible/playbooks/cerebrum-nb-verbs.yml](../../../ansible/playbooks/cerebrum-nb-verbs.yml)
+(reads everywhere; the write-converge section is gated on
+`CEREBRUM_ALLOW_WRITE=1` — staging only).
 
 ## Logging
 

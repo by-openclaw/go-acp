@@ -1,9 +1,10 @@
 // runMetrics implements `dhs metrics <verb> [flags]`.
 // Verbs:
-//   export   fetch a snapshot from a running producer (/snapshot.json)
-//            and render it as CSV or Markdown.
-//   show     fetch the snapshot and print a Task-Manager-style
-//            summary to stderr.
+//
+//	export   fetch a snapshot from a running producer (/snapshot.json)
+//	         and render it as CSV or Markdown.
+//	show     fetch the snapshot and print a Task-Manager-style
+//	         summary to stderr.
 //
 // Both verbs rely on the producer having been started with
 // --metrics-addr :PORT so there is an HTTP endpoint to hit.
@@ -76,7 +77,7 @@ func runMetricsExport(ctx context.Context, args []string) error {
 		outPath = fs.String("file", "", "output file (default stdout)")
 		timeout = fs.Duration("timeout", 5*time.Second, "HTTP request timeout")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	payload, err := fetchSnapshot(ctx, *url, *timeout)
@@ -109,7 +110,7 @@ func runMetricsShow(ctx context.Context, args []string) error {
 		url     = fs.String("url", "http://127.0.0.1:9100/snapshot.json", "producer snapshot URL")
 		timeout = fs.Duration("timeout", 5*time.Second, "HTTP request timeout")
 	)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	payload, err := fetchSnapshot(ctx, *url, *timeout)

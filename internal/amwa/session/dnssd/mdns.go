@@ -463,4 +463,3 @@ func (r *stdlibResponder) serveQueries(ctx context.Context) {
 	}
 	wg.Wait()
 }
-

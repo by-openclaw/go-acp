@@ -1,6 +1,7 @@
 package acp2
 
 import (
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -448,7 +449,7 @@ func TestWrite_EncodeError(t *testing.T) {
 // so acceptLoop returns it (the close(s.stopped)+return err arm). A
 // synthetic listener yields a non-net.ErrClosed error on Accept.
 func TestServe_AcceptHardError(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	hl := &hardErrListener{}
 	err := srv.acceptLoop(hl)
 	if err == nil || errors.Is(err, net.ErrClosed) {
@@ -460,9 +461,11 @@ func TestServe_AcceptHardError(t *testing.T) {
 // non-net.ErrClosed error, driving acceptLoop's hard-error return arm.
 type hardErrListener struct{}
 
-func (*hardErrListener) Accept() (net.Conn, error) { return nil, errors.New("synthetic accept failure") }
-func (*hardErrListener) Close() error              { return nil }
-func (*hardErrListener) Addr() net.Addr            { return dummyAddr{} }
+func (*hardErrListener) Accept() (net.Conn, error) {
+	return nil, errors.New("synthetic accept failure")
+}
+func (*hardErrListener) Close() error   { return nil }
+func (*hardErrListener) Addr() net.Addr { return dummyAddr{} }
 
 type dummyAddr struct{}
 
@@ -473,7 +476,7 @@ func (dummyAddr) String() string  { return "127.0.0.1:0" }
 // closed, subscribes it, and broadcasts — the per-session write fails and
 // the "announce send failed" warn arm runs.
 func TestBroadcastAnnounce_SendFailure(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	a, b := net.Pipe()
 	_ = a.Close()
 	_ = b.Close()
@@ -494,7 +497,7 @@ func TestBroadcastAnnounce_SendFailure(t *testing.T) {
 // non-EOF read error (a half-closed pipe that yields garbage then errors)
 // so the "session read error" warn arm executes, then run returns.
 func TestSessionRun_ReadError(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	a, b := net.Pipe()
 	sess := newSession(srv, a)
 
@@ -542,7 +545,7 @@ func TestEmitFloatAnnounce_NoConstraints(t *testing.T) {
 		Number: 1, Identifier: "device", Access: canonical.AccessRead,
 		Children: []canonical.Element{slot1}}}}
 
-	srv := newServer(quietLogger(), exp)
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, exp)
 	// obj 19 is Float with no min/max → default range (-100,100) used.
 	srv.emitFloatAnnounce(1, 19, 0.5)
 	e, _ := srv.tree.lookup(1, 19)
@@ -553,3 +556,35 @@ func TestEmitFloatAnnounce_NoConstraints(t *testing.T) {
 
 // ensure binary import stays referenced.
 var _ = binary.BigEndian
+
+// TestMetricsExposed pins the Metrics() accessor (#969): it is non-nil,
+// stable across calls, and the connector actually counts a served
+// frame — so --metrics-addr has something to scrape.
+func TestMetricsExposed(t *testing.T) {
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
+	m := srv.Metrics()
+	if m == nil {
+		t.Fatal("Metrics() returned nil")
+	}
+	if srv.Metrics() != m {
+		t.Fatal("Metrics() must return the same connector each call")
+	}
+	before := m.Snapshot().TxFrames
+	// A served reply flows through session.write, which counts tx.
+	sess := &session{srv: srv, conn: &nopConn{}}
+	if err := sess.write(&codec.AN2Frame{
+		Proto: codec.AN2ProtoACP2, Slot: 1, Type: codec.AN2TypeData, Payload: []byte{0, 0, 0, 0},
+	}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if got := m.Snapshot().TxFrames; got != before+1 {
+		t.Fatalf("tx frames = %d, want %d (write must be counted)", got, before+1)
+	}
+}
+
+// nopConn is a net.Conn whose Write succeeds and discards — lets a
+// session.write run without a real socket.
+type nopConn struct{ net.Conn }
+
+func (*nopConn) Write(b []byte) (int, error) { return len(b), nil }
+func (*nopConn) Close() error                { return nil }

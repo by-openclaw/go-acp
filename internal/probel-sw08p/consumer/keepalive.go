@@ -2,9 +2,10 @@ package probelsw08p
 
 import (
 	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
-// keepaliveAutoResponder returns a codec.ClientConfig.OnEvent listener
+// keepaliveAutoResponder returns a sw08session.ClientConfig.OnEvent listener
 // that auto-replies to any TxAppKeepaliveRequest (0x11) with an
 // RxAppKeepaliveResponse (0x22). Wired through ClientConfig.OnEvent so
 // the listener is registered BEFORE the reader goroutine starts —
@@ -18,8 +19,8 @@ import (
 // Reference: NOT in SW-P-08 §3.2/§3.3 — see CLAUDE.md "Application
 // keepalive" for the byte-0x11/0x22 ping/pong pair the testbed uses
 // to keep TCP sessions warm.
-func (p *Plugin) keepaliveAutoResponder() func(*codec.Client, codec.Frame) {
-	return func(cli *codec.Client, f codec.Frame) {
+func (p *Plugin) keepaliveAutoResponder() func(*sw08session.Client, codec.Frame) {
+	return func(cli *sw08session.Client, f codec.Frame) {
 		if f.ID != codec.TxAppKeepaliveRequest {
 			return
 		}

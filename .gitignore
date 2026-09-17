@@ -22,7 +22,12 @@ tests/integration/nmos/amwa/dhs
 *.test
 *.out
 *.prof
+*.cov
 coverage.html
+
+# Local session scratch (audit notes, commit-message drafts, handoffs).
+# Working files only — anything durable graduates into docs/ or a memory.
+/.audit/
 
 # IDE
 .idea/
@@ -71,7 +76,17 @@ ansible/secrets/*.vault
 !internal/**/testdata/protocol_types/**/*.jsonl
 !internal/**/testdata/scenarios/**/*.jsonl
 !internal/**/testdata/replay/**/*.jsonl
+# Real-device announce recordings the producer loops via
+# --announce-replay (liveness emulation; extracted from a walk capture,
+# LOGIN-free ACP2 payloads only).
+!internal/**/testdata/**/announces/*.jsonl
 !tests/fixtures/**/*.jsonl
+# ADR-0020 Bucket 5 (amendment 2026-06-24): one full real-device decoder
+# oracle per protocol is committed under
+# internal/<proto>/testdata/fixtures/<device>/ to enrich the codec
+# regression with ground-truth device bytes (acp1/acp2/emberplus/probel).
+# Scratch --capture output under the repo-root captures/ tree stays ignored.
+!internal/**/testdata/fixtures/**/*.jsonl
 
 # ADR-0020 Bucket 4: cache + manual capture archive at repo root.
 # Both gitignored — wire traces are LOCAL ONLY (no LFS, no committed
@@ -82,6 +97,11 @@ ansible/secrets/*.vault
 /.cache/
 /captures/*
 !/captures/README.md
+
+# ADR-0028 operator bucket: state snapshots written by the defaulted
+# export verbs (snapshots/<proto>/<ip>/<facet>). Working artifacts stay
+# local; CURATED copies live under internal/<proto>/testdata/.
+/snapshots/
 
 # Root-level assets/ is reserved as a scratch dir for ad-hoc debug /
 # validation runs. Real spec assets live under internal/<proto>/assets/.
@@ -98,3 +118,11 @@ internal/acp2/testdata/fixtures/slot1_walk.json
 internal/emberplus/testdata/fixtures/[0-9]*/tree.json
 internal/emberplus/testdata/fixtures/[0-9]*/glow.json
 internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
+
+# raw infra configs (public repo - never commit running-configs)
+/network/
+
+# snell-rollcall: vendor C SDK extracted from the tracked zips under
+# assets/Protocol/Source/*.zip — keep the zips, not the expansion.
+internal/snell-rollcall/assets/Protocol/Source/RollCallV2/
+internal/snell-rollcall/assets/Protocol/Source/ManagedWrapper/

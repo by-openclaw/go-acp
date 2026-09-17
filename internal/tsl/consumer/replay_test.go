@@ -11,6 +11,7 @@ package tsl_test
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"log/slog"
 	"os"
@@ -47,7 +48,7 @@ func loadTrames(t *testing.T, protoName, scenario string) []wiretrace.Trame {
 
 func newValidator(t *testing.T, factory *tsl.Factory) consumer.Validator {
 	t.Helper()
-	plug := factory.New(slog.Default())
+	plug := factory.New(plugin.Deps{Logger: slog.Default()})
 	v, ok := plug.(consumer.Validator)
 	if !ok {
 		t.Fatalf("tsl Plugin (%s) does not implement consumer.Validator", factory.Meta().Name)

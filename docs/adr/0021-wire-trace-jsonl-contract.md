@@ -130,6 +130,12 @@ repo-root `captures/` tree (per ADR-0020 Bucket 4) and are gitignored
 in their entirety. **No LFS, no committed blobs.** The two-segment
 layout is uniform across protocols:
 
+> **Exception (ADR-0020 amendment 2026-06-24, Bucket 5):** one full
+> real-device *decoder oracle* per protocol IS committed — under
+> `internal/<proto>/testdata/fixtures/<device>/` (`raw.*.jsonl` + `tree.json`,
+> `-text`, regular blob, not LFS). "No committed blobs" applies to the
+> scratch `captures/` tree here, not to those committed oracles.
+
 ```text
 captures/<proto>/<scenario>/frames.jsonl
 captures/<proto>/<scenario>/capture.pcapng        (optional)

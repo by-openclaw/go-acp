@@ -1,0 +1,22 @@
+# The dhs Node under test, for plants with NO internet (the VLAN 600
+# fleet since 2026-08-29). Dockerfile.node needs docker.io for its two
+# base images; this variant needs NOTHING from any registry: the
+# binary is built on the tooling host by the dhs_amwa_node role
+# (-e dhs_amwa_node_offline=true) with the host Go toolchain, and the
+# image is assembled FROM scratch.
+#
+# Trade-off, stated: scratch has no dbus/avahi, so the DNS-SD layer
+# runs on the stdlib fallback responder. The cascade-timing rounds of
+# IS-04 (test_05/15/16) score that jitter — run those with the online
+# image. Suites that never touch mDNS (IS-14-01 and the other
+# HTTP-only suites) measure identically on either image.
+#
+# Context is the repo ROOT, same as Dockerfile.node; the role builds
+# out/dhs in the staged source first.
+FROM scratch
+COPY out/dhs /usr/local/bin/dhs
+COPY tests/integration/nmos/amwa/amwa-test-node.json /app/amwa-test-node.json
+WORKDIR /app
+# No entrypoint.sh: scratch has no shell (and no avahi to launch).
+# The role's `docker run` arguments land directly on the binary.
+ENTRYPOINT ["/usr/local/bin/dhs"]

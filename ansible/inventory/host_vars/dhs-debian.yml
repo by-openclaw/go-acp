@@ -1,0 +1,28 @@
+---
+# dhs-debian — Proxmox LXC 651 "dhs.debian12", Debian 12 (bookworm).
+# eth0 10.6.250.101 (ansible_host); eth1 (mgmt-B, 10.6.250.111) parked since #822.
+# Roles: Ansible CONTROL NODE for the whole fleet; Docker host.
+# Never bring eth1/.111 down — it is part of the access path.
+# This host is USUALLY the control node: run local, no SSH loop-back.
+# But plays can also run from the SECONDARY runner (dhs-tools, #938),
+# and a hard `local` silently executes "dhs-debian" tasks on the
+# runner instead — the reboot-resilience pre-flight caught exactly
+# that (every plant unit "unknown" because the loopback landed on
+# dhs-tools). Local only when the controller IS this host.
+ansible_connection: "{{ 'local' if lookup('pipe', 'hostname') == 'dhs-debian' else 'ssh' }}"
+
+pve_vmid: 651
+pve_name: dhs.debian12
+pve_cores: 2          # P1 sizing (#817): binary-test host - SAME size as .102/.103 so cross-distro binary perf is comparable
+os_label: "Debian 12"
+nics:
+  - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.6.250.101 }
+fleet_hostname: dhs-debian
+
+# Ember+ producer: our integration DM — the synthetic tree that carries the
+# n-to-n matrix plus the salvo/lock/protect builtin functions.
+ember_tree_src: "{{ playbook_dir }}/../files/trees/our-dm.tree.json"
+
+# Connectors this host serves -> dhs_firewall opens exactly these rule groups
+# (nmos also needs the dhs_mdns daemon). Add/remove with the producer deploy.
+dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos]

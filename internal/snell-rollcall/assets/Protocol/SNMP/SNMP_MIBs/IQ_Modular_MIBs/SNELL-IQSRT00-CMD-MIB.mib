@@ -1,0 +1,3798 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQSRT00
+--        Module Id#:391
+--       Command Set:12
+--          Filename:SNELL-IQSRT00-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:31/05/2005
+--              Time:14:12
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQSRT00-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQSRT00,
+    moduleIQSRT00MIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQSRT00CmdMi MODULE-IDENTITY
+    LAST-UPDATED "0505311412Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQSRT00MIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqsrt00CmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF Iqsrt00CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQSRT00 1 }
+
+	iqsrt00CmdEntry OBJECT-TYPE
+		SYNTAX		Iqsrt00CmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqsrt00SlotIndex }
+		::= { iqsrt00CmdTable 1 }
+
+	Iqsrt00CmdEntry ::=
+		SEQUENCE {
+			iqsrt00SlotIndex
+				Unsigned32,
+			iqsrt00RouterCrosspointEnableTake
+				INTEGER,
+			iqsrt00RouterCrosspointTakeBoth
+				INTEGER,
+			iqsrt00RouterCrosspointTakeOutput1
+				INTEGER,
+			iqsrt00RouterCrosspointTakeOutput2
+				INTEGER,
+			iqsrt00RouterCrosspointCancel
+				INTEGER,
+			iqsrt00RouterCrosspointWidebandOutput1
+				INTEGER,
+			iqsrt00RouterCrosspointOutput1
+				INTEGER,
+			iqsrt00RouterCrosspointOutputStatus1
+				RollCallString,
+			iqsrt00RouterCrosspointSecondaryEnable1
+				INTEGER,
+			iqsrt00RouterXpointSecondaryAutoSwitchOutp1
+				INTEGER,
+			iqsrt00RouterXpointSwitchtoPrimaryOutp1
+				INTEGER,
+			iqsrt00RouterCrosspointOutput1Secondary
+				INTEGER,
+			iqsrt00RouterCrosspointWidebandOutput2
+				INTEGER,
+			iqsrt00RouterCrosspointOutput2
+				INTEGER,
+			iqsrt00RouterCrosspointOutputStatus2
+				RollCallString,
+			iqsrt00RouterCrosspointSecondaryEnable2
+				INTEGER,
+			iqsrt00RouterXpointSecondaryAutoSwitchOutp2
+				INTEGER,
+			iqsrt00RouterXpointSwitchtoPrimaryOutp2
+				INTEGER,
+			iqsrt00RouterCrosspointOutput2Secondary
+				INTEGER,
+			iqsrt00RouterOutput1SwitchingSyncStatus
+				RollCallString,
+			iqsrt00RouterOutput1SwitchingSynchronous
+				INTEGER,
+			iqsrt00RouterOutput1SwitchingInput
+				INTEGER,
+			iqsrt00RouterOutput1SwitchingField
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF1ForceRP168F1
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF1Line
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF1Pixel
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF2ForceRP168F2
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF2Line
+				INTEGER,
+			iqsrt00Output1SwitchingSwitchPointF2Pixel
+				INTEGER,
+			iqsrt00RouterOutput2SwitchingSyncStatus
+				RollCallString,
+			iqsrt00RouterOutput2SwitchingSynchronous
+				INTEGER,
+			iqsrt00RouterOutput2SwitchingInput
+				INTEGER,
+			iqsrt00RouterOutput2SwitchingField
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF1ForceRP168F1
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF1Line
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF1Pixel
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF2ForceRP168F2
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF2Line
+				INTEGER,
+			iqsrt00Output2SwitchingSwitchPointF2Pixel
+				INTEGER,
+			iqsrt00RouterGPIODebugDebugEnable
+				INTEGER,
+			iqsrt00RouterGPIO1DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO1
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI1
+				RollCallString,
+			iqsrt00RouterGPIO2DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO2
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI2
+				RollCallString,
+			iqsrt00RouterGPIO3DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO3
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI3
+				RollCallString,
+			iqsrt00RouterGPIO4DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO4
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI4
+				RollCallString,
+			iqsrt00RouterGPIO5DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO5
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI5
+				RollCallString,
+			iqsrt00RouterGPIO6DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO6
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI6
+				RollCallString,
+			iqsrt00RouterGPIO7DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO7
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI7
+				RollCallString,
+			iqsrt00RouterGPIO8DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO8
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI8
+				RollCallString,
+			iqsrt00RouterGPIO9DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO9
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI9
+				RollCallString,
+			iqsrt00RouterGPIO10DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO10
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI10
+				RollCallString,
+			iqsrt00RouterGPIO11DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO11
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI11
+				RollCallString,
+			iqsrt00RouterGPIO12DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO12
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI12
+				RollCallString,
+			iqsrt00RouterGPIO13DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO13
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI13
+				RollCallString,
+			iqsrt00RouterGPIO14DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO14
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI14
+				RollCallString,
+			iqsrt00RouterGPIO15DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO15
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI15
+				RollCallString,
+			iqsrt00RouterGPIO16DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO16
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI16
+				RollCallString,
+			iqsrt00RouterGPIO17DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO17
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI17
+				RollCallString,
+			iqsrt00RouterGPIO18DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO18
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI18
+				RollCallString,
+			iqsrt00RouterGPIO19DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO19
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI19
+				RollCallString,
+			iqsrt00RouterGPIO20DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO20
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI20
+				RollCallString,
+			iqsrt00RouterGPIO21DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO21
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI21
+				RollCallString,
+			iqsrt00RouterGPIO22DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO22
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI22
+				RollCallString,
+			iqsrt00RouterGPIO23DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO23
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI23
+				RollCallString,
+			iqsrt00RouterGPIO24DebugDirection
+				INTEGER,
+			iqsrt00RouterGPIODebugGPO24
+				INTEGER,
+			iqsrt00RouterGPIODebugGPI24
+				RollCallString,
+			iqsrt00RouterNamingNameInput1
+				RollCallString,
+			iqsrt00RouterNamingNameInput2
+				RollCallString,
+			iqsrt00RouterNamingNameInput3
+				RollCallString,
+			iqsrt00RouterNamingNameInput4
+				RollCallString,
+			iqsrt00RouterNamingNameInput5
+				RollCallString,
+			iqsrt00RouterNamingNameInput6
+				RollCallString,
+			iqsrt00RouterNamingNameInput7
+				RollCallString,
+			iqsrt00RouterNamingNameInput8
+				RollCallString,
+			iqsrt00Routerinputstatusinput0status
+				INTEGER,
+			iqsrt00Routerinputstatusinput1status
+				INTEGER,
+			iqsrt00Routerinputstatusinput2status
+				INTEGER,
+			iqsrt00Routerinputstatusinput3status
+				INTEGER,
+			iqsrt00Routerinputstatusinput4status
+				INTEGER,
+			iqsrt00Routerinputstatusinput5status
+				INTEGER,
+			iqsrt00Routerinputstatusinput6status
+				INTEGER,
+			iqsrt00Routerinputstatusinput7status
+				INTEGER,
+			iqsrt00RouterGPIOIndex
+				INTEGER,
+			iqsrt00RouterGPIOEnable
+				INTEGER,
+			iqsrt00RouterGPIODirection
+				INTEGER,
+			iqsrt00RouterGPIOSense
+				INTEGER,
+			iqsrt00GPIOGPOActionAction
+				INTEGER,
+			iqsrt00GPIOGPIEventEvent
+				INTEGER,
+			iqsrt00RouterGPIOPresetAllowPresetSelect
+				INTEGER,
+			iqsrt00RouterGPIOPreset
+				INTEGER,
+			iqsrt00MemoriesMemorySave
+				INTEGER,
+			iqsrt00MemoriesMemoryRecall
+				INTEGER,
+			iqsrt00MemoriesMemory1Name1
+				RollCallString,
+			iqsrt00MemoriesMemory2Name2
+				RollCallString,
+			iqsrt00MemoriesMemory3Name3
+				RollCallString,
+			iqsrt00MemoriesMemory4Name4
+				RollCallString,
+			iqsrt00MemoriesMemory5Name5
+				RollCallString,
+			iqsrt00MemoriesMemory6Name6
+				RollCallString,
+			iqsrt00MemoriesMemory7Name7
+				RollCallString,
+			iqsrt00MemoriesMemory8Name8
+				RollCallString,
+			iqsrt00MemoriesMemory9Name9
+				RollCallString,
+			iqsrt00MemoriesMemory10Name10
+				RollCallString,
+			iqsrt00MemoriesMemory11Name11
+				RollCallString,
+			iqsrt00MemoriesMemory12Name12
+				RollCallString,
+			iqsrt00MemoriesMemory13Name13
+				RollCallString,
+			iqsrt00MemoriesMemory14Name14
+				RollCallString,
+			iqsrt00MemoriesMemory15Name15
+				RollCallString,
+			iqsrt00MemoriesMemory16Name16
+				RollCallString,
+			iqsrt00RollcallRollTrackDisableAll
+				INTEGER,
+			iqsrt00RollcallRollTrackIndex
+				INTEGER,
+			iqsrt00RollcallRollTrackSource
+				INTEGER,
+			iqsrt00RollcallRollTrackAddress
+				RollCallString,
+			iqsrt00RollcallRollTrackCommand
+				RollCallString,
+			iqsrt00RollcallRollTrackStatus
+				RollCallString,
+			iqsrt00RollcallRollTrackSending
+				RollCallString,
+			iqsrt00RouterLoggingLogInput1Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT1STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput2Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT2STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput3Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT3STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput4Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT4STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput5Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT5STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput6Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT6STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput7Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT7STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogInput8Status
+				INTEGER,
+			iqsrt00RouterLoggingINPUT8STATUS
+				RollCallString,
+			iqsrt00RouterLoggingLogOutput1Type
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT1TYPE
+				RollCallString,
+			iqsrt00RouterLoggingLogOutput2Type
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT2TYPE
+				RollCallString,
+			iqsrt00RouterLoggingLogExtReference
+				INTEGER,
+			iqsrt00RouterLoggingEXTREF1
+				RollCallString,
+			iqsrt00RouterLoggingLogExternalRef
+				INTEGER,
+			iqsrt00RouterLoggingEXTREF1TYPE
+				RollCallString,
+			iqsrt00RouterLoggingLogCRCErrorsOutp1
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT1CRC
+				RollCallString,
+			iqsrt00RouterLoggingLogCRCErrorsOutp2
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT2CRC
+				RollCallString,
+			iqsrt00RouterLoggingLogOutput1Standa
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT1STANDARD
+				RollCallString,
+			iqsrt00RouterLoggingLogOutput2Standa
+				INTEGER,
+			iqsrt00RouterLoggingOUTPUT2STANDARD
+				RollCallString,
+			iqsrt00RouterLoggingLogExternalRefStd
+				INTEGER,
+			iqsrt00RouterLoggingEXTREF1STANDARD
+				RollCallString,
+			iqsrt00RouterLoggingSN
+				RollCallString,
+			iqsrt00RouterSetupProduct
+				RollCallString,
+			iqsrt00RouterSetupVersion
+				RollCallString,
+			iqsrt00RouterSetupBuild
+				RollCallString,
+			iqsrt00RouterSetupKOS
+				RollCallString,
+			iqsrt00RouterSetupSerial
+				RollCallString,
+			iqsrt00RouterSetupFirmware
+				RollCallString,
+			iqsrt00RouterSetupPCB
+				RollCallString,
+			iqsrt00RouterSetupFactoryDefault
+				INTEGER,
+			iqsrt00RouterSetupRestart
+				INTEGER
+		}
+
+	iqsrt00SlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqsrt00CmdEntry 0 }
+
+
+	iqsrt00RouterCrosspointEnableTake OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enable Take  cmdID= 104 "
+		::= { iqsrt00CmdEntry 104 }
+
+
+	iqsrt00RouterCrosspointTakeBoth OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Take_Both(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Take Both  cmdID= 101  value= 1  "
+		::= { iqsrt00CmdEntry 101 }
+
+
+	iqsrt00RouterCrosspointTakeOutput1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Take_Output_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Take Output 1  cmdID= 105  value= 1  "
+		::= { iqsrt00CmdEntry 105 }
+
+
+	iqsrt00RouterCrosspointTakeOutput2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Take_Output_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Take Output 2  cmdID= 106  value= 1  "
+		::= { iqsrt00CmdEntry 106 }
+
+
+	iqsrt00RouterCrosspointCancel OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Cancel(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Cancel  cmdID= 102  value= 1  "
+		::= { iqsrt00CmdEntry 102 }
+
+
+	iqsrt00RouterCrosspointWidebandOutput1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Wideband Output 1  cmdID= 110 "
+		::= { iqsrt00CmdEntry 110 }
+
+
+	iqsrt00RouterCrosspointOutput1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_Input_3(2),
+							val_Input_4(3),
+							val_Input_5(4),
+							val_Input_6(5),
+							val_Input_7(6),
+							val_Input_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_1  cmdID= 8 
+					Input_1  value= 0  
+					Input_2  value= 1  
+					Input_3  value= 2  
+					Input_4  value= 3  
+					Input_5  value= 4  
+					Input_6  value= 5  
+					Input_7  value= 6  
+					Input_8  value= 7  "
+		::= { iqsrt00CmdEntry 8 }
+
+
+	iqsrt00RouterCrosspointOutputStatus1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Output Status 1  cmdID= 510  format=   "
+		::= { iqsrt00CmdEntry 510 }
+
+
+	iqsrt00RouterCrosspointSecondaryEnable1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Secondary Enable 1  cmdID= 506 "
+		::= { iqsrt00CmdEntry 506 }
+
+
+	iqsrt00RouterXpointSecondaryAutoSwitchOutp1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Secondary Auto Swit  cmdID= 2500 "
+		::= { iqsrt00CmdEntry 2500 }
+
+
+	iqsrt00RouterXpointSwitchtoPrimaryOutp1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Switch_to_Primary(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Switch to Primary  cmdID= 2502  value= 1  "
+		::= { iqsrt00CmdEntry 2502 }
+
+
+	iqsrt00RouterCrosspointOutput1Secondary OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_Input_3(2),
+							val_Input_4(3),
+							val_Input_5(4),
+							val_Input_6(5),
+							val_Input_7(6),
+							val_Input_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_1 Secondary  cmdID= 508 
+					Input_1  value= 0  
+					Input_2  value= 1  
+					Input_3  value= 2  
+					Input_4  value= 3  
+					Input_5  value= 4  
+					Input_6  value= 5  
+					Input_7  value= 6  
+					Input_8  value= 7  "
+		::= { iqsrt00CmdEntry 508 }
+
+
+	iqsrt00RouterCrosspointWidebandOutput2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Wideband Output 2  cmdID= 111 "
+		::= { iqsrt00CmdEntry 111 }
+
+
+	iqsrt00RouterCrosspointOutput2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_Input_3(2),
+							val_Input_4(3),
+							val_Input_5(4),
+							val_Input_6(5),
+							val_Input_7(6),
+							val_Input_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_2  cmdID= 9 
+					Input_1  value= 0  
+					Input_2  value= 1  
+					Input_3  value= 2  
+					Input_4  value= 3  
+					Input_5  value= 4  
+					Input_6  value= 5  
+					Input_7  value= 6  
+					Input_8  value= 7  "
+		::= { iqsrt00CmdEntry 9 }
+
+
+	iqsrt00RouterCrosspointOutputStatus2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Output Status 2  cmdID= 511  format=   "
+		::= { iqsrt00CmdEntry 511 }
+
+
+	iqsrt00RouterCrosspointSecondaryEnable2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Secondary Enable 2  cmdID= 507 "
+		::= { iqsrt00CmdEntry 507 }
+
+
+	iqsrt00RouterXpointSecondaryAutoSwitchOutp2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Secondary Auto Swit  cmdID= 2501 "
+		::= { iqsrt00CmdEntry 2501 }
+
+
+	iqsrt00RouterXpointSwitchtoPrimaryOutp2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Switch_to_Primary(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Switch to Primary  cmdID= 2503  value= 1  "
+		::= { iqsrt00CmdEntry 2503 }
+
+
+	iqsrt00RouterCrosspointOutput2Secondary OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1(0),
+							val_Input_2(1),
+							val_Input_3(2),
+							val_Input_4(3),
+							val_Input_5(4),
+							val_Input_6(5),
+							val_Input_7(6),
+							val_Input_8(7)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Output_2 Secondary  cmdID= 509 
+					Input_1  value= 0  
+					Input_2  value= 1  
+					Input_3  value= 2  
+					Input_4  value= 3  
+					Input_5  value= 4  
+					Input_6  value= 5  
+					Input_7  value= 6  
+					Input_8  value= 7  "
+		::= { iqsrt00CmdEntry 509 }
+
+
+	iqsrt00RouterOutput1SwitchingSyncStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sync Status  cmdID= 4009  format=   "
+		::= { iqsrt00CmdEntry 4009 }
+
+
+	iqsrt00RouterOutput1SwitchingSynchronous OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Synchronous  cmdID= 4000 "
+		::= { iqsrt00CmdEntry 4000 }
+
+
+	iqsrt00RouterOutput1SwitchingInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SDI_Output(1),
+							val_External(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input  cmdID= 4001 
+					SDI Output  value= 1  
+					External  value= 2  "
+		::= { iqsrt00CmdEntry 4001 }
+
+
+	iqsrt00RouterOutput1SwitchingField OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Field_1_Frame(1),
+							val_Field_2(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Field  cmdID= 4002 
+					Field 1/Frame  value= 1  
+					Field 2  value= 2  "
+		::= { iqsrt00CmdEntry 4002 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF1ForceRP168F1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force RP168 (F1)  cmdID= 4007 "
+		::= { iqsrt00CmdEntry 4007 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF1Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Line  cmdID= 4003  min= 1  max= 2000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 2000  Step = 1 "
+		::= { iqsrt00CmdEntry 4003 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF1Pixel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Pixel  cmdID= 4005  min= 1  max= 5000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 5000  Step = 1 "
+		::= { iqsrt00CmdEntry 4005 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF2ForceRP168F2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force RP168 (F2)  cmdID= 4008 "
+		::= { iqsrt00CmdEntry 4008 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF2Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Line  cmdID= 4004  min= 1  max= 2000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 2000  Step = 1 "
+		::= { iqsrt00CmdEntry 4004 }
+
+
+	iqsrt00Output1SwitchingSwitchPointF2Pixel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Pixel  cmdID= 4006  min= 1  max= 5000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 5000  Step = 1 "
+		::= { iqsrt00CmdEntry 4006 }
+
+
+	iqsrt00RouterOutput2SwitchingSyncStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Sync Status  cmdID= 4029  format=   "
+		::= { iqsrt00CmdEntry 4029 }
+
+
+	iqsrt00RouterOutput2SwitchingSynchronous OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Synchronous  cmdID= 4020 "
+		::= { iqsrt00CmdEntry 4020 }
+
+
+	iqsrt00RouterOutput2SwitchingInput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SDI_Output(1),
+							val_External(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input  cmdID= 4021 
+					SDI Output  value= 1  
+					External  value= 2  "
+		::= { iqsrt00CmdEntry 4021 }
+
+
+	iqsrt00RouterOutput2SwitchingField OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Field_1_Frame(1),
+							val_Field_2(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Field  cmdID= 4022 
+					Field 1/Frame  value= 1  
+					Field 2  value= 2  "
+		::= { iqsrt00CmdEntry 4022 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF1ForceRP168F1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force RP168 (F1)  cmdID= 4027 "
+		::= { iqsrt00CmdEntry 4027 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF1Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Line  cmdID= 4023  min= 1  max= 2000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 2000  Step = 1 "
+		::= { iqsrt00CmdEntry 4023 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF1Pixel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Pixel  cmdID= 4025  min= 1  max= 5000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 5000  Step = 1 "
+		::= { iqsrt00CmdEntry 4025 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF2ForceRP168F2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Force RP168 (F2)  cmdID= 4028 "
+		::= { iqsrt00CmdEntry 4028 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF2Line OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Line  cmdID= 4024  min= 1  max= 2000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 2000  Step = 1 "
+		::= { iqsrt00CmdEntry 4024 }
+
+
+	iqsrt00Output2SwitchingSwitchPointF2Pixel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+					Pixel  cmdID= 4026  min= 1  max= 5000   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 5000  Step = 1 "
+		::= { iqsrt00CmdEntry 4026 }
+
+
+	iqsrt00RouterGPIODebugDebugEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					Debug Enable  cmdID= 3100 "
+		::= { iqsrt00CmdEntry 3100 }
+
+
+	iqsrt00RouterGPIO1DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3160 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3160 }
+
+
+	iqsrt00RouterGPIODebugGPO1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 1  cmdID= 3130 "
+		::= { iqsrt00CmdEntry 3130 }
+
+
+	iqsrt00RouterGPIODebugGPI1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 1  cmdID= 3101  format=   "
+		::= { iqsrt00CmdEntry 3101 }
+
+
+	iqsrt00RouterGPIO2DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3161 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3161 }
+
+
+	iqsrt00RouterGPIODebugGPO2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 2  cmdID= 3131 "
+		::= { iqsrt00CmdEntry 3131 }
+
+
+	iqsrt00RouterGPIODebugGPI2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 2  cmdID= 3102  format=   "
+		::= { iqsrt00CmdEntry 3102 }
+
+
+	iqsrt00RouterGPIO3DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3162 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3162 }
+
+
+	iqsrt00RouterGPIODebugGPO3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 3  cmdID= 3132 "
+		::= { iqsrt00CmdEntry 3132 }
+
+
+	iqsrt00RouterGPIODebugGPI3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 3  cmdID= 3103  format=   "
+		::= { iqsrt00CmdEntry 3103 }
+
+
+	iqsrt00RouterGPIO4DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3163 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3163 }
+
+
+	iqsrt00RouterGPIODebugGPO4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 4  cmdID= 3133 "
+		::= { iqsrt00CmdEntry 3133 }
+
+
+	iqsrt00RouterGPIODebugGPI4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 4  cmdID= 3104  format=   "
+		::= { iqsrt00CmdEntry 3104 }
+
+
+	iqsrt00RouterGPIO5DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3164 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3164 }
+
+
+	iqsrt00RouterGPIODebugGPO5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 5  cmdID= 3134 "
+		::= { iqsrt00CmdEntry 3134 }
+
+
+	iqsrt00RouterGPIODebugGPI5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 5  cmdID= 3105  format=   "
+		::= { iqsrt00CmdEntry 3105 }
+
+
+	iqsrt00RouterGPIO6DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3165 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3165 }
+
+
+	iqsrt00RouterGPIODebugGPO6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 6  cmdID= 3135 "
+		::= { iqsrt00CmdEntry 3135 }
+
+
+	iqsrt00RouterGPIODebugGPI6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 6  cmdID= 3106  format=   "
+		::= { iqsrt00CmdEntry 3106 }
+
+
+	iqsrt00RouterGPIO7DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3166 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3166 }
+
+
+	iqsrt00RouterGPIODebugGPO7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 7  cmdID= 3136 "
+		::= { iqsrt00CmdEntry 3136 }
+
+
+	iqsrt00RouterGPIODebugGPI7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 7  cmdID= 3107  format=   "
+		::= { iqsrt00CmdEntry 3107 }
+
+
+	iqsrt00RouterGPIO8DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3167 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3167 }
+
+
+	iqsrt00RouterGPIODebugGPO8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 8  cmdID= 3137 "
+		::= { iqsrt00CmdEntry 3137 }
+
+
+	iqsrt00RouterGPIODebugGPI8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 8  cmdID= 3108  format=   "
+		::= { iqsrt00CmdEntry 3108 }
+
+
+	iqsrt00RouterGPIO9DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3168 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3168 }
+
+
+	iqsrt00RouterGPIODebugGPO9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 9  cmdID= 3138 "
+		::= { iqsrt00CmdEntry 3138 }
+
+
+	iqsrt00RouterGPIODebugGPI9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 9  cmdID= 3109  format=   "
+		::= { iqsrt00CmdEntry 3109 }
+
+
+	iqsrt00RouterGPIO10DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3169 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3169 }
+
+
+	iqsrt00RouterGPIODebugGPO10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 10  cmdID= 3139 "
+		::= { iqsrt00CmdEntry 3139 }
+
+
+	iqsrt00RouterGPIODebugGPI10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 10  cmdID= 3110  format=   "
+		::= { iqsrt00CmdEntry 3110 }
+
+
+	iqsrt00RouterGPIO11DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3170 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3170 }
+
+
+	iqsrt00RouterGPIODebugGPO11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 11  cmdID= 3140 "
+		::= { iqsrt00CmdEntry 3140 }
+
+
+	iqsrt00RouterGPIODebugGPI11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 11  cmdID= 3111  format=   "
+		::= { iqsrt00CmdEntry 3111 }
+
+
+	iqsrt00RouterGPIO12DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3171 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3171 }
+
+
+	iqsrt00RouterGPIODebugGPO12 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 12  cmdID= 3141 "
+		::= { iqsrt00CmdEntry 3141 }
+
+
+	iqsrt00RouterGPIODebugGPI12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 12  cmdID= 3112  format=   "
+		::= { iqsrt00CmdEntry 3112 }
+
+
+	iqsrt00RouterGPIO13DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3172 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3172 }
+
+
+	iqsrt00RouterGPIODebugGPO13 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 13  cmdID= 3142 "
+		::= { iqsrt00CmdEntry 3142 }
+
+
+	iqsrt00RouterGPIODebugGPI13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 13  cmdID= 3113  format=   "
+		::= { iqsrt00CmdEntry 3113 }
+
+
+	iqsrt00RouterGPIO14DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3173 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3173 }
+
+
+	iqsrt00RouterGPIODebugGPO14 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 14  cmdID= 3143 "
+		::= { iqsrt00CmdEntry 3143 }
+
+
+	iqsrt00RouterGPIODebugGPI14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 14  cmdID= 3114  format=   "
+		::= { iqsrt00CmdEntry 3114 }
+
+
+	iqsrt00RouterGPIO15DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3174 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3174 }
+
+
+	iqsrt00RouterGPIODebugGPO15 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 15  cmdID= 3144 "
+		::= { iqsrt00CmdEntry 3144 }
+
+
+	iqsrt00RouterGPIODebugGPI15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 15  cmdID= 3115  format=   "
+		::= { iqsrt00CmdEntry 3115 }
+
+
+	iqsrt00RouterGPIO16DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3175 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3175 }
+
+
+	iqsrt00RouterGPIODebugGPO16 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 16  cmdID= 3145 "
+		::= { iqsrt00CmdEntry 3145 }
+
+
+	iqsrt00RouterGPIODebugGPI16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 16  cmdID= 3116  format=   "
+		::= { iqsrt00CmdEntry 3116 }
+
+
+	iqsrt00RouterGPIO17DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3176 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3176 }
+
+
+	iqsrt00RouterGPIODebugGPO17 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 17  cmdID= 3146 "
+		::= { iqsrt00CmdEntry 3146 }
+
+
+	iqsrt00RouterGPIODebugGPI17 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 17  cmdID= 3117  format=   "
+		::= { iqsrt00CmdEntry 3117 }
+
+
+	iqsrt00RouterGPIO18DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3177 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3177 }
+
+
+	iqsrt00RouterGPIODebugGPO18 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 18  cmdID= 3147 "
+		::= { iqsrt00CmdEntry 3147 }
+
+
+	iqsrt00RouterGPIODebugGPI18 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 18  cmdID= 3118  format=   "
+		::= { iqsrt00CmdEntry 3118 }
+
+
+	iqsrt00RouterGPIO19DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3178 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3178 }
+
+
+	iqsrt00RouterGPIODebugGPO19 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 19  cmdID= 3148 "
+		::= { iqsrt00CmdEntry 3148 }
+
+
+	iqsrt00RouterGPIODebugGPI19 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 19  cmdID= 3119  format=   "
+		::= { iqsrt00CmdEntry 3119 }
+
+
+	iqsrt00RouterGPIO20DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3179 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3179 }
+
+
+	iqsrt00RouterGPIODebugGPO20 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 20  cmdID= 3149 "
+		::= { iqsrt00CmdEntry 3149 }
+
+
+	iqsrt00RouterGPIODebugGPI20 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 20  cmdID= 3120  format=   "
+		::= { iqsrt00CmdEntry 3120 }
+
+
+	iqsrt00RouterGPIO21DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3180 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3180 }
+
+
+	iqsrt00RouterGPIODebugGPO21 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 21  cmdID= 3150 "
+		::= { iqsrt00CmdEntry 3150 }
+
+
+	iqsrt00RouterGPIODebugGPI21 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 21  cmdID= 3121  format=   "
+		::= { iqsrt00CmdEntry 3121 }
+
+
+	iqsrt00RouterGPIO22DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3181 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3181 }
+
+
+	iqsrt00RouterGPIODebugGPO22 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 22  cmdID= 3151 "
+		::= { iqsrt00CmdEntry 3151 }
+
+
+	iqsrt00RouterGPIODebugGPI22 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 22  cmdID= 3122  format=   "
+		::= { iqsrt00CmdEntry 3122 }
+
+
+	iqsrt00RouterGPIO23DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3182 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3182 }
+
+
+	iqsrt00RouterGPIODebugGPO23 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 23  cmdID= 3152 "
+		::= { iqsrt00CmdEntry 3152 }
+
+
+	iqsrt00RouterGPIODebugGPI23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 23  cmdID= 3123  format=   "
+		::= { iqsrt00CmdEntry 3123 }
+
+
+	iqsrt00RouterGPIO24DebugDirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO Debug
+					Direction  cmdID= 3183 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3183 }
+
+
+	iqsrt00RouterGPIODebugGPO24 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Debug
+					GPO 24  cmdID= 3153 "
+		::= { iqsrt00CmdEntry 3153 }
+
+
+	iqsrt00RouterGPIODebugGPI24 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPIO Debug
+					GPI 24  cmdID= 3124  format=   "
+		::= { iqsrt00CmdEntry 3124 }
+
+
+	iqsrt00RouterNamingNameInput1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 1  cmdID= 300  "
+		::= { iqsrt00CmdEntry 300 }
+
+
+	iqsrt00RouterNamingNameInput2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 2  cmdID= 600  "
+		::= { iqsrt00CmdEntry 600 }
+
+
+	iqsrt00RouterNamingNameInput3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 3  cmdID= 900  "
+		::= { iqsrt00CmdEntry 900 }
+
+
+	iqsrt00RouterNamingNameInput4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 4  cmdID= 1200  "
+		::= { iqsrt00CmdEntry 1200 }
+
+
+	iqsrt00RouterNamingNameInput5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 5  cmdID= 1500  "
+		::= { iqsrt00CmdEntry 1500 }
+
+
+	iqsrt00RouterNamingNameInput6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 6  cmdID= 1800  "
+		::= { iqsrt00CmdEntry 1800 }
+
+
+	iqsrt00RouterNamingNameInput7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 7  cmdID= 2100  "
+		::= { iqsrt00CmdEntry 2100 }
+
+
+	iqsrt00RouterNamingNameInput8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Naming
+					Name Input 8  cmdID= 2400  "
+		::= { iqsrt00CmdEntry 2400 }
+
+
+	iqsrt00Routerinputstatusinput0status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 0 status  cmdID= 188  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 188 }
+
+
+	iqsrt00Routerinputstatusinput1status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 1 status  cmdID= 189  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 189 }
+
+
+	iqsrt00Routerinputstatusinput2status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 2 status  cmdID= 190  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 190 }
+
+
+	iqsrt00Routerinputstatusinput3status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 3 status  cmdID= 191  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 191 }
+
+
+	iqsrt00Routerinputstatusinput4status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 4 status  cmdID= 192  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 192 }
+
+
+	iqsrt00Routerinputstatusinput5status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 5 status  cmdID= 193  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 193 }
+
+
+	iqsrt00Routerinputstatusinput6status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 6 status  cmdID= 194  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 194 }
+
+
+	iqsrt00Routerinputstatusinput7status OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+				 PAGE: - input status
+					input 7 status  cmdID= 195  min= 0  max= 1  step= 1  format= %0.0f  div_scale= 1 
+					Min = 0  Max = 1  Step = 1 "
+		::= { iqsrt00CmdEntry 195 }
+
+
+	iqsrt00RouterGPIOIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+				 PAGE: - GPIO
+					Index  cmdID= 3000  min= 1  max= 24   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 24  Step = 1 "
+		::= { iqsrt00CmdEntry 3000 }
+
+
+	iqsrt00RouterGPIOEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO
+					Enable  cmdID= 3001 "
+		::= { iqsrt00CmdEntry 3001 }
+
+
+	iqsrt00RouterGPIODirection OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(0),
+							val_Output(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO
+					Direction  cmdID= 3002 
+					Input  value= 0  
+					Output  value= 1  "
+		::= { iqsrt00CmdEntry 3002 }
+
+
+	iqsrt00RouterGPIOSense OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Active_High(0),
+							val_Active_Low(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO
+					Sense  cmdID= 3003 
+					Active High  value= 0  
+					Active Low  value= 1  "
+		::= { iqsrt00CmdEntry 3003 }
+
+
+	iqsrt00GPIOGPOActionAction OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_OK(1),
+							val_Input_2_OK(2),
+							val_Input_3_OK(3),
+							val_Input_4_OK(4),
+							val_Input_5_OK(5),
+							val_Input_6_OK(6),
+							val_Input_7_OK(7),
+							val_Input_8_OK(8),
+							val_Input_1_Output_1(9),
+							val_Input_2_Output_1(10),
+							val_Input_3_Output_1(11),
+							val_Input_4_Output_1(12),
+							val_Input_5_Output_1(13),
+							val_Input_6_Output_1(14),
+							val_Input_7_Output_1(15),
+							val_Input_8_Output_1(16),
+							val_Input_1_Output_2(17),
+							val_Input_2_Output_2(18),
+							val_Input_3_Output_2(19),
+							val_Input_4_Output_2(20),
+							val_Input_5_Output_2(21),
+							val_Input_6_Output_2(22),
+							val_Input_7_Output_2(23),
+							val_Input_8_Output_2(24),
+							val_OP1_OK(25),
+							val_OP1_None(26),
+							val_OP1_HD(27),
+							val_OP1_SD(28),
+							val_OP1_Unknown(29),
+							val_OP1_ASI(30),
+							val_OP1_1125_1035_30i(1001),
+							val_OP1_1125_1035_29i(1002),
+							val_OP1_1125_1080_30i(1006),
+							val_OP1_1125_1080_29i(1007),
+							val_OP1_1125_1080_25i(1008),
+							val_OP1_1125_1080_30p(1009),
+							val_OP1_1125_1080_29p(1010),
+							val_OP1_1125_1080_25p(1011),
+							val_OP1_1125_1080_24p(1012),
+							val_OP1_1125_1080_23p(1013),
+							val_OP1_750_720_60p(1016),
+							val_OP1_750_720_59p(1017),
+							val_OP1_525_480_29i(1019),
+							val_OP1_625_576_25i(1020),
+							val_OP1_1125_1080_24sF(1023),
+							val_OP1_1125_1080_23sF(1024),
+							val_OP1_750_720_50p(1030),
+							val_OP1_750_720_30p(1037),
+							val_OP1_750_720_29p(1038),
+							val_OP1_750_720_25p(1039),
+							val_OP1_750_720_24p(1040),
+							val_OP1_750_720_23p(1041),
+							val_OP2_OK(31),
+							val_OP2_None(32),
+							val_OP2_HD(33),
+							val_OP2_SD(34),
+							val_OP2_Unknown(35),
+							val_OP2_ASI(36),
+							val_OP2_1125_1035_30i(2001),
+							val_OP2_1125_1035_29i(2002),
+							val_OP2_1125_1080_30i(2006),
+							val_OP2_1125_1080_29i(2007),
+							val_OP2_1125_1080_25i(2008),
+							val_OP2_1125_1080_30p(2009),
+							val_OP2_1125_1080_29p(2010),
+							val_OP2_1125_1080_25p(2011),
+							val_OP2_1125_1080_24p(2012),
+							val_OP2_1125_1080_23p(2013),
+							val_OP2_750_720_60p(2016),
+							val_OP2_750_720_59p(2017),
+							val_OP2_525_480_29i(2019),
+							val_OP2_625_576_25i(2020),
+							val_OP2_1125_1080_24sF(2023),
+							val_OP2_1125_1080_23sF(2024),
+							val_OP2_750_720_50p(2030),
+							val_OP2_750_720_30p(2037),
+							val_OP2_750_720_29p(2038),
+							val_OP2_750_720_25p(2039),
+							val_OP2_750_720_24p(2040),
+							val_OP2_750_720_23p(2041),
+							val_Ref_OK(37),
+							val_Ref_None(38),
+							val_Ref_HD(39),
+							val_Ref_SD(40),
+							val_Ref_Unknown(41),
+							val_Ref_1125_1080_30i(3006),
+							val_Ref_1125_1080_29i(3007),
+							val_Ref_1125_1080_25i(3008),
+							val_Ref_1125_1080_30p(3009),
+							val_Ref_1125_1080_29p(3010),
+							val_Ref_750_720_60p(3016),
+							val_Ref_750_720_59p(3017),
+							val_Ref_525_480_29i(3019),
+							val_Ref_625_576_25i(3020),
+							val_Ref_1125_1080_24sF(3023),
+							val_Ref_1125_1080_23sF(3024),
+							val_Ref_750_720_50p(3030),
+							val_Ref_750_720_30p(3037),
+							val_Ref_750_720_29p(3038),
+							val_Ref_750_720_25p(3039),
+							val_Take_Mode_Enabled(42),
+							val_Take_Both_Ready(43),
+							val_Take_OP1_Ready(44),
+							val_Take_OP2_Ready(45)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO- GPO Action
+					Action  cmdID= 3004 
+					Input 1 OK  value= 1  
+					Input 2 OK  value= 2  
+					Input 3 OK  value= 3  
+					Input 4 OK  value= 4  
+					Input 5 OK  value= 5  
+					Input 6 OK  value= 6  
+					Input 7 OK  value= 7  
+					Input 8 OK  value= 8  
+					Input 1->Output 1  value= 9  
+					Input 2->Output 1  value= 10  
+					Input 3->Output 1  value= 11  
+					Input 4->Output 1  value= 12  
+					Input 5->Output 1  value= 13  
+					Input 6->Output 1  value= 14  
+					Input 7->Output 1  value= 15  
+					Input 8->Output 1  value= 16  
+					Input 1->Output 2  value= 17  
+					Input 2->Output 2  value= 18  
+					Input 3->Output 2  value= 19  
+					Input 4->Output 2  value= 20  
+					Input 5->Output 2  value= 21  
+					Input 6->Output 2  value= 22  
+					Input 7->Output 2  value= 23  
+					Input 8->Output 2  value= 24  
+					OP1 OK  value= 25  
+					OP1 None  value= 26  
+					OP1 HD  value= 27  
+					OP1 SD  value= 28  
+					OP1 Unknown  value= 29  
+					OP1 ASI  value= 30  
+					OP1 1125(1035)/30i  value= 1001  
+					OP1 1125(1035)/29i  value= 1002  
+					OP1 1125(1080)/30i  value= 1006  
+					OP1 1125(1080)/29i  value= 1007  
+					OP1 1125(1080)/25i  value= 1008  
+					OP1 1125(1080)/30p  value= 1009  
+					OP1 1125(1080)/29p  value= 1010  
+					OP1 1125(1080)/25p  value= 1011  
+					OP1 1125(1080)/24p  value= 1012  
+					OP1 1125(1080)/23p  value= 1013  
+					OP1 750(720)/60p  value= 1016  
+					OP1 750(720)/59p  value= 1017  
+					OP1 525(480)/29i  value= 1019  
+					OP1 625(576)/25i  value= 1020  
+					OP1 1125(1080)/24sF  value= 1023  
+					OP1 1125(1080)/23sF  value= 1024  
+					OP1 750(720)/50p  value= 1030  
+					OP1 750(720)/30p  value= 1037  
+					OP1 750(720)/29p  value= 1038  
+					OP1 750(720)/25p  value= 1039  
+					OP1 750(720)/24p  value= 1040  
+					OP1 750(720)/23p  value= 1041  
+					OP2 OK  value= 31  
+					OP2 None  value= 32  
+					OP2 HD  value= 33  
+					OP2 SD  value= 34  
+					OP2 Unknown  value= 35  
+					OP2 ASI  value= 36  
+					OP2 1125(1035)/30i  value= 2001  
+					OP2 1125(1035)/29i  value= 2002  
+					OP2 1125(1080)/30i  value= 2006  
+					OP2 1125(1080)/29i  value= 2007  
+					OP2 1125(1080)/25i  value= 2008  
+					OP2 1125(1080)/30p  value= 2009  
+					OP2 1125(1080)/29p  value= 2010  
+					OP2 1125(1080)/25p  value= 2011  
+					OP2 1125(1080)/24p  value= 2012  
+					OP2 1125(1080)/23p  value= 2013  
+					OP2 750(720)/60p  value= 2016  
+					OP2 750(720)/59p  value= 2017  
+					OP2 525(480)/29i  value= 2019  
+					OP2 625(576)/25i  value= 2020  
+					OP2 1125(1080)/24sF  value= 2023  
+					OP2 1125(1080)/23sF  value= 2024  
+					OP2 750(720)/50p  value= 2030  
+					OP2 750(720)/30p  value= 2037  
+					OP2 750(720)/29p  value= 2038  
+					OP2 750(720)/25p  value= 2039  
+					OP2 750(720)/24p  value= 2040  
+					OP2 750(720)/23p  value= 2041  
+					Ref OK  value= 37  
+					Ref None  value= 38  
+					Ref HD  value= 39  
+					Ref SD  value= 40  
+					Ref Unknown  value= 41  
+					Ref 1125(1080)/30i  value= 3006  
+					Ref 1125(1080)/29i  value= 3007  
+					Ref 1125(1080)/25i  value= 3008  
+					Ref 1125(1080)/30p  value= 3009  
+					Ref 1125(1080)/29p  value= 3010  
+					Ref 750(720)/60p  value= 3016  
+					Ref 750(720)/59p  value= 3017  
+					Ref 525(480)/29i  value= 3019  
+					Ref 625(576)/25i  value= 3020  
+					Ref 1125(1080)/24sF  value= 3023  
+					Ref 1125(1080)/23sF  value= 3024  
+					Ref 750(720)/50p  value= 3030  
+					Ref 750(720)/30p  value= 3037  
+					Ref 750(720)/29p  value= 3038  
+					Ref 750(720)/25p  value= 3039  
+					Take Mode Enabled  value= 42  
+					Take Both Ready  value= 43  
+					Take OP1 Ready  value= 44  
+					Take OP2 Ready  value= 45  "
+		::= { iqsrt00CmdEntry 3004 }
+
+
+	iqsrt00GPIOGPIEventEvent OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_1_Output_1(1),
+							val_Input_2_Output_1(2),
+							val_Input_3_Output_1(3),
+							val_Input_4_Output_1(4),
+							val_Input_5_Output_1(5),
+							val_Input_6_Output_1(6),
+							val_Input_7_Output_1(7),
+							val_Input_8_Output_1(8),
+							val_Input_1_Output_2(9),
+							val_Input_2_Output_2(10),
+							val_Input_3_Output_2(11),
+							val_Input_4_Output_2(12),
+							val_Input_5_Output_2(13),
+							val_Input_6_Output_2(14),
+							val_Input_7_Output_2(15),
+							val_Input_8_Output_2(16),
+							val_OP1_IP_Switch_Bit_0(17),
+							val_OP1_IP_Switch_Bit_1(18),
+							val_OP1_IP_Switch_Bit_2(19),
+							val_OP2_IP_Switch_Bit_0(20),
+							val_OP2_IP_Switch_Bit_1(21),
+							val_OP2_IP_Switch_Bit_2(22),
+							val_Take_Output_1(23),
+							val_Take_Output_2(24),
+							val_Take_Both_Outputs(25),
+							val_Cancel_Take(26),
+							val_Recall_Memory_1(27),
+							val_Recall_Memory_2(28),
+							val_Recall_Memory_3(29),
+							val_Recall_Memory_4(30),
+							val_Recall_Memory_5(31),
+							val_Recall_Memory_6(32),
+							val_Recall_Memory_7(33),
+							val_Recall_Memory_8(34),
+							val_Recall_Memory_9(35),
+							val_Recall_Memory_10(36),
+							val_Recall_Memory_11(37),
+							val_Recall_Memory_12(38),
+							val_Recall_Memory_13(39),
+							val_Recall_Memory_14(40),
+							val_Recall_Memory_15(41),
+							val_Recall_Memory_16(42)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - GPIO- GPI Event
+					Event  cmdID= 3005 
+					Input 1->Output 1  value= 1  
+					Input 2->Output 1  value= 2  
+					Input 3->Output 1  value= 3  
+					Input 4->Output 1  value= 4  
+					Input 5->Output 1  value= 5  
+					Input 6->Output 1  value= 6  
+					Input 7->Output 1  value= 7  
+					Input 8->Output 1  value= 8  
+					Input 1->Output 2  value= 9  
+					Input 2->Output 2  value= 10  
+					Input 3->Output 2  value= 11  
+					Input 4->Output 2  value= 12  
+					Input 5->Output 2  value= 13  
+					Input 6->Output 2  value= 14  
+					Input 7->Output 2  value= 15  
+					Input 8->Output 2  value= 16  
+					OP1 IP Switch Bit 0  value= 17  
+					OP1 IP Switch Bit 1  value= 18  
+					OP1 IP Switch Bit 2  value= 19  
+					OP2 IP Switch Bit 0  value= 20  
+					OP2 IP Switch Bit 1  value= 21  
+					OP2 IP Switch Bit 2  value= 22  
+					Take Output 1  value= 23  
+					Take Output 2  value= 24  
+					Take Both Outputs  value= 25  
+					Cancel Take  value= 26  
+					Recall Memory 1  value= 27  
+					Recall Memory 2  value= 28  
+					Recall Memory 3  value= 29  
+					Recall Memory 4  value= 30  
+					Recall Memory 5  value= 31  
+					Recall Memory 6  value= 32  
+					Recall Memory 7  value= 33  
+					Recall Memory 8  value= 34  
+					Recall Memory 9  value= 35  
+					Recall Memory 10  value= 36  
+					Recall Memory 11  value= 37  
+					Recall Memory 12  value= 38  
+					Recall Memory 13  value= 39  
+					Recall Memory 14  value= 40  
+					Recall Memory 15  value= 41  
+					Recall Memory 16  value= 42  "
+		::= { iqsrt00CmdEntry 3005 }
+
+
+	iqsrt00RouterGPIOPresetAllowPresetSelect OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPIO Preset
+					Allow Preset Select  cmdID= 3007 "
+		::= { iqsrt00CmdEntry 3007 }
+
+
+	iqsrt00RouterGPIOPreset OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_GPIO_Preset_1(1),
+							val_GPIO_Preset_2(2),
+							val_GPIO_Preset_3(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPIO Preset
+					GPIO Preset 1  cmdID= 3006  value= 1  
+					GPIO Preset 2  cmdID= 3006  value= 2  
+					GPIO Preset 3  cmdID= 3006  value= 3  "
+		::= { iqsrt00CmdEntry 3006 }
+
+
+	iqsrt00MemoriesMemorySave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Save_1(1),
+							val_Save_2(2),
+							val_Save_3(3),
+							val_Save_4(4),
+							val_Save_5(5),
+							val_Save_6(6),
+							val_Save_7(7),
+							val_Save_8(8),
+							val_Save_9(9),
+							val_Save_10(10),
+							val_Save_11(11),
+							val_Save_12(12),
+							val_Save_13(13),
+							val_Save_14(14),
+							val_Save_15(15),
+							val_Save_16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Save 1  cmdID= 1600  value= 1  
+					Save 2  cmdID= 1600  value= 2  
+					Save 3  cmdID= 1600  value= 3  
+					Save 4  cmdID= 1600  value= 4  
+					Save 5  cmdID= 1600  value= 5  
+					Save 6  cmdID= 1600  value= 6  
+					Save 7  cmdID= 1600  value= 7  
+					Save 8  cmdID= 1600  value= 8  
+					Save 9  cmdID= 1600  value= 9  
+					Save 10  cmdID= 1600  value= 10  
+					Save 11  cmdID= 1600  value= 11  
+					Save 12  cmdID= 1600  value= 12  
+					Save 13  cmdID= 1600  value= 13  
+					Save 14  cmdID= 1600  value= 14  
+					Save 15  cmdID= 1600  value= 15  
+					Save 16  cmdID= 1600  value= 16  "
+		::= { iqsrt00CmdEntry 1600 }
+
+
+	iqsrt00MemoriesMemoryRecall OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Recall_1(1),
+							val_Recall_2(2),
+							val_Recall_3(3),
+							val_Recall_4(4),
+							val_Recall_5(5),
+							val_Recall_6(6),
+							val_Recall_7(7),
+							val_Recall_8(8),
+							val_Recall_9(9),
+							val_Recall_10(10),
+							val_Recall_11(11),
+							val_Recall_12(12),
+							val_Recall_13(13),
+							val_Recall_14(14),
+							val_Recall_15(15),
+							val_Recall_16(16)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Memories
+					Recall 1  cmdID= 1601  value= 1  
+					Recall 2  cmdID= 1601  value= 2  
+					Recall 3  cmdID= 1601  value= 3  
+					Recall 4  cmdID= 1601  value= 4  
+					Recall 5  cmdID= 1601  value= 5  
+					Recall 6  cmdID= 1601  value= 6  
+					Recall 7  cmdID= 1601  value= 7  
+					Recall 8  cmdID= 1601  value= 8  
+					Recall 9  cmdID= 1601  value= 9  
+					Recall 10  cmdID= 1601  value= 10  
+					Recall 11  cmdID= 1601  value= 11  
+					Recall 12  cmdID= 1601  value= 12  
+					Recall 13  cmdID= 1601  value= 13  
+					Recall 14  cmdID= 1601  value= 14  
+					Recall 15  cmdID= 1601  value= 15  
+					Recall 16  cmdID= 1601  value= 16  "
+		::= { iqsrt00CmdEntry 1601 }
+
+
+	iqsrt00MemoriesMemory1Name1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 1  cmdID= 5541  "
+		::= { iqsrt00CmdEntry 5541 }
+
+
+	iqsrt00MemoriesMemory2Name2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 2  cmdID= 5542  "
+		::= { iqsrt00CmdEntry 5542 }
+
+
+	iqsrt00MemoriesMemory3Name3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 3  cmdID= 5543  "
+		::= { iqsrt00CmdEntry 5543 }
+
+
+	iqsrt00MemoriesMemory4Name4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 4  cmdID= 5544  "
+		::= { iqsrt00CmdEntry 5544 }
+
+
+	iqsrt00MemoriesMemory5Name5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 5  cmdID= 5545  "
+		::= { iqsrt00CmdEntry 5545 }
+
+
+	iqsrt00MemoriesMemory6Name6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 6  cmdID= 5546  "
+		::= { iqsrt00CmdEntry 5546 }
+
+
+	iqsrt00MemoriesMemory7Name7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 7  cmdID= 5547  "
+		::= { iqsrt00CmdEntry 5547 }
+
+
+	iqsrt00MemoriesMemory8Name8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 8  cmdID= 5548  "
+		::= { iqsrt00CmdEntry 5548 }
+
+
+	iqsrt00MemoriesMemory9Name9 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 9  cmdID= 5549  "
+		::= { iqsrt00CmdEntry 5549 }
+
+
+	iqsrt00MemoriesMemory10Name10 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 10  cmdID= 5550  "
+		::= { iqsrt00CmdEntry 5550 }
+
+
+	iqsrt00MemoriesMemory11Name11 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 11  cmdID= 5551  "
+		::= { iqsrt00CmdEntry 5551 }
+
+
+	iqsrt00MemoriesMemory12Name12 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 12  cmdID= 5552  "
+		::= { iqsrt00CmdEntry 5552 }
+
+
+	iqsrt00MemoriesMemory13Name13 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 13  cmdID= 5553  "
+		::= { iqsrt00CmdEntry 5553 }
+
+
+	iqsrt00MemoriesMemory14Name14 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 14  cmdID= 5554  "
+		::= { iqsrt00CmdEntry 5554 }
+
+
+	iqsrt00MemoriesMemory15Name15 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 15  cmdID= 5555  "
+		::= { iqsrt00CmdEntry 5555 }
+
+
+	iqsrt00MemoriesMemory16Name16 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Memories
+					Name 16  cmdID= 5556  "
+		::= { iqsrt00CmdEntry 5556 }
+
+
+	iqsrt00RollcallRollTrackDisableAll OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Rollcall- RollTrack
+					Disable All  cmdID= 1513 "
+		::= { iqsrt00CmdEntry 1513 }
+
+
+	iqsrt00RollcallRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - BarGraph
+				 PAGE: - Rollcall- RollTrack
+					Index  cmdID= 1495  min= 1  max= 16   step= 1  format= %0.0f  div_scale= 1 
+					Min = 1  Max = 16  Step = 1 "
+		::= { iqsrt00CmdEntry 1495 }
+
+
+	iqsrt00RollcallRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Unused(-1),
+							val_Input_1_OK(1),
+							val_Input_2_OK(2),
+							val_Input_3_OK(3),
+							val_Input_4_OK(4),
+							val_Input_5_OK(5),
+							val_Input_6_OK(6),
+							val_Input_7_OK(7),
+							val_Input_8_OK(8),
+							val_Input_1_None(9),
+							val_Input_2_None(10),
+							val_Input_3_None(11),
+							val_Input_4_None(12),
+							val_Input_5_None(13),
+							val_Input_6_None(14),
+							val_Input_7_None(15),
+							val_Input_8_None(16),
+							val_Input_1_Output_1(17),
+							val_Input_2_Output_1(18),
+							val_Input_3_Output_1(19),
+							val_Input_4_Output_1(20),
+							val_Input_5_Output_1(21),
+							val_Input_6_Output_1(22),
+							val_Input_7_Output_1(23),
+							val_Input_8_Output_1(24),
+							val_OP1_Not_Input_1(25),
+							val_OP1_Not_Input_2(26),
+							val_OP1_Not_Input_3(27),
+							val_OP1_Not_Input_4(28),
+							val_OP1_Not_Input_5(29),
+							val_OP1_Not_Input_6(30),
+							val_OP1_Not_Input_7(31),
+							val_OP1_Not_Input_8(32),
+							val_OP1_OK(33),
+							val_OP1_None(34),
+							val_OP1_HD(35),
+							val_OP1_SD(36),
+							val_OP1_Unknown(37),
+							val_OP1_ASI(38),
+							val_OP1_1125_1035_30i(1001),
+							val_OP1_1125_1035_29i(1002),
+							val_OP1_1125_1080_30i(1006),
+							val_OP1_1125_1080_29i(1007),
+							val_OP1_1125_1080_25i(1008),
+							val_OP1_1125_1080_30p(1009),
+							val_OP1_1125_1080_29p(1010),
+							val_OP1_1125_1080_25p(1011),
+							val_OP1_1125_1080_24p(1012),
+							val_OP1_1125_1080_23p(1013),
+							val_OP1_750_720_60p(1016),
+							val_OP1_750_720_59p(1017),
+							val_OP1_525_480_29i(1019),
+							val_OP1_625_576_25i(1020),
+							val_OP1_1125_1080_24sF(1023),
+							val_OP1_1125_1080_23sF(1024),
+							val_OP1_750_720_50p(1030),
+							val_OP1_750_720_30p(1037),
+							val_OP1_750_720_29p(1038),
+							val_OP1_750_720_25p(1039),
+							val_OP1_750_720_24p(1040),
+							val_OP1_750_720_23p(1041),
+							val_Input_1_Output_2(39),
+							val_Input_2_Output_2(40),
+							val_Input_3_Output_2(41),
+							val_Input_4_Output_2(42),
+							val_Input_5_Output_2(43),
+							val_Input_6_Output_2(44),
+							val_Input_7_Output_2(45),
+							val_Input_8_Output_2(46),
+							val_OP2_Not_Input_1(47),
+							val_OP2_Not_Input_2(48),
+							val_OP2_Not_Input_3(49),
+							val_OP2_Not_Input_4(50),
+							val_OP2_Not_Input_5(51),
+							val_OP2_Not_Input_6(52),
+							val_OP2_Not_Input_7(53),
+							val_OP2_Not_Input_8(54),
+							val_OP2_OK(55),
+							val_OP2_None(56),
+							val_OP2_HD(57),
+							val_OP2_SD(58),
+							val_OP2_Unknown(59),
+							val_OP2_ASI(60),
+							val_OP2_1125_1035_30i(2001),
+							val_OP2_1125_1035_29i(2002),
+							val_OP2_1125_1080_30i(2006),
+							val_OP2_1125_1080_29i(2007),
+							val_OP2_1125_1080_25i(2008),
+							val_OP2_1125_1080_30p(2009),
+							val_OP2_1125_1080_29p(2010),
+							val_OP2_1125_1080_25p(2011),
+							val_OP2_1125_1080_24p(2012),
+							val_OP2_1125_1080_23p(2013),
+							val_OP2_750_720_60p(2016),
+							val_OP2_750_720_59p(2017),
+							val_OP2_525_480_29i(2019),
+							val_OP2_625_576_25i(2020),
+							val_OP2_1125_1080_24sF(2023),
+							val_OP2_1125_1080_23sF(2024),
+							val_OP2_750_720_50p(2030),
+							val_OP2_750_720_30p(2037),
+							val_OP2_750_720_29p(2038),
+							val_OP2_750_720_25p(2039),
+							val_OP2_750_720_24p(2040),
+							val_OP2_750_720_23p(2041),
+							val_Ref_OK(61),
+							val_Ref_None(62),
+							val_Ref_HD(63),
+							val_Ref_SD(64),
+							val_Ref_Unknown(65),
+							val_Ref_1125_1080_30i(3006),
+							val_Ref_1125_1080_29i(3007),
+							val_Ref_1125_1080_25i(3008),
+							val_Ref_1125_1080_30p(3009),
+							val_Ref_1125_1080_29p(3010),
+							val_Ref_750_720_60p(3016),
+							val_Ref_750_720_59p(3017),
+							val_Ref_525_480_29i(3019),
+							val_Ref_625_576_25i(3020),
+							val_Ref_1125_1080_24sF(3023),
+							val_Ref_1125_1080_23sF(3024),
+							val_Ref_750_720_50p(3030),
+							val_Ref_750_720_30p(3037),
+							val_Ref_750_720_29p(3038),
+							val_Ref_750_720_25p(3039)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+				 PAGE: - Rollcall- RollTrack
+					Source  cmdID= 1496 
+					Unused  value= -1  
+					Input 1 OK  value= 1  
+					Input 2 OK  value= 2  
+					Input 3 OK  value= 3  
+					Input 4 OK  value= 4  
+					Input 5 OK  value= 5  
+					Input 6 OK  value= 6  
+					Input 7 OK  value= 7  
+					Input 8 OK  value= 8  
+					Input 1 None  value= 9  
+					Input 2 None  value= 10  
+					Input 3 None  value= 11  
+					Input 4 None  value= 12  
+					Input 5 None  value= 13  
+					Input 6 None  value= 14  
+					Input 7 None  value= 15  
+					Input 8 None  value= 16  
+					Input 1->Output 1  value= 17  
+					Input 2->Output 1  value= 18  
+					Input 3->Output 1  value= 19  
+					Input 4->Output 1  value= 20  
+					Input 5->Output 1  value= 21  
+					Input 6->Output 1  value= 22  
+					Input 7->Output 1  value= 23  
+					Input 8->Output 1  value= 24  
+					OP1 Not Input 1  value= 25  
+					OP1 Not Input 2  value= 26  
+					OP1 Not Input 3  value= 27  
+					OP1 Not Input 4  value= 28  
+					OP1 Not Input 5  value= 29  
+					OP1 Not Input 6  value= 30  
+					OP1 Not Input 7  value= 31  
+					OP1 Not Input 8  value= 32  
+					OP1 OK  value= 33  
+					OP1 None  value= 34  
+					OP1 HD  value= 35  
+					OP1 SD  value= 36  
+					OP1 Unknown  value= 37  
+					OP1 ASI  value= 38  
+					OP1 1125(1035)/30i  value= 1001  
+					OP1 1125(1035)/29i  value= 1002  
+					OP1 1125(1080)/30i  value= 1006  
+					OP1 1125(1080)/29i  value= 1007  
+					OP1 1125(1080)/25i  value= 1008  
+					OP1 1125(1080)/30p  value= 1009  
+					OP1 1125(1080)/29p  value= 1010  
+					OP1 1125(1080)/25p  value= 1011  
+					OP1 1125(1080)/24p  value= 1012  
+					OP1 1125(1080)/23p  value= 1013  
+					OP1 750(720)/60p  value= 1016  
+					OP1 750(720)/59p  value= 1017  
+					OP1 525(480)/29i  value= 1019  
+					OP1 625(576)/25i  value= 1020  
+					OP1 1125(1080)/24sF  value= 1023  
+					OP1 1125(1080)/23sF  value= 1024  
+					OP1 750(720)/50p  value= 1030  
+					OP1 750(720)/30p  value= 1037  
+					OP1 750(720)/29p  value= 1038  
+					OP1 750(720)/25p  value= 1039  
+					OP1 750(720)/24p  value= 1040  
+					OP1 750(720)/23p  value= 1041  
+					Input 1->Output 2  value= 39  
+					Input 2->Output 2  value= 40  
+					Input 3->Output 2  value= 41  
+					Input 4->Output 2  value= 42  
+					Input 5->Output 2  value= 43  
+					Input 6->Output 2  value= 44  
+					Input 7->Output 2  value= 45  
+					Input 8->Output 2  value= 46  
+					OP2 Not Input 1  value= 47  
+					OP2 Not Input 2  value= 48  
+					OP2 Not Input 3  value= 49  
+					OP2 Not Input 4  value= 50  
+					OP2 Not Input 5  value= 51  
+					OP2 Not Input 6  value= 52  
+					OP2 Not Input 7  value= 53  
+					OP2 Not Input 8  value= 54  
+					OP2 OK  value= 55  
+					OP2 None  value= 56  
+					OP2 HD  value= 57  
+					OP2 SD  value= 58  
+					OP2 Unknown  value= 59  
+					OP2 ASI  value= 60  
+					OP2 1125(1035)/30i  value= 2001  
+					OP2 1125(1035)/29i  value= 2002  
+					OP2 1125(1080)/30i  value= 2006  
+					OP2 1125(1080)/29i  value= 2007  
+					OP2 1125(1080)/25i  value= 2008  
+					OP2 1125(1080)/30p  value= 2009  
+					OP2 1125(1080)/29p  value= 2010  
+					OP2 1125(1080)/25p  value= 2011  
+					OP2 1125(1080)/24p  value= 2012  
+					OP2 1125(1080)/23p  value= 2013  
+					OP2 750(720)/60p  value= 2016  
+					OP2 750(720)/59p  value= 2017  
+					OP2 525(480)/29i  value= 2019  
+					OP2 625(576)/25i  value= 2020  
+					OP2 1125(1080)/24sF  value= 2023  
+					OP2 1125(1080)/23sF  value= 2024  
+					OP2 750(720)/50p  value= 2030  
+					OP2 750(720)/30p  value= 2037  
+					OP2 750(720)/29p  value= 2038  
+					OP2 750(720)/25p  value= 2039  
+					OP2 750(720)/24p  value= 2040  
+					OP2 750(720)/23p  value= 2041  
+					Ref OK  value= 61  
+					Ref None  value= 62  
+					Ref HD  value= 63  
+					Ref SD  value= 64  
+					Ref Unknown  value= 65  
+					Ref 1125(1080)/30i  value= 3006  
+					Ref 1125(1080)/29i  value= 3007  
+					Ref 1125(1080)/25i  value= 3008  
+					Ref 1125(1080)/30p  value= 3009  
+					Ref 1125(1080)/29p  value= 3010  
+					Ref 750(720)/60p  value= 3016  
+					Ref 750(720)/59p  value= 3017  
+					Ref 525(480)/29i  value= 3019  
+					Ref 625(576)/25i  value= 3020  
+					Ref 1125(1080)/24sF  value= 3023  
+					Ref 1125(1080)/23sF  value= 3024  
+					Ref 750(720)/50p  value= 3030  
+					Ref 750(720)/30p  value= 3037  
+					Ref 750(720)/29p  value= 3038  
+					Ref 750(720)/25p  value= 3039  "
+		::= { iqsrt00CmdEntry 1496 }
+
+
+	iqsrt00RollcallRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Rollcall- RollTrack
+					Address  cmdID= 1497  "
+		::= { iqsrt00CmdEntry 1497 }
+
+
+	iqsrt00RollcallRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Rollcall- RollTrack
+					Command  cmdID= 1498  "
+		::= { iqsrt00CmdEntry 1498 }
+
+
+	iqsrt00RollcallRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Rollcall- RollTrack
+					Status  cmdID= 1511  format=   "
+		::= { iqsrt00CmdEntry 1511 }
+
+
+	iqsrt00RollcallRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Rollcall- RollTrack
+					Sending  cmdID= 1514  format=   "
+		::= { iqsrt00CmdEntry 1514 }
+
+
+	iqsrt00RouterLoggingLogInput1Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 1 Status  cmdID= 1000 "
+		::= { iqsrt00CmdEntry 1000 }
+
+
+	iqsrt00RouterLoggingINPUT1STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_1_STATUS=  cmdID= 2000  format=   "
+		::= { iqsrt00CmdEntry 2000 }
+
+
+	iqsrt00RouterLoggingLogInput2Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 2 Status  cmdID= 1001 "
+		::= { iqsrt00CmdEntry 1001 }
+
+
+	iqsrt00RouterLoggingINPUT2STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_2_STATUS=  cmdID= 2001  format=   "
+		::= { iqsrt00CmdEntry 2001 }
+
+
+	iqsrt00RouterLoggingLogInput3Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 3 Status  cmdID= 1002 "
+		::= { iqsrt00CmdEntry 1002 }
+
+
+	iqsrt00RouterLoggingINPUT3STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_3_STATUS=  cmdID= 2002  format=   "
+		::= { iqsrt00CmdEntry 2002 }
+
+
+	iqsrt00RouterLoggingLogInput4Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 4 Status  cmdID= 1003 "
+		::= { iqsrt00CmdEntry 1003 }
+
+
+	iqsrt00RouterLoggingINPUT4STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_4_STATUS=  cmdID= 2003  format=   "
+		::= { iqsrt00CmdEntry 2003 }
+
+
+	iqsrt00RouterLoggingLogInput5Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 5 Status  cmdID= 1004 "
+		::= { iqsrt00CmdEntry 1004 }
+
+
+	iqsrt00RouterLoggingINPUT5STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_5_STATUS=  cmdID= 2004  format=   "
+		::= { iqsrt00CmdEntry 2004 }
+
+
+	iqsrt00RouterLoggingLogInput6Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 6 Status  cmdID= 1005 "
+		::= { iqsrt00CmdEntry 1005 }
+
+
+	iqsrt00RouterLoggingINPUT6STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_6_STATUS=  cmdID= 2005  format=   "
+		::= { iqsrt00CmdEntry 2005 }
+
+
+	iqsrt00RouterLoggingLogInput7Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 7 Status  cmdID= 1006 "
+		::= { iqsrt00CmdEntry 1006 }
+
+
+	iqsrt00RouterLoggingINPUT7STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_7_STATUS=  cmdID= 2006  format=   "
+		::= { iqsrt00CmdEntry 2006 }
+
+
+	iqsrt00RouterLoggingLogInput8Status OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Input 8 Status  cmdID= 1007 "
+		::= { iqsrt00CmdEntry 1007 }
+
+
+	iqsrt00RouterLoggingINPUT8STATUS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					INPUT_8_STATUS=  cmdID= 2007  format=   "
+		::= { iqsrt00CmdEntry 2007 }
+
+
+	iqsrt00RouterLoggingLogOutput1Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Output 1 Type  cmdID= 1008 "
+		::= { iqsrt00CmdEntry 1008 }
+
+
+	iqsrt00RouterLoggingOUTPUT1TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_1_TYPE=  cmdID= 2008  format=   "
+		::= { iqsrt00CmdEntry 2008 }
+
+
+	iqsrt00RouterLoggingLogOutput2Type OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Output 2 Type  cmdID= 1009 "
+		::= { iqsrt00CmdEntry 1009 }
+
+
+	iqsrt00RouterLoggingOUTPUT2TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_2_TYPE=  cmdID= 2009  format=   "
+		::= { iqsrt00CmdEntry 2009 }
+
+
+	iqsrt00RouterLoggingLogExtReference OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Ext Reference  cmdID= 1010 "
+		::= { iqsrt00CmdEntry 1010 }
+
+
+	iqsrt00RouterLoggingEXTREF1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					EXTREF_1=  cmdID= 2010  format=   "
+		::= { iqsrt00CmdEntry 2010 }
+
+
+	iqsrt00RouterLoggingLogExternalRef OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log External Refere  cmdID= 1011 "
+		::= { iqsrt00CmdEntry 1011 }
+
+
+	iqsrt00RouterLoggingEXTREF1TYPE OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					EXTREF_1_TYPE=  cmdID= 2011  format=   "
+		::= { iqsrt00CmdEntry 2011 }
+
+
+	iqsrt00RouterLoggingLogCRCErrorsOutp1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log CRC Errors Outp  cmdID= 1012 "
+		::= { iqsrt00CmdEntry 1012 }
+
+
+	iqsrt00RouterLoggingOUTPUT1CRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_1_CRC=  cmdID= 2012  format=   "
+		::= { iqsrt00CmdEntry 2012 }
+
+
+	iqsrt00RouterLoggingLogCRCErrorsOutp2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log CRC Errors Outp  cmdID= 1013 "
+		::= { iqsrt00CmdEntry 1013 }
+
+
+	iqsrt00RouterLoggingOUTPUT2CRC OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_2_CRC=  cmdID= 2013  format=   "
+		::= { iqsrt00CmdEntry 2013 }
+
+
+	iqsrt00RouterLoggingLogOutput1Standa OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Output 1 Standa  cmdID= 1014 "
+		::= { iqsrt00CmdEntry 1014 }
+
+
+	iqsrt00RouterLoggingOUTPUT1STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_1_STANDARD=  cmdID= 2014  format=   "
+		::= { iqsrt00CmdEntry 2014 }
+
+
+	iqsrt00RouterLoggingLogOutput2Standa OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log Output 2 Standa  cmdID= 1015 "
+		::= { iqsrt00CmdEntry 1015 }
+
+
+	iqsrt00RouterLoggingOUTPUT2STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					OUTPUT_2_STANDARD=  cmdID= 2015  format=   "
+		::= { iqsrt00CmdEntry 2015 }
+
+
+	iqsrt00RouterLoggingLogExternalRefStd OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - Logging
+					Log External Refere  cmdID= 1016 "
+		::= { iqsrt00CmdEntry 1016 }
+
+
+	iqsrt00RouterLoggingEXTREF1STANDARD OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					EXTREF_1_STANDARD=  cmdID= 2016  format=   "
+		::= { iqsrt00CmdEntry 2016 }
+
+
+	iqsrt00RouterLoggingSN OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Logging
+					SN=  cmdID= 2017  format=   "
+		::= { iqsrt00CmdEntry 2017 }
+
+
+	iqsrt00RouterSetupProduct OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Product  cmdID= 5841  format=   "
+		::= { iqsrt00CmdEntry 5841 }
+
+
+	iqsrt00RouterSetupVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Version  cmdID= 2  format=   "
+		::= { iqsrt00CmdEntry 2 }
+
+
+	iqsrt00RouterSetupBuild OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Build  cmdID= 5  format=   "
+		::= { iqsrt00CmdEntry 5 }
+
+
+	iqsrt00RouterSetupKOS OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					KOS  cmdID= 5844  format=   "
+		::= { iqsrt00CmdEntry 5844 }
+
+
+	iqsrt00RouterSetupSerial OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Serial  cmdID= 1  format=   "
+		::= { iqsrt00CmdEntry 1 }
+
+
+	iqsrt00RouterSetupFirmware OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					Firmware  cmdID= 5013  format=   "
+		::= { iqsrt00CmdEntry 5013 }
+
+
+	iqsrt00RouterSetupPCB OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - Setup
+					PCB  cmdID= 5014  format=   "
+		::= { iqsrt00CmdEntry 5014 }
+
+
+	iqsrt00RouterSetupFactoryDefault OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Factory_Default(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Factory Default  cmdID= 5520  value= 1  "
+		::= { iqsrt00CmdEntry 5520 }
+
+
+	iqsrt00RouterSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - Setup
+					Restart  cmdID= 4  value= 1  "
+		::= { iqsrt00CmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: s34092421
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.69.88.84.82.69.70.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.69.88.84.82.69.70.95.49
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_CRC
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.79.85.84.80.85.84.95.49.95.67.82.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.79.85.84.80.85.84.95.49.95.67.82.67
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_2_CRC
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.79.85.84.80.85.84.95.50.95.67.82.67
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.79.85.84.80.85.84.95.50.95.67.82.67
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.69.88.84.82.69.70.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.69.88.84.82.69.70.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.49.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.49.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_2_TYPE
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.79.85.84.80.85.84.95.50.95.84.89.80.69
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.79.85.84.80.85.84.95.50.95.84.89.80.69
+-- Vary			: YES
+--
+-- Value(s)		: NONE
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_1_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.49.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.49.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_2_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.50.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.50.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_3_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.51.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.51.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_4_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.52.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.52.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_5_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.53.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.53.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_6_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.54.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.54.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_7_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.55.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.55.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_8_STATUS
+--
+-- MIB ref		: swCardEventLogSlotXX       .14.73.78.80.85.84.95.56.95.83.84.65.84.85.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.14.73.78.80.85.84.95.56.95.83.84.65.84.85.83
+-- Vary			: YES
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.69.88.84.82.69.70.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.69.88.84.82.69.70.95.49.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: None
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_1_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.79.85.84.80.85.84.95.49.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: None
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: OUTPUT_2_STANDARD
+--
+-- MIB ref		: swCardEventLogSlotXX       .17.79.85.84.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.17.79.85.84.80.85.84.95.50.95.83.84.65.78.68.65.82.68
+-- Vary			: YES
+--
+-- Value(s)		: None
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

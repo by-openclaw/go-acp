@@ -11,8 +11,8 @@ type Class uint8
 const (
 	ClassUniversal   Class = 0 // 00
 	ClassApplication Class = 1 // 01
-	ClassContext      Class = 2 // 10
-	ClassPrivate      Class = 3 // 11
+	ClassContext     Class = 2 // 10
+	ClassPrivate     Class = 3 // 11
 )
 
 func (c Class) String() string {

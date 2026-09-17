@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendConnectOnGoRoundTrip drives the consumer's SendConnectOnGo
@@ -23,7 +24,7 @@ func TestSendConnectOnGoRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// Fake matrix — wait for exactly one rx 05 frame on B, send a
 	// matching tx 12 ack back. SendConnectOnGo uses dst=42 src=17 →

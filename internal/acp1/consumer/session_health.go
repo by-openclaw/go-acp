@@ -2,11 +2,10 @@ package acp1
 
 import (
 	"context"
-	"net"
 	"sync/atomic"
 	"time"
 
-	"dhs/internal/consumer"
+	"dhs/internal/metrics"
 )
 
 // acp1StaleAfter is the rolling-window threshold past which the device
@@ -44,8 +43,13 @@ func (t *timestampSink) lastTx() time.Time {
 	return time.Unix(0, ns)
 }
 
-// timestampingTransport wraps a Transport and updates a timestampSink on
-// every Send/Receive. Cheap (one atomic store per wire event).
+// timestampingTransport wraps a Transport and taps every Send/Receive: it
+// stamps the timestampSink for liveness and counts the frame on the metrics
+// connector. Cheap — one atomic store and two counter adds per wire event.
+//
+// This is the UDP path's equivalent of the TCP and AN2 clients' OnRx/OnTx
+// hooks; all three end up feeding the same connector, so the counters mean
+// the same thing whichever transport a session resolved to.
 type timestampingTransport struct {
 	inner interface {
 		Send(ctx context.Context, payload []byte) error
@@ -53,86 +57,43 @@ type timestampingTransport struct {
 		Close() error
 	}
 	sink *timestampSink
+	met  *metrics.Connector
 }
 
 func (t *timestampingTransport) Send(ctx context.Context, payload []byte) error {
+	if err := t.inner.Send(ctx, payload); err != nil {
+		return err
+	}
 	t.sink.recordTx()
-	return t.inner.Send(ctx, payload)
+	if t.met != nil {
+		t.met.ObserveTx(len(payload), 0)
+	}
+	return nil
 }
 
 func (t *timestampingTransport) Receive(ctx context.Context, maxSize int) ([]byte, error) {
 	data, err := t.inner.Receive(ctx, maxSize)
 	if err == nil && len(data) > 0 {
 		t.sink.recordRx()
+		if t.met != nil {
+			t.met.ObserveRx(len(data))
+		}
 	}
 	return data, err
 }
 
 func (t *timestampingTransport) Close() error { return t.inner.Close() }
 
-// SessionHealth implements the cross-protocol HealthChecker (#248).
-// Maps the 3 layers (Reachable / Connected / Live) onto ACP1's
-// transport mix per the design table.
-func (p *Plugin) SessionHealth(ctx context.Context) consumer.SessionHealth {
-	p.mu.Lock()
-	c := p.client
-	host := p.host
-	port := p.port
-	tk := p.transport
-	sink := p.tsSink
-	p.mu.Unlock()
+// LastRx and LastTx expose the sink as a consumer.RxTxTimes, which is all
+// the shared Health needs to decide Live.
+func (t *timestampSink) LastRx() time.Time { return t.lastRx() }
+func (t *timestampSink) LastTx() time.Time { return t.lastTx() }
 
-	out := consumer.SessionHealth{
-		StaleAfter: acp1StaleAfter,
-	}
-	if sink != nil {
-		out.LastRx = sink.lastRx()
-		out.LastTx = sink.lastTx()
-	}
-	out.Connected = c != nil
-	out.Live = !out.LastRx.IsZero() && time.Since(out.LastRx) <= acp1StaleAfter
-
-	// Reachable: do a quick on-demand probe. For both UDP and TCP we
-	// dial TCP to host:port — it's the cheapest cross-platform check
-	// that doesn't require ICMP privileges. Honour the caller's ctx
-	// deadline; default 500ms cap so SessionHealth never blocks for
-	// long.
-	if host != "" && port > 0 {
-		out.Reachable = probeReachable(ctx, host, port)
-	}
-	_ = tk
-	return out
-}
-
-func probeReachable(ctx context.Context, host string, port int) bool {
-	d := net.Dialer{Timeout: 500 * time.Millisecond}
-	if dl, ok := ctx.Deadline(); ok {
-		if time.Until(dl) < d.Timeout {
-			d.Timeout = time.Until(dl)
-			if d.Timeout <= 0 {
-				return false
-			}
-		}
-	}
-	addr := net.JoinHostPort(host, itoaPort(port))
-	conn, err := d.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return false
-	}
-	_ = conn.Close()
-	return true
-}
-
-func itoaPort(p int) string {
-	if p == 0 {
-		return "0"
-	}
-	var buf [10]byte
-	i := len(buf)
-	for p > 0 {
-		i--
-		buf[i] = byte('0' + p%10)
-		p /= 10
-	}
-	return string(buf[i:])
-}
+// Plugin reports health through the embedded *consumer.Health (see
+// plugin.go). What lives here is only ACP1's time source.
+//
+// The SessionHealth method and the private probeReachable that used to
+// follow were byte-for-byte identical to ACP2's, and both dialled TCP to
+// decide Reachable regardless of the transport in use — so a live UDP
+// session against a Synapse rack reported reachable=false while it was
+// answering every request. Connect now passes the real network.

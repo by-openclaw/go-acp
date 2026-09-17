@@ -135,10 +135,10 @@ func (p *Plugin) reconnectLoop(ctx context.Context) {
 		// dead and will be garbage-collected once nothing holds it.
 		s := NewSession(p.logger)
 		s.SetOnElement(p.handleElements)
-		s.SetProfile(p.profile)
+		s.SetProfile(p.ComplianceProfile())
 		s.SetOnStateChange(p.onSessionStateChange)
-		if p.recorder != nil {
-			s.SetRecorder(p.recorder)
+		if rec := p.Recorder(); rec != nil {
+			s.SetRecorder(rec)
 		}
 
 		dialCtx, cancel := context.WithTimeout(ctx, 10*time.Second)

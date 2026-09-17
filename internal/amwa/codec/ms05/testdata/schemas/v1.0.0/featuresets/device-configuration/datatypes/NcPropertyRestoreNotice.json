@@ -1,0 +1,41 @@
+{
+    "description": "Property restore notice descriptor",
+    "name": "NcPropertyRestoreNotice",
+    "type": 2,
+    "fields": [
+        {
+            "description": "Property id",
+            "name": "id",
+            "typeName": "NcPropertyId",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Property name",
+            "name": "name",
+            "typeName": "NcName",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Property restore notice type",
+            "name": "noticeType",
+            "typeName": "NcPropertyRestoreNoticeType",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Property restore notice message",
+            "name": "noticeMessage",
+            "typeName": "NcString",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        }
+    ],
+    "parentType": null,
+    "constraints": null
+}

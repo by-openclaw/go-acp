@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: dhs_amwa
+  author: by-rune
+  description: >-
+    Stand up and keep alive the AMWA reference stack on the tooling
+    host: the nmos-cpp Registration/Query API and virtual Node as a
+    spec-correct oracle for the dhs consumer, and the AMWA NMOS Testing
+    tool as the external arbiter for the dhs node, registry and
+    controller. Left running between sessions so a spec argument can be
+    settled without rebuilding anything. Idempotent: run-twice = 0
+    changes.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+dependencies: []

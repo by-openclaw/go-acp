@@ -1,0 +1,28 @@
+{
+  "description": "Restore validation status enumeration",
+  "name": "NcRestoreValidationStatus",
+  "type": 3,
+  "items": [
+    {
+      "description": "Restore was successful",
+      "name": "Ok",
+      "value": 200
+    },
+    {
+      "description": "Restore failed",
+      "name": "Failed",
+      "value": 400
+    },
+    {
+      "description": "Restore failed because the role path is not found in the device model or the device cannot create the role path from the data set",
+      "name": "NotFound",
+      "value": 404
+    },
+    {
+      "description": "Restore failed due to an internal device error preventing the restore from happening",
+      "name": "DeviceError",
+      "value": 500
+    }
+  ],
+  "constraints": null
+}

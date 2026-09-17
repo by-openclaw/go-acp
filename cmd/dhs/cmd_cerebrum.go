@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,25 +10,78 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
+	"dhs/internal/clock"
+	"dhs/internal/consumer"
+	"dhs/internal/transport/ws"
 )
+
+// cerebrumValErr returns a client-side ValidationError — mapped to exit 2
+// (docs/protocols/error-codes.md: 0 outcome-ok / 1 runtime / 2 validation).
+func cerebrumValErr(verb, reason string) error {
+	return &consumer.ValidationError{Field: "cerebrum-nb " + verb, Reason: reason}
+}
+
+// extractOutputJSON pulls --output text|json out of args (for the verbs
+// that parse flags via extractStringFlag before connectAndLogin — an
+// unknown flag would otherwise fail the shared FlagSet). Absent = text.
+func extractOutputJSON(args []string) (bool, []string, error) {
+	val, rest, err := extractStringFlag(args, "--output")
+	if err != nil {
+		return false, nil, err
+	}
+	if val == "" {
+		return false, rest, nil
+	}
+	jsonOut, oerr := resolveEnsureOutput(val, false)
+	if oerr != nil {
+		return false, nil, oerr
+	}
+	return jsonOut, rest, nil
+}
+
+// printCerebrumJSON emits one structured result document on stdout — the
+// machine half of every read verb (ADR-0002 --output json).
+func printCerebrumJSON(v any) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
+}
 
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
 type cerebrumFlags struct {
-	port     int
-	user     string
-	pass     string
-	tls      bool
-	insecure bool
-	debug    bool
-	timeout  time.Duration
+	port         int
+	user         string
+	pass         string
+	tls          bool
+	insecure     bool
+	debug        bool
+	logPath      string
+	logFormat    string
+	logLevel     string
+	syslogAddr   string
+	logRetention int
+	capture      string
+	timeout      time.Duration
+
+	// logger + logCleanup are built once by newLogger and cached so a verb
+	// (e.g. watch) can route its own event stream through the SAME logger
+	// the plugin uses — one set of sinks (stderr/file/syslog-addr), one
+	// format. Do not set directly.
+	logger     *slog.Logger
+	logCleanup func()
 }
 
 func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
@@ -38,8 +92,116 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
+	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
+	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
+	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
+	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
+	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal \"auto\" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
+}
+
+// newLogger builds the verb logger under the uniform contract (epic #987,
+// Model B): the TERMINAL is always human, the SINKS are structured.
+//
+//   - stderr: human TEXT at Warn (quiet success) / Debug with --debug — the
+//     operator's operational log. Data tables print to STDOUT separately;
+//     Info-level EVENTS sit below Warn so they never clutter the terminal.
+//   - --log FILE: structured (--log-format, default syslog) at Info (or
+//     Debug with --debug) — local machine sink.
+//   - --syslog-addr host:port: structured RFC 5424 at Info — remote server.
+//
+// So `--log-format` chooses the SINK format only; the terminal stays
+// readable. Events reach file/server (Info) but not stderr (Warn). A tee
+// with per-handler levels does the routing.
+func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
+	if c.logger != nil { // built once, shared by the plugin and the verb
+		return c.logger, c.logCleanup, nil
+	}
+	format := c.logFormat
+	if format == "" {
+		format = DefaultLogFormat
+	}
+	var closers []func()
+	cleanup := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			closers[i]()
+		}
+	}
+
+	// Terminal (human, operational). Never the structured format.
+	termLevel := slog.LevelWarn
+	if c.debug {
+		termLevel = slog.LevelDebug
+	}
+	if c.logLevel != "" {
+		termLevel = parseLogLevel(c.logLevel)
+	}
+	handlers := []slog.Handler{slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: termLevel})}
+
+	// Sink level: Info carries the verb's events; Debug with --debug adds
+	// the RX/TX wire detail; --log-level overrides.
+	sinkLevel := slog.LevelInfo
+	if c.debug {
+		sinkLevel = slog.LevelDebug
+	}
+	if c.logLevel != "" {
+		sinkLevel = parseLogLevel(c.logLevel)
+	}
+
+	// Local file sink (structured). ON by default ("auto" is resolved to
+	// the ADR-0028 path by cerebrumExpandAutoPaths before this runs);
+	// "off"/"none"/"-" disable it.
+	switch c.logPath {
+	case "off", "none", "-":
+		c.logPath = ""
+	}
+	if c.logPath != "" {
+		// One file per calendar day (logrotate.go). cerebrum-nb watch is the
+		// canonical 24/7/365 verb, so it must never write a single unbounded
+		// file that a restart truncates.
+		f, err := newDailyWriter(c.logPath, c.logRetention, clock.System())
+		if err != nil {
+			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
+		}
+		handlers = append(handlers, newLoggerTo(f, sinkLevel, format).Handler())
+		closers = append(closers, func() { _ = f.Close() })
+	}
+
+	// Remote server sink (structured RFC 5424, non-blocking).
+	if c.syslogAddr != "" {
+		udp, err := dialSyslogUDP(c.syslogAddr)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("--syslog-addr %s: %w", c.syslogAddr, err)
+		}
+		handlers = append(handlers, udp.Handler(sinkLevel))
+		closers = append(closers, func() { udp.Close() })
+	}
+
+	logger := slog.New(teeHandler(handlers))
+	c.logger, c.logCleanup = logger, cleanup
+	return logger, cleanup, nil
+}
+
+// hasLogSink reports whether a structured sink (local file or remote
+// server) is configured — the terminal (stderr) is human and never carries
+// the Info-level event stream, so the verb only emits structured events
+// when there is somewhere for them to go.
+func (c *cerebrumFlags) hasLogSink() bool {
+	return c.logPath != "" || c.syslogAddr != ""
+}
+
+// cerebrumWriteFile writes an output file, creating missing parent
+// directories first (so --out captures\x.csv works on a fresh host).
+func cerebrumWriteFile(path string, data []byte) error {
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 // reorderFlagsFirst moves any tokens that look like Go flags (start with
@@ -102,7 +264,9 @@ func isKnownBoolFlag(a string) bool {
 
 // runCerebrum is the dispatcher for `dhs consumer cerebrum-nb <verb>`.
 func runCerebrum(ctx context.Context, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; a help flag AFTER the verb
+	// belongs to the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printCerebrumHelp()
 		return nil
 	}
@@ -111,6 +275,19 @@ func runCerebrum(ctx context.Context, args []string) error {
 	switch verb {
 	case "connect":
 		return cerebrumConnect(ctx, rest)
+	case "health":
+		// Cross-protocol verb. This dispatcher owns its own verb table, so
+		// `health` never reached the shared implementation even though the
+		// plugin satisfies HealthChecker like every other. Prepending
+		// --protocol is what dispatchConsumer does for every generic verb.
+		// No credentials needed: LOGIN is not required to open an NB
+		// session, so the three layers answer without one.
+		return runHealth(ctx, append([]string{"--protocol", "cerebrum-nb"}, rest...))
+	case "validate":
+		// Canonical offline validate (D2 #700, #243 residual): decode a
+		// --capture frames.jsonl through the codec; --out-tree = the
+		// observed DEVICE objects as a canonical tree.
+		return runValidate(ctx, append([]string{"--protocol", "cerebrum-nb"}, rest...))
 	case "listen":
 		return cerebrumListen(ctx, rest)
 	case "list-devices":
@@ -131,12 +308,44 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumSalvoInstanceDetails(ctx, rest)
 	case "keepalive-probe":
 		return cerebrumKeepaliveProbe(ctx, rest)
+	case "tree":
+		return cerebrumTree(ctx, rest)
+	case "get":
+		// Canonical read (D2 unit a, #700): one dotted
+		// DEVICE.SUB.OBJECT… path through Plugin.GetValue.
+		return cerebrumGet(ctx, rest)
+	case "extract":
+		// ADR-0022 card data model (D2 unit b, #700): device walk →
+		// .cache/dm/cerebrum-nb/<Model@SwRev>.json + manifest.
+		return cerebrumExtract(ctx, rest)
+	case "watch":
+		return cerebrumWatch(ctx, rest)
 	case "route":
 		return cerebrumRoute(ctx, rest)
+	case "usage":
+		// Source usage / reverse tally, with virtual-chain resolution
+		// (#714 — the client-side correlation the NB API leaves to us).
+		return cerebrumUsage(ctx, rest)
+	case "replace":
+		// Source substitution: replace src A with B on every literal
+		// cell (#714). ADR-0007 ensure semantics.
+		return cerebrumReplace(ctx, rest)
+	case "export":
+		return cerebrumExportXpoint(ctx, rest)
+	case "list-sources":
+		return cerebrumListMne(ctx, rest, "SRCE_MNE", "srce")
+	case "list-dests", "list-destinations":
+		return cerebrumListMne(ctx, rest, "DEST_MNE", "dest")
+	case "list-levels":
+		return cerebrumListMne(ctx, rest, "LEVEL_MNE", "level")
+	case "import":
+		return cerebrumImportXpoint(ctx, rest)
 	case "lock":
 		return cerebrumLock(ctx, rest, codec.LockProtect)
 	case "unlock":
-		return cerebrumLock(ctx, rest, codec.LockRelease)
+		// Default = RELEASED, the wire-actual clearing value (live
+		// 2026-08-16: the spec's RELEASE / UNLOCKED both NACK 8).
+		return cerebrumLock(ctx, rest, codec.LockReleased)
 	case "device-config":
 		return cerebrumDeviceConfig(ctx, rest)
 	case "set-mnemonic":
@@ -152,7 +361,7 @@ func runCerebrum(ctx context.Context, args []string) error {
 	case "obtain-datastore":
 		return cerebrumObtainDatastore(ctx, rest)
 	}
-	return fmt.Errorf("cerebrum-nb: unknown verb %q (run dhs consumer cerebrum-nb -h for the catalogue)", verb)
+	return cerebrumValErr(verb, "unknown verb (run dhs consumer cerebrum-nb -h for the catalogue)")
 }
 
 func printCerebrumHelp() {
@@ -166,27 +375,41 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device]
+  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
+  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
+  list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
+  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N = fan-out | --dest N = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L] [--router IP]
+  replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
+  export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
+  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
+  list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
+  tree                     NB catalogue tree — canonical renderer (same as <proto> tree). Categories (§5.2) + Salvos (§5.3)  [--domain salvos|categories|all] [--alt N | --no-mne]; DEVICE OBJECT TREE (acp2-walk analogue, §5.4.3 group obtains): --device NAME --by-name --sub-device N [--path GROUP] [--max-requests N]. Common: [--format ascii|plantuml|json] [--path P] [--depth N] [--filter S] [--out FILE]
   list-salvo-groups        OBTAIN <salvo_change type='GROUP_LIST'/>
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
+  get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
+  extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
+  validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
+  health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
-  lock                     ACTION <ROUTING LOCK='PROTECT'/>   --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] --level ID [--duration S] [--mode locked|protected|locked_path|protected_path|unlocked]
-  unlock                   ACTION <ROUTING LOCK='RELEASE'/>   (same flags as lock)
+  lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released]
+  unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
-  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|delete --group G [--instance I] [--new-name N] [--description D]
-  category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|delete --category C [--index N] [--name N] [--label L] [--description D]
+  salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
+                           ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
+  category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
   set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V
   obtain-datastore         OBTAIN <datastore_change name='…'/>  --name PATH
 
@@ -196,8 +419,20 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --pass P                  NB password (or $DHS_CEREBRUM_PASS)
   --tls                     use wss:// instead of ws://
   --insecure-skip-verify    with --tls, skip cert validation
-  --debug                   verbose RX/TX XML logging
+  --debug                   verbose RX/TX XML logging (stderr)
+  --log FILE                full debug log incl. RX/TX XML to FILE (clean UTF-8; stderr stays quiet)
+  --capture FILE            record every TX/RX XML document to a JSONL wire-trace — same contract as
+                            every other connector; replayable as an offline decoder oracle
+                            (WARNING: contains the LOGIN frame in cleartext — treat as secret)
   --timeout DUR             per-request timeout (default 5s — fail fast)
+  --output text|json        structured stdout — every read verb emits one JSON document,
+                            every write verb the ADR-0007 {changed|would_change, previous,
+                            current, diff[]} result (tree uses --format json instead)
+
+EXIT CODES
+  0 = success (read OK / write converged or already-converged)
+  1 = runtime failure (dial, LOGIN, NACK, timeout)
+  2 = validation error (bad flag / missing argument — nothing sent)
 
 EXAMPLES
   dhs consumer cerebrum-nb connect       10.6.239.50
@@ -218,30 +453,46 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return nil, nil, nil, nil, err
 	}
-	rest := fs.Args()
-	if len(rest) < 1 {
-		return nil, nil, nil, nil, fmt.Errorf("cerebrum-nb %s: missing host[:port] argument", verb)
-	}
-	host, portArg, err := splitHostPort(rest[0], cf.port)
+	p, sess, rest, err := dialCerebrum(cf, fs.Args(), verb)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	cf.port = portArg
+	return p, sess, cf, rest, nil
+}
 
-	logLevel := slog.LevelInfo
-	if cf.debug {
-		logLevel = slog.LevelDebug
+// dialCerebrum connects using ALREADY-PARSED connection flags. Verbs that
+// parse their own FlagSet (which registers the shared connection flags via
+// newCerebrumFlags) MUST call this with their cf + fs.Args() — handing
+// fs.Args() back to connectAndLogin re-parses only the leftover positionals,
+// silently dropping --port/--user/--pass/--log/--timeout (the bug that made
+// every §4 write verb dial the default port).
+func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, []string, error) {
+	rest := positionals
+	if len(rest) < 1 {
+		return nil, nil, nil, cerebrumValErr(verb, "missing host[:port] argument")
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+	host, portArg, err := splitHostPort(rest[0], cf.port)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	cf.port = portArg
+	cerebrumExpandAutoPaths(cf, verb, host)
+
+	logger, _, lerr := cf.newLogger()
+	if lerr != nil {
+		return nil, nil, nil, lerr
+	}
 
 	p := cerebrum.NewPlugin(logger)
 	p.Username = cf.user
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.Capture = cf.capture
+	p.CaptureMeta = captureMeta("cerebrum-nb", host, verb)
 
 	scheme := "ws"
 	if cf.tls {
@@ -252,14 +503,32 @@ func connectAndLogin(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Se
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := p.Connect(ctx, host, cf.port); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	if p.Session().LoggedIn() {
 		fmt.Fprintf(os.Stderr, "connected; logged in.\n")
 	} else {
 		fmt.Fprintf(os.Stderr, "connected (no LOGIN — set --user/--pass for verbs that act on data).\n")
 	}
-	return p, p.Session(), cf, rest[1:], nil
+	return p, p.Session(), rest[1:], nil
+}
+
+// dialCerebrumAuth is dialCerebrum + mandatory authenticated session (the
+// §4 write-verb requirement — mirrors connectAndAuth for pre-parsed flags).
+func dialCerebrumAuth(cf *cerebrumFlags, positionals []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, []string, error) {
+	p, sess, rest, err := dialCerebrum(cf, positionals, verb)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if !sess.LoggedIn() {
+		loginCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		defer cancel()
+		if err := p.Login(loginCtx); err != nil {
+			_ = p.Disconnect()
+			return nil, nil, nil, fmt.Errorf("cerebrum-nb %s: LOGIN required (set --user/--pass): %w", verb, err)
+		}
+	}
+	return p, sess, rest, nil
 }
 
 // ----------------------------------------------------------------------
@@ -281,12 +550,12 @@ func cerebrumKeepaliveProbe(_ context.Context, args []string) error {
 	cf := newCerebrumFlags(fs)
 	idle := fs.Duration("idle", 120*time.Second, "hold the connection idle for this long, then exit")
 	sendLogin := fs.Bool("send-login", false, "send <LOGIN .../> after handshake then idle (isolates whether LOGIN alone arms a server-side timer)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb keepalive-probe: missing host[:port] argument")
+		return cerebrumValErr("keepalive-probe", "missing host[:port] argument")
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {
@@ -394,6 +663,10 @@ func cerebrumKeepaliveProbe(_ context.Context, args []string) error {
 }
 
 func cerebrumConnect(_ context.Context, args []string) error {
+	jsonOut, args, err := extractOutputJSON(args)
+	if err != nil {
+		return err
+	}
 	p, sess, cf, _, err := connectAndLogin(args, "connect")
 	if err != nil {
 		return err
@@ -407,6 +680,16 @@ func cerebrumConnect(_ context.Context, args []string) error {
 		return fmt.Errorf("cerebrum-nb: poll: %w", err)
 	}
 	host, port := sess.RemoteHostPort()
+	if jsonOut {
+		return printCerebrumJSON(struct {
+			Host            string `json:"host"`
+			Port            int    `json:"port"`
+			APIVer          string `json:"api_ver"` // server-reported (LOGIN_REPLY), unrelated to the 0v16 doc name
+			ConnectedActive bool   `json:"connected_active"`
+			PrimaryState    bool   `json:"primary_state"`
+			SecondaryState  bool   `json:"secondary_state"`
+		}{host, port, currentAPIVer(sess), pr.ConnectedServerActive, pr.PrimaryServerState, pr.SecondaryServerState})
+	}
 	fmt.Printf("connected            %s:%d\n", host, port)
 	fmt.Printf("api_ver              %s\n", currentAPIVer(sess))
 	fmt.Printf("connected_active     %s\n", boolFlag(pr.ConnectedServerActive))
@@ -416,15 +699,50 @@ func cerebrumConnect(_ context.Context, args []string) error {
 }
 
 func cerebrumListen(ctx context.Context, args []string) error {
+	// --router points the ROUTING_CHANGE subscriptions at a specific
+	// router device instead of the route-master sentinel — the live
+	// experiment "does a crosspoint change surface per-device or only on
+	// the Routemaster?".
+	router, args, err := extractStringFlag(args, "--router")
+	if err != nil {
+		return err
+	}
+	if router == "" {
+		router = "0.0.0.0"
+	}
 	p, sess, _, _, err := connectAndLogin(args, "listen")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// Print every dispatched event. Wildcard-everything subscription.
+	// Source-label join: ROUTE rows never carry a source name (§5.1.1), so
+	// pre-fetch the source catalogue once and fill labels client-side.
+	// Lenient — a NACK (e.g. per-router MNE not granted) just means events
+	// print IDs only.
+	srcNames := map[string]string{}
+	if sess.LoggedIn() {
+		if st, serr := cerebrumObtainState(ctx, sess, router, "ROUTER", 10*time.Second, cerebrumStateWant{
+			SrcMne: true, Verb: "listen",
+		}); serr == nil {
+			for _, r := range st.Src {
+				srcNames[r.ID] = r.Mnemonic
+			}
+			fmt.Fprintf(os.Stderr, "source labels: %d loaded for %s\n", len(srcNames), router)
+		} else {
+			fmt.Fprintf(os.Stderr, "source labels unavailable for %s (%v) — events print IDs only\n", router, serr)
+		}
+	}
+
+	// Print every dispatched event. Wildcard-everything subscription. The
+	// spurious MTID-less WILDCARD_COMPLETE the server emits after every
+	// event (§1.6 deviation, live-verified) is suppressed from the display;
+	// MTID-carrying completes (real end-of-snapshot markers) still print.
 	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
-		printEvent(f)
+		if f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "" {
+			return
+		}
+		printEventLabeled(f, srcNames)
 	})
 
 	// Submit one SUBSCRIBE per item, each with its own mtid, so a NACK
@@ -444,20 +762,28 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		// row-specific ID wildcards from spec §5.1; missing them yields
 		// NACK ONE_OR_MORE_EVENTS_INVALID.
 		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{
-			Type: "ROUTE", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
-		{"ROUTING_CHANGE TYPE=SRCE_LOCK", &codec.RoutingChange{
-			Type: "SRCE_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
-			SrceID: "*",
-		}},
+		// SRCE_LOCK deliberately NOT subscribed: every live Cerebrum tested
+		// (RT + per-router, 2026-04..2026-08) NACKs it, and source locks
+		// are unreal in this production. Skipped with a notice below so a
+		// clean run shows 0 failed — re-add the row if a server ever
+		// grants it.
 		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{
-			Type: "DEST_LOCK", IPAddress: "0.0.0.0", DeviceType: codec.DeviceType("ROUTER"),
+			Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
 			DestID: "*", LevelID: "*",
 		}},
-		{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
-		{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
-		{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
+	}
+	// Category / salvo / device rows exist only at Routemaster scope
+	// (owner rule: no cat/salvo on a physical ROUTER — 0.0.0.0 RT only).
+	// A per-router listen subscribes just the routing rows.
+	if router == "0.0.0.0" {
+		plan = append(plan,
+			sub{"CATEGORY_CHANGE TYPE=CATEGORY_LIST", &codec.CategoryChange{Type: "CATEGORY_LIST"}},
+			sub{"SALVO_CHANGE TYPE=GROUP_LIST", &codec.SalvoChange{Type: "GROUP_LIST"}},
+			sub{"DEVICE_CHANGE TYPE=LIST", &codec.DeviceChange{Type: "LIST"}},
+		)
 	}
 	var ok, fail int
 	for _, p := range plan {
@@ -467,34 +793,81 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		// dies the underlying read returns immediately.
 		err := sess.Subscribe(ctx, []codec.SubItem{p.item})
 		if err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return nil // Ctrl+C mid-subscribe — clean exit
+			}
 			slog.Warn("subscribe failed", "plugin", "cerebrum-nb", "item", p.name, "err", err)
 			fail++
 			continue
 		}
 		ok++
 	}
-	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed; listening for events; Ctrl+C to stop\n", ok, fail)
+	fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed (SRCE_LOCK skipped — every live Cerebrum NACKs it; re-enable if a server ever grants it); listening for events; Ctrl+C to stop\n", ok, fail)
 	<-ctx.Done()
+	fmt.Fprintln(os.Stderr, "listen stopped.")
 	return nil
 }
 
 func cerebrumListDevices(_ context.Context, args []string) error {
 	classFilter := ""
+	withNames := false
 	filtered := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--device-type" && i+1 < len(args) {
+		switch {
+		case args[i] == "--device-type" && i+1 < len(args):
 			classFilter = args[i+1]
 			i++
-			continue
+		case args[i] == "--names":
+			withNames = true
+		default:
+			filtered = append(filtered, args[i])
 		}
-		filtered = append(filtered, args[i])
 	}
-	p, sess, _, _, err := connectAndLogin(filtered, "list-devices")
+	jsonOut, filtered, err := extractOutputJSON(filtered)
+	if err != nil {
+		return err
+	}
+	p, sess, cf, _, err := connectAndLogin(filtered, "list-devices")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	return obtainAndPrintDeviceList(sess, classFilter)
+	return obtainAndPrintDeviceList(sess, cf.timeout, classFilter, jsonOut, withNames)
+}
+
+// cerebrumDeviceNameJoin enriches LIST rows with the per-device DETAILS
+// row (§5.4.2) — the ONLY place the wire exposes DEVICE_NAME and the
+// PRIMARY/SECONDARY connection states (LIST carries no attributes at
+// all, spec §5.4.1 + live 2026-08-16). One IP-addressed obtain per
+// unique IP, sequential on the same session; a device that does not
+// answer within the per-request timeout keeps empty fields — the join
+// never fails the verb.
+type cerebrumDeviceMeta struct {
+	Name           string
+	VendorType     string
+	PrimaryState   string
+	SecondaryState string
+}
+
+func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, ips []string) map[string]cerebrumDeviceMeta {
+	meta := make(map[string]cerebrumDeviceMeta, len(ips))
+	for _, ip := range ips {
+		got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "DETAILS", IPAddress: ip}, "DETAILS")
+		if err != nil || got == nil || got.Device == nil {
+			continue
+		}
+		var m cerebrumDeviceMeta
+		if got.Device.Details != nil {
+			m.Name = got.Device.Details.Name
+			m.VendorType = got.Device.Details.VendorType
+		}
+		if got.Device.Connection != nil {
+			m.PrimaryState = got.Device.Connection.PrimaryState
+			m.SecondaryState = got.Device.Connection.SecondaryState
+		}
+		meta[ip] = m
+	}
+	return meta
 }
 
 // cerebrumDeviceDetails issues an OBTAIN of DEVICE_CHANGE TYPE=DETAILS for a
@@ -506,8 +879,12 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	jsonOut, rest, err := extractOutputJSON(rest)
+	if err != nil {
+		return err
+	}
 	if device == "" {
-		return fmt.Errorf("cerebrum-nb device-details: --device IP|NAME is required")
+		return cerebrumValErr("device-details", "--device IP|NAME is required")
 	}
 
 	p, sess, cf, _, err := connectAndLogin(rest, "device-details")
@@ -536,7 +913,11 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 		dc.IPAddress = device
 	}
 	if deviceType != "" {
-		dc.DeviceType = codec.DeviceType(deviceType)
+		// Wire-actual: the server is case-sensitive on DEVICE_TYPE values
+		// and accepts the UPPERCASE forms only (live 2026-08-16: "Router"
+		// NACKs 10, "ROUTER" answers) — normalize so operators can type
+		// either.
+		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
 	}
 	obCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
@@ -552,11 +933,45 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	}
 
 	d := got.Device
+	if jsonOut {
+		type jsonSub struct {
+			Index          int    `json:"index,omitempty"`
+			Name           string `json:"name,omitempty"`
+			Class          string `json:"class,omitempty"`
+			IPAddress      string `json:"ip_address,omitempty"`
+			PrimaryState   string `json:"primary_state,omitempty"`
+			SecondaryState string `json:"secondary_state,omitempty"`
+		}
+		out := struct {
+			IPAddress      string    `json:"ip_address"`
+			DeviceType     string    `json:"device_type"`
+			Name           string    `json:"name,omitempty"`
+			Vendor         string    `json:"vendor,omitempty"`
+			ControlIP1     string    `json:"control_ip1,omitempty"`
+			ControlIP2     string    `json:"control_ip2,omitempty"`
+			PrimaryState   string    `json:"primary_state,omitempty"`
+			SecondaryState string    `json:"secondary_state,omitempty"`
+			SubDevices     []jsonSub `json:"sub_devices"`
+		}{IPAddress: d.IPAddress, DeviceType: string(d.DeviceType), SubDevices: []jsonSub{}}
+		if d.Details != nil {
+			out.Name, out.Vendor = d.Details.Name, d.Details.VendorType
+			out.ControlIP1, out.ControlIP2 = d.Details.IP1, d.Details.IP2
+		}
+		if d.Connection != nil {
+			out.PrimaryState, out.SecondaryState = d.Connection.PrimaryState, d.Connection.SecondaryState
+		}
+		for _, e := range d.SubDevices {
+			out.SubDevices = append(out.SubDevices, jsonSub{e.Index, e.DeviceName, string(e.DeviceType), e.IPAddress, e.PrimaryState, e.SecondaryState})
+		}
+		return printCerebrumJSON(out)
+	}
 	fmt.Printf("device       %s\n", d.IPAddress)
 	fmt.Printf("device_type  %s\n", d.DeviceType)
 	if d.Details != nil {
 		if d.Details.Name != "" {
-			fmt.Printf("name         %s\n", d.Details.Name)
+			// This is the string --by-name has to match exactly, so it
+			// is shown with its padding, not as it happens to render.
+			fmt.Printf("name         %s\n", quoteIfPadded(d.Details.Name))
 		}
 		if d.Details.VendorType != "" {
 			fmt.Printf("vendor       %s\n", d.Details.VendorType)
@@ -580,6 +995,11 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	if len(d.SubDevices) > 0 {
 		fmt.Printf("sub_devices  %d\n", len(d.SubDevices))
 		for _, e := range d.SubDevices {
+			if e.PrimaryState != "" || e.SecondaryState != "" {
+				// Positional DEVICE_N shape (live NOC): index + model + states.
+				fmt.Printf("  %02d  %-20s primary=%q secondary=%q\n", e.Index, displayName(e.DeviceName), e.PrimaryState, e.SecondaryState)
+				continue
+			}
 			fmt.Printf("  %-12s %-20s %s\n", e.DeviceType, displayName(e.DeviceName), e.IPAddress)
 		}
 	}
@@ -610,11 +1030,21 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	jsonOut, rest, err := extractOutputJSON(rest)
+	if err != nil {
+		return err
+	}
 	if device == "" {
-		return fmt.Errorf("cerebrum-nb device-value: --device NAME is required (use --by-name)")
+		return cerebrumValErr("device-value", "--device NAME is required (use --by-name)")
 	}
 	if subDev == "" || object == "" {
-		return fmt.Errorf("cerebrum-nb device-value: --sub-device and --object are both required")
+		return cerebrumValErr("device-value", `--sub-device and --object are both required (use --object "." for the ROOT group listing)`)
+	}
+	// Group paths return their CHILDREN (live 2026-08-16: a §5.4.3 obtain
+	// on "PROCESSING AUDIO" listed sub-groups as available=0 rows and leaf
+	// values inline) — "." is the CLI sentinel for the root listing.
+	if object == "." {
+		object = ""
 	}
 
 	p, sess, cf, _, err := connectAndLogin(rest, "device-value")
@@ -631,18 +1061,77 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 	}
 	got, err := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE")
 	if err != nil {
-		return err
+		return byNameHint(err, device, byName)
 	}
 	if got == nil || got.Device == nil {
 		fmt.Fprintln(os.Stderr, "(no DEVICE_CHANGE TYPE=VALUE response within timeout)")
 		return nil
 	}
 	d := got.Device
+	if jsonOut {
+		type jsonOV struct {
+			Object    string   `json:"object"`
+			Available bool     `json:"available"`
+			Value     string   `json:"value,omitempty"`
+			DataType  string   `json:"data_type,omitempty"`
+			Readable  bool     `json:"readable"`
+			Writable  bool     `json:"writable"`
+			Min       string   `json:"min,omitempty"`
+			Max       string   `json:"max,omitempty"`
+			Step      string   `json:"step,omitempty"`
+			Default   string   `json:"default,omitempty"`
+			EnumList  []string `json:"enum_list,omitempty"`
+		}
+		out := struct {
+			IPAddress  string   `json:"ip_address"`
+			DeviceName string   `json:"device_name,omitempty"`
+			SubDevice  string   `json:"sub_device"`
+			Object     string   `json:"object"`
+			Values     []jsonOV `json:"values"`
+		}{d.IPAddress, d.DeviceName, d.SubDevice, d.Object, []jsonOV{}}
+		for _, ov := range d.ObjectValues {
+			out.Values = append(out.Values, jsonOV{ov.Object, ov.Available, ov.Value, ov.DataType, ov.Readable, ov.Writable, ov.Min, ov.Max, ov.Step, ov.Default, ov.EnumList})
+		}
+		return printCerebrumJSON(out)
+	}
 	fmt.Printf("device      %s (%s)\n", d.IPAddress, displayName(d.DeviceName))
 	fmt.Printf("sub_device  %s\n", d.SubDevice)
 	fmt.Printf("object      %s\n", d.Object)
-	if d.ObjectValue != nil {
-		fmt.Printf("available   %s\n", boolFlag(d.ObjectValue.Available))
+	// Print EVERY OBJECT_VALUE child with the full 0v16 descriptor — a
+	// wildcard OBJECT/SUB_DEVICE obtain may return many.
+	if n := len(d.ObjectValues); n > 1 {
+		fmt.Printf("values      %d\n", n)
+	}
+	for _, ov := range d.ObjectValues {
+		line := fmt.Sprintf("  %-40s available=%s", ov.Object, boolFlag(ov.Available))
+		if ov.Value != "" {
+			line += fmt.Sprintf(" value=%q", ov.Value)
+		}
+		if ov.DataType != "" {
+			line += " type=" + ov.DataType
+		}
+		if ov.Readable || ov.Writable {
+			line += fmt.Sprintf(" rw=%s%s", boolFlag(ov.Readable), boolFlag(ov.Writable))
+		}
+		if ov.Units != "" {
+			line += " units=" + ov.Units
+		}
+		if ov.Label != "" {
+			line += fmt.Sprintf(" label=%q", ov.Label)
+		}
+		if (ov.Min != "" || ov.Max != "") && ov.Min != ov.Max {
+			line += fmt.Sprintf(" range=%s..%s", ov.Min, ov.Max)
+		}
+		if ov.Step != "" && ov.Step != "0.000000" {
+			line += " step=" + ov.Step
+		}
+		if ov.Default != "" {
+			line += " default=" + ov.Default
+		}
+		if len(ov.EnumList) > 0 {
+			line += fmt.Sprintf(" enum=%s", strings.Join(ov.EnumList, "|"))
+		}
+		fmt.Println(line)
 	}
 	return nil
 }
@@ -650,6 +1139,10 @@ func cerebrumDeviceValue(_ context.Context, args []string) error {
 // cerebrumListCategories issues OBTAIN CATEGORY_CHANGE TYPE=CATEGORY_LIST.
 // Wire shape known (CATEGORY child with comma-separated LIST attr).
 func cerebrumListCategories(_ context.Context, args []string) error {
+	jsonOut, args, err := extractOutputJSON(args)
+	if err != nil {
+		return err
+	}
 	p, sess, cf, _, err := connectAndLogin(args, "list-categories")
 	if err != nil {
 		return err
@@ -660,7 +1153,21 @@ func cerebrumListCategories(_ context.Context, args []string) error {
 		return err
 	}
 	if got == nil || got.Category == nil {
+		if jsonOut {
+			return printCerebrumJSON(struct {
+				Categories []string `json:"categories"`
+			}{[]string{}})
+		}
 		return nil
+	}
+	if jsonOut {
+		cats := got.Category.Categories
+		if cats == nil {
+			cats = []string{}
+		}
+		return printCerebrumJSON(struct {
+			Categories []string `json:"categories"`
+		}{cats})
 	}
 	fmt.Printf("count %d\n", len(got.Category.Categories))
 	for _, c := range got.Category.Categories {
@@ -677,7 +1184,11 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 		return err
 	}
 	if cat == "" {
-		return fmt.Errorf("cerebrum-nb category-details: --category NAME is required")
+		return cerebrumValErr("category-details", "--category NAME is required")
+	}
+	jsonOut, rest, err := extractOutputJSON(rest)
+	if err != nil {
+		return err
 	}
 	p, sess, cf, _, err := connectAndLogin(rest, "category-details")
 	if err != nil {
@@ -695,6 +1206,30 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 		return nil
 	}
 	c := got.Category
+	if jsonOut {
+		type item struct {
+			Index int    `json:"index"`
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		}
+		out := struct {
+			Category    string `json:"category"`
+			Label       string `json:"label,omitempty"`
+			Available   *bool  `json:"available,omitempty"`
+			Description string `json:"description,omitempty"`
+			Items       []item `json:"items"`
+		}{Category: c.Category, Items: []item{}}
+		if c.Details != nil {
+			out.Label = c.Details.Label
+			av := c.Details.Available
+			out.Available = &av
+			out.Description = c.Details.Description
+			for _, it := range c.Details.Items {
+				out.Items = append(out.Items, item{it.Index, it.Type, it.Value})
+			}
+		}
+		return printCerebrumJSON(out)
+	}
 	fmt.Printf("category     %s\n", c.Category)
 	if c.Details != nil {
 		fmt.Printf("label        %s\n", displayDash(c.Details.Label))
@@ -715,6 +1250,10 @@ func cerebrumCategoryDetails(_ context.Context, args []string) error {
 // cerebrumListSalvoGroups issues OBTAIN SALVO_CHANGE TYPE=GROUP_LIST.
 // Wire shape known (GROUPS child with comma-separated LIST attr).
 func cerebrumListSalvoGroups(_ context.Context, args []string) error {
+	jsonOut, args, err := extractOutputJSON(args)
+	if err != nil {
+		return err
+	}
 	p, sess, cf, _, err := connectAndLogin(args, "list-salvo-groups")
 	if err != nil {
 		return err
@@ -724,11 +1263,20 @@ func cerebrumListSalvoGroups(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	groups := []string{}
+	if got != nil && got.Salvo != nil {
+		groups = append(groups, got.Salvo.Groups...)
+	}
+	if jsonOut {
+		return printCerebrumJSON(struct {
+			Groups []string `json:"groups"`
+		}{groups})
+	}
 	if got == nil || got.Salvo == nil {
 		return nil
 	}
-	fmt.Printf("count %d\n", len(got.Salvo.Groups))
-	for _, g := range got.Salvo.Groups {
+	fmt.Printf("count %d\n", len(groups))
+	for _, g := range groups {
 		fmt.Println(g)
 	}
 	return nil
@@ -742,7 +1290,11 @@ func cerebrumListSalvoInstances(_ context.Context, args []string) error {
 		return err
 	}
 	if group == "" {
-		return fmt.Errorf("cerebrum-nb list-salvo-instances: --group NAME is required")
+		return cerebrumValErr("list-salvo-instances", "--group NAME is required")
+	}
+	jsonOut, rest, err := extractOutputJSON(rest)
+	if err != nil {
+		return err
 	}
 	p, sess, cf, _, err := connectAndLogin(rest, "list-salvo-instances")
 	if err != nil {
@@ -757,7 +1309,23 @@ func cerebrumListSalvoInstances(_ context.Context, args []string) error {
 	}
 	if got == nil || got.Salvo == nil {
 		fmt.Fprintln(os.Stderr, "(no SALVO_CHANGE TYPE=INSTANCE_LIST response within timeout)")
+		if jsonOut {
+			return printCerebrumJSON(struct {
+				Group     string   `json:"group"`
+				Instances []string `json:"instances"`
+			}{group, []string{}})
+		}
 		return nil
+	}
+	if jsonOut {
+		instances := got.Salvo.Instances
+		if instances == nil {
+			instances = []string{}
+		}
+		return printCerebrumJSON(struct {
+			Group     string   `json:"group"`
+			Instances []string `json:"instances"`
+		}{got.Salvo.Group, instances})
 	}
 	fmt.Printf("group       %s\n", got.Salvo.Group)
 	fmt.Printf("count       %d\n", len(got.Salvo.Instances))
@@ -779,7 +1347,11 @@ func cerebrumSalvoInstanceDetails(_ context.Context, args []string) error {
 		return err
 	}
 	if group == "" || instance == "" {
-		return fmt.Errorf("cerebrum-nb salvo-instance-details: --group and --instance are both required")
+		return cerebrumValErr("salvo-instance-details", "--group and --instance are both required")
+	}
+	jsonOut, rest, err := extractOutputJSON(rest)
+	if err != nil {
+		return err
 	}
 	p, sess, cf, _, err := connectAndLogin(rest, "salvo-instance-details")
 	if err != nil {
@@ -797,10 +1369,35 @@ func cerebrumSalvoInstanceDetails(_ context.Context, args []string) error {
 		return nil
 	}
 	s := got.Salvo
+	if jsonOut {
+		out := struct {
+			Group       string `json:"group"`
+			Instance    string `json:"instance"`
+			Available   *bool  `json:"available,omitempty"`
+			Active      *bool  `json:"active,omitempty"`
+			Description string `json:"description,omitempty"`
+			Date        string `json:"date,omitempty"`
+			Time        string `json:"time,omitempty"`
+		}{Group: s.Group, Instance: s.Instance}
+		if d := s.InstanceDetails; d != nil {
+			av, ac := d.Available, d.Active
+			out.Available, out.Active = &av, &ac
+			out.Description = d.Description
+			out.Date, out.Time = d.Date, d.Time
+		}
+		return printCerebrumJSON(out)
+	}
 	fmt.Printf("group       %s\n", s.Group)
 	fmt.Printf("instance    %s\n", s.Instance)
-	if s.InstanceDetails != nil {
-		fmt.Printf("available   %s\n", boolFlag(s.InstanceDetails.Available))
+	if d := s.InstanceDetails; d != nil {
+		fmt.Printf("available   %s\n", boolFlag(d.Available))
+		fmt.Printf("active      %s\n", boolFlag(d.Active))
+		if d.Description != "" {
+			fmt.Printf("description %s\n", d.Description)
+		}
+		if d.Date != "" || d.Time != "" {
+			fmt.Printf("saved       %s %s\n", d.Date, d.Time)
+		}
 	}
 	return nil
 }
@@ -872,6 +1469,21 @@ func extractStringFlag(args []string, name string) (string, []string, error) {
 	return val, rest, nil
 }
 
+// extractBoolFlag is the presence-only sibling of extractStringFlag,
+// for verb-local switches that never take a value.
+func extractBoolFlag(args []string, name string) (bool, []string, error) {
+	rest := make([]string, 0, len(args))
+	found := false
+	for _, a := range args {
+		if a == name {
+			found = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	return found, rest, nil
+}
+
 // extractDeviceDetailsFlags splits the device-details argv into the
 // verb-specific flags (--device, --by-name) and the remainder consumed
 // by connectAndLogin. We don't extend cerebrumFlags because these
@@ -905,7 +1517,7 @@ func extractDeviceDetailsFlags(args []string) (device, deviceType string, byName
 // helpers
 // ----------------------------------------------------------------------
 
-func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) error {
+func obtainAndPrintDeviceList(sess *cerebrum.Session, timeout time.Duration, deviceTypeFilter string, jsonOut, withNames bool) error {
 	var entries []codec.DeviceEntry
 	var snapshotEntries int
 	var snapshotTypes []string
@@ -959,6 +1571,67 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 	<-done
 	timer.Stop()
 
+	// --names: LIST rows never carry DEVICE_NAME (§5.4.1 LIST has no
+	// attributes) — join the per-IP DETAILS rows for name + states.
+	meta := map[string]cerebrumDeviceMeta{}
+	if withNames {
+		seen := map[string]bool{}
+		ips := make([]string, 0, len(entries))
+		for _, d := range entries {
+			if !seen[d.IPAddress] {
+				seen[d.IPAddress] = true
+				ips = append(ips, d.IPAddress)
+			}
+		}
+		meta = cerebrumDeviceNameJoin(sess, timeout, ips)
+	}
+
+	if jsonOut {
+		type row struct {
+			Class          string `json:"class"`
+			IPAddress      string `json:"ip_address"`
+			Name           string `json:"name,omitempty"`
+			PrimaryState   string `json:"primary_state,omitempty"`
+			SecondaryState string `json:"secondary_state,omitempty"`
+		}
+		rows := []row{}
+		if deviceTypeFilter == "" || strings.EqualFold(deviceTypeFilter, "Router") {
+			rows = append(rows, row{Class: "ROUTER", IPAddress: "0.0.0.0", Name: "Routemaster"}) // synthesized sentinel
+		}
+		for _, d := range entries {
+			r := row{Class: string(d.DeviceType), IPAddress: d.IPAddress, Name: d.DeviceName}
+			if m, ok := meta[d.IPAddress]; ok {
+				if r.Name == "" {
+					r.Name = m.Name
+				}
+				r.PrimaryState, r.SecondaryState = m.PrimaryState, m.SecondaryState
+			}
+			rows = append(rows, r)
+		}
+		return printCerebrumJSON(struct {
+			Devices []row `json:"devices"`
+		}{rows})
+	}
+	if withNames {
+		fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n", "DEVICE_TYPE", "IP_ADDRESS", "NAME", "PRIMARY", "SECONDARY")
+		if deviceTypeFilter == "" || strings.EqualFold(deviceTypeFilter, "Router") {
+			fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n", "ROUTER", "0.0.0.0", "Routemaster", "-", "-")
+		}
+		for _, d := range entries {
+			m := meta[d.IPAddress]
+			name := d.DeviceName
+			if name == "" {
+				name = m.Name
+			}
+			fmt.Printf("%-10s  %-16s  %-32s  %-14s  %s\n",
+				d.DeviceType, d.IPAddress, displayDash(name),
+				displayDash(m.PrimaryState), displayDash(m.SecondaryState))
+		}
+		if len(entries) == 0 {
+			fmt.Fprintln(os.Stderr, "(server returned no DEVICE entries within 15s — check connectivity / licence)")
+		}
+		return nil
+	}
 	fmt.Printf("%-10s  %s\n", "DEVICE_TYPE", "IP_ADDRESS")
 	// Prepend the route-master sentinel (`0.0.0.0/ROUTER`) — central
 	// addressing target per spec §4.1, present on every Cerebrum,
@@ -986,7 +1659,614 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, deviceTypeFilter string) e
 	return nil
 }
 
-func printEvent(f *codec.Frame) {
+// cerebrumWatch subscribes to one device's changes — the DEVICE-class
+// analogue of `listen --router` (§2.4: SUBSCRIBE takes the same §5.4 rows):
+//
+//	watch --device IP [--device-type DEVICE|ROUTER|SNMP]
+//	    DETAILS subscribe — connection / sub-device state changes
+//	watch --device NAME --by-name --sub-device S --object O
+//	    VALUE subscribe — one object's value changes (object paths must be
+//	    known a priori; wildcards are refused on this row, live-verified)
+func cerebrumWatch(ctx context.Context, args []string) error {
+	device, deviceType, byName, rest, err := extractDeviceDetailsFlags(args)
+	if err != nil {
+		return err
+	}
+	subDev, rest, err := extractStringFlag(rest, "--sub-device")
+	if err != nil {
+		return err
+	}
+	object, rest, err := extractStringFlag(rest, "--object")
+	if err != nil {
+		return err
+	}
+	// --raw keeps the pre-parity per-frame rendering: every wire
+	// attribute, one block per frame. The table drops frame-level
+	// attrs (name/ip/sub repeat identically on every row of a single
+	// watch), so anything diagnosing the WIRE rather than the DEVICE
+	// still needs the old view.
+	rawView, rest, err := extractBoolFlag(rest, "--raw")
+	if err != nil {
+		return err
+	}
+	// --label narrows a watch to named objects. Without it, "Nodes.*"
+	// on a live NOC reports every field of all 68 nodes and the one
+	// value anyone is waiting on is lost in it.
+	//
+	// The name is not chosen here: --label is what the GENERIC watch
+	// calls this filter, next to --group / --id / --path / --slot, and
+	// that verb is shared by acp1, acp2, emberplus, probel, tsl and
+	// osc. cerebrum-nb inventing its own word for the same idea is the
+	// same class of drift as it having its own output format was.
+	//
+	// It differs in one way, deliberately: this takes a comma list
+	// where the generic one takes a single label. A list is a superset
+	// — one name still works — and the generic flag should grow the
+	// same, which is a change across every plugin's matcher rather
+	// than a rename.
+	only, rest, err := extractStringFlag(rest, "--label")
+	if err != nil {
+		return err
+	}
+	// --initial prints the value every subscription answers with.
+	// Off by default: a watch reports CHANGES. Use export for a
+	// snapshot — it walks the tree and writes a file.
+	showInitial, rest, err := extractBoolFlag(rest, "--initial")
+	if err != nil {
+		return err
+	}
+	onlyLeaves := parseOnly(only)
+	if device == "" {
+		return cerebrumValErr("watch", "--device IP|NAME is required")
+	}
+	if (subDev == "") != (object == "") {
+		return cerebrumValErr("watch", `--sub-device and --object go together (both = VALUE watch, neither = DETAILS watch; --object "." = root group)`)
+	}
+	if object == "." {
+		object = "" // root-group sentinel, same as device-value
+	}
+
+	args = reorderFlagsFirst(rest)
+	fs := flag.NewFlagSet("cerebrum-nb watch", flag.ContinueOnError)
+	cf := newCerebrumFlags(fs)
+	if err := parseVerbFlags(fs, args); err != nil {
+		return err
+	}
+	// A watch runs 24/7/365, so it is supervised: the session is re-dialled
+	// and re-subscribed whenever the link dies. Every (re)connect builds a
+	// fresh Plugin, so the live one is kept in a guarded slot and the old one
+	// is disconnected as it is replaced — otherwise a week of reconnects
+	// leaks a week of sockets.
+	var (
+		plugMu sync.Mutex
+		plug   *cerebrum.Plugin
+	)
+	swapPlugin := func(p *cerebrum.Plugin) {
+		plugMu.Lock()
+		old := plug
+		plug = p
+		plugMu.Unlock()
+		if old != nil && old != p {
+			_ = old.Disconnect()
+		}
+	}
+	defer func() {
+		plugMu.Lock()
+		p := plug
+		plugMu.Unlock()
+		if p != nil {
+			_ = p.Disconnect()
+		}
+	}()
+	// The logger is built by the first dial, so the cleanup is resolved at
+	// exit rather than captured now (when it is still nil).
+	defer func() {
+		if cf.logCleanup != nil {
+			cf.logCleanup()
+		}
+	}()
+
+	dialWatch := func(context.Context) (*cerebrum.Session, error) {
+		p, sess, _, derr := dialCerebrumAuth(cf, fs.Args(), "watch")
+		if derr != nil {
+			return nil, derr
+		}
+		swapPlugin(p)
+		return sess, nil
+	}
+
+	newRow := func(obj string) *codec.DeviceChange {
+		dc := &codec.DeviceChange{}
+		if subDev != "" {
+			dc.Type = "VALUE"
+			dc.SubDevice = subDev
+			dc.Object = obj
+			if byName {
+				dc.DeviceName = device
+			} else {
+				dc.IPAddress = device
+			}
+		} else {
+			// DETAILS addressing is IP-only (by-name NACKs — spec-conform).
+			dc.Type = "DETAILS"
+			dc.IPAddress = device
+			if deviceType == "" {
+				deviceType = "DEVICE"
+			}
+		}
+		if deviceType != "" {
+			dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+		}
+		return dc
+	}
+
+	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
+	// the wire (no type/access/units), so the resolve step's descriptors are
+	// remembered here and merged into every rendered row — giving the watch
+	// the same detail (type, R/W, units, enum/range) as acp1/acp2/ember+.
+	//
+	// Guarded, because a reconnect re-resolves it on the supervisor's
+	// goroutine while the event handler is reading it on the session's.
+	var (
+		descMu sync.RWMutex
+		desc   = map[string]codec.DeviceObjectValue{}
+	)
+	lookupDesc := func(obj string) (codec.DeviceObjectValue, bool) {
+		descMu.RLock()
+		defer descMu.RUnlock()
+		d, ok := desc[obj]
+		return d, ok
+	}
+
+	// resolveObjects re-reads the object list and its descriptors on a given
+	// session. Run BEFORE subscribing, so an expansion that finds nothing
+	// fails loudly instead of quietly watching one row.
+	resolveObjects := func(sess *cerebrum.Session) ([]string, error) {
+		objectRows := []codec.DeviceObjectValue{{Object: object}}
+		if subDev != "" {
+			var rerr error
+			objectRows, rerr = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
+			if rerr != nil {
+				return nil, rerr
+			}
+		}
+		objects := make([]string, 0, len(objectRows))
+		descMu.Lock()
+		for _, r := range objectRows {
+			objects = append(objects, r.Object)
+			desc[r.Object] = r
+		}
+		descMu.Unlock()
+		return objects, nil
+	}
+
+	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
+	// layout — the same columns `dhs watch` gives acp1/acp2. DETAILS is
+	// connection state, a different shape, and keeps its own form.
+	dmView := subDev != "" && !rawView
+	// The header is emitted by the first row, not after subscribing:
+	// a subscription answers with the object's CURRENT value, so rows
+	// start arriving while Subscribe is still returning and a header
+	// printed afterwards lands below its own table. Deferring it to
+	// first use also means a watch that subscribes nothing prints no
+	// header for an empty table.
+	var header sync.Once
+	// A watch reports CHANGES.
+	//
+	// A Cerebrum SUBSCRIBE answers with the object's CURRENT value, so
+	// every subscription emits one row before anything has happened.
+	// On a single object that reads as a useful baseline; across an
+	// expanded list it is a full state dump — subscribing 68 nodes
+	// printed 1,088 rows of unchanged data and buried the events the
+	// watch existed to show. Worse, the server RE-ASSERTS values that
+	// have not changed, so even a settled tree keeps printing.
+	//
+	// So: remember the last value per object and print only when it
+	// differs. --initial prints the baseline; export is what produces
+	// a snapshot.
+	seenValue := map[string]string{}
+	var seenMu sync.Mutex
+	changed := func(ov codec.DeviceObjectValue) bool {
+		v := ov.Value
+		if !ov.Available {
+			v = "\x00unavailable"
+		}
+		seenMu.Lock()
+		defer seenMu.Unlock()
+		prev, known := seenValue[ov.Object]
+		seenValue[ov.Object] = v
+		if !known {
+			return showInitial
+		}
+		return prev != v
+	}
+
+	// attach re-establishes everything that lives on the SERVER or in the
+	// render state: the object list, the descriptor cache, the event handler
+	// and the subscriptions. The supervisor calls it after every successful
+	// dial, including the first — a Cerebrum subscription does not survive
+	// the socket, so a reconnect that skipped this would come back connected
+	// and silent, which is the very bug being fixed.
+	attach := func(ctx context.Context, sess *cerebrum.Session) error {
+		// Model B (epic #987): the terminal ALWAYS gets the human table; when
+		// a structured sink (--log file / --syslog-addr server) is configured,
+		// each change is ALSO emitted as a structured record to that sink — so
+		// you read the table live AND ship syslog/json to file/Loki at once.
+		logToSink := cf.hasLogSink()
+		evLogger := cf.logger
+
+		objects, rerr := resolveObjects(sess)
+		if rerr != nil {
+			return rerr
+		}
+
+		sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
+			switch {
+			case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
+				return // spurious §1.6 deviation
+			case f.Kind == codec.KindAck:
+				return // transaction plumbing, not an event
+			}
+			if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+				now := time.Now()
+				for _, ov := range f.Device.ObjectValues {
+					// --only filters what is PRINTED as well as what is
+					// subscribed. It has to: a group subscription is
+					// indivisible — "Nodes.*" registers 68 node groups and
+					// each one reports every field of its node — so the
+					// subscription list cannot express "SubID only", and
+					// filtering the rows is the only place that can.
+					if !wantLeaf(onlyLeaves, ov.Object) {
+						continue
+					}
+					if !changed(ov) {
+						continue
+					}
+					// Enrich the value-only change event with the cached
+					// descriptor so type/access/units/enum render on every row.
+					if ov.DataType == "" {
+						if d, ok := lookupDesc(ov.Object); ok {
+							live := ov
+							ov = d
+							ov.Value = live.Value
+							ov.Available = live.Available
+						}
+					}
+					// Terminal: the human table, always.
+					header.Do(cerebrumDMHeader)
+					cerebrumDMRow(now, ov)
+					// Sinks: the same change as a structured record (file/server),
+					// only when a sink exists (stderr is human, never the events).
+					if logToSink && evLogger != nil {
+						label := ov.Label
+						if label == "" {
+							if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+								label = ov.Object[i+1:]
+							} else {
+								label = ov.Object
+							}
+						}
+						evLogger.Info("cerebrum_value_change",
+							slog.String("device", device),
+							slog.String("sub_device", subDev),
+							slog.String("object", ov.Object),
+							slog.String("label", label),
+							slog.String("value", ov.Value),
+							slog.String("type", strings.ToLower(ov.DataType)),
+							slog.String("access", cerebrumAccess(ov)),
+							slog.String("units", ov.Units),
+							slog.Bool("available", ov.Available),
+						)
+					}
+				}
+				return
+			}
+			printEventLabeled(f, nil)
+		})
+
+		// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
+		// batch fails WHOLESALE if any row is bad, and then names none of
+		// them. So a failed batch is retried row by row: the cost falls on
+		// the run that already has a problem, and the operator learns which
+		// path was refused instead of being told the batch was.
+		rows := make([]codec.SubItem, 0, len(objects))
+		for _, o := range objects {
+			rows = append(rows, newRow(o))
+		}
+		okRows, bad, serr := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
+		if serr != nil {
+			return serr
+		}
+		if okRows == 0 {
+			return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
+		}
+		for _, b := range bad {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
+		}
+
+		what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
+		if okRows > 1 {
+			what = fmt.Sprintf("%s on %d object(s)", what, okRows)
+		}
+		fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
+		return nil
+	}
+
+	// The supervisor owns the connection for the life of the watch: it dials,
+	// attaches, and on loss reconnects with backoff and re-attaches. Both
+	// transitions are announced on stderr so a gap in the table is explained
+	// rather than mysterious — the operator's original complaint was silence.
+	sup := &cerebrum.Supervisor{
+		Dial:  dialWatch,
+		Setup: attach,
+		OnLost: func(err error) {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: connection lost (%v) — reconnecting…\n", err)
+		},
+		OnReconnected: func(attempt int, downtime time.Duration) {
+			fmt.Fprintf(os.Stderr,
+				"cerebrum-nb watch: reconnected after %s (attempt %d) — subscriptions restored\n",
+				downtime.Round(time.Second), attempt)
+		},
+	}
+	sup.LoggerFn = func() *slog.Logger { return cf.logger }
+	if err := sup.Run(ctx); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "watch stopped.")
+	return nil
+}
+
+// cerebrumWatchObjects turns the --object argument into the concrete
+// list of paths to subscribe.
+//
+//	"a"          one path, as before
+//	"a;b;c"      an explicit list — same ';' grammar --path already uses
+//	             in export/extract
+//	"GROUP.*"    every LEAF under GROUP, discovered by one obtain
+//
+// The expansion exists because a group SUBSCRIBE does not watch its
+// children. Subscribing to "Nodes" on a live NOC returns the 68 child
+// handles as available=0 rows and then delivers nothing when a child
+// changes (live-verified 2026-08-26) — the listing is the whole
+// response, not a recursive registration. Change events come from leaf
+// rows only, so watching a subtree means enumerating it first and
+// subscribing to each leaf.
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]codec.DeviceObjectValue, error) {
+	want := parseOnly(only)
+	var out []codec.DeviceObjectValue
+	for _, part := range strings.Split(object, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		// Deep before shallow: "a.**" also ends in ".*".
+		group, deep := strings.CutSuffix(part, ".**")
+		expand := deep
+		if !deep {
+			group, expand = strings.CutSuffix(part, ".*")
+		}
+		if !expand {
+			// A literal single object: obtain it once so the watch has its
+			// descriptor (type/access/units) to render change events with —
+			// a leaf self-echoes, carrying the full descriptor. If the
+			// obtain fails or it is not a leaf, subscribe it bare.
+			row := codec.DeviceObjectValue{Object: part}
+			if sess != nil {
+				if rows, err := cerebrumChildren(sess, timeout, device, byName, subDev, part); err == nil {
+					for _, ov := range rows {
+						if ov.Object == part {
+							row = ov
+							break
+						}
+					}
+				}
+			}
+			out = append(out, row)
+			continue
+		}
+		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep, want)
+		if err != nil {
+			return nil, fmt.Errorf("cerebrum-nb watch: expanding %q: %w", part, byNameHint(err, device, byName))
+		}
+		if len(leaves) == 0 {
+			return nil, fmt.Errorf("cerebrum-nb watch: %q expanded to nothing — check the group path against the device's Object Browser", part)
+		}
+		out = append(out, leaves...)
+	}
+	if len(out) == 0 {
+		return nil, cerebrumValErr("watch", "--object resolved to nothing")
+	}
+	return out, nil
+}
+
+// keepOnly narrows an expanded object list to the named LEAVES.
+//
+// An expansion answers "which objects are under here"; --only answers
+// "which of them do I care about". They compose: "Nodes.*" with
+// --only "SubID,Connected" is 68 rows of the two fields that matter
+// instead of 1,088 rows containing them.
+//
+// Matching is on the last path segment and case-insensitive, because
+// the name in the operator's head is "subid", not the exact casing of
+// a path they never typed.
+func parseOnly(only string) map[string]bool {
+	if strings.TrimSpace(only) == "" {
+		return nil
+	}
+	want := map[string]bool{}
+	for _, w := range strings.Split(only, ",") {
+		if w = strings.TrimSpace(w); w != "" {
+			want[strings.ToLower(w)] = true
+		}
+	}
+	if len(want) == 0 {
+		return nil
+	}
+	return want
+}
+
+// wantLeaf reports whether an expanded path should be kept.
+//
+// The filter is applied DURING the walk, not after it. Applied after,
+// "Nodes.** --only SubID" builds the whole tree first and trips the
+// object cap before it ever reaches the filter — which is exactly the
+// combination needed to watch one field across a plant.
+//
+// Matching is on the last path segment and case-insensitive: the name
+// in the operator's head is "subid", not the casing of a path they
+// never typed.
+func wantLeaf(want map[string]bool, path string) bool {
+	if want == nil {
+		return true
+	}
+	leaf := path
+	if i := strings.LastIndex(path, "."); i >= 0 {
+		leaf = path[i+1:]
+	}
+	return want[strings.ToLower(leaf)]
+}
+
+// cerebrumChildren obtains one group and returns its child rows.
+func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string) ([]codec.DeviceObjectValue, error) {
+	dc := &codec.DeviceChange{Type: "VALUE", SubDevice: subDev, Object: group}
+	if group == "" {
+		dc.ExplicitEmptyObject = true
+	}
+	if byName {
+		dc.DeviceName = device
+	} else {
+		dc.IPAddress = device
+	}
+	got, err := obtainSingleDeviceChange(sess, timeout, dc, "VALUE")
+	if err != nil {
+		return nil, err
+	}
+	if got == nil || got.Device == nil {
+		return nil, fmt.Errorf("no response within timeout")
+	}
+	return got.Device.ObjectValues, nil
+}
+
+// maxExpandObjects bounds what one "**" expansion may subscribe.
+//
+// A deep walk descends every node, so "Nodes.**" on a live NOC is 68
+// nodes x ~16 fields, then into Interfaces and Devices, then into each
+// device's Senders/Receivers/Sources — tens of thousands of obtains
+// against a production control system, from one careless command.
+//
+// The cap refuses rather than truncating: a silently-shortened watch
+// is a watch that misses the event you were waiting for.
+const maxExpandObjects = 2000
+
+// cerebrumExpand turns a group into the object list to subscribe.
+//
+// Shallow ("GROUP.*") takes the group's direct children. Deep
+// ("GROUP.**") descends into the children that are themselves groups.
+//
+// The subtlety is telling a group from a leaf. `available` does NOT do
+// it: a child group comes back available=0, but so does a leaf with no
+// current value — on a live NOC node `Last_Error` is exactly that, and
+// filtering on available dropped it, which is precisely the object
+// that says WHY a node is disconnected. So every child is subscribed
+// regardless, and for a deep expansion the available=0 rows are PROBED:
+// a group answers with rows for OTHER paths, a valueless leaf does
+// not. One obtain per candidate, and only for candidates.
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]codec.DeviceObjectValue, error) {
+	seen := map[string]bool{}
+	var out []codec.DeviceObjectValue
+	// Rows are returned WITH their descriptor (type/access/units/enum/range)
+	// so the watch can render change events — which arrive value-only over
+	// the wire — with the same detail as every other protocol's watch.
+	keep := func(ov codec.DeviceObjectValue) {
+		if ov.Object == "" || seen[ov.Object] {
+			return
+		}
+		seen[ov.Object] = true
+		if wantLeaf(want, ov.Object) {
+			out = append(out, ov)
+		}
+	}
+
+	if !deep {
+		// Shallow ("GROUP.*"): the group's direct children, one obtain.
+		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, group)
+		if err != nil {
+			return nil, err
+		}
+		for _, ov := range kids {
+			if ov.Object == group {
+				continue
+			}
+			keep(ov)
+		}
+		return out, nil
+	}
+
+	// Deep ("GROUP.**"): reuse the DM walk — the SAME NB self-echo
+	// recursion extract and tree use — so a subtree watch registers exactly
+	// the LEAVES the DM holds, and only leaves (intermediate group handles
+	// deliver no change events, so subscribing them is pointless). The wire
+	// refuses wildcards, so this is client-side enumeration; a subtree too
+	// large to enumerate is refused (not truncated) so the caller narrows
+	// the path or raises the limit rather than getting a watch that
+	// silently misses objects.
+	leaves, _, truncated, err := cerebrumDeviceWalkValues(sess, timeout, device, byName, subDev, []string{group}, maxExpandObjects)
+	if err != nil {
+		return nil, err
+	}
+	if truncated {
+		return nil, fmt.Errorf("%q expands past %d objects — narrow the path (a node rather than the whole subtree) or raise --max-requests", group, maxExpandObjects)
+	}
+	for _, lv := range leaves {
+		keep(lv)
+	}
+	return out, nil
+}
+
+// cerebrumSubscribeRows registers every row, batching first and
+// falling back to one-at-a-time only when the batch is refused.
+//
+// Returns how many rows the server accepted and a description of each
+// one it did not.
+func cerebrumSubscribeRows(ctx context.Context, sess *cerebrum.Session, rows []codec.SubItem, labels []string, device string, byName bool) (int, []string, error) {
+	if len(rows) == 1 {
+		if err := sess.Subscribe(ctx, rows); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return 0, nil, nil
+			}
+			return 0, nil, fmt.Errorf("cerebrum-nb watch: subscribe: %w", byNameHint(err, device, byName))
+		}
+		return 1, nil, nil
+	}
+
+	if err := sess.Subscribe(ctx, rows); err == nil {
+		return len(rows), nil, nil
+	} else if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return 0, nil, nil
+	}
+
+	// The batch was refused as a whole. Find out which rows the server
+	// actually objects to rather than reporting all of them as bad.
+	fmt.Fprintf(os.Stderr, "cerebrum-nb watch: batch of %d refused — retrying row by row to find the offender(s)\n", len(rows))
+	ok := 0
+	var bad []string
+	for i, row := range rows {
+		if err := sess.Subscribe(ctx, []codec.SubItem{row}); err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return ok, bad, nil
+			}
+			bad = append(bad, fmt.Sprintf("%s: %v", labels[i], err))
+			continue
+		}
+		ok++
+	}
+	return ok, bad, nil
+}
+
+// printEventLabeled renders one dispatched frame; srcNames (optional) joins
+// source labels by ID — the wire never carries a SOURCE_NAME on ROUTE rows
+// (§5.1.1), so listen pre-fetches the catalogue and fills them client-side.
+func printEventLabeled(f *codec.Frame, srcNames map[string]string) {
 	switch f.Kind {
 	case codec.KindRoutingChange:
 		rc := f.Routing
@@ -995,16 +2275,25 @@ func printEvent(f *codec.Frame) {
 		// top-level srce_id attribute. SRCE_LOCK / DEST_LOCK / *_MNE rows
 		// keep the source on the top-level attrs as before.
 		srceID, srceName := rc.SrceID, rc.SrceName
+		rawID := rc.SrceID
 		if rc.Type == "ROUTE" && rc.RouteSourceID != "" {
+			rawID = rc.RouteSourceID
 			srceID = rc.RouteSourceID
 			if rc.RouteSourceLevelID != "" && rc.RouteSourceLevelID != rc.LevelID {
 				srceID = fmt.Sprintf("%s@lvl%s", rc.RouteSourceID, rc.RouteSourceLevelID)
 			}
 		}
-		fmt.Printf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)\n",
+		if srceName == "" && srcNames != nil {
+			srceName = srcNames[rawID]
+		}
+		line := fmt.Sprintf("[routing] %-8s dev=%s/%s srce=%s(%s) dest=%s(%s) lvl=%s(%s)",
 			rc.Type, rc.DeviceType, rc.DeviceName,
 			srceID, srceName, rc.DestID, rc.DestName,
 			rc.LevelID, rc.LevelName)
+		if rc.Lock != nil {
+			line += fmt.Sprintf(" state=%s by=%q", rc.Lock.LockState, rc.Lock.LockedBy)
+		}
+		fmt.Println(line)
 	case codec.KindCategoryChange:
 		if f.Category.Type == "CATEGORY_LIST" {
 			fmt.Printf("[category] CATEGORY_LIST count=%d %s\n", len(f.Category.Categories), summarise(f.Category.Categories))
@@ -1024,15 +2313,188 @@ func printEvent(f *codec.Frame) {
 				fmt.Printf("           %-10s %-20s %s\n", d.DeviceType, displayName(d.DeviceName), d.IPAddress)
 			}
 		} else {
-			fmt.Printf("[device] %-8s type=%s name=%s ip=%s sub=%s obj=%s\n",
-				f.Device.Type, f.Device.DeviceType, f.Device.DeviceName,
-				f.Device.IPAddress, f.Device.SubDevice, f.Device.Object)
+			// Only print the attrs the row kind actually carries: SUB_DEVICE/
+			// OBJECT belong to VALUE rows; on DETAILS the name lives in the
+			// <DETAILS> child, not the outer attribute.
+			name := f.Device.DeviceName
+			if name == "" && f.Device.Details != nil {
+				name = f.Device.Details.Name
+			}
+			line := fmt.Sprintf("[device] %-8s type=%s", f.Device.Type, f.Device.DeviceType)
+			if name != "" {
+				line += " name=" + name
+			}
+			if f.Device.IPAddress != "" {
+				line += " ip=" + f.Device.IPAddress
+			}
+			if f.Device.SubDevice != "" {
+				line += " sub=" + f.Device.SubDevice
+			}
+			if f.Device.Object != "" {
+				line += " obj=" + f.Device.Object
+			}
+			fmt.Println(line)
+			for _, ov := range f.Device.ObjectValues {
+				fmt.Printf("           %-40s available=%s value=%q\n", ov.Object, boolFlag(ov.Available), ov.Value)
+			}
+			if c := f.Device.Connection; c != nil {
+				fmt.Printf("           connection primary=%q secondary=%q\n", c.PrimaryState, c.SecondaryState)
+			}
+			for _, sd := range f.Device.SubDevices {
+				if sd.PrimaryState != "" || sd.SecondaryState != "" {
+					fmt.Printf("           sub %02d %-20s primary=%q secondary=%q\n", sd.Index, displayName(sd.DeviceName), sd.PrimaryState, sd.SecondaryState)
+				}
+			}
 		}
 	case codec.KindDatastoreChange:
 		fmt.Printf("[datastore] %s type=%s\n", f.Datastore.Name, f.Datastore.Type)
 	default:
 		fmt.Printf("[%s] %s\n", f.Kind, f.Root.String())
 	}
+}
+
+// cerebrumDMHeader prints the Tree/DM watch header — the SAME columns
+// `dhs watch` uses for acp1/acp2, so a device watched over NB reads
+// like the same device watched natively.
+//
+// One grammar everywhere is the whole point of the Tree/DM template
+// (docs/protocols/verbs.md §12b): an operator comparing a CONVERT over
+// acp2 against the same card over Cerebrum should be diffing values,
+// not re-learning a layout.
+func cerebrumDMHeader() {
+	const head = "%-8s  %-52s  %-16s  %-3s  %-7s  value\n"
+	line := fmt.Sprintf(head, "time", "path", "label", "acc", "type")
+	fmt.Print(line)
+	// The rule spans the HEADER, not an arbitrary width: a fixed 118
+	// on a 101-character header draws a line past the last column,
+	// which is exactly the kind of detail that makes output look
+	// unconsidered.
+	fmt.Println(strings.Repeat("-", len(strings.TrimRight(line, "\n"))))
+}
+
+// cerebrumDMRow renders one object value in that layout.
+//
+// `label` is the last path segment, which is what the object is called
+// — the full path already occupies its own column, and repeating it
+// is what made the previous two-line form unreadable at 15 objects.
+//
+// A row the device reports available=0 is a CHILD GROUP, not a value:
+// group listings arrive inside a VALUE response and would otherwise
+// render as an object with an empty value, which reads as "this
+// object is empty" rather than "this is a folder".
+func cerebrumDMRow(ts time.Time, ov codec.DeviceObjectValue) {
+	label := ov.Label
+	if label == "" {
+		if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+			label = ov.Object[i+1:]
+		} else {
+			label = ov.Object
+		}
+	}
+	if !ov.Available {
+		// available=0 means the row carries no value. That is TWO
+		// different things and the flag does not separate them: a child
+		// GROUP, and a leaf whose value is currently absent.
+		//
+		// Live evidence for the only signal that does separate them:
+		// every collection child Cerebrum emits is BRACKETED —
+		// Interfaces.[eno1], Devices.[uuid], Nodes.[uuid] — while
+		// valueless leaves are not: Last_Error on a live node,
+		// Connected/Host/UUID/Versions on a node that never connected.
+		// Calling those "group <children>" told the operator a status
+		// field was a folder.
+		//
+		// It is a naming heuristic, so it only decides the LABEL. When
+		// it is wrong the row still reads as "no value", which is true
+		// either way.
+		kind, val := "no-value", "—"
+		if isBracketed(label) {
+			kind, val = "group", "<children>"
+		}
+		fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+			ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+			cerebrumAccess(ov), kind, val)
+		return
+	}
+	val := ov.Value
+	if ov.Units != "" {
+		val += " " + ov.Units
+	}
+	if c := cerebrumConstraint(ov); c != "" {
+		val += "  " + c
+	}
+	fmt.Printf("%s  %-52s  %-16s  %-3s  %-7s  %s\n",
+		ts.Format("15:04:05"), truncatePath(ov.Object, 52), truncate(label, 16),
+		cerebrumAccess(ov), strings.ToLower(ov.DataType), val)
+}
+
+// cerebrumConstraint renders what a value is ALLOWED to be — the enum
+// list, or the numeric range.
+//
+// The wire carries these on the same row as the value (§5.4.3
+// MIN/MAX/STEP, ENUM_LIST) and the DM store keeps them, but the watch
+// was throwing them away. They are the difference between reading a
+// device and being able to set it: "Send SDP Always" tells you nothing
+// about what else you could write there.
+//
+// A degenerate MIN==MAX carries no information — live ENUM rows report
+// 0..0, their real constraint being the enum list — so it is dropped,
+// the same rule CanonicalDeviceObject applies when building the DM.
+func cerebrumConstraint(ov codec.DeviceObjectValue) string {
+	if len(ov.EnumList) > 0 {
+		return "{" + strings.Join(ov.EnumList, "|") + "}"
+	}
+	if ov.Min == "" && ov.Max == "" {
+		return ""
+	}
+	if ov.Min == ov.Max {
+		return ""
+	}
+	r := "[" + ov.Min + ".." + ov.Max
+	if ov.Step != "" && ov.Step != "0" {
+		r += " step " + ov.Step
+	}
+	return r + "]"
+}
+
+// isBracketed reports whether a path segment is a Cerebrum collection
+// member — "[eno1]", "[<uuid>]". Members of a collection are bracketed;
+// named fields are not.
+func isBracketed(seg string) bool {
+	return strings.HasPrefix(seg, "[") && strings.HasSuffix(seg, "]")
+}
+
+// cerebrumAccess renders the R/W bits in the same three-character shape
+// `dhs watch` prints for acp1/acp2, so the column means one thing
+// across protocols.
+func cerebrumAccess(ov codec.DeviceObjectValue) string {
+	r, w := "-", "-"
+	if ov.Readable {
+		r = "R"
+	}
+	if ov.Writable {
+		w = "W"
+	}
+	return r + w + "-"
+}
+
+// truncatePath shortens from the MIDDLE, keeping both ends.
+//
+// A Cerebrum object path is front-loaded with a group and a bracketed
+// UUID, so head-truncation (what truncate does) leaves 52 characters of
+// identical prefix on every row and hides the one segment that differs.
+// The tail is the object name; the head is the group. Both matter.
+func truncatePath(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	if n < 5 {
+		return s[:n]
+	}
+	keep := n - 1 // room for the ellipsis
+	head := keep / 3
+	tail := keep - head
+	return s[:head] + "…" + s[len(s)-tail:]
 }
 
 // summarise renders the first 3 entries of a list inline; longer lists
@@ -1051,6 +2513,60 @@ func summarise(items []string) string {
 func displayName(s string) string {
 	if s == "" {
 		return "-"
+	}
+	return quoteIfPadded(s)
+}
+
+// byNameHint adds the one explanation a by-name NACK never carries.
+//
+// The server refuses an unknown DEVICE_NAME with the same code it uses
+// for a bad object path, so the error says "the specified obtain failed
+// to complete" whether the caller got the object wrong or the name
+// wrong by one space. When the name was padded — or when the caller
+// copied a name that WASN'T padded from output that could not show the
+// difference — that is by far the likelier cause, and it is invisible.
+//
+// The hint is appended, never substituted: the wire's own words stay
+// first, because a hint that displaces the real error is worse than no
+// hint at all.
+func byNameHint(err error, device string, byName bool) error {
+	var nack *codec.NackError
+	if err == nil || !byName || !errors.As(err, &nack) {
+		return err
+	}
+	// Only the two codes that mean "I did not recognise what you
+	// addressed". A licence failure or a not-logged-in has nothing to
+	// do with the name, and a hint there is just noise.
+	if nack.ID != codec.NackOneOrMoreObtainsInvalid && nack.ID != codec.NackOneOrMoreEventsInvalid {
+		return err
+	}
+	if device != strings.TrimSpace(device) {
+		return fmt.Errorf("%w\n  hint: --device %q is padded; DEVICE_NAME matches byte-for-byte, so try %q, or address the device by IP",
+			err, device, strings.TrimSpace(device))
+	}
+	return fmt.Errorf("%w\n  hint: DEVICE_NAME matches byte-for-byte and some Cerebrum names carry trailing whitespace that terminals cannot show — re-check the name in `device-details` (padded names are printed quoted), or address the device by IP",
+		err)
+}
+
+// quoteIfPadded renders a DEVICE_NAME so that leading or trailing
+// whitespace is VISIBLE.
+//
+// --by-name matches the name byte-for-byte, padding included, and
+// Cerebrum pads some names and not others. Printed bare, the two are
+// indistinguishable, so the operator copies what they see, the obtain
+// NACKs 10, and nothing in the error points at a space. That cost a
+// live session an hour on 2026-08-25: every by-name call against
+// "Cerebrum NMOS NOC" failed while the identical call by IP worked,
+// and the difference was one trailing character the terminal could
+// not show.
+//
+// Only padded names are quoted. Quoting every name would add noise to
+// the common case and, worse, teach the reader that the quotes are
+// decoration — the point is that a quoted name means "this string has
+// edges you cannot see".
+func quoteIfPadded(s string) string {
+	if s != strings.TrimSpace(s) {
+		return strconv.Quote(s)
 	}
 	return s
 }
@@ -1144,12 +2660,18 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	var routesFlag stringSliceFlag
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
 	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
-	if err := fs.Parse(args); err != nil {
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read live routes, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	rest := fs.Args()
 	if len(rest) < 1 {
-		return fmt.Errorf("cerebrum-nb route: missing host[:port] argument")
+		return cerebrumValErr("route", "missing host[:port] argument")
 	}
 
 	// Build the route list from flags.
@@ -1175,7 +2697,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		routes = append(routes, rs...)
 	}
 	if len(routes) == 0 {
-		return fmt.Errorf("cerebrum-nb route: no routes specified (use --dest/--srce/--level, --route, or --csv)")
+		return cerebrumValErr("route", "no routes specified (use --dest/--srce/--level, --route, or --csv)")
 	}
 
 	host, portArg, err := splitHostPort(rest[0], cf.port)
@@ -1183,18 +2705,20 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		return err
 	}
 	cf.port = portArg
+	cerebrumExpandAutoPaths(cf, "route", host)
 
-	logLevel := slog.LevelInfo
-	if cf.debug {
-		logLevel = slog.LevelDebug
+	logger, _, lerr := cf.newLogger()
+	if lerr != nil {
+		return lerr
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 
 	p := cerebrum.NewPlugin(logger)
 	p.Username = cf.user
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.Capture = cf.capture
+	p.CaptureMeta = captureMeta("cerebrum-nb", host, "route")
 
 	dialCtx, dialCancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer dialCancel()
@@ -1203,30 +2727,62 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	sess := p.Session()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// ADR-0007 (amendment): matrix connections MUST converge — read the live
+	// crosspoint state, diff, send only the differences (probel tally-first
+	// template). Never disconnects; identical cells cost no wire write.
+	st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
+		Routes: true, Verb: "route",
+	})
+	if serr != nil {
+		return serr
+	}
+	changes := diffCerebrumRoutes(st.Routes, routes)
+	diffs := make([]ensureDiff, 0, len(changes))
+	for _, c := range changes {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("route.%s.%s", c.Dest, c.Level), From: c.From, To: c.To})
+	}
+	changed := len(changes) > 0
+
+	if *check {
+		for _, c := range changes {
+			_, _ = fmt.Fprintf(logw, "[would-route] dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
+		}
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb route --check: would_change=%d of %d desired — nothing sent\n", len(changes), len(routes))
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		return nil
+	}
 
 	fails := 0
-	for _, r := range routes {
+	for _, c := range changes {
 		body := &codec.RoutingAction{
-			Type:        "ROUTE",
-			IPAddress:   *router,
-			DeviceName:  *deviceName,
-			DeviceType:  codec.DeviceType("ROUTER"),
-			DestID:      r.Dest,
-			SrceID:      r.Srce,
-			LevelID:     r.Level,
-		}
-		if cf.debug {
-			fmt.Fprintf(os.Stderr, "tx: <action mtid=N><ROUTING TYPE=ROUTE DEST_ID=%s SRCE_ID=%s LEVEL_ID=%s/></action>\n", r.Dest, r.Srce, r.Level)
+			Type:       "ROUTE",
+			IPAddress:  *router,
+			DeviceName: *deviceName,
+			DeviceType: codec.DeviceType("ROUTER"),
+			DestID:     c.Dest,
+			SrceID:     c.To,
+			LevelID:    c.Level,
 		}
 		if err := sess.Action(context.Background(), body); err != nil {
-			fmt.Printf("[route] NACK dst=%s src=%s lvl=%s reason=%s\n", r.Dest, r.Srce, r.Level, err)
+			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.To, c.Level, err)
 			fails++
 			continue
 		}
-		fmt.Printf("[route] OK   dst=%s src=%s lvl=%s\n", r.Dest, r.Srce, r.Level)
+		_, _ = fmt.Fprintf(logw, "[route] OK   dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
 	}
 	if fails > 0 {
-		return fmt.Errorf("%d/%d routes failed", fails, len(routes))
+		return fmt.Errorf("%d/%d route change(s) failed", fails, len(changes))
+	}
+	_, _ = fmt.Fprintf(logw, "cerebrum-nb route: changed=%d of %d desired (already-converged cells untouched); run again to verify 0\n", len(changes), len(routes))
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	return nil
 }
@@ -1245,24 +2801,6 @@ func cerebrumRoute(_ context.Context, args []string) error {
 // $DHS_CEREBRUM_USER / $DHS_CEREBRUM_PASS) before sending the action.
 // ----------------------------------------------------------------------
 
-// connectAndAuth is connectAndLogin plus an explicit LOGIN — write actions
-// are rejected with NOT_LOGGED_IN on an unauthenticated session.
-func connectAndAuth(args []string, verb string) (*cerebrum.Plugin, *cerebrum.Session, *cerebrumFlags, []string, error) {
-	p, sess, cf, rest, err := connectAndLogin(args, verb)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if !sess.LoggedIn() {
-		loginCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
-		defer cancel()
-		if err := p.Login(loginCtx); err != nil {
-			_ = p.Disconnect()
-			return nil, nil, nil, nil, fmt.Errorf("cerebrum-nb %s: LOGIN required (set --user/--pass): %w", verb, err)
-		}
-	}
-	return p, sess, cf, rest, nil
-}
-
 // routeTargetFromFlags builds the router-addressing tuple. Defaults to the
 // route-master sentinel (0.0.0.0 / ROUTER) unless --router / --device-name
 // override it.
@@ -1280,12 +2818,12 @@ func routeTargetFromFlags(router, deviceName string) cerebrum.RouteTarget {
 
 func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	verb := "lock"
-	if mode == codec.LockRelease {
+	if mode == codec.LockRelease || mode == codec.LockReleased {
 		verb = "unlock"
 	}
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb "+verb, flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "DEST_LOCK", "lock kind: SRCE_LOCK | DEST_LOCK")
 	router := fs.String("router", "0.0.0.0", "router IP target (route-master sentinel 0.0.0.0)")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME instead of --router")
@@ -1295,9 +2833,15 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	duration := fs.String("duration", "", "optional timed-lock duration")
 	// --mode (0v16 §3.2): override the default PROTECT/RELEASE verb with one
 	// of the five canonical LOCK_STATE values. Empty keeps the verb default.
-	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | unlocked (overrides the default "+verb+" verb)")
-	if err := fs.Parse(args); err != nil {
+	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | released (overrides the default "+verb+" verb)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live lock state, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, verb, "SRCE_LOCK", "DEST_LOCK"); err != nil {
 		return err
@@ -1310,19 +2854,116 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		mode = m
 	}
 	if *srce == "" && *dest == "" {
-		return fmt.Errorf("cerebrum-nb %s: --srce or --dest is required", verb)
+		return cerebrumValErr(verb, "--srce or --dest is required")
 	}
-	p, sess, cf2, _, err := connectAndAuth(fs.Args(), verb)
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), verb)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
-	ctx, cancel := context.WithTimeout(context.Background(), cf2.timeout)
-	defer cancel()
-	if err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *duration); err != nil {
-		return fmt.Errorf("cerebrum-nb %s: %w", verb, err)
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
 	}
-	fmt.Printf("[%s] OK %s mode=%s srce=%s dest=%s lvl=%s\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(*level))
+
+	// --level takes one level, a ';'-separated list (client-side expansion,
+	// one action per level — the CSV grammar), or empty = the wire's
+	// all-level form (live-verified: locks every existing level in one
+	// action, nonexistent levels no-op).
+	levels := splitLevelCell(*level)
+
+	// Ensure read phase (ADR-0007, probel protect-connect template).
+	// DEST_LOCK state is readable (LOCK_STATE + LOCKED_BY per cell); the
+	// desired state maps: LOCKED/PROTECTED/... set values compare directly,
+	// the clearing values (RELEASED wire-actual, legacy RELEASE) converge to
+	// RELEASED. SRCE_LOCK reads are refused by every live Cerebrum tested —
+	// falls through to an imperative send reported as changed.
+	desired := strings.ToUpper(string(mode))
+	if desired == "RELEASE" {
+		desired = "RELEASED"
+	}
+	type lockChange struct{ Level, From string }
+	var changes []lockChange
+	readOK := false
+	if *kind == "DEST_LOCK" && *dest != "" {
+		st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 10*time.Second, cerebrumStateWant{
+			DestLock: true, Verb: verb,
+		})
+		if serr == nil {
+			readOK = true
+			live := map[string]cerebrumLockSpec{}
+			var destLevels []string
+			for _, l := range st.Locks {
+				if l.Dest == *dest {
+					live[l.Level] = l
+					destLevels = append(destLevels, l.Level)
+				}
+			}
+			want := levels
+			if len(want) == 0 {
+				want = destLevels // all-level: every level the snapshot shows
+			}
+			for _, lvl := range want {
+				cur, ok := live[lvl]
+				state := "RELEASED" // absent cell = no lock
+				if ok && cur.State != "" {
+					state = strings.ToUpper(cur.State)
+				}
+				if state != desired {
+					changes = append(changes, lockChange{Level: lvl, From: state})
+				}
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb %s: lock-state read unavailable (%v) — imperative send, reported changed\n", verb, serr)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: SRCE_LOCK state is not readable on live Cerebrums — imperative send, reported changed\n", verb)
+	}
+	if !readOK {
+		lv := levels
+		if len(lv) == 0 {
+			lv = []string{""}
+		}
+		for _, lvl := range lv {
+			changes = append(changes, lockChange{Level: lvl, From: "?"})
+		}
+	}
+
+	target := *dest
+	if target == "" {
+		target = *srce
+	}
+	diffs := make([]ensureDiff, 0, len(changes))
+	for _, c := range changes {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%s", strings.ToLower(*kind), target, displayDash(c.Level)), From: c.From, To: desired})
+	}
+	changed := len(changes) > 0
+
+	if *check {
+		for _, c := range changes {
+			_, _ = fmt.Fprintf(logw, "[would-%s] %s dest=%s lvl=%s: %s -> %s\n", verb, *kind, displayDash(*dest), displayDash(c.Level), c.From, desired)
+		}
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb %s --check: would_change=%d — nothing sent\n", verb, len(changes))
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		return nil
+	}
+	for _, c := range changes {
+		ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		err := sess.Lock(ctx, *kind, mode, routeTargetFromFlags(*router, *deviceName), *srce, *dest, c.Level, *duration)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("cerebrum-nb %s lvl=%s: %w", verb, displayDash(c.Level), err)
+		}
+		_, _ = fmt.Fprintf(logw, "[%s] OK %s mode=%s srce=%s dest=%s lvl=%s (was %s)\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(c.Level), c.From)
+	}
+	if len(changes) == 0 {
+		_, _ = fmt.Fprintf(logw, "[%s] already converged — nothing sent (state=%s)\n", verb, desired)
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
+	}
 	return nil
 }
 
@@ -1341,15 +2982,22 @@ func lockModeValue(mode string) (codec.LockKind, error) {
 		return codec.LockLockedPath, nil
 	case "protected_path", "protected-path":
 		return codec.LockProtectedPath, nil
+	case "released":
+		// Wire-actual, NOT spec (live 2026-08-16): a UI release reports
+		// LOCK_STATE="RELEASED" — a sixth value absent from the §3.2 table
+		// and the §4.1.2/4.1.3 worked examples (whose RELEASE the server
+		// NACKs, as it does UNLOCKED). RELEASED is the state machine's own
+		// cleared value and the candidate clearing action.
+		return codec.LockKind("RELEASED"), nil
 	default:
-		return "", fmt.Errorf("cerebrum-nb lock: unknown --mode %q (want unlocked|locked|protected|locked_path|protected_path)", mode)
+		return "", cerebrumValErr("lock", fmt.Sprintf("unknown --mode %q (want unlocked|locked|protected|locked_path|protected_path|released)", mode))
 	}
 }
 
 func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-mnemonic", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "DEST_MNE", "mnemonic kind: LEVEL_MNE | SRCE_MNE | DEST_MNE")
 	router := fs.String("router", "0.0.0.0", "router IP target")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME")
@@ -1358,93 +3006,316 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	level := fs.String("level", "", "level ID")
 	mnemonic := fs.String("mnemonic", "", "mnemonic text")
 	alt := fs.String("alt", "", "alternate mnemonic slot (ALT_MNE)")
-	if err := fs.Parse(args); err != nil {
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live label, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, "set-mnemonic", "LEVEL_MNE", "SRCE_MNE", "DEST_MNE"); err != nil {
 		return err
 	}
 	if *mnemonic == "" {
-		return fmt.Errorf("cerebrum-nb set-mnemonic: --mnemonic is required")
+		return cerebrumValErr("set-mnemonic", "--mnemonic is required")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-mnemonic")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-mnemonic")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase (ADR-0007): read the kind's catalogue, find the
+	// target row, compare the addressed slot (primary or --alt N).
+	kindUp := strings.ToUpper(*kind)
+	want := cerebrumStateWant{Verb: "set-mnemonic", StrictMne: true}
+	id := *level
+	switch kindUp {
+	case "SRCE_MNE":
+		want.SrcMne = true
+		id = *srce
+	case "DEST_MNE":
+		want.DstMne = true
+		id = *dest
+	case "LEVEL_MNE":
+		want.LvlMne = true
+	}
+	if id == "" {
+		return cerebrumValErr("set-mnemonic", "the target ID is required (--srce / --dest / --level per --kind)")
+	}
+	st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, want)
+	if serr != nil {
+		return serr
+	}
+	rows := st.Src
+	switch kindUp {
+	case "DEST_MNE":
+		rows = st.Dst
+	case "LEVEL_MNE":
+		rows = st.Lvl
+	}
+	slot := 0
+	if *alt != "" {
+		n, aerr := strconv.Atoi(*alt)
+		if aerr != nil || n < 1 {
+			return cerebrumValErr("set-mnemonic", "--alt must be a positive slot index")
+		}
+		slot = n
+	}
+	previous := ""
+	for _, r := range dedupeCerebrumMnes(rows) {
+		if r.ID != id {
+			continue
+		}
+		if slot == 0 {
+			previous = r.Mnemonic
+		} else {
+			previous = r.Alts[slot]
+		}
+		break
+	}
+	changed := previous != *mnemonic
+	diffs := []ensureDiff{}
+	if changed {
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s.%d", strings.ToLower(kindUp), id, slot), From: previous, To: *mnemonic})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-mnemonic --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, *mnemonic)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *mnemonic, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-mnemonic] already converged — %s id=%s slot=%d = %q (nothing sent)\n", kindUp, id, slot, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.SetMnemonic(ctx, *kind, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *mnemonic, *alt); err != nil {
+	if err := sess.SetMnemonic(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *mnemonic, *alt); err != nil {
 		return fmt.Errorf("cerebrum-nb set-mnemonic: %w", err)
 	}
-	fmt.Printf("[set-mnemonic] OK %s mne=%q\n", *kind, *mnemonic)
+	_, _ = fmt.Fprintf(logw, "[set-mnemonic] OK %s id=%s slot=%d: %q -> %q\n", kindUp, id, slot, previous, *mnemonic)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *mnemonic, Diff: diffs})
+	}
 	return nil
 }
 
 func cerebrumSetTags(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-tags", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	kind := fs.String("kind", "RM_DEST_TAGS", "tags kind: RM_SRCE_TAGS | RM_DEST_TAGS")
 	router := fs.String("router", "0.0.0.0", "router IP target")
 	deviceName := fs.String("device-name", "", "address by DEVICE_NAME")
 	srce := fs.String("srce", "", "source ID")
 	dest := fs.String("dest", "", "destination ID")
 	tags := fs.String("tags", "", "comma-separated tag list")
-	if err := fs.Parse(args); err != nil {
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live tags where the server allows, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	if err := requireKind(*kind, "set-tags", "RM_SRCE_TAGS", "RM_DEST_TAGS"); err != nil {
 		return err
 	}
 	if *tags == "" {
-		return fmt.Errorf("cerebrum-nb set-tags: --tags is required")
+		return cerebrumValErr("set-tags", "--tags is required")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-tags")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-tags")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase — best effort: a single-row RM tags obtain has no
+	// live-proven grant (SRCE_LOCK-style refusals are likely). A granted
+	// read enables a real diff; a refusal degrades to an imperative send
+	// reported as changed.
+	kindUp := strings.ToUpper(*kind)
+	id := *dest
+	item := &codec.RoutingChange{Type: kindUp, IPAddress: *router, DeviceType: codec.DeviceType("ROUTER"), DestID: *dest, SrceID: *srce, LevelID: "*"}
+	if kindUp == "RM_SRCE_TAGS" {
+		id = *srce
+	}
+	previous, readOK := "", false
+	if got, gerr := obtainOneEvent(sess, cf.timeout, codec.KindRoutingChange, item, func(f *codec.Frame) bool {
+		return f.Routing != nil && f.Routing.Type == kindUp
+	}); gerr == nil && got != nil && got.Routing != nil {
+		readOK = true
+		previous = strings.Join(got.Routing.TagList, ",")
+	} else {
+		fmt.Fprintf(os.Stderr, "cerebrum-nb set-tags: live tags not readable — imperative send, reported changed\n")
+	}
+	changed := !readOK || previous != *tags
+	diffs := []ensureDiff{}
+	if changed {
+		from := previous
+		if !readOK {
+			from = "?"
+		}
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("%s.%s", strings.ToLower(kindUp), id), From: from, To: *tags})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-tags --check: would_change=%t — nothing sent\n", changed)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *tags, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-tags] already converged — %s id=%s tags=%q (nothing sent)\n", kindUp, id, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.SetTags(ctx, *kind, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *tags); err != nil {
+	if err := sess.SetTags(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *tags); err != nil {
 		return fmt.Errorf("cerebrum-nb set-tags: %w", err)
 	}
-	fmt.Printf("[set-tags] OK %s tags=%q\n", *kind, *tags)
+	_, _ = fmt.Fprintf(logw, "[set-tags] OK %s id=%s tags=%q\n", kindUp, id, *tags)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *tags, Diff: diffs})
+	}
 	return nil
 }
 
 func cerebrumSalvo(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb salvo", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
-	op := fs.String("op", "", "operation: run | save | rename | delete")
+	cf := newCerebrumFlags(fs)
+	op := fs.String("op", "", "operation: run | save | rename | description | delete")
 	group := fs.String("group", "", "salvo group")
 	instance := fs.String("instance", "", "salvo instance")
 	newName := fs.String("new-name", "", "new name (rename)")
-	desc := fs.String("description", "", "description (save)")
-	if err := fs.Parse(args); err != nil {
+	desc := fs.String("description", "", "description text (op=description; §4.3 DESCRIPTION)")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read live state, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	salvoType, err := salvoOpType(*op)
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if *group == "" {
-		return fmt.Errorf("cerebrum-nb salvo: --group is required")
+		return cerebrumValErr("salvo", "--group is required")
 	}
 	if salvoType == "RENAME" && *newName == "" {
-		return fmt.Errorf("cerebrum-nb salvo: --new-name is required for rename")
+		return cerebrumValErr("salvo", "--new-name is required for rename")
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "salvo")
+	if salvoType == "DESCRIPTION" && *desc == "" {
+		return cerebrumValErr("salvo", "--description is required for description")
+	}
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "salvo")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+
+	// Ensure read phase (ADR-0007, probel-style: the verb itself converges).
+	// Stateful ops read live state and diff; RUN/SAVE are events — they
+	// always fire and always report changed (Ansible command-module rule).
+	changed := true
+	diffs := []ensureDiff{}
+	switch salvoType {
+	case "DESCRIPTION":
+		got, oe := obtainSingleSalvoChange(sess, cf.timeout,
+			&codec.SalvoChange{Type: "INSTANCE_DETAILS", Group: *group, Instance: *instance}, "INSTANCE_DETAILS")
+		if oe != nil {
+			return oe
+		}
+		if got == nil || got.Salvo == nil || got.Salvo.InstanceDetails == nil {
+			return fmt.Errorf("cerebrum-nb salvo: no INSTANCE_DETAILS reply for %s/%s (unknown instance?)", *group, *instance)
+		}
+		cur := got.Salvo.InstanceDetails.Description
+		if cur == *desc {
+			changed = false
+		} else {
+			diffs = append(diffs, ensureDiff{Field: "description", From: cur, To: *desc})
+		}
+	case "DELETE", "RENAME":
+		got, oe := obtainSingleSalvoChange(sess, cf.timeout,
+			&codec.SalvoChange{Type: "INSTANCE_LIST", Group: *group}, "INSTANCE_LIST")
+		if oe != nil {
+			return oe
+		}
+		if got == nil || got.Salvo == nil {
+			return fmt.Errorf("cerebrum-nb salvo: no INSTANCE_LIST reply for group %s", *group)
+		}
+		has := slices.Contains(got.Salvo.Instances, *instance)
+		if salvoType == "DELETE" {
+			if !has {
+				changed = false // already absent — idempotent no-op
+			} else {
+				diffs = append(diffs, ensureDiff{Field: "instance." + *instance, From: "present", To: "absent"})
+			}
+		} else {
+			switch {
+			case has:
+				diffs = append(diffs, ensureDiff{Field: "instance." + *instance, From: *instance, To: *newName})
+			case slices.Contains(got.Salvo.Instances, *newName):
+				changed = false // already renamed — idempotent no-op
+			default:
+				return fmt.Errorf("cerebrum-nb salvo: neither %q nor %q exists in group %q", *instance, *newName, *group)
+			}
+		}
+	default: // RUN / SAVE
+		diffs = append(diffs, ensureDiff{Field: "salvo." + displayDash(*instance), From: "", To: salvoType})
+	}
+
+	if *check {
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Diff: diffs})
+		}
+		fmt.Printf("[salvo] --check %s group=%s instance=%s: would_change=%t — nothing sent\n",
+			salvoType, *group, displayDash(*instance), changed)
+		for _, d := range diffs {
+			fmt.Printf("  %s: %q -> %q\n", d.Field, d.From, d.To)
+		}
+		return nil
+	}
+	if !changed {
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
+		}
+		fmt.Printf("[salvo] OK %s group=%s instance=%s (already converged — nothing sent)\n",
+			salvoType, *group, displayDash(*instance))
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	if err := sess.Salvo(ctx, salvoType, *group, *instance, *newName, *desc); err != nil {
 		return fmt.Errorf("cerebrum-nb salvo: %w", err)
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	fmt.Printf("[salvo] OK %s group=%s instance=%s\n", salvoType, *group, displayDash(*instance))
 	return nil
@@ -1453,24 +3324,54 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 func cerebrumCategory(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb category", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
-	op := fs.String("op", "", "operation: create | modify | delete")
+	cf := newCerebrumFlags(fs)
+	op := fs.String("op", "", "operation: create | modify | modify-all | modify-desc | delete | delete-item")
 	category := fs.String("category", "", "category name")
-	index := fs.String("index", "", "item index (modify)")
+	index := fs.String("index", "", "item index (modify / delete-item)")
+	itemType := fs.String("item-type", "", "§3.3 ITEM_TYPE (modify / modify-all): BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM")
+	value := fs.String("value", "", "item value (modify); comma-separated list (modify-all)")
 	name := fs.String("name", "", "name (create)")
-	label := fs.String("label", "", "label")
-	desc := fs.String("description", "", "description")
-	if err := fs.Parse(args); err != nil {
+	label := fs.String("label", "", "label (create)")
+	inherits := fs.String("inherits", "", "parent category (create)")
+	desc := fs.String("description", "", "description (create / modify-desc)")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	catType, err := categoryOpType(*op)
 	if err != nil {
 		return err
 	}
-	if *category == "" {
-		return fmt.Errorf("cerebrum-nb category: --category is required")
+	it, err := categoryItemType(*itemType)
+	if err != nil {
+		return err
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "category")
+	if *category == "" {
+		return cerebrumValErr("category", "--category is required")
+	}
+	// Required attrs per the §4.2 table.
+	switch catType {
+	case "MODIFY_ITEM":
+		if *index == "" || it == "" || *value == "" {
+			return cerebrumValErr("category", "--index, --item-type and --value are required for modify (§4.2 MODIFY_ITEM)")
+		}
+	case "MODIFY_ALL":
+		if it == "" || *value == "" {
+			return cerebrumValErr("category", "--item-type and --value are required for modify-all (§4.2 MODIFY_ALL)")
+		}
+	case "MODIFY_DESC":
+		if *desc == "" {
+			return cerebrumValErr("category", "--description is required for modify-desc (§4.2 MODIFY_DESC)")
+		}
+	case "DELETE_ITEM":
+		if *index == "" {
+			return cerebrumValErr("category", "--index is required for delete-item (§4.2 DELETE_ITEM)")
+		}
+	case "CREATE":
+		if *name == "" {
+			return cerebrumValErr("category", "--name is required for create (§4.2 CREATE)")
+		}
+	}
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "category")
 	if err != nil {
 		return err
 	}
@@ -1481,8 +3382,11 @@ func cerebrumCategory(_ context.Context, args []string) error {
 		Type:        catType,
 		Category:    *category,
 		Index:       *index,
+		ItemType:    it,
+		Value:       *value,
 		Name:        *name,
 		Label:       *label,
+		Inherits:    *inherits,
 		Description: *desc,
 	}
 	if err := sess.Category(ctx, act); err != nil {
@@ -1495,7 +3399,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 func cerebrumSetValue(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb set-value", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	device := fs.String("device", "", "device name (or use --ip)")
 	ip := fs.String("ip", "", "device IP address (alternative to --device, §4.4.1)")
 	subDevice := fs.String("sub-device", "", "sub-device")
@@ -1503,21 +3407,83 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	value := fs.String("value", "", "value to set")
 	isEnum := fs.Bool("is-enum", false, "VALUE is a string representation of an enumeration (§4.4.1 IS_ENUM)")
 	mode := fs.String("mode", "", "CSV write mode: SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE (default SET)")
-	if err := fs.Parse(args); err != nil {
+	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live value, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if (*device == "" && *ip == "") || *subDevice == "" || *object == "" {
-		return fmt.Errorf("cerebrum-nb set-value: --device (or --ip), --sub-device and --object are required")
+		return cerebrumValErr("set-value", "--device (or --ip), --sub-device and --object are required")
 	}
 	normMode, err := setValueModeValue(*mode)
 	if err != nil {
 		return err
 	}
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "set-value")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-value")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+	target := *device
+	if target == "" {
+		target = *ip
+	}
+
+	// Ensure read phase (ADR-0007): read the object first (§5.4.3 — the
+	// live-proven happy path). Numeric-aware comparison so "5" converges
+	// with a canonical "5.000000" reply instead of churning. MODE-flagged
+	// CSV writes (ADD_TAIL/INSERT_AT_HEAD/REMOVE) are list edits, not a
+	// converge — they skip the diff and always send.
+	previous, readOK := "", false
+	if normMode == "" || normMode == "SET" {
+		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: *subDevice, Object: *object, DeviceName: *device, IPAddress: *ip}
+		if got, gerr := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE"); gerr == nil && got != nil && got.Device != nil && got.Device.ObjectValue != nil && got.Device.ObjectValue.Available {
+			readOK = true
+			previous = got.Device.ObjectValue.Value
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb set-value: live value not readable — imperative send, reported changed\n")
+		}
+	}
+	equalValue := func(a, b string) bool {
+		if a == b {
+			return true
+		}
+		fa, ea := strconv.ParseFloat(strings.TrimSpace(a), 64)
+		fb, eb := strconv.ParseFloat(strings.TrimSpace(b), 64)
+		return ea == nil && eb == nil && fa == fb
+	}
+	changed := !readOK || !equalValue(previous, *value)
+	diffs := []ensureDiff{}
+	if changed {
+		from := previous
+		if !readOK {
+			from = "?"
+		}
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("value.%s.%s.%s", strings.TrimSpace(target), *subDevice, *object), From: from, To: *value})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-value --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, *value)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *value, Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[set-value] already converged — %s.%s.%s = %q (nothing sent)\n", target, *subDevice, *object, previous)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	// Build the full §4.4 DEVICE SET_VALUE (incl. 0v16 IP_ADDRESS / IS_ENUM /
@@ -1535,11 +3501,10 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	if err := sess.Action(ctx, body); err != nil {
 		return fmt.Errorf("cerebrum-nb set-value: %w", err)
 	}
-	target := *device
-	if target == "" {
-		target = *ip
+	_, _ = fmt.Fprintf(logw, "[set-value] OK %s.%s.%s: %q -> %q\n", target, *subDevice, *object, previous, *value)
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *value, Diff: diffs})
 	}
-	fmt.Printf("[set-value] OK %s.%s.%s = %q\n", target, *subDevice, *object, *value)
 	return nil
 }
 
@@ -1558,22 +3523,22 @@ func setValueModeValue(mode string) (string, error) {
 	case "REMOVE":
 		return "REMOVE", nil
 	default:
-		return "", fmt.Errorf("cerebrum-nb set-value: unknown --mode %q (want SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE)", mode)
+		return "", cerebrumValErr("set-value", fmt.Sprintf("unknown --mode %q (want SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE)", mode))
 	}
 }
 
 func cerebrumObtainDatastore(_ context.Context, args []string) error {
 	args = reorderFlagsFirst(args)
 	fs := flag.NewFlagSet("cerebrum-nb obtain-datastore", flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	name := fs.String("name", "", "datastore path/name")
-	if err := fs.Parse(args); err != nil {
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	if *name == "" {
-		return fmt.Errorf("cerebrum-nb obtain-datastore: --name is required")
+		return cerebrumValErr("obtain-datastore", "--name is required")
 	}
-	p, sess, cf, _, err := connectAndLogin(fs.Args(), "obtain-datastore")
+	p, sess, _, err := dialCerebrum(cf, fs.Args(), "obtain-datastore")
 	if err != nil {
 		return err
 	}
@@ -1621,7 +3586,7 @@ func cerebrumObtainDatastore(_ context.Context, args []string) error {
 // authenticated session.
 func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("cerebrum-nb device-config: missing operation (add|modify|remove)")
+		return cerebrumValErr("device-config", "missing operation (add|modify|remove)")
 	}
 	op := args[0]
 	cfgType, err := deviceConfigOpType(op)
@@ -1630,7 +3595,7 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	}
 	rest := reorderFlagsFirst(args[1:])
 	fs := flag.NewFlagSet("cerebrum-nb device-config "+op, flag.ContinueOnError)
-	_ = newCerebrumFlags(fs)
+	cf := newCerebrumFlags(fs)
 	deviceType := fs.String("device-type", "", "device type: generic | panel | router | snmp")
 	ip := fs.String("ip", "", "device IP_ADDRESS (required; the addressing key)")
 	dname := fs.String("device-name", "", "DEVICE_NAME (optional on add; with --ip identifies the device on modify)")
@@ -1656,12 +3621,18 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	maxDest := fs.String("max-dest", "", "ROUTER MAX_DEST")
 	// SNMP body
 	snmpPort := fs.String("snmp-port", "", "SNMP PORT")
+	check := fs.Bool("check", false, "dry-run (ADR-0007): consult the live device LIST, report would_change, send nothing")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 
-	if err := fs.Parse(rest); err != nil {
+	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
+	}
 	if *ip == "" {
-		return fmt.Errorf("cerebrum-nb device-config: --ip is required")
+		return cerebrumValErr("device-config", "--ip is required")
 	}
 	dc := &codec.DeviceConfiguration{
 		Type:       cfgType,
@@ -1683,20 +3654,76 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 		dc.DeviceType = dt
 	}
 
-	p, sess, cf, _, err := connectAndAuth(fs.Args(), "device-config")
+	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "device-config")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = p.Disconnect() }()
+	logw := os.Stdout
+	if jsonOut {
+		logw = os.Stderr
+	}
+
+	// Ensure read phase (ADR-0007): ADD and REMOVE are idempotent against
+	// the live device LIST (add-existing / remove-absent = changed:false,
+	// nothing sent). MODIFY has no per-field read-back over NB, so it
+	// always sends and always reports changed.
+	changed := true
+	from := "?"
+	if cfgType != "MODIFY" {
+		if got, gerr := obtainSingleDeviceChange(sess, cf.timeout, &codec.DeviceChange{Type: "LIST"}, "LIST"); gerr == nil && got != nil && got.Device != nil {
+			present := false
+			for _, d := range got.Device.Devices {
+				if d.IPAddress == *ip {
+					present = true
+					break
+				}
+			}
+			if present {
+				from = "present"
+			} else {
+				from = "absent"
+			}
+			if cfgType == codec.DeviceConfigRemove {
+				changed = present
+			} else { // ADD
+				changed = !present
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb device-config: device LIST not readable — imperative send, reported changed\n")
+		}
+	}
+	diffs := []ensureDiff{}
+	if changed {
+		diffs = append(diffs, ensureDiff{Field: "device." + *ip, From: from, To: string(cfgType)})
+	}
+
+	if *check {
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb device-config --check: would_change=%t (%s ip=%s, live=%s) — nothing sent\n", changed, cfgType, *ip, from)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: from, Target: string(cfgType), Diff: diffs})
+		}
+		return nil
+	}
+	if !changed {
+		_, _ = fmt.Fprintf(logw, "[device-config] already converged — %s ip=%s (live=%s, nothing sent)\n", cfgType, *ip, from)
+		if jsonOut {
+			return emitEnsure(true, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: diffs})
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
 	res, err := sess.DeviceConfig(ctx, dc)
 	if err != nil {
 		return fmt.Errorf("cerebrum-nb device-config: %w", err)
 	}
-	fmt.Printf("[device-config] %s %s ip=%s result=%s\n", cfgType, dc.DeviceType, dc.IPAddress, displayDash(res.Value))
+	_, _ = fmt.Fprintf(logw, "[device-config] %s %s ip=%s result=%s\n", cfgType, dc.DeviceType, dc.IPAddress, displayDash(res.Value))
 	if !res.Accepted {
 		return fmt.Errorf("cerebrum-nb device-config: server returned %s", displayDash(res.Value))
+	}
+	if jsonOut {
+		return emitEnsure(true, ensureResult{Changed: &changed, Previous: from, Diff: diffs})
 	}
 	return nil
 }
@@ -1704,12 +3731,12 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 // deviceConfigBodyFlags carries the flattened per-type body flags so
 // buildDeviceConfigBody can map them onto the right codec struct.
 type deviceConfigBodyFlags struct {
-	device, version, name             string
-	connType, port, timeout, poll     string
-	cpf, panelID, panelType           string
-	routerType, baud, parity          string
-	maxLevel, maxSource, maxDest      string
-	snmpPort, snmpName                string
+	device, version, name         string
+	connType, port, timeout, poll string
+	cpf, panelID, panelType       string
+	routerType, baud, parity      string
+	maxLevel, maxSource, maxDest  string
+	snmpPort, snmpName            string
 }
 
 // buildDeviceConfigBody attaches the body struct chosen by deviceType to dc
@@ -1761,9 +3788,9 @@ func buildDeviceConfigBody(dc *codec.DeviceConfiguration, deviceType string, f d
 		dc.SNMP = &codec.SNMPConfig{Name: f.snmpName, Port: f.snmpPort}
 		return codec.ConfigDeviceSNMP, nil
 	case "":
-		return "", fmt.Errorf("cerebrum-nb device-config: --device-type is required (generic|panel|router|snmp)")
+		return "", cerebrumValErr("device-config", "--device-type is required (generic|panel|router|snmp)")
 	default:
-		return "", fmt.Errorf("cerebrum-nb device-config: unknown --device-type %q (want generic|panel|router|snmp)", deviceType)
+		return "", cerebrumValErr("device-config", fmt.Sprintf("unknown --device-type %q (want generic|panel|router|snmp)", deviceType))
 	}
 }
 
@@ -1778,7 +3805,7 @@ func deviceConfigOpType(op string) (codec.DeviceConfigType, error) {
 	case "remove":
 		return codec.DeviceConfigRemove, nil
 	default:
-		return "", fmt.Errorf("cerebrum-nb device-config: unknown operation %q (want add|modify|remove)", op)
+		return "", cerebrumValErr("device-config", fmt.Sprintf("unknown operation %q (want add|modify|remove)", op))
 	}
 }
 
@@ -1789,7 +3816,7 @@ func requireKind(kind, verb string, allowed ...string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("cerebrum-nb %s: unknown --kind %q (want one of %s)", verb, kind, strings.Join(allowed, " | "))
+	return cerebrumValErr(verb, fmt.Sprintf("unknown --kind %q (want one of %s)", kind, strings.Join(allowed, " | ")))
 }
 
 // salvoOpType maps the --op string to a §4.3 SALVO TYPE.
@@ -1801,27 +3828,51 @@ func salvoOpType(op string) (string, error) {
 		return "SAVE", nil
 	case "rename":
 		return "RENAME", nil
+	case "description":
+		return "DESCRIPTION", nil
 	case "delete":
 		return "DELETE", nil
 	case "":
-		return "", fmt.Errorf("cerebrum-nb salvo: --op is required (run|save|rename|delete)")
+		return "", cerebrumValErr("salvo", "--op is required (run|save|rename|description|delete)")
 	default:
-		return "", fmt.Errorf("cerebrum-nb salvo: unknown --op %q (want run|save|rename|delete)", op)
+		return "", cerebrumValErr("salvo", fmt.Sprintf("unknown --op %q (want run|save|rename|description|delete)", op))
 	}
 }
 
-// categoryOpType maps the --op string to a §4.2 CATEGORY TYPE.
+// categoryOpType maps the --op string to a §4.2 CATEGORY TYPE (all six).
 func categoryOpType(op string) (string, error) {
 	switch strings.ToLower(op) {
 	case "create":
 		return "CREATE", nil
 	case "modify":
 		return "MODIFY_ITEM", nil
+	case "modify-all":
+		return "MODIFY_ALL", nil
+	case "modify-desc":
+		return "MODIFY_DESC", nil
 	case "delete":
 		return "DELETE", nil
+	case "delete-item":
+		return "DELETE_ITEM", nil
 	case "":
-		return "", fmt.Errorf("cerebrum-nb category: --op is required (create|modify|delete)")
+		return "", cerebrumValErr("category", "--op is required (create|modify|modify-all|modify-desc|delete|delete-item)")
 	default:
-		return "", fmt.Errorf("cerebrum-nb category: unknown --op %q (want create|modify|delete)", op)
+		return "", cerebrumValErr("category", fmt.Sprintf("unknown --op %q (want create|modify|modify-all|modify-desc|delete|delete-item)", op))
 	}
+}
+
+// categoryItemType validates a --item-type against the §3.3 ITEM_TYPE enum
+// (empty is allowed — the attribute is simply omitted).
+func categoryItemType(s string) (codec.ItemType, error) {
+	if s == "" {
+		return "", nil
+	}
+	it := codec.ItemType(strings.ToUpper(s))
+	switch it {
+	case codec.ItemBlank, codec.ItemSrce, codec.ItemSource, codec.ItemDest,
+		codec.ItemCategory, codec.ItemSalvo, codec.ItemInherit,
+		codec.ItemText, codec.ItemFile, codec.ItemCustom:
+		return it, nil
+	}
+	return "", cerebrumValErr("category", fmt.Sprintf("unknown --item-type %q (§3.3: BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM)", s))
 }

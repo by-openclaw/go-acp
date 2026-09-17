@@ -1,0 +1,33 @@
+{
+    "description": "Property holder descriptor",
+    "name": "NcPropertyHolder",
+    "type": 2,
+    "fields": [
+        {
+            "description": "Property id",
+            "name": "id",
+            "typeName": "NcPropertyId",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Property descriptor",
+            "name": "descriptor",
+            "typeName": "NcPropertyDescriptor",
+            "isNullable": true,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Property value",
+            "name": "value",
+            "typeName": null,
+            "isNullable": true,
+            "isSequence": false,
+            "constraints": null
+        }
+    ],
+    "parentType": null,
+    "constraints": null
+}

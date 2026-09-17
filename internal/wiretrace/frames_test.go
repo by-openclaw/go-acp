@@ -27,6 +27,22 @@ func TestReadTrames_basic(t *testing.T) {
 	}
 }
 
+// TestReadTrames_metaRecordSkipped pins the ADR-0028 contract: a
+// hex-less line carrying `meta` is provenance, not traffic — skipped
+// without error, whatever position it appears in.
+func TestReadTrames_metaRecordSkipped(t *testing.T) {
+	const input = `{"schema_version":1,"ts":"2026-08-18T00:00:00Z","meta":{"cli":"dhs consumer cerebrum-nb export h --pass ***","binary_sha256":"sha256:ab","proto":"cerebrum-nb","verb":"export"}}
+{"schema_version":1,"dir":"tx","hex":"c635"}
+`
+	got, err := wiretrace.ReadTrames(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("ReadTrames with meta line: %v", err)
+	}
+	if len(got) != 1 || got[0].Hex != "c635" {
+		t.Fatalf("got %d trames (%+v), want the 1 traffic line", len(got), got)
+	}
+}
+
 func TestReadTrames_missingRequired(t *testing.T) {
 	cases := []struct {
 		name  string

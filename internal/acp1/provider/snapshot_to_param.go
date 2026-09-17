@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
 	"dhs/internal/export"
 	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 )
 
 // snapshotToEntries flattens a single-slot DM-library snapshot into

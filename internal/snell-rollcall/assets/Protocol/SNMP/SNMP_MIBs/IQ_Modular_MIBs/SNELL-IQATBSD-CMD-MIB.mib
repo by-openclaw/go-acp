@@ -1,0 +1,1561 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQATBSD
+--        Module Id#:280
+--       Command Set:7
+--  Software Version:6.6.7
+--          Filename:SNELL-IQATBSD-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:27/06/2005
+--              Time:15:13
+-- Last Modification:Logging comments added
+--   Version Control:CVS $Id: SNELL-IQATBSD-CMD-MIB.mib 244 2007-08-31 07:48:50Z nikolaoskatsampekis $
+-- Copyright (c) 2006 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQATBSD-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQATBSD,
+    moduleIQATBSDMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQATBSDCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506271513Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQATBSDMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqatbsdCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqatbsdCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQATBSD 1 }
+
+	iqatbsdCmdEntry OBJECT-TYPE
+		SYNTAX		IqatbsdCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqatbsdSlotIndex }
+		::= { iqatbsdCmdTable 1 }
+
+	IqatbsdCmdEntry ::=
+		SEQUENCE {
+			iqatbsdSlotIndex
+				Unsigned32,
+			iqatbsdInputInputSelect
+				INTEGER,
+			iqatbsdInputInputStandardsPAL
+				INTEGER,
+			iqatbsdInputInputStandardsPALN
+				INTEGER,
+			iqatbsdInputInputStandardsSECAM
+				INTEGER,
+			iqatbsdInputInputStandardsMono625
+				INTEGER,
+			iqatbsdInputInputStandardsNTSC
+				INTEGER,
+			iqatbsdInputInputStandardsNTSCJ
+				INTEGER,
+			iqatbsdInputInputStandardsPALM
+				INTEGER,
+			iqatbsdInputInputStandardsN443
+				INTEGER,
+			iqatbsdInputInputStandardsMono525
+				INTEGER,
+			iqatbsdInputDecoderAutoGainControl
+				INTEGER,
+			iqatbsdInputDecoderAutoChromaControl
+				INTEGER,
+			iqatbsdInputDecoderPALChromaAverager
+				INTEGER,
+			iqatbsdInputDecoderPALLine23
+				INTEGER,
+			iqatbsdInputDecoderNTSCLine21_283
+				INTEGER,
+			iqatbsdOutput625Standards
+				INTEGER,
+			iqatbsdOutput525Standards
+				INTEGER,
+			iqatbsdOutputDefaultOutput
+				INTEGER,
+			iqatbsdOutputDefaultOutputStableInput
+				INTEGER,
+			iqatbsdOutputSerialOutputPassVerticalData
+				INTEGER,
+			iqatbsdProcAmpLuminanceGain
+				INTEGER,
+			iqatbsdProcAmpBlackLevel
+				INTEGER,
+			iqatbsdProcAmpChromaGain
+				INTEGER,
+			iqatbsdProcAmpNTSCHue
+				INTEGER,
+			iqatbsdProcAmpTimingTimingEnable
+				INTEGER,
+			iqatbsdProcAmpTimingPicturePosition
+				INTEGER,
+			iqatbsdProcAmpTimingYCTiming
+				INTEGER,
+			iqatbsdFreeze
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceNoiseReduceEnable
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceYNREnable
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceCNREnable
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceYLevel
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceCLevel
+				INTEGER,
+			iqatbsdFeaturesNoiseReduceSplitScreen
+				INTEGER,
+			iqatbsdFeaturesEnhanceEnhancerEnable
+				INTEGER,
+			iqatbsdEnhanceHEnhancer
+				INTEGER,
+			iqatbsdEnhanceHEnhancerFreq
+				INTEGER,
+			iqatbsdFeaturesEnhanceVEnhancer
+				INTEGER,
+			iqatbsdStatusStatusDisplay
+				INTEGER,
+			iqatbsdStatusStatusDisplayRollTrackErrors
+				INTEGER,
+			iqatbsdStatusGPIDelay
+				RollCallString,
+			iqatbsdStatusSoftwareVersion
+				RollCallString,
+			iqatbsdStatusSerialNumber
+				RollCallString,
+			iqatbsdStatusBuildNumber
+				RollCallString,
+			iqatbsdStatusRestart
+				INTEGER,
+			iqatbsdMemoriesRead
+				INTEGER,
+			iqatbsdMemoriesSave
+				INTEGER,
+			iqatbsdMemoriesNameNameMemory1
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory2
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory3
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory4
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory5
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory6
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory7
+				RollCallString,
+			iqatbsdMemoriesNameNameMemory8
+				RollCallString,
+			iqatbsdMemoriesClear
+				INTEGER,
+			iqatbsdSetupEncoderVITSInsert
+				INTEGER,
+			iqatbsdSetupEncoderPassVerticalData
+				INTEGER,
+			iqatbsdEncoderSECAMOptionsNotchDisable
+				INTEGER,
+			iqatbsdEncoderSECAMOptionsBottlesEnable
+				INTEGER,
+			iqatbsdEncoderSECAMOptionsCarrierDisable
+				INTEGER,
+			iqatbsdEncoderSECAMOptionsChromaFiltDisable
+				INTEGER,
+			iqatbsdSetupGenlockGenlockEnable
+				INTEGER,
+			iqatbsdSetupGenlock
+				INTEGER,
+			iqatbsdSetupGenlockPALHPhase
+				INTEGER,
+			iqatbsdSetupGenlockPALSCPhase
+				INTEGER,
+			iqatbsdSetupGenlockPALNHPhase
+				INTEGER,
+			iqatbsdSetupGenlockPALNSCPhase
+				INTEGER,
+			iqatbsdSetupGenlockSECAMHPhase
+				INTEGER,
+			iqatbsdSetupGenlockNTSCHPhase
+				INTEGER,
+			iqatbsdSetupGenlockNTSCSCPhase
+				INTEGER,
+			iqatbsdSetupGenlockPALMHPhase
+				INTEGER,
+			iqatbsdSetupGenlockPALMSCPhase
+				INTEGER,
+			iqatbsdSetupPatternPatternEnable
+				INTEGER,
+			iqatbsdSetupPattern
+				INTEGER,
+			iqatbsdSetupGPIGPIInputEnable
+				INTEGER,
+			iqatbsdGPIGPIInputSetupGPIOpen
+				INTEGER,
+			iqatbsdGPIGPIInputSetupGPIClose
+				INTEGER,
+			iqatbsdSetupGPIGPIOutputEnable
+				INTEGER,
+			iqatbsdSetupGPIGPIOutputSetup
+				INTEGER,
+			iqatbsdSetupRollTrackUnit1
+				RollCallString,
+			iqatbsdSetupRollTrackUnit2
+				RollCallString,
+			iqatbsdSetupRollTrackUnit3
+				RollCallString,
+			iqatbsdSetupRollTrackUnit4
+				RollCallString,
+			iqatbsdSetupRollTrackUnit5
+				RollCallString,
+			iqatbsdSetupRollTrackUnit6
+				RollCallString,
+			iqatbsdSetupRollTrackUnit7
+				RollCallString,
+			iqatbsdSetupRollTrackUnit8
+				RollCallString,
+			iqatbsdSetupLoggingLogInputState
+				INTEGER,
+			iqatbsdSetupLoggingLogInputStandard
+				INTEGER,
+			iqatbsdSetupLoggingLogReferenceState
+				INTEGER,
+			iqatbsdSetupPresetUnit
+				INTEGER
+		}
+
+	iqatbsdSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqatbsdCmdEntry 0 }
+
+
+	iqatbsdInputInputSelect OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Composite_A(0),
+							val_Composite_B(1),
+							val_YC(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Input Select  cmdID= 9 
+					Composite A  value= 0  
+					Composite B  value= 1  
+					YC  value= 2  "
+		::= { iqatbsdCmdEntry 9 }
+
+
+	iqatbsdInputInputStandardsPAL OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PAL  cmdID= 10 "
+		::= { iqatbsdCmdEntry 10 }
+
+
+	iqatbsdInputInputStandardsPALN OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PALN  cmdID= 12 "
+		::= { iqatbsdCmdEntry 12 }
+
+
+	iqatbsdInputInputStandardsSECAM OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					SECAM  cmdID= 14 "
+		::= { iqatbsdCmdEntry 14 }
+
+
+	iqatbsdInputInputStandardsMono625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mono 625  cmdID= 17 "
+		::= { iqatbsdCmdEntry 17 }
+
+
+	iqatbsdInputInputStandardsNTSC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					NTSC  cmdID= 11 "
+		::= { iqatbsdCmdEntry 11 }
+
+
+	iqatbsdInputInputStandardsNTSCJ OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					NTSCJ  cmdID= 15 "
+		::= { iqatbsdCmdEntry 15 }
+
+
+	iqatbsdInputInputStandardsPALM OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PALM  cmdID= 13 "
+		::= { iqatbsdCmdEntry 13 }
+
+
+	iqatbsdInputInputStandardsN443 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					N4.43  cmdID= 16 "
+		::= { iqatbsdCmdEntry 16 }
+
+
+	iqatbsdInputInputStandardsMono525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Mono 525  cmdID= 18 "
+		::= { iqatbsdCmdEntry 18 }
+
+
+	iqatbsdInputDecoderAutoGainControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Auto Gain Control  cmdID= 21 "
+		::= { iqatbsdCmdEntry 21 }
+
+
+	iqatbsdInputDecoderAutoChromaControl OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Auto Chroma Control  cmdID= 22 "
+		::= { iqatbsdCmdEntry 22 }
+
+
+	iqatbsdInputDecoderPALChromaAverager OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PAL Chroma Averager  cmdID= 44 "
+		::= { iqatbsdCmdEntry 44 }
+
+
+	iqatbsdInputDecoderPALLine23 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Process_As_Video(0),
+							val_Pass_Line_23(1),
+							val_Blank_Line_23(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					PAL Line 23  cmdID= 25 
+					Process As Video  value= 0  
+					Pass  Line 23  value= 1  
+					Blank Line 23  value= 2  "
+		::= { iqatbsdCmdEntry 25 }
+
+
+	iqatbsdInputDecoderNTSCLine21_283 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Process_As_Video(0),
+							val_Pass_Line_21_283(1),
+							val_Blank_Line_21_283(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					NTSC Line 21 & 283  cmdID= 26 
+					Process As Video  value= 0  
+					Pass  Line 21 & 283  value= 1  
+					Blank Line 21 & 283  value= 2  "
+		::= { iqatbsdCmdEntry 26 }
+
+
+	iqatbsdOutput625Standards OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL(1),
+							val_PALN(3),
+							val_SECAM(5)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					625 Standards  cmdID= 19 
+					PAL  value= 1  
+					PALN  value= 3  
+					SECAM  value= 5  "
+		::= { iqatbsdCmdEntry 19 }
+
+
+	iqatbsdOutput525Standards OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_NTSC(2),
+							val_PALM(4),
+							val_NTSCJ(6)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					525 Standards  cmdID= 20 
+					NTSC  value= 2  
+					PALM  value= 4  
+					NTSCJ  value= 6  "
+		::= { iqatbsdCmdEntry 20 }
+
+
+	iqatbsdOutputDefaultOutput OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input(5),
+							val_Pattern(3),
+							val_Freeze(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input  cmdID= 35  value= 5  
+					Pattern  cmdID= 35  value= 3  
+					Freeze  cmdID= 35  value= 4  "
+		::= { iqatbsdCmdEntry 35 }
+
+
+	iqatbsdOutputDefaultOutputStableInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Stable Input  cmdID= 133 "
+		::= { iqatbsdCmdEntry 133 }
+
+
+	iqatbsdOutputSerialOutputPassVerticalData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass Vertical Data  cmdID= 43 "
+		::= { iqatbsdCmdEntry 43 }
+
+
+	iqatbsdProcAmpLuminanceGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Luminance Gain  cmdID= 29  min= -30  max= 30  step= 1  format= %0.1f dB  div_scale= 10 
+					Min = -3.0 dB  Max = 3.0 dB  Step = 0.1 dB "
+		::= { iqatbsdCmdEntry 29 }
+
+
+	iqatbsdProcAmpBlackLevel OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Black Level  cmdID= 31  min= -1024  max= 1024  step= 16  format= %0.1f mV  div_scale= 10 
+					Min = -102.4 mV  Max = 102.4 mV  Step = 1.6 mV "
+		::= { iqatbsdCmdEntry 31 }
+
+
+	iqatbsdProcAmpChromaGain OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Chroma Gain  cmdID= 30  min= -30  max= 30  step= 1  format= %0.1f dB  div_scale= 10 
+					Min = -3.0 dB  Max = 3.0 dB  Step = 0.1 dB "
+		::= { iqatbsdCmdEntry 30 }
+
+
+	iqatbsdProcAmpNTSCHue OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					NTSC Hue  cmdID= 32  min= -180  max= 179  step= 1  format= %1.0f Deg  div_scale= 1 
+					Min = -180 Deg  Max = 179 Deg  Step = 1 Deg "
+		::= { iqatbsdCmdEntry 32 }
+
+
+	iqatbsdProcAmpTimingTimingEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Timing Enable  cmdID= 118 "
+		::= { iqatbsdCmdEntry 118 }
+
+
+	iqatbsdProcAmpTimingPicturePosition OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					Picture Position  cmdID= 38  min= -1036  max= 1036  step= 148  format= %.0f ns  div_scale= 1 
+					Min = -1036 ns  Max = 1036 ns  Step = 148 ns "
+		::= { iqatbsdCmdEntry 38 }
+
+
+	iqatbsdProcAmpTimingYCTiming OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					YC Timing  cmdID= 37  min= -1036  max= 1036  step= 148  format=  %.0f ns  div_scale= 1 
+					Min =  -1036 ns  Max =  1036 ns  Step =  148 ns "
+		::= { iqatbsdCmdEntry 37 }
+
+
+	iqatbsdFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Freeze  cmdID= 40 "
+		::= { iqatbsdCmdEntry 40 }
+
+
+	iqatbsdFeaturesNoiseReduceNoiseReduceEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Noise Reduce Enable  cmdID= 123 "
+		::= { iqatbsdCmdEntry 123 }
+
+
+	iqatbsdFeaturesNoiseReduceYNREnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Y NR Enable  cmdID= 41 "
+		::= { iqatbsdCmdEntry 41 }
+
+
+	iqatbsdFeaturesNoiseReduceCNREnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					C NR Enable  cmdID= 42 "
+		::= { iqatbsdCmdEntry 42 }
+
+
+	iqatbsdFeaturesNoiseReduceYLevel OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Y_Off(0),
+							val_Y_Low(1),
+							val_Y_Medium(2),
+							val_Y_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Y Level  cmdID= 34 
+					Y Off  value= 0  
+					Y Low  value= 1  
+					Y Medium  value= 2  
+					Y High  value= 3  "
+		::= { iqatbsdCmdEntry 34 }
+
+
+	iqatbsdFeaturesNoiseReduceCLevel OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_C_OFF(0),
+							val_C_Low(1),
+							val_C_Medium(2),
+							val_C_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					C Level  cmdID= 36 
+					C OFF  value= 0  
+					C Low  value= 1  
+					C Medium  value= 2  
+					C High  value= 3  "
+		::= { iqatbsdCmdEntry 36 }
+
+
+	iqatbsdFeaturesNoiseReduceSplitScreen OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Split_Screen_Off(0),
+							val_Left_Right(2),
+							val_Top_Bottom(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Split Screen  cmdID= 52 
+					Split Screen Off  value= 0  
+					Left Right  value= 2  
+					Top Bottom  value= 1  "
+		::= { iqatbsdCmdEntry 52 }
+
+
+	iqatbsdFeaturesEnhanceEnhancerEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Enhancer Enable  cmdID= 45 "
+		::= { iqatbsdCmdEntry 45 }
+
+
+	iqatbsdEnhanceHEnhancer OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_H_Enhancer_Low(1),
+							val_H_Enhancer_Medium(2),
+							val_H_Enhancer_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Off  cmdID= 23  value= 0  
+					H Enhancer Low  cmdID= 23  value= 1  
+					H Enhancer Medium  cmdID= 23  value= 2  
+					H Enhancer High  cmdID= 23  value= 3  "
+		::= { iqatbsdCmdEntry 23 }
+
+
+	iqatbsdEnhanceHEnhancerFreq OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Frequency_2_25MHz(0),
+							val_Frequency_3_375MHz(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Frequency 2.25MHz  cmdID= 122  value= 0  
+					Frequency 3.375MHz  cmdID= 122  value= 1  "
+		::= { iqatbsdCmdEntry 122 }
+
+
+	iqatbsdFeaturesEnhanceVEnhancer OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_V_Enhancer_Low(1),
+							val_V_Enhancer_Medium(2),
+							val_V_Enhancer_High(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					V Enhancer  cmdID= 121 
+					Off  value= 0  
+					V Enhancer Low  value= 1  
+					V Enhancer Medium  value= 2  
+					V Enhancer High  value= 3  "
+		::= { iqatbsdCmdEntry 121 }
+
+
+	iqatbsdStatusStatusDisplay OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Default_Display(0),
+							val_Status_Display(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Default Display  cmdID= 116  value= 0  
+					Status Display  cmdID= 116  value= 1  "
+		::= { iqatbsdCmdEntry 116 }
+
+
+	iqatbsdStatusStatusDisplayRollTrackErrors OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack Errors  cmdID= 71 
+					Show RollTrack Err  cmdID= 71 "
+		::= { iqatbsdCmdEntry 71 }
+
+
+	iqatbsdStatusGPIDelay OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					GPI Delay  cmdID= 117  format=   "
+		::= { iqatbsdCmdEntry 117 }
+
+
+	iqatbsdStatusSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqatbsdCmdEntry 2 }
+
+
+	iqatbsdStatusSerialNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial Number  cmdID= 1  format=   "
+		::= { iqatbsdCmdEntry 1 }
+
+
+	iqatbsdStatusBuildNumber OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build Number  cmdID= 120  format=   "
+		::= { iqatbsdCmdEntry 120 }
+
+
+	iqatbsdStatusRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqatbsdCmdEntry 4 }
+
+
+	iqatbsdMemoriesRead OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Memory_5(5),
+							val_Memory_6(6),
+							val_Memory_7(7),
+							val_Memory_8(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Read  cmdID= 55 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  
+					Memory 5  value= 5  
+					Memory 6  value= 6  
+					Memory 7  value= 7  
+					Memory 8  value= 8  "
+		::= { iqatbsdCmdEntry 55 }
+
+
+	iqatbsdMemoriesSave OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Memory_5(5),
+							val_Memory_6(6),
+							val_Memory_7(7),
+							val_Memory_8(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Save  cmdID= 54 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  
+					Memory 5  value= 5  
+					Memory 6  value= 6  
+					Memory 7  value= 7  
+					Memory 8  value= 8  "
+		::= { iqatbsdCmdEntry 54 }
+
+
+	iqatbsdMemoriesNameNameMemory1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 1  cmdID= 57  "
+		::= { iqatbsdCmdEntry 57 }
+
+
+	iqatbsdMemoriesNameNameMemory2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 2  cmdID= 58  "
+		::= { iqatbsdCmdEntry 58 }
+
+
+	iqatbsdMemoriesNameNameMemory3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 3  cmdID= 59  "
+		::= { iqatbsdCmdEntry 59 }
+
+
+	iqatbsdMemoriesNameNameMemory4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 4  cmdID= 60  "
+		::= { iqatbsdCmdEntry 60 }
+
+
+	iqatbsdMemoriesNameNameMemory5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 5  cmdID= 61  "
+		::= { iqatbsdCmdEntry 61 }
+
+
+	iqatbsdMemoriesNameNameMemory6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 6  cmdID= 62  "
+		::= { iqatbsdCmdEntry 62 }
+
+
+	iqatbsdMemoriesNameNameMemory7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 7  cmdID= 63  "
+		::= { iqatbsdCmdEntry 63 }
+
+
+	iqatbsdMemoriesNameNameMemory8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - Name
+					Name Memory 8  cmdID= 64  "
+		::= { iqatbsdCmdEntry 64 }
+
+
+	iqatbsdMemoriesClear OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Memory_5(5),
+							val_Memory_6(6),
+							val_Memory_7(7),
+							val_Memory_8(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Clear  cmdID= 56 
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  
+					Memory 5  value= 5  
+					Memory 6  value= 6  
+					Memory 7  value= 7  
+					Memory 8  value= 8  "
+		::= { iqatbsdCmdEntry 56 }
+
+
+	iqatbsdSetupEncoderVITSInsert OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VITS Insert  cmdID= 46 "
+		::= { iqatbsdCmdEntry 46 }
+
+
+	iqatbsdSetupEncoderPassVerticalData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pass Vertical Data  cmdID= 47 "
+		::= { iqatbsdCmdEntry 47 }
+
+
+	iqatbsdEncoderSECAMOptionsNotchDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Notch Disable  cmdID= 48 "
+		::= { iqatbsdCmdEntry 48 }
+
+
+	iqatbsdEncoderSECAMOptionsBottlesEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Bottles Enable  cmdID= 49 "
+		::= { iqatbsdCmdEntry 49 }
+
+
+	iqatbsdEncoderSECAMOptionsCarrierDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Carrier Disable  cmdID= 50 "
+		::= { iqatbsdCmdEntry 50 }
+
+
+	iqatbsdEncoderSECAMOptionsChromaFiltDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Chroma Filt Disable  cmdID= 51 "
+		::= { iqatbsdCmdEntry 51 }
+
+
+	iqatbsdSetupGenlockGenlockEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Genlock Enable  cmdID= 39 "
+		::= { iqatbsdCmdEntry 39 }
+
+
+	iqatbsdSetupGenlock OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_SCH_Genlock(0),
+							val_HV_Sync_Lock(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					SCH Genlock  cmdID= 132  value= 0  
+					HV Sync Lock  cmdID= 132  value= 1  "
+		::= { iqatbsdCmdEntry 132 }
+
+
+	iqatbsdSetupGenlockPALHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PAL H  Phase  cmdID= 87  min= -505  max= 505  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = -505 ns  Max = 505 ns  Step = 1 ns "
+		::= { iqatbsdCmdEntry 87 }
+
+
+	iqatbsdSetupGenlockPALSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PAL SC Phase  cmdID= 92  min= -1800  max= 1799  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = -180.0 Deg  Max = 179.9 Deg  Step = 0.1 Deg "
+		::= { iqatbsdCmdEntry 92 }
+
+
+	iqatbsdSetupGenlockPALNHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PALN H  Phase  cmdID= 89  min= -408  max= 408  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = -408 ns  Max = 408 ns  Step = 1 ns "
+		::= { iqatbsdCmdEntry 89 }
+
+
+	iqatbsdSetupGenlockPALNSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PALN SC Phase  cmdID= 94  min= -1800  max= 1799  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = -180.0 Deg  Max = 179.9 Deg  Step = 0.1 Deg "
+		::= { iqatbsdCmdEntry 94 }
+
+
+	iqatbsdSetupGenlockSECAMHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					SECAM H Phase  cmdID= 91  min= -505  max= 505  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = -505 ns  Max = 505 ns  Step = 1 ns "
+		::= { iqatbsdCmdEntry 91 }
+
+
+	iqatbsdSetupGenlockNTSCHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					NTSC H  Phase  cmdID= 88  min= -410  max= 410  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = -410 ns  Max = 410 ns  Step = 1 ns "
+		::= { iqatbsdCmdEntry 88 }
+
+
+	iqatbsdSetupGenlockNTSCSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					NTSC SC Phase  cmdID= 93  min= -1800  max= 1799  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = -180.0 Deg  Max = 179.9 Deg  Step = 0.1 Deg "
+		::= { iqatbsdCmdEntry 93 }
+
+
+	iqatbsdSetupGenlockPALMHPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PALM H  Phase  cmdID= 90  min= -409  max= 409  step= 1  format= %1.0f ns  div_scale= 1 
+					Min = -409 ns  Max = 409 ns  Step = 1 ns "
+		::= { iqatbsdCmdEntry 90 }
+
+
+	iqatbsdSetupGenlockPALMSCPhase OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					PALM SC Phase  cmdID= 95  min= -1800  max= 1799  step= 1  format= %1.1f Deg  div_scale= 10 
+					Min = -180.0 Deg  Max = 179.9 Deg  Step = 0.1 Deg "
+		::= { iqatbsdCmdEntry 95 }
+
+
+	iqatbsdSetupPatternPatternEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern Enable  cmdID= 33 "
+		::= { iqatbsdCmdEntry 33 }
+
+
+	iqatbsdSetupPattern OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Black(0),
+							val_75_Colour_Bars(1),
+							val_100_Colour_Bars(2),
+							val_MultiBurst(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Black  cmdID= 24  value= 0  
+					75% Colour Bars  cmdID= 24  value= 1  
+					100% Colour Bars  cmdID= 24  value= 2  
+					MultiBurst  cmdID= 24  value= 3  "
+		::= { iqatbsdCmdEntry 24 }
+
+
+	iqatbsdSetupGPIGPIInputEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					GPI Input Enable  cmdID= 83 "
+		::= { iqatbsdCmdEntry 83 }
+
+
+	iqatbsdGPIGPIInputSetupGPIOpen OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Pattern_On(11),
+							val_Pattern_Off(12),
+							val_Freeze_On(9),
+							val_Freeze_Off(10),
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Memory_5(5),
+							val_Memory_6(6),
+							val_Memory_7(7),
+							val_Memory_8(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI Open  cmdID= 81 
+					Off  value= 0  
+					Pattern On  value= 11  
+					Pattern Off  value= 12  
+					Freeze On  value= 9  
+					Freeze Off  value= 10  
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  
+					Memory 5  value= 5  
+					Memory 6  value= 6  
+					Memory 7  value= 7  
+					Memory 8  value= 8  "
+		::= { iqatbsdCmdEntry 81 }
+
+
+	iqatbsdGPIGPIInputSetupGPIClose OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Pattern_On(11),
+							val_Pattern_Off(12),
+							val_Freeze_On(9),
+							val_Freeze_Off(10),
+							val_Memory_1(1),
+							val_Memory_2(2),
+							val_Memory_3(3),
+							val_Memory_4(4),
+							val_Memory_5(5),
+							val_Memory_6(6),
+							val_Memory_7(7),
+							val_Memory_8(8)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI Close  cmdID= 82 
+					Off  value= 0  
+					Pattern On  value= 11  
+					Pattern Off  value= 12  
+					Freeze On  value= 9  
+					Freeze Off  value= 10  
+					Memory 1  value= 1  
+					Memory 2  value= 2  
+					Memory 3  value= 3  
+					Memory 4  value= 4  
+					Memory 5  value= 5  
+					Memory 6  value= 6  
+					Memory 7  value= 7  
+					Memory 8  value= 8  "
+		::= { iqatbsdCmdEntry 82 }
+
+
+	iqatbsdSetupGPIGPIOutputEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					GPI Output Enable  cmdID= 84 "
+		::= { iqatbsdCmdEntry 84 }
+
+
+	iqatbsdSetupGPIGPIOutputSetup OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Delay_Flag(0),
+							val_High_On_Input_Loss(1),
+							val_Low_On_Input_Loss(2),
+							val_Input_Line_Std_625(3),
+							val_Input_Line_Std_525(4)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					GPI Output Setup  cmdID= 115 
+					Delay Flag  value= 0  
+					High On Input Loss  value= 1  
+					Low  On Input Loss  value= 2  
+					Input Line Std 625  value= 3  
+					Input Line Std 525  value= 4  "
+		::= { iqatbsdCmdEntry 115 }
+
+
+	iqatbsdSetupRollTrackUnit1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 1  cmdID= 72  "
+		::= { iqatbsdCmdEntry 72 }
+
+
+	iqatbsdSetupRollTrackUnit2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 2  cmdID= 73  "
+		::= { iqatbsdCmdEntry 73 }
+
+
+	iqatbsdSetupRollTrackUnit3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 3  cmdID= 74  "
+		::= { iqatbsdCmdEntry 74 }
+
+
+	iqatbsdSetupRollTrackUnit4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 4  cmdID= 75  "
+		::= { iqatbsdCmdEntry 75 }
+
+
+	iqatbsdSetupRollTrackUnit5 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 5  cmdID= 76  "
+		::= { iqatbsdCmdEntry 76 }
+
+
+	iqatbsdSetupRollTrackUnit6 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 6  cmdID= 77  "
+		::= { iqatbsdCmdEntry 77 }
+
+
+	iqatbsdSetupRollTrackUnit7 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 7  cmdID= 78  "
+		::= { iqatbsdCmdEntry 78 }
+
+
+	iqatbsdSetupRollTrackUnit8 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+				 PAGE: - RollTrack
+					Unit 8  cmdID= 79  "
+		::= { iqatbsdCmdEntry 79 }
+
+
+	iqatbsdSetupLoggingLogInputState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input State  cmdID= 28 "
+		::= { iqatbsdCmdEntry 28 }
+
+
+	iqatbsdSetupLoggingLogInputStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input Standard  cmdID= 130 "
+		::= { iqatbsdCmdEntry 130 }
+
+
+	iqatbsdSetupLoggingLogReferenceState OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Reference State  cmdID= 27 "
+		::= { iqatbsdCmdEntry 27 }
+
+
+	iqatbsdSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqatbsdCmdEntry 3 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: This log field shows whether the IQ frame gateway card
+--				: can communicate with this module.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.-- Comments		: This log field shows the unique S&W serial number for this
+--				: board instance.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: PAL
+--				: PAL_M
+--				: PAL_N
+--				: NTSC
+--				: NTSCJ
+--				: SECAM
+--				: N443
+--				: 625
+--				: 525
+--				: UNKNOWN
+--				: STDERR
+-- Comments		: This log field shows the detected video standard of the input.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: FAULT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.70.65.85.76.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.70.65.85.76.84
+-- Vary			: YES
+--
+-- Value(s)		: FAIL:LOCAL MODE
+--				: 
+-- Comments		: This log field shows that the module is in Local Mode.
+--				: When a device boots up in Local Mode, all settings will be
+--				: set to the values indicated by card edge switches, (ignoring
+--				: any previous values set through RollCall), and any parameters
+--				: not accessible from the card edge will be restored to their
+--				: factory defaults.
+--				: Generally Local mode is not suitable in a networked
+--				: environment, and Remote Mode should be used instead.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				: ERROR
+--				: LOST
+-- Comments		: This log field shows the detected video state of the Composite input.
+--				: LOST indicates no input detected. 
+--				: ERROR indicates that the detected input is not valid.
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: EXTREF
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.69.88.84.82.69.70
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.69.88.84.82.69.70
+-- Vary			: YES
+--
+-- Value(s)		: N/A
+--				: OK
+--				: LOST
+-- Comments		: This log field shows the status of the reference.
+--				: OK indicates that the card is locked to the selected input.
+--				: N/A indicates no valid reference signal available.
+--				: LOST indicates that the reference signal has been Lost. 
+--
+---------------------------------------------------------------------------------------------------

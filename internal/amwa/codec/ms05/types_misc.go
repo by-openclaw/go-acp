@@ -2,19 +2,19 @@ package ms05
 
 // NcManufacturer identifies the device's manufacturer.
 type NcManufacturer struct {
-	Name             string  `json:"name"`
-	OrganizationID   *int32  `json:"organizationId"`
-	Website          *string `json:"website"`
+	Name           string  `json:"name"`
+	OrganizationID *int32  `json:"organizationId"`
+	Website        *string `json:"website"`
 }
 
 // NcProduct describes the product / model.
 type NcProduct struct {
-	Name           string  `json:"name"`
-	Key            string  `json:"key"`
-	RevisionLevel  string  `json:"revisionLevel"`
-	BrandName      *string `json:"brandName"`
-	UUID           *string `json:"uuid"`
-	Description    *string `json:"description"`
+	Name          string  `json:"name"`
+	Key           string  `json:"key"`
+	RevisionLevel string  `json:"revisionLevel"`
+	BrandName     *string `json:"brandName"`
+	UUID          *string `json:"uuid"`
+	Description   *string `json:"description"`
 }
 
 // NcDeviceOperationalState carries the device's current operational

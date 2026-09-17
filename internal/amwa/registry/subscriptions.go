@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -73,14 +74,14 @@ func subscriptionForVersion(r SubscriptionResource, apiVer string) any {
 
 // Grain is the IS-04 §5.2 envelope shipped on every WebSocket frame.
 type Grain struct {
-	GrainType         string  `json:"grain_type"`
-	SourceID          string  `json:"source_id"`
-	FlowID            string  `json:"flow_id"`
-	OriginTimestamp   string  `json:"origin_timestamp"`
-	SyncTimestamp     string  `json:"sync_timestamp"`
-	CreationTimestamp string  `json:"creation_timestamp"`
-	Rate              GrainRT `json:"rate"`
-	Duration          GrainRT `json:"duration"`
+	GrainType         string    `json:"grain_type"`
+	SourceID          string    `json:"source_id"`
+	FlowID            string    `json:"flow_id"`
+	OriginTimestamp   string    `json:"origin_timestamp"`
+	SyncTimestamp     string    `json:"sync_timestamp"`
+	CreationTimestamp string    `json:"creation_timestamp"`
+	Rate              GrainRT   `json:"rate"`
+	Duration          GrainRT   `json:"duration"`
 	Grain             GrainBody `json:"grain"`
 }
 
@@ -109,11 +110,11 @@ type GrainDataRow struct {
 
 // subscription is one in-flight WS session.
 type subscription struct {
-	ID           string
-	ResourcePath string
-	WSHref       string
-	Persist      bool
-	Secure       bool
+	ID            string
+	ResourcePath  string
+	WSHref        string
+	Persist       bool
+	Secure        bool
 	MaxUpdateRate int
 
 	// params is the IS-04 §6.1.5 basic-query / RQL filter the
@@ -129,9 +130,44 @@ type subscription struct {
 	// to its own api_ver.
 	downgrade string
 
-	ws       *httpsession.WebSocket
-	source   string // sub UUID echoed in grain.source_id
-	closeCh  chan struct{}
+	// ancestry* mirror the IS-04 §6.1.5 `query.ancestry_*` control
+	// params on the Query WS, validated at POST time with the same
+	// rules as the REST path (parseAncestry). ancestryType empty means
+	// no ancestry filter.
+	//
+	// Store listeners run under the store's lock, so membership can't
+	// be answered by calling Store.ParentsIndex from the fan-out path.
+	// Instead the subscription keeps its own id→parents index (ancMu),
+	// seeded from the sync snapshot at WS-upgrade time and maintained
+	// incrementally from the change stream. Membership is evaluated
+	// for the CHANGED resource only: a change that silently re-shapes
+	// another resource's ancestry emits no synthetic grain for that
+	// other resource — the same point-in-time semantics a REST poll
+	// has between two GETs.
+	ancestryID   string
+	ancestryType string
+	ancestryGens int
+	ancMu        sync.Mutex
+	ancIndex     map[string][]string
+
+	ws      *httpsession.WebSocket
+	source  string // sub UUID echoed in grain.source_id
+	closeCh chan struct{}
+	// remote is the subscriber's RemoteAddr, captured at upgrade time so
+	// the close-side lifecycle hook can name who disconnected after the
+	// socket (and its request) are gone.
+	remote string
+
+	// bufMu guards the change-aggregation buffer below. IS-04 lets a
+	// grain carry many changes, and max_update_rate_ms is the window we
+	// coalesce them over: instead of one grain per change, changes that
+	// land inside a window flush together as one grain per topic. This
+	// is the steady-state footprint win — a heartbeat re-register storm
+	// becomes one frame, not one-per-node.
+	bufMu            sync.Mutex
+	pending          []Change    // projected changes awaiting flush
+	flushTimer       *time.Timer // non-nil while a flush is scheduled
+	nextFlushAllowed time.Time   // earliest a flush may fire (rate gate)
 }
 
 // SubscriptionManager owns all in-flight subscriptions, the WS
@@ -140,12 +176,43 @@ type SubscriptionManager struct {
 	logger *slog.Logger
 	store  *Store
 
-	// advertiseHost provides the ws:// URL we hand out.
+	// advertiseHost provides the ws:// URL we hand out; wsScheme
+	// flips to "wss" when the registry serves TLS (BCP-003-01: no
+	// unencrypted WebSocket on a secured server).
 	advertiseHost string
 	apiVer        string
+	wsScheme      string
 
 	mu   sync.Mutex
 	subs map[string]*subscription
+
+	// wsPing / wsIdle keep subscriber sockets honest. Unlike every other
+	// reaper in the tree these default ON, because here we supply the
+	// traffic that makes silence meaningful: the Registry pings, the
+	// Controller pongs, and the transport re-arms the idle deadline on any
+	// inbound frame. Nothing about a quiet subscription is ambiguous once
+	// we are the ones asking.
+	//
+	// Zero means "use the defaults"; negative disables. Set via
+	// SetWSKeepAlive before the manager accepts traffic.
+	wsPing time.Duration
+	wsIdle time.Duration
+
+	// onWSOpen / onWSClose are optional subscriber-socket lifecycle
+	// hooks. The mirror's served Query face uses them to land one audit
+	// event per WS open/close in its JSONL trail; the plain Registry
+	// leaves them nil. Installed via setWSLifecycleHooks before the
+	// manager accepts traffic, invoked outside the manager's lock.
+	onWSOpen  func(resourcePath, remote string)
+	onWSClose func(resourcePath, remote string)
+}
+
+// setWSLifecycleHooks installs the WS open/close callbacks. Must be
+// called before the manager starts accepting upgrades — the fields are
+// read without the lock on the upgrade path.
+func (m *SubscriptionManager) setWSLifecycleHooks(open, closed func(resourcePath, remote string)) {
+	m.onWSOpen = open
+	m.onWSClose = closed
 }
 
 // NewSubscriptionManager builds the manager + wires it to the store.
@@ -162,11 +229,15 @@ func NewSubscriptionManager(logger *slog.Logger, store *Store, advertiseHost, ap
 		store:         store,
 		advertiseHost: advertiseHost,
 		apiVer:        apiVer,
+		wsScheme:      "ws",
 		subs:          make(map[string]*subscription),
 	}
 	store.AddListener(m.onChange)
 	return m
 }
+
+// SetWSScheme switches ws_href minting to wss (TLS serving).
+func (m *SubscriptionManager) SetWSScheme(scheme string) { m.wsScheme = scheme }
 
 // HandlePost is the POST /subscriptions handler — creates a new
 // subscription and returns the SubscriptionResource.
@@ -184,7 +255,7 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 		if err != nil {
 			return stdhttp.StatusInternalServerError, httpsession.ErrorBody{Code: 500, Error: "Internal Server Error", Debug: err.Error()}, nil
 		}
-		ws := "ws://" + m.advertiseHost + base + "/subscriptions/" + id + "/ws"
+		ws := m.wsScheme + "://" + m.advertiseHost + base + "/subscriptions/" + id + "/ws"
 		res := SubscriptionResource{
 			ID: id, WSHref: ws,
 			MaxUpdateRate: req.MaxUpdateRate,
@@ -196,6 +267,43 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 		if vs, ok := params["query.downgrade"]; ok && len(vs) > 0 {
 			downgrade = vs[0]
 			delete(params, "query.downgrade")
+		}
+		// Ancestry control params get the same POST-time validation the
+		// Query API GET path applies (parseAncestry) — reject early with
+		// the same status codes rather than silently dropping the filter
+		// in the strip loop below.
+		ancID, ancType, ancGens := "", "", 0
+		if hasAncestryFilter(params) {
+			if _, ok := ancestryTypeForPath(req.ResourcePath); !ok {
+				return stdhttp.StatusNotImplemented, httpsession.ErrorBody{
+					Code: 501, Error: "Not Implemented",
+					Debug: "ancestry queries apply to sources and flows; this registry does not define them for " + req.ResourcePath,
+				}, nil
+			}
+			ancID = first(params["query.ancestry_id"])
+			ancType = first(params["query.ancestry_type"])
+			if ancID == "" || ancType == "" {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: 400, Error: "Bad Request",
+					Debug: "query.ancestry_id and query.ancestry_type must be supplied together",
+				}, nil
+			}
+			if ancType != ancestryChildren && ancType != ancestryParents {
+				return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+					Code: 400, Error: "Bad Request",
+					Debug: "query.ancestry_type must be \"children\" or \"parents\", got " + ancType,
+				}, nil
+			}
+			if g := first(params["query.ancestry_generations"]); g != "" {
+				n, err := strconv.Atoi(g)
+				if err != nil || n < 1 {
+					return stdhttp.StatusBadRequest, httpsession.ErrorBody{
+						Code: 400, Error: "Bad Request",
+						Debug: "query.ancestry_generations must be a positive integer, got " + g,
+					}, nil
+				}
+				ancGens = n
+			}
 		}
 		// Strip pagination + non-rql control params — they're not
 		// equality filters. Keep `query.rql` (the RQL predicate) so
@@ -223,6 +331,9 @@ func (m *SubscriptionManager) HandlePost(base string) httpsession.HandlerFunc {
 			MaxUpdateRate: req.MaxUpdateRate,
 			params:        params,
 			downgrade:     downgrade,
+			ancestryID:    ancID,
+			ancestryType:  ancType,
+			ancestryGens:  ancGens,
 			source:        id,
 			closeCh:       make(chan struct{}),
 		}
@@ -275,6 +386,44 @@ func (m *SubscriptionManager) HandleGetByID(prefix string) httpsession.HandlerFu
 			Persist: s.Persist, Secure: s.Secure, ResourcePath: s.ResourcePath,
 			Params: queryAsParams(s.params),
 		}, m.apiVer), nil
+	}
+}
+
+// HandleDeleteByID implements DELETE /subscriptions/{id}.
+//
+// IS-04 §"Query API" gives a Controller this to release a subscription
+// it no longer wants, and the AMWA suite checks it twice over: once by
+// calling it, and once through the CORS preflight, because our
+// Access-Control-Allow-Methods is derived from the route table. With no
+// DELETE route registered, `auto_query_19` failed on the header alone —
+// the missing verb showed up as a CORS complaint rather than as a
+// missing endpoint.
+//
+// A non-persistent subscription is also garbage-collected when its
+// WebSocket closes, which is why this went unnoticed: the common path
+// cleans up without anyone calling DELETE.
+//
+// Returns 204 on success, per the spec's no-content deletion.
+func (m *SubscriptionManager) HandleDeleteByID(prefix string) httpsession.HandlerFunc {
+	return func(ctx context.Context, r *stdhttp.Request) (int, any, error) {
+		id := strings.TrimPrefix(r.URL.Path, prefix)
+		if id == "" || strings.Contains(id, "/") {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{
+				Code: 404, Error: "Not Found", Debug: r.URL.Path}, nil
+		}
+		m.mu.Lock()
+		_, ok := m.subs[id]
+		m.mu.Unlock()
+		if !ok {
+			return stdhttp.StatusNotFound, httpsession.ErrorBody{
+				Code: 404, Error: "Not Found", Debug: id}, nil
+		}
+		// removeSub closes the WebSocket as well as dropping the
+		// record; leaving the socket open would keep pushing grains to
+		// a controller that just said it was finished.
+		m.removeSub(id)
+		m.logger.Info("registry/nmos: subscription deleted", "id", id)
+		return stdhttp.StatusNoContent, nil, nil
 	}
 }
 
@@ -355,9 +504,13 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		}
 		m.mu.Lock()
 		sub.ws = ws
+		sub.remote = r.RemoteAddr
 		m.mu.Unlock()
+		if m.onWSOpen != nil {
+			m.onWSOpen(sub.ResourcePath, r.RemoteAddr)
+		}
 
-		// Send sync grains for every existing resource matching the
+		// Send the SYNC snapshot for every existing resource matching the
 		// resource_path AND the subscription params filter. SYNC has
 		// pre == post (current snapshot), so a single jsonMatchesFilter
 		// against Post is sufficient. We also apply the same no-
@@ -366,8 +519,22 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		// resources (AMWA test_22_2). When the subscriber requested
 		// `query.downgrade=v1.X` at POST time, lower-version
 		// resources become visible per AMWA's downgrade semantics.
+		//
+		// The snapshot goes out as ONE grain per topic, not one grain
+		// per resource: IS-04 §5.2 lets a grain's `data` array carry
+		// many objects, and the reference controllers (nmos-cpp/sony)
+		// and Cerebrum expect the current state as a single batched sync
+		// grain. Emitting one grain per resource is a legal but atypical
+		// form that Cerebrum 2.8.17 does not reconcile (it keeps only the
+		// first grain's resource) and multiplies the wire footprint by
+		// the resource count. A `/senders` subscription against a real
+		// Neuron is 208 grains this way, 1 grain batched.
 		now := time.Now()
-		for _, c := range m.store.SnapshotChanges(m.apiVer) {
+		var order []string
+		byTopic := map[string][]Change{}
+		snapshot := m.store.SnapshotChanges(m.apiVer)
+		sub.seedAncestry(snapshot)
+		for _, c := range snapshot {
 			if !subscriptionMatches(sub.ResourcePath, c) {
 				continue
 			}
@@ -377,7 +544,17 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			if !jsonMatchesFilter(c.Post, sub.params) && len(sub.params) > 0 {
 				continue
 			}
-			frame, err := buildGrain(sub.source, c, now)
+			if !sub.ancestryMember(c.ID) {
+				continue
+			}
+			topic := "/" + c.ResourceType.Plural() + "/"
+			if _, seen := byTopic[topic]; !seen {
+				order = append(order, topic)
+			}
+			byTopic[topic] = append(byTopic[topic], c)
+		}
+		for _, topic := range order {
+			frame, err := buildBatchGrain(sub.source, byTopic[topic], now)
 			if err != nil {
 				m.logger.Warn("registry/subs: build sync grain", "err", err)
 				continue
@@ -391,7 +568,43 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 
 		// Hold the connection open until the peer closes or we evict.
 		// We delegate to ReadText which auto-replies to ping frames.
+		//
+		// A Query WS is one-way: the Registry pushes grains and a
+		// subscriber is never expected to say anything. So client silence
+		// carries NO liveness information on its own, and a Controller that
+		// vanishes without a close frame would otherwise hold this
+		// goroutine, its socket and its subscription entry forever — the
+		// Registry is the component most likely to run for a year and to
+		// serve the most peers, so that leak accumulates fastest here.
+		//
+		// We therefore make silence meaningful ourselves: ping on a timer
+		// (RFC 6455 §5.5.2 — either side may ping) and bound the read. The
+		// peer's Pong is an inbound frame, and the transport re-arms the
+		// idle deadline on every inbound frame, so a Controller that
+		// answers is never reaped no matter how quiet the subscription is.
+		ping, idle := m.wsKeepAlive()
+		ws.SetIdleTimeout(idle)
+
+		stopPing := make(chan struct{})
+		if ping > 0 {
+			go func() {
+				t := time.NewTicker(ping)
+				defer t.Stop()
+				for {
+					select {
+					case <-stopPing:
+						return
+					case <-t.C:
+						if err := ws.SendPing(nil); err != nil {
+							return // socket gone; the reader will finish up
+						}
+					}
+				}
+			}()
+		}
+
 		go func() {
+			defer close(stopPing)
 			defer m.removeSub(id)
 			for {
 				if _, err := ws.ReadText(); err != nil {
@@ -437,7 +650,6 @@ func (m *SubscriptionManager) onChange(c Change) {
 		subs = append(subs, s)
 	}
 	m.mu.Unlock()
-	now := time.Now()
 	for _, s := range subs {
 		// Filter against the CANONICAL body (with all v1.3-shape
 		// fields present) so a `description=...` filter still
@@ -445,16 +657,82 @@ func (m *SubscriptionManager) onChange(c Change) {
 		// the wire. After projection, re-encode the surviving
 		// pre/post bodies via the wire codec so the subscriber
 		// only sees fields that exist in their wire minor.
-		projected, ok := projectChange(c, s.params)
+		projected, ok := s.ancestryProject(c)
+		if !ok {
+			continue
+		}
+		projected, ok = projectChange(projected, s.params)
 		if !ok {
 			continue
 		}
 		projected = reencodeChange(projected, m.apiVer)
-		frame, err := buildGrain(s.source, projected, now)
+		m.enqueue(s, projected)
+	}
+}
+
+// enqueue buffers one projected change for a subscription and ensures a
+// flush is scheduled, honoring max_update_rate_ms.
+//
+// rate <= 0 means "no rate limit": flush immediately (the historical
+// behavior), but still off the store's write lock is not possible here
+// since onChange holds it — so for the unlimited case we send inline as
+// before. rate > 0 coalesces every change inside the window into one
+// grain per topic, flushed by a timer that fires OUTSIDE the store lock.
+func (m *SubscriptionManager) enqueue(s *subscription, c Change) {
+	if s.MaxUpdateRate <= 0 {
+		now := time.Now()
+		frame, err := buildBatchGrain(s.source, []Change{c}, now)
+		if err != nil {
+			return
+		}
+		if err := s.ws.SendText(frame); err != nil {
+			m.logger.Warn("registry/subs: send grain failed", "id", s.ID, "err", err)
+		}
+		return
+	}
+	s.bufMu.Lock()
+	s.pending = append(s.pending, c)
+	if s.flushTimer == nil {
+		delay := time.Until(s.nextFlushAllowed)
+		if delay < 0 {
+			delay = 0
+		}
+		s.flushTimer = time.AfterFunc(delay, func() { m.flush(s) })
+	}
+	s.bufMu.Unlock()
+}
+
+// flush drains a subscription's pending changes and sends them as one
+// grain per topic, then re-arms the rate gate. Runs in a timer
+// goroutine, off the store's write lock.
+func (m *SubscriptionManager) flush(s *subscription) {
+	s.bufMu.Lock()
+	pending := s.pending
+	s.pending = nil
+	s.flushTimer = nil
+	s.nextFlushAllowed = time.Now().Add(time.Duration(s.MaxUpdateRate) * time.Millisecond)
+	ws := s.ws
+	s.bufMu.Unlock()
+
+	if ws == nil || len(pending) == 0 {
+		return
+	}
+	now := time.Now()
+	var order []string
+	byTopic := map[string][]Change{}
+	for _, c := range pending {
+		topic := "/" + c.ResourceType.Plural() + "/"
+		if _, seen := byTopic[topic]; !seen {
+			order = append(order, topic)
+		}
+		byTopic[topic] = append(byTopic[topic], c)
+	}
+	for _, topic := range order {
+		frame, err := buildBatchGrain(s.source, byTopic[topic], now)
 		if err != nil {
 			continue
 		}
-		if err := s.ws.SendText(frame); err != nil {
+		if err := ws.SendText(frame); err != nil {
 			m.logger.Warn("registry/subs: send grain failed", "id", s.ID, "err", err)
 		}
 	}
@@ -569,6 +847,109 @@ func projectChange(c Change, params map[string][]string) (Change, bool) {
 	return out, true
 }
 
+// ancestryTypeForPath maps a subscription resource_path to the IS-04
+// kind ancestry is defined for. Only Sources and Flows carry
+// `parents` — every other path answers (zero, false), which the POST
+// handler turns into the same 501 the REST path uses.
+func ancestryTypeForPath(resourcePath string) (is04.ResourceType, bool) {
+	switch strings.Trim(resourcePath, "/") {
+	case "sources":
+		return is04.ResourceSource, true
+	case "flows":
+		return is04.ResourceFlow, true
+	}
+	return "", false
+}
+
+// parentsFromBody pulls the `parents` array out of a Source/Flow JSON
+// body. A missing or malformed field reads as no parents.
+func parentsFromBody(data json.RawMessage) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	var v struct {
+		Parents []string `json:"parents"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return nil
+	}
+	return v.Parents
+}
+
+// seedAncestry (re)builds the subscription's local parents index from
+// the sync snapshot rows of the subscribed kind. Runs at WS-upgrade
+// time, before the snapshot is filtered, so the sync grains and the
+// index agree on one point in time.
+func (s *subscription) seedAncestry(snapshot []Change) {
+	if s.ancestryType == "" {
+		return
+	}
+	idx := make(map[string][]string, len(snapshot))
+	for _, c := range snapshot {
+		if !subscriptionMatches(s.ResourcePath, c) || len(c.Post) == 0 {
+			continue
+		}
+		idx[c.ID] = parentsFromBody(c.Post)
+	}
+	s.ancMu.Lock()
+	s.ancIndex = idx
+	s.ancMu.Unlock()
+}
+
+// ancestryMember answers whether id is currently selected by the
+// subscription's ancestry filter. Callers without a filter always get
+// true.
+func (s *subscription) ancestryMember(id string) bool {
+	if s.ancestryType == "" {
+		return true
+	}
+	s.ancMu.Lock()
+	defer s.ancMu.Unlock()
+	return ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[id]
+}
+
+// ancestryProject applies the ancestry filter to one live change:
+// updates the local index with the change, then clips the grain to the
+// changed resource's membership transition — entering the set drops
+// pre, leaving it drops post, outside on both sides emits nothing.
+// Mirrors projectChange's filter-set semantics.
+func (s *subscription) ancestryProject(c Change) (Change, bool) {
+	if s.ancestryType == "" {
+		return c, true
+	}
+	s.ancMu.Lock()
+	if s.ancIndex == nil {
+		s.ancIndex = map[string][]string{}
+	}
+	before := ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[c.ID]
+	if len(c.Post) > 0 {
+		s.ancIndex[c.ID] = parentsFromBody(c.Post)
+	} else {
+		delete(s.ancIndex, c.ID)
+	}
+	after := ancestrySet(s.ancIndex, s.ancestryID, s.ancestryType, s.ancestryGens)[c.ID]
+	s.ancMu.Unlock()
+	if !before && !after {
+		return c, false
+	}
+	out := c
+	if !before {
+		out.Pre = nil
+	}
+	if !after {
+		out.Post = nil
+	}
+	switch {
+	case len(out.Pre) > 0 && len(out.Post) > 0:
+		out.Kind = ChangeUpdated
+	case len(out.Pre) > 0:
+		out.Kind = ChangeDeleted
+	case len(out.Post) > 0:
+		out.Kind = ChangeCreated
+	}
+	return out, true
+}
+
 // jsonMatchesFilter unmarshals data into a generic map and compares
 // the requested top-level fields. Supports the same shape as the
 // Query API filter:
@@ -619,14 +1000,32 @@ func jsonMatchesFilter(data json.RawMessage, q map[string][]string) bool {
 }
 
 func (m *SubscriptionManager) removeSub(id string) {
+	// Close-hook state captured under the lock, invoked outside it —
+	// the hook lands an audit event and must not run into the manager's
+	// mutex from a callback.
+	var closedPath, closedRemote string
+	notifyClose := false
 	m.mu.Lock()
 	if s, ok := m.subs[id]; ok {
+		s.bufMu.Lock()
+		if s.flushTimer != nil {
+			s.flushTimer.Stop()
+			s.flushTimer = nil
+		}
+		s.bufMu.Unlock()
 		if s.ws != nil {
 			_ = s.ws.Close()
+			// Only sockets that actually opened fire the close hook, so
+			// open/close audit events always pair up.
+			notifyClose = m.onWSClose != nil
+			closedPath, closedRemote = s.ResourcePath, s.remote
 		}
 		delete(m.subs, id)
 	}
 	m.mu.Unlock()
+	if notifyClose {
+		m.onWSClose(closedPath, closedRemote)
+	}
 }
 
 // subscriptionMatches reports whether c targets the given
@@ -638,7 +1037,7 @@ func subscriptionMatches(resourcePath string, c Change) bool {
 	return resourcePath == "" || resourcePath == "/" || resourcePath == want
 }
 
-// buildGrain turns a Change into the IS-04 §5.2 grain wire envelope.
+// grainRow turns one Change into an IS-04 §5.2 grain data row.
 //
 // Per IS-04 v1.3.3 §5.2, the (pre, post) pair encodes the change
 // kind:
@@ -646,8 +1045,7 @@ func subscriptionMatches(resourcePath string, c Change) bool {
 //   - updated  → pre present, post present (different bodies)
 //   - deleted  → pre present, post absent
 //   - sync     → pre present, post present (SAME body)
-func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
-	ts := fmt.Sprintf("%d:%d", now.Unix(), now.Nanosecond())
+func grainRow(c Change) GrainDataRow {
 	row := GrainDataRow{Path: c.ID}
 	switch c.Kind {
 	case ChangeCreated:
@@ -679,6 +1077,25 @@ func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 			row.Post = &p
 		}
 	}
+	return row
+}
+
+// buildBatchGrain wraps one or more Changes that share a topic into a
+// single IS-04 §5.2 grain envelope. IS-04 lets a grain's `data` array
+// carry many objects; batching all current/changed resources into one
+// grain is the form reference controllers expect and the one that keeps
+// the wire footprint flat regardless of resource count.
+//
+// All changes MUST share a resource type (topic) — callers group by
+// topic first. An empty slice yields a grain with an empty data array.
+func buildBatchGrain(source string, changes []Change, now time.Time) ([]byte, error) {
+	ts := fmt.Sprintf("%d:%d", now.Unix(), now.Nanosecond())
+	rows := make([]GrainDataRow, 0, len(changes))
+	topic := "//"
+	for _, c := range changes {
+		topic = "/" + c.ResourceType.Plural() + "/"
+		rows = append(rows, grainRow(c))
+	}
 	g := Grain{
 		GrainType:         "event",
 		SourceID:          source,
@@ -690,8 +1107,8 @@ func buildGrain(source string, c Change, now time.Time) ([]byte, error) {
 		Duration:          GrainRT{Numerator: 0, Denominator: 1},
 		Grain: GrainBody{
 			Type:  "urn:x-nmos:format:data.event",
-			Topic: "/" + c.ResourceType.Plural() + "/",
-			Data:  []GrainDataRow{row},
+			Topic: topic,
+			Data:  rows,
 		},
 	}
 	return json.Marshal(g)
@@ -714,4 +1131,51 @@ func newUUIDLike() (string, error) {
 		hex.EncodeToString(b[6:8]),
 		hex.EncodeToString(b[8:10]),
 		hex.EncodeToString(b[10:16])), nil
+}
+
+// Query WS keep-alive defaults. Three pings inside the window, so one lost
+// Pong never evicts a healthy Controller. Matches the cadence the rest of the
+// fleet uses (cerebrum-nb, the Query WS client, acp1/acp2 staleness).
+const (
+	DefaultWSPingInterval = 30 * time.Second
+	DefaultWSIdleTimeout  = 90 * time.Second
+)
+
+// SetWSKeepAlive tunes subscriber-socket liveness. ping <= 0 stops pinging;
+// idle <= 0 stops reaping. Passing 0 for either selects its default.
+//
+// Turning pinging off while leaving reaping on is a footgun: with no traffic
+// of our own, a one-way Query WS is silent by design and every healthy
+// subscriber would be evicted. Guard against it by disabling both.
+func (m *SubscriptionManager) SetWSKeepAlive(ping, idle time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.wsPing, m.wsIdle = ping, idle
+}
+
+// wsKeepAlive resolves the configured cadence, expanding 0 to the defaults
+// and clamping the ping-off-but-reap-on combination to fully off.
+func (m *SubscriptionManager) wsKeepAlive() (ping, idle time.Duration) {
+	m.mu.Lock()
+	ping, idle = m.wsPing, m.wsIdle
+	m.mu.Unlock()
+
+	if ping == 0 {
+		ping = DefaultWSPingInterval
+	}
+	if idle == 0 {
+		idle = DefaultWSIdleTimeout
+	}
+	if ping < 0 {
+		ping = 0
+	}
+	if idle < 0 {
+		idle = 0
+	}
+	// No pings means no inbound traffic to prove life on a one-way socket;
+	// reaping then would evict healthy subscribers. Disable both together.
+	if ping == 0 {
+		idle = 0
+	}
+	return ping, idle
 }

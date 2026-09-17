@@ -8,6 +8,7 @@ package osc
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"sync"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
 	"dhs/internal/osc/codec"
 	"dhs/internal/provider"
 )
@@ -68,8 +70,9 @@ func (f *Factory) Meta() provider.Meta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger, tree *canonical.Export) provider.Provider {
-	return &Server{version: f.version, logger: logger, tree: tree}
+func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
+	deps = deps.WithDefaults()
+	return &Server{version: f.version, logger: deps.Logger, met: deps.Metrics, tree: tree}
 }
 
 // NewServerV10 / NewServerV11 construct version-bound Servers directly.
@@ -86,7 +89,13 @@ func NewServerV11(logger *slog.Logger) *Server {
 type Server struct {
 	version Version
 	logger  *slog.Logger
-	tree    *canonical.Export
+
+	// met counts what this provider puts on the wire, exposed via
+	// Metrics() so --metrics-addr scrapes it. Aggregate rather than
+	// per-command: OSC has no command byte, only an address pattern.
+	met *metrics.Connector
+
+	tree *canonical.Export
 
 	// mu guards the lazy-init pointers below. It is held only to read or
 	// create a pointer; it is NEVER held across a blocking call (serveBlock)
@@ -107,7 +116,7 @@ func (s *Server) ensureSender() *udpSender {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.sender == nil {
-		s.sender = newUDPSender()
+		s.sender = newUDPSender(s.met)
 	}
 	return s.sender
 }
@@ -127,7 +136,7 @@ func (s *Server) ensureTCPDialer() *tcpDialer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tcp == nil {
-		s.tcp = newTCPDialer(s.framerForVersion())
+		s.tcp = newTCPDialer(s.framerForVersion(), s.met)
 	}
 	return s.tcp
 }
@@ -248,3 +257,8 @@ func (s *Server) SendBundleTCP(host string, port int, b codec.Bundle) error {
 	dialer := s.ensureTCPDialer()
 	return dialer.sendBundle(host, port, b)
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// osc provider. Always non-nil.
+func (s *Server) Metrics() *metrics.Connector { return s.met }

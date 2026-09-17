@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,13 +16,18 @@ import (
 // runProbel dispatches `dhs consumer probel-sw08p <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr (hex goes via the slog
-// INFO handler inside codec.Client).
+// INFO handler inside session.Client).
 //
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
 func runProbelsw08p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip them here so every verb's own
+	// FlagSet is unaffected; consumerLogger reads them back from ctx.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -52,7 +55,9 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 	if mcSet {
 		ctx = context.WithValue(ctx, probelMatrixConfigKey{}, mc)
 	}
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		helpProbel()
 		return nil
 	}
@@ -99,10 +104,27 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		return runProbelSingleSourceAssocName(ctx, rest)
 	case "update-name":
 		return runProbelUpdateName(ctx, rest)
+	case "health":
+		// Cross-protocol verbs. The probel dispatcher owns its own verb
+		// table, which is why `health` used to answer "unknown probel
+		// subcommand" on a connector that implements HealthChecker like
+		// any other. Prepending --protocol is what dispatchConsumer does
+		// for every generic verb.
+		return runHealth(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
+	case "status":
+		return runStatus(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
 	case "bench":
 		return runProbelBench(ctx, rest)
+	case "export":
+		return runProbelExport(ctx, rest)
+	case "import":
+		return runProbelImport(ctx, rest)
 	case "salvo-connect":
 		return runProbelSalvoConnect(ctx, rest)
+	case "usage":
+		return runProbelUsage(ctx, rest)
+	case "replace":
+		return runProbelReplace(ctx, rest)
 	}
 	return fmt.Errorf("unknown probel subcommand %q", sub)
 }
@@ -141,8 +163,20 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  health                    3-layer session health (reachable / connected / live)
+  status                    one-shot device status: session health + identity
   bench                     scale benchmark: interrogate-all + connect-all
                             on a persistent TCP connection
+  export                    write router config of (matrix, level) as 3 CSVs:
+                            <prefix>-src.csv / -dst.csv (labels @ 4/8/12/16)
+                            + -xpoint.csv (crosspoints, dst <- src)
+  import                    apply CSVs back, each file selectable: --src / --dst
+                            (labels, --size picks width) / --xpoints; --dry-run
+  usage                     reverse tally on (matrix, level): where is each
+                            source assigned; --srce/--dest filter, --protect
+                            joins protect state, csv (ADR-0028 snapshot) | ascii
+  replace                   substitute source A with B on every crosspoint
+                            carrying A; --check dry-run (ADR-0007 ensure)
 
 EXAMPLES
   dhs consumer probel-sw08p interrogate         127.0.0.1:2008 --matrix 0 --level 0 --dst 5
@@ -150,6 +184,8 @@ EXAMPLES
   dhs consumer probel-sw08p bench 127.0.0.1:2008 --matrix 0,1 --size 65535 \
     --csv bench.csv --md bench.md
   dhs consumer probel-sw08p tally-dump          127.0.0.1:2008 --matrix 0 --level 0
+  dhs consumer probel-sw08p usage               127.0.0.1:2008 --matrix 0 --level 0 --srce 12 --format ascii
+  dhs consumer probel-sw08p replace             127.0.0.1:2008 --matrix 0 --level 0 --srce 12 --with 14 --check
   dhs consumer probel-sw08p watch               127.0.0.1:2008
 
 All commands log wire bytes (post-escape, post-framing) on stderr as a
@@ -163,23 +199,41 @@ space-separated lowercase-hex line for debugging:
 // the probel root dispatcher) it is attached before Connect so the
 // JSONL file captures the full TX/RX stream.
 func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw08p", host, "session")
 	f := &probelproto.Factory{}
-	p := f.New(logger).(*probelproto.Plugin)
+	p := f.New(pluginDeps(logger)).(*probelproto.Plugin)
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
 		p.SetRecorder(rec)
 	}
 	if mc, ok := ctx.Value(probelMatrixConfigKey{}).(probelproto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
+}
+
+// probelTarget resolves the wire (matrix, level) a read verb should query.
+// matrix comes from the per-verb --matrix (pfMatrix) or, when set, the global
+// --mtx-id (mc.MatrixID wins when non-zero). level ALWAYS comes from the global
+// matrix-config (mc.Level): the dispatcher's extractMatrixConfigFlags consumes
+// --level before the per-verb flag set ever sees it, so a per-verb pf.level is
+// dead. This keeps discover / tally-dump / names addressable per (matrix, level)
+// generically — no brand-specific handling.
+func probelTarget(p *probelproto.Plugin, pfMatrix int) (matrix, level uint8) {
+	mc := p.MatrixConfig()
+	matrix = uint8(pfMatrix)
+	if mc.MatrixID != 0 {
+		matrix = mc.MatrixID
+	}
+	return matrix, mc.Level
 }
 
 // probelRecorderKey is the context.Context key for the optional
@@ -392,6 +446,8 @@ type probelFlags struct {
 	dst     int
 	src     int
 	timeout time.Duration
+	check   bool
+	output  string
 }
 
 func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags, error) {
@@ -402,11 +458,12 @@ func parseProbelFlags(args []string, want struct{ dst, src bool }) (probelFlags,
 	fs.IntVar(&pf.dst, "dst", 0, "destination id (0-65535)")
 	fs.IntVar(&pf.src, "src", 0, "source id (0-65535)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, err
 	}
 	pf.addr = addr
@@ -437,11 +494,20 @@ func runProbelInterrogate(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	reply, err := p.CrosspointInterrogate(cctx, uint8(pf.matrix), uint8(pf.level), uint16(pf.dst))
+	matrix, level := probelTarget(p, pf.matrix)
+	reply, err := p.CrosspointInterrogate(cctx, matrix, level, uint16(pf.dst))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d → src=%d\n",
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelInterrogateJSON{
+			Matrix: int(reply.MatrixID), Level: int(reply.LevelID),
+			Dest: int(reply.DestinationID), Srce: int(reply.SourceID),
+		})
+	}
+	fmt.Printf("crosspoint tally  matrix=%d level=%d dst=%d <- src=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.SourceID)
 	return nil
 }
@@ -478,7 +544,7 @@ func runProbelWatch(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	if *timeout > 0 {
@@ -515,7 +581,7 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	var mfn codec.MaintenanceFunction
@@ -548,12 +614,17 @@ func runProbelMaintenance(ctx context.Context, args []string) error {
 func runProbelDualStatus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-dual-status", flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -569,6 +640,12 @@ func runProbelDualStatus(ctx context.Context, args []string) error {
 	who := "MASTER"
 	if r.SlaveActive {
 		who = "SLAVE"
+	}
+	if jsonOut {
+		return emitReadJSON(probelDualStatusJSON{
+			Who: who, Active: r.Active,
+			IdleFaulty: r.IdleControllerFaulty, SlaveActive: r.SlaveActive,
+		})
 	}
 	fmt.Printf("dual-controller  who=%s active=%v idle_faulty=%v\n",
 		who, r.Active, r.IdleControllerFaulty)
@@ -586,27 +663,34 @@ func runProbelTallyDump(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	res, err := p.CrosspointTallyDump(cctx, uint8(pf.matrix), uint8(pf.level))
+	matrix, level := probelTarget(p, pf.matrix)
+	res, err := p.CrosspointTallyDump(cctx, matrix, level)
 	if err != nil {
 		return err
+	}
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelTallyDumpToJSON(res))
 	}
 	if res.IsWord {
 		fmt.Printf("tally-dump (word) matrix=%d level=%d first_dst=%d tallies=%d\n",
 			res.Word.MatrixID, res.Word.LevelID,
 			res.Word.FirstDestinationID, len(res.Word.SourceIDs))
 		for i, src := range res.Word.SourceIDs {
-			fmt.Printf("  dst=%d → src=%d\n", int(res.Word.FirstDestinationID)+i, src)
+			fmt.Printf("  dst=%d <- src=%d\n", int(res.Word.FirstDestinationID)+i, src)
 		}
 	} else {
 		fmt.Printf("tally-dump (byte) matrix=%d level=%d first_dst=%d tallies=%d\n",
 			res.Byte.MatrixID, res.Byte.LevelID,
 			res.Byte.FirstDestinationID, len(res.Byte.SourceIDs))
 		for i, src := range res.Byte.SourceIDs {
-			fmt.Printf("  dst=%d → src=%d\n", int(res.Byte.FirstDestinationID)+i, src)
+			fmt.Printf("  dst=%d <- src=%d\n", int(res.Byte.FirstDestinationID)+i, src)
 		}
 	}
 	return nil
 }
+
 // parseProbelProtectFlags parses host:port + matrix + level + dst + device.
 // Used by the five Protect* subcommands that all take the same shape.
 func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
@@ -618,11 +702,13 @@ func parseProbelProtectFlags(args []string) (probelFlags, int, error) {
 	device := 0
 	fs.IntVar(&device, "device", 0, "device id (0-1023)")
 	fs.DurationVar(&pf.timeout, "timeout", 5*time.Second, "operation timeout")
+	fs.BoolVar(&pf.check, "check", false, "dry-run: report would_change, send nothing (ADR-0007)")
+	fs.StringVar(&pf.output, "output", "text", "output format: text | json (ADR-0002)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return pf, 0, fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return pf, 0, err
 	}
 	pf.addr = addr
@@ -649,16 +735,37 @@ func runProbelProtectInterrogate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect tally  matrix=%d level=%d dst=%d → state=%d device=%d\n",
+	if jsonOut, oerr := resolveEnsureOutput(pf.output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		return emitReadJSON(probelProtectJSON{
+			Matrix: int(reply.MatrixID), Level: int(reply.LevelID),
+			Dest: int(reply.DestinationID), State: int(reply.State), Device: int(reply.DeviceID),
+		})
+	}
+	fmt.Printf("protect tally  matrix=%d level=%d dst=%d -> state=%d device=%d\n",
 		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.State, reply.DeviceID)
 	return nil
 }
 
+// protectStateStr renders a protect (state, device) pair for the ADR-0007 diff.
+func protectStateStr(state codec.ProtectState, device int) string {
+	return fmt.Sprintf("state=%d device=%d", state, device)
+}
+
+// runProbelProtectConnect converges dst to "protected by --device", idempotently
+// (ADR-0007): it reads ProtectInterrogate and only sends ProtectConnect when the
+// dst is not already ProtectProbel owned by that device. --check is a dry-run;
+// --output json emits {changed|would_change, diff[]}.
 func runProbelProtectConnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelProtectFlags(args)
 	if err != nil {
 		return err
 	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
+	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
 	p, closer, err := dialProbel(cctx, pf.addr)
@@ -666,20 +773,42 @@ func runProbelProtectConnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.ProtectInterrogate(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d.%d.%d", pf.matrix, pf.level, pf.dst)
+	from := protectStateStr(cur.State, int(cur.DeviceID))
+	to := protectStateStr(codec.ProtectProbel, device)
+	changed := cur.State != codec.ProtectProbel || int(cur.DeviceID) != device
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.ProtectConnect(cctx,
 		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect connected  matrix=%d level=%d dst=%d device=%d state=%d\n",
-		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
-	return nil
+	now := protectStateStr(reply.State, int(reply.DeviceID))
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
+// runProbelProtectDisconnect converges dst to unprotected (ProtectNone),
+// idempotently: reads ProtectInterrogate and only sends ProtectDisconnect when
+// the dst is currently protected. --check dry-run; --output json.
 func runProbelProtectDisconnect(ctx context.Context, args []string) error {
 	pf, device, err := parseProbelProtectFlags(args)
 	if err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(pf.output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, pf.timeout)
 	defer cancel()
@@ -688,14 +817,29 @@ func runProbelProtectDisconnect(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
+	cur, err := p.ProtectInterrogate(cctx,
+		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
+	if err != nil {
+		return err
+	}
+	field := fmt.Sprintf("protect.%d.%d.%d", pf.matrix, pf.level, pf.dst)
+	from := protectStateStr(cur.State, int(cur.DeviceID))
+	to := protectStateStr(codec.ProtectNone, 0)
+	changed := cur.State != codec.ProtectNone
+	if pf.check {
+		return emitEnsure(jsonOut, ensureResult{WouldChange: &changed, Current: from, Target: to, Diff: ensureFieldDiff(changed, field, from, to)})
+	}
+	if !changed {
+		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: from, Current: from, Diff: []ensureDiff{}})
+	}
 	reply, err := p.ProtectDisconnect(cctx,
 		uint8(pf.matrix), uint8(pf.level), uint16(pf.dst), uint16(device))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("protect disconnected  matrix=%d level=%d dst=%d device=%d state=%d\n",
-		reply.MatrixID, reply.LevelID, reply.DestinationID, reply.DeviceID, reply.State)
-	return nil
+	now := protectStateStr(reply.State, int(reply.DeviceID))
+	applied := true
+	return emitEnsure(jsonOut, ensureResult{Changed: &applied, Previous: from, Current: now, Diff: ensureFieldDiff(true, field, from, now)})
 }
 
 func runProbelProtectName(ctx context.Context, args []string) error {
@@ -706,7 +850,7 @@ func runProbelProtectName(ctx context.Context, args []string) error {
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
@@ -730,12 +874,17 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	level := fs.Int("level", 0, "level id (0-255)")
 	firstDst := fs.Int("first-dst", 0, "first destination id to dump")
 	timeout := fs.Duration("timeout", 5*time.Second, "operation timeout")
+	output := fs.String("output", "text", "output format: text | json (ADR-0002; #751 G1)")
 	addr, flagArgs := popPositional(args)
 	if addr == "" {
 		return fmt.Errorf("missing <host:port>")
 	}
-	if err := fs.Parse(flagArgs); err != nil {
+	if err := parseVerbFlags(fs, flagArgs); err != nil {
 		return err
+	}
+	jsonOut, oerr := resolveEnsureOutput(*output, false)
+	if oerr != nil {
+		return oerr
 	}
 	cctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -747,6 +896,9 @@ func runProbelProtectDump(ctx context.Context, args []string) error {
 	res, err := p.ProtectTallyDump(cctx, uint8(*matrix), uint8(*level), uint16(*firstDst))
 	if err != nil {
 		return err
+	}
+	if jsonOut {
+		return emitReadJSON(probelProtectDumpToJSON(res))
 	}
 	fmt.Printf("protect tally-dump matrix=%d level=%d first_dst=%d items=%d\n",
 		res.MatrixID, res.LevelID, res.FirstDestinationID, len(res.Items))

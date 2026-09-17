@@ -18,10 +18,33 @@ import (
 // Production callers usually obtain one from the Controller after
 // `is04.SelectHighest(peer.APIVersions)`.
 type Client struct {
-	HTTP   *httpsession.Client
-	Base   string     // e.g. "http://10.6.239.113:8235"
-	Codec  is04.Codec // negotiated wire version — drives URL APIVer + payload shape
+	HTTP  *httpsession.Client
+	Base  string     // e.g. "http://10.6.239.113:8235"
+	Codec is04.Codec // negotiated wire version — drives URL APIVer + payload shape
+
+	// Face selects which IS-04 HTTP surface to talk to. Zero value is
+	// [FaceQuery], so existing callers are unaffected.
+	Face Face
 }
+
+// Face is the IS-04 HTTP surface a Client addresses. The two carry the
+// same six collections under different prefixes, which is why one
+// client serves both.
+//
+// The distinction is not cosmetic: a Registry is a catalogue of many
+// Nodes, a Node is one device describing itself. Only the Node face
+// can reach a device that is not registered anywhere — which is the
+// normal state of a device on a network segment that cannot route back
+// to the Registry, and the state a real EVS Neuron is in for us today.
+type Face string
+
+const (
+	// FaceQuery addresses a Registry — /x-nmos/query/{ver}/. The
+	// zero value, so NewClient keeps its original meaning.
+	FaceQuery Face = "query"
+	// FaceNode addresses one Node's own API — /x-nmos/node/{ver}/.
+	FaceNode Face = "node"
+)
 
 // NewClient constructs a Client. base is the Registry origin
 // (`http(s)://host:port`, no trailing slash, no `/x-nmos/...`); codec
@@ -55,7 +78,11 @@ func NewClient(base string, codec is04.Codec) (*Client, error) {
 // `/x-nmos/query/<api_ver>/<rest>`.
 func (c *Client) urlFor(rest string) string {
 	rest = strings.TrimPrefix(rest, "/")
-	return c.Base + "/x-nmos/query/" + c.Codec.APIVer() + "/" + rest
+	face := c.Face
+	if face == "" {
+		face = FaceQuery
+	}
+	return c.Base + "/x-nmos/" + string(face) + "/" + c.Codec.APIVer() + "/" + rest
 }
 
 // Index returns the top-level Query API index — the JSON array of
@@ -74,6 +101,20 @@ func (c *Client) Index(ctx context.Context) ([]string, error) {
 // pass a non-empty filter map to apply RQL-lite query parameters
 // (label / description / id / version equality).
 func (c *Client) ListNodes(ctx context.Context, filter map[string]string) ([]is04.Node, error) {
+	if c.Face == FaceNode {
+		// A Node has no /nodes collection — it describes exactly one
+		// Node, itself, at /self. Returning it as a one-element list
+		// keeps every caller's shape identical across both faces.
+		var raw json.RawMessage
+		if err := c.HTTP.GetJSON(ctx, c.urlFor("self"), &raw); err != nil {
+			return nil, fmt.Errorf("nmos/query: self: %w", err)
+		}
+		n, err := c.Codec.DecodeNode(raw)
+		if err != nil {
+			return nil, fmt.Errorf("nmos/query: self: %w", err)
+		}
+		return []is04.Node{n}, nil
+	}
 	raw, err := c.fetchListRaw(ctx, "nodes", filter)
 	if err != nil {
 		return nil, err
@@ -126,9 +167,24 @@ func (c *Client) ListReceivers(ctx context.Context, filter map[string]string) ([
 	return decodeList(raw, "receiver", c.Codec.DecodeReceiver)
 }
 
+// ListRaw fetches one collection as raw JSON documents, following
+// IS-04 §6.2 pagination. For callers that must keep the WIRE bytes —
+// a registry mirror caches and re-forwards documents verbatim, and a
+// typed decode + re-marshal would silently normalise them.
+func (c *Client) ListRaw(ctx context.Context, plural string, filter map[string]string) ([]json.RawMessage, error) {
+	return c.fetchListRaw(ctx, plural, filter)
+}
+
 // fetchListRaw issues GET /x-nmos/query/<api_ver>/<plural>?<filter>
-// and returns the raw JSON array. Per-resource decode happens via the
-// negotiated Codec so version-specific field gating applies.
+// and returns the raw JSON array, following IS-04 §6.2 pagination.
+//
+// A Registry may serve a collection in pages of any size it likes —
+// the AMWA IS-04-04 suite deliberately drops the paging limit to 2 —
+// and points at the next page via `Link: rel="next"`. Stopping after
+// the first response would silently truncate the catalogue, which for
+// a controller means routing decisions taken on a fraction of the
+// plant. Pages are followed until the server stops offering a next
+// link or a page comes back empty.
 func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[string]string) ([]json.RawMessage, error) {
 	u := c.urlFor(plural)
 	if len(filter) > 0 {
@@ -138,11 +194,88 @@ func (c *Client) fetchListRaw(ctx context.Context, plural string, filter map[str
 		}
 		u += "?" + q.Encode()
 	}
+	// Whole-collection walk, BOTH directions. IS-04 §6.1.6 pins the
+	// cursor semantics (rel="next" = newer data, rel="prev" = older)
+	// but NOT which window an unanchored GET returns: our registry
+	// serves the newest page (the rest lies behind prev), while the
+	// AMWA tool's own mock registry serves the OLDEST page with both
+	// links present (the rest lies ahead of next). IS-04-04 test_03
+	// drops the mock's page size to 2 exactly to catch controllers
+	// that guess one direction — and this walker's earlier
+	// prev-when-offered guess walked into the void there and
+	// truncated the catalogue at one page (first #954 fleet run). So:
+	// take the anchor page, exhaust the prev chain, then exhaust the
+	// next chain from the same anchor, deduplicating by resource id —
+	// whichever direction is the empty one costs one fetch and
+	// nothing else. Every chain ends at an empty page, a missing
+	// link, or a URL already visited.
 	var out []json.RawMessage
-	if err := c.HTTP.GetJSON(ctx, u, &out); err != nil {
+	seenURL := map[string]bool{u: true}
+	seenID := map[string]bool{}
+	appendPage := func(page []json.RawMessage) {
+		for _, r := range page {
+			if id := rawResourceID(r); id != "" {
+				if seenID[id] {
+					continue
+				}
+				seenID[id] = true
+			}
+			out = append(out, r)
+		}
+	}
+	var first []json.RawMessage
+	firstNext, firstPrev, err := c.HTTP.GetJSONPageLinks(ctx, u, &first)
+	if err != nil {
 		return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
 	}
+	appendPage(first)
+	if len(first) == 0 {
+		return out, nil
+	}
+	chains := []struct {
+		start   string
+		usePrev bool
+	}{
+		{start: firstPrev, usePrev: true},
+		{start: firstNext, usePrev: false},
+	}
+	for _, chain := range chains {
+		u := chain.start
+		// 10k pages caps a runaway server that links to itself
+		// forever; a real catalogue at limit=2 never gets near it.
+		for i := 0; u != "" && i < 10000; i++ {
+			if seenURL[u] {
+				break // servers that Link back to an earlier page
+			}
+			seenURL[u] = true
+			var page []json.RawMessage
+			next, prev, err := c.HTTP.GetJSONPageLinks(ctx, u, &page)
+			if err != nil {
+				return nil, fmt.Errorf("nmos/query: list %s: %w", plural, err)
+			}
+			appendPage(page)
+			if len(page) == 0 {
+				break
+			}
+			if chain.usePrev {
+				u = prev
+			} else {
+				u = next
+			}
+		}
+	}
 	return out, nil
+}
+
+// rawResourceID pulls the IS-04 id out of one raw listing element —
+// the dedupe key for the two-direction page walk (windows should
+// never overlap, but a server bug must not double resources).
+func rawResourceID(r json.RawMessage) string {
+	var v struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(r, &v)
+	return v.ID
 }
 
 // decodeList runs each raw element through the per-resource codec
@@ -159,4 +292,19 @@ func decodeList[T any](raw []json.RawMessage, kind string, decode func([]byte) (
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+// NewNodeClient constructs a Client addressing one Node's own API
+// rather than a Registry's Query API.
+//
+// This is how a Controller reaches a device directly — the IS-04
+// peer-to-peer path (Mode C/D in internal/amwa/CLAUDE.md), and the
+// only path to a device no Registry can see.
+func NewNodeClient(base string, codec is04.Codec) (*Client, error) {
+	c, err := NewClient(base, codec)
+	if err != nil {
+		return nil, err
+	}
+	c.Face = FaceNode
+	return c, nil
 }

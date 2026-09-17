@@ -17,7 +17,7 @@ import (
 // Return values:
 //   - (true, nil)  : cache hit + tree successfully seeded
 //   - (false, nil) : cache miss; caller falls back to wire walk
-//                    (unless noWalk, in which case error is returned)
+//     (unless noWalk, in which case error is returned)
 //   - (false, err) : configuration/IO error (caller aborts)
 //
 // dmIdentity empty → no-op (false, nil). Lets verbs pass their flag
@@ -50,6 +50,42 @@ func hotLoadEmberplusDM(plug consumer.Protocol, dmIdentity string, slot int, noW
 	fmt.Fprintf(os.Stderr, "DM hot-load %q — seeded %d objects (no walk)\n",
 		dmIdentity, len(snap.Slots[0].Objects))
 	return true, nil
+}
+
+// hotLoadIdentityDM seeds an acp1/acp2 plugin's in-RAM tree from the
+// IDENTITY-keyed DM cache (.cache/dm/<proto>/<Card>@<Ver>.json) — the same
+// hot-load `watch` performs — so get/set --path/--label resolve without a full
+// per-card walk. acp1/acp2 caches are identity-keyed (#353/#363), NOT the
+// host/slot-keyed store that resolvePathFromCache reads, so that helper always
+// misses on these protocols and falls through to a (slow) walk.
+//
+// Returns true when the tree was seeded (caller can skip the walk); false on a
+// cache miss, an unsupported plugin, or a failed identity probe (caller then
+// falls back to a live Walk). The IdentityProbe is a targeted BOARD+IDENTITY
+// walk (~30 getObject calls), not a full slot walk.
+func hotLoadIdentityDM(ctx context.Context, plug consumer.Protocol, proto string, slot int) bool {
+	if treeStore == nil {
+		return false
+	}
+	probe, ok := plug.(interface {
+		IdentityProbe(context.Context, int) (string, error)
+		SeedTreeFromCachedObjects(slot int, objs []consumer.Object)
+	})
+	if !ok {
+		return false
+	}
+	identity, err := probe.IdentityProbe(ctx, slot)
+	if err != nil || identity == "" {
+		return false
+	}
+	snap, err := treeStore.LoadByIdentity(proto, identity)
+	if err != nil || snap == nil || len(snap.Slots) == 0 {
+		return false
+	}
+	probe.SeedTreeFromCachedObjects(slot, snap.Slots[0].Objects)
+	fmt.Fprintf(os.Stderr, "DM cache hit %q — seeded slot %d with %d objects (no walk)\n",
+		identity, slot, len(snap.Slots[0].Objects))
+	return true
 }
 
 // ensureEmberplusTree is the auto-cache wrapper: try hot-load from

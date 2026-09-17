@@ -256,7 +256,7 @@ func TestRegistryWatcherDisqualifyExpires(t *testing.T) {
 
 func TestExpandNodeEndpointsAddsAdvertiseHost(t *testing.T) {
 	n := &is04.Node{}
-	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080", false)
 	found := false
 	for _, e := range n.API.Endpoints {
 		if e.Host == "dhs-node" && e.Port == 18080 && e.Protocol == "http" {
@@ -273,7 +273,7 @@ func TestExpandNodeEndpointsIdempotent(t *testing.T) {
 	n.API.Endpoints = []is04.NodeEndpoint{
 		{Host: "dhs-node", Port: 18080, Protocol: "http"},
 	}
-	expandNodeEndpoints(n, "dhs-node:18080", ":18080")
+	expandNodeEndpoints(n, "dhs-node:18080", ":18080", false)
 	count := 0
 	for _, e := range n.API.Endpoints {
 		if e.Host == "dhs-node" && e.Port == 18080 {
@@ -291,7 +291,7 @@ func TestRewriteManifestHrefs(t *testing.T) {
 		{ResourceCore: is04.ResourceCore{ID: "aaaa1111-2222-3333-4444-555566667777"}, ManifestHref: &stale},
 		{ResourceCore: is04.ResourceCore{ID: "bbbb1111-2222-3333-4444-555566667777"}, ManifestHref: nil},
 	}
-	rewriteManifestHrefs(senders, "dhs-node:18080", "v1.2")
+	rewriteManifestHrefs(senders, "dhs-node:18080", "v1.2", "http")
 	for i, s := range senders {
 		if s.ManifestHref == nil {
 			t.Fatalf("senders[%d].ManifestHref nil after rewrite", i)
@@ -306,7 +306,7 @@ func TestRewriteManifestHrefs(t *testing.T) {
 func TestRewriteManifestHrefsNoOpWhenAdvertiseEmpty(t *testing.T) {
 	stale := "http://orig/transportfile"
 	senders := []is04.Sender{{ManifestHref: &stale}}
-	rewriteManifestHrefs(senders, "", "v1.3")
+	rewriteManifestHrefs(senders, "", "v1.3", "http")
 	if senders[0].ManifestHref == nil || *senders[0].ManifestHref != stale {
 		t.Errorf("rewriteManifestHrefs with empty advertise should be a no-op; got %v", senders[0].ManifestHref)
 	}

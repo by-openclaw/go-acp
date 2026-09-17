@@ -8,10 +8,12 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
 	stdhttp "net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,7 +21,10 @@ import (
 	"time"
 
 	codec "dhs/internal/amwa/codec/dnssd"
+	"dhs/internal/amwa/codec/est"
 	"dhs/internal/amwa/codec/is04"
+	authsession "dhs/internal/amwa/session/auth"
+	"dhs/internal/amwa/session/certmgr"
 	session "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
 	registryslot "dhs/internal/registry"
@@ -60,18 +65,18 @@ func (Factory) New(logger *slog.Logger) registryslot.Registry {
 type Registry struct {
 	logger *slog.Logger
 
-	mu         sync.Mutex
-	responder  session.Responder
-	cancel     context.CancelFunc
-	announced  []codec.Instance
-	announces  uint64 // atomic
+	mu        sync.Mutex
+	responder session.Responder
+	cancel    context.CancelFunc
+	announced []codec.Instance
+	announces uint64 // atomic
 
 	// HTTP face + store. One Store is shared across every served
 	// API version — resources are version-stamped on ingest, payload
 	// shape varies per requested URL prefix.
 	store     *Store
-	apiVers   []string                            // wire minors served, ascending — e.g. ["v1.1","v1.2","v1.3"]
-	subsByVer map[string]*SubscriptionManager     // one per minor (ws_href differs)
+	apiVers   []string                        // wire minors served, ascending — e.g. ["v1.1","v1.2","v1.3"]
+	subsByVer map[string]*SubscriptionManager // one per minor (ws_href differs)
 	httpSrv   *httpsession.Server
 }
 
@@ -118,17 +123,97 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		advertise = fmt.Sprintf("%s:%d", host, port)
 	}
 	r.store = NewStore()
+	// Operator page-size lever for first-page-only controllers — see
+	// ServeOptions.PageLimitDefault. Applied before any request can be
+	// served; an explicit client paging.limit always wins.
+	if opts.PageLimitDefault > 0 {
+		r.store.SetDefaultPageLimit(opts.PageLimitDefault)
+	}
 	r.subsByVer = make(map[string]*SubscriptionManager, len(apiVers))
 
 	// HTTP routes — Registration + Query API installed in parallel
 	// for every served minor on one shared store.
 	srv := httpsession.NewServer(r.logger)
+	// BCP-003-01/-03: TLS serving for both faces (manual pair or EST
+	// enrollment). ws_href minting + the api_proto TXT follow.
+	apiProto := "http"
+	if opts.ESTHost != "" || opts.TLSCertFile != "" {
+		dataDir := opts.TLSDataDir
+		if dataDir == "" {
+			dataDir = ".cache/nmos-registry-tls"
+		}
+		var idents []string
+		if host != "" && net.ParseIP(host) == nil {
+			idents = append(idents, host)
+		}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			idents = append(idents, hn, hn+".local")
+		}
+		if len(idents) == 0 {
+			idents = []string{"dhs-nmos-registry"}
+		}
+		estBase := ""
+		if opts.ESTHost != "" {
+			estBase = est.BaseURL(opts.ESTHost, opts.ESTLabel)
+		}
+		mgr, err := certmgr.New(certmgr.Options{
+			ESTBase: estBase, Hostnames: idents, DataDir: dataDir, Logger: r.logger,
+		})
+		if err != nil {
+			return err
+		}
+		if opts.TLSCertFile != "" {
+			certs := strings.Split(opts.TLSCertFile, ",")
+			keys := strings.Split(opts.TLSKeyFile, ",")
+			if len(certs) != len(keys) {
+				return fmt.Errorf("registry/nmos: TLS cert and key lists differ in length")
+			}
+			for i := range certs {
+				if err := mgr.LoadManual(strings.TrimSpace(certs[i]), strings.TrimSpace(keys[i])); err != nil {
+					return err
+				}
+			}
+		}
+		if estBase != "" {
+			if err := mgr.Bootstrap(ctx); err != nil {
+				return fmt.Errorf("registry/nmos: EST bootstrap: %w", err)
+			}
+			if err := mgr.Enroll(ctx); err != nil {
+				return fmt.Errorf("registry/nmos: EST enrollment: %w", err)
+			}
+			go mgr.Run(ctx)
+		}
+		srv.TLS = mgr.TLSServerConfig()
+		apiProto = "https"
+	}
+	// BCP-003-02 resource-server gate: one policy for both faces AND
+	// the WebSocket upgrades (gated again in the dispatcher below,
+	// which bypasses the route table).
+	apiAuth := "false"
+	var authGate *httpsession.AuthGate
+	if opts.AuthURL != "" {
+		kc := authsession.NewKeyCache(authsession.MetadataURL(opts.AuthURL, ""), r.logger)
+		if err := kc.Fetch(ctx); err != nil && r.logger != nil {
+			r.logger.Warn("registry/nmos: initial JWKS fetch failed; requests will 401 until keys arrive", "err", err)
+		}
+		go kc.Run(ctx)
+		gateHosts := []string{host}
+		if hn, err := os.Hostname(); err == nil && hn != "" {
+			gateHosts = append(gateHosts, hn, hn+".local")
+		}
+		authGate = &httpsession.AuthGate{Keys: kc, Hosts: gateHosts, Logger: r.logger}
+		srv.Auth = authGate
+		apiAuth = "true"
+	}
 	wsPrefixes := make([]string, 0, len(apiVers))
 	upgradeHandlers := make(map[string]stdhttp.HandlerFunc, len(apiVers))
 	for _, apiVer := range apiVers {
 		regBase := "/x-nmos/registration/" + apiVer
 		queryBase := "/x-nmos/query/" + apiVer
 		mgr := NewSubscriptionManager(r.logger, r.store, advertise, apiVer)
+		if apiProto == "https" {
+			mgr.SetWSScheme("wss")
+		}
 		r.subsByVer[apiVer] = mgr
 		installRegistrationRoutes(srv, r.store, regBase, apiVer)
 		installQueryRoutes(srv, r.store, mgr, queryBase, apiVer)
@@ -167,6 +252,21 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			if strings.HasSuffix(req.URL.Path, "/ws") {
 				for _, prefix := range wsPrefixes {
 					if strings.HasPrefix(req.URL.Path, prefix) {
+						// The spec says a server SHALL NOT upgrade on
+						// an invalid token — and this branch bypasses
+						// the route table where srv.Auth lives, so the
+						// gate is applied here explicitly.
+						if authGate != nil {
+							if status, hdrs, body, _, ok := authGate.Check(req); !ok {
+								for hk, hv := range hdrs {
+									w.Header().Set(hk, hv)
+								}
+								w.Header().Set("Content-Type", "application/json")
+								w.WriteHeader(status)
+								_ = json.NewEncoder(w).Encode(body)
+								return
+							}
+						}
 						upgradeHandlers[prefix](w, req)
 						return
 					}
@@ -206,9 +306,19 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 			// critical because both register service types resolve to
 			// the same host:port and would otherwise collide as
 			// "duplicate" by FullName.
-			instanceName := "dhs-nmos-registry"
+			// The instance name is configurable because DNS-SD peers
+			// key their stored server entries on it: a peer that
+			// learned this name while our announce was defective (the
+			// loopback A-record era) may keep the poisoned resolution
+			// cached under the SAME name indefinitely. Publishing under
+			// a fresh name creates a clean entry beside the stale one
+			// without touching the peer.
+			instanceName := opts.InstanceName
+			if instanceName == "" {
+				instanceName = "dhs-nmos-registry"
+			}
 			if svc == codec.ServiceRegisterLegacy {
-				instanceName = "dhs-nmos-registry-legacy"
+				instanceName += "-legacy"
 			}
 			ins := codec.Instance{
 				Name:    instanceName,
@@ -218,9 +328,9 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 				Port:    port,
 				IPv4:    ips,
 				TXT: map[string]string{
-					codec.TXTKeyAPIProto: "http",
+					codec.TXTKeyAPIProto: apiProto,
 					codec.TXTKeyAPIVer:   strings.Join(apiVers, ","),
-					codec.TXTKeyAPIAuth:  "false",
+					codec.TXTKeyAPIAuth:  apiAuth,
 					codec.TXTKeyPriority: strconv.Itoa(priority),
 				},
 			}

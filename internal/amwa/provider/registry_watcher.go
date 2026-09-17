@@ -156,10 +156,18 @@ func (w *RegistryWatcher) Best() (RegistryCandidate, bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.gcDisqualifiedLocked()
+	return bestCandidate(w.byFull, w.disqualified)
+}
+
+// bestCandidate is the ONE selection rule, shared by the mDNS and the
+// unicast DNS-SD watchers — two selection implementations would drift,
+// and a Node whose failover order depends on which discovery mode fed
+// it is a Node no operator can reason about.
+func bestCandidate(byFull map[string]RegistryCandidate, disqualified map[string]time.Time) (RegistryCandidate, bool) {
 	// First pass: collect non-disqualified entries grouped by URL.
-	byURL := make(map[string]RegistryCandidate, len(w.byFull))
-	for full, c := range w.byFull {
-		if _, dq := w.disqualified[full]; dq {
+	byURL := make(map[string]RegistryCandidate, len(byFull))
+	for full, c := range byFull {
+		if _, dq := disqualified[full]; dq {
 			continue
 		}
 		// Drop empty-URL entries — pre-resolution stubs that can't

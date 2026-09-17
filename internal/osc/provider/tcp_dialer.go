@@ -1,12 +1,15 @@
 package osc
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
 	"dhs/internal/osc/codec"
+	"dhs/internal/transport"
 )
 
 // DefaultTCPKeepalivePeriod is the OS-layer SO_KEEPALIVE period applied
@@ -29,12 +32,30 @@ const (
 type tcpDialer struct {
 	framer framerKind
 
+	// met counts what this dialer puts on the wire. Set by the Server at
+	// construction; nil-safe so a dialer built by a test still works.
+	met *metrics.Connector
+
 	mu    sync.Mutex
 	conns map[string]net.Conn
+
+	// dialer opens each outbound connection. Injected rather than calling
+	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
+	// applied by the shared dialer instead of by a separate call here.
+	dialer transport.Dialer
 }
 
-func newTCPDialer(f framerKind) *tcpDialer {
-	return &tcpDialer{framer: f, conns: map[string]net.Conn{}}
+func newTCPDialer(f framerKind, met *metrics.Connector) *tcpDialer {
+	return &tcpDialer{
+		framer: f,
+		met:    met,
+		conns:  map[string]net.Conn{},
+		dialer: transport.TCPDialer{
+			Options: transport.SocketOptions{
+				KeepalivePeriod: DefaultTCPKeepalivePeriod,
+			},
+		},
+	}
 }
 
 func destKey(host string, port int) string {
@@ -48,13 +69,9 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := net.Dial("tcp", key)
+	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("osc tcp dial %s: %w", key, err)
-	}
-	if tc, ok := c.(*net.TCPConn); ok {
-		_ = tc.SetKeepAlive(true)
-		_ = tc.SetKeepAlivePeriod(DefaultTCPKeepalivePeriod)
 	}
 	d.conns[key] = c
 	return c, nil
@@ -72,7 +89,11 @@ func (d *tcpDialer) writeFramed(host string, port int, packet []byte) error {
 	if err != nil {
 		return err
 	}
-	if _, werr := c.Write(wire); werr != nil {
+	if _, werr := c.Write(wire); werr == nil {
+		if d.met != nil {
+			d.met.ObserveTx(len(wire), 0)
+		}
+	} else {
 		d.mu.Lock()
 		_ = c.Close()
 		delete(d.conns, destKey(host, port))

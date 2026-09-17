@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"math"
 	"testing"
 	"time"
@@ -85,7 +86,7 @@ func TestHandleSetProperty_InvalidObj(t *testing.T) {
 // TestApplySetNumber_FloatMaxClamp sets a float above its declared max so
 // the max-clamp arm (fv > maxV → fv = maxV) runs.
 func TestApplySetNumber_FloatMaxClamp(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	e := &entry{objID: 50, slot: 1, access: 0x03,
 		objType: codec.ObjTypeNumber, numType: codec.NumTypeFloat,
 		param: &canonical.Parameter{Value: float64(0),
@@ -111,7 +112,7 @@ func TestApplySetNumber_FloatMaxClamp(t *testing.T) {
 // (objType=Number) whose numType is IPv4 — DecodeNumericValue accepts IPv4
 // but none of the signed/unsigned/float switch arms match it.
 func TestApplySetNumber_NotWritableNumType(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	e := &entry{objID: 51, slot: 1, access: 0x03,
 		objType: codec.ObjTypeNumber, numType: codec.NumTypeIPv4,
 		param: &canonical.Parameter{Value: int64(0)}}
@@ -273,7 +274,7 @@ func TestFlatten_PresetDepthDefault(t *testing.T) {
 // it sets closed=true and closes the listener, which unblocks Accept and
 // returns Serve cleanly.
 func TestServe_CtxCancelClosesListener(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Serve(ctx, "127.0.0.1:0") }()

@@ -1,0 +1,1162 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQCGPI
+--        Module Id#:126
+--       Command Set:5
+--          Filename:SNELL-IQCGPI-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:12/12/2007
+--              Time:10:18
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQCGPI-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQCGPI,
+    moduleIQCGPIMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQCGPICmdMi MODULE-IDENTITY
+    LAST-UPDATED "0712121018Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQCGPIMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqcgpiCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqcgpiCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQCGPI 1 }
+
+	iqcgpiCmdEntry OBJECT-TYPE
+		SYNTAX		IqcgpiCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqcgpiSlotIndex }
+		::= { iqcgpiCmdTable 1 }
+
+	IqcgpiCmdEntry ::=
+		SEQUENCE {
+			iqcgpiSlotIndex
+				Unsigned32,
+			iqcgpiControlActive0
+				INTEGER,
+			iqcgpiControlActive1
+				INTEGER,
+			iqcgpiControlActive2
+				INTEGER,
+			iqcgpiControlActive3
+				INTEGER,
+			iqcgpiControlActive4
+				INTEGER,
+			iqcgpiControlActive5
+				INTEGER,
+			iqcgpiControlActive6
+				INTEGER,
+			iqcgpiControlActive7
+				INTEGER,
+			iqcgpiControlActive8
+				INTEGER,
+			iqcgpiControlActive9
+				INTEGER,
+			iqcgpiControlActive10
+				INTEGER,
+			iqcgpiControlActive11
+				INTEGER,
+			iqcgpiPortsP0Name
+				RollCallString,
+			iqcgpiPortsP0
+				INTEGER,
+			iqcgpiPortsP0ActiveClosed
+				INTEGER,
+			iqcgpiPortsP0LogStatus
+				INTEGER,
+			iqcgpiPortsP1Name
+				RollCallString,
+			iqcgpiPortsP1
+				INTEGER,
+			iqcgpiPortsP1ActiveClosed
+				INTEGER,
+			iqcgpiPortsP1LogStatus
+				INTEGER,
+			iqcgpiPortsP2Name
+				RollCallString,
+			iqcgpiPortsP2
+				INTEGER,
+			iqcgpiPortsP2ActiveClosed
+				INTEGER,
+			iqcgpiPortsP2LogStatus
+				INTEGER,
+			iqcgpiPortsP3Name
+				RollCallString,
+			iqcgpiPortsP3
+				INTEGER,
+			iqcgpiPortsP3ActiveClosed
+				INTEGER,
+			iqcgpiPortsP3LogStatus
+				INTEGER,
+			iqcgpiPortsP4Name
+				RollCallString,
+			iqcgpiPortsP4
+				INTEGER,
+			iqcgpiPortsP4ActiveClosed
+				INTEGER,
+			iqcgpiPortsP4LogStatus
+				INTEGER,
+			iqcgpiPortsP5Name
+				RollCallString,
+			iqcgpiPortsP5
+				INTEGER,
+			iqcgpiPortsP5ActiveClosed
+				INTEGER,
+			iqcgpiPortsP5LogStatus
+				INTEGER,
+			iqcgpiPortsP6Name
+				RollCallString,
+			iqcgpiPortsP6
+				INTEGER,
+			iqcgpiPortsP6ActiveClosed
+				INTEGER,
+			iqcgpiPortsP6LogStatus
+				INTEGER,
+			iqcgpiPortsP7Name
+				RollCallString,
+			iqcgpiPortsP7
+				INTEGER,
+			iqcgpiPortsP7ActiveClosed
+				INTEGER,
+			iqcgpiPortsP7LogStatus
+				INTEGER,
+			iqcgpiPortsP8Name
+				RollCallString,
+			iqcgpiPortsP8
+				INTEGER,
+			iqcgpiPortsP8ActiveClosed
+				INTEGER,
+			iqcgpiPortsP8LogStatus
+				INTEGER,
+			iqcgpiPortsP9Name
+				RollCallString,
+			iqcgpiPortsP9
+				INTEGER,
+			iqcgpiPortsP9ActiveClosed
+				INTEGER,
+			iqcgpiPortsP9LogStatus
+				INTEGER,
+			iqcgpiPortsP10Name
+				RollCallString,
+			iqcgpiPortsP10
+				INTEGER,
+			iqcgpiPortsP10ActiveClosed
+				INTEGER,
+			iqcgpiPortsP10LogStatus
+				INTEGER,
+			iqcgpiPortsP11Name
+				RollCallString,
+			iqcgpiPortsP11
+				INTEGER,
+			iqcgpiPortsP11ActiveClosed
+				INTEGER,
+			iqcgpiPortsP11LogStatus
+				INTEGER,
+			iqcgpiSetupRollTrackMessages
+				INTEGER,
+			iqcgpiSetupLoggingPSULimit
+				INTEGER,
+			iqcgpiSetupPresetUnit
+				INTEGER,
+			iqcgpiSetupSoftwareVersion
+				RollCallString,
+			iqcgpiSetupSerialNo
+				RollCallString,
+			iqcgpiSetupRestartUnit
+				INTEGER
+		}
+
+	iqcgpiSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqcgpiCmdEntry 0 }
+
+
+	iqcgpiControlActive0 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active0  cmdID= 17 "
+		::= { iqcgpiCmdEntry 17 }
+
+
+	iqcgpiControlActive1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active1  cmdID= 18 "
+		::= { iqcgpiCmdEntry 18 }
+
+
+	iqcgpiControlActive2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active2  cmdID= 19 "
+		::= { iqcgpiCmdEntry 19 }
+
+
+	iqcgpiControlActive3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active3  cmdID= 20 "
+		::= { iqcgpiCmdEntry 20 }
+
+
+	iqcgpiControlActive4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active4  cmdID= 21 "
+		::= { iqcgpiCmdEntry 21 }
+
+
+	iqcgpiControlActive5 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active5  cmdID= 22 "
+		::= { iqcgpiCmdEntry 22 }
+
+
+	iqcgpiControlActive6 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active6  cmdID= 23 "
+		::= { iqcgpiCmdEntry 23 }
+
+
+	iqcgpiControlActive7 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active7  cmdID= 24 "
+		::= { iqcgpiCmdEntry 24 }
+
+
+	iqcgpiControlActive8 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active8  cmdID= 25 "
+		::= { iqcgpiCmdEntry 25 }
+
+
+	iqcgpiControlActive9 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active9  cmdID= 26 "
+		::= { iqcgpiCmdEntry 26 }
+
+
+	iqcgpiControlActive10 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active10  cmdID= 27 "
+		::= { iqcgpiCmdEntry 27 }
+
+
+	iqcgpiControlActive11 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active11  cmdID= 28 "
+		::= { iqcgpiCmdEntry 28 }
+
+
+	iqcgpiPortsP0Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 53  "
+		::= { iqcgpiCmdEntry 53 }
+
+
+	iqcgpiPortsP0 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 5  value= 0
+					Input  cmdID= 5  value= 1  "
+		::= { iqcgpiCmdEntry 5 }
+
+
+	iqcgpiPortsP0ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 29 "
+		::= { iqcgpiCmdEntry 29 }
+
+
+	iqcgpiPortsP0LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 41 "
+		::= { iqcgpiCmdEntry 41 }
+
+
+	iqcgpiPortsP1Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 54  "
+		::= { iqcgpiCmdEntry 54 }
+
+
+	iqcgpiPortsP1 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 6  value= 0
+					Input  cmdID= 6  value= 1  "
+		::= { iqcgpiCmdEntry 6 }
+
+
+	iqcgpiPortsP1ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 30 "
+		::= { iqcgpiCmdEntry 30 }
+
+
+	iqcgpiPortsP1LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 42 "
+		::= { iqcgpiCmdEntry 42 }
+
+
+	iqcgpiPortsP2Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 55  "
+		::= { iqcgpiCmdEntry 55 }
+
+
+	iqcgpiPortsP2 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 7  value= 0
+					Input  cmdID= 7  value= 1  "
+		::= { iqcgpiCmdEntry 7 }
+
+
+	iqcgpiPortsP2ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 31 "
+		::= { iqcgpiCmdEntry 31 }
+
+
+	iqcgpiPortsP2LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 43 "
+		::= { iqcgpiCmdEntry 43 }
+
+
+	iqcgpiPortsP3Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 56  "
+		::= { iqcgpiCmdEntry 56 }
+
+
+	iqcgpiPortsP3 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 8  value= 0
+					Input  cmdID= 8  value= 1  "
+		::= { iqcgpiCmdEntry 8 }
+
+
+	iqcgpiPortsP3ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 32 "
+		::= { iqcgpiCmdEntry 32 }
+
+
+	iqcgpiPortsP3LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 44 "
+		::= { iqcgpiCmdEntry 44 }
+
+
+	iqcgpiPortsP4Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 57  "
+		::= { iqcgpiCmdEntry 57 }
+
+
+	iqcgpiPortsP4 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 9  value= 0
+					Input  cmdID= 9  value= 1  "
+		::= { iqcgpiCmdEntry 9 }
+
+
+	iqcgpiPortsP4ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 33 "
+		::= { iqcgpiCmdEntry 33 }
+
+
+	iqcgpiPortsP4LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 45 "
+		::= { iqcgpiCmdEntry 45 }
+
+
+	iqcgpiPortsP5Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 58  "
+		::= { iqcgpiCmdEntry 58 }
+
+
+	iqcgpiPortsP5 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 10  value= 0
+					Input  cmdID= 10  value= 1  "
+		::= { iqcgpiCmdEntry 10 }
+
+
+	iqcgpiPortsP5ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 34 "
+		::= { iqcgpiCmdEntry 34 }
+
+
+	iqcgpiPortsP5LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 46 "
+		::= { iqcgpiCmdEntry 46 }
+
+
+	iqcgpiPortsP6Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 59  "
+		::= { iqcgpiCmdEntry 59 }
+
+
+	iqcgpiPortsP6 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 11  value= 0
+					Input  cmdID= 11  value= 1  "
+		::= { iqcgpiCmdEntry 11 }
+
+
+	iqcgpiPortsP6ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 35 "
+		::= { iqcgpiCmdEntry 35 }
+
+
+	iqcgpiPortsP6LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 47 "
+		::= { iqcgpiCmdEntry 47 }
+
+
+	iqcgpiPortsP7Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 60  "
+		::= { iqcgpiCmdEntry 60 }
+
+
+	iqcgpiPortsP7 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 12  value= 0
+					Input  cmdID= 12  value= 1  "
+		::= { iqcgpiCmdEntry 12 }
+
+
+	iqcgpiPortsP7ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 36 "
+		::= { iqcgpiCmdEntry 36 }
+
+
+	iqcgpiPortsP7LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 48 "
+		::= { iqcgpiCmdEntry 48 }
+
+
+	iqcgpiPortsP8Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 61  "
+		::= { iqcgpiCmdEntry 61 }
+
+
+	iqcgpiPortsP8 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 13  value= 0
+					Input  cmdID= 13  value= 1  "
+		::= { iqcgpiCmdEntry 13 }
+
+
+	iqcgpiPortsP8ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 37 "
+		::= { iqcgpiCmdEntry 37 }
+
+
+	iqcgpiPortsP8LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 49 "
+		::= { iqcgpiCmdEntry 49 }
+
+
+	iqcgpiPortsP9Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 62  "
+		::= { iqcgpiCmdEntry 62 }
+
+
+	iqcgpiPortsP9 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 14  value= 0
+					Input  cmdID= 14  value= 1  "
+		::= { iqcgpiCmdEntry 14 }
+
+
+	iqcgpiPortsP9ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 38 "
+		::= { iqcgpiCmdEntry 38 }
+
+
+	iqcgpiPortsP9LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 50 "
+		::= { iqcgpiCmdEntry 50 }
+
+
+	iqcgpiPortsP10Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 63  "
+		::= { iqcgpiCmdEntry 63 }
+
+
+	iqcgpiPortsP10 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 15  value= 0
+					Input  cmdID= 15  value= 1  "
+		::= { iqcgpiCmdEntry 15 }
+
+
+	iqcgpiPortsP10ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 39 "
+		::= { iqcgpiCmdEntry 39 }
+
+
+	iqcgpiPortsP10LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 51 "
+		::= { iqcgpiCmdEntry 51 }
+
+
+	iqcgpiPortsP11Name OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					Name  cmdID= 64  "
+		::= { iqcgpiCmdEntry 64 }
+
+
+	iqcgpiPortsP11 OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Output(0),
+							val_Input(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Output  cmdID= 16  value= 0
+					Input  cmdID= 16  value= 1  "
+		::= { iqcgpiCmdEntry 16 }
+
+
+	iqcgpiPortsP11ActiveClosed OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Active_Closed  cmdID= 40 "
+		::= { iqcgpiCmdEntry 40 }
+
+
+	iqcgpiPortsP11LogStatus OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log_Status  cmdID= 52 "
+		::= { iqcgpiCmdEntry 52 }
+
+
+	iqcgpiSetupRollTrackMessages OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack_Messages  cmdID= 65 "
+		::= { iqcgpiCmdEntry 65 }
+
+
+	iqcgpiSetupLoggingPSULimit OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					PSU_Limit  cmdID= 66 "
+		::= { iqcgpiCmdEntry 66 }
+
+
+	iqcgpiSetupPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset_Unit  cmdID= 3  value= 1  "
+		::= { iqcgpiCmdEntry 3 }
+
+
+	iqcgpiSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software_Version  cmdID= 2  format=   "
+		::= { iqcgpiCmdEntry 2 }
+
+
+	iqcgpiSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial_No  cmdID= 1  format=   "
+		::= { iqcgpiCmdEntry 1 }
+
+
+	iqcgpiSetupRestartUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Re_start_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Re-start_Unit  cmdID= 4  value= 1  "
+		::= { iqcgpiCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S12345678
+--				:
+-- Comments		: Serial number programmed into system
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: gateway generated to indicate unit Presence
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: POWER
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.80.79.87.69.82
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.80.79.87.69.82
+-- Vary			: YES
+--
+-- Value(s)		: OK
+--				:
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_0
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.48
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.48
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.49
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.50
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_3
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.51
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.51
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_4
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.52
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.52
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_5
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.53
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.53
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_6
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.54
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.54
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: PORT_7
+--
+-- MIB ref		: swCardEventLogSlotXX       .6.80.79.82.84.95.55
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.6.80.79.82.84.95.55
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: TALLY_0
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.84.65.76.76.89.95.48
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.84.65.76.76.89.95.48
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: TALLY_1
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.84.65.76.76.89.95.49
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.84.65.76.76.89.95.49
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: TALLY_2
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.84.65.76.76.89.95.50
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.84.65.76.76.89.95.50
+-- Vary			: YES
+--
+-- Value(s)		: INACTIVE
+--				: ACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SESSIONS
+--
+-- MIB ref		: swCardEventLogSlotXX       .8.83.69.83.83.73.79.78.83
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.8.83.69.83.83.73.79.78.83
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				:
+-- Comments		: Number of current control sessions active
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: RESTARTED_AT
+--
+-- MIB ref		: swCardEventLogSlotXX       .12.82.69.83.84.65.82.84.69.68.95.65.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.12.82.69.83.84.65.82.84.69.68.95.65.84
+-- Vary			: YES
+--
+-- Value(s)		: 2007-12-12T10:01:27Z
+--				:
+-- Comments		: Time of last known restart
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: LAST_MODIFIED
+--
+-- MIB ref		: swCardEventLogSlotXX       .13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.13.76.65.83.84.95.77.79.68.73.70.73.69.68
+-- Vary			: YES
+--
+-- Value(s)		: 2007-12-12T10:16:41Z
+--				:
+-- Comments		: Time of last control modification
+--
+---------------------------------------------------------------------------------------------------
+-- Please note that Log field headers per port are user configurable
+-- Header		: ANYPORTNAMELOGFIELD
+--
+-- MIB ref		: swCardEventLogSlotXX       .19.65.78.89.80.79.82.84.78.65.77.69.76.79.71.70.73.69.76.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.19.65.78.89.80.79.82.84.78.65.77.69.76.79.71.70.73.69.76.68
+-- Vary			: YES
+--
+-- Value(s)		: ACTIVE
+--				: INACTIVE
+-- Comments		:
+--
+---------------------------------------------------------------------------------------------------

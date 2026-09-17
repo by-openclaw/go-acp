@@ -1,0 +1,30 @@
+---
+# Score dhs against the AMWA NMOS Testing Tool and land the numbers in
+# the repository.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini \
+#     ansible/playbooks/amwa-conformance.yml
+#
+#   # one minor, while working a specific gap:
+#   ... -e '{"dhs_amwa_node_api_vers":["v1.1"]}'
+#
+#   # one suite:
+#   ... -e '{"dhs_amwa_node_suites":[{"id":"IS-04-01","name":"IS-04 Node API"}]}'
+#
+# The tool is the external arbiter. Our own `profile` verb asserts what
+# WE believe the spec says, which is the thing under test — it can
+# never find a gap in its own reading.
+#
+# Every published minor is scored, not just the newest. The 2026-05-02
+# baseline is why: v1.3 passed 55 of 74 while v1.1 passed 33 of 73, and
+# a v1.3-only run would have called that healthy.
+#
+# Registry (IS-04-02) and Controller (IS-04-04 / IS-05-03) suites need a
+# different target and a driver that can answer the tool's prompts;
+# they follow in their own runs.
+
+- name: AMWA conformance — dhs Node
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_node

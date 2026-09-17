@@ -42,19 +42,26 @@ implementing all three roles correctly; it is not a separate feature.
 > NMOS and another dhs protocol. Cross-protocol architecture lives
 > elsewhere; the NMOS plugin only ever speaks NMOS.
 
-CLI surface mapping (planned):
+CLI surface mapping (shipped — dispatch in `cmd/dhs/cmd_nmos.go`):
 
 ```
 dhs producer nmos serve                       # Node side (the device — default)
+dhs producer nmos events                      # Node side — IS-07 event emitter
 dhs registry nmos serve                       # Registry side (dual-face middleware)
                                               #   - serves Registration API (consumes from Nodes)
                                               #   - serves Query API + WS subs (provides to Controllers)
-dhs consumer nmos walk     <reg-host>         # Controller — walk a Registry
-dhs consumer nmos watch    <reg-host>         # Controller — subscribe via Query WS
-dhs consumer nmos connect  <node-host> ...    # Controller — drive IS-05 on a Node
+dhs registry nmos mirror                      # Registry side — bridge one Registry into another
+dhs consumer nmos discover                    # Controller — DNS-SD discovery
+dhs consumer nmos system                      # Controller — read an IS-09 System API
+dhs consumer nmos walk                        # Controller — walk a Registry (or --node direct)
+dhs consumer nmos watch                       # Controller — subscribe via Query WS
+dhs consumer nmos connect                     # Controller — drive IS-05 on a Node
+dhs consumer nmos set                         # Controller — stage a Sender's IS-05 transport
+dhs consumer nmos facade                      # Controller — AMWA-tool facade (drives the Controller)
+dhs consumer nmos events                      # Controller — IS-07 WS/MQTT subscriber
 ```
 
-The new `dhs registry` top-level verb is needed because the Registry's
+The `dhs registry` top-level verb exists because the Registry's
 dual-face nature does not fit `producer` (which historically means
 "serves a canonical tree of my own state") nor `consumer` (which
 historically means "talks outbound to a remote device").
@@ -69,7 +76,7 @@ historically means "talks outbound to a remote device").
 | **Bootstrap config** | HTTP/JSON, single `/global` resource | IS-09 |
 | **Resource graph** | HTTP/JSON REST (`/x-nmos/<api>/<ver>/...`) + WebSocket subscription on Query API | IS-04 |
 | **Connection control** | HTTP/JSON REST, stage-then-activate pattern, SDP payload for RTP | IS-05, IS-08 |
-| **Event & tally** | WebSocket OR MQTT, JSON envelope (`message_type` ∈ {state, health, reboot, shutdown}) | IS-07 |
+| **Event & tally** | WebSocket OR MQTT, JSON envelope (`message_type` ∈ {state, health, reboot, shutdown, connection_status (MQTT-only)}) | IS-07 |
 | **Device model + control** | WebSocket, JSON envelope (`messageType` ∈ {Command, CommandResponse, Subscription, SubscriptionResponse, Notification, Error}) | IS-12 (wire), MS-05-01 (architecture), MS-05-02 (class library) |
 | **Annotation** | HTTP/JSON PATCH (sibling of Node API) | IS-13 (WIP) |
 | **Profiles** | JSON-Schema rules layered onto IS-04 / IS-05 | BCP-002, BCP-004, BCP-006, BCP-007 |
@@ -149,19 +156,32 @@ the wire `api_ver` (major.minor) AND the latest patch within that
 minor (the spec text we strictly comply with). Authoritative version
 numbers come from `internal/amwa/reference.md`.
 
-| Spec | Wire `api_ver` (URL) | Spec text patch (strict-comply) |
-|---|---|---|
-| IS-04 | v1.0, v1.1, v1.2, v1.3 | v1.0.3 / v1.1.3 / v1.2.2 / v1.3.3 |
-| IS-05 | v1.0, v1.1 | v1.0.2 / v1.1.2 |
-| IS-07 | v1.0 | v1.0.1 |
-| IS-08 | v1.0 | v1.0.1 |
-| IS-09 | v1.0 | v1.0.0 |
-| IS-12 | v1.0 | v1.0.1 |
-| MS-05-01 / MS-05-02 | v1.0 | v1.0.0 |
-| BCP-002-01 / BCP-002-02 | v1.0 | v1.0.0 |
-| BCP-004-01 / BCP-004-02 | v1.0 | v1.0.0 |
-| BCP-006-01 / BCP-006-04 | v1.0 | v1.0.0 |
-| BCP-008-01 / BCP-008-02 | v1.0 | v1.0.0 |
+Verified against specs.amwa.tv on **2026-08-26**. `impl` is what
+`internal/amwa/codec/` actually ships; a gap between the two columns is
+a MISSING implementation by the rule below, never a scope decision.
+
+| Spec | Published (latest patch) | Wire `api_ver` | impl |
+|---|---|---|---|
+| IS-04 Discovery & Registration | v1.0.3 / v1.1.3 / v1.2.2 / **v1.3.3** | v1.0–v1.3 | ✅ v1.0–v1.3 |
+| IS-05 Connection Management | v1.0.2 / v1.1.2 / **v1.2.0** | v1.0–v1.2 | ✅ v1.0–v1.2 |
+| IS-07 Event & Tally | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-08 Channel Mapping | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-09 System Parameters | **v1.0.0** | v1.0 | ✅ v1.0 |
+| IS-11 Stream Compatibility | **v1.0.0** | v1.0 | ✅ v1.0 |
+| IS-12 Control Protocol | **v1.0.1** | v1.0 | ✅ v1.0 |
+| IS-14 Device Configuration | **v1.0.0** | v1.0 | ✅ v1.0 |
+| MS-05-01 / MS-05-02 | **v1.0.0** | v1.0 | ✅ v1.0 |
+| BCP-002-01 / -02 Grouping, Asset | **v1.0.0** | — | ✅ |
+| BCP-003-01 Secure Communications | **v1.0.1** | — | ✅ TLS serving (tool 7/0) |
+| BCP-003-02 Authorization | **v1.0.0** | — | ✅ (IS-10 v1.0 client + resource server) |
+| BCP-003-03 Certificate Provisioning | **v1.0.0** | — | ✅ EST client (codec/est + certmgr) |
+| BCP-004-01 / -02 Receiver/Sender Caps | **v1.0.0** | — | ✅ |
+| BCP-005-01 EDID Mapping | **v1.0.0** | — | ✅ codec/edid (unit-verified; tool ships no suite) |
+| BCP-005-02 IPMX HKEP | **v1.0.0** | — | ✅ hkep attr + cap + SDP + consistency |
+| BCP-005-03 IPMX PEP | **v1.0.0** | — | ✅ privacy attr + cap + IS-05 ext_privacy_* params + SDP + consistency |
+| BCP-006-01 JPEG XS / -04 MPEG TS | **v1.0.0** | — | ✅ |
+| BCP-007-03 MXL | **v1.0.0** | v1.3/v1.2 | ✅ urn:x-nmos:transport:mxl (IS-04 + IS-05 binding) |
+| BCP-008-01 / -02 Status Monitoring | **v1.0.0** | — | ✅ |
 
 **Strict-spec rule (binding, no exceptions for AMWA-published versions):**
 every minor AMWA has published is in scope. There is **no "deferred",
@@ -184,6 +204,48 @@ Genuinely WIP at AMWA (no stable release yet — land when stable):
 IS-13 Annotation, BCP-006-02 H.264, BCP-006-03 H.265, BCP-007-01 NDI.
 These are the ONLY legitimate "land when stable" carve-outs; they
 land the moment AMWA publishes a stable release.
+
+**This table drifts, and drift here is invisible.** The 2026-08-26
+audit found the previous version of it four specs and one minor behind
+what AMWA had already published — IS-05 v1.2.0, IS-11, IS-14,
+BCP-003-02/-03, BCP-005-01/-02/-03 and BCP-007-03 were all released
+and none appeared here, so nothing flagged them as missing. Re-verify
+against specs.amwa.tv whenever the AMWA testing tool gains a suite we
+have no row for: the tool ships suites for exactly the published set,
+so a suite we cannot name IS the signal. Suites present on the tool
+today with no implementation behind them: **none** — every published
+minor in the table above is implemented.
+
+---
+
+### What the NODE role actually serves
+
+The table above is about CODECS. A codec with nothing serving it is not
+a working Node, and for a long time IS-07 and IS-08 were exactly that:
+complete, tested, and mounted nowhere. This table is about the Node
+provider (`internal/amwa/provider/`), which is a different question.
+
+| API | Node surface | Where |
+|---|---|---|
+| IS-04 Node API | `/x-nmos/node/{ver}/` + DNS-SD + registration client | `node.go` |
+| IS-05 Connection | `/x-nmos/connection/{ver}/` + SDP + activation scheduler | `connection*.go` |
+| IS-07 Event & Tally | `/x-nmos/events/{ver}/` REST + the WebSocket at `…/ws` | `events.go` |
+| IS-08 Channel Mapping | `/x-nmos/channelmapping/{ver}/` incl. `inputs`/`outputs` | `channelmapping.go` |
+| IS-11 Stream Compatibility | `/x-nmos/streamcompatibility/{ver}/` incl. `inputs`/`outputs` + EDID | `streamcompat.go` |
+| IS-12 / MS-05 Control | the WebSocket at `/x-nmos/ncp/v1.0` | `ncp.go` |
+| IS-14 Device Configuration | `/x-nmos/configuration/{ver}/` (rolePaths view of the MS-05 model) | `configuration.go` + `configuration_mount.go` |
+| IS-09 System | **client**, not server — the Node reads a System API | `system_client.go` |
+
+IS-09 is the odd one and worth stating: every other row is something
+the Node SERVES, and that one is something it CONSUMES. A Node that
+ignores the System API picks its Registry from mDNS priority alone, so
+a plant that deliberately pointed its devices at one Registry finds
+this Node quietly registered somewhere else.
+
+Two deployment modes are mutually exclusive on the wire and therefore
+cannot both be tested against one process: IS-04 §4.2.1 requires a
+registered Node to STOP advertising `_nmos-node._tcp`, so peer-to-peer
+(Mode D) needs `--no-registry`.
 
 ---
 
@@ -220,7 +282,9 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
    combinations:
    - **Mode A — Full mDNS + Registry** (greenfield / spec-compliant peers).
    - **Mode B — Unicast Registry** (`--no-mdns --registry <ip>:<port>`).
-   - **Mode C — Direct-Node** (`--no-mdns --no-registry --peer-list peers.csv`).
+   - **Mode C — Direct-Node** (producer: `--no-mdns --no-registry`;
+     consumer: `--peer-list peers.csv` on `discover`/`system`,
+     `--node <url>` on `walk`).
    - **Mode D — mDNS direct-Node** (`--mdns --no-registry`) — Cerebrum P2P.
    Default to mDNS but never assume it works. See
    [`docs/matrix-compliance.md`](docs/matrix-compliance.md) and
@@ -245,8 +309,11 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
    ClassManager and SubscriptionManager live as child OIDs of OID 1.
 8. **`x-nmos` namespace is reserved** (URLs, URNs, JSON keys). Never
    put non-NMOS content under it.
-9. **Auth is IS-10** (out of scope for v1). All endpoints currently
-   support `api_auth=false`.
+9. **Auth is IS-10 / BCP-003-02 — implemented.** `--auth-url` on node
+   + registry arms the Bearer gate on every served API (WS included),
+   flips `api_auth=true` + endpoint/control `authorization` flags, and
+   the registration client fetches client_credentials tokens. Without
+   the flag everything stays `api_auth=false`.
 10. **Common-pitfall: confusing Node API with Registration API.** Node
     serves the Node API to anyone who asks. Node CLIENT-CALLS the
     Registration API on the Registry. Two different code paths, easy
@@ -267,9 +334,10 @@ These layer into the IS-04 / IS-05 encoders — no separate plugin slots.
     v1.3.3 mandates single-target selection: *"The Node selects a
     Registration API to use based on the priority"*. HA is
     client-driven failover via `pri` ranking + 5xx fallback, NOT
-    multi-Registry replication. dhs supports active/passive priority
-    pair + ST 2022-7 dual-network out of the box; active/active
-    shared-store is out of scope for v1. See
+    multi-Registry replication. dhs supports the active/passive
+    priority pair out of the box (`--bind` is a single address; an
+    ST 2022-7 dual-network plant runs one process per network);
+    active/active shared-store is out of scope for v1. See
     [`docs/ha.md`](docs/ha.md). Heartbeat 5 s, GC 12 s — failover
     must complete inside GC window.
 14. **`pri` 0–99 are production; 100+ are dev.** Spec carves the
@@ -306,7 +374,7 @@ flow**:
 
 ```
 LAYER 4  cmd/dhs/cmd_nmos.go                    (CLI)
-LAYER 3  internal/amwa/{consumer,provider,registry}  (PLUGIN)
+LAYER 3  internal/amwa/{consumer,provider,registry,facade}  (PLUGIN)
 LAYER 2  internal/amwa/session/*                (SESSION)
 LAYER 1  internal/amwa/codec/*                  (CODEC — stdlib only)
 ```
@@ -343,19 +411,95 @@ internal/amwa/codec/
   spec/                          # NMOS-wide base (Versioned interface, generic Registry[T],
                                  # SelectHighestMutual, ComplianceEvent + Reporter)
   is04/  is05/  is07/  is08/     # one folder per spec — canonical structs + Codec interface
-  is09/  is12/  ms0501/  ms0502/
+  is09/  is10/  is11/  is12/
+  is14/  ms05/                   # (ms05 = MS-05-02 control framework, single package)
     codec.go                     # extends spec.Versioned with the spec's resource methods
     {node,device,...}.go         # canonical union structs (every minor's fields, omitempty)
     patterns.go enums.go         # shared regex / URN tables
-    v10/  v11/  v12/  v13/       # per-minor Strategy impls (~50–100 LOC each)
-      codec.go                   # implements the spec's Codec interface for ONE wire minor
+    absorb.go                    # decode that records unknown fields instead of failing
+    schemas/                     # AMWA's OWN JSON Schemas, verbatim, per patch release
+      v1.0.3/ v1.1.3/ v1.2.2/ v1.3.3/
+    v10/  v11/  v12/  v13/       # per-minor Strategy impls — SELF-CONTAINED
+      codec.go                   # this minor's identity + its own drop table + its strip
+
+  edid/                          # BCP-005-01 EDID parsing (base block + CTA-861)
+  est/                           # BCP-003-03 EST client bytes (enrollment + PKCS#7)
 
   bcp/                           # JSON-shape validators (no own wire — layer onto host spec)
     bcp00201/  bcp00202/         # BCP-002-01 / 002-02
-    bcp00401/  bcp00402/         # BCP-004-01 / 002-02
+    bcp00401/  bcp00402/         # BCP-004-01 / 004-02
     bcp00601/  bcp00604/         # BCP-006-01 / 006-04
     bcp00801/  bcp00802/         # BCP-008-01 / 008-02
 ```
+
+### Validation comes from AMWA's schemas. We write no rules.
+
+**Every IS-04 validation rule lives in `codec/is04/schemas/`, copied
+verbatim from github.com/AMWA-TV/is-04 at each patch tag.** They are
+never edited. When AMWA publishes a new patch, the fix is to copy the
+new set in — not to adjust Go.
+
+This is the single most important rule in this package, because every
+IS-04 bug we have had came from breaking it. Hand-written validators
+are a paraphrase of the schemas, and a paraphrase drifts:
+
+- a non-empty check on `label`/`description` that no schema states —
+  failed all 176 Senders on a real EVS Neuron
+- a v1.0 Flow failed for missing `frame_width`, which v1.0 has no
+  concept of
+- a v1.0 Device refused for `controls`, which AMWA's own v1.0
+  `device.json` permits — the device was right and we were wrong
+- `chassis_id: "ZZ"` rejected, where AMWA defines
+  `anyOf [MAC-pattern, "^.+$", null]` and only `""` is invalid
+
+sony/nmos-cpp has none of this class of bug for the same reason: it
+embeds the AMWA schemas (`Development/nmos/is04_schemas/`) and
+validates against them.
+
+`internal/amwa/codec/jsonschema` is a stdlib-only draft-04 validator
+(ADR-0006) covering exactly the keywords a scan of the four schema sets
+reports. **An unimplemented keyword is REPORTED, never skipped** — a
+silent skip means a document went unchecked and nobody notices;
+`TestNoUnimplementedKeyword` (in
+`codec/is04/schemas/schemas_test.go`) fails the build if AMWA ships
+one.
+
+### Each minor is self-contained
+
+A `vXX/` package holds **only** what is specific to that minor: its
+identity, its own drop table, its own strip helper. Nothing is shared
+between minors and the duplication is deliberate — a change to v1.0
+must be incapable of altering how v1.2 behaves. Each minor also gets
+its own schema compiler over its own directory, so a v1.0 validator
+physically cannot load a v1.3 schema.
+
+The two directions have opposite postures, and that asymmetry is the
+point:
+
+| Direction | Rule | Posture |
+|---|---|---|
+| **encode** | drop what this minor lacks, then schema-check | **FATAL** — emitting a payload AMWA rejects is our bug |
+| **decode** | parse tolerantly, schema deviations become events | **absorbed** — `nmos_is04_schema_deviation` at Warn |
+
+We must not EMIT what AMWA would reject. But refusing to READ it costs
+the operator the whole resource and tells them nothing actionable. Same
+rule in IS-09: an out-of-spec `/global` is absorbed, because discarding
+it sends the Node to a Registry the operator did not choose.
+
+Three rules follow, and breaking any of them is how this rotted before:
+
+- **Never hand-write a validation rule.** If the schema does not say
+  it, it is not a rule. AMWA's schema is the authority, not our
+  reading of it.
+- **A drop table must never strip a REQUIRED property.** A required
+  property is by definition not a later-minor field. Listing
+  `channels` at v1.1 — where `source_audio.json` requires it — made
+  every audio Source fail to register, and IS-04-01 reported it four
+  tests away as "not found in the registry". `schemas.RequiredLeaves`
+  plus each package's `drop_test.go` catch that at unit-test speed.
+- **Decode at a minor validates at that minor.** Per-minor `DecodeX`
+  calls `is04.ParseX` (decode + absorb + report, no validation), never
+  `is04.DecodeX`, which validates against the canonical latest rules.
 
 ### OOP principles enforced
 

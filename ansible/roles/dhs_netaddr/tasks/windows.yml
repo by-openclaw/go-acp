@@ -1,0 +1,27 @@
+---
+# Guest-side static IPv4 on the adapter that currently carries the fleet
+# address; idempotent (no change when already static with these values).
+# If the address changes, the SSH session moves with it — the inventory's
+# ansible_host is the new address, so the next task/run reconnects there.
+- name: Static IPv4 from inventory (address, prefix, gateway, DNS)
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    $want = '{{ nics[0].ip }}'; $prefix = {{ dhs_netaddr_prefix }}; $gw = '{{ dhs_netaddr_gateway }}'
+    $dns = @('{{ dhs_netaddr_dns | join("','") }}')
+    $nic = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.MacAddress -eq '{{ nics[0].mac | replace(":", "-") }}' } | Select-Object -First 1
+    if (-not $nic) { throw "adapter with MAC {{ nics[0].mac }} not found" }
+    $ifi = $nic.ifIndex
+    $ip4 = Get-NetIPAddress -InterfaceIndex $ifi -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' }
+    $dhcp = (Get-NetIPInterface -InterfaceIndex $ifi -AddressFamily IPv4).Dhcp
+    $curDns = (Get-DnsClientServerAddress -InterfaceIndex $ifi -AddressFamily IPv4).ServerAddresses
+    $curGw = (Get-NetRoute -InterfaceIndex $ifi -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 1).NextHop
+    $ok = ($dhcp -eq 'Disabled') -and ($ip4.IPAddress -contains $want) -and ($ip4 | Where-Object { $_.IPAddress -eq $want }).PrefixLength -eq $prefix -and ($curGw -eq $gw) -and (@($curDns) -join ',' -eq ($dns -join ','))
+    if ($ok) { 'OK'; exit 0 }
+    Set-NetIPInterface -InterfaceIndex $ifi -AddressFamily IPv4 -Dhcp Disabled
+    Get-NetIPAddress -InterfaceIndex $ifi -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -ne $want } | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
+    Get-NetRoute -InterfaceIndex $ifi -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue
+    if (-not ($ip4.IPAddress -contains $want)) { New-NetIPAddress -InterfaceIndex $ifi -IPAddress $want -PrefixLength $prefix -DefaultGateway $gw | Out-Null } else { New-NetRoute -InterfaceIndex $ifi -DestinationPrefix '0.0.0.0/0' -NextHop $gw | Out-Null }
+    Set-DnsClientServerAddress -InterfaceIndex $ifi -ServerAddresses $dns
+    'CHANGED'
+  register: dhs_netaddr_win
+  changed_when: "'CHANGED' in dhs_netaddr_win.stdout"

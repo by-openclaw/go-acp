@@ -1,0 +1,40 @@
+RollCall emulator (full contract): unit 0x20  port00=frame  port01=32-bit  port02=16-bit  :2050
+[+] client 10.6.250.105:56628
+   CALL port 00 svc=0x0040 ul=2 -> session 1 [16-bit]
+   session 1 back channel disabled
+   CALL port 00 svc=0x0008 ul=2 -> session 2 [16-bit]
+   FILEOPEN port=00 name='TEMPLATE.ZIP' -> 270 bytes
+   CALL port 00 svc=0x8003 ul=2 -> session 3 [32-bit]
+   session 3 reporting ON for ALL
+      push -> peer idx 4 (our sess 3) type 10
+   session 3 back channel ENABLED [control] 2 display lines queued
+      push -> peer idx 4 (our sess 3) type 10
+   CALL port 00 svc=0x0080 ul=2 -> session 4 [16-bit]
+   CALL port 01 svc=0x0008 ul=2 -> session 5 [16-bit]
+   FILEOPEN port=01 name='TEMPLATE.ZIP' -> 417 bytes
+   CALL port 01 svc=0x8003 ul=2 -> session 6 [32-bit]
+   session 6 reporting ON for ALL
+      push -> peer idx 8 (our sess 6) type 10
+   session 6 back channel ENABLED [control] 2 display lines queued
+      push -> peer idx 8 (our sess 6) type 10
+   CALL port 02 svc=0x0008 ul=2 -> session 7 [16-bit]
+   FILEOPEN port=02 name='TEMPLATE.ZIP' -> 418 bytes
+   CALL port 02 svc=0x0003 ul=2 -> session 8 [16-bit]
+   session 8 reporting ON for ALL
+      push -> peer idx 11 (our sess 8) type 10
+   session 8 back channel ENABLED [control] 2 display lines queued
+      push -> peer idx 11 (our sess 8) type 10
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-125 -> -125 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-180 -> -180 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-280 -> -280 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-405 -> -405 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-555 -> -555 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-695 -> -695 ''
+   SET 16-bit cmd=301 mode=0x0001(VALUE) sent=-720 -> -720 ''
+   SET 16-bit cmd=302 mode=0x0001(VALUE) sent=0 -> 0 ''
+   SET 16-bit cmd=305 mode=0x0001(VALUE) sent=65 -> 65 ''
+   SET 16-bit cmd=301 mode=0x0010(PRESET) sent=0 -> -120 ''   *** PRESET via FS_PRESET ***
+   SET 32-bit cmd=102 mode=0x0001(VALUE) sent=1 -> 1 ''
+   SET 32-bit cmd=101 mode=0x0001(VALUE) sent=-165 -> -165 ''
+   SET 32-bit cmd=105 mode=0x0001(VALUE) sent=52 -> 52 ''
+   SET 32-bit cmd=101 mode=0x0010(PRESET) sent=0 -> -60 ''   *** PRESET via FS_PRESET ***

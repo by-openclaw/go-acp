@@ -1,9 +1,10 @@
 package is04
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"dhs/internal/amwa/codec/spec"
 )
 
 // Node is the IS-04 v1.3 Node resource — the device itself.
@@ -23,7 +24,7 @@ type Node struct {
 
 // NodeAPI is the `api` sub-object on Node — versions + endpoints.
 type NodeAPI struct {
-	Versions  []string      `json:"versions"`
+	Versions  []string       `json:"versions"`
 	Endpoints []NodeEndpoint `json:"endpoints"`
 }
 
@@ -62,11 +63,42 @@ type NodeClock struct {
 	Locked    bool   `json:"locked,omitempty"`
 }
 
+// MarshalJSON emits the shape the clock's own schema requires, not the
+// shape omitempty happens to leave behind.
+//
+// clock_ptp.json REQUIRES all of traceable / version / gmid / locked —
+// and two of those are booleans, so a PTP clock that is unlocked or
+// untraceable loses its required fields to `omitempty` on re-encode.
+// That is not hypothetical: the Registry marshals stored resources
+// into Query-WS grains, and AMWA IS-04-02 test_31 failed with
+// "'ptp' is not one of ['internal']" — the validator's way of saying
+// the re-encoded clock matched NEITHER branch, because a registered
+// `"locked": false` had vanished. Same lesson as NodeEndpoint's
+// `authorization` above, in polymorphic form: the struct tags cannot
+// express "required for ptp, absent for internal", so encoding is
+// explicit per branch.
+func (c NodeClock) MarshalJSON() ([]byte, error) {
+	if c.RefType == "ptp" {
+		return json.Marshal(struct {
+			Name      string `json:"name"`
+			RefType   string `json:"ref_type"`
+			Traceable bool   `json:"traceable"`
+			Version   string `json:"version"`
+			GMID      string `json:"gmid"`
+			Locked    bool   `json:"locked"`
+		}{c.Name, c.RefType, c.Traceable, c.Version, c.GMID, c.Locked})
+	}
+	return json.Marshal(struct {
+		Name    string `json:"name"`
+		RefType string `json:"ref_type"`
+	}{c.Name, c.RefType})
+}
+
 // NodeIface is one entry in Node.Interfaces.
 type NodeIface struct {
-	ChassisID            *string                 `json:"chassis_id"`
-	PortID               string                  `json:"port_id"`
-	Name                 string                  `json:"name"`
+	ChassisID             *string                `json:"chassis_id"`
+	PortID                string                 `json:"port_id"`
+	Name                  string                 `json:"name"`
 	AttachedNetworkDevice *AttachedNetworkDevice `json:"attached_network_device,omitempty"`
 }
 
@@ -169,16 +201,33 @@ func (n *Node) Encode() ([]byte, error) {
 
 // DecodeNode parses + validates a Node payload.
 func DecodeNode(raw []byte) (*Node, error) {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var n Node
-	if err := d.Decode(&n); err != nil {
-		return nil, fmt.Errorf("is04: decode node: %w", err)
-	}
-	if d.More() {
-		return nil, fmt.Errorf("is04: decode node: trailing JSON content")
+	return DecodeNodeReporting(raw, APIVersion, nil)
+}
+
+// DecodeNodeReporting parses a Node payload and validates it against the
+// canonical rules, which track the latest IS-04 minor.
+//
+// A per-minor codec wants [ParseNode] instead: a v1.0 payload judged by
+// v1.3 rules is failed for missing fields that minor never had.
+func DecodeNodeReporting(raw []byte, apiVer string, rep spec.Reporter) (*Node, error) {
+	n, err := ParseNode(raw, apiVer, rep)
+	if err != nil {
+		return nil, err
 	}
 	if err := n.Validate(); err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+// ParseNode decodes a Node served on an apiVer tree WITHOUT applying any
+// minor's validation rules. Two classes of deviation are absorbed and
+// reported rather than raised: a field IS-04 defines nowhere (see
+// absorb.go) and a field it did not define until after apiVer (see
+// [Since]). The caller then validates against the minor it asked for.
+func ParseNode(raw []byte, apiVer string, rep spec.Reporter) (*Node, error) {
+	var n Node
+	if err := decodeAbsorbing(raw, &n, "node", apiVer, rep); err != nil {
 		return nil, err
 	}
 	return &n, nil

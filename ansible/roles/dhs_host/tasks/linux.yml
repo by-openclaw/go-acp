@@ -1,0 +1,83 @@
+---
+# ---- packages ------------------------------------------------------------
+# tshark's postinst asks whether non-root may capture; answer it up front so
+# apt never blocks on a debconf prompt (dhs runs captures as root anyway).
+- name: Preseed wireshark-common (no setuid dumpcap prompt)
+  ansible.builtin.debconf:
+    name: wireshark-common
+    question: wireshark-common/install-setuid
+    value: "false"
+    vtype: boolean
+  when: ansible_os_family == "Debian"
+
+- name: Base packages present
+  ansible.builtin.package:
+    name: "{{ dhs_host_packages[ansible_os_family] }}"
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# ---- directories + environment -------------------------------------------
+- name: dhs directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ dhs_host_linux_dirs }}"
+
+- name: "PATH + DHS_DATA_DIR for every login shell ({{ dhs_host_linux_profile }})"
+  ansible.builtin.copy:
+    dest: "{{ dhs_host_linux_profile }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # dhs host environment (ansible role dhs_host, #800) — do not edit by hand
+      case ":$PATH:" in *":{{ dhs_bin | dirname }}:"*) ;; *) PATH="{{ dhs_bin | dirname }}:$PATH" ;; esac
+      export PATH
+      export DHS_DATA_DIR="{{ dhs_host_linux_data_dir }}"
+
+# ---- dhs binary from the pinned release ----------------------------------
+- name: Current dhs version on the host
+  ansible.builtin.command: "{{ dhs_bin }} version"
+  register: dhs_host_cur
+  changed_when: false
+  failed_when: false
+
+- name: Resolve asset name and installed version
+  ansible.builtin.set_fact:
+    dhs_host_asset: "dhs_linux_{{ dhs_host_goarch[ansible_architecture] }}"
+    dhs_host_installed: "{{ (dhs_host_cur.stdout_lines[0] | default('') | split(' '))[1] | default('') }}"
+
+- name: "Install dhs {{ dhs_version }} (installed {{ dhs_host_installed | default('none') }})"
+  when: dhs_host_installed != dhs_version
+  block:
+    - name: Download release archive (sha256 verified against SHA256SUMS.txt)
+      ansible.builtin.get_url:
+        url: "{{ dhs_release_base }}/{{ dhs_host_asset }}.tar.gz"
+        dest: "/tmp/{{ dhs_host_asset }}-{{ dhs_version }}.tar.gz"
+        checksum: "sha256:{{ dhs_release_base }}/SHA256SUMS.txt"
+        mode: "0644"
+
+    - name: Unpack
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ dhs_host_asset }}-{{ dhs_version }}.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install binary to {{ dhs_bin }}
+      ansible.builtin.copy:
+        src: "/tmp/{{ dhs_host_asset }}/dhs"
+        dest: "{{ dhs_bin }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Verify installed version
+      ansible.builtin.command: "{{ dhs_bin }} version"
+      register: dhs_host_new
+      changed_when: false
+      failed_when: (dhs_host_new.stdout_lines[0] | split(' '))[1] != dhs_version

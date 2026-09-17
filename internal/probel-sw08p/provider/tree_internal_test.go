@@ -66,8 +66,8 @@ func TestAddMatrixSingleLevelAndZeroNumber(t *testing.T) {
 				Number: 1, Identifier: "router", OID: "1",
 				Children: []canonical.Element{
 					&canonical.Matrix{
-						Header:      canonical.Header{Number: 0, Identifier: "m", OID: "1.1"},
-						Type:        canonical.MatrixOneToN, Mode: canonical.ModeLinear,
+						Header: canonical.Header{Number: 0, Identifier: "m", OID: "1.1"},
+						Type:   canonical.MatrixOneToN, Mode: canonical.ModeLinear,
 						TargetCount: 4, SourceCount: 4,
 						// No Labels → single-level synthesis path.
 					},

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
-	"dhs/internal/consumer"
 )
 
 // SeedTreeFromCachedObjects rehydrates the in-RAM tree from a slice of

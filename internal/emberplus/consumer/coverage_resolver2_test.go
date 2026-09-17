@@ -3,13 +3,12 @@ package emberplus
 import (
 	"testing"
 
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
 )
 
 // TestResolve_NilElements covers resolve's nil-map early return.
 func TestResolve_NilElements(t *testing.T) {
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolve(nil, nil, CanonicalOptions{Labels: "inline"})
 }
 
@@ -21,9 +20,9 @@ func TestResolveMatrixLabels_BasepathNotNode(t *testing.T) {
 	elements := map[string]canonical.Element{
 		"1.2": &canonical.Parameter{Header: canonical.Header{OID: "1.2"}}, // not a Node
 	}
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixLabels(m, elements, modeInline)
-	if got := p.profile.Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelBasepathUnresolved]; got != 1 {
 		t.Errorf("basepath-not-node should fire unresolved: got %d", got)
 	}
 }
@@ -51,9 +50,9 @@ func TestResolveMatrixLabels_LevelMismatch(t *testing.T) {
 		"1.2": mkLevel("1.2", 2),
 		"1.3": mkLevel("1.3", 3), // different count → mismatch
 	}
-	p := &Plugin{profile: &compliance.Profile{}}
+	p := &Plugin{}
 	p.resolveMatrixLabels(m, elements, modeBoth)
-	if got := p.profile.Snapshot()[MatrixLabelLevelMismatch]; got != 1 {
+	if got := p.ComplianceProfile().Snapshot()[MatrixLabelLevelMismatch]; got != 1 {
 		t.Errorf("level mismatch should fire: got %d", got)
 	}
 }
@@ -139,19 +138,19 @@ func TestInflateTemplate_DstAlreadySet(t *testing.T) {
 	en := "dstEnum"
 	// Parameter dst with everything set.
 	dstParam := &canonical.Parameter{
-		Header:           canonical.Header{Description: &d},
-		Type:             canonical.ParamInteger,
-		Default:          int64(1), Minimum: int64(0), Maximum: int64(9), Step: int64(1),
-		Unit:             &u, Format: &f, Factor: &fa, Formula: &fo, Enumeration: &en,
+		Header:  canonical.Header{Description: &d},
+		Type:    canonical.ParamInteger,
+		Default: int64(1), Minimum: int64(0), Maximum: int64(9), Step: int64(1),
+		Unit: &u, Format: &f, Factor: &fa, Formula: &fo, Enumeration: &en,
 		EnumMap:          []canonical.EnumEntry{{Key: "x", Value: 0}},
 		StreamDescriptor: &canonical.StreamDescriptor{Format: 1},
 	}
 	td := "tpl desc"
 	tu := "tplUnit"
 	tplParam := &canonical.Parameter{
-		Header:           canonical.Header{Description: &td},
-		Type:             canonical.ParamReal,
-		Default:          int64(2), Minimum: int64(-1), Maximum: int64(99), Step: int64(2),
+		Header:  canonical.Header{Description: &td},
+		Type:    canonical.ParamReal,
+		Default: int64(2), Minimum: int64(-1), Maximum: int64(99), Step: int64(2),
 		Unit:             &tu,
 		EnumMap:          []canonical.EnumEntry{{Key: "y", Value: 1}},
 		StreamDescriptor: &canonical.StreamDescriptor{Format: 2},
@@ -196,10 +195,10 @@ func TestInflateTemplate_AllFieldsCopied(t *testing.T) {
 	te := "off\non"
 	tsch := "tpl-sch"
 	tplParam := &canonical.Parameter{
-		Header:            canonical.Header{Description: &td},
-		Type:              canonical.ParamInteger,
-		Default:           int64(1), Minimum: int64(0), Maximum: int64(10), Step: int64(1),
-		Unit:              &tu, Format: &tf, Factor: &tfa, Formula: &tfo, Enumeration: &te,
+		Header:  canonical.Header{Description: &td},
+		Type:    canonical.ParamInteger,
+		Default: int64(1), Minimum: int64(0), Maximum: int64(10), Step: int64(1),
+		Unit: &tu, Format: &tf, Factor: &tfa, Formula: &tfo, Enumeration: &te,
 		EnumMap:           []canonical.EnumEntry{{Key: "off", Value: 0}},
 		StreamDescriptor:  &canonical.StreamDescriptor{Format: 1, Offset: 2},
 		SchemaIdentifiers: &tsch,
@@ -234,8 +233,8 @@ func TestInflateTemplate_AllFieldsCopied(t *testing.T) {
 // root (empty parent OID) continue branches.
 func TestRemoveFromTree_NoParent(t *testing.T) {
 	elements := map[string]canonical.Element{
-		"1":   &canonical.Node{Header: canonical.Header{OID: "1"}},          // root: parentOID == ""
-		"9.9": &canonical.Node{Header: canonical.Header{OID: "9.9"}},        // parent "9" absent
+		"1":   &canonical.Node{Header: canonical.Header{OID: "1"}},   // root: parentOID == ""
+		"9.9": &canonical.Node{Header: canonical.Header{OID: "9.9"}}, // parent "9" absent
 	}
 	removeFromTree(elements, []string{"1", "9.9"})
 	if _, ok := elements["1"]; ok {

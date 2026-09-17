@@ -84,6 +84,29 @@ var (
 	// error mid-receive.
 	ErrReadFailed = errcode.New(errcode.LayerTransport, "read-failed", errcode.ClassRuntime)
 
+	// ErrConnectionLost signals an ESTABLISHED session died — the peer
+	// closed, the socket errored mid-stream, or the dead-man watchdog
+	// expired because nothing arrived within the liveness threshold.
+	//
+	// This is the sentinel a long-running watcher dispatches on: it
+	// distinguishes "we were connected and lost it" (recoverable —
+	// reconnect with backoff) from ErrRefused / ErrDialFailed ("we never
+	// got in"). Per the CLAUDE.md error hierarchy this is the
+	// ConnectionLostError arm of TransportError.
+	//
+	// Wrap with the reason so the operator sees WHY the session died:
+	//
+	//	fmt.Errorf("%w: no frame within %s", transport.ErrConnectionLost, idle)
+	ErrConnectionLost = errcode.New(errcode.LayerTransport, "connection-lost", errcode.ClassRuntime)
+
+	// ErrIdleTimeout is the specific dead-man case: the transport was
+	// healthy but the peer went silent past the liveness threshold. A
+	// half-open TCP/WebSocket that a firewall or NAT dropped without an
+	// RST presents exactly this way — the read blocks forever and only a
+	// deadline reveals it. Callers that just want "session is gone"
+	// should test ErrConnectionLost, which this is reported alongside.
+	ErrIdleTimeout = errcode.New(errcode.LayerTransport, "idle-timeout", errcode.ClassRuntime)
+
 	// ErrOversizedDatagram is returned when a received UDP datagram
 	// exceeds the caller-supplied maxSize.
 	ErrOversizedDatagram = errcode.New(errcode.LayerTransport, "oversized-datagram", errcode.ClassRuntime)

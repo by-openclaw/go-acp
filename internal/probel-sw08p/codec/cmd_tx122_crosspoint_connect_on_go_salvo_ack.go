@@ -69,8 +69,8 @@ func DecodeSalvoConnectOnGoAck(f Frame) (SalvoConnectOnGoAckParams, error) {
 		return SalvoConnectOnGoAckParams{
 			MatrixID:      m,
 			LevelID:       l,
-			DestinationID: (uint16(f.Payload[1]>>4) & 0x07) * 128 + uint16(f.Payload[2]),
-			SourceID:      (uint16(f.Payload[1]) & 0x07) * 128 + uint16(f.Payload[3]),
+			DestinationID: (uint16(f.Payload[1]>>4)&0x07)*128 + uint16(f.Payload[2]),
+			SourceID:      (uint16(f.Payload[1])&0x07)*128 + uint16(f.Payload[3]),
 			SalvoID:       f.Payload[4] & 0x7F,
 		}, nil
 	case TxSalvoConnectOnGoAckExt:

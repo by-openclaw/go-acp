@@ -3,6 +3,7 @@ package manifest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -119,6 +120,106 @@ func TestLoad(t *testing.T) {
 	})
 }
 
+// TestSlotProtos pins the per-slot GetSlotInfo advertisement map:
+// declared lists keyed by numeric slot, undeclared slots absent, and
+// entries with a non-numeric or out-of-range slot addr skipped.
+func TestSlotProtos(t *testing.T) {
+	m := &Manifest{Frames: []Frame{{
+		Name: "chassis",
+		Slots: []Slot{
+			{Addr: map[string]any{"slot": 0}, DM: "A@1", Protos: []uint8{2, 3, 4}},
+			{Addr: map[string]any{"slot": 1}, DM: "B@1"},                        // no override
+			{Addr: map[string]any{"oid": "1.4"}, DM: "C@1", Protos: []uint8{2}}, // non-numeric addr
+			{Addr: map[string]any{"slot": 999}, DM: "D@1", Protos: []uint8{2}},  // out of range
+			{Addr: map[string]any{"slot": float64(2)}, DM: "E@1", Protos: []uint8{2, 3}},
+		},
+	}}}
+	got := m.SlotProtos()
+	if len(got) != 2 {
+		t.Fatalf("SlotProtos = %v, want 2 entries", got)
+	}
+	if fmt.Sprintf("%v", got[0]) != "[2 3 4]" || fmt.Sprintf("%v", got[2]) != "[2 3]" {
+		t.Fatalf("SlotProtos = %v", got)
+	}
+}
+
+// TestParamTypeAndFormat_ACP2Meta pins the acp2 wire-type mapping: DM
+// objects from acp2 walks carry meta acp2.objType/acp2.numType, and the
+// emitted format hints must be the acp2 provider's vocabulary
+// (s8..u64 | float | ipv4 | preset). The generic kind fallback mapped
+// "uint" to "uint8", which the acp2 tree builder rejects — a real
+// CONVERT Hybrid walk then served an EMPTY tree (live 2026-08-20).
+func TestParamTypeAndFormat_ACP2Meta(t *testing.T) {
+	cases := []struct {
+		objType, numType float64
+		wantType, wantF  string
+	}{
+		{3, 4, "integer", "u8"}, // number u8 (the live failure)
+		{3, 2, "integer", "s32"},
+		{3, 7, "integer", "u64"},
+		{3, 8, "real", ""}, // float
+		{2, 0, "enum", ""},
+		{4, 10, "string", "ipv4"},
+		{5, 11, "string", ""},
+		{1, 5, "integer", "preset,u16"},
+		{1, 99, "integer", "preset"}, // preset with unknown numType
+	}
+	for _, c := range cases {
+		o := dmObject{Kind: "uint", Meta: map[string]any{
+			"acp2.objType": c.objType, "acp2.numType": c.numType,
+		}}
+		gotT, gotF := paramTypeAndFormat(o)
+		if gotT != c.wantType || gotF != c.wantF {
+			t.Errorf("objType=%v numType=%v = (%q,%q), want (%q,%q)",
+				c.objType, c.numType, gotT, gotF, c.wantType, c.wantF)
+		}
+	}
+	// Unknown objType falls through to the generic kind mapping.
+	o := dmObject{Kind: "int", Meta: map[string]any{"acp2.objType": float64(9)}}
+	if gotT, _ := paramTypeAndFormat(o); gotT != "integer" {
+		t.Errorf("fallthrough type = %q, want integer", gotT)
+	}
+}
+
+// TestEnumEntriesFromMeta pins the real-option-map path: acp2 walks
+// store the wire value -> name map (arbitrary u32 values, NOT 0..n-1)
+// in meta acp2.optionsMap; the EnumMap must carry those values sorted,
+// skipping unparseable entries, and return nil when absent.
+func TestEnumEntriesFromMeta(t *testing.T) {
+	entries := enumEntriesFromMeta(map[string]any{"acp2.optionsMap": map[string]any{
+		"1271": "Manual", "66": "2SI", "801": "SQD", "bogus": "X", "7": 3.14,
+	}})
+	if len(entries) != 3 {
+		t.Fatalf("entries = %+v, want 3", entries)
+	}
+	if entries[0].Key != "2SI" || entries[0].Value != 66 ||
+		entries[2].Key != "Manual" || entries[2].Value != 1271 {
+		t.Fatalf("entries = %+v", entries)
+	}
+	if enumEntriesFromMeta(map[string]any{}) != nil {
+		t.Error("absent map must return nil")
+	}
+	if enumEntriesFromMeta(map[string]any{"acp2.optionsMap": map[string]any{"x": "y"}}) != nil {
+		t.Error("no parseable entries must return nil")
+	}
+}
+
+// TestUnwrapValue_EnumRawPreferred pins the enum truncation fix: the
+// envelope's `enum` field is a u8 and loses the upper bytes of real
+// acp2 option values (u32 on the wire); the raw bytes win.
+func TestUnwrapValue_EnumRawPreferred(t *testing.T) {
+	// raw AAAE9w== = 0x000004F7 = 1271; enum field says 247.
+	v, ok := unwrapValue([]byte(`{"kind":"enum","raw":"AAAE9w==","enum":247}`))
+	if !ok || v != int64(1271) {
+		t.Fatalf("raw-preferred = %v %v, want 1271", v, ok)
+	}
+	// No raw → u8 fallback unchanged.
+	v, ok = unwrapValue([]byte(`{"kind":"enum","enum":247}`))
+	if !ok || v != int64(247) {
+		t.Fatalf("fallback = %v %v, want 247", v, ok)
+	}
+}
+
 func TestDMPath(t *testing.T) {
 	if got, want := DMPath(".cache", "acp2", "SHPRM1@5.3.5"),
 		filepath.Join(".cache", "dm", "acp2", "SHPRM1@5.3.5.json"); got != want {
@@ -142,7 +243,35 @@ func TestWrite(t *testing.T) {
 			t.Fatal("expected error for empty device name")
 		}
 	})
-	t.Run("success and slugify", func(t *testing.T) {
+	t.Run("empty protocol", func(t *testing.T) {
+		m := validManifest()
+		m.Device.Protocol = ""
+		if _, err := Write(t.TempDir(), m); err == nil {
+			t.Fatal("expected error for empty protocol (ADR-0028 key)")
+		}
+	})
+	t.Run("ip key (ADR-0028)", func(t *testing.T) {
+		cache := t.TempDir()
+		m := validManifest()
+		m.Device.IP = "10.100.0.103"
+		m.Device.FQDN = "neuron-test.plant.example"
+		path, err := Write(cache, m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := filepath.Join(cache, "manifest", "acp2", "10.100.0.103.json")
+		if path != want {
+			t.Fatalf("path = %q, want %q", path, want)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Device.IP != "10.100.0.103" || got.Device.FQDN != "neuron-test.plant.example" {
+			t.Fatalf("ip/fqdn round-trip: %+v", got.Device)
+		}
+	})
+	t.Run("name-slug fallback when no IP", func(t *testing.T) {
 		cache := t.TempDir()
 		m := validManifest()
 		m.Device.Name = "Tiny Ember+ Router"
@@ -150,12 +279,43 @@ func TestWrite(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		want := filepath.Join(cache, "manifest", "tiny-ember-router.json")
+		want := filepath.Join(cache, "manifest", "acp2", "tiny-ember-router.json")
 		if path != want {
 			t.Fatalf("path = %q, want %q", path, want)
 		}
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("file not written: %v", err)
+		}
+	})
+	t.Run("legacy name-keyed manifest migrated", func(t *testing.T) {
+		cache := t.TempDir()
+		// Old layout: manifest/<name-slug>.json with a different endpoint.
+		legacyDir := filepath.Join(cache, "manifest")
+		if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		legacy := validManifest()
+		legacy.Device.Endpoints = []Endpoint{{IP: "10.100.0.109", Port: 2072, Transport: "tcp"}}
+		b, _ := json.Marshal(legacy)
+		legacyPath := filepath.Join(legacyDir, "neuron-test.json")
+		if err := os.WriteFile(legacyPath, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		m := validManifest()
+		m.Device.IP = "10.100.0.103"
+		path, err := Write(cache, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Device.Endpoints) != 2 {
+			t.Fatalf("legacy endpoints not merged: %+v", got.Device.Endpoints)
+		}
+		if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+			t.Fatalf("legacy file not retired: %v", err)
 		}
 	})
 	t.Run("merge unions endpoints", func(t *testing.T) {
@@ -193,7 +353,7 @@ func TestWrite(t *testing.T) {
 	})
 	t.Run("create error", func(t *testing.T) {
 		cache := t.TempDir()
-		dir := filepath.Join(cache, "manifest")
+		dir := filepath.Join(cache, "manifest", "acp2")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +367,7 @@ func TestWrite(t *testing.T) {
 	})
 	t.Run("rename error", func(t *testing.T) {
 		cache := t.TempDir()
-		dir := filepath.Join(cache, "manifest")
+		dir := filepath.Join(cache, "manifest", "acp2")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -266,5 +426,27 @@ func TestSlugifyDeviceName(t *testing.T) {
 		if got := slugifyDeviceName(in); got != want {
 			t.Fatalf("slugify(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestSlotDMs pins where each card sits and what it is, in manifest order —
+// the order BuildExport grafts the DMs under the root, which is how a provider
+// pairs each entry with the card it describes.
+func TestSlotDMs(t *testing.T) {
+	m := &Manifest{Frames: []Frame{
+		{Name: "a", Slots: []Slot{
+			{Addr: map[string]any{"slot": 3}, DM: "IQDBE00@5.0.cs5"},
+			{Addr: map[string]any{"oid": "1.4"}, DM: "B@1"}, // not a slot
+		}},
+		{Name: "b", Slots: []Slot{
+			{Addr: map[string]any{"slot": float64(11)}, DM: "IQMUX42@8.5.cs17"},
+		}},
+	}}
+	got := fmt.Sprintf("%v", m.SlotDMs())
+	if got != "[{3 IQDBE00@5.0.cs5} {-1 B@1} {11 IQMUX42@8.5.cs17}]" {
+		t.Fatalf("SlotDMs = %s", got)
+	}
+	if (&Manifest{}).SlotDMs() != nil {
+		t.Error("a manifest with no slots listed some")
 	}
 }

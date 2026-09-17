@@ -37,10 +37,10 @@ func Register(c Codec) {
 
 // Get / AllCodecs / SupportedVersions / SelectHighest / Default —
 // same shape as is04 / is05 / is09.
-func Get(apiVer string) (Codec, bool)             { return versions.Get(apiVer) }
-func AllCodecs() []Codec                          { return versions.AllCodecs() }
-func SupportedVersions() []string                 { return versions.SupportedVersions() }
-func SelectHighest(peer []string) (Codec, error)  { return spec.SelectHighestMutual(versions, peer) }
+func Get(apiVer string) (Codec, bool)            { return versions.Get(apiVer) }
+func AllCodecs() []Codec                         { return versions.AllCodecs() }
+func SupportedVersions() []string                { return versions.SupportedVersions() }
+func SelectHighest(peer []string) (Codec, error) { return spec.SelectHighestMutual(versions, peer) }
 func Default() Codec {
 	all := versions.AllCodecs()
 	if len(all) == 0 {

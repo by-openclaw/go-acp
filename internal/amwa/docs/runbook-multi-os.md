@@ -6,7 +6,8 @@ test rig (#197) gating the Avahi/Bonjour DNS-SD backends (#194/#195/#196).
 
 > **Service-per-device rule.** Every dhs connector runs as one managed
 > service per one physical device — never multiplexed. See
-> `internal/amwa/docs/ha.md` for the lease/handover protocol.
+> `internal/amwa/docs/ha.md` for the multi-Registry HA rules
+> (client-driven `pri` priority failover).
 
 ## Per-OS package matrix
 
@@ -139,7 +140,7 @@ server (Unbound on pfSense in this fleet — see `dns-sd-unbound.md`).
 | Doc | What |
 |---|---|
 | [architecture.md](architecture.md) | Top-level NMOS Node + Registry layout |
-| [ha.md](ha.md) | One-service-per-device rule + lease/handover |
+| [ha.md](ha.md) | Multi-Registry HA — client-driven `pri` priority failover |
 | [dns-sd-unbound.md](dns-sd-unbound.md) | Unicast DNS-SD records for pfSense Unbound |
 | [cerebrum-interop.md](cerebrum-interop.md) | Cerebrum v1.1/v1.2/v1.3 advertising shape (matches what we observe live on `10.100.0.5`) |
 

@@ -10,6 +10,7 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	v13 "dhs/internal/amwa/codec/is04/v13"
+	"dhs/internal/amwa/codec/spec"
 )
 
 func TestNewClientRejectsBadInput(t *testing.T) {
@@ -95,11 +96,29 @@ func TestListNodesAppliesLabelFilter(t *testing.T) {
 	}
 }
 
-func TestDecodeListSurfacesError(t *testing.T) {
+// TestDecodeListSurfacesDeviations: a Registry serving a resource that
+// fails AMWA's schema does NOT cost the controller the whole listing.
+// The element is decoded and every deviation is reported.
+//
+// This inverted when validation moved to AMWA's schemas. Erroring out
+// meant one bad resource hid every good one in the same response, and
+// gave the operator nothing to act on. Passing a Reporter through the
+// codec is what keeps that from being silent — the Client takes the
+// codec by DI precisely so the caller can wire one.
+func TestDecodeListSurfacesDeviations(t *testing.T) {
 	bad := `{"id":"not-uuid","version":"x","label":"","description":"","tags":null}`
 	raw := []json.RawMessage{json.RawMessage(bad)}
-	c := v13.New()
-	if _, err := decodeList(raw, "node", c.DecodeNode); err == nil {
-		t.Fatalf("expected decode error on malformed element")
+
+	var rep spec.SliceReporter
+	c := v13.Codec{Reporter: &rep}
+	got, err := decodeList(raw, "node", c.DecodeNode)
+	if err != nil {
+		t.Fatalf("one bad element must not fail the listing: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "not-uuid" {
+		t.Fatalf("the element must still reach the caller, got %+v", got)
+	}
+	if len(rep.Snapshot()) == 0 {
+		t.Fatal("the deviation must be reported, not swallowed")
 	}
 }

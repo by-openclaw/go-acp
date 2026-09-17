@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: dhs_verb
+  author: by-rune
+  description: >-
+    Run one dhs consumer verb against a live device from any managed
+    host, with JSON output parsed into a registered fact and an
+    optional ADR-0007 idempotency assertion (run-twice = changed
+    false). The ops-facing sibling of dhs_verbtest. Works on Linux
+    (SSH) and Windows (WinRM).
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

@@ -1,0 +1,519 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQMDDA
+--        Module Id#:150
+--       Command Set:15
+--          Filename:SNELL-IQMDDA-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:29/06/2005
+--              Time:12:00
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQMDDA-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQMDDA,
+    moduleIQMDDAMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQMDDACmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506291200Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQMDDAMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqmddaCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqmddaCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQMDDA 1 }
+
+	iqmddaCmdEntry OBJECT-TYPE
+		SYNTAX		IqmddaCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqmddaSlotIndex }
+		::= { iqmddaCmdTable 1 }
+
+	IqmddaCmdEntry ::=
+		SEQUENCE {
+			iqmddaSlotIndex
+				Unsigned32,
+			iqmddaErrorsCurrIPStatus
+				RollCallString,
+			iqmddaErrorsShowIPStats
+				INTEGER,
+			iqmddaErrorsResetStats
+				INTEGER,
+			iqmddaGPIGPI1Mode
+				INTEGER,
+			iqmddaGPIGPI1ModeInvertGPI1Output
+				INTEGER,
+			iqmddaGPIGPI1ModeInvertGPI1Input
+				INTEGER,
+			iqmddaGPIGPI1ModeGPI1InputStatus
+				RollCallString,
+			iqmddaGPIGPI2Mode
+				INTEGER,
+			iqmddaGPIGPI2ModeInvertGPI2Output
+				INTEGER,
+			iqmddaGPIGPI2ModeInvertGPI2Input
+				INTEGER,
+			iqmddaGPIGPI2ModeGPI2InputStatus
+				RollCallString,
+			iqmddaInputs
+				INTEGER,
+			iqmddaInputsNewInputName
+				RollCallString,
+			iqmddaInputsInputStatus
+				RollCallString,
+			iqmddaSetupLoggingLogInputLoss
+				INTEGER,
+			iqmddaMemoriesSaveToMem1
+				INTEGER,
+			iqmddaMemoriesSaveToMem2
+				INTEGER,
+			iqmddaMemoriesSaveToMem3
+				INTEGER,
+			iqmddaMemoriesSaveToMem4
+				INTEGER,
+			iqmddaMemoriesRetrieveMem1
+				INTEGER,
+			iqmddaMemoriesRetrieveMem2
+				INTEGER,
+			iqmddaMemoriesRetrieveMem3
+				INTEGER,
+			iqmddaMemoriesRetrieveMem4
+				INTEGER,
+			iqmddaSetupMemoriesDefaultConfig
+				INTEGER,
+			iqmddaSetupSoftwareVersion
+				RollCallString,
+			iqmddaSetupSerialNo
+				RollCallString,
+			iqmddaSetupRestart
+				INTEGER
+		}
+
+	iqmddaSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqmddaCmdEntry 0 }
+
+
+	iqmddaErrorsCurrIPStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Curr. I/P Status  cmdID= 29  format=   "
+		::= { iqmddaCmdEntry 29 }
+
+
+	iqmddaErrorsShowIPStats OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Show I/P Stats  cmdID= 35 "
+		::= { iqmddaCmdEntry 35 }
+
+
+	iqmddaErrorsResetStats OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Reset_Stats(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Reset Stats  cmdID= 41  value= 1  "
+		::= { iqmddaCmdEntry 41 }
+
+
+	iqmddaGPIGPI1Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI
+					Off  cmdID= 5  value= 0  
+					Output  cmdID= 5  value= 1  
+					Input  cmdID= 5  value= 2  "
+		::= { iqmddaCmdEntry 5 }
+
+
+	iqmddaGPIGPI1ModeInvertGPI1Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 1 Output  cmdID= 15 "
+		::= { iqmddaCmdEntry 15 }
+
+
+	iqmddaGPIGPI1ModeInvertGPI1Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 1 Input  cmdID= 16 "
+		::= { iqmddaCmdEntry 16 }
+
+
+	iqmddaGPIGPI1ModeGPI1InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPI
+					GPI1 Input Status  cmdID= 13  format=   "
+		::= { iqmddaCmdEntry 13 }
+
+
+	iqmddaGPIGPI2Mode OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Off(0),
+							val_Output(1),
+							val_Input(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+				 PAGE: - GPI
+					Off  cmdID= 6  value= 0  
+					Output  cmdID= 6  value= 1  
+					Input  cmdID= 6  value= 2  "
+		::= { iqmddaCmdEntry 6 }
+
+
+	iqmddaGPIGPI2ModeInvertGPI2Output OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 2 Output  cmdID= 17 "
+		::= { iqmddaCmdEntry 17 }
+
+
+	iqmddaGPIGPI2ModeInvertGPI2Input OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+				 PAGE: - GPI
+					Invert GPI 2 Input  cmdID= 18 "
+		::= { iqmddaCmdEntry 18 }
+
+
+	iqmddaGPIGPI2ModeGPI2InputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+				 PAGE: - GPI
+					GPI2 Input Status  cmdID= 14  format=   "
+		::= { iqmddaCmdEntry 14 }
+
+
+	iqmddaInputs OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Input_Non_Inv(0),
+							val_Input_Inverted(1),
+							val_GPI_I_P_1_Level(2),
+							val_GPI_I_P_2_Level(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Input (Non-Inv)  cmdID= 45  value= 0  
+					Input (Inverted)  cmdID= 45  value= 1  
+					GPI I/P 1 Level  cmdID= 45  value= 2  
+					GPI I/P 2 Level  cmdID= 45  value= 3  "
+		::= { iqmddaCmdEntry 45 }
+
+
+	iqmddaInputsNewInputName OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					New Input Name  cmdID= 9  "
+		::= { iqmddaCmdEntry 9 }
+
+
+	iqmddaInputsInputStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Input Status  cmdID= 11  format=   "
+		::= { iqmddaCmdEntry 11 }
+
+
+	iqmddaSetupLoggingLogInputLoss OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Log Input Loss  cmdID= 23 "
+		::= { iqmddaCmdEntry 23 }
+
+
+	iqmddaMemoriesSaveToMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #1  cmdID= 102  value= 1  "
+		::= { iqmddaCmdEntry 102 }
+
+
+	iqmddaMemoriesSaveToMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #2  cmdID= 103  value= 1  "
+		::= { iqmddaCmdEntry 103 }
+
+
+	iqmddaMemoriesSaveToMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #3  cmdID= 104  value= 1  "
+		::= { iqmddaCmdEntry 104 }
+
+
+	iqmddaMemoriesSaveToMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #4  cmdID= 105  value= 1  "
+		::= { iqmddaCmdEntry 105 }
+
+
+	iqmddaMemoriesRetrieveMem1 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_1(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #1  cmdID= 110  value= 1  "
+		::= { iqmddaCmdEntry 110 }
+
+
+	iqmddaMemoriesRetrieveMem2 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_2(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #2  cmdID= 111  value= 1  "
+		::= { iqmddaCmdEntry 111 }
+
+
+	iqmddaMemoriesRetrieveMem3 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_3(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #3  cmdID= 112  value= 1  "
+		::= { iqmddaCmdEntry 112 }
+
+
+	iqmddaMemoriesRetrieveMem4 OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Mem_4(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Mem #4  cmdID= 113  value= 1  "
+		::= { iqmddaCmdEntry 113 }
+
+
+	iqmddaSetupMemoriesDefaultConfig OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Default_Config(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Default Config  cmdID= 118  value= 1  "
+		::= { iqmddaCmdEntry 118 }
+
+
+	iqmddaSetupSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqmddaCmdEntry 2 }
+
+
+	iqmddaSetupSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqmddaCmdEntry 1 }
+
+
+	iqmddaSetupRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqmddaCmdEntry 4 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: S32120856
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: I/L
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.73.47.76
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.73.47.76
+-- Vary			: YES
+--
+-- Value(s)		: FAIL
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INV
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.73.78.86
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.73.78.86
+-- Vary			: YES
+--
+-- Value(s)		: OFF
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: Cur. IP Loss Cnt
+--
+-- MIB ref		: swCardEventLogSlotXX       .16.67.117.114.46.32.73.80.32.76.111.115.115.32.67.110.116
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.16.67.117.114.46.32.73.80.32.76.111.115.115.32.67.110.116
+-- Vary			: YES
+--
+-- Value(s)		: 0
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

@@ -51,6 +51,21 @@ type ServeOptions struct {
 	// 0–99 are production; 100+ are dev. Lower = higher priority.
 	Priority int
 
+	// PageLimitDefault overrides the Query API page size applied when
+	// a client sends no paging.limit. 0 keeps the implementation
+	// default (100, nmos-cpp parity). First-page-only controllers
+	// exist in the field; on plants larger than one page they silently
+	// lose every resource beyond it, and this is the operator's
+	// spec-legal lever.
+	PageLimitDefault int
+
+	// InstanceName overrides the DNS-SD instance label the registry
+	// announces under (default "dhs-nmos-registry"). Peers key stored
+	// server entries on this name, so republishing under a fresh name
+	// is the operator's lever when a peer has cached a stale or
+	// poisoned resolution for the old one.
+	InstanceName string
+
 	// DiscoveryMode picks the discovery transport: "mdns" (RFC 6762
 	// multicast), "unicast" (RFC 6763 §10 SRV/TXT lookup against a
 	// configured resolver), or "static" (no discovery — peers come
@@ -76,6 +91,23 @@ type ServeOptions struct {
 	// HeartbeatTimeout is how long a Node may go without heartbeats
 	// before the GC evicts it. Zero defaults to 12 s (IS-04 §6.1).
 	HeartbeatTimeout time.Duration
+
+	// AuthURL, when non-empty, is the BCP-003-02 Authorization Server
+	// base (scheme://host[:port]). The plugin then validates Bearer
+	// tokens on every protected request (IS-10 resource-server rules)
+	// and advertises api_auth=true.
+	AuthURL string
+
+	// ESTHost (host:port) + ESTLabel arm BCP-003-03 certificate
+	// provisioning; TLSCertFile/TLSKeyFile install a manual pair.
+	// Either way the plugin then serves HTTPS/WSS only and advertises
+	// api_proto=https (BCP-003-01). TLSDataDir is where provisioned
+	// material persists (empty = plugin default).
+	ESTHost     string
+	ESTLabel    string
+	TLSCertFile string
+	TLSKeyFile  string
+	TLSDataDir  string
 }
 
 // Stats is the standard counter set every Registry plugin exposes.

@@ -3,8 +3,36 @@ name: CI
 on:
   push:
     branches: [main]
+  # Manual trigger for dropped push events: GitHub occasionally fails to
+  # dispatch a workflow for a push (seen live 2026-09-02 — the v0.20.0
+  # release merge c12f9ec7 got zero runs; API total_count 0, status page
+  # all-operational). On main this re-runs the full verification AND the
+  # Release Please job, which recovers a missed release cut.
+  workflow_dispatch:
   pull_request:
     branches: [main]
+    # The release-please PR touches ONLY these two bot-owned files and is
+    # re-force-pushed on every merge to main; each force-push spawned a CI
+    # run that parked at action_required (bot-authored PR + workflow
+    # approval policy) — pure noise, never green (ADR-0029 revision
+    # 2026-08-19). Skipping the PR event for exactly these files kills
+    # that. Push-to-main verification is untouched: the release merge
+    # commit still gets its own complete run.
+    paths-ignore:
+      - CHANGELOG.md
+      - .release-please-manifest.json
+
+# One live run per ref: a new run on a ref supersedes the one still going on
+# it, whether it came from a push to a PR or a manual dispatch. Runs on main
+# are NEVER cancelled: every merge commit keeps its own complete verification,
+# and a cancelled main run would hide a real red.
+#
+# This used to cancel pull_request runs only, so dispatches piled up: 36 on one
+# branch ran to completion, each holding seven job slots, while nobody read any
+# but the last.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -15,19 +43,41 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        go: ["1.23"]
+        # Every OS on main, where each merge commit is verified in full.
+        # Everywhere else, Linux only: an iteration on a branch asks whether
+        # the change works, and the Cross-compile job below still builds it
+        # for every OS at Linux cost. Windows and macOS runners are what made
+        # a branch run expensive, and each one repeated what Linux had just
+        # proved.
+        os: ${{ fromJSON(github.ref == 'refs/heads/main' && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest"]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
         with:
-          go-version: ${{ matrix.go }}
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: Go mod tidy
         run: go mod tidy
@@ -38,74 +88,127 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # One pass, no retries (ADR-0029): the timing flakes that motivated
+      # the old 3-attempt loop were root-caused and fixed deterministically
+      # (acp2 waiter-death protocol, probel-sw02p pre-bound listener). A red
+      # here is a real problem in this commit.
+      # Linux measures coverage in the same pass. It used to run the whole
+      # suite twice, once for the race detector and once for the profile; the
+      # two flags compose, and statement coverage does not depend on the
+      # scheduler.
       - name: Unit tests
+        if: matrix.os != 'ubuntu-latest'
         run: go test -count=1 -race ./...
 
       - name: Unit tests (coverage)
         if: matrix.os == 'ubuntu-latest'
-        run: go test -count=1 -coverprofile=coverage.out ./...
+        run: go test -count=1 -race -coverprofile=coverage.out ./...
 
       # Per-package coverage floor for the gold-template connectors. Fails
       # the build if a package drops below its locked-in level (no-regression).
-      # Raise these as the tiered coverage push lands (see issues #539, #550).
+      # Computed from the single whole-repo profile above — no per-package
+      # re-runs, no retries, no union (ADR-0029): statement coverage is
+      # deterministic by test design (no racy select arms, injectable
+      # timings, pre-bound listeners). Package rows are selected by
+      # "^dhs/<pkg>/<file>.go:" so nested packages stay separate; a floor
+      # package with no rows at all is a hard failure (renamed package
+      # guard). On a miss the exact uncovered blocks are printed.
       - name: Coverage floor (acp1 + acp2 + emberplus)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e
-          # Concurrency packages (consumer/provider) have goroutine/timer
-          # branches whose statement coverage depends on scheduling, so a
-          # single run on a loaded CI runner can dip ~0.1% even though the
-          # code is genuinely 100%-coverable (verified repeatedly locally).
-          # Retry up to 3x and pass on the first run that meets the floor;
-          # a real regression fails all three. The bar is still a genuine
-          # 100% — this only stabilises the measurement of timing branches.
-          check() {
-            local pct
-            for attempt in 1 2 3; do
-              pct=$(go test -count=1 -cover "$1" | sed -n 's/.*coverage: \([0-9.]*\)%.*/\1/p')
-              printf '%s: %s%% (floor %s%%, attempt %s)\n' "$1" "$pct" "$2" "$attempt"
-              if awk "BEGIN{exit !(${pct:-0}+0 >= $2)}"; then return 0; fi
-            done
-            echo "::error::$1 coverage ${pct}% below floor $2% after 3 attempts"
-            exit 1
+          pkg_pct() {   # pkg_pct <pkg-path>  ->  "<pct> <rows>"
+            awk -v pkg="$1" '
+              BEGIN { re = "^dhs/" pkg "/[^/]+\\.go:" }
+              $0 !~ re { next }
+              { stmts[$1]=$2; if ($3+0>0) covered[$1]=1; rows++ }
+              END {
+                tot=0; cov=0
+                for (k in stmts) { tot+=stmts[k]; if (k in covered) cov+=stmts[k] }
+                if (tot==0) { print "0.0 0"; exit }
+                printf "%.1f %d\n", 100*cov/tot, rows
+              }
+            ' coverage.out
           }
-          check ./internal/acp1/codec 100
-          check ./internal/acp1/consumer 100
-          check ./internal/acp1/provider 100
-          check ./internal/acp2/codec 100
-          check ./internal/acp2/consumer 100
-          check ./internal/acp2/provider 100
-          check ./internal/emberplus/codec/ber 100
-          check ./internal/emberplus/codec/glow 100
-          check ./internal/emberplus/codec/matrix 100
-          check ./internal/emberplus/codec/s101 100
-          check ./internal/emberplus/consumer 100
-          check ./internal/emberplus/provider 100
-          check ./internal/probel-sw02p/codec 100
-          check ./internal/probel-sw02p/consumer 100
-          check ./internal/probel-sw02p/provider 100
-          check ./internal/probel-sw08p/codec 100
-          check ./internal/probel-sw08p/consumer 100
-          check ./internal/probel-sw08p/provider 100
-          check ./internal/tsl/codec 100
-          check ./internal/tsl/consumer 100
-          check ./internal/tsl/provider 100
-          check ./internal/osc/codec 100
-          check ./internal/osc/consumer 100
-          check ./internal/osc/provider 100
-          check ./internal/cerebrum-nb/codec 100
-          check ./internal/cerebrum-nb/codec/ws 100
-          check ./internal/cerebrum-nb/consumer 100
+          pkg_uncovered() {
+            awk -v pkg="$1" '
+              BEGIN { re = "^dhs/" pkg "/[^/]+\\.go:" }
+              $0 !~ re { next }
+              $2+0 == 0 { next }   # zero-statement blocks cannot affect the pct
+              { stmts[$1]=$2; if ($3+0>0) covered[$1]=1 }
+              END { for (k in stmts) if (!(k in covered)) print "    " k "  (" stmts[k] " stmt)" }
+            ' coverage.out | sort
+          }
+          fail=0
+          check() {
+            local pkg=$1 floor=$2 pct rows
+            read -r pct rows <<<"$(pkg_pct "$pkg")"
+            if [ "$rows" = "0" ]; then
+              echo "::error::$pkg has no rows in coverage.out (package renamed or untested?)"
+              fail=1
+              return
+            fi
+            printf '%s: %s%% (floor %s%%, %s blocks)\n' "$pkg" "$pct" "$floor" "$rows"
+            if ! awk "BEGIN{exit !(${pct:-0}+0 >= $floor)}"; then
+              echo "::error::$pkg coverage ${pct}% below floor $floor%"
+              echo "uncovered blocks (cover these deterministically):"
+              pkg_uncovered "$pkg"
+              fail=1
+            fi
+          }
+          check internal/acp1/codec 100
+          check internal/acp1/consumer 100
+          check internal/acp1/provider 100
+          check internal/acp2/codec 100
+          check internal/acp2/consumer 100
+          check internal/acp2/provider 100
+          check internal/emberplus/codec/ber 100
+          check internal/emberplus/codec/glow 100
+          check internal/emberplus/codec/matrix 100
+          check internal/emberplus/codec/s101 100
+          check internal/emberplus/consumer 100
+          check internal/emberplus/provider 100
+          check internal/probel-sw02p/codec 100
+          check internal/probel-sw02p/session 100
+          check internal/probel-sw02p/consumer 100
+          check internal/probel-sw02p/provider 100
+          check internal/probel-sw08p/codec 100
+          check internal/probel-sw08p/session 100
+          check internal/probel-sw08p/consumer 100
+          check internal/probel-sw08p/provider 100
+          check internal/tsl/codec 100
+          check internal/tsl/consumer 100
+          check internal/tsl/provider 100
+          check internal/osc/codec 100
+          check internal/osc/consumer 100
+          check internal/osc/provider 100
+          check internal/snell-rollcall/codec 100
+          check internal/snell-rollcall/codec/dtp 100
+          check internal/snell-rollcall/codec/router 100
+          check internal/snell-rollcall/session 100
+          check internal/snell-rollcall/consumer 100
+          check internal/snell-rollcall/provider 100
+          check internal/cerebrum-nb/codec 100
+          check internal/transport/ws 100
+          check internal/transport/http 100
+          check internal/auth 100
+          check internal/plugin 100
+          check internal/cerebrum-nb/consumer 100
+          exit $fail
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
 
   test-rhel:
     name: Test (${{ matrix.distro }})
+    # The RHEL-family containers run on main only, with the full OS matrix:
+    # they re-run the Linux suite in another userland, which a branch
+    # iteration does not need to know before merge.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -120,7 +223,7 @@ jobs:
       - name: Install git + git-lfs
         run: dnf install -y git git-lfs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
@@ -130,9 +233,26 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/setup-go@v5
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
         with:
-          go-version: "1.23"
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: Build
         run: go build -buildvcs=false ./...
@@ -140,6 +260,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # One pass, no retries (ADR-0029). The live case that motivated the
+      # old 3-attempt loop (TestRunDiagnostics_ConnectionClosed on rocky9,
+      # 2026-08-17) was root-caused: a select racing a ready reply channel
+      # against a closed done channel — fixed with the deterministic
+      # waiter-death protocol in internal/acp2/consumer.
       - name: Unit tests
         run: go test -count=1 ./...
 
@@ -147,37 +272,100 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
         with:
-          go-version: "1.23"
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.1.6
+
+      # ADR-0005 rule 2. docs/adr/0005-deps.json has named this gate in its
+      # own policy block since it was written; the script did not exist, so
+      # rule 1 — "go.mod direct deps must match exactly" — was never checked
+      # and the two drifted.
+      #
+      # NON-BLOCKING on purpose, and temporarily. It currently reports one
+      # real, pre-existing violation (prometheus/client_golang is a direct
+      # dependency that is in no manifest), and that is an owner decision
+      # under ADR-0014's exception process, not something a new gate should
+      # decide by turning main red. Flip continue-on-error off the moment
+      # that dependency is either recorded as an exception or removed —
+      # a gate nobody can fail is not a gate.
+      - name: deps match the ADR-0005 manifest
+        continue-on-error: true
+        run: bash tools/check-deps.sh
+
+      # docs/cli.md is GENERATED from the binary's own -h output
+      # (tools/gencli); a verb or flag changed without regenerating it
+      # fails here rather than rotting silently.
+      - name: docs/cli.md is current
+        run: |
+          go build -o /tmp/dhs ./cmd/dhs
+          go run ./tools/gencli -dhs /tmp/dhs > /tmp/cli.md
+          diff -u docs/cli.md /tmp/cli.md
 
   build-all:
     name: Cross-compile
     runs-on: ubuntu-latest
     needs: [test, test-rhel, lint]
+    # Runs when test-rhel was skipped as well as when it passed. A job whose
+    # dependency is skipped is skipped too by default, which would drop the
+    # one job that still builds every OS on a branch.
+    if: ${{ !failure() && !cancelled() }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # LFS disabled (free plan quota hit). CI jobs only need Go
           # source to build/test/lint; LFS'd assets/** PDFs and vendor
           # binaries are not read during the build.
           lfs: false
 
-      - uses: actions/setup-go@v5
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
         with:
-          go-version: "1.23"
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: Build all targets
         run: |
@@ -198,7 +386,157 @@ jobs:
           done
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: dist/
+
+  # ---- Release (push-to-main only, AFTER everything is green) -------------
+  # One workflow = one action run per commit, and releasing on red is
+  # structurally impossible: release-please bookkeeping (and the version
+  # tag it eventually creates when its release PR merges) only runs behind
+  # the full test/lint/cross-compile gate. Formerly a separate release.yml
+  # sharing the push:main trigger — every merge showed two same-titled runs
+  # and the release path never waited for CI (#690).
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    needs: [test, test-rhel, lint, build-all]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          release-type: go
+          # The svc-rune service token (org convention, same as
+          # ansible-platform) — NOT anyone's personal PAT. GITHUB_TOKEN
+          # began 403ing on create-a-release on 2026-09-02 despite
+          # logged contents:write (org/platform-side tightening; repos
+          # on the rune token were untouched). Falls back to
+          # GITHUB_TOKEN so PR bookkeeping still works if the secret
+          # is ever absent.
+          token: ${{ secrets.RUNE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
+  build-release:
+    name: Build release binaries
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Restore the Go module/build cache BEFORE Go runs: Go >= 1.23 drops
+      # golang.org/x/telemetry/config into GOMODCACHE on first go env, and
+      # setup-go's own restore (which runs after that) then dies with
+      # 'tar: File exists' on every job (#794). Per-job (+matrix) keys stop the
+      # 'Unable to reserve cache' races between jobs sharing one key.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~\AppData\Local\go-build
+          key: go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}${{ matrix.distro }}-
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      # Embed the Windows .exe version resource (CompanyName / ProductName /
+      # FileVersion / LegalCopyright shown in the Properties dialog) from
+      # cmd/dhs/winres/winres.json. go-winres writes a GOOS=windows .syso that
+      # `go build` links automatically for windows targets only; other GOOS
+      # builds ignore it. Best-effort — a tooling hiccup must never block a
+      # release, the .exe just ships without the resource.
+      - name: Embed Windows version resource
+        run: |
+          VERSION=${{ needs.release-please.outputs.tag_name }}
+          NUMVER=${VERSION#v}
+          go install github.com/tc-hib/go-winres@v0.3.3 || true
+          if command -v go-winres >/dev/null 2>&1; then
+            go-winres make --in cmd/dhs/winres/winres.json \
+              --product-version "${NUMVER}" --file-version "${NUMVER}" \
+              --out cmd/dhs/rsrc || echo "go-winres failed — windows .exe will lack the version resource"
+          else
+            echo "go-winres not installed — windows .exe will lack the version resource"
+          fi
+
+      - name: Build all targets
+        run: |
+          VERSION=${{ needs.release-please.outputs.tag_name }}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+
+          for GOOS in linux darwin windows; do
+            for GOARCH in amd64 arm64; do
+              if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then continue; fi
+              EXT=""; if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+              DIR="dist/dhs_${GOOS}_${GOARCH}"
+              mkdir -p "$DIR"
+              GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
+                -o "${DIR}/dhs${EXT}" ./cmd/dhs
+            done
+          done
+
+      # Authenticode-sign the Windows binaries. Gated on the WINDOWS_CERT_PFX_B64
+      # secret (base64-encoded .pfx) + WINDOWS_CERT_PASSWORD — skipped cleanly
+      # when unset so releases work without a cert, and switch on the moment the
+      # secrets are added. Uses osslsigncode (Linux-runnable).
+      - name: Sign Windows binaries
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          PFX_PASS: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if [ -z "${PFX_B64}" ]; then
+            echo "WINDOWS_CERT_PFX_B64 not set — skipping Authenticode signing"
+            exit 0
+          fi
+          sudo apt-get update && sudo apt-get install -y osslsigncode
+          echo "${PFX_B64}" | base64 -d > /tmp/cert.pfx
+          for exe in dist/dhs_windows_*/dhs.exe; do
+            osslsigncode sign -pkcs12 /tmp/cert.pfx -pass "${PFX_PASS}" \
+              -n "Device Hub Systems" -i https://www.by-systems.be \
+              -t http://timestamp.digicert.com -in "$exe" -out "${exe}.signed"
+            mv "${exe}.signed" "$exe"
+          done
+          rm -f /tmp/cert.pfx
+
+      - name: Package archives
+        run: |
+          cd dist
+          for d in dhs_linux_* dhs_darwin_*; do
+            tar -czf "${d}.tar.gz" "$d"
+          done
+          for d in dhs_windows_*; do
+            zip -qr "${d}.zip" "$d"
+          done
+
+      # Provenance: a SHA-256 manifest of every artifact so downloaders can
+      # verify integrity (and a basis for future SLSA attestation).
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS.txt

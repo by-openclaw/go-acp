@@ -1,0 +1,1830 @@
+
+
+-- Generated file, do not edit
+--
+-- Format: MIBv2
+-- Product: machhd3
+-- ProductID: 561
+-- Software: 3.3a.5
+
+-- CreationDate: Mon Aug 16 11:27:30 2010
+
+
+
+SNELL-MACH-HD3-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, NOTIFICATION-TYPE, MODULE-IDENTITY, OBJECT-IDENTITY,
+	Counter32, Gauge32, IpAddress, Unsigned32, Integer32
+		FROM SNMPv2-SMI
+
+	OBJECT-GROUP, MODULE-COMPLIANCE, AGENT-CAPABILITIES
+		FROM SNMPv2-CONF
+
+	RollCallString
+		FROM SNELL-WILCOX-TC
+
+	conversionMACHHD3, conversionMACHHD3Mib
+		FROM SNELL-WILCOX-PRODUCT-REG;
+
+
+-- ********************************
+-- Notifications
+
+	machhd3NoteEntries OBJECT IDENTIFIER ::= { conversionMACHHD3 0 }
+
+	machhd3TrapInputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusInputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10001 }
+
+	machhd3TrapOutputStandardStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusOutputStandard }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10002 }
+
+	machhd3TrapReferenceStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusReference }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10003 }
+
+	machhd3TrapInputSourceStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusInputSource }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10004 }
+
+	machhd3TrapSDIAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusSdiAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10005 }
+
+	machhd3TrapAESAudioPresent NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusAesAudioPresent }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10006 }
+
+	machhd3TrapGenlockModeStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusGenlockMode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10007 }
+
+	machhd3TrapClosedCaptionStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusClosedCaptionStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10008 }
+
+	machhd3TrapTimecodeStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusTimecode }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10009 }
+
+	machhd3TrapInputSignalling NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusInputSignalling }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10010 }
+
+	machhd3TrapOutputSMPTE NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusOutputSmpte }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10011 }
+
+	machhd3TrapOutputL23 NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusOutputL23 }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10012 }
+
+	machhd3TrapOutputVI NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusOutputVi }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10013 }
+
+	machhd3TrapPowerSupplyStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusPowerSupplyStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10014 }
+
+	machhd3TrapSecondaryPSUStatus NOTIFICATION-TYPE
+		OBJECTS      { machhd3StatusSecondaryPsuStatus }
+		STATUS       current
+		DESCRIPTION  "
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3NoteEntries 10015 }
+
+
+-- ********************************
+-- Control
+
+	machhd3CtrlEntries OBJECT IDENTIFIER ::= { conversionMACHHD3 1 }
+
+	machhd3AudioAdcAHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5071 }
+
+	machhd3AudioAdcBHeadroom OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5072 }
+
+	machhd3AudioAesSource OBJECT-TYPE
+		SYNTAX		INTEGER { balanced(0), unbalanced(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Balanced'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5293 }
+
+	machhd3VideoAnalogAcc OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5279 }
+
+	machhd3VideoAnalogCti OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5280 }
+
+	machhd3VideoAnalogNr OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5281 }
+
+	machhd3VideoAnalogPedestalIn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5277 }
+
+	machhd3AudioAudioDelay OBJECT-TYPE
+		SYNTAX		Integer32 (-40..200)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-40..200'
+			units='ms'
+			preset='0'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5433 }
+
+	machhd3AudioAAudioInALeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch1'
+			template='Audio A'
+		"
+		::= { machhd3CtrlEntries 5075 }
+
+	machhd3AudioAAudioInARight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch2'
+			template='Audio A'
+		"
+		::= { machhd3CtrlEntries 5076 }
+
+	machhd3AudioBAudioInBLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch3'
+			template='Audio B'
+		"
+		::= { machhd3CtrlEntries 5079 }
+
+	machhd3AudioBAudioInBRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch4'
+			template='Audio B'
+		"
+		::= { machhd3CtrlEntries 5080 }
+
+	machhd3AudioCAudioInCLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch5'
+			template='Audio C'
+		"
+		::= { machhd3CtrlEntries 5083 }
+
+	machhd3AudioCAudioInCRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch6'
+			template='Audio C'
+		"
+		::= { machhd3CtrlEntries 5084 }
+
+	machhd3AudioDAudioInDLeft OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch7'
+			template='Audio D'
+		"
+		::= { machhd3CtrlEntries 5087 }
+
+	machhd3AudioDAudioInDRight OBJECT-TYPE
+		SYNTAX		INTEGER { deembedch1(0), deembedch2(1), deembedch3(2), deembedch4(3), deembedch5(4), deembedch6(5), deembedch7(6), deembedch8(7), deembedch9(8), deembedch10(9), deembedch11(10), deembedch12(11), deembedch13(12), deembedch14(13), deembedch15(14), deembedch16(15), analogaleft(16), analogaright(17), analogbleft(18), analogbright(19), aesaleft(20), aesaright(21), aesbleft(22), aesbright(23), tone(24), silence(25) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Deembedch8'
+			template='Audio D'
+		"
+		::= { machhd3CtrlEntries 5088 }
+
+	machhd3ImageAutoZoom OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5091 }
+
+	machhd3VideoBlackLevel OBJECT-TYPE
+		SYNTAX		Integer32 (-125..125)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-100.0..100.0'
+			stepsize='0.8'
+			units='mV'
+			preset='0.0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5006 }
+
+	machhd3OutputCea608ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5288 }
+
+	machhd3OutputCea708ClosedCaption OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5289 }
+
+	machhd3OutputCea708OutputLine OBJECT-TYPE
+		SYNTAX		Integer32 (8..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='8..20'
+			preset='9'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5290 }
+
+	machhd3VideoCvbsOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { cvbs(0), yc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='CVBS'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5283 }
+
+	machhd3VideoCvbsOutStandard OBJECT-TYPE
+		SYNTAX		INTEGER { palntsc(0), palnpalm(1), palntscj(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='PALNTSC'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5282 }
+
+	machhd3VideoCombFilter OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5278 }
+
+	machhd3SnmpCommunity OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5364 }
+
+	machhd3SnmpContact OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5473 }
+
+	machhd3VideoContrast OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5092 }
+
+	machhd3AudioDac1Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5093 }
+
+	machhd3AudioDac2Level OBJECT-TYPE
+		SYNTAX		Integer32 (24..48)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='12.0..24.0'
+			stepsize='0.5'
+			units='dBu'
+			preset='18.0'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5094 }
+
+	machhd3InitialSetupDhcp OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5095 }
+
+	machhd3InitialSetupDefaultIpAdd OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.100'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5096 }
+
+	machhd3InitialSetupDefaultGateway OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='192.168.0.200'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5097 }
+
+	machhd3AudioEmbedGrpAb OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair1'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5098 }
+
+	machhd3AudioEmbedGrpCd OBJECT-TYPE
+		SYNTAX		INTEGER { pair1(0), pair2(1), pair3(2), pair4(3), off(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='pair2'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5099 }
+
+	machhd3ImageEnhancedMotion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5319 }
+
+	machhd3ImageEnhancedStill OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5318 }
+
+	machhd3InitialSetupFactoryDefaults OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5335 }
+
+	machhd3Signalling2Force2016 OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd8v4x3(8), afd9v4x3(9), afd10v4x3(10), afd11v4x3(11), afd12v4x3(12), afd13v4x3(13), afd14v4x3(14), afd15v4x3(15), afd0v16x9(16), afd1v16x9(17), afd2v16x9(18), afd3v16x9(19), afd4v16x9(20), afd5v16x9(21), afd6v16x9(22), afd7v16x9(23), afd8v16x9(24), afd9v16x9(25), afd10v16x9(26), afd11v16x9(27), afd12v16x9(28), afd13v16x9(29), afd14v16x9(30), afd15v16x9(31) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { machhd3CtrlEntries 5100 }
+
+	machhd3Signalling2ForceAfd OBJECT-TYPE
+		SYNTAX		INTEGER { afd0v4x3(0), afd1v4x3(1), afd2v4x3(2), afd3v4x3(3), afd4v4x3(4), afd5v4x3(5), afd6v4x3(6), afd7v4x3(7), afd0v16x9(8), afd1v16x9(9), afd2v16x9(10), afd3v16x9(11), afd4v16x9(12), afd5v16x9(13), afd6v16x9(14), afd7v16x9(15) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='afd0v4x3'
+			template='Signalling 2'
+		"
+		::= { machhd3CtrlEntries 5101 }
+
+	machhd3Signalling2ForceEtsi OBJECT-TYPE
+		SYNTAX		INTEGER { ffv4x3(0), centrev14x9(1), topv14x9(2), centrev16x9(3), topv16x9(4), centrevgt16x9(5), spv4x3v14x9(6), ffv16x9(7) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='ffv4x3'
+			template='Signalling 2'
+		"
+		::= { machhd3CtrlEntries 5102 }
+
+	machhd3Signalling2ForceRp186 OBJECT-TYPE
+		SYNTAX		INTEGER { v4x3(0), v16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v4x3'
+			template='Signalling 2'
+		"
+		::= { machhd3CtrlEntries 5103 }
+
+	machhd3ImageFreeze OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5012 }
+
+	machhd3AudioAGainPairA OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio A'
+		"
+		::= { machhd3CtrlEntries 5078 }
+
+	machhd3AudioBGainPairB OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio B'
+		"
+		::= { machhd3CtrlEntries 5082 }
+
+	machhd3AudioCGainPairC OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio C'
+		"
+		::= { machhd3CtrlEntries 5086 }
+
+	machhd3AudioDGainPairD OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-18.0..18.0'
+			stepsize='0.1'
+			units='dB'
+			preset='0.0'
+			template='Audio D'
+		"
+		::= { machhd3CtrlEntries 5090 }
+
+	machhd3VideoYGamma OBJECT-TYPE
+		SYNTAX		Integer32 (4..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0.4..1.7'
+			stepsize='0.1'
+			preset='1.0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5104 }
+
+	machhd3OutputGenlock OBJECT-TYPE
+		SYNTAX		INTEGER { referencelock(0), inputlock(1), freerun(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Freerun'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5105 }
+
+	machhd3EnhancerHDetail OBJECT-TYPE
+		SYNTAX		INTEGER { soft2(0), soft1(1), normal(2), sharp1(3), sharp2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5309 }
+
+	machhd3EnhancerHEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5295 }
+
+	machhd3EnhancerHFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5296 }
+
+	machhd3EnhancerHGain OBJECT-TYPE
+		SYNTAX		Integer32 (0..192)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..192'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5298 }
+
+	machhd3EnhancerHNoiseRejection OBJECT-TYPE
+		SYNTAX		Integer32 (0..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..100'
+			units='%'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5299 }
+
+	machhd3OutputHPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-1320..1320)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-1320..1320'
+			units='pixels'
+			preset='0'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5291 }
+
+	machhd3EnhancerHPresets OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2), super(3), custom(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5297 }
+
+	machhd3EnhancerHSharpness OBJECT-TYPE
+		SYNTAX		INTEGER { low2(0), low1(1), normal(2), high1(3), high2(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5310 }
+
+	machhd3TimecodeHdTimecodeSource OBJECT-TYPE
+		SYNTAX		INTEGER { embeddedltc(0), embeddedvitc(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='EmbeddedLTC'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5326 }
+
+	machhd3Signalling1InSignallingsd OBJECT-TYPE
+		SYNTAX		INTEGER { smpte2016(0), vismpte(1), viafd(2), l23afd(3), l23etsi(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE2016'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5111 }
+
+	machhd3VideoInputSelect OBJECT-TYPE
+		SYNTAX		INTEGER { sdia(0), sdib(1), cvbsa(2), cvbsb(3), cvbsc(4), yc(5), ypbpr(6) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SDIA'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5110 }
+
+	machhd3Signalling1L23ForceBits OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5113 }
+
+	machhd3Signalling1L23InLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5114 }
+
+	machhd3Signalling1L23Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5115 }
+
+	machhd3Signalling1L23OutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { afd(0), etsi(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='AFD'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5116 }
+
+	machhd3Signalling1L23OutLine OBJECT-TYPE
+		SYNTAX		Integer32 (10..23)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='10..23'
+			preset='23'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5117 }
+
+	machhd3Signalling1L23UserBits OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5118 }
+
+	machhd3VideoLegaliser OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5321 }
+
+	machhd3SnmpLocation OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5474 }
+
+	machhd3TimecodeManualTrigger OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5330 }
+
+	machhd3ImageManualZoom OBJECT-TYPE
+		SYNTAX		Integer32 (80..120)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='80..120'
+			units='%'
+			preset='100'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5120 }
+
+	machhd3UserMemoryMemClear OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { machhd3CtrlEntries 5361 }
+
+	machhd3UserMemoryMemSave OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='User Memory'
+		"
+		::= { machhd3CtrlEntries 5360 }
+
+	machhd3UserMemoryMemoryRecall OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { machhd3CtrlEntries 5317 }
+
+	machhd3ImageMotionProcess OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5275 }
+
+	machhd3VideoNtscHue OBJECT-TYPE
+		SYNTAX		Integer32 (-180..180)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-180..180'
+			units='deg'
+			preset='0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5276 }
+
+	machhd3InitialSetupIpNetMask OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='255.255.255.0'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5121 }
+
+	machhd3OutputOutputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { v625i(0), v525i(1), v720p50(2), v720p59(3), v1080i50(4), v1080i59(5) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='v625i'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5122 }
+
+	machhd3AudioAPairANonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio A'
+		"
+		::= { machhd3CtrlEntries 5284 }
+
+	machhd3AudioBPairBNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio B'
+		"
+		::= { machhd3CtrlEntries 5285 }
+
+	machhd3AudioCPairCNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio C'
+		"
+		::= { machhd3CtrlEntries 5286 }
+
+	machhd3AudioDPairDNonPcm OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Audio D'
+		"
+		::= { machhd3CtrlEntries 5287 }
+
+	machhd3AudioAPairRoutingA OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio A'
+		"
+		::= { machhd3CtrlEntries 5077 }
+
+	machhd3AudioBPairRoutingB OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio B'
+		"
+		::= { machhd3CtrlEntries 5081 }
+
+	machhd3AudioCPairRoutingC OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio C'
+		"
+		::= { machhd3CtrlEntries 5085 }
+
+	machhd3AudioDPairRoutingD OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Audio D'
+		"
+		::= { machhd3CtrlEntries 5089 }
+
+	machhd3ImagePattern OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), ramp(1), bars(2), black(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5127 }
+
+	machhd3SnmpPort OBJECT-TYPE
+		SYNTAX		Integer32 (0..2047)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..2047'
+			preset='161'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5471 }
+
+	machhd3TimecodePresetTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5334 }
+
+	machhd3SnmpResendTraps OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5472 }
+
+	machhd3InitialSetupUnitReset OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5129 }
+
+	machhd3TimecodeSd525InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (11..17)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='11..17'
+			preset='14'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5331 }
+
+	machhd3TimecodeSd625InsertionLine OBJECT-TYPE
+		SYNTAX		Integer32 (7..20)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='7..20'
+			preset='19'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5332 }
+
+	machhd3ImageSdHalfLineBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5274 }
+
+	machhd3ImageSdInputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), lbv16x9(1), anv16x9(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5130 }
+
+	machhd3TimecodeSdInsertion OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5333 }
+
+	machhd3ImageSdOutputFormat OBJECT-TYPE
+		SYNTAX		INTEGER { normalv4x3(0), anv16x9(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='normalv4x3'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5131 }
+
+	machhd3Signalling1Smpte2016Out OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5134 }
+
+	machhd3SnmpSnmpEnable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5470 }
+
+	machhd3ImageSafeAreaMarks OBJECT-TYPE
+		SYNTAX		INTEGER { off(0), v16x9(1), v4x3(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Off'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5135 }
+
+	machhd3VideoColourSaturation OBJECT-TYPE
+		SYNTAX		Integer32 (-30..30)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-6.0..6.0'
+			stepsize='0.2'
+			units='dB'
+			preset='0.0'
+			template='Video'
+		"
+		::= { machhd3CtrlEntries 5136 }
+
+	machhd3ImageConvertScaling OBJECT-TYPE
+		SYNTAX		INTEGER { fittowidth(0), v14x9(1), fittoheight(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Fittowidth'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5137 }
+
+	machhd3InitialSetupSelect OBJECT-TYPE
+		SYNTAX		INTEGER { ready(0), trigger(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='event button'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5325 }
+
+	machhd3ImageStillProcess OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5312 }
+
+	machhd3ImageSyncMode OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5138 }
+
+	machhd3TimecodeTimecodeMode OBJECT-TYPE
+		SYNTAX		INTEGER { inputfollow(0), generate(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Inputfollow'
+			template='Timecode'
+		"
+		::= { machhd3CtrlEntries 5327 }
+
+	machhd3AudioToneFrequency OBJECT-TYPE
+		SYNTAX		Integer32 (1..100)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='100..10000'
+			stepsize='100'
+			units='Hz'
+			preset='1000'
+			template='Audio'
+		"
+		::= { machhd3CtrlEntries 5139 }
+
+	machhd3SnmpTrapAddress1 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5481 }
+
+	machhd3SnmpTrapAddress2 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5483 }
+
+	machhd3SnmpTrapAddress3 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5485 }
+
+	machhd3SnmpTrapAddress4 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='String'
+			preset='0.0.0.0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5487 }
+
+	machhd3SnmpTrapsEnable1 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5482 }
+
+	machhd3SnmpTrapsEnable2 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5484 }
+
+	machhd3SnmpTrapsEnable3 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5486 }
+
+	machhd3SnmpTrapsEnable4 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='SNMP'
+		"
+		::= { machhd3CtrlEntries 5488 }
+
+	machhd3ImageUnknownIsManual OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5140 }
+
+	machhd3ImageUseSignalling OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5141 }
+
+	machhd3UserMemoryUserMemNameEditor OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Editable string'
+			template='User Memory'
+		"
+		::= { machhd3CtrlEntries 5342 }
+
+	machhd3UserMemoryUserMemSelect OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='User Memory'
+		"
+		::= { machhd3CtrlEntries 5359 }
+
+	machhd3EnhancerVEnhance OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5300 }
+
+	machhd3EnhancerVFrequency OBJECT-TYPE
+		SYNTAX		INTEGER { low(0), medium(1), high(2) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Low'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5301 }
+
+	machhd3EnhancerVLevel OBJECT-TYPE
+		SYNTAX		INTEGER { soft(0), normal(1), sharp1(2), sharp2(3), sharp3(4) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Normal'
+			template='Enhancer'
+		"
+		::= { machhd3CtrlEntries 5302 }
+
+	machhd3OutputVPhase OBJECT-TYPE
+		SYNTAX		Integer32 (-563..562)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='-563..562'
+			units='lines'
+			preset='0'
+			template='Output'
+		"
+		::= { machhd3CtrlEntries 5292 }
+
+	machhd3ImageVancBlank OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='0'
+			template='Image'
+		"
+		::= { machhd3CtrlEntries 5320 }
+
+	machhd3Signalling1ViOut OBJECT-TYPE
+		SYNTAX		INTEGER { auto(0), pass(1), force(2), delete(3) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='Auto'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5142 }
+
+	machhd3Signalling1ViOutFormat OBJECT-TYPE
+		SYNTAX		INTEGER { smpte(0), afd(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Radiobutton list'
+			preset='SMPTE'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5143 }
+
+	machhd3Signalling1ViPassData OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Checkbox'
+			preset='1'
+			template='Signalling 1'
+		"
+		::= { machhd3CtrlEntries 5144 }
+
+	machhd3InitialSetupVersionSelection OBJECT-TYPE
+		SYNTAX		Integer32 (0..15)
+		MAX-ACCESS	read-write
+		STATUS		current
+		DESCRIPTION	"
+			style='Numeric control'
+			range='0..15'
+			preset='0'
+			template='Initial Setup'
+		"
+		::= { machhd3CtrlEntries 5303 }
+
+
+-- ********************************
+-- Status
+
+	machhd3StatEntries OBJECT IDENTIFIER ::= { conversionMACHHD3 2 }
+
+	machhd3StatusAesAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5073 }
+
+	machhd3StatusClosedCaptionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5313 }
+
+	machhd3InitialSetupCodeVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { machhd3StatEntries 5323 }
+
+	machhd3InitialSetupFlashDirectory OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { machhd3StatEntries 5322 }
+
+	machhd3StatusGenlockMode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5106 }
+
+	machhd3StatusInputSource OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5109 }
+
+	machhd3StatusInputSignalling OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5145 }
+
+	machhd3StatusInputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5112 }
+
+	machhd3UserMemoryLastRecalled OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { machhd3StatEntries 5362 }
+
+	machhd3StatusOutputL23 OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5123 }
+
+	machhd3StatusOutputSmpte OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5124 }
+
+	machhd3StatusOutputVi OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5125 }
+
+	machhd3StatusOutputStandard OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5126 }
+
+	machhd3TimecodeOutputTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Timecode'
+		"
+		::= { machhd3StatEntries 5328 }
+
+	machhd3StatusPowerSupplyStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5294 }
+
+	machhd3StatusReference OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5128 }
+
+	machhd3StatusSdiAudioPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5133 }
+
+	machhd3StatusSecondaryPsuStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5311 }
+
+	machhd3StatusTimecode OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Status'
+		"
+		::= { machhd3StatEntries 5329 }
+
+	machhd3UserMemoryUserMemoryPresent OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='User Memory'
+		"
+		::= { machhd3StatEntries 5314 }
+
+	machhd3InitialSetupVersionStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION	"
+			style='ReadOnly string'
+			template='Initial Setup'
+		"
+		::= { machhd3StatEntries 5324 }
+
+
+END

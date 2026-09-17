@@ -12,13 +12,13 @@ import (
 	"dhs/internal/probel-sw08p/codec"
 )
 
-// TestComplianceProfileNilBeforeConnect: accessing ComplianceProfile on a
-// fresh plugin returns nil (the session profile is installed at Connect
-// time).
-func TestComplianceProfileNilBeforeConnect(t *testing.T) {
+// TestComplianceProfileExistsBeforeConnect: the profile is connector-scoped
+// and available immediately, so a deviation can never be dropped for want of
+// a Connect, and callers need no nil check.
+func TestComplianceProfileExistsBeforeConnect(t *testing.T) {
 	p := &Plugin{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	if p.ComplianceProfile() != nil {
-		t.Error("ComplianceProfile() = non-nil; want nil before Connect")
+	if p.ComplianceProfile() == nil {
+		t.Error("ComplianceProfile() = nil; it must never be")
 	}
 }
 

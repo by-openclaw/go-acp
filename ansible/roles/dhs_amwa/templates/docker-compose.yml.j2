@@ -1,0 +1,110 @@
+# {{ ansible_managed }}
+#
+# The AMWA reference stack. Rendered by ansible/roles/dhs_amwa — edit
+# the role, never this file.
+#
+# NETWORKING: one user-defined bridge, not the macvlan easy-nmos ships.
+#
+# easy-nmos gives every container a LAN address on a macvlan over the
+# host NIC, which is the right answer on bare metal: mDNS reaches the
+# whole plant. The tooling host is an unprivileged LXC and cannot create
+# a macvlan over its own eth0.
+#
+# A shared bridge is not a workaround here. Multicast flows between
+# containers on one bridge, so DNS-SD discovery works among the
+# registry, the node, the testing tool and any dhs container joined to
+# it — which is the population every IS-04 discovery test cares about.
+# The harness that produced our first passing IS-04-01 mDNS rounds used
+# exactly this shape. What it does NOT do is advertise onto the lab
+# VLAN; a dhs instance running outside Docker reaches these services by
+# address, over the published ports below, in the spec's unicast mode
+# (Mode B, internal/amwa/CLAUDE.md quirk 1).
+
+name: {{ dhs_amwa_project }}
+
+services:
+  # ---------------------------------------------------------------
+  # Reference Registration + Query API (AMWA nmos-cpp).
+  # This is what our consumer is measured against: when dhs export
+  # disagrees with a peer, this settles which side is wrong.
+  # ---------------------------------------------------------------
+  nmos-registry:
+    image: {{ dhs_amwa_image_nmos_cpp }}
+    container_name: nmos-registry
+    hostname: nmos-registry
+    environment:
+      RUN_NODE: "FALSE"
+    volumes:
+      - ./registry.json:/home/registry.json:ro
+    networks:
+      nmos: {}
+    ports:
+      - "{{ dhs_amwa_port_registry_http }}:{{ dhs_amwa_port_registry_http }}"
+      - "{{ dhs_amwa_port_registry_ws }}:{{ dhs_amwa_port_registry_ws }}"
+      - "{{ dhs_amwa_port_registry_mqtt }}:1883"
+    restart: {{ dhs_amwa_restart_policy }}
+
+  # ---------------------------------------------------------------
+  # Reference Node (AMWA nmos-cpp), registering with the above.
+  # Gives our controller a spec-correct Node API and IS-05 surface to
+  # drive, so `dhs consumer nmos connect` can be proven against
+  # something other than our own provider.
+  # ---------------------------------------------------------------
+  nmos-virtnode:
+    image: {{ dhs_amwa_image_nmos_cpp }}
+    container_name: nmos-virtnode
+    hostname: nmos-virtnode
+    environment:
+      RUN_NODE: "TRUE"
+    volumes:
+      - ./node.json:/home/node.json:ro
+    networks:
+      nmos: {}
+    ports:
+      - "{{ dhs_amwa_port_node_http }}:{{ dhs_amwa_port_node_http }}"
+      - "{{ dhs_amwa_port_node_ws }}:{{ dhs_amwa_port_node_ws }}"
+    depends_on:
+      - nmos-registry
+    restart: {{ dhs_amwa_restart_policy }}
+
+  # ---------------------------------------------------------------
+  # The AMWA NMOS Testing tool — the arbiter for OUR implementations.
+  #
+  # The image's default CMD runs the Testing Façade (the semi-automatic
+  # controller harness). We want nmos-test.py, which serves the web UI
+  # on 5000 AND the POST /api endpoint the conformance play drives.
+  #
+  # dbus + avahi first: the tool's own DNS-SD tests need a working mDNS
+  # responder inside the container, and the cascade-timing rounds
+  # (test_05/15/16) are the ones that expose whether discovery is
+  # handled by a real daemon or by a polling fallback.
+  # ---------------------------------------------------------------
+  nmos-testing:
+    image: {{ dhs_amwa_image_testing }}
+    container_name: nmos-testing
+    hostname: nmos-testing
+    entrypoint:
+      - /bin/bash
+      - -c
+      - >-
+        mkdir -p /run/dbus &&
+        (dbus-daemon --system --fork --nopidfile || true) &&
+        (avahi-daemon --no-chroot --daemonize || true) &&
+        exec python3 /home/nmos-testing/nmos-test.py
+    networks:
+      nmos: {}
+    ports:
+      - "{{ dhs_amwa_port_testing_ui }}:5000"
+      - "{{ dhs_amwa_port_testing_mocks }}:{{ dhs_amwa_port_testing_mocks }}"
+    depends_on:
+      - nmos-virtnode
+    restart: {{ dhs_amwa_restart_policy }}
+
+networks:
+  nmos:
+    name: {{ dhs_amwa_project }}
+    driver: bridge
+    # IPv6 off deliberately: the AMWA suites assert on the address
+    # family a Node advertises, and a dual-stack bridge makes those
+    # rows non-deterministic.
+    enable_ipv6: false

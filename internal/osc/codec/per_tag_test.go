@@ -88,10 +88,10 @@ func TestPerTag_Blob_VariousSizes(t *testing.T) {
 
 func TestPerTag_Char_RoundTrip(t *testing.T) {
 	for _, c := range []rune{'A', 'z', '0', ' ', '!', 0x7f} {
-		m := Message{Address: "/c", Args: []Arg{Char(int32(c))}}
+		m := Message{Address: "/c", Args: []Arg{Char(c)}}
 		got := encodeDecode(t, m)
-		if rune(got.Args[0].Int32) != c {
-			t.Errorf("char: got %q, want %q", rune(got.Args[0].Int32), c)
+		if got.Args[0].Int32 != c {
+			t.Errorf("char: got %q, want %q", got.Args[0].Int32, c)
 		}
 	}
 }

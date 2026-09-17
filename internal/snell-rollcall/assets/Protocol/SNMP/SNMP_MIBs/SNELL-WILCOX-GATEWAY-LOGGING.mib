@@ -1,0 +1,303 @@
+-- *****************************************************************
+-- SNELL-WILCOX-GATEWAY_LOGGING.mib:  Snell & Wilcox Gateway Logging
+--
+-- March 2005, Jonathan Riches
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+-- 
+-- *****************************************************************
+--
+
+SNELL-WILCOX-GATEWAY-LOGGING 	DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, Unsigned32, Counter32
+        FROM SNMPv2-SMI
+	snellWilcoxGeneric
+		FROM SNELL-WILCOX-SMI
+	RollCallString
+		FROM SNELL-WILCOX-TC;
+
+
+snellWilcoxGatewayLogging MODULE-IDENTITY
+	LAST-UPDATED 	"0502171030Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					OS Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+		
+		   Tel: 	+44 (0) 23 92489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+
+	DESCRIPTION		"This module defines the fields used to represent current RollCall
+	                 logging messages on the gateway card.  These fields represent 16 
+	                 physical slot positions and include current log messages for the 
+	                 gateway card aswell.  The table below is indexed by LOG header
+	                 fields, which are character strings.  When new log header fields
+	                 are found these are added to the table. Card event log messages 
+	                 are differentiated by using slot position(as separate OID). Gateway 
+	                 events use a separate MIB table.  Both tables used an index based on
+	                 the log header field.  This is a fixed length 19 char field. The 
+	                 underscore  character is used to pad out all fields to equal length.
+	                 This allows Log fields to correctly display in alphabetical order. "
+	REVISION    	"0502171030Z"
+	DESCRIPTION		"Initial version of this MIB module."
+	::= { snellWilcoxGeneric 6 }
+
+
+  ---------------------------------------------------------------------------
+  -- The Card Event Log table contains log state information for each slot.
+  ---------------------------------------------------------------------------
+
+  swCardEventLogTable OBJECT-TYPE
+      SYNTAX  		SEQUENCE OF SwCardEventLogEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "A table of slot position Log value entries."
+      ::= { snellWilcoxGatewayLogging 1 }
+
+  swCardEventLogEntry OBJECT-TYPE
+      SYNTAX  		SwCardEventLogEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "An entry in the card event Log value table."
+      INDEX   { swCardEventLogIndex }
+      ::= { swCardEventLogTable 1 }
+
+  SwCardEventLogEntry ::=
+      SEQUENCE {
+          swCardEventLogIndex
+              RollCallString,              
+          swCardEventLogSlot1
+              RollCallString,
+          swCardEventLogSlot2
+              RollCallString,
+          swCardEventLogSlot3
+              RollCallString,
+          swCardEventLogSlot4
+              RollCallString,
+          swCardEventLogSlot5
+              RollCallString,
+          swCardEventLogSlot6
+              RollCallString,
+          swCardEventLogSlot7
+              RollCallString,
+          swCardEventLogSlot8
+              RollCallString,
+          swCardEventLogSlot9
+              RollCallString,
+          swCardEventLogSlot10
+              RollCallString,
+          swCardEventLogSlot11
+              RollCallString,
+          swCardEventLogSlot12
+              RollCallString,
+          swCardEventLogSlot13
+              RollCallString,
+          swCardEventLogSlot14
+              RollCallString,
+          swCardEventLogSlot15
+              RollCallString,
+          swCardEventLogSlot16
+              RollCallString
+      }
+      
+  swCardEventLogIndex OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "The unique index text string value log header field. 
+              Will be an alphabetically ordered index"
+      ::= { swCardEventLogEntry 0 }
+
+  swCardEventLogSlot1 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 1"
+      ::= { swCardEventLogEntry 1 }
+
+  swCardEventLogSlot2 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 2"
+      ::= { swCardEventLogEntry 2 }
+
+  swCardEventLogSlot3 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 3"
+      ::= { swCardEventLogEntry 3 }
+
+  swCardEventLogSlot4 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 4"
+      ::= { swCardEventLogEntry 4 }
+
+  swCardEventLogSlot5 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 5"
+      ::= { swCardEventLogEntry 5 }
+
+  swCardEventLogSlot6 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 6"
+      ::= { swCardEventLogEntry 6 }
+
+  swCardEventLogSlot7 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 7"
+      ::= { swCardEventLogEntry 7 }
+
+  swCardEventLogSlot8 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 8"
+      ::= { swCardEventLogEntry 8 }
+
+  swCardEventLogSlot9 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 9"
+      ::= { swCardEventLogEntry 9 }
+
+  swCardEventLogSlot10 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 10"
+      ::= { swCardEventLogEntry 10 }
+
+  swCardEventLogSlot11 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 11"
+      ::= { swCardEventLogEntry 11 }
+
+  swCardEventLogSlot12 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 12"
+      ::= { swCardEventLogEntry 12 }
+
+  swCardEventLogSlot13 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 13"
+      ::= { swCardEventLogEntry 13 }
+
+  swCardEventLogSlot14 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 14"
+      ::= { swCardEventLogEntry 14 }
+
+  swCardEventLogSlot15 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 15"
+      ::= { swCardEventLogEntry 15 }
+
+  swCardEventLogSlot16 OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for slot 16"
+      ::= { swCardEventLogEntry 16 }
+
+  ---------------------------------------------------------------------------
+  -- The Log table contains log state information for the gateway card.
+  ---------------------------------------------------------------------------
+
+  swGatewayEventLogTable OBJECT-TYPE
+      SYNTAX  		SEQUENCE OF SwGatewayEventLogEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "A table of Log field entries indexed by log index(header) field for gateway events."
+      ::= { snellWilcoxGatewayLogging 2 }
+
+  swGatewayEventLogEntry OBJECT-TYPE
+      SYNTAX  		SwGatewayEventLogEntry
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "An entry in the gateway Log value table."
+      INDEX   { swGatewayEventLogIndex }
+      ::= { swGatewayEventLogTable 1 }
+
+  SwGatewayEventLogEntry ::=
+      SEQUENCE {
+          swGatewayEventLogIndex
+              RollCallString,              
+          swGatewayEventLogField
+              RollCallString
+      }
+      
+  swGatewayEventLogIndex OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	not-accessible
+      STATUS  		current
+      DESCRIPTION
+              "The unique index text string value log header field. 
+              Will be an alphabetically ordered index"
+      ::= { swGatewayEventLogEntry 0 }
+
+  swGatewayEventLogField OBJECT-TYPE
+      SYNTAX  		RollCallString
+      MAX-ACCESS  	read-only
+      STATUS  		current
+      DESCRIPTION
+              " Contains the log values corresponding to header fields for gateway card"
+      ::= { swGatewayEventLogEntry 1 }
+
+
+END
+
+
+
+
+

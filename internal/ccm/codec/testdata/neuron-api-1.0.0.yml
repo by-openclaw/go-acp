@@ -1,0 +1,6194 @@
+openapi: '3.1.2'
+info:
+  title: 'Neuron'
+  version: '1.0.0'
+paths:
+  /v1:
+    get:
+      tags:
+        - 'Root'
+      operationId: 'RootEndpoint'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  type: 'string'
+  /v1/self:
+    get:
+      tags:
+        - 'Self'
+      operationId: 'GetSelf'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfGet'
+  /v1/io/ip/receivers/video:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiversVideo'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpReceiverVideo'
+  /v1/io/ip/receivers/video/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverVideo'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverVideo'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpReceiverVideo'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpReceiverVideoPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverVideo'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/receivers/video/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverVideoStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverVideoStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/receivers/audio:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiversAudio'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpReceiverAudio'
+  /v1/io/ip/receivers/audio/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverAudio'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverAudio'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpReceiverAudio'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpReceiverAudioPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverAudio'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/receivers/audio/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverAudioStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverAudioStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/receivers/data:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiversData'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpReceiverData'
+  /v1/io/ip/receivers/data/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverData'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverData'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpReceiverData'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpReceiverDataPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverData'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/receivers/data/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpReceiverDataStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpReceiverDataStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/video:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSendersVideo'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpSenderVideo'
+  /v1/io/ip/senders/video/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenderVideo'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderVideo'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpSenderVideo'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpSenderVideoPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderVideo'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/video/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenderStatusVideo'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/audio:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSendersAudio'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpSenderAudio'
+  /v1/io/ip/senders/audio/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenderAudio'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderAudio'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpSenderAudio'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpSenderAudioPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderAudio'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/audio/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenderStatusAudio'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/data:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenders'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/IpSenderData'
+  /v1/io/ip/senders/data/{uuid}:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSender'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderData'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'IP'
+      operationId: 'PutIpSender'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpSenderDataPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderData'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/ip/senders/data/{uuid}/status:
+    get:
+      tags:
+        - 'IP'
+      operationId: 'GetIpSenderStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpSenderStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/madi/inputs:
+    get:
+      tags:
+        - 'Madi'
+      operationId: 'GetMadiInputs'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/MadiInput'
+  /v1/io/madi/inputs/{uuid}:
+    get:
+      tags:
+        - 'Madi'
+      operationId: 'GetMadiInput'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MadiInput'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Madi'
+      operationId: 'PutMadiInput'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MadiInputPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MadiInput'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/madi/inputs/{uuid}/status:
+    get:
+      tags:
+        - 'Madi'
+      operationId: 'GetMadiInputStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MadiInputStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/madi/outputs:
+    get:
+      tags:
+        - 'Madi'
+      operationId: 'GetMadiOutputs'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/MadiOutput'
+  /v1/io/madi/outputs/{uuid}:
+    get:
+      tags:
+        - 'Madi'
+      operationId: 'GetMadiOutput'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MadiOutput'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Madi'
+      operationId: 'PutMadiOutputs'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MadiOutputPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MadiOutput'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/io/sdi:
+    get:
+      tags:
+        - 'SDI'
+      operationId: 'GetSdis'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/SDIGet'
+  /v1/io/sdi/{uuid}:
+    get:
+      tags:
+        - 'SDI'
+      operationId: 'GetSDI'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDIGet'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'SDI'
+      operationId: 'PutSDI'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SDIPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDIGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/audio/info:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetMatrixAudioCurrentInfo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixAudioInfo'
+  /v1/matrix/audio/current:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetMatrixAudioState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+  /v1/matrix/audio/main:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetMatrixAudioMainState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Audio'
+      operationId: 'PutMatrixAudioMainState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/audio/backup:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetMatrixAudioBackupState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Audio'
+      operationId: 'PutMatrixAudioBackupState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/data/output/info:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataOutputInfo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixInfo'
+  /v1/matrix/data/output/current:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataOutputState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Data'
+      operationId: 'PutMatrixDataOutputState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/data/path/info:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataPathInfo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixInfo'
+  /v1/matrix/data/path/current:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataPathState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+  /v1/matrix/data/path/main:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataPathMainState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Data'
+      operationId: 'PutMatrixDataPathMainState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/data/path/backup:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetMatrixDataPathBackupState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Data'
+      operationId: 'PutMatrixDataPathBackupState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/video/output/info:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoOutputInfo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixInfo'
+  /v1/matrix/video/output/current:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoOutputState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutMatrixVideoOutputState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/video/path/info:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoPathInfo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixInfo'
+  /v1/matrix/video/path/current:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoPathState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+  /v1/matrix/video/path/main:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoPathMainState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutMatrixVideoPathMainState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/matrix/video/path/backup:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetMatrixVideoPathBackupState'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutMatrixVideoPathBackupState'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/ddr:
+    get:
+      tags:
+        - 'DDR Status'
+      operationId: 'GetDDR'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DDRStatus'
+  /v1/misc/ftp:
+    get:
+      tags:
+        - 'FTP'
+      operationId: 'GetFTP'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FTP'
+    put:
+      tags:
+        - 'FTP'
+      operationId: 'PutFTP'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FTP'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FTP'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/luts:
+    get:
+      tags:
+        - 'LUT Status'
+      operationId: 'GetLuts'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LUTStatus'
+  /v1/misc/rtp-payload-types:
+    get:
+      tags:
+        - 'RTP Payload types'
+      operationId: 'GetRTPPayloadTypes'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RTPPayloadTypesGet'
+    put:
+      tags:
+        - 'RTP Payload types'
+      operationId: 'PutRTPPayloadTypes'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RTPPayloadTypesPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RTPPayloadTypesGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/macs:
+    get:
+      tags:
+        - 'Macs'
+      operationId: 'GetMacs'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/MacGet'
+  /v1/misc/macs/{uuid}:
+    get:
+      tags:
+        - 'Macs'
+      operationId: 'GetMac'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MacGet'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Macs'
+      operationId: 'PutMac'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MacPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MacGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/macs/{uuid}/status:
+    get:
+      tags:
+        - 'Macs'
+      operationId: 'GetMacStatus'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MacGetStatus'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/nmos:
+    get:
+      tags:
+        - 'NMOS'
+      operationId: 'GetNMOS'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NMOS'
+    put:
+      tags:
+        - 'NMOS'
+      operationId: 'PutNMOS'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NMOSPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NMOS'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/pattern-gen:
+    get:
+      tags:
+        - 'Pattern Generator'
+      operationId: 'GetPatternGen'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternGen'
+    put:
+      tags:
+        - 'Pattern Generator'
+      operationId: 'PutPatternGen'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternGen'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternGen'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/live-data:
+    get:
+      tags:
+        - 'Live Data'
+      operationId: 'GetLiveData'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveData'
+    put:
+      tags:
+        - 'Live Data'
+      operationId: 'PutLiveData'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiveData'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveData'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/reference:
+    get:
+      tags:
+        - 'Reference Settings'
+      operationId: 'GetReference'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiscReference'
+    put:
+      tags:
+        - 'Reference Settings'
+      operationId: 'PutReference'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiscReference'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiscReference'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/misc/reference/status:
+    get:
+      tags:
+        - 'Reference Settings'
+      operationId: 'GetReferenceStatus'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiscReferenceStatus'
+  /v1/misc/user-label:
+    get:
+      tags:
+        - 'User Label'
+      operationId: 'GetUserLabels'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/UserLabelGet'
+  /v1/misc/user-label/{label}:
+    get:
+      tags:
+        - 'User Label'
+      operationId: 'GetUserLabel'
+      parameters:
+        - name: 'label'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLabelGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'User Label'
+      operationId: 'PutUserLabel'
+      parameters:
+        - name: 'label'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLabelPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLabelGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/audio/general:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetAudioProcessing'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioProcessing'
+    put:
+      tags:
+        - 'Audio'
+      operationId: 'PutAudioProcessing'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioProcessingPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioProcessing'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/audio/banks:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetBanks'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/Bank'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/audio/banks/{id}:
+    get:
+      tags:
+        - 'Audio'
+      operationId: 'GetBank'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bank'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Audio'
+      operationId: 'PutBank'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankPut'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/data/paths:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetDataProcessingPaths'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/DataProcessingPath'
+  /v1/processing/data/paths/{uuid}:
+    get:
+      tags:
+        - 'Data'
+      operationId: 'GetDataProcessingPath'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataProcessingPath'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Data'
+      operationId: 'PutDataProcessingPath'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataProcessingPathPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataProcessingPath'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/general:
+    get:
+      tags:
+        - 'Dolby'
+      operationId: 'GetDolbyGeneral'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyGeneralGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Dolby'
+      operationId: 'PutDolbyGeneral'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DolbyGeneralPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyGeneralGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/decoder/{id}:
+    get:
+      tags:
+        - 'Dolby'
+      operationId: 'GetDolbyDecoder'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyDecoderGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Dolby'
+      operationId: 'PutDolbyDecoder'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DolbyDecoderPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyDecoderGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/decoder/{id}/metadataStatus:
+    get:
+      tags:
+        - 'Dolby'
+      operationId: 'GetDolbyDecoderCodecStatus'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecoderCodecStatus'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/encoder/{id}:
+    get:
+      tags:
+        - 'Dolby'
+      operationId: 'GetDolbyEncoder'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyEncoderGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Dolby'
+      operationId: 'PutDolbyEncoder'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DolbyEncoderPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DolbyEncoderGet'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/encoder/{id}/metadataStatus:
+    get:
+      tags:
+        - 'Dolby'
+      operationId: 'GetDolbyEncoderMetadata'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncoderCodecStatus'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/dolby/encoder/{id}/codecSettings:
+    put:
+      tags:
+        - 'Dolby'
+      operationId: 'PutDolbyEncoderMetadata'
+      parameters:
+        - name: 'id'
+          in: 'path'
+          required: true
+          schema:
+            type: 'integer'
+            format: 'int32'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodecSettings'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncoderCodecStatus'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/video/general:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetProcessingVideo'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessing'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutProcessingVideo'
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoProcessing'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessing'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/video/paths:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetPaths'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/VideoProcessingPath'
+  /v1/processing/video/paths/{uuid}:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetPath'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessingPath'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutPath'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoProcessingPathPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessingPath'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/video/channels:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetChannels'
+      parameters: []
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'array'
+                items:
+                  $ref: '#/components/schemas/VideoProcessingChannel'
+  /v1/processing/video/channels/{uuid}:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetChannel'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessingChannel'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+    put:
+      tags:
+        - 'Video'
+      operationId: 'PutChannel'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoProcessingChannelPut'
+        required: true
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoProcessingChannel'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '403':
+          description: '403 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+  /v1/processing/video/channels/{uuid}/thumbnail:
+    get:
+      tags:
+        - 'Video'
+      operationId: 'GetChannelThumbnail'
+      parameters:
+        - name: 'uuid'
+          in: 'path'
+          required: true
+          schema:
+            type: 'string'
+            format: 'uuid'
+      responses:
+        '200':
+          description: '200 response'
+          content:
+            application/json:
+              schema:
+                type: 'string'
+        '400':
+          description: '400 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+        '404':
+          description: '404 response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericApiMessage'
+components:
+  schemas:
+    App:
+      type: 'object'
+      properties:
+        buildType:
+          type: 'string'
+        compiledAt:
+          type: 'string'
+        dirty:
+          type: 'boolean'
+        gitCommit:
+          type: 'string'
+        modelVersion:
+          type: 'integer'
+          format: 'int32'
+        productName:
+          type: 'string'
+        productVersion:
+          type: 'string'
+      required:
+        - 'buildType'
+        - 'compiledAt'
+        - 'dirty'
+        - 'gitCommit'
+        - 'modelVersion'
+        - 'productName'
+        - 'productVersion'
+    Capabilities:
+      type: 'object'
+      properties:
+        coProcessor:
+          type: 'string'
+          enum:
+            - 'present'
+            - 'error'
+            - 'NA'
+          description: 'Smarc board. (Dolby processing, etc..)'
+      required:
+        - 'coProcessor'
+    SelfGet:
+      type: 'object'
+      properties:
+        app:
+          $ref: '#/components/schemas/App'
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+      required:
+        - 'app'
+        - 'capabilities'
+    NmosMetaData:
+      type: 'object'
+      properties:
+        label:
+          type: 'string'
+        groupHint:
+          type: 'string'
+      required:
+        - 'label'
+        - 'groupHint'
+    ReceiverSkewEnum:
+      type: 'string'
+      enum:
+        - 'ClassD'
+        - 'ClassA'
+        - 'ClassB'
+        - 'ClassC'
+    IpReceiverVideo:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+          description: 'Unique identifier for this stream, including NMOS api.'
+        name:
+          type: 'string'
+          description: 'Internal name of stream, similar to ACP2 node name'
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    GenericApiMessage:
+      type: 'object'
+      properties:
+        code:
+          type: 'integer'
+          format: 'int32'
+        message:
+          type: 'string'
+      required:
+        - 'code'
+        - 'message'
+    IpReceiverVideoPut:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    DigitalVideoStandardEnum:
+      type: 'string'
+      enum:
+        - '2160p50'
+        - '2160p59.94'
+        - '2160p60'
+        - '2160i50'
+        - '2160i60'
+        - '1080p50'
+        - '1080p59.94'
+        - '1080p60'
+        - '1080i50'
+        - '1080i59.94'
+        - '1080i60'
+        - '1080p25'
+        - '1080p30'
+        - '1080p24'
+        - '720p50'
+        - '720p59.94'
+        - '720p60'
+        - '720p25'
+        - '720p30'
+        - '720p24'
+        - 'SD625'
+        - 'SD525'
+        - '1080psf23.98'
+        - '1080psf24'
+        - '1080psf25'
+        - '1080psf29.97'
+        - '1080psf30'
+        - 'NA'
+        - 'Auto'
+        - 'Off'
+        - '2160i59.94'
+        - '1080p29.97'
+        - '720p29.97'
+        - '1080p23.98'
+        - '720p23.98'
+        - '2160p30'
+        - '2160p29.97'
+        - '2160p25'
+        - '2160p24'
+        - '2160p23.98'
+    MediaTypeEnum:
+      type: 'string'
+      enum:
+        - 's2022-6'
+        - 's2110-20'
+        - 's2110-22'
+        - 's2110-30'
+        - 's2110-31'
+        - 's2110-40'
+    IpReceiverStatusLegStatistics:
+      type: 'object'
+      properties:
+        dataRateKbps:
+          type: 'integer'
+          format: 'int32'
+        rtpSequenceErrorCount:
+          type: 'integer'
+          format: 'int32'
+        thresholdAlarm:
+          type: 'boolean'
+        packetIntervalMin:
+          type: 'integer'
+          format: 'int32'
+        packetIntervalMax:
+          type: 'integer'
+          format: 'int32'
+        packetIntervalAvg:
+          type: 'integer'
+          format: 'int32'
+        averageSkew:
+          type: 'integer'
+          format: 'int32'
+        rtpSsrc:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'dataRateKbps'
+        - 'rtpSequenceErrorCount'
+        - 'thresholdAlarm'
+        - 'packetIntervalMin'
+        - 'packetIntervalMax'
+        - 'packetIntervalAvg'
+        - 'averageSkew'
+        - 'rtpSsrc'
+    IpReceiverStatusLeg:
+      type: 'object'
+      properties:
+        mac:
+          type: 'string'
+        receiving:
+          type: 'boolean'
+        statistics:
+          $ref: '#/components/schemas/IpReceiverStatusLegStatistics'
+      required:
+        - 'mac'
+        - 'receiving'
+        - 'statistics'
+    IpReceiverVideoStatus:
+      type: 'object'
+      properties:
+        used:
+          type: 'boolean'
+        videoFormatStatus:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        info:
+          type: 'string'
+          description: 'Current state, including warning, errors'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpReceiverStatusLeg'
+      required:
+        - 'used'
+        - 'videoFormatStatus'
+        - 'mediaType'
+        - 'info'
+        - 'legs'
+    IpReceiverAudio:
+      type: 'object'
+      properties:
+        streamDelayMs:
+          type: 'number'
+          format: 'float'
+        uuid:
+          type: 'string'
+          format: 'uuid'
+          description: 'Unique identifier for this stream, including NMOS api.'
+        name:
+          type: 'string'
+          description: 'Internal name of stream, similar to ACP2 node name'
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'streamDelayMs'
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    IpReceiverAudioPut:
+      type: 'object'
+      properties:
+        streamDelayMs:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 5000
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'streamDelayMs'
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    IpReceiverAudioStatusLegStatistics:
+      type: 'object'
+      properties:
+        inputDelay:
+          type: 'number'
+          format: 'float'
+        dataRateKbps:
+          type: 'integer'
+          format: 'int32'
+        rtpSequenceErrorCount:
+          type: 'integer'
+          format: 'int32'
+        thresholdAlarm:
+          type: 'boolean'
+        packetIntervalMin:
+          type: 'integer'
+          format: 'int32'
+        packetIntervalMax:
+          type: 'integer'
+          format: 'int32'
+        packetIntervalAvg:
+          type: 'integer'
+          format: 'int32'
+        averageSkew:
+          type: 'integer'
+          format: 'int32'
+        rtpSsrc:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'inputDelay'
+        - 'dataRateKbps'
+        - 'rtpSequenceErrorCount'
+        - 'thresholdAlarm'
+        - 'packetIntervalMin'
+        - 'packetIntervalMax'
+        - 'packetIntervalAvg'
+        - 'averageSkew'
+        - 'rtpSsrc'
+    IpReceiverAudioStatusLeg:
+      type: 'object'
+      properties:
+        mac:
+          type: 'string'
+        receiving:
+          type: 'boolean'
+        statistics:
+          $ref: '#/components/schemas/IpReceiverAudioStatusLegStatistics'
+      required:
+        - 'mac'
+        - 'receiving'
+        - 'statistics'
+    IpReceiverAudioStatus:
+      type: 'object'
+      properties:
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        info:
+          type: 'string'
+          description: 'Current state, including warning, errors'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpReceiverAudioStatusLeg'
+        numChannels:
+          type: 'integer'
+          format: 'int32'
+        streamDelayMs:
+          type: 'number'
+          format: 'float'
+      required:
+        - 'mediaType'
+        - 'info'
+        - 'legs'
+        - 'numChannels'
+        - 'streamDelayMs'
+    IpReceiverData:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+          description: 'Unique identifier for this stream, including NMOS api.'
+        name:
+          type: 'string'
+          description: 'Internal name of stream, similar to ACP2 node name'
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    IpReceiverDataStatus:
+      type: 'object'
+      properties:
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        info:
+          type: 'string'
+          description: 'Current state, including warning, errors'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpReceiverStatusLeg'
+      required:
+        - 'mediaType'
+        - 'info'
+        - 'legs'
+    IpReceiverDataPut:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: 'string'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+      required:
+        - 'enable'
+        - 'nmos'
+        - 'sdp'
+        - 'skew'
+    SenderOSD:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        name:
+          type: 'string'
+      required:
+        - 'enable'
+        - 'name'
+    PathChannelEnum:
+      type: 'string'
+      enum:
+        - 'A1'
+        - 'A2'
+        - 'A3'
+        - 'A4'
+        - 'B1'
+        - 'B2'
+        - 'B3'
+        - 'B4'
+        - 'C1'
+        - 'C2'
+        - 'C3'
+        - 'C4'
+        - 'D1'
+        - 'D2'
+        - 'D3'
+        - 'D4'
+        - 'E1'
+        - 'E2'
+        - 'E3'
+        - 'E4'
+        - 'F1'
+        - 'F2'
+        - 'F3'
+        - 'F4'
+        - 'G1'
+        - 'G2'
+        - 'G3'
+        - 'G4'
+        - 'H1'
+        - 'H2'
+        - 'H3'
+        - 'H4'
+    IpSenderBaseLegs:
+      type: 'object'
+      properties:
+        mac:
+          type: 'string'
+        ip:
+          type: 'string'
+        port:
+          type: 'integer'
+          format: 'int32'
+          default: 12700
+          minimum: 0
+          maximum: 65535
+      required:
+        - 'mac'
+        - 'ip'
+        - 'port'
+    IpSenderVideo:
+      type: 'object'
+      properties:
+        osd:
+          $ref: '#/components/schemas/SenderOSD'
+        pathSelection:
+          $ref: '#/components/schemas/PathChannelEnum'
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        name:
+          type: 'string'
+        enable:
+          type: 'boolean'
+        info:
+          type: 'string'
+        sdp:
+          type: 'string'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'osd'
+        - 'pathSelection'
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'info'
+        - 'sdp'
+        - 'nmos'
+        - 'mediaType'
+        - 'legs'
+    IpSenderLegStatus:
+      type: 'object'
+      properties:
+        mac:
+          type: 'string'
+        sending:
+          type: 'boolean'
+      required:
+        - 'mac'
+        - 'sending'
+    IpSenderStatus:
+      type: 'object'
+      properties:
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderLegStatus'
+      required:
+        - 'legs'
+    IpSenderVideoPut:
+      type: 'object'
+      properties:
+        osd:
+          $ref: '#/components/schemas/SenderOSD'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'osd'
+        - 'mediaType'
+        - 'enable'
+        - 'nmos'
+        - 'legs'
+    PhaseEnum:
+      type: 'string'
+      enum:
+        - '0'
+        - '180'
+    GainPhase:
+      type: 'object'
+      properties:
+        channel:
+          type: 'integer'
+          format: 'int32'
+        gain:
+          type: 'number'
+          format: 'float'
+          minimum: -60
+          maximum: 12
+        phase:
+          $ref: '#/components/schemas/PhaseEnum'
+      required:
+        - 'channel'
+        - 'gain'
+        - 'phase'
+    BitDepthEnum:
+      type: 'string'
+      enum:
+        - '16'
+        - '20'
+        - '24'
+        - '32'
+        - 'AM824'
+    PacketTimeEnum:
+      type: 'string'
+      enum:
+        - '83us'
+        - '125us'
+        - '250us'
+        - '333us'
+        - '1ms'
+        - '4ms'
+    IpSenderAudio:
+      type: 'object'
+      properties:
+        nrChannels:
+          type: 'integer'
+          format: 'int32'
+        channels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+        bitDepth:
+          $ref: '#/components/schemas/BitDepthEnum'
+        packetTime:
+          $ref: '#/components/schemas/PacketTimeEnum'
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        name:
+          type: 'string'
+        enable:
+          type: 'boolean'
+        info:
+          type: 'string'
+        sdp:
+          type: 'string'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'nrChannels'
+        - 'channels'
+        - 'bitDepth'
+        - 'packetTime'
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'info'
+        - 'sdp'
+        - 'nmos'
+        - 'mediaType'
+        - 'legs'
+    IpSenderAudioPut:
+      type: 'object'
+      properties:
+        channels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        nrChannels:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 16
+        bitDepth:
+          $ref: '#/components/schemas/BitDepthEnum'
+        packetTime:
+          $ref: '#/components/schemas/PacketTimeEnum'
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'channels'
+        - 'mediaType'
+        - 'nrChannels'
+        - 'bitDepth'
+        - 'packetTime'
+        - 'enable'
+        - 'nmos'
+        - 'legs'
+    IpSenderData:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        name:
+          type: 'string'
+        enable:
+          type: 'boolean'
+        info:
+          type: 'string'
+        sdp:
+          type: 'string'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        mediaType:
+          $ref: '#/components/schemas/MediaTypeEnum'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'uuid'
+        - 'name'
+        - 'enable'
+        - 'info'
+        - 'sdp'
+        - 'nmos'
+        - 'mediaType'
+        - 'legs'
+    IpSenderDataPut:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        legs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/IpSenderBaseLegs'
+      required:
+        - 'enable'
+        - 'nmos'
+        - 'legs'
+    MadiInput:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        enable:
+          type: 'boolean'
+      required:
+        - 'name'
+        - 'uuid'
+        - 'enable'
+    MadiStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Present'
+        - 'Error'
+    MADIChannelModeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '14'
+        - '16'
+        - '28'
+        - '32'
+        - '56'
+        - '64'
+        - 'Error'
+    MadiFrameTypeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '<32k'
+        - '32k'
+        - '<44.1k'
+        - '44.1k'
+        - '<48k'
+        - '48k'
+        - '<64k'
+        - '64k'
+        - '<88.2k'
+        - '88.2k'
+        - '<96k'
+        - '96k'
+        - '<128k'
+        - '128k'
+        - '<176.4k'
+        - '176.4k'
+        - '<192k'
+        - '192k'
+        - '>192k'
+    MadiInputStatus:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        status:
+          $ref: '#/components/schemas/MadiStatusEnum'
+        channelMode:
+          $ref: '#/components/schemas/MADIChannelModeEnum'
+        frameType:
+          $ref: '#/components/schemas/MadiFrameTypeEnum'
+      required:
+        - 'uuid'
+        - 'status'
+        - 'channelMode'
+        - 'frameType'
+    MadiInputPut:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+      required:
+        - 'enable'
+    MadiOutput:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        enable:
+          type: 'boolean'
+        channelMode:
+          $ref: '#/components/schemas/MADIChannelModeEnum'
+        channels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+      required:
+        - 'name'
+        - 'uuid'
+        - 'enable'
+        - 'channelMode'
+        - 'channels'
+    MadiOutputPut:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        channelMode:
+          $ref: '#/components/schemas/MADIChannelModeEnum'
+        channels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+      required:
+        - 'enable'
+        - 'channelMode'
+        - 'channels'
+    SdiSpeedEnum:
+      type: 'string'
+      enum:
+        - '3G'
+        - '12G'
+    VideoStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Ok'
+    DirectionEnum:
+      type: 'string'
+      enum:
+        - 'Input'
+        - 'Output'
+        - 'Off'
+    SDIGet:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        name:
+          type: 'string'
+        maxSpeed:
+          $ref: '#/components/schemas/SdiSpeedEnum'
+        used:
+          type: 'boolean'
+        videoFormat:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        videoStatus:
+          $ref: '#/components/schemas/VideoStatusEnum'
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        osd:
+          $ref: '#/components/schemas/SenderOSD'
+      required:
+        - 'uuid'
+        - 'name'
+        - 'maxSpeed'
+        - 'direction'
+    SDIPut:
+      type: 'object'
+      properties:
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        osd:
+          $ref: '#/components/schemas/SenderOSD'
+      required:
+        - 'direction'
+    MatrixAudioInfoChildrenElement:
+      type: 'object'
+      properties:
+        id:
+          type: 'string'
+        subIds:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'id'
+        - 'subIds'
+    MatrixAudioInfoSrcDst:
+      type: 'object'
+      properties:
+        children:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixAudioInfoChildrenElement'
+        path:
+          type: 'string'
+        template:
+          type: 'string'
+        type:
+          type: 'string'
+      required:
+        - 'children'
+        - 'path'
+        - 'template'
+        - 'type'
+    MatrixAudioInfo:
+      type: 'object'
+      properties:
+        description:
+          type: 'string'
+        version:
+          type: 'string'
+        sources:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixAudioInfoSrcDst'
+        destinations:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixAudioInfoSrcDst'
+      required:
+        - 'description'
+        - 'version'
+        - 'sources'
+        - 'destinations'
+    MatrixState:
+      type: 'object'
+      additionalProperties:
+        type: 'string'
+    MatrixInfoChildrenElement:
+      type: 'object'
+      properties:
+        id:
+          type: 'string'
+      required:
+        - 'id'
+    MatrixInfoSrcDst:
+      type: 'object'
+      properties:
+        children:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixInfoChildrenElement'
+        path:
+          type: 'string'
+        template:
+          type: 'string'
+        type:
+          type: 'string'
+      required:
+        - 'children'
+        - 'path'
+        - 'template'
+        - 'type'
+    MatrixInfo:
+      type: 'object'
+      properties:
+        description:
+          type: 'string'
+        version:
+          type: 'string'
+        sources:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixInfoSrcDst'
+        destinations:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/MatrixInfoSrcDst'
+      required:
+        - 'description'
+        - 'version'
+        - 'sources'
+        - 'destinations'
+    DDRMemoryBankStatusEnum:
+      type: 'string'
+      enum:
+        - 'Initialising'
+        - 'Ok'
+        - 'Calibrating'
+        - 'Error'
+    DDRStatus:
+      type: 'object'
+      properties:
+        memoryBank1:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank2:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank3:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank4:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+      required:
+        - 'memoryBank1'
+        - 'memoryBank2'
+        - 'memoryBank3'
+        - 'memoryBank4'
+    FTP:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+      required:
+        - 'enable'
+    LUTStatus:
+      type: 'object'
+      properties:
+        lut_1d_pre:
+          type: 'array'
+          items:
+            type: 'string'
+        lut_3d:
+          type: 'array'
+          items:
+            type: 'string'
+        lut_1d_post:
+          type: 'array'
+          items:
+            type: 'string'
+        upload_status:
+          type: 'string'
+      required:
+        - 'lut_1d_pre'
+        - 'lut_3d'
+        - 'lut_1d_post'
+        - 'upload_status'
+    RTPPayloadTypesGet:
+      type: 'object'
+      properties:
+        s2022_6:
+          type: 'integer'
+          format: 'int32'
+        s2110_20:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_22:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_30:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_31:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_40:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+      required:
+        - 's2022_6'
+        - 's2110_20'
+        - 's2110_22'
+        - 's2110_30'
+        - 's2110_31'
+        - 's2110_40'
+    RTPPayloadTypesPut:
+      type: 'object'
+      properties:
+        s2110_20:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_22:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_30:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_31:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+        s2110_40:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 127
+      required:
+        - 's2110_20'
+        - 's2110_22'
+        - 's2110_30'
+        - 's2110_31'
+        - 's2110_40'
+    Dns:
+      type: 'object'
+      properties:
+        dnsDomain:
+          type: 'string'
+        dnsServers:
+          type: 'array'
+          items:
+            type: 'string'
+      required:
+        - 'dnsDomain'
+        - 'dnsServers'
+    ForwardErrorCorrectionEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'ReedSolomon'
+    IpAddrMethodEnum:
+      type: 'string'
+      enum:
+        - 'Manual'
+        - 'DHCP'
+    Route:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+        ipAddress:
+          type: 'string'
+        ipGateway:
+          type: 'string'
+        ipMask:
+          type: 'string'
+      required:
+        - 'enable'
+        - 'ipAddress'
+        - 'ipGateway'
+        - 'ipMask'
+    MacGet:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        name:
+          type: 'string'
+        dns:
+          $ref: '#/components/schemas/Dns'
+        fec:
+          $ref: '#/components/schemas/ForwardErrorCorrectionEnum'
+        gateway:
+          type: 'string'
+        ip:
+          type: 'string'
+        ipAddrMethod:
+          $ref: '#/components/schemas/IpAddrMethodEnum'
+        netmask:
+          type: 'string'
+        igmpV3RefreshRate:
+          type: 'integer'
+          format: 'int32'
+          minimum: 100
+          maximum: 18000
+        inBandControl:
+          type: 'boolean'
+        routes:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/Route'
+      required:
+        - 'uuid'
+        - 'name'
+        - 'dns'
+        - 'fec'
+        - 'gateway'
+        - 'ip'
+        - 'ipAddrMethod'
+        - 'netmask'
+        - 'igmpV3RefreshRate'
+        - 'inBandControl'
+        - 'routes'
+    DhcpStatusEnum:
+      type: 'string'
+      enum:
+        - 'Manual'
+        - 'Asking'
+        - 'Leased'
+    ListenerTalker:
+      type: 'object'
+      properties:
+        listener:
+          type: 'integer'
+          format: 'int32'
+        talker:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'listener'
+        - 'talker'
+    MacConfiguration:
+      type: 'object'
+      properties:
+        configuration:
+          type: 'string'
+        audio:
+          $ref: '#/components/schemas/ListenerTalker'
+        data:
+          $ref: '#/components/schemas/ListenerTalker'
+        video:
+          $ref: '#/components/schemas/ListenerTalker'
+      required:
+        - 'configuration'
+        - 'audio'
+        - 'data'
+        - 'video'
+    MacStatistics:
+      type: 'object'
+      properties:
+        fecCorrectedPacket:
+          type: 'integer'
+          format: 'int32'
+        fecUncorrectPacket:
+          type: 'integer'
+          format: 'int32'
+        packetDropRate:
+          type: 'integer'
+          format: 'int32'
+        actualRxBandWidth:
+          type: 'number'
+          format: 'float'
+        expectedRxBandwidth:
+          type: 'number'
+          format: 'float'
+        actualTxBandwidth:
+          type: 'number'
+          format: 'float'
+        expectedTxBandwidth:
+          type: 'number'
+          format: 'float'
+      required:
+        - 'fecCorrectedPacket'
+        - 'fecUncorrectPacket'
+        - 'packetDropRate'
+        - 'actualRxBandWidth'
+        - 'expectedRxBandwidth'
+        - 'actualTxBandwidth'
+        - 'expectedTxBandwidth'
+    Lldp:
+      type: 'object'
+      properties:
+        age:
+          type: 'string'
+        chassisId:
+          type: 'string'
+        managementIp:
+          type: 'string'
+        portDesc:
+          type: 'string'
+        portId:
+          type: 'string'
+        sysDesc:
+          type: 'string'
+        sysName:
+          type: 'string'
+        ttl:
+          type: 'string'
+      required:
+        - 'age'
+        - 'chassisId'
+        - 'managementIp'
+        - 'portDesc'
+        - 'portId'
+        - 'sysDesc'
+        - 'sysName'
+        - 'ttl'
+    MacGetStatus:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        macAddr:
+          type: 'string'
+        ip:
+          type: 'string'
+        netmask:
+          type: 'string'
+        dns:
+          $ref: '#/components/schemas/Dns'
+        link:
+          type: 'boolean'
+        dhcpStatus:
+          $ref: '#/components/schemas/DhcpStatusEnum'
+        configuration:
+          $ref: '#/components/schemas/MacConfiguration'
+        statistics:
+          $ref: '#/components/schemas/MacStatistics'
+        lldp:
+          $ref: '#/components/schemas/Lldp'
+      required:
+        - 'uuid'
+        - 'macAddr'
+        - 'ip'
+        - 'netmask'
+        - 'dns'
+        - 'link'
+        - 'dhcpStatus'
+        - 'configuration'
+        - 'statistics'
+        - 'lldp'
+    MacPut:
+      type: 'object'
+      properties:
+        dns:
+          $ref: '#/components/schemas/Dns'
+        fec:
+          $ref: '#/components/schemas/ForwardErrorCorrectionEnum'
+        gateway:
+          type: 'string'
+        ip:
+          type: 'string'
+        ipAddrMethod:
+          $ref: '#/components/schemas/IpAddrMethodEnum'
+        netmask:
+          type: 'string'
+        igmpV3RefreshRate:
+          type: 'integer'
+          format: 'int32'
+          minimum: 100
+          maximum: 18000
+        inBandControl:
+          type: 'boolean'
+        routes:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/Route'
+      required:
+        - 'dns'
+        - 'fec'
+        - 'gateway'
+        - 'ip'
+        - 'ipAddrMethod'
+        - 'netmask'
+        - 'igmpV3RefreshRate'
+        - 'inBandControl'
+        - 'routes'
+    SystemApiStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Present'
+    DiscoveryModeEnum:
+      type: 'string'
+      enum:
+        - 'None'
+        - 'Manual'
+        - 'mDNS'
+        - 'Unicast'
+    NMOS:
+      type: 'object'
+      properties:
+        system:
+          type: 'object'
+          properties:
+            applyApiIs09:
+              type: 'boolean'
+            apiIs09Discovered:
+              $ref: '#/components/schemas/SystemApiStatusEnum'
+            uri:
+              type: 'string'
+            uuid:
+              type: 'string'
+              format: 'uuid'
+          required:
+            - 'applyApiIs09'
+            - 'apiIs09Discovered'
+            - 'uri'
+            - 'uuid'
+        is04HeartbeatInterval:
+          type: 'integer'
+          format: 'int32'
+        ptp:
+          type: 'object'
+          properties:
+            announceRcptTimeout:
+              type: 'integer'
+              format: 'int32'
+            domainNumber:
+              type: 'integer'
+              format: 'int32'
+          required:
+            - 'announceRcptTimeout'
+            - 'domainNumber'
+        syslog:
+          type: 'object'
+          properties:
+            hostname:
+              type: 'string'
+            port:
+              type: 'integer'
+              format: 'int32'
+            hostnameV2:
+              type: 'string'
+            portV2:
+              type: 'integer'
+              format: 'int32'
+          required:
+            - 'hostname'
+            - 'port'
+            - 'hostnameV2'
+            - 'portV2'
+        mode:
+          type: 'boolean'
+        sdpPath:
+          type: 'string'
+          enum:
+            - 'Path1'
+            - 'Path2'
+        description:
+          type: 'string'
+        label:
+          type: 'string'
+        registry:
+          type: 'object'
+          properties:
+            discoveryMode:
+              $ref: '#/components/schemas/DiscoveryModeEnum'
+            discoveryStatus:
+              $ref: '#/components/schemas/DiscoveryModeEnum'
+            urlStatus:
+              type: 'string'
+            addressOverride:
+              type: 'string'
+            portOverride:
+              type: 'integer'
+              format: 'int32'
+              default: 12700
+              minimum: 1
+              maximum: 65535
+          required:
+            - 'discoveryMode'
+            - 'discoveryStatus'
+            - 'urlStatus'
+            - 'addressOverride'
+            - 'portOverride'
+      required:
+        - 'system'
+        - 'is04HeartbeatInterval'
+        - 'ptp'
+        - 'syslog'
+        - 'mode'
+        - 'sdpPath'
+        - 'description'
+        - 'label'
+        - 'registry'
+    NMOSPut:
+      type: 'object'
+      properties:
+        mode:
+          type: 'boolean'
+        description:
+          type: 'string'
+        label:
+          type: 'string'
+        registry:
+          type: 'object'
+          properties:
+            discoveryMode:
+              $ref: '#/components/schemas/DiscoveryModeEnum'
+            addressOverride:
+              type: 'string'
+              maxLength: 23
+            portOverride:
+              type: 'integer'
+              format: 'int32'
+              default: 12700
+              minimum: 1
+              maximum: 65535
+          required:
+            - 'discoveryMode'
+            - 'addressOverride'
+            - 'portOverride'
+      required:
+        - 'mode'
+        - 'description'
+        - 'label'
+        - 'registry'
+    PatternGen:
+      type: 'object'
+      properties:
+        border:
+          type: 'object'
+          properties:
+            color:
+              type: 'string'
+              enum:
+                - 'Red'
+                - 'White'
+                - 'Black'
+                - 'Grey'
+                - 'Green'
+                - 'Blue'
+            enable:
+              type: 'boolean'
+            size:
+              type: 'integer'
+              format: 'int32'
+              minimum: 2
+              maximum: 10
+          required:
+            - 'color'
+            - 'enable'
+            - 'size'
+        format:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        pattern:
+          type: 'string'
+          enum:
+            - 'Zoneplate'
+            - 'Black'
+            - 'Colorbar75'
+            - 'Colorbar100'
+            - 'ColorbarComp'
+            - 'Incremental'
+        zoneplateSpeed:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 15
+      required:
+        - 'border'
+        - 'format'
+        - 'pattern'
+        - 'zoneplateSpeed'
+    LiveData:
+      type: 'object'
+      properties:
+        enable:
+          type: 'boolean'
+      required:
+        - 'enable'
+    NTP:
+      type: 'object'
+      properties:
+        mainServer:
+          type: 'string'
+        backupServer:
+          type: 'string'
+      required:
+        - 'mainServer'
+        - 'backupServer'
+    PTPProfileEnum:
+      type: 'string'
+      enum:
+        - 'Disabled'
+        - 'smpte2059-L3-e2e'
+    PTP:
+      type: 'object'
+      properties:
+        domain:
+          type: 'integer'
+          format: 'int32'
+          default: 127
+          minimum: 0
+          maximum: 5000
+        priority1:
+          type: 'integer'
+          format: 'int32'
+          default: 248
+          minimum: 0
+          maximum: 255
+        priority2:
+          type: 'integer'
+          format: 'int32'
+          default: 248
+          minimum: 0
+          maximum: 255
+        slaveOnly:
+          type: 'boolean'
+          default: false
+        profile:
+          $ref: '#/components/schemas/PTPProfileEnum'
+      required:
+        - 'domain'
+        - 'priority1'
+        - 'priority2'
+        - 'slaveOnly'
+        - 'profile'
+    Reference:
+      type: 'object'
+      properties:
+        vertical_delay:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 624
+        horizontal_delay:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 1727
+      required:
+        - 'vertical_delay'
+        - 'horizontal_delay'
+    RefSelectionEnum:
+      type: 'string'
+      enum:
+        - 'Freerun'
+        - 'ptp-l3-e2e'
+        - 'Reference1'
+        - 'SDI01'
+    TimeSelectionEnum:
+      type: 'string'
+      enum:
+        - 'Auto'
+        - 'PTP'
+        - 'NTP'
+    MiscReference:
+      type: 'object'
+      properties:
+        ntp:
+          $ref: '#/components/schemas/NTP'
+        ptp:
+          $ref: '#/components/schemas/PTP'
+        reference1:
+          $ref: '#/components/schemas/Reference'
+        reference2:
+          $ref: '#/components/schemas/Reference'
+        refSelection:
+          $ref: '#/components/schemas/RefSelectionEnum'
+        timeSelection:
+          $ref: '#/components/schemas/TimeSelectionEnum'
+      required:
+        - 'ntp'
+        - 'reference1'
+        - 'reference2'
+        - 'refSelection'
+        - 'timeSelection'
+    MediaStats:
+      type: 'object'
+      properties:
+        refLocked:
+          type: 'boolean'
+        reference1Format:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+      required:
+        - 'refLocked'
+        - 'reference1Format'
+    TimeSourceEnum:
+      type: 'string'
+      enum:
+        - 'Unlocked'
+        - 'PTP'
+        - 'NTP_Main'
+        - 'NTP_Backup'
+    TimeSourceStatusEnum:
+      type: 'string'
+      enum:
+        - 'Offline'
+        - 'Syncing'
+        - 'OK'
+    TimeSpec:
+      type: 'object'
+      properties:
+        seconds:
+          type: 'integer'
+          format: 'int32'
+        nanoseconds:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'seconds'
+        - 'nanoseconds'
+    TimeStats:
+      type: 'object'
+      properties:
+        source:
+          $ref: '#/components/schemas/TimeSourceEnum'
+        status:
+          $ref: '#/components/schemas/TimeSourceStatusEnum'
+        info:
+          type: 'string'
+        time:
+          $ref: '#/components/schemas/TimeSpec'
+      required:
+        - 'source'
+        - 'status'
+        - 'info'
+        - 'time'
+    SystemStats:
+      type: 'object'
+      properties:
+        timeLocked:
+          type: 'boolean'
+        systemTime:
+          type: 'integer'
+          format: 'int32'
+          default: 0
+        timeSource:
+          $ref: '#/components/schemas/TimeSourceEnum'
+        timeSourceStatuses:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/TimeStats'
+      required:
+        - 'timeLocked'
+        - 'systemTime'
+        - 'timeSource'
+        - 'timeSourceStatuses'
+    PortStatusEnum:
+      type: 'string'
+      enum:
+        - 'Disabled'
+        - 'Master'
+        - 'Slave'
+        - 'Passive'
+        - 'Unlocked'
+        - 'Unknown'
+    PtpPortStatus:
+      type: 'object'
+      properties:
+        macUuid:
+          type: 'string'
+          format: 'uuid'
+        portStatus:
+          $ref: '#/components/schemas/PortStatusEnum'
+      required:
+        - 'macUuid'
+        - 'portStatus'
+    PtpStats:
+      type: 'object'
+      properties:
+        locked:
+          type: 'boolean'
+        GMID:
+          type: 'string'
+          default: '00:00:00:ff:fe:00:00:00'
+        portStats:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/PtpPortStatus'
+      required:
+        - 'locked'
+        - 'GMID'
+        - 'portStats'
+    NTPSourceEnum:
+      type: 'string'
+      enum:
+        - 'Main'
+        - 'Backup'
+        - 'Unlocked'
+    NtpStats:
+      type: 'object'
+      properties:
+        lockedTo:
+          $ref: '#/components/schemas/NTPSourceEnum'
+      required:
+        - 'lockedTo'
+    MiscReferenceStatus:
+      type: 'object'
+      properties:
+        media:
+          $ref: '#/components/schemas/MediaStats'
+        system:
+          $ref: '#/components/schemas/SystemStats'
+        ptp:
+          $ref: '#/components/schemas/PtpStats'
+        ntp:
+          $ref: '#/components/schemas/NtpStats'
+      required:
+        - 'media'
+        - 'system'
+        - 'ptp'
+        - 'ntp'
+    UserLabelGet:
+      type: 'object'
+      properties:
+        index:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+        label:
+          type: 'string'
+          maxLength: 16
+      required:
+        - 'index'
+        - 'label'
+    UserLabelPut:
+      type: 'object'
+      properties:
+        label:
+          type: 'string'
+          maxLength: 16
+      required:
+        - 'label'
+    AudioProcessing:
+      type: 'object'
+      properties:
+        swpSources:
+          type: 'integer'
+          format: 'int32'
+        swpDestinations:
+          type: 'integer'
+          format: 'int32'
+        resetStreamOnInputDelayOverflow:
+          type: 'boolean'
+        resetStreamOnSsrcChange:
+          type: 'boolean'
+      required:
+        - 'swpSources'
+        - 'swpDestinations'
+    AudioProcessingPut:
+      type: 'object'
+      properties:
+        resetStreamOnInputDelayOverflow:
+          type: 'boolean'
+        resetStreamOnSsrcChange:
+          type: 'boolean'
+    InputSelectionEnum:
+      type: 'string'
+      enum:
+        - 'Auto'
+        - 'Main'
+        - 'Backup'
+    Bank:
+      type: 'object'
+      properties:
+        index:
+          type: 'integer'
+          format: 'int32'
+        delay:
+          type: 'number'
+          format: 'double'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+        audioChannels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+      required:
+        - 'index'
+        - 'delay'
+        - 'inputSelection'
+        - 'audioChannels'
+    BankPut:
+      type: 'object'
+      properties:
+        delay:
+          type: 'number'
+          format: 'double'
+          minimum: 0
+          maximum: 3000
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+        audioChannels:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/GainPhase'
+      required:
+        - 'delay'
+        - 'inputSelection'
+        - 'audioChannels'
+    SwitchStatusEnum:
+      type: 'string'
+      enum:
+        - 'Main'
+        - 'Backup'
+    DataProcessingPath:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        path:
+          type: 'string'
+        switchStatus:
+          $ref: '#/components/schemas/SwitchStatusEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+      required:
+        - 'uuid'
+        - 'path'
+        - 'switchStatus'
+        - 'inputSelection'
+    DataProcessingPathPut:
+      type: 'object'
+      properties:
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+      required:
+        - 'inputSelection'
+    SmarcLinkStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Ok'
+        - 'Error'
+    DolbySdkVersion:
+      type: 'object'
+      properties:
+        padc:
+          type: 'string'
+        paec:
+          type: 'string'
+        pamif:
+          type: 'string'
+        paloud:
+          type: 'string'
+        padmx:
+          type: 'string'
+      required:
+        - 'padc'
+        - 'paec'
+        - 'pamif'
+        - 'paloud'
+        - 'padmx'
+    Ed2EncoderPresets:
+      type: 'object'
+      properties:
+        presets:
+          type: 'array'
+          items:
+            type: 'string'
+      required:
+        - 'presets'
+    DolbyGeneralGet:
+      type: 'object'
+      properties:
+        smarcLinkStatus:
+          $ref: '#/components/schemas/SmarcLinkStatusEnum'
+        sdkVersion:
+          $ref: '#/components/schemas/DolbySdkVersion'
+        ed2Presets:
+          $ref: '#/components/schemas/Ed2EncoderPresets'
+        cpuUsed:
+          type: 'integer'
+          format: 'int32'
+        smarcBypass:
+          type: 'boolean'
+      required:
+        - 'smarcLinkStatus'
+        - 'sdkVersion'
+        - 'ed2Presets'
+        - 'cpuUsed'
+        - 'smarcBypass'
+    DolbyGeneralPut:
+      type: 'object'
+      properties:
+        smarcBypass:
+          type: 'boolean'
+      required:
+        - 'smarcBypass'
+    AudioSourceStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'PCM'
+        - 'Null'
+        - 'Timestamp'
+        - 'MPEG-1'
+        - 'MPEG-2'
+        - 'SMPTE-KLV'
+        - 'Dolby E'
+        - 'Caption Data'
+        - 'UserDef'
+        - 'E-AC-3'
+        - 'AC-4'
+        - 'AC-3'
+        - 'Dolby ED2'
+    LinePositionStatusEnum:
+      type: 'string'
+      enum:
+        - 'Ideal'
+        - 'Valid'
+        - 'Invalid'
+    DolbyFrameRateEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '23.98'
+        - '24'
+        - '25'
+        - '30'
+        - '29.97'
+        - 'Auto'
+    DataRateEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '32'
+        - '40'
+        - '48'
+        - '56'
+        - '64'
+        - '80'
+        - '96'
+        - '112'
+        - '128'
+        - '160'
+        - '192'
+        - '224'
+        - '256'
+        - '320'
+        - '384'
+        - '448'
+        - '512'
+        - '576'
+        - '640'
+        - '768'
+        - 'ExternalMetadata'
+        - 'Reserved'
+        - 'NotSpecified'
+    BitstreamModeEnum:
+      type: 'string'
+      enum:
+        - 'Complete'
+        - 'M&E'
+        - 'Visual/BroadcastMix'
+        - 'Hearing'
+        - 'Dialogue'
+        - 'Commentary'
+        - 'Emergency'
+        - 'Voice Over'
+        - 'MainSvKaraoke'
+        - 'NA'
+        - 'ExternalMetadata'
+    ChannelModeEnum:
+      type: 'string'
+      enum:
+        - '1+1'
+        - '1/0 (C)'
+        - '2/0 (L-R)'
+        - '3/0 (L-C-R)'
+        - '2/1 (L-R-S)'
+        - '3/1 (L-C-R-S)'
+        - '2/2 (L-R-Ls-Rs)'
+        - '3/2 (L-C-R-Ls-Rs)'
+        - 'NA'
+        - 'ExternalMetadata'
+        - '3/1/1 (L-C-R-Cvh)'
+        - '2/2/1 (L-R-Ls-Rs-Ts)'
+        - '3/2/1 (L-C-R-Ls-Rs-Ts)'
+        - '3/2/1 (L-C-R-Ls-Rs-Cvh)'
+        - '3/0/2 (L-C-R-Lc-Rc)'
+        - '2/2/2 (L-R-Ls-Rs-Lw-Rw)'
+        - '2/2/2 (L-R-Ls-Rs-Lvh-Rvh)'
+        - '2/2/2 (L-R-Ls-Rs-Lsd-Rsd)'
+        - '2/2/2 (L-R-Ls-Rs-Lrs-Rrs)'
+        - '3/2/2 (L-C-R-Ls-Rs-Lc-Rc)'
+        - '3/2/2 (L-C-R-Ls-Rs-Lw-Rw)'
+        - '3/2/2 (L-C-R-Ls-Rs-Lvh-Rvh)'
+        - '3/2/2 (L-C-R-Ls-Rs-Lsd-Rsd)'
+        - '3/2/2 (L-C-R-Ls-Rs-Lrs-Rrs)'
+        - '3/2/2 (L-C-R-Ls-Rs-Ts-Cvh)'
+        - '2/2/1 (L-R-Ls-Rs-Cs)'
+        - '3/2/1 (L-C-R-Ls-Rs-Cs)'
+        - '2/2/2 (L-R-Ls-Rs-Cs-Ts)'
+        - '3/2/2 (L-C-R-Ls-Rs-Cs-Cvh)'
+        - '3/2/2 (L-C-R-Ls-Rs-Cs-Ts)'
+        - '3/2/2 (L-R-C-Ls-Rs-Lts-Rts)'
+    DolbyEnableStatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Enabled'
+        - 'Disabled'
+        - 'Yes'
+        - 'No'
+        - 'Auto'
+        - 'ExternalMetadata'
+    CompressionCharacteristicEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'None'
+        - 'FilmStandard'
+        - 'FilmLight'
+        - 'MusicStandard'
+        - 'MusicLight'
+        - 'Speech'
+        - 'ExternalMetadata'
+        - 'Auto'
+    DolbyCommonMetadata:
+      type: 'object'
+      properties:
+        dataRate:
+          $ref: '#/components/schemas/DataRateEnum'
+        dialogNormalization:
+          type: 'integer'
+          format: 'int32'
+          minimum: -31
+          maximum: -1
+        bitstreamMode:
+          $ref: '#/components/schemas/BitstreamModeEnum'
+        channelMode:
+          $ref: '#/components/schemas/ChannelModeEnum'
+        _90DegreePhaseShift:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        lineCompressionCharacteristic:
+          $ref: '#/components/schemas/CompressionCharacteristicEnum'
+        rfCompressionCharacteristic:
+          $ref: '#/components/schemas/CompressionCharacteristicEnum'
+    DownMixModeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotIndicated'
+        - 'LtRtPreferred'
+        - 'LoRoPreferred'
+        - 'PLIIPreferred'
+        - 'Auto'
+        - 'LtRt'
+        - 'LoRo'
+        - 'PLII'
+        - 'Reserved'
+        - 'ExternalMetadata'
+    MixLevelEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '+3.0dB'
+        - '+1.5dB'
+        - '0.0dB'
+        - '-1.5dB'
+        - '-3.0dB'
+        - '-4.5dB'
+        - '-6.0dB'
+        - '-infdB'
+        - 'Auto'
+        - 'Reserved'
+        - 'ExternalMetadata'
+    DolbyDownmix:
+      type: 'object'
+      properties:
+        preferredDownmixMode:
+          $ref: '#/components/schemas/DownMixModeEnum'
+        ltRtCenterMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        ltRtSurroundMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        loRoCenterMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        loRoSurroundMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+    TrimLevelEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '+6.0dB'
+        - '+3.0dB'
+        - '+1.5dB'
+        - '+0.75dB'
+        - '-0.75dB'
+        - '-1.5dB'
+        - '-3.0dB'
+        - '-4.5dB'
+        - '-6.0dB'
+        - '-7.5dB'
+        - '-9.0dB'
+        - '-10.5dB'
+        - '-12.0dB'
+        - '-13.5dB'
+        - '-15.0dB'
+        - '-36.0dB'
+        - '0.0dB'
+        - 'Auto'
+        - 'NotPresent'
+    DynamicObjectTypeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Unknown'
+        - 'Dialogue'
+        - 'NonDialogue'
+        - 'Mixed'
+    DolbyAtmosMetadata:
+      type: 'object'
+      properties:
+        atmosPresence:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        bedObjectConfiguration:
+          type: 'string'
+        complexityIndex:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 16
+        dynamicObjects:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 16
+        heightTrimLevel:
+          $ref: '#/components/schemas/TrimLevelEnum'
+        surroundTrimLevel:
+          $ref: '#/components/schemas/TrimLevelEnum'
+        dynamicObjectType:
+          $ref: '#/components/schemas/DynamicObjectTypeEnum'
+      required:
+        - 'atmosPresence'
+        - 'bedObjectConfiguration'
+        - 'complexityIndex'
+        - 'dynamicObjects'
+        - 'heightTrimLevel'
+        - 'surroundTrimLevel'
+        - 'dynamicObjectType'
+    SampleRateEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - '32000'
+        - '44100'
+        - '48000'
+    LoudnessCorrectionTypeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotPresent'
+        - 'Invalid'
+        - 'RealTime'
+        - 'FileBased'
+    LoudnessRegulationTypeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Invalid'
+        - 'NotIndicated'
+        - 'ATSCA/85'
+        - 'EBUR128'
+        - 'ARIB TR-B32'
+        - 'FreeTVOP-59'
+        - 'Reserved'
+        - 'Manual'
+        - 'Customer'
+    DialogueCorrectedEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotPresent'
+        - 'Invalid'
+        - 'NotCorrected'
+        - 'Corrected'
+    DolbySurroundEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotIndicated'
+        - 'NotDolbySurround'
+        - 'DolbySurround'
+        - 'Reserved'
+        - 'ExternalMetadata'
+    DolbySurroundExEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotIndicated'
+        - 'NotDolbySurroundEX'
+        - 'DolbySurroundEX'
+        - 'Reserved'
+        - 'ExternalMetadata'
+    RoomTypeEnum:
+      type: 'string'
+      enum:
+        - 'NotIndicated'
+        - 'LargeRoom'
+        - 'SmallRoom'
+        - 'ExternalMetadata'
+        - 'Reserved'
+        - 'NA'
+    DolbyDigitalDecoderStatus:
+      type: 'object'
+      properties:
+        general:
+          $ref: '#/components/schemas/DolbyCommonMetadata'
+        downmix:
+          $ref: '#/components/schemas/DolbyDownmix'
+        atmos:
+          $ref: '#/components/schemas/DolbyAtmosMetadata'
+        crcErrors:
+          type: 'integer'
+          format: 'int32'
+        sampleRate:
+          $ref: '#/components/schemas/SampleRateEnum'
+        loudnessCorrectionType:
+          $ref: '#/components/schemas/LoudnessCorrectionTypeEnum'
+        loudnessRegulationType:
+          $ref: '#/components/schemas/LoudnessRegulationTypeEnum'
+        dialogueCorrected:
+          $ref: '#/components/schemas/DialogueCorrectedEnum'
+        lfeChannel:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        dolbySurround:
+          $ref: '#/components/schemas/DolbySurroundEnum'
+        dolbySurroundEX:
+          $ref: '#/components/schemas/DolbySurroundExEnum'
+        productionMixLevel:
+          type: 'integer'
+          format: 'int32'
+          minimum: 80
+          maximum: 111
+        productionRoomType:
+          $ref: '#/components/schemas/RoomTypeEnum'
+        ac3Copyright:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        ac3OriginalBitstream:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+      required:
+        - 'general'
+        - 'downmix'
+        - 'atmos'
+        - 'crcErrors'
+        - 'sampleRate'
+        - 'loudnessCorrectionType'
+        - 'loudnessRegulationType'
+        - 'dialogueCorrected'
+        - 'lfeChannel'
+        - 'dolbySurround'
+        - 'dolbySurroundEX'
+        - 'productionMixLevel'
+        - 'productionRoomType'
+        - 'ac3Copyright'
+        - 'ac3OriginalBitstream'
+    ProgramConfigurationEnum:
+      type: 'string'
+      enum:
+        - '5.1+2'
+        - '5.1+1+1'
+        - '4+4'
+        - '4+2+2'
+        - '4+2+1+1'
+        - '4+1+1+1+1'
+        - '2+2+2+2'
+        - '2+2+2+1+1'
+        - '2+2+1+1+1+1'
+        - '2+1+1+1+1+1+1'
+        - '1+1+1+1+1+1+1+1'
+        - '5.1'
+        - '4+2'
+        - '4+1+1'
+        - '2+2+2'
+        - '2+2+1+1'
+        - '2+1+1+1+1'
+        - '1+1+1+1+1+1'
+        - '4'
+        - '2+2'
+        - '2+1+1'
+        - '1+1+1+1'
+        - '7.1'
+        - '7.1Screen'
+        - 'NA'
+    DolbyHeadphoneEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'NotIndicated'
+        - 'NotDolbyHeadphone'
+        - 'DolbyHeadphone'
+        - 'Reserved'
+        - 'ExternalMetadata'
+    ADConvertEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Standard'
+        - 'HDCD'
+        - 'ExternalMetadata'
+    DolbyFiltering:
+      type: 'object'
+      properties:
+        dcHighpassFilter:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        bandwidthLowpassFilter:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        lfeLowpassFilter:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+    DolbyEProgramMetadata:
+      type: 'object'
+      properties:
+        programText:
+          type: 'string'
+        dolbySurround:
+          $ref: '#/components/schemas/DolbySurroundEnum'
+        dolbySurroundEX:
+          $ref: '#/components/schemas/DolbySurroundExEnum'
+        languageCode:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 255
+        audioProductionInfo:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        lfeChannel:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        productionMixLevel:
+          type: 'integer'
+          format: 'int32'
+          minimum: 80
+          maximum: 111
+        productionRoomType:
+          $ref: '#/components/schemas/RoomTypeEnum'
+        ac3Copyright:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        ac3OriginalBitstream:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        dolbyHeadphone:
+          $ref: '#/components/schemas/DolbyHeadphoneEnum'
+        adConverterType:
+          $ref: '#/components/schemas/ADConvertEnum'
+        centerMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        surroundMixLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        _3DbAttenuation:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        rfPreEmphasis:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        downmix:
+          $ref: '#/components/schemas/DolbyDownmix'
+        filters:
+          $ref: '#/components/schemas/DolbyFiltering'
+        general:
+          $ref: '#/components/schemas/DolbyCommonMetadata'
+    DolbyEDecoderStatus:
+      type: 'object'
+      properties:
+        framerate:
+          $ref: '#/components/schemas/DolbyFrameRateEnum'
+        programConfiguration:
+          $ref: '#/components/schemas/ProgramConfigurationEnum'
+        numberOfPrograms:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 8
+        programs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/DolbyEProgramMetadata'
+      required:
+        - 'framerate'
+        - 'programConfiguration'
+        - 'numberOfPrograms'
+        - 'programs'
+    ED2SubstreamMetadata:
+      type: 'object'
+      properties:
+        programConfiguration:
+          $ref: '#/components/schemas/ProgramConfigurationEnum'
+        crcErrors:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'programConfiguration'
+        - 'crcErrors'
+    ObjectTypeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Bed'
+        - 'Dynamic'
+    ObjectCategoryEnum:
+      type: 'string'
+      enum:
+        - 'Generic'
+        - 'Dialogue'
+    ObjectConfig:
+      type: 'object'
+      properties:
+        gain:
+          type: 'number'
+          format: 'float'
+        x:
+          type: 'number'
+          format: 'float'
+        'y':
+          type: 'number'
+          format: 'float'
+        z:
+          type: 'number'
+          format: 'float'
+      required:
+        - 'gain'
+        - 'x'
+        - 'y'
+        - 'z'
+    ObjectMetadata:
+      type: 'object'
+      properties:
+        type:
+          $ref: '#/components/schemas/ObjectTypeEnum'
+        objectID:
+          type: 'integer'
+          format: 'int32'
+        channelConfiguration:
+          type: 'string'
+        sourceChannelID:
+          type: 'string'
+        category:
+          $ref: '#/components/schemas/ObjectCategoryEnum'
+        configs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/ObjectConfig'
+      required:
+        - 'type'
+        - 'objectID'
+        - 'channelConfiguration'
+        - 'sourceChannelID'
+        - 'category'
+        - 'configs'
+    PresentationObject:
+      type: 'object'
+      properties:
+        objectID:
+          type: 'integer'
+          format: 'int32'
+        configID:
+          type: 'integer'
+          format: 'int32'
+      required:
+        - 'objectID'
+        - 'configID'
+    PresentationMetadata:
+      type: 'object'
+      properties:
+        description:
+          type: 'string'
+        bedsEnabled:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/PresentationObject'
+        dynamicObjectsEnabled:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/PresentationObject'
+      required:
+        - 'description'
+        - 'bedsEnabled'
+        - 'dynamicObjectsEnabled'
+    DolbyED2DecoderStatus:
+      type: 'object'
+      properties:
+        atmosPresence:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        metadataID:
+          type: 'integer'
+          format: 'int32'
+        intraFrameMisalignment:
+          type: 'integer'
+          format: 'int32'
+        interFrameMisalignment:
+          type: 'integer'
+          format: 'int32'
+        ed2SubstreamStatus:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/ED2SubstreamMetadata'
+        bedObjects:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/ObjectMetadata'
+        dynamicObjects:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/ObjectMetadata'
+        presentations:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/PresentationMetadata'
+      required:
+        - 'atmosPresence'
+        - 'metadataID'
+        - 'intraFrameMisalignment'
+        - 'interFrameMisalignment'
+        - 'ed2SubstreamStatus'
+        - 'bedObjects'
+        - 'dynamicObjects'
+        - 'presentations'
+    DecoderCodecStatus:
+      type: 'object'
+      properties:
+        dolbyDigital:
+          $ref: '#/components/schemas/DolbyDigitalDecoderStatus'
+        dolbye:
+          $ref: '#/components/schemas/DolbyEDecoderStatus'
+        ed2:
+          $ref: '#/components/schemas/DolbyED2DecoderStatus'
+    PassthroughLatencyEnum:
+      type: 'string'
+      enum:
+        - 'Minimum'
+        - 'SingleFrame'
+        - 'TwoFrames'
+    DynamicRangeConrolEnum:
+      type: 'string'
+      enum:
+        - 'None'
+        - 'Line'
+        - 'RF'
+    StereoDownmixModeEnum:
+      type: 'string'
+      enum:
+        - 'LtRt'
+        - 'LoRo'
+        - 'Auto'
+    SpeakerConfigurationEnum:
+      type: 'string'
+      enum:
+        - 'Stereo'
+        - '5.1'
+        - '7.1'
+    RendererSpeakerConfigurationEnum:
+      type: 'string'
+      enum:
+        - 'DirectObjectOutput'
+        - 'StereoLtRt'
+        - 'StereoLoRo'
+        - 'StereoAuto'
+        - '5.1'
+        - '5.1.2'
+        - '5.1.4'
+        - '7.1.4'
+    DolbyRendererSettings:
+      type: 'object'
+      properties:
+        speakerConfiguration:
+          $ref: '#/components/schemas/RendererSpeakerConfigurationEnum'
+        presentationSet:
+          type: 'integer'
+          format: 'int32'
+          minimum: 1
+          maximum: 16
+        surroundTrimLevel:
+          $ref: '#/components/schemas/TrimLevelEnum'
+        heightTrimLevel:
+          $ref: '#/components/schemas/TrimLevelEnum'
+        centerGainLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+        surroundGainLevel:
+          $ref: '#/components/schemas/MixLevelEnum'
+    DolbyDecoderGet:
+      type: 'object'
+      properties:
+        id:
+          type: 'integer'
+          format: 'int32'
+        audioSourceStatus:
+          $ref: '#/components/schemas/AudioSourceStatusEnum'
+        linePosition:
+          type: 'integer'
+          format: 'int32'
+        idealLinePosition:
+          type: 'integer'
+          format: 'int32'
+        linePositionStatus:
+          $ref: '#/components/schemas/LinePositionStatusEnum'
+        videoSpacing:
+          $ref: '#/components/schemas/DolbyFrameRateEnum'
+        latency:
+          type: 'integer'
+          format: 'int32'
+        metadataStatus:
+          $ref: '#/components/schemas/DecoderCodecStatus'
+        enabled:
+          type: 'boolean'
+        passthroughLatency:
+          $ref: '#/components/schemas/PassthroughLatencyEnum'
+        dolbyDigitalPlus:
+          type: 'object'
+          properties:
+            dynamicRangeControl:
+              $ref: '#/components/schemas/DynamicRangeConrolEnum'
+            stereoDownmixMode:
+              $ref: '#/components/schemas/StereoDownmixModeEnum'
+            speakerConfiguration:
+              $ref: '#/components/schemas/SpeakerConfigurationEnum'
+        rendererSettings:
+          $ref: '#/components/schemas/DolbyRendererSettings'
+        resetCRC:
+          type: 'boolean'
+      required:
+        - 'id'
+        - 'audioSourceStatus'
+        - 'linePosition'
+        - 'idealLinePosition'
+        - 'linePositionStatus'
+        - 'videoSpacing'
+        - 'latency'
+        - 'enabled'
+    DolbyDecoderPut:
+      type: 'object'
+      properties:
+        enabled:
+          type: 'boolean'
+        passthroughLatency:
+          $ref: '#/components/schemas/PassthroughLatencyEnum'
+        dolbyDigitalPlus:
+          type: 'object'
+          properties:
+            dynamicRangeControl:
+              $ref: '#/components/schemas/DynamicRangeConrolEnum'
+            stereoDownmixMode:
+              $ref: '#/components/schemas/StereoDownmixModeEnum'
+            speakerConfiguration:
+              $ref: '#/components/schemas/SpeakerConfigurationEnum'
+        rendererSettings:
+          $ref: '#/components/schemas/DolbyRendererSettings'
+        resetCRC:
+          type: 'boolean'
+      required:
+        - 'enabled'
+    DolbyEEncoderStatus:
+      type: 'object'
+      properties:
+        bitstreamKeys:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        framerateIn:
+          $ref: '#/components/schemas/DolbyFrameRateEnum'
+        framerateOut:
+          $ref: '#/components/schemas/DolbyFrameRateEnum'
+        programConfiguration:
+          $ref: '#/components/schemas/ProgramConfigurationEnum'
+        numberOfPrograms:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 8
+        programs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/DolbyEProgramMetadata'
+      required:
+        - 'bitstreamKeys'
+        - 'framerateIn'
+        - 'framerateOut'
+        - 'programConfiguration'
+        - 'numberOfPrograms'
+        - 'programs'
+    loudnessLevelerModeEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'Auto'
+        - 'On'
+        - 'Off'
+    DialogueIntelligenceEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'On'
+        - 'Off'
+    PeakLimitEnum:
+      type: 'string'
+      enum:
+        - '-0.1dBTP'
+        - '-0.2dBTP'
+        - '-0.3dBTP'
+        - '-0.4dBTP'
+        - '-0.5dBTP'
+        - '-0.6dBTP'
+        - '-0.7dBTP'
+        - '-0.8dBTP'
+        - '-0.9dBTP'
+        - '-1dBTP'
+        - '-1.1dBTP'
+        - '-1.2dBTP'
+        - '-1.3dBTP'
+        - '-1.4dBTP'
+        - '-1.5dBTP'
+        - '-1.6dBTP'
+        - '-1.7dBTP'
+        - '-1.8dBTP'
+        - '-1.9dBTP'
+        - '-2dBTP'
+        - '-2.1dBTP'
+        - '-2.2dBTP'
+        - '-2.3dBTP'
+        - '-2.4dBTP'
+        - '-2.5dBTP'
+        - '-2.6dBTP'
+        - '-2.7dBTP'
+        - '-2.8dBTP'
+        - '-2.9dBTP'
+        - '-3dBTP'
+        - '-3.1dBTP'
+        - '-3.2dBTP'
+        - '-3.3dBTP'
+        - '-3.4dBTP'
+        - '-3.5dBTP'
+        - '-3.6dBTP'
+        - '-3.7dBTP'
+        - '-3.8dBTP'
+        - '-3.9dBTP'
+        - '-4dBTP'
+        - '-4.1dBTP'
+        - '-4.2dBTP'
+        - '-4.3dBTP'
+        - '-4.4dBTP'
+        - '-4.5dBTP'
+        - '-4.6dBTP'
+        - '-4.7dBTP'
+        - '-4.8dBTP'
+        - '-4.9dBTP'
+        - '-5dBTP'
+        - '-5.1dBTP'
+        - '-5.2dBTP'
+        - '-5.3dBTP'
+        - '-5.4dBTP'
+        - '-5.5dBTP'
+        - '-5.6dBTP'
+        - '-5.7dBTP'
+        - '-5.8dBTP'
+        - '-5.9dBTP'
+        - '-6dBTP'
+        - '-6.1dBTP'
+        - '-6.2dBTP'
+        - '-6.3dBTP'
+        - '-6.4dBTP'
+        - '-6.5dBTP'
+        - '-6.6dBTP'
+        - '-6.7dBTP'
+        - '-6.8dBTP'
+        - '-6.9dBTP'
+        - '-7dBTP'
+        - '-7.1dBTP'
+        - '-7.2dBTP'
+        - '-7.3dBTP'
+        - '-7.4dBTP'
+        - '-7.5dBTP'
+        - '-7.6dBTP'
+        - '-7.7dBTP'
+        - '-7.8dBTP'
+        - '-7.9dBTP'
+        - '-8dBTP'
+        - 'NA'
+    DolbyLoudnessSettings:
+      type: 'object'
+      properties:
+        loudnessRegulationType:
+          $ref: '#/components/schemas/LoudnessRegulationTypeEnum'
+        loudnessLevelerMode:
+          $ref: '#/components/schemas/loudnessLevelerModeEnum'
+        dialogueIntelligence:
+          $ref: '#/components/schemas/DialogueIntelligenceEnum'
+        peakLimit:
+          $ref: '#/components/schemas/PeakLimitEnum'
+    DolbyDigitalEncoderStatus:
+      type: 'object'
+      properties:
+        lfeChannel:
+          $ref: '#/components/schemas/DolbyEnableStatusEnum'
+        loudness:
+          $ref: '#/components/schemas/DolbyLoudnessSettings'
+        general:
+          $ref: '#/components/schemas/DolbyCommonMetadata'
+        downmix:
+          $ref: '#/components/schemas/DolbyDownmix'
+      required:
+        - 'lfeChannel'
+        - 'loudness'
+        - 'general'
+        - 'downmix'
+    EncoderCodecStatus:
+      type: 'object'
+      properties:
+        dolbyE:
+          $ref: '#/components/schemas/DolbyEEncoderStatus'
+        dolbyDigital:
+          $ref: '#/components/schemas/DolbyDigitalEncoderStatus'
+    EncoderTypeEnum:
+      type: 'string'
+      enum:
+        - 'DolbyE'
+        - 'DolbyDigital'
+        - 'DolbyDigitalPlus'
+        - 'DolbyED2'
+    MetadataSourceEnum:
+      type: 'string'
+      enum:
+        - 'DecoderOut'
+        - 'ProcessorOut'
+    DolbyBitDepthEnum:
+      type: 'string'
+      enum:
+        - '16'
+        - '20'
+    SingleMetadataSourceEnum:
+      type: 'string'
+      enum:
+        - 'InternalMetadata'
+        - 'ExternalMetadata'
+    DolbyEProgramSettings:
+      type: 'object'
+      properties:
+        settings:
+          $ref: '#/components/schemas/DolbyEProgramMetadata'
+        languageCodeSource:
+          $ref: '#/components/schemas/SingleMetadataSourceEnum'
+        productionMixLevelSource:
+          $ref: '#/components/schemas/SingleMetadataSourceEnum'
+        programTextSource:
+          $ref: '#/components/schemas/SingleMetadataSourceEnum'
+        dialogNormalizationSource:
+          $ref: '#/components/schemas/SingleMetadataSourceEnum'
+    DolbyEEncoderSettings:
+      type: 'object'
+      properties:
+        bitDepth:
+          $ref: '#/components/schemas/DolbyBitDepthEnum'
+        framerateOut:
+          $ref: '#/components/schemas/DolbyFrameRateEnum'
+        programConfiguration:
+          $ref: '#/components/schemas/ProgramConfigurationEnum'
+        programs:
+          type: 'array'
+          items:
+            $ref: '#/components/schemas/DolbyEProgramSettings'
+    DolbyDigitalEncoderSettings:
+      type: 'object'
+      properties:
+        general:
+          $ref: '#/components/schemas/DolbyCommonMetadata'
+        downmix:
+          $ref: '#/components/schemas/DolbyDownmix'
+        loudness:
+          $ref: '#/components/schemas/DolbyLoudnessSettings'
+        dialogNormalizationSource:
+          $ref: '#/components/schemas/SingleMetadataSourceEnum'
+    CodecSettings:
+      type: 'object'
+      properties:
+        dolbyE:
+          $ref: '#/components/schemas/DolbyEEncoderSettings'
+        dolbyDigital:
+          $ref: '#/components/schemas/DolbyDigitalEncoderSettings'
+    DolbyEncoderGet:
+      type: 'object'
+      properties:
+        id:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 7
+        latency:
+          type: 'integer'
+          format: 'int32'
+        metadataStatus:
+          $ref: '#/components/schemas/EncoderCodecStatus'
+        enabled:
+          type: 'boolean'
+        encoderType:
+          $ref: '#/components/schemas/EncoderTypeEnum'
+        settingsMetadataSource:
+          $ref: '#/components/schemas/MetadataSourceEnum'
+        settingsED2MetadataSource:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 15
+        codecSettings:
+          $ref: '#/components/schemas/CodecSettings'
+      required:
+        - 'id'
+        - 'latency'
+        - 'metadataStatus'
+        - 'enabled'
+    DolbyEncoderPut:
+      type: 'object'
+      properties:
+        enabled:
+          type: 'boolean'
+        encoderType:
+          $ref: '#/components/schemas/EncoderTypeEnum'
+        settingsMetadataSource:
+          $ref: '#/components/schemas/MetadataSourceEnum'
+        settingsED2MetadataSource:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 15
+        codecSettings:
+          $ref: '#/components/schemas/CodecSettings'
+      required:
+        - 'enabled'
+    SwitchBackEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'On'
+        - 'BackUpFail'
+    VideoProcessing:
+      type: 'object'
+      properties:
+        globalInputSelection:
+          type: 'boolean'
+        switchBack:
+          $ref: '#/components/schemas/SwitchBackEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+      required:
+        - 'globalInputSelection'
+        - 'switchBack'
+        - 'inputSelection'
+    VideoPathEnum:
+      type: 'string'
+      enum:
+        - 'A'
+        - 'B'
+        - 'C'
+        - 'D'
+        - 'E'
+        - 'F'
+        - 'G'
+        - 'H'
+    WireModeEnum:
+      type: 'integer'
+      enum:
+        - 1
+        - 4
+      format: 'int32'
+    UHDMappingEnum:
+      type: 'string'
+      enum:
+        - '2SI'
+        - 'SQD'
+    VideoProcessingPath:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        path:
+          $ref: '#/components/schemas/VideoPathEnum'
+        wireModeIn:
+          $ref: '#/components/schemas/WireModeEnum'
+        uhdModeIn:
+          type: 'boolean'
+        uhdMappingIn:
+          $ref: '#/components/schemas/UHDMappingEnum'
+        wireModeOut:
+          $ref: '#/components/schemas/WireModeEnum'
+        uhdModeOut:
+          type: 'boolean'
+        uhdMappingOut:
+          $ref: '#/components/schemas/UHDMappingEnum'
+        proxyOut:
+          type: 'boolean'
+        inputModeValidity:
+          type: 'string'
+          enum:
+            - 'valid'
+            - 'invalid'
+        channelUuids:
+          type: 'array'
+          items:
+            type: 'string'
+            format: 'uuid'
+      required:
+        - 'uuid'
+        - 'path'
+        - 'wireModeIn'
+        - 'uhdModeIn'
+        - 'uhdMappingIn'
+        - 'wireModeOut'
+        - 'uhdModeOut'
+        - 'uhdMappingOut'
+        - 'proxyOut'
+        - 'inputModeValidity'
+        - 'channelUuids'
+    VideoProcessingPathPut:
+      type: 'object'
+      properties:
+        wireModeIn:
+          $ref: '#/components/schemas/WireModeEnum'
+        uhdModeIn:
+          type: 'boolean'
+        uhdMappingIn:
+          $ref: '#/components/schemas/UHDMappingEnum'
+        wireModeOut:
+          $ref: '#/components/schemas/WireModeEnum'
+        uhdMappingOut:
+          $ref: '#/components/schemas/UHDMappingEnum'
+        proxyOut:
+          type: 'boolean'
+      required:
+        - 'wireModeIn'
+        - 'uhdModeIn'
+        - 'uhdMappingIn'
+        - 'wireModeOut'
+        - 'uhdMappingOut'
+        - 'proxyOut'
+    VideoProcessingVideoFormat:
+      type: 'object'
+      properties:
+        activeInput:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        mainInput:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        backupInput:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+      required:
+        - 'activeInput'
+        - 'mainInput'
+        - 'backupInput'
+    FrameSyncAlignmentPresetEnum:
+      type: 'string'
+      enum:
+        - 'SDI'
+        - 'ST2022-6'
+        - 'ST2110-20'
+    VideoProcessingChannelDelay:
+      type: 'object'
+      properties:
+        frameDelay:
+          type: 'integer'
+          format: 'int32'
+        maxValidFrameDelay:
+          type: 'integer'
+          format: 'int32'
+        verticalDelay:
+          type: 'integer'
+          format: 'int32'
+        horizontalDelay:
+          type: 'integer'
+          format: 'int32'
+        ioDelay:
+          type: 'number'
+          format: 'float'
+        minimumDelay:
+          type: 'boolean'
+        frameSyncAlignmentPreset:
+          $ref: '#/components/schemas/FrameSyncAlignmentPresetEnum'
+        constantConversionDelay:
+          type: 'boolean'
+      required:
+        - 'frameDelay'
+        - 'maxValidFrameDelay'
+        - 'verticalDelay'
+        - 'horizontalDelay'
+        - 'ioDelay'
+        - 'minimumDelay'
+        - 'frameSyncAlignmentPreset'
+        - 'constantConversionDelay'
+    AudioEmbedderModeEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'Append'
+        - 'Overwrite'
+        - 'Blank'
+    EmbedderGroupSelectEnum:
+      type: 'string'
+      enum:
+        - 'None'
+        - '1___'
+        - '_2__'
+        - '12__'
+        - '__3_'
+        - '1_3_'
+        - '_23_'
+        - '123_'
+        - '___4'
+        - '1__4'
+        - '_2_4'
+        - '12_4'
+        - '__34'
+        - '1_34'
+        - '_234'
+        - '1234'
+    DataEmbedderModeEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'Overwrite'
+        - 'Blank'
+    VideoProcessingChannelEmbedder:
+      type: 'object'
+      properties:
+        audioEmbedderMode:
+          $ref: '#/components/schemas/AudioEmbedderModeEnum'
+        audioEmbedderGroupSelect:
+          $ref: '#/components/schemas/EmbedderGroupSelectEnum'
+        ancillaryEmbedderMode:
+          $ref: '#/components/schemas/DataEmbedderModeEnum'
+      required:
+        - 'audioEmbedderMode'
+        - 'audioEmbedderGroupSelect'
+        - 'ancillaryEmbedderMode'
+    ColorCorrectorDomainEnum:
+      type: 'string'
+      enum:
+        - 'RGB'
+        - 'YCbCr'
+        - 'Mixed'
+        - 'Off'
+    VideoProcessingChannelRgbGain:
+      type: 'object'
+      properties:
+        colorCorrectorDomain:
+          $ref: '#/components/schemas/ColorCorrectorDomainEnum'
+        gainEnable:
+          type: 'boolean'
+        gainRed:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        gainGreen:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        gainBlue:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        gainY:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        gainCb:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        gainCr:
+          type: 'number'
+          format: 'float'
+          minimum: 0
+          maximum: 150
+        blackLevelRed:
+          type: 'integer'
+          format: 'int32'
+          minimum: -128
+          maximum: 127
+        blackLevelGreen:
+          type: 'integer'
+          format: 'int32'
+          minimum: -128
+          maximum: 127
+        blackLevelBlue:
+          type: 'integer'
+          format: 'int32'
+          minimum: -128
+          maximum: 127
+        blackLevelY:
+          type: 'integer'
+          format: 'int32'
+          minimum: -128
+          maximum: 127
+        clipEnable:
+          type: 'boolean'
+        clipWhite:
+          type: 'integer'
+          format: 'int32'
+          minimum: 550
+          maximum: 1023
+        clipBlack:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 64
+        hueShift:
+          type: 'integer'
+          format: 'int32'
+          minimum: -181
+          maximum: 181
+      required:
+        - 'colorCorrectorDomain'
+        - 'gainEnable'
+        - 'gainRed'
+        - 'gainGreen'
+        - 'gainBlue'
+        - 'gainY'
+        - 'gainCb'
+        - 'gainCr'
+        - 'blackLevelRed'
+        - 'blackLevelGreen'
+        - 'blackLevelBlue'
+        - 'blackLevelY'
+        - 'clipEnable'
+        - 'clipWhite'
+        - 'clipBlack'
+        - 'hueShift'
+    S352PayloadEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'On'
+        - 'Transparent'
+    ColorSpaceModeEnum:
+      type: 'string'
+      enum:
+        - 'Manual'
+        - 'Input'
+        - 'Auto'
+    ColorSpaceEnum:
+      type: 'string'
+      enum:
+        - 'SDR Rec. 709'
+        - 'SDR Rec. 2020'
+        - 'HDR Rec. 2020 HLG'
+        - 'HDR Rec. 2020 PQ'
+        - 'HDR Rec. 2020 SLOG3'
+    ColorNormalisationEnum:
+      type: 'string'
+      enum:
+        - 'Full'
+        - 'Narrow'
+    LUTPresetEnum:
+      type: 'string'
+      enum:
+        - 'Transparent'
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+        - '5'
+        - '6'
+        - '7'
+        - '8'
+        - '9'
+        - '10'
+        - '11'
+        - '12'
+        - '13'
+        - '14'
+        - '15'
+        - '16'
+    ColorSpaceMatrixModePresetEnum:
+      type: 'string'
+      enum:
+        - 'Transparent'
+        - '709To2020'
+        - '2020To709'
+    VideoProcessingChannelHDRConversion:
+      type: 'object'
+      properties:
+        colorSpaceMode:
+          $ref: '#/components/schemas/ColorSpaceModeEnum'
+        colorSpaceIn:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        colorSpaceOut:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        colorSpaceInStatus:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        colorSpaceOutStatus:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        normalizationIn:
+          $ref: '#/components/schemas/ColorNormalisationEnum'
+        normalizationOut:
+          $ref: '#/components/schemas/ColorNormalisationEnum'
+        lut1dPre:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        lut3d:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        lut1dPost:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        colorSpaceMatrixMode:
+          $ref: '#/components/schemas/ColorSpaceMatrixModePresetEnum'
+      required:
+        - 'colorSpaceMode'
+        - 'colorSpaceOut'
+        - 'colorSpaceInStatus'
+        - 'colorSpaceOutStatus'
+    ConversionValidityEnum:
+      type: 'string'
+      enum:
+        - 'Ok'
+        - 'Warning'
+    ConversionModeEnum:
+      type: 'string'
+      enum:
+        - 'Off'
+        - 'Down'
+        - 'Up/Down/Cross'
+    FilterLPFModeEnum:
+      type: 'string'
+      enum:
+        - 'M50'
+        - 'M45'
+        - 'M40'
+        - 'M35'
+        - 'M30'
+        - 'M25'
+        - 'M20'
+        - 'M15'
+        - 'M10'
+        - 'M5'
+        - 'Optimal'
+        - 'P5'
+        - 'P10'
+        - 'P15'
+        - 'P20'
+        - 'P25'
+        - 'P30'
+        - 'P35'
+        - 'P40'
+        - 'P45'
+        - 'P50'
+    HSharpnessEdgeEnum:
+      type: 'string'
+      enum:
+        - '2_0'
+        - '1_9'
+        - '1_8'
+        - '1_7'
+        - '1_6'
+        - '1_5'
+        - '1_4'
+        - '1_3'
+        - '1_2'
+        - '1_1'
+        - '1_0'
+    HSharpnessGainEnum:
+      type: 'string'
+      enum:
+        - '2_0'
+        - '1_9'
+        - '1_8'
+        - '1_7'
+        - '1_6'
+        - '1_5'
+        - '1_4'
+        - '1_3'
+        - '1_2'
+        - '1_1'
+        - '1_0'
+    VideoProcessingChannelScalingHSharpness:
+      type: 'object'
+      properties:
+        edge:
+          $ref: '#/components/schemas/HSharpnessEdgeEnum'
+        gain:
+          $ref: '#/components/schemas/HSharpnessGainEnum'
+      required:
+        - 'edge'
+        - 'gain'
+    VideoProcessingChannelScaling:
+      type: 'object'
+      properties:
+        conversionValidity:
+          $ref: '#/components/schemas/ConversionValidityEnum'
+        conversionMode:
+          $ref: '#/components/schemas/ConversionModeEnum'
+        downLowPassFilterHorizontal:
+          $ref: '#/components/schemas/FilterLPFModeEnum'
+        downLowPassFilterVertical:
+          $ref: '#/components/schemas/FilterLPFModeEnum'
+        hSharpness:
+          $ref: '#/components/schemas/VideoProcessingChannelScalingHSharpness'
+      required:
+        - 'conversionValidity'
+    StatusEnum:
+      type: 'string'
+      enum:
+        - 'NA'
+        - 'On'
+        - 'Off'
+        - 'Ok'
+        - 'Error'
+    VideoProcessingChannel:
+      type: 'object'
+      properties:
+        uuid:
+          type: 'string'
+          format: 'uuid'
+        pathUuid:
+          type: 'string'
+          format: 'uuid'
+        channel:
+          $ref: '#/components/schemas/PathChannelEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+        switchStatus:
+          $ref: '#/components/schemas/SwitchStatusEnum'
+        lock:
+          type: 'boolean'
+        videoFormatInputs:
+          $ref: '#/components/schemas/VideoProcessingVideoFormat'
+        videoFormatOutput:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        delay:
+          $ref: '#/components/schemas/VideoProcessingChannelDelay'
+        embedder:
+          $ref: '#/components/schemas/VideoProcessingChannelEmbedder'
+        rgbGain:
+          $ref: '#/components/schemas/VideoProcessingChannelRgbGain'
+        s352Payload:
+          $ref: '#/components/schemas/S352PayloadEnum'
+        s352InsertPsF:
+          type: 'boolean'
+        hdrConversion:
+          $ref: '#/components/schemas/VideoProcessingChannelHDRConversion'
+        scaling:
+          $ref: '#/components/schemas/VideoProcessingChannelScaling'
+        hqDeinterlacer:
+          type: 'boolean'
+        hqDeinterlacerStatus:
+          $ref: '#/components/schemas/StatusEnum'
+      required:
+        - 'uuid'
+        - 'pathUuid'
+        - 'channel'
+        - 'inputSelection'
+        - 'switchStatus'
+        - 'lock'
+        - 'videoFormatInputs'
+        - 'videoFormatOutput'
+        - 'delay'
+        - 's352Payload'
+        - 's352InsertPsF'
+        - 'hdrConversion'
+    VideoProcessingChannelDelayPut:
+      type: 'object'
+      properties:
+        frameDelay:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 31
+        verticalDelay:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 2250
+        horizontalDelay:
+          type: 'integer'
+          format: 'int32'
+          minimum: 0
+          maximum: 5280
+        minimumDelay:
+          type: 'boolean'
+        frameSyncAlignmentPreset:
+          $ref: '#/components/schemas/FrameSyncAlignmentPresetEnum'
+        constantConversionDelay:
+          type: 'boolean'
+      required:
+        - 'frameDelay'
+        - 'verticalDelay'
+        - 'horizontalDelay'
+        - 'minimumDelay'
+        - 'frameSyncAlignmentPreset'
+        - 'constantConversionDelay'
+    VideoProcessingChannelHDRConversionPut:
+      type: 'object'
+      properties:
+        colorSpaceMode:
+          $ref: '#/components/schemas/ColorSpaceModeEnum'
+        colorSpaceIn:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        colorSpaceOut:
+          $ref: '#/components/schemas/ColorSpaceEnum'
+        normalizationIn:
+          $ref: '#/components/schemas/ColorNormalisationEnum'
+        normalizationOut:
+          $ref: '#/components/schemas/ColorNormalisationEnum'
+        lut1dPre:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        lut3d:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        lut1dPost:
+          $ref: '#/components/schemas/LUTPresetEnum'
+        colorSpaceMatrixMode:
+          $ref: '#/components/schemas/ColorSpaceMatrixModePresetEnum'
+      required:
+        - 'colorSpaceMode'
+        - 'colorSpaceOut'
+    VideoProcessingChannelScalingHSharpnessPut:
+      type: 'object'
+      properties:
+        edge:
+          $ref: '#/components/schemas/HSharpnessEdgeEnum'
+        gain:
+          $ref: '#/components/schemas/HSharpnessGainEnum'
+      required:
+        - 'edge'
+        - 'gain'
+    VideoProcessingChannelScalingPut:
+      type: 'object'
+      properties:
+        conversionMode:
+          $ref: '#/components/schemas/ConversionModeEnum'
+        downLowPassFilterHorizontal:
+          $ref: '#/components/schemas/FilterLPFModeEnum'
+        downLowPassFilterVertical:
+          $ref: '#/components/schemas/FilterLPFModeEnum'
+        hSharpness:
+          $ref: '#/components/schemas/VideoProcessingChannelScalingHSharpnessPut'
+      required:
+        - 'conversionMode'
+        - 'downLowPassFilterHorizontal'
+        - 'downLowPassFilterVertical'
+        - 'hSharpness'
+    VideoProcessingChannelPut:
+      type: 'object'
+      properties:
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+        delay:
+          $ref: '#/components/schemas/VideoProcessingChannelDelayPut'
+        embedder:
+          $ref: '#/components/schemas/VideoProcessingChannelEmbedder'
+        rgbGain:
+          $ref: '#/components/schemas/VideoProcessingChannelRgbGain'
+        lock:
+          type: 'boolean'
+        s352Payload:
+          $ref: '#/components/schemas/S352PayloadEnum'
+        s352InsertPsF:
+          type: 'boolean'
+        hdrConversion:
+          $ref: '#/components/schemas/VideoProcessingChannelHDRConversionPut'
+        scaling:
+          $ref: '#/components/schemas/VideoProcessingChannelScalingPut'
+        videoFormatOutput:
+          $ref: '#/components/schemas/DigitalVideoStandardEnum'
+        hqDeinterlacer:
+          type: 'boolean'
+      required:
+        - 'inputSelection'
+        - 'delay'
+        - 'lock'
+        - 's352Payload'
+        - 's352InsertPsF'
+        - 'hdrConversion'
+        - 'videoFormatOutput'
+servers:
+  - url: '/api'

@@ -1,0 +1,19 @@
+---
+# One scoring round: run every suite at ONE api_ver, each against its
+# own freshly started node, then collect what was written.
+#
+# The per-suite restart lives in suite.yml; the reasoning is there.
+
+- name: "{{ api_ver }} — score each suite against a fresh node"
+  ansible.builtin.include_tasks: suite.yml
+  loop: "{{ dhs_amwa_node_suites }}"
+  loop_control:
+    loop_var: suite
+    label: "{{ suite.id }} @ {{ api_ver }}"
+
+
+- name: "{{ api_ver }} — collect what was written"
+  ansible.builtin.find:
+    paths: "{{ dhs_amwa_node_results }}"
+    patterns: ["*.json", "*.log"]
+  register: dhs_amwa_node_found

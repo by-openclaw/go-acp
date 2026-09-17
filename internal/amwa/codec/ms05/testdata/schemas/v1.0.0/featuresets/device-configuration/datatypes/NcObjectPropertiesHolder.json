@@ -1,0 +1,49 @@
+{
+    "description": "Object properties holder descriptor",
+    "name": "NcObjectPropertiesHolder",
+    "type": 2,
+    "fields": [
+        {
+            "description": "Object role path",
+            "name": "path",
+            "typeName": "NcRolePath",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        },
+        {
+            "description": "Sequence of role paths which are a dependency for this object (helpful to inform clients which objects need to be restored together)",
+            "name": "dependencyPaths",
+            "typeName": "NcRolePath",
+            "isNullable": false,
+            "isSequence": true,
+            "constraints": null
+        },
+        {
+            "description": "Sequence of class ids allowed as members of the block (non-block objects have this as an empty sequence)",
+            "name": "allowedMembersClasses",
+            "typeName": "NcClassId",
+            "isNullable": false,
+            "isSequence": true,
+            "constraints": null
+        },
+        {
+            "description": "Object properties values",
+            "name": "values",
+            "typeName": "NcPropertyHolder",
+            "isNullable": false,
+            "isSequence": true,
+            "constraints": null
+        },
+        {
+            "description": "Describes if the object is rebuildable",
+            "name": "isRebuildable",
+            "typeName": "NcBoolean",
+            "isNullable": false,
+            "isSequence": false,
+            "constraints": null
+        }
+    ],
+    "parentType": null,
+    "constraints": null
+}

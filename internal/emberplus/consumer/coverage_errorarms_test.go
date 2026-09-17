@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"testing"
 	"time"
@@ -430,7 +431,7 @@ func TestDisconnect_NoSession(t *testing.T) {
 // TestReconnectCtrl_StartAlreadyActive covers the already-active
 // early-return of reconnectCtrl.start.
 func TestReconnectCtrl_StartAlreadyActive(t *testing.T) {
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := (&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin)
 	p.connIP = "127.0.0.1"
 	p.connPort = 1
 	p.reconnectPolicyOverride = &reconnectPolicy{

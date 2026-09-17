@@ -11,9 +11,9 @@ import (
 //   - anything else → error citing the allowed values.
 func TestCanonicalDirection(t *testing.T) {
 	cases := []struct {
-		in       string
-		want     string
-		wantErr  bool
+		in      string
+		want    string
+		wantErr bool
 	}{
 		{"consumer", "consumer", false},
 		{"provider", "provider", false},

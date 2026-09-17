@@ -245,6 +245,43 @@ func TestEncodeAnnounceAndDecodeInstances(t *testing.T) {
 	if len(got.IPv4) != 1 || !got.IPv4[0].Equal(net.IPv4(10, 6, 239, 113)) {
 		t.Errorf("IPv4: %v", got.IPv4)
 	}
+	// TTL must survive decode: a browser that reports TTL=0 for a live
+	// announcement makes every advert look like an RFC 6762 §10.1
+	// goodbye. AMWA IS-09-02 failed exactly this way — the Node
+	// observed the suite's System API advert and instantly evicted it.
+	if got.TTL != dnssd.DefaultAnnounceTTL {
+		t.Errorf("TTL: got %d, want DefaultAnnounceTTL (%d)", got.TTL, dnssd.DefaultAnnounceTTL)
+	}
+}
+
+// TestDecodeGoodbyeInstanceTTLZero pins the other half of the TTL
+// contract: a goodbye packet decodes with TTL=0, and ONLY a goodbye
+// does. Consumers key eviction on that.
+func TestDecodeGoodbyeInstanceTTLZero(t *testing.T) {
+	inst := dnssd.Instance{
+		Name:    "dhs-registry-1",
+		Service: dnssd.ServiceRegister,
+		Domain:  "local",
+		Host:    "dhs-registry-1.local",
+		Port:    8235,
+		IPv4:    []net.IP{net.IPv4(10, 6, 239, 113).To4()},
+		TXT:     map[string]string{dnssd.TXTKeyAPIVer: "v1.3"},
+	}
+	wire, err := dnssd.EncodeGoodbye(inst, true)
+	if err != nil {
+		t.Fatalf("encode goodbye: %v", err)
+	}
+	m, err := dnssd.Decode(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	insts := dnssd.DecodeInstances(m, dnssd.ServiceRegister)
+	if len(insts) != 1 {
+		t.Fatalf("expected 1 instance, got %d", len(insts))
+	}
+	if insts[0].TTL != 0 {
+		t.Errorf("goodbye TTL: got %d, want 0", insts[0].TTL)
+	}
 }
 
 func TestTXTRoundTrip(t *testing.T) {

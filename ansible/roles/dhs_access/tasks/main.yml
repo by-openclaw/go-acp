@@ -1,0 +1,21 @@
+---
+# One authoritative key list, applied exclusively on every OS.
+- name: Read every listed public key (files/keys/*.pub)
+  ansible.builtin.set_fact:
+    dhs_access_key_lines: "{{ (dhs_access_key_lines | default([])) + [lookup('file', 'keys/' + item) | trim] }}"
+  loop: "{{ dhs_access_keys }}"
+
+- name: Assert every key is a single ssh-ed25519 public key line
+  ansible.builtin.assert:
+    that:
+      - item is match('^ssh-ed25519 AAAA[0-9A-Za-z+/]+=* \S+$')
+    fail_msg: "dhs_access: malformed or non-ed25519 key line: {{ item | truncate(40) }}"
+  loop: "{{ dhs_access_key_lines }}"
+
+- name: Converge (Linux)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family != "Windows"
+
+- name: Converge (Windows)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

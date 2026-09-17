@@ -1,0 +1,406 @@
+-- *****************************************************************
+-- SNELL-WILCOX-UNIT.mib:  Snell & Wilcox MIB Generic RollNet Unit definitions
+--
+-- February 2003, Sandy Kellagher
+--
+-- Copyright (c) 2003 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- $Id: SNELL-WILCOX-UNIT.mib 288 2009-03-10 11:28:07Z JonathanRiches $
+--
+-- *****************************************************************
+--
+
+SNELL-WILCOX-UNIT DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, NOTIFICATION-TYPE, Integer32, Unsigned32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+   	OBJECT-GROUP, NOTIFICATION-GROUP, AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+	snellWilcoxGeneric
+		FROM SNELL-WILCOX-SMI
+	RollCallString, RollCallAddressString, RollCallUnitType, RollCallVersionString, RollCallUnitTypeName, RollCallSysTime
+		FROM SNELL-WILCOX-TC;
+
+
+snellWilcoxUnit MODULE-IDENTITY
+	LAST-UPDATED 	"0903100925Z"
+	ORGANIZATION 	"Snell & Wilcox Ltd"
+	CONTACT-INFO
+		"Postal:	Snell & Wilcox Ltd
+					Generic Software Group
+					Southleigh Park House
+					Eastleigh Road
+					Havant
+					Hants  PO9 2PE
+					UK
+
+		   Tel: 	+44 (0) 2392 489000
+
+		E-mail: 	snmp.support@snellwilcox.com"
+
+	DESCRIPTION		"This module defines the generic RollCall objects that
+					 apply to the majority of Snell & Wilcox products"
+
+	REVISION    	"0710230925Z"
+	DESCRIPTION		"Corrected information on unitPowerStatus, unitTempStatus and unitFaultStatus."
+
+	REVISION    	"0710031100Z"
+	DESCRIPTION		"Updated information on gateway notification construction."
+
+	REVISION    	"0508121100Z"
+	DESCRIPTION		"Updated details of unitPowerStatus, unitTempStatus and unitFaultStatus"
+
+	REVISION    	"0501241400Z"
+	DESCRIPTION		"Updated contact details"
+
+	REVISION    	"0302241430Z"
+	DESCRIPTION		"Initial version of this MIB module."
+	::= { snellWilcoxGeneric 2 }
+
+
+-- Top level categories
+
+snellWilcoxUnitObjects 		OBJECT IDENTIFIER ::= { snellWilcoxUnit 1 }
+snellWilcoxUnitEvents 		OBJECT IDENTIFIER ::= { snellWilcoxUnit 2 }
+snellWilcoxUnitGroups		OBJECT IDENTIFIER ::= { snellWilcoxUnit 3 }
+
+snellWilcoxUnitNotifications OBJECT IDENTIFIER ::= { snellWilcoxUnitEvents 0 }
+
+
+-- Basic RollCall information
+
+unitAddress OBJECT-TYPE
+	SYNTAX  		RollCallAddressString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The RollCall address of the unit."
+	::= { snellWilcoxUnitObjects 1 }
+
+
+unitName OBJECT-TYPE
+	SYNTAX  		RollCallString
+	MAX-ACCESS  	read-write
+	STATUS  		current
+	DESCRIPTION
+	      "The RollCall unit name."
+	::= { snellWilcoxUnitObjects 2 }
+
+
+unitID OBJECT-TYPE
+	SYNTAX  		RollCallString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The RollCall unit ID code of the unit."
+	::= { snellWilcoxUnitObjects 3 }
+
+
+
+
+-- Version information
+
+unitSoftwareVersion OBJECT-TYPE
+	SYNTAX  		RollCallVersionString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The RollCall software version number of the unit."
+	::= { snellWilcoxUnitObjects 4 }
+
+
+unitSoftwareBuildNumber OBJECT-TYPE
+	SYNTAX  		RollCallString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The software build number of the unit."
+	::= { snellWilcoxUnitObjects 5 }
+
+
+unitHardwareRevision OBJECT-TYPE
+	SYNTAX  		RollCallString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The hardware revision number of the unit."
+	::= { snellWilcoxUnitObjects 6 }
+
+
+unitSerialNumber OBJECT-TYPE
+	SYNTAX  		RollCallString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The hardware serial number of the unit."
+	::= { snellWilcoxUnitObjects 7 }
+
+
+
+-- Generic status information
+
+unitPowerStatus OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The power supply status of the unit, expressed as a string of the
+	      form 'PSU_1_STATE=<status>' or 'PSU_2_STATE=<status>'.
+
+	      The set of <status> strings will vary according to unit type.
+	      For an IQ modular chassis, for example, the <status> value will be one of:
+
+	      		OK
+		      	FAIL
+				FAIL:Not Fitted
+				Not Used
+
+		 where FAIL:Not Fitted  will only be set if the gateway is configured
+		 to have both PSUs fitted and 1 is missing"
+
+	::= { snellWilcoxUnitObjects 8 }
+
+
+unitTempStatus OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The temperature status of the unit for inlet and outlet sensors, expressed as a string of the form 'TEMP_1_STATE=<status>'
+    	      or 'TEMP_2_STATE=<status>'.
+
+	      For an IQ modular chassis, for example, the <status> value will be one of:
+
+	      		OK
+		      	WARN:Low
+				WARN:High
+				FAIL:Low
+				FAIL:High
+                FAIL:Not Available
+                FAIL:Sensor Fault
+                DISABLED
+
+			- if temperature < 0C eg -1C, the suffix string will be 'FAIL:Low'
+			- if temperature < 5C eg 4C, the suffix string will be 'WARN:Low'
+            For
+			- if the inlet  temperature > 40C (eg 41C), the string will be 'TEMP_1_STATE=FAIL:High'
+			- if the inlet  temperature > 35C (eg 36C), the string will be 'TEMP_1_STATE=Warn:High'
+			- if the outlet temperature > 60C (eg 61C), the string will be 'TEMP_2_STATE=FAIL:High'
+			- if the outlet temperature > 55C (eg 56C), the string will be 'TEMP_2_STATE=Warn:High'
+
+			- if Temperature sensor was not detected suffix string will be                  'FAIL:Not Available'
+			- if Temperature sensor was found but unable to configure suffix string will be 'FAIL:Sensor Fault'
+			- if rear sensor disabled, the string will be 'TEMP_2_STATE=DISABLED'  "
+
+
+	::= { snellWilcoxUnitObjects 9 }
+
+
+unitFaultStatus OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The operational status of the unit, expressed as a string of the form 'FAULT=<status>'.
+
+	      The set of <status> strings will vary according to unit type.
+
+	      For an IQ modular chassis, for example, the string is determined as:
+
+			- if there are modules missing from the frame (as compared with the gateway configuration),
+			the string will be 'FAULT=n MODULES MISSING' where n is the number of missing modules
+
+			- otherwise, if any of the modules are of different type (as compared with the gateway configuration),
+			the string will be 'FAULT=n WRONG TYPE' where n is the number of incorrect type modules
+
+			- otherwise, if there are extra modules (as compared with the gateway configuration),
+			the string will be 'FAULT=n EXTRA MODULES' where n is the number of extra modules
+
+			- otherwise, the string will be 'FAULT=OK'."
+
+	::= { snellWilcoxUnitObjects 10 }
+
+
+unitLogCardName OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "Name of the card from which log message is generated"
+	::= { snellWilcoxUnitObjects 11 }
+
+unitLogSlotPos OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "Slot position of the card from which log message is generated"
+	::= { snellWilcoxUnitObjects 12 }
+
+unitLogMsgHeader OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The log message header taken from first part of Rollcall log message
+	      Example 'TEMP_INLET=20' gives 'TEMP_INLET'."
+	::= { snellWilcoxUnitObjects 13 }
+
+unitLogMesssage OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "The log message  taken from first part of Rollcall log message
+	      Example 'TEMP_INLET=20' gives '20'."
+	::= { snellWilcoxUnitObjects 14 }
+
+unitLogTimeStamp OBJECT-TYPE
+	SYNTAX  		Unsigned32
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "GMT time stamp, records time of log event, units seconds since start 1970."
+	::= { snellWilcoxUnitObjects 15 }
+
+unitLogTimeCode OBJECT-TYPE
+	SYNTAX  		DisplayString
+	MAX-ACCESS  	read-only
+	STATUS  		current
+	DESCRIPTION
+	      "TimeCode string associated with timecode base in video signal.  This implies that
+	      the event has been timestamped with this time code.
+	      Example 'TEMP_INLET=20,TIMECODE=XXXXXXX'."
+	::= { snellWilcoxUnitObjects 16 }
+
+-- Events/notifications
+
+unitPowerEvent NOTIFICATION-TYPE
+	OBJECTS {unitPowerStatus }
+	STATUS  		current
+	DESCRIPTION
+	      "This event indicates that the unit has detected a change to
+	      the status of its power supply."
+	::= { snellWilcoxUnitNotifications 1 }
+
+
+unitTempEvent NOTIFICATION-TYPE
+	OBJECTS { unitTempStatus }
+	STATUS  		current
+	DESCRIPTION
+	      "This event indicates that the unit has detected a change in
+	      its temperature."
+	::= { snellWilcoxUnitNotifications 2 }
+
+
+unitFaultEvent NOTIFICATION-TYPE
+	OBJECTS { unitFaultStatus }
+	STATUS  		current
+	DESCRIPTION
+	      "This event indicates that the unit has detected a change to
+	      its fault status."
+	::= { snellWilcoxUnitNotifications 3 }
+
+unitCardEvent NOTIFICATION-TYPE
+	OBJECTS {
+            unitLogCardName,
+            unitLogSlotPos,
+            unitLogMsgHeader,
+            unitLogMesssage,
+            unitLogTimeStamp,
+            unitLogTimeCode
+--            swCardEventLogIndex
+	            }
+	STATUS  		current
+	DESCRIPTION
+	      "This event indicates that the unit has detected a change to
+	      the fault status of an online card.
+	      The unitCardEvent Notification comprises 8 parts, the first item will distinguish between a unitGatewayEvent or unitCardEvent
+	      1) Generic Trap OID 1,3,6,1,6,3,1,1,4,1,0    Var 1,3,6,1,4,1,7995,2,2,2,0,4    Type ASN_OBJECT_ID
+	      2)-7) unitLogxxx as above, note unitLogTimeCode is optional:
+	                          1,3,6,1,4,1,7995,2,2,1,11 <-> 16, type SNMP_STRING, except unitLogTimeStamp which is SNMP_INTEGER
+	      8) Last entry is an oid pointer into swCardEventLogTable followed by log field value (same as unitLogMesssage)
+	        eg. 1,3,6,1,4,1,7995,2,6,1,1,16,3,77,83,71   (slot 16, length 3, 'MSG' - ascii) followed by SNMP_STRING ('UNIT PRESENT')
+	      "
+	::= { snellWilcoxUnitNotifications 4 }
+
+unitGatewayEvent NOTIFICATION-TYPE
+	OBJECTS {
+            unitLogCardName,
+            unitLogMsgHeader,
+            unitLogMesssage,
+            unitLogTimeStamp
+--            swGatewayEventLogIndex
+	            }
+	STATUS  		current
+	DESCRIPTION
+	      "This event indicates that the gateway has detected a change to
+	      its own fault status.
+	      The unitGatewayEvent Notification comprises 6 parts, the first item will distinguish between a unitGatewayEvent or unitCardEvent
+	      1) Generic Trap OID 1,3,6,1,6,3,1,1,4,1,0    Var 1,3,6,1,4,1,7995,2,2,2,0,5    Type ASN_OBJECT_ID
+	      2)-5) unitLogxxx as above
+	                          1,3,6,1,4,1,7995,2,2,1,11 <-> 15, type SNMP_STRING, except unitLogTimeStamp which is SNMP_INTEGER
+	      6) Last entry is an oid pointer into swGatewayEventLogTable followed by log field value (same as unitLogMesssage)
+	        eg. 1,3,6,1,4,1,7995,2,6,2,1,1,3,77,83,71   (length 3, 'MSG' - ascii) followed by SNMP_STRING ('UNIT PRESENT')
+	      "
+	::= { snellWilcoxUnitNotifications 5 }
+
+
+-- Groups
+
+unitRollCallInfo OBJECT-GROUP
+	OBJECTS {
+                  unitAddress,
+                  unitName,
+                  unitID
+		}
+	STATUS current
+	DESCRIPTION
+                "The collection of objects for basic RollNet info."
+	::= { snellWilcoxUnitGroups 1 }
+
+
+unitVersionInfo OBJECT-GROUP
+	OBJECTS {
+                  unitSoftwareVersion,
+                  unitSoftwareBuildNumber,
+                  unitHardwareRevision,
+                  unitSerialNumber
+		}
+	STATUS current
+	DESCRIPTION
+                "The collection of objects to do with version info."
+	::= { snellWilcoxUnitGroups 2 }
+
+
+unitStatusInfo OBJECT-GROUP
+	OBJECTS {
+                  unitPowerStatus,
+                  unitTempStatus,
+                  unitFaultStatus
+		}
+	STATUS current
+	DESCRIPTION
+                "The collection of objects for unit status."
+	::= { snellWilcoxUnitGroups 3}
+
+
+unitEventGroup NOTIFICATION-GROUP
+	NOTIFICATIONS {
+                  unitPowerEvent,
+                  unitTempEvent,
+                  unitFaultEvent,
+                  unitCardEvent,
+                  unitGatewayEvent
+		}
+	STATUS current
+	DESCRIPTION
+                "The collection of events for basic status reporting."
+	::= { snellWilcoxUnitGroups 4 }
+
+
+END

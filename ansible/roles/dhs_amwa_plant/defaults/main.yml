@@ -1,0 +1,87 @@
+---
+# dhs_amwa_plant — the standing AMWA lab plant on the control host:
+# one NMOS registry plus a fleet of dhs nodes, all managed as systemd
+# units. Replaces the hand-launched /tmp/*.sh scripts (issue #871):
+# provisioning + run is Ansible only, per the project rule.
+
+# Where the binary and node bundles live on the plant host.
+dhs_amwa_plant_dir: /opt/dhs-amwa-plant
+dhs_amwa_plant_bin: "{{ dhs_amwa_plant_dir }}/dhs"
+
+# The plant host has no Go toolchain, so the binary is built on a
+# Go-capable host and copied over. Both are inventory hostnames.
+dhs_amwa_plant_build_host: dhs-tools
+dhs_amwa_plant_go: /usr/local/go/bin/go
+
+# The registry the whole plant registers into.
+dhs_amwa_plant_registry_bind: ":8235"
+dhs_amwa_plant_registry_port: 8235
+
+# The registry mirror: bridges the plant registry into an EXTERNAL
+# one (the Cerebrum-side registry) with an audit trail + status
+# endpoint. Empty target disables the unit.
+dhs_amwa_plant_mirror_source: "http://10.6.250.101:8235"
+dhs_amwa_plant_mirror_target: "http://10.6.250.5:8080"
+dhs_amwa_plant_mirror_audit_log: "{{ dhs_amwa_plant_dir }}/mirror-audit.jsonl"
+dhs_amwa_plant_mirror_status_addr: ":9101"
+# Served read-only Query API on the mirror (--serve): controllers read
+# the plant THROUGH the audited mirror. Empty string disables the
+# served face (unit then runs the plain one-way bridge).
+dhs_amwa_plant_mirror_serve: ":8335"
+# Advertise identity for the mirror's served face
+# (--serve-advertise-host): minted into ws_href and mDNS-announced as
+# _nmos-query._tcp (pri defaults to 100 in the CLI — dev range, never
+# outranks the source registry at pri 0). Without it the served face
+# falls back to the OS hostname, which the AMWA tool host cannot
+# resolve (IS-04-02 test_02 / test_22_2 fleet failures).
+dhs_amwa_plant_mirror_serve_advertise: "{{ dhs_amwa_plant_advertise_ip }}:8335"
+# BCP-003-02 Authorization Server base for the mirror's SERVED face
+# (--auth-url, issue #946). Empty = disarmed, the default — the plant
+# mirror serves Cerebrum unauthenticated today. Only meaningful with a
+# non-empty dhs_amwa_plant_mirror_serve (the CLI refuses --auth-url
+# without --serve), so the unit template nests it inside the --serve
+# block.
+dhs_amwa_plant_mirror_serve_auth: ""
+# BCP-003-01 TLS pair for the mirror's SERVED face
+# (--serve-tls-cert/--serve-tls-key, issue #948). Empty = plain HTTP,
+# the default — Cerebrum reads the served face unauthenticated over
+# plain HTTP today. Both must be set together; only meaningful inside
+# the --serve block (the CLI refuses the pair without --serve).
+dhs_amwa_plant_mirror_serve_tls_cert: ""
+dhs_amwa_plant_mirror_serve_tls_key: ""
+dhs_amwa_plant_registry_page_limit: 1000
+# Heartbeat GC window. IS-04 §6.1 defaults to 12s and makes it
+# configurable; the CONFORMANCE plant runs 30s, matched by the AMWA
+# tool's GARBAGE_COLLECTION_TIMEOUT=30 in its UserConfig — the tool's
+# IS-04-02 test_31 verification phase takes >12s on this LXC and only
+# heartbeats between phases, so a 12s window evicts its test node
+# mid-test (verified by wire capture 2026-08-31). Both sides agree on
+# 30, and test_25 still verifies eviction semantics at that window.
+dhs_amwa_plant_registry_heartbeat_timeout: 30s
+
+# The registry + node advertise address is the plant host's own
+# VLAN600 IP (resolved at run time from the inventory ansible_host).
+dhs_amwa_plant_advertise_ip: "{{ ansible_host }}"
+
+# Resident nodes served from committed fixtures. Each entry:
+#   name   -> systemd instance + advertise label
+#   port   -> HTTP bind/advertise port
+#   config -> bundle filename under files/ (rendered into the plant dir)
+dhs_amwa_plant_nodes:
+  - name: test-node
+    port: 18080
+    config: amwa-test-node.json
+  - name: is11-node
+    port: 18400
+    config: amwa-test-node.json
+
+# Generated scale nodes: count + base port. node<i> serves on
+# base_port + i, advertise host:port, registers into the registry.
+dhs_amwa_plant_scale_count: 20
+dhs_amwa_plant_scale_base_port: 18200
+
+# IS-04 wire version every node + the registry serve on the fleet.
+dhs_amwa_plant_api_ver: v1.3
+
+# Seconds to let the plant settle before the registration check.
+dhs_amwa_plant_settle: 15

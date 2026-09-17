@@ -1,0 +1,677 @@
+-- ************************************************************************************
+-- Snell&Wilcox Card:IQDSDED
+--        Module Id#:284
+--       Command Set:6
+--          Filename:SNELL-IQDSDED-CMD-MIB.mib
+--            Author:Jonathan Riches
+--              Date:10/06/2005
+--              Time:13:37
+--
+-- Copyright (c) 2005 Snell & Wilcox Ltd
+-- All rights reserved.
+--
+-- ************************************************************************************
+
+SNELL-IQDSDED-CMD DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    Counter32,
+    Gauge32,
+    Unsigned32
+        FROM SNMPv2-SMI
+
+
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+
+    RollCallString
+        FROM SNELL-WILCOX-TC
+
+
+    moduleIQDSDED,
+    moduleIQDSDEDMIB
+        FROM SNELL-WILCOX-PRODUCT-REG;
+
+ moduleIQDSDEDCmdMi MODULE-IDENTITY
+    LAST-UPDATED "0506101337Z"
+    ORGANIZATION "Snell & Wilcox Ltd"
+    CONTACT-INFO
+        "Primary Author:Jonathan Riches
+
+         postal:    Southleigh Park House
+                    Eastleigh Road
+                    Havant, Hants
+                    PO9 2PE
+         phone:     +44 (0)23 92489000
+         email:     snmp.support@snellwilcox.com"
+    DESCRIPTION
+        "This file defines the Snell Wilcox  card, command set  translations."
+    ::= { moduleIQDSDEDMIB 1 }
+
+
+
+
+--********************************************************************************
+--*
+--*  Snell Wilcox Card:
+--*  command set:
+--*  list commands/menus:
+--*
+--******************************************************************************
+	iqdsdedCmdTable OBJECT-TYPE
+		SYNTAX			SEQUENCE OF IqdsdedCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Note the instance of this table is relected in the command set Version"
+		::= { moduleIQDSDED 1 }
+
+	iqdsdedCmdEntry OBJECT-TYPE
+		SYNTAX		IqdsdedCmdEntry
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"Entry in command table."
+		INDEX	{ iqdsdedSlotIndex }
+		::= { iqdsdedCmdTable 1 }
+
+	IqdsdedCmdEntry ::=
+		SEQUENCE {
+			iqdsdedSlotIndex
+				Unsigned32,
+			iqdsdedChanAStandardInputA525
+				INTEGER,
+			iqdsdedChanAStandardInputA625
+				INTEGER,
+			iqdsdedChanAEncoderA525OutputStd
+				INTEGER,
+			iqdsdedChanAEncoderA625OutputStd
+				INTEGER,
+			iqdsdedChanAEncoderAVBIPass
+				INTEGER,
+			iqdsdedChanAEncoderACBandwidth2MHz
+				INTEGER,
+			iqdsdedChanAEncoderADefaultOP
+				INTEGER,
+			iqdsdedChanAEncoderAPatternOn
+				INTEGER,
+			iqdsdedChanBStandardInputB525
+				INTEGER,
+			iqdsdedChanBStandardInputB625
+				INTEGER,
+			iqdsdedChanBEncoderB525OutputStd
+				INTEGER,
+			iqdsdedChanBEncoderB625OutputStd
+				INTEGER,
+			iqdsdedChanBEncoderBVBIPass
+				INTEGER,
+			iqdsdedChanBEncoderBCBandwidth2MHz
+				INTEGER,
+			iqdsdedChanBEncoderBDefaultOP
+				INTEGER,
+			iqdsdedChanBEncoderBPatternOn
+				INTEGER,
+			iqdsdedUnitSoftwareVersion
+				RollCallString,
+			iqdsdedUnitSerialNo
+				RollCallString,
+			iqdsdedUnitPresetUnit
+				INTEGER,
+			iqdsdedUnitRestart
+				INTEGER,
+			iqdsdedUnitBuildNo
+				RollCallString,
+			iqdsdedInfoDisp
+				INTEGER,
+			iqdsdedLoggingChannelAInput
+				INTEGER,
+			iqdsdedLoggingChannelAStandard
+				INTEGER,
+			iqdsdedLoggingChannelBInput
+				INTEGER,
+			iqdsdedLoggingChannelBStandard
+				INTEGER,
+			iqdsdedRollTrackRollTrackIndex
+				INTEGER,
+			iqdsdedRollTrackRollTrackSource
+				INTEGER,
+			iqdsdedRollTrackRollTrackDisable
+				INTEGER,
+			iqdsdedRollTrackRollTrackAddress
+				RollCallString,
+			iqdsdedRollTrackRollTrackCommand
+				RollCallString,
+			iqdsdedRollTrackRollTrackSending
+				RollCallString,
+			iqdsdedRollTrackRollTrackStatus
+				RollCallString,
+			iqdsdedRollTrackRollTrack_Index
+				INTEGER,
+			iqdsdedRollTrackRollTrack_Source
+				INTEGER,
+			iqdsdedRollTrackRollTrack_Address
+				RollCallString,
+			iqdsdedRollTrackRollTrack_Command
+				RollCallString
+		}
+
+	iqdsdedSlotIndex OBJECT-TYPE
+		SYNTAX		Unsigned32
+		MAX-ACCESS		not-accessible
+		STATUS			current
+		DESCRIPTION
+				"The unique Index value for each slot.  Its value
+					ranges between 1 and the value of slotNumber."
+		::= { iqdsdedCmdEntry 0 }
+
+
+	iqdsdedChanAStandardInputA525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					525  cmdID= 1405 "
+		::= { iqdsdedCmdEntry 1405 }
+
+
+	iqdsdedChanAStandardInputA625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					625  cmdID= 1406 "
+		::= { iqdsdedCmdEntry 1406 }
+
+
+	iqdsdedChanAEncoderA525OutputStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_NTSC(0),
+							val_NTSCJ(1),
+							val_PALM(2),
+							val_N4_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					525 Output Std  cmdID= 2620 
+					NTSC  value= 0  
+					NTSCJ  value= 1  
+					PALM  value= 2  
+					N4.4  value= 3  "
+		::= { iqdsdedCmdEntry 2620 }
+
+
+	iqdsdedChanAEncoderA625OutputStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL(0),
+							val_PALN(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					625 Output Std  cmdID= 2621 
+					PAL  value= 0  
+					PALN  value= 1  "
+		::= { iqdsdedCmdEntry 2621 }
+
+
+	iqdsdedChanAEncoderAVBIPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VBI Pass  cmdID= 2690 "
+		::= { iqdsdedCmdEntry 2690 }
+
+
+	iqdsdedChanAEncoderACBandwidth2MHz OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					C Bandwidth 2MHz  cmdID= 2622 "
+		::= { iqdsdedCmdEntry 2622 }
+
+
+	iqdsdedChanAEncoderADefaultOP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute(0),
+							val_Black(1),
+							val_Bars(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default O/P  cmdID= 2623 
+					Mute  value= 0  
+					Black  value= 1  
+					Bars  value= 2  "
+		::= { iqdsdedCmdEntry 2623 }
+
+
+	iqdsdedChanAEncoderAPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern On  cmdID= 2624 "
+		::= { iqdsdedCmdEntry 2624 }
+
+
+	iqdsdedChanBStandardInputB525 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					525  cmdID= 2596 "
+		::= { iqdsdedCmdEntry 2596 }
+
+
+	iqdsdedChanBStandardInputB625 OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					625  cmdID= 2597 "
+		::= { iqdsdedCmdEntry 2597 }
+
+
+	iqdsdedChanBEncoderB525OutputStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_NTSC(0),
+							val_NTSCJ(1),
+							val_PALM(2),
+							val_N4_4(3)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					525 Output Std  cmdID= 2625 
+					NTSC  value= 0  
+					NTSCJ  value= 1  
+					PALM  value= 2  
+					N4.4  value= 3  "
+		::= { iqdsdedCmdEntry 2625 }
+
+
+	iqdsdedChanBEncoderB625OutputStd OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_PAL(0),
+							val_PALN(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					625 Output Std  cmdID= 2626 
+					PAL  value= 0  
+					PALN  value= 1  "
+		::= { iqdsdedCmdEntry 2626 }
+
+
+	iqdsdedChanBEncoderBVBIPass OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					VBI Pass  cmdID= 2691 "
+		::= { iqdsdedCmdEntry 2691 }
+
+
+	iqdsdedChanBEncoderBCBandwidth2MHz OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					C Bandwidth 2MHz  cmdID= 2627 "
+		::= { iqdsdedCmdEntry 2627 }
+
+
+	iqdsdedChanBEncoderBDefaultOP OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Mute(0),
+							val_Black(1),
+							val_Bars(2)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Default O/P  cmdID= 2628 
+					Mute  value= 0  
+					Black  value= 1  
+					Bars  value= 2  "
+		::= { iqdsdedCmdEntry 2628 }
+
+
+	iqdsdedChanBEncoderBPatternOn OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Pattern On  cmdID= 2629 "
+		::= { iqdsdedCmdEntry 2629 }
+
+
+	iqdsdedUnitSoftwareVersion OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Software Version  cmdID= 2  format=   "
+		::= { iqdsdedCmdEntry 2 }
+
+
+	iqdsdedUnitSerialNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Serial No  cmdID= 1  format=   "
+		::= { iqdsdedCmdEntry 1 }
+
+
+	iqdsdedUnitPresetUnit OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Preset_Unit(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Preset Unit  cmdID= 3  value= 1  "
+		::= { iqdsdedCmdEntry 3 }
+
+
+	iqdsdedUnitRestart OBJECT-TYPE
+		SYNTAX		INTEGER { noAction(0),val_Restart(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Button
+					Restart  cmdID= 4  value= 1  "
+		::= { iqdsdedCmdEntry 4 }
+
+
+	iqdsdedUnitBuildNo OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					Build No  cmdID= 5  format=   "
+		::= { iqdsdedCmdEntry 5 }
+
+
+	iqdsdedInfoDisp OBJECT-TYPE
+		SYNTAX		INTEGER {
+							val_Channel_A_Info(0),
+							val_Channel_B_Info(1)
+							}
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - RadiobuttonList
+					Info Disp  cmdID= 1915 
+					Channel A Info  value= 0  
+					Channel B Info  value= 1  "
+		::= { iqdsdedCmdEntry 1915 }
+
+
+	iqdsdedLoggingChannelAInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel A Input  cmdID= 1060 "
+		::= { iqdsdedCmdEntry 1060 }
+
+
+	iqdsdedLoggingChannelAStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel A Standard  cmdID= 1061 "
+		::= { iqdsdedCmdEntry 1061 }
+
+
+	iqdsdedLoggingChannelBInput OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel B Input  cmdID= 1094 "
+		::= { iqdsdedCmdEntry 1094 }
+
+
+	iqdsdedLoggingChannelBStandard OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					Channel B Standard  cmdID= 1097 "
+		::= { iqdsdedCmdEntry 1097 }
+
+
+	iqdsdedRollTrackRollTrackIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Index  cmdID= 1495  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqdsdedCmdEntry 1495 }
+
+
+	iqdsdedRollTrackRollTrackSource OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Source  cmdID= 1496  min= -1  max= 5  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 5  Step = 1 "
+		::= { iqdsdedCmdEntry 1496 }
+
+
+	iqdsdedRollTrackRollTrackDisable OBJECT-TYPE
+		SYNTAX		INTEGER { disable(0), enable(1) }
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Checkbox
+					RollTrack Disable  cmdID= 1513 "
+		::= { iqdsdedCmdEntry 1513 }
+
+
+	iqdsdedRollTrackRollTrackAddress OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Address  cmdID= 1497  "
+		::= { iqdsdedCmdEntry 1497 }
+
+
+	iqdsdedRollTrackRollTrackCommand OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Command  cmdID= 1498  "
+		::= { iqdsdedCmdEntry 1498 }
+
+
+	iqdsdedRollTrackRollTrackSending OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RollTrack Sending  cmdID= 1514  format=   "
+		::= { iqdsdedCmdEntry 1514 }
+
+
+	iqdsdedRollTrackRollTrackStatus OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-only
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Display
+					RollTrack Status  cmdID= 1511  format=   "
+		::= { iqdsdedCmdEntry 1511 }
+
+
+	iqdsdedRollTrackRollTrack_Index OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Index  cmdID= 2870  min= 0  max= 11  step= 1  format= %.0f  div_scale= 1 
+					Min = 0  Max = 11  Step = 1 "
+		::= { iqdsdedCmdEntry 2870 }
+
+
+	iqdsdedRollTrackRollTrack_Source OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Number
+					RollTrack Source  cmdID= 2871  min= -1  max= 5  step= 1  format= %.0f  div_scale= 1 
+					Min = -1  Max = 5  Step = 1 "
+		::= { iqdsdedCmdEntry 2871 }
+
+
+	iqdsdedRollTrackRollTrack_Address OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Address  cmdID= 2872  "
+		::= { iqdsdedCmdEntry 2872 }
+
+
+	iqdsdedRollTrackRollTrack_Command OBJECT-TYPE
+		SYNTAX		RollCallString
+		MAX-ACCESS		read-write
+		STATUS			current
+		DESCRIPTION
+				"TYPE: - Editstring
+					RollTrack Command  cmdID= 2873  "
+		::= { iqdsdedCmdEntry 2873 }
+
+END
+---------------------------------------------------------------------------------------------------
+--  Logging
+--  (HEADER=VALUE)
+--  Logging values are stored in the swCardEventLogTable, each OID entry represents each slot
+--  position.  The indexing of the table works using the log header string. For example if the
+--  header is "FAULT", the index OID starts with the length of the header ie 5, followed by the
+--  ASCII values for each letter 70 65 85 76 84.
+--  Index for "FAULT" .5.70.65.85.76.84
+--  To OID for FAULT on slot 12 for swCardEventLogTable is 1.3.6.1.4.1.7995.2.6.1.1.12. 5.  70.65.85.76.84
+--                                                         |-------base-----------|Slt|Len|-F--A--U--L--T-|
+--  An SNMP GET on this OID will return the Log value associated with FAULT for slot 12 eg "NONE" (FAULT=NONE)
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: SN
+--
+-- MIB ref		: swCardEventLogSlotXX       .2.83.78
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.2.83.78
+-- Vary			: NO
+--
+-- Value(s)		: 
+--				: 
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: MSG
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.77.83.71
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.77.83.71
+-- Vary			: YES
+--
+-- Value(s)		: UNIT PRESENT
+--				: UNIT LOST
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD
+--
+-- MIB ref		: swCardEventLogSlotXX       .3.83.84.68
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.3.83.84.68
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.73.78.80.85.84
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.73.78.80.85.84
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: STD_B
+--
+-- MIB ref		: swCardEventLogSlotXX       .5.83.84.68.95.66
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.5.83.84.68.95.66
+-- Vary			: YES
+--
+-- Value(s)		: 525
+--				: 625
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------
+-- Header		: INPUT_B
+--
+-- MIB ref		: swCardEventLogSlotXX       .7.73.78.80.85.84.95.66
+-- absolute OID	: 1.3.6.1.4.1.7995.2.6.1.1.XX.7.73.78.80.85.84.95.66
+-- Vary			: YES
+--
+-- Value(s)		: LOST
+--				: OK
+--				: ERR
+-- Comments		: 
+--
+---------------------------------------------------------------------------------------------------

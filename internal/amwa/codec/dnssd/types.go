@@ -15,11 +15,12 @@ import (
 // A spec-strict watcher MUST browse both to find Registries across
 // every supported minor — see root CLAUDE.md "AMWA NMOS strict".
 const (
-	ServiceRegister       = "_nmos-register._tcp"      // IS-04 v1.2+ Registration API (Registry left face)
-	ServiceRegisterLegacy = "_nmos-registration._tcp"  // IS-04 v1.0 / v1.1 Registration API (legacy name)
-	ServiceQuery          = "_nmos-query._tcp"         // IS-04 Query API (Registry right face)
-	ServiceSystem         = "_nmos-system._tcp"        // IS-09 System API
-	ServiceNode           = "_nmos-node._tcp"          // IS-04 Node API (P2P fallback)
+	ServiceRegister       = "_nmos-register._tcp"     // IS-04 v1.2+ Registration API (Registry left face)
+	ServiceRegisterLegacy = "_nmos-registration._tcp" // IS-04 v1.0 / v1.1 Registration API (legacy name)
+	ServiceQuery          = "_nmos-query._tcp"        // IS-04 Query API (Registry right face)
+	ServiceSystem         = "_nmos-system._tcp"       // IS-09 System API
+	ServiceNode           = "_nmos-node._tcp"         // IS-04 Node API (P2P fallback)
+	ServiceAuth           = "_nmos-auth._tcp"         // IS-10 Authorization Server (BCP-003-02)
 )
 
 // DefaultDomain is the link-local mDNS suffix (RFC 6762 §3).
@@ -271,6 +272,12 @@ func DecodeInstances(m *Message, service string) []Instance {
 		ptr  string
 		srv  *SRVData
 		txt  map[string]string
+		// ttl mirrors the PTR record's TTL (SRV's when no PTR was in
+		// the packet). Zero only for RFC 6762 §10.1 goodbye packets —
+		// consumers use that to evict, so losing it here would make
+		// every announcement look like a goodbye.
+		ttl    uint32
+		ttlSet bool
 	}
 	byFull := map[string]*tmp{}
 	addrs4 := map[string][]net.IP{}
@@ -289,6 +296,8 @@ func DecodeInstances(m *Message, service string) []Instance {
 					byFull[rr.PTR] = t
 				}
 				t.ptr = rr.Name
+				t.ttl = rr.TTL
+				t.ttlSet = true
 			case TypeSRV:
 				t := byFull[rr.Name]
 				if t == nil {
@@ -296,6 +305,9 @@ func DecodeInstances(m *Message, service string) []Instance {
 					byFull[rr.Name] = t
 				}
 				t.srv = rr.SRV
+				if !t.ttlSet {
+					t.ttl = rr.TTL
+				}
 			case TypeTXT:
 				t := byFull[rr.Name]
 				if t == nil {
@@ -332,6 +344,7 @@ func DecodeInstances(m *Message, service string) []Instance {
 			IPv4:    addrs4[t.srv.Target],
 			IPv6:    addrs6[t.srv.Target],
 			TXT:     t.txt,
+			TTL:     t.ttl,
 		}
 		out = append(out, ins)
 	}

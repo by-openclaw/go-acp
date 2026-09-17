@@ -1,0 +1,20 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=dhs AMWA NMOS node {{ node_name }} (lab plant)
+After=dhs-nmos-registry.service
+Wants=dhs-nmos-registry.service
+
+[Service]
+Type=simple
+ExecStart={{ dhs_amwa_plant_bin }} producer nmos serve \
+  --bind 0.0.0.0:{{ node_port }} \
+  --no-mdns \
+  --registry http://{{ dhs_amwa_plant_advertise_ip }}:{{ dhs_amwa_plant_registry_port }} \
+  --advertise-host {{ dhs_amwa_plant_advertise_ip }}:{{ node_port }} \
+  --api-ver {{ dhs_amwa_plant_api_ver }} \
+  --config {{ node_config }}
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

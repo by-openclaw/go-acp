@@ -172,8 +172,8 @@ func TestUnpackErrors(t *testing.T) {
 	t.Run("bad BTC", func(t *testing.T) {
 		bad := []byte{
 			0x10, 0x02,
-			0x07,       // DATA (1 byte)
-			0x05,       // BTC claims 5 → mismatch with actual 1
+			0x07, // DATA (1 byte)
+			0x05, // BTC claims 5 → mismatch with actual 1
 			Checksum8([]byte{0x07, 0x05}),
 			0x10, 0x03,
 		}
@@ -227,5 +227,30 @@ func TestCommandIDIsExtended(t *testing.T) {
 	}
 	if !TxCrosspointTallyExt.IsExtended() {
 		t.Error("0x83 should be extended")
+	}
+}
+
+// HexDump had no test of its own until the session client moved out of this
+// package and took its only non-test caller with it. It was covered
+// incidentally, which is not the same as being tested.
+func TestHexDump(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []byte
+		want string
+	}{
+		{"empty", nil, ""},
+		{"empty slice", []byte{}, ""},
+		{"single byte", []byte{0x00}, "00"},
+		{"low nibble only", []byte{0x0f}, "0f"},
+		{"high nibble only", []byte{0xf0}, "f0"},
+		{"lowercase hex", []byte{0xab, 0xcd, 0xef}, "ab cd ef"},
+		{"a framed run", []byte{DLE, STX, 0x02, 0x01}, "10 02 02 01"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HexDump(tc.in); got != tc.want {
+				t.Errorf("HexDump(%v) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
 	}
 }

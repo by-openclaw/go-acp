@@ -61,7 +61,7 @@ func runStream(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> stream <host> [--id N[,M,...]]")
 	}
-	_ = fs.Parse(rest)
+	_ = parseVerbFlags(fs, rest)
 
 	filter, err := parseStreamIDList(*streamIDs)
 	if err != nil {

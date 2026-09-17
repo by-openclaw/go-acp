@@ -21,20 +21,35 @@ import (
 //
 //	listen [--bind HOST:PORT] [--tcp]   bind a UDP (or v5.0 TCP) listener
 //	                                    and print every decoded frame.
+//	validate <frames.jsonl>             decode a captured trace offline
+//	                                    through the codec (per ADR-0021).
+//
+// TSL is push-only with no read-back, so the idempotent `ensure` verb is
+// N/A for it (ratified in the ADR-0007 amendment): "keep it set" is the
+// producer's `serve --refresh`, not a converge.
 //
 // `proto` is one of `tsl-v31` / `tsl-v40` / `tsl-v50`.
 func runTSLConsumer(ctx context.Context, proto string, args []string) error {
-	if len(args) == 0 || hasHelpFlag(args) {
+	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
+	// the verb's own FlagSet (#462).
+	if len(args) == 0 || isHelpToken(args[0]) {
 		printTSLConsumerHelp(os.Stdout, proto)
 		return nil
 	}
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
-	case "listen":
+	case "listen", "watch":
+		// watch = canonical family spelling (osc/tree protos); listen
+		// kept as the historical TSL alias (#751 G3 parity).
 		return runTSLListen(ctx, proto, rest)
+	case "validate":
+		// The tsl plugin implements consumer.Validator; route to the generic
+		// offline validator with --protocol injected, exactly like the
+		// acp1/acp2/emberplus dispatch (main.go dispatchConsumer).
+		return runValidate(ctx, append([]string{"--protocol", proto}, rest...))
 	}
-	return fmt.Errorf("consumer %s: unknown verb %q (expected: listen)", proto, verb)
+	return fmt.Errorf("consumer %s: unknown verb %q (expected: watch | listen | validate)", proto, verb)
 }
 
 // runTSLListen binds a UDP (or v5.0 TCP) listener and prints every
@@ -43,8 +58,12 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet(proto+"-listen", flag.ContinueOnError)
 	bind := fs.String("bind", "", "bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)")
 	tcp := fs.Bool("tcp", false, "v5.0 only — listen on TCP with DLE/STX wrapper instead of UDP")
-	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — SO_KEEPALIVE period (default 30s; ignored on UDP)")
-	if err := fs.Parse(args); err != nil {
+	// NOTE: --keepalive was previously parsed and thrown away (`_ = ...`), so
+	// setting it did nothing. It now documents the fixed OS-level period
+	// honestly rather than pretending to be adjustable.
+	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP)")
+	idleTimeout := fs.Duration("idle-timeout", 0, "v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)")
+	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 
@@ -65,6 +84,7 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	plugin := newTSLPlugin(version, logger)
 
 	if *tcp {
+		plugin.SetTCPIdleTimeout(*idleTimeout)
 		if err := plugin.ConnectV50TCP(ctx, host, port); err != nil {
 			return fmt.Errorf("listen tcp %s:%d: %w", host, port, err)
 		}
@@ -212,11 +232,13 @@ func printTSLConsumerHelp(w io.Writer, proto string) {
 dhs consumer `+proto+` — TSL UMD listener (push protocol from a switcher / VSM / Kaleido)
 
 USAGE
-  dhs consumer `+proto+` listen [--bind HOST:PORT] [--tcp]
+  dhs consumer `+proto+` watch [--bind HOST:PORT] [--tcp]
 
 VERBS
-  listen          bind a UDP listener (or v5.0 TCP listener with --tcp)
+  watch           bind a UDP listener (or v5.0 TCP listener with --tcp)
                   and print every decoded frame until Ctrl-C
+                  (alias: listen — historical TSL spelling)
+  validate        decode a captured frames.jsonl offline (ADR-0021)
 
 DEFAULT PORTS
   tsl-v31, tsl-v40   UDP 4000

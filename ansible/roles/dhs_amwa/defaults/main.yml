@@ -1,0 +1,85 @@
+---
+# dhs_amwa — the AMWA reference stack, kept running as a permanent
+# oracle on the tooling host.
+#
+# Two jobs, and the second is the one that matters most:
+#
+#   1. nmos-cpp registry + virtual node are a SPEC-CORRECT peer for our
+#      consumer to be measured against. Every paging, discovery and
+#      version decision dhs makes has so far been validated against one
+#      real registry — a broken one. An implementation that tracks the
+#      spec is the only way to tell "the peer is wrong" from "we are".
+#
+#   2. The AMWA NMOS Testing tool judges OUR node, OUR registry and OUR
+#      controller against every published suite. It is the external
+#      arbiter; our own `profile` verb is not a substitute for it.
+#
+# Per docs/user.md the oracle is never our own provider (Tier 4 loopback
+# is regression only, after Tiers 2+3 pass). This role provides Tier 2.
+
+# Where the stack lives on the tooling host.
+dhs_amwa_dir: /opt/dhs-amwa
+dhs_amwa_project: dhs-amwa
+
+# Images, PINNED by digest-bearing tag rather than :latest.
+#
+# An oracle that moves under you is not an oracle: a suite that passed
+# last week and fails today must mean OUR code changed, not that the
+# tool did. amwa-update.yml moves these deliberately and records the
+# delta, which is also how a new BCP-008 revision gets adopted on
+# purpose instead of by surprise.
+dhs_amwa_image_nmos_cpp: "rhastie/nmos-cpp:latest"
+dhs_amwa_image_testing: "amwa/nmos-testing:latest"
+
+# The address the reference implementations ADVERTISE.
+#
+# This is the whole difference between a stack you can look at and one
+# you can drive. On the bridge each container gets a 172.x address and
+# nmos-cpp, left alone, publishes that as its href — so a registry walk
+# from outside lists two nodes and can reach neither. easy-nmos never
+# meets this because macvlan gives every container a real LAN address.
+#
+# So the containers are told to advertise the tooling host, and each
+# listens on the SAME port it is published on, which keeps the
+# advertised `host:port` true from anywhere on the lab VLAN.
+dhs_amwa_advertise_host: "{{ ansible_host }}"
+
+# Ports. Identical on both sides of the publish for the reason above;
+# three containers cannot all own port 80, so none of them does.
+dhs_amwa_port_testing_ui: 5000          # web UI and the POST /api driver
+dhs_amwa_port_testing_mocks: "5101-5106"  # the tool's own mock registries
+dhs_amwa_port_registry_http: 8110       # reference Registration + Query API
+dhs_amwa_port_registry_ws: 8111         # Query API WebSocket subscriptions
+dhs_amwa_port_registry_mqtt: 1883       # IS-07 over MQTT
+dhs_amwa_port_node_http: 8120           # reference Node API + IS-05
+dhs_amwa_port_node_ws: 8121             # IS-07 events WebSocket
+
+# Reference registry settings, from easy-nmos, with one deliberate
+# change: `pri`.
+#
+# IS-04 carves the priority range so a development registry cannot be
+# consumed by a live deployment by accident — 0-99 production, 100+
+# dev (internal/amwa/CLAUDE.md quirk 14). easy-nmos ships 99, which is
+# the top of the PRODUCTION range. A lab oracle belongs above it, and a
+# dhs node that meets it should fire nmos_registry_dev_pri; that event
+# firing here is the correct behaviour, not a defect.
+dhs_amwa_registry_pri: 100
+# The IS-04 §6.1 garbage-collection window. 12 s is the spec default and
+# what the field registry uses, so heartbeat behaviour measured here
+# transfers.
+dhs_amwa_registry_expiry: 12
+# nmos-cpp logging_level: -20 is nmos-cpp's most verbose. Kept, because
+# the whole point of an oracle is being able to see why it disagreed.
+dhs_amwa_logging_level: -20
+# How many virtual senders/receivers the reference node publishes.
+dhs_amwa_node_how_many: 2
+
+# Left running between sessions. The stack is a fixture, not a job:
+# `restart: unless-stopped` survives a reboot of the tooling host, so
+# the oracle is there whenever someone needs to settle an argument.
+dhs_amwa_restart_policy: unless-stopped
+
+# Seconds to wait for each endpoint to answer before declaring the
+# converge failed. nmos-cpp is quick; the testing tool loads a large
+# schema set on boot.
+dhs_amwa_health_timeout: 120

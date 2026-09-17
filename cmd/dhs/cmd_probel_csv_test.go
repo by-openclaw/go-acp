@@ -1,0 +1,174 @@
+package main
+
+import (
+	"testing"
+
+	codec "dhs/internal/probel-sw08p/codec"
+	probelproto "dhs/internal/probel-sw08p/consumer"
+)
+
+// TestXpointDiff pins the per-crosspoint idempotency decision: skip when the
+// destination already carries the desired source; otherwise change, rendering
+// the current source as "from" ("" when the dst is unrouted / absent).
+func TestXpointDiff(t *testing.T) {
+	cur := map[uint16]uint16{0: 3, 1: 5}
+	cases := []struct {
+		name        string
+		dst, src    uint16
+		wantChanged bool
+		wantFrom    string
+	}{
+		{"already routed -> skip", 0, 3, false, ""},
+		{"different source -> change", 1, 9, true, "5"},
+		{"unrouted dst -> change from empty", 7, 4, true, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			changed, from := xpointDiff(cur, tc.dst, tc.src)
+			if changed != tc.wantChanged || from != tc.wantFrom {
+				t.Errorf("xpointDiff(dst=%d,src=%d) = (%v,%q), want (%v,%q)",
+					tc.dst, tc.src, changed, from, tc.wantChanged, tc.wantFrom)
+			}
+		})
+	}
+}
+
+// TestTallyToMap pins flattening a tally-dump (byte + word form) into dst→src,
+// honoring the contiguous SourceIDs starting at FirstDestinationID.
+func TestTallyToMap(t *testing.T) {
+	t.Run("byte form", func(t *testing.T) {
+		res := probelproto.TallyDumpResult{
+			Byte: codec.CrosspointTallyDumpByteParams{FirstDestinationID: 0, SourceIDs: []uint8{3, 4}},
+		}
+		m := tallyToMap(res)
+		if m[0] != 3 || m[1] != 4 || len(m) != 2 {
+			t.Errorf("byte tally = %v, want {0:3, 1:4}", m)
+		}
+	})
+	t.Run("word form with offset", func(t *testing.T) {
+		res := probelproto.TallyDumpResult{
+			IsWord: true,
+			Word:   codec.CrosspointTallyDumpWordParams{FirstDestinationID: 2, SourceIDs: []uint16{7, 8}},
+		}
+		m := tallyToMap(res)
+		if m[2] != 7 || m[3] != 8 || len(m) != 2 {
+			t.Errorf("word tally = %v, want {2:7, 3:8}", m)
+		}
+	})
+}
+
+// TestParseProtectDesired pins the protect-CSV state-cell mapping (none/probel
+// in words or 0/1), and that unknown cells are rejected.
+func TestParseProtectDesired(t *testing.T) {
+	cases := []struct {
+		in       string
+		wantOK   bool
+		wantNone bool // true => ProtectNone, false => ProtectProbel
+	}{
+		{"none", true, true},
+		{"0", true, true},
+		{"unprotected", true, true},
+		{"probel", true, false},
+		{"1", true, false},
+		{"protected", true, false},
+		{"  Probel ", true, false},
+		{"bogus", false, false},
+		{"", false, false},
+	}
+	for _, tc := range cases {
+		got, ok := parseProtectDesired(tc.in)
+		if ok != tc.wantOK {
+			t.Errorf("parseProtectDesired(%q) ok = %v, want %v", tc.in, ok, tc.wantOK)
+			continue
+		}
+		if ok && (got == 0) != tc.wantNone {
+			t.Errorf("parseProtectDesired(%q) = %d, wantNone=%v", tc.in, got, tc.wantNone)
+		}
+	}
+}
+
+// TestTrimLabel pins the fixed-width pad stripping so a read-back name compares
+// equal to a CSV label (SW-P-08 pads names with trailing space or NUL).
+func TestTrimLabel(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"VID", "VID"},
+		{"VID ", "VID"},
+		{"VID\x00\x00", "VID"},
+		{"VID  \x00", "VID"},
+		{"", ""},
+		{"  ", ""},
+	}
+	for _, tc := range cases {
+		if got := trimLabel(tc.in); got != tc.want {
+			t.Errorf("trimLabel(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestParseLabelItems pins the label CSV parse (id from col 2, label from the
+// width column at `col`): header skipped, short/non-integer rows dropped.
+func TestParseLabelItems(t *testing.T) {
+	// columns: matrix_id,level_id,src_id,default_label,label_4,label_8,...
+	col := 4 // label_4
+	rows := [][]string{
+		{"matrix_id", "level_id", "src_id", "default_label", "label_4"}, // header
+		{"0", "0", "0", "", "VID1"},                                     // valid
+		{"0", "0", "1"},                                                 // short -> dropped
+		{"1", "0", "x", "", "BAD"},                                      // non-int id -> dropped
+		{"1", "0", "7", "", "AUX7"},                                     // valid
+	}
+	got := parseLabelItems(rows, col)
+	if len(got) != 2 {
+		t.Fatalf("parsed %d, want 2: %+v", len(got), got)
+	}
+	if got[0] != (labelItem{id: 0, label: "VID1", mtx: 0, lvl: 0}) ||
+		got[1] != (labelItem{id: 7, label: "AUX7", mtx: 1, lvl: 0}) {
+		t.Errorf("parsed = %+v, want [{0 VID1 0 0} {7 AUX7 1 0}]", got)
+	}
+}
+
+// TestParseXpointRows pins the lenient CSV parse: header skipped, short and
+// non-integer rows dropped, valid rows typed.
+func TestParseXpointRows(t *testing.T) {
+	rows := [][]string{
+		{"matrix_id", "level_id", "dst_id", "src_id"}, // header (skipped)
+		{"0", "0", "0", "3"},                          // valid
+		{"0", "0", "1"},                               // short -> dropped
+		{"0", "0", "x", "4"},                          // non-int -> dropped
+		{"1", "0", "7", "9"},                          // valid
+	}
+	got := parseXpointRows(rows)
+	if len(got) != 2 {
+		t.Fatalf("parsed %d rows, want 2: %+v", len(got), got)
+	}
+	if got[0] != (xpointRow{0, 0, 0, 3}) || got[1] != (xpointRow{1, 0, 7, 9}) {
+		t.Errorf("parsed = %+v, want [{0 0 0 3} {1 0 7 9}]", got)
+	}
+}
+
+// TestParseXpointRows_CanonicalGrammar pins the header-keyed canonical
+// shape (#738): dest,srce,levels[,matrix_id], with multi-level cells
+// expanded to one row per level and an absent matrix column = matrix 0.
+func TestParseXpointRows_CanonicalGrammar(t *testing.T) {
+	rows := [][]string{
+		{"dest", "srce", "levels", "matrix_id"},
+		{"5", "12", "0", "1"},
+		{"6", "3", "1;2", "1"}, // expands to two rows
+		{"x", "3", "0", "1"},   // non-int dest -> dropped
+	}
+	got := parseXpointRows(rows)
+	want := []xpointRow{{1, 0, 5, 12}, {1, 1, 6, 3}, {1, 2, 6, 3}}
+	if len(got) != len(want) {
+		t.Fatalf("parsed %d rows, want %d: %+v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Fatalf("row %d = %+v, want %+v", i, got[i], w)
+		}
+	}
+	// No matrix_id column -> matrix 0; "level" singular accepted.
+	got = parseXpointRows([][]string{{"dest", "srce", "level"}, {"2", "9", "3"}})
+	if len(got) != 1 || got[0] != (xpointRow{0, 3, 2, 9}) {
+		t.Fatalf("no-matrix parse = %+v", got)
+	}
+}

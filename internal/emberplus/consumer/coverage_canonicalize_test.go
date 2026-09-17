@@ -16,8 +16,8 @@ func seedEntry(p *Plugin, numPath []int32, label string, set func(*treeEntry)) {
 		numericPath: numPath,
 		freshness:   FreshnessLive,
 		obj: consumer.Object{
-			ID:   int(numPath[len(numPath)-1]),
-			OID:  numericKey(numPath),
+			ID:    int(numPath[len(numPath)-1]),
+			OID:   numericKey(numPath),
 			Label: label,
 			Path:  []string{label},
 		},
@@ -45,7 +45,7 @@ func TestCanonicalize_RichTree(t *testing.T) {
 				Minimum: int64(0), Maximum: int64(100), Step: int64(1),
 				Format: "%d°dB", Factor: 10, Access: 3,
 				HasStreamIdentifier: true, StreamIdentifier: 42,
-				StreamDescriptor: &glow.StreamDescription{Format: glow.StreamFmtUnsignedInt16BigEndian, Offset: 0},
+				StreamDescriptor:  &glow.StreamDescription{Format: glow.StreamFmtUnsignedInt16BigEndian, Offset: 0},
 				SchemaIdentifiers: "com.example/gain",
 			}
 		})
@@ -75,10 +75,10 @@ func TestCanonicalize_RichTree(t *testing.T) {
 				MatrixType: glow.MatrixTypeNToN, AddressingMode: glow.MatrixAddrNonLinear,
 				TargetCount: 2, SourceCount: 2,
 				MaxTotalConnects: 4, MaxConnectsPerTarget: 2,
-				ParametersLocation: []int32{1, 6},
+				ParametersLocation:  []int32{1, 6},
 				GainParameterNumber: 1,
-				Labels: []glow.Label{{BasePath: []int32{1, 7}, Description: desc}},
-				Targets: []int32{1, 0}, Sources: []int32{1, 0},
+				Labels:              []glow.Label{{BasePath: []int32{1, 7}, Description: desc}},
+				Targets:             []int32{1, 0}, Sources: []int32{1, 0},
 				Connections: []glow.Connection{
 					{Target: 0, Sources: []int32{1}, Operation: glow.ConnOpConnect, Disposition: glow.ConnDispLocked},
 				},
