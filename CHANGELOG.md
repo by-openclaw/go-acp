@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.23.1](https://github.com/by-openclaw/go-acp/compare/v0.23.0...v0.23.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **snell-rollcall:** start nothing the provider would wait for once Stop has begun ([#1089](https://github.com/by-openclaw/go-acp/issues/1089)) ([6a84a79](https://github.com/by-openclaw/go-acp/commit/6a84a794cd3abe5637a23fafe166c3ab1e31fb55)), closes [#1088](https://github.com/by-openclaw/go-acp/issues/1088)
+
 ## [0.23.0](https://github.com/by-openclaw/go-acp/compare/v0.22.0...v0.23.0) (2026-09-17)
 
 
