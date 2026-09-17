@@ -1006,3 +1006,22 @@ func TestShortHex(t *testing.T) {
 		t.Errorf("shortHex short = %q, want abcd", shortHex(short))
 	}
 }
+
+// TestUDPSession_ReadLoop_CtxCancelledAtTop drives readLoop with an
+// already-cancelled context so the loop-top ctx.Err() guard returns before
+// the first ReadFromUDP — the same deterministic drive the tcpSession loops
+// get above. Left to the live session, that guard is reached only when
+// Disconnect lands between two reads, which the 100% floor cannot depend on.
+func TestUDPSession_ReadLoop_CtxCancelledAtTop(t *testing.T) {
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	s := &udpSession{conn: conn}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s.readLoop(ctx, func(*net.UDPAddr, []byte, *udpSession) {
+		t.Error("decode called with a cancelled context")
+	}) // returns immediately via the top-of-loop guard
+}
