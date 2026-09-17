@@ -660,8 +660,10 @@ Usage of producer ccm serve:
 
 ```text
 usage: dhs consumer ccm <verb> <host> [flags]
-  walk <host>    connect to the CCM (Neuron REST) API and list its streams by UUID
-  export <host>  store api.yml (schema) + tree (DM) + extract, versioned for firmware diff
+  walk <host>            list io/ip streams by UUID
+  walk <host> --tree     walk the FULL recursive DM (every node/resource)
+       [--start p1,p2]   seed --tree from explicit node paths (default: from the API root)
+  export <host>  store api.yml (schema) + tree (DM) + dm-tree.json (full DM) + extract, versioned for firmware diff
   flags: --json  emit the whole device as JSON
          --verify-tls  verify the device certificate (default: skip, lab self-signed)
          --timeout D   per-request timeout (default 8s)
