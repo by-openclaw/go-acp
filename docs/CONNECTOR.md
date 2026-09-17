@@ -140,6 +140,62 @@ dhs-<proto>/                          single Go module per connector
 └── tests/                            unit / integration / smoke / fixtures
 ```
 
+## Provider / consumer base contract — per-connector status
+
+The shared lifecycle for a connector lives in two embeddable types, so
+each connector writes only its protocol, not the plumbing:
+
+- `internal/provider/Base[S]` — the **raw-socket provider** contract:
+  the listener (`Listen` for TCP, `ListenUDP` for datagram — the latter
+  applies `SO_REUSEADDR`/`SO_BROADCAST` in the pre-bind window so a
+  provider and a consumer share a port on the same host), the live
+  connection set, the accept loop, `Stop`, and the metrics connector.
+  Connection-oriented providers instantiate it over their own session
+  type (`Base[*session]`); packet providers that have no per-connection
+  session use the `NoConn` placeholder (`Base[*NoConn]`) and simply do
+  not call the accept-loop half.
+- `internal/consumer/Base` — the peer half for a **raw-socket consumer**
+  (health, metrics, compliance profile, traffic recorder).
+
+`Base` is the raw-socket (TCP + UDP) contract. An **HTTP/REST connector
+(NMOS)** does not embed it: its transport is `net/http` served through
+`internal/amwa/session` (`httpsession.Server`), which owns the HTTP
+listener and shutdown. That is a genuine transport difference, not a
+carve-out — forcing an HTTP server onto a raw-accept loop would be a
+regression. Both contracts still expose the same `Metrics()`, `slog`
+logging, and injected `plugin.Deps` (DI).
+
+### Providers
+
+| Connector | Transport(s) | Provider base | Notes |
+|---|---|---|---|
+| acp1 | UDP + TCP + AN2 | `Base[*NoConn]` | UDP listener on `Base.ListenUDP` (SO_REUSEADDR); datagrams dispatched inline. TCP + AN2 session registries are protocol-specific and stay alongside. |
+| acp2 | TCP (AN2) | `Base[*session]` | |
+| emberplus | TCP (S101) | `Base[*session]` | Per-OID subscription table stays under the server lock; `Base` owns the session set. |
+| probel-sw08p | TCP | `Base[*session]` | |
+| probel-sw02p | TCP | `Base[*session]` | |
+| osc | UDP + TCP | `Base[*NoConn]` | Push-only; outbound socket in `udpSender`, bound through the shared transport primitive (SO_REUSEADDR + SO_BROADCAST). |
+| tsl | UDP + TCP | `Base[*NoConn]` | Push-only; same as osc. |
+| amwa (NMOS) | HTTP/HTTPS (+ WebSocket) | — (`net/http`) | Served via `internal/amwa/session` httpsession.Server; HTTP is its transport contract, not raw sockets. |
+
+### Consumers
+
+| Connector | Transport(s) | Consumer base |
+|---|---|---|
+| acp1 | UDP + TCP + AN2 | `consumer.Base` |
+| acp2 | TCP (AN2) | `consumer.Base` |
+| emberplus | TCP (S101) | `consumer.Base` |
+| probel-sw08p | TCP | `consumer.Base` |
+| probel-sw02p | TCP | `consumer.Base` |
+| osc | UDP + TCP | `consumer.Base` |
+| tsl | UDP + TCP | `consumer.Base` |
+| cerebrum-nb | TCP (DM) | `consumer.Base` |
+| amwa (NMOS) | HTTP/HTTPS | — (`net/http` client) |
+| ccm | HTTP | — (`net/http` client) |
+
+Codec packages for every connector are stdlib-only per **ADR-0006**;
+`internal/<proto>/codec/` never imports `dhs/*`.
+
 ## ADR index
 
 [`docs/adr/README.md`](adr/README.md) — full list with status.

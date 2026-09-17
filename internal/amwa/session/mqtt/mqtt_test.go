@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"dhs/internal/transport"
 )
 
 func TestEncodeRemainingLength(t *testing.T) {
@@ -247,5 +249,21 @@ func TestClientReplaysRetainedOnReconnect(t *testing.T) {
 	waitFor(t, func() bool { return len(b2.published()) >= 1 })
 	if got := b2.published()[0].Payload; got != "two" {
 		t.Errorf("payload = %q", got)
+	}
+}
+
+// newBrokerDialer picks a plaintext TCPDialer when TLS is off and a TLSDialer
+// when it is on, so an mqtts broker gets a TLS handshake and an open lab
+// broker on 1883 does not pay for one.
+func TestNewBrokerDialerSelectsByTLS(t *testing.T) {
+	if _, ok := newBrokerDialer(transport.TLSOptions{}).(transport.TCPDialer); !ok {
+		t.Error("TLS disabled must give a plain TCPDialer")
+	}
+	d, ok := newBrokerDialer(transport.TLSOptions{Enable: true}).(transport.TLSDialer)
+	if !ok {
+		t.Fatal("TLS enabled must give a TLSDialer")
+	}
+	if _, ok := d.Base.(transport.TCPDialer); !ok {
+		t.Error("the TLSDialer must wrap the base TCPDialer for the socket policy")
 	}
 }

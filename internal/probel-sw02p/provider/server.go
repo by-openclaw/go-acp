@@ -2,8 +2,6 @@ package probelsw02p
 
 import (
 	"context"
-	"dhs/internal/plugin"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -12,9 +10,9 @@ import (
 
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw02p/codec"
-	"dhs/internal/transport"
+	"dhs/internal/provider"
 )
 
 // Server is the exported alias for the concrete SW-P-02 provider.
@@ -28,31 +26,24 @@ type Server = server
 // follow-up commits; the scaffold's dispatcher is a no-op and simply
 // notes UnsupportedCommand for every well-formed inbound frame.
 type server struct {
+	// Base owns the listener, the live-session set, the stop sequence and
+	// the metrics connector — everything a TCP provider keeps that is not
+	// about SW-P-02.
+	provider.Base[*session]
+
 	logger *slog.Logger
 	tree   *tree
 
-	// net is the only way this server binds a socket. Injected, so the
-	// process owns the transport posture and a test can hand in a fake.
-	net transport.Net
-
+	// mu guards sessionIdle + selfDevice*; the session set is Base's.
 	mu sync.Mutex
 
 	// sessionIdle, when > 0, reaps a client session that has sent nothing
 	// for that long. Guarded by mu; 0 = disabled (the default).
 	sessionIdle time.Duration
-	listener    net.Listener
-	sessions    map[*session]struct{}
-	closed      bool
-	stopped     chan struct{}
 
 	// profile aggregates wire-tolerance events observed across every
 	// session since the server started.
 	profile *compliance.Profile
-
-	// metrics aggregates rx/tx counters + error counters + handler
-	// latency buckets across every session. Always non-nil after
-	// newServer.
-	metrics *metrics.Connector
 
 	// selfDeviceNumber + selfDeviceName configure how this matrix
 	// responds to rx 103 PROTECT DEVICE NAME REQUEST (§3.2.67) — a
@@ -84,9 +75,6 @@ func (s *server) SetSelfDevice(num uint16, name string) {
 	s.selfDeviceName = name
 }
 
-// Metrics returns the server-wide connector metrics. Always non-nil.
-func (s *server) Metrics() *metrics.Connector { return s.metrics }
-
 // ComplianceProfile returns the provider-scoped compliance profile —
 // always non-nil once newServer has run.
 func (s *server) ComplianceProfile() *compliance.Profile {
@@ -104,26 +92,23 @@ func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 		logger.Error("probel-sw02p provider: tree build failed", slog.String("err", err.Error()))
 		t = &tree{matrices: map[matrixKey]*matrixState{}}
 	}
-	met := deps.Metrics
-	for _, id := range codec.CommandIDs() {
-		met.RegisterCmd(uint8(id), codec.CommandName(id))
-	}
-	return &server{
+	srv := &server{
 		logger:           logger,
-		net:              deps.Net,
 		tree:             t,
-		sessions:         map[*session]struct{}{},
-		stopped:          make(chan struct{}),
 		profile:          &compliance.Profile{},
-		metrics:          met,
 		selfDeviceNumber: DefaultSelfDeviceNumber,
 		selfDeviceName:   DefaultSelfDeviceName,
 	}
+	srv.Init(deps)
+	for _, id := range codec.CommandIDs() {
+		srv.Metrics().RegisterCmd(uint8(id), codec.CommandName(id))
+	}
+	return srv
 }
 
 // Serve binds addr and accepts client sessions until ctx is cancelled.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	ln, err := s.net.Listen(ctx, "tcp", addr)
+	ln, err := s.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("probel-sw02p provider: listen %q: %w", addr, err)
 	}
@@ -146,56 +131,24 @@ func (s *server) ServeListener(ctx context.Context, ln net.Listener) error {
 // in-process tests that want to skip the close-then-rebind race
 // window of the addr-based path.
 func (s *server) serveListener(ctx context.Context, ln net.Listener) error {
-	s.mu.Lock()
-	s.listener = ln
-	s.mu.Unlock()
-
 	s.logger.Info("probel-sw02p provider listening",
 		slog.String("addr", ln.Addr().String()),
 		slog.Int("matrices", s.tree.Size()),
 	)
 
+	// Base.Stop closes the listener (unblocking Accept) and drains
+	// sessions; idempotent, so a later explicit Stop is a no-op.
 	go func() {
 		<-ctx.Done()
-		s.mu.Lock()
-		if !s.closed {
-			s.closed = true
-			_ = ln.Close()
-		}
-		s.mu.Unlock()
+		_ = s.Stop()
 	}()
 
-	err := s.acceptLoop(ctx, ln)
-	close(s.stopped)
-	if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
-		return nil
-	}
-	return err
+	return s.AcceptLoop(ctx, ln, func(conn net.Conn) *session {
+		return newSession(s, conn)
+	})
 }
 
 // Stop closes the listener and drops all active sessions.
-func (s *server) Stop() error {
-	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		return nil
-	}
-	s.closed = true
-	ln := s.listener
-	sessions := make([]*session, 0, len(s.sessions))
-	for sess := range s.sessions {
-		sessions = append(sessions, sess)
-	}
-	s.mu.Unlock()
-	for _, sess := range sessions {
-		sess.close()
-	}
-	if ln != nil {
-		return ln.Close()
-	}
-	return nil
-}
-
 // SetValue mutates the served tree from the API path. Path format for
 // SW-P-02: "<matrix>.<level>.<dst>" — all decimal. Value must be a
 // source index (int, int64, uint64, string convertible).
@@ -218,35 +171,6 @@ func (s *server) SetValue(_ context.Context, path string, val any) (any, error) 
 		slog.Int("src", int(src)),
 	)
 	return map[string]uint16{"src": src}, nil
-}
-
-func (s *server) acceptLoop(ctx context.Context, ln net.Listener) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		conn, err := ln.Accept()
-		if err != nil {
-			return err
-		}
-		// OS-level dead-peer probe. Without it a half-open client session
-		// (a NAT or firewall drop with no RST) holds a goroutine and a
-		// socket here for ever. Applied in the accept loop rather than at
-		// bind time so ServeListener's injected listener gets it too.
-		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
-		sess := newSession(s, conn)
-		s.mu.Lock()
-		s.sessions[sess] = struct{}{}
-		s.mu.Unlock()
-		go func() {
-			sessCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			sess.run(sessCtx)
-			s.mu.Lock()
-			delete(s.sessions, sess)
-			s.mu.Unlock()
-		}()
-	}
 }
 
 // parseCrosspointPath parses "matrix.level.dst" into uint8/uint8/uint16.

@@ -18,9 +18,15 @@ import (
 	"dhs/internal/amwa/session/connection"
 )
 
+// walkCatalogue is (*Controller).Walk, indirected through a package var
+// so a test can drive ResolveSenderByLabel's nil-snapshot guard. Walk
+// itself always returns a non-nil snapshot, so the guard is otherwise
+// unreachable.
+var walkCatalogue = (*Controller).Walk
+
 // ResolveSenderByLabel maps a label to the ONE Sender carrying it.
 func (c *Controller) ResolveSenderByLabel(ctx context.Context, label string) (string, error) {
-	snap, _ := c.Walk(ctx)
+	snap, _ := walkCatalogue(c, ctx)
 	if snap == nil {
 		return "", fmt.Errorf("nmos: catalogue walk returned nothing")
 	}

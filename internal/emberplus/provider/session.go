@@ -60,9 +60,10 @@ func newSession(srv *server, conn net.Conn) *session {
 	return s
 }
 
-// run is the session lifecycle: start write pump, read frames until EOF
+// Run is the session lifecycle: start write pump, read frames until EOF
 // or error, close on exit. Returns once the session is fully torn down.
-func (s *session) run(ctx context.Context) {
+// Satisfies provider.Conn so Base.AcceptLoop can drive it.
+func (s *session) Run(ctx context.Context) {
 	defer s.close()
 
 	go s.writePump(ctx)
@@ -84,8 +85,8 @@ func (s *session) run(ctx context.Context) {
 		// read (including keepalive) keeps the session alive — only
 		// truly silent peers get swept.
 		s.lastActive.Store(time.Now().UnixNano())
-		if s.srv != nil && s.srv.metrics != nil {
-			s.srv.metrics.ObserveCmdRx(frame.Command, len(frame.Payload))
+		if s.srv != nil {
+			s.srv.Metrics().ObserveCmdRx(frame.Command, len(frame.Payload))
 		}
 		if err := s.handleFrame(frame); err != nil {
 			s.logger.Debug("handle frame", slog.String("err", err.Error()))
@@ -130,8 +131,8 @@ func (s *session) writePump(ctx context.Context) {
 func (s *session) writeEmBERChunks(payload []byte) error {
 	// Counted once per logical message rather than per S101 chunk: the
 	// chunking is a transport detail, and a consumer sees one message.
-	if s.srv != nil && s.srv.metrics != nil {
-		s.srv.metrics.ObserveCmdTx(s101.CmdEmBER, len(payload), 0)
+	if s.srv != nil {
+		s.srv.Metrics().ObserveCmdTx(s101.CmdEmBER, len(payload), 0)
 	}
 	if len(payload) <= maxS101Payload {
 		return s.writer.WriteFrame(&s101.Frame{
@@ -190,6 +191,10 @@ func (s *session) send(payload []byte) {
 	}
 }
 
+// Close ends the session, satisfying provider.Conn. Idempotent — Base.Stop
+// may call it on a session already tearing itself down.
+func (s *session) Close() { s.close() }
+
 func (s *session) close() {
 	s.closeOnce.Do(func() {
 		close(s.closed)
@@ -212,8 +217,8 @@ func (s *session) handleFrame(f *s101.Frame) error {
 		if err := s.writer.WriteFrame(s101.NewKeepAliveResponse()); err != nil {
 			return err
 		}
-		if s.srv != nil && s.srv.metrics != nil {
-			s.srv.metrics.ObserveCmdTx(s101.CmdKeepAliveResp, 0, 0)
+		if s.srv != nil {
+			s.srv.Metrics().ObserveCmdTx(s101.CmdKeepAliveResp, 0, 0)
 		}
 		return nil
 	case s101.CmdKeepAliveResp:

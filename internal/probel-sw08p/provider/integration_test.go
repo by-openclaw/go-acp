@@ -46,8 +46,8 @@ func startProvider(t *testing.T, exp *canonical.Export) (string, func()) {
 	var addr string
 	for time.Now().Before(deadline) {
 		srv.mu.Lock()
-		if srv.listener != nil {
-			addr = srv.listener.Addr().String()
+		if a := srv.Addr(); a != nil {
+			addr = a.String()
 		}
 		srv.mu.Unlock()
 		if addr != "" {

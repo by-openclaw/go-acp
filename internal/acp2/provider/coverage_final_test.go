@@ -270,28 +270,22 @@ func TestFlatten_PresetDepthDefault(t *testing.T) {
 // server.go — Serve ctx-cancel listener-close arm
 
 // TestServe_CtxCancelClosesListener cancels the Serve context (without
-// calling Stop first) so the ctx.Done goroutine's `if !s.closed` arm runs:
-// it sets closed=true and closes the listener, which unblocks Accept and
-// returns Serve cleanly.
+// calling Stop first) and asserts Serve returns cleanly: the ctx.Done
+// goroutine calls Base.Stop, which closes the listener and unblocks Accept.
+// The bound address is read via Base.Addr rather than a private field.
 func TestServe_CtxCancelClosesListener(t *testing.T) {
 	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Serve(ctx, "127.0.0.1:0") }()
 
-	// Wait until Serve has bound + published its listener.
-	if !waitFor(t, 2*time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		return srv.listener != nil
-	}) {
+	if !waitFor(t, 2*time.Second, func() bool { return srv.Addr() != nil }) {
 		cancel()
 		t.Fatal("Serve never bound a listener")
 	}
 
-	cancel() // triggers the ctx.Done goroutine's close path
+	cancel() // Base.Stop via the ctx.Done goroutine
 
-	// Serve must return nil (clean shutdown via net.ErrClosed).
 	select {
 	case err := <-errCh:
 		if err != nil {
@@ -299,14 +293,5 @@ func TestServe_CtxCancelClosesListener(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("Serve did not return after ctx cancel")
-	}
-
-	// The ctx.Done goroutine must have flipped closed=true itself.
-	if !waitFor(t, time.Second, func() bool {
-		srv.mu.Lock()
-		defer srv.mu.Unlock()
-		return srv.closed
-	}) {
-		t.Error("ctx-cancel goroutine never set closed=true")
 	}
 }

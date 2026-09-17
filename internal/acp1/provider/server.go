@@ -11,8 +11,8 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export/canonical"
-	"dhs/internal/metrics"
 	"dhs/internal/plugin"
+	"dhs/internal/provider"
 	"dhs/internal/transport"
 )
 
@@ -36,21 +36,22 @@ type Server = server
 //   - SetValue() is called from the embedding API (acp-srv) off-thread;
 //     it grabs tree.mu for the mutation then enqueues an announce.
 type server struct {
+	// Base owns the UDP listener socket (bound via ListenUDP with
+	// SO_REUSEADDR so an emulator can share a controller's port), the stop
+	// sequence and the metrics connector — the same contract the TCP
+	// providers embed. ACP1 has no per-connection session on the UDP path
+	// (each datagram is dispatched inline), so the session type is NoConn
+	// and the connection set stays empty. The dialed broadcast socket
+	// below is NOT a bound listener, so Base does not track it; Stop closes
+	// it explicitly.
+	provider.Base[*provider.NoConn]
+
 	logger *slog.Logger
 	tree   *tree
 
-	// metrics is the server-wide connector snapshot exposed via Metrics()
-	// so `producer acp1 serve --metrics-addr` scrapes it. Frames are
-	// attributed by ACP1 method (getValue / setValue / … / getObject) —
-	// the protocol's own command axis, and the one a decoded message
-	// hands us for free. Always non-nil.
-	metrics *metrics.Connector
-
-	mu      sync.Mutex
-	conn    *net.UDPConn // listener + unicast reply socket
-	bcast   *net.UDPConn // separate socket dialed to 255.255.255.255
-	closed  bool
-	stopped chan struct{}
+	mu    sync.Mutex
+	conn  *net.UDPConn // listener + unicast reply socket (Base closes it)
+	bcast *net.UDPConn // separate socket dialed to 255.255.255.255
 
 	// tcpRegistry is set when ServeTCP runs. Announces emitted via the
 	// UDP broadcast path are also fanned to every live TCP session so
@@ -135,18 +136,16 @@ func (s *server) SetInsertTiming(t InsertTiming) {
 func newServer(deps plugin.Deps, exp *canonical.Export) *server {
 	deps = deps.WithDefaults()
 	logger := deps.Logger
-	met := deps.Metrics
+	s := &server{
+		logger:      logger,
+		slotMachine: newSlotStateMachine(InsertTimingReal),
+	}
+	s.Init(deps)
 	for _, m := range []codec.Method{
 		codec.MethodGetValue, codec.MethodSetValue, codec.MethodSetIncValue,
 		codec.MethodSetDecValue, codec.MethodSetDefValue, codec.MethodGetObject,
 	} {
-		met.RegisterCmd(uint8(m), methodName(m))
-	}
-	s := &server{
-		logger:      logger,
-		metrics:     met,
-		stopped:     make(chan struct{}),
-		slotMachine: newSlotStateMachine(InsertTimingReal),
+		s.Metrics().RegisterCmd(uint8(m), methodName(m))
 	}
 	t, err := newTree(exp)
 	if err != nil {
@@ -176,9 +175,9 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	}
 	// SO_REUSEADDR is set before bind — the only window in which it takes
 	// effect — so an emulator or dev rig can share the port with a
-	// controller already listening on it. The type assertion that used to
-	// sit here now lives in transport, tested once.
-	conn, err := transport.ListenUDPAddr(ctx, "udp4", udpAddr.String(),
+	// controller already listening on it. Base.ListenUDP records the socket
+	// so Stop closes it and applies the policy through the shared transport.
+	conn, err := s.ListenUDP(ctx, "udp4", udpAddr.String(),
 		transport.UDPBindOptions{ReuseAddr: true})
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
@@ -226,48 +225,37 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 		slog.Int("objects", len(s.tree.entries)),
 	)
 
-	// Close both sockets when ctx goes away; unblocks the read loop.
+	// Close both sockets when ctx goes away; unblocks the read loop. Stop is
+	// idempotent (Base guards the listener close; the broadcast close is
+	// one-shot), so a later explicit Stop is a no-op.
 	go func() {
 		<-ctx.Done()
-		s.mu.Lock()
-		if !s.closed {
-			s.closed = true
-			_ = conn.Close()
-			if s.bcast != nil {
-				_ = s.bcast.Close()
-			}
-		}
-		s.mu.Unlock()
+		_ = s.Stop()
 	}()
 
 	if s.preReadHook != nil {
 		s.preReadHook(conn)
 	}
 	err = s.readLoop(ctx, conn)
-	close(s.stopped)
 	if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil
 	}
 	return err
 }
 
-// Stop closes the listening and broadcast sockets. Safe to call
-// multiple times.
+// Stop closes the listening and broadcast sockets. Safe to call more than
+// once. Base.Stop closes the UDP listener it bound via ListenUDP (and any
+// sessions, of which the UDP path has none); the dialed broadcast socket is
+// not a bound listener, so it is closed here, once.
 func (s *server) Stop() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return nil
+	bc := s.bcast
+	s.bcast = nil // so a second Stop does not re-close it
+	s.mu.Unlock()
+	if bc != nil {
+		_ = bc.Close()
 	}
-	s.closed = true
-	var err error
-	if s.conn != nil {
-		err = s.conn.Close()
-	}
-	if s.bcast != nil {
-		_ = s.bcast.Close()
-	}
-	return err
+	return s.Base.Stop()
 }
 
 // SetValue mutates the served tree via the API path (acp-srv, tests).
@@ -341,9 +329,8 @@ func (s *server) broadcastAnnounceSkip(ann *codec.Message, skipTCPSessionID uint
 
 	s.mu.Lock()
 	bc := s.bcast
-	closed := s.closed
 	s.mu.Unlock()
-	if bc == nil || closed {
+	if bc == nil || s.Closed() {
 		// No UDP listener, or we're shutting down. Skipping a broadcast on a
 		// closing socket keeps Ctrl-C output clean — without this, every
 		// in-flight --play tick would spray a Warn as its write races the
@@ -397,8 +384,3 @@ func (s *server) readLoop(ctx context.Context, conn *net.UDPConn) error {
 		s.handleDatagram2(data, src.String(), send)
 	}
 }
-
-// Metrics returns the server-wide connector metrics — satisfies the
-// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
-// acp1 provider. Always non-nil.
-func (s *server) Metrics() *metrics.Connector { return s.metrics }
