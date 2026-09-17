@@ -196,6 +196,7 @@ func (d *device) answerCall(f codec.Frame) {
 	}
 
 	d.mu.Lock()
+	d.levelsSeen = append(d.levelsSeen, conn.UserLevel)
 	if d.refuseSessionOn >= 0 && int(f.Dst.Port) == d.refuseSessionOn {
 		// Says nothing at all, which is what a client does when another
 		// client asks it for a session.

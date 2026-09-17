@@ -238,32 +238,11 @@ func (p *Plugin) appendFarSide(ctx context.Context, t *nodeTable) {
 	}
 }
 
-// reachThrough composes the address that reaches a far-side device from here.
-//
-// A bridge should fill in the route it relays by (spec 9.31), and the vendor
-// Centra does: its far-side entries come back already carrying the substitution
-// address — a non-zero route — and are used exactly as given. The vendor
-// RollCall IP Proxy does not: it returns the address the far segment knows the
-// node by, net zero, which collides with the bridge's own address and, taken at
-// face value, makes a node look like the bridge it sits behind. Measured on
-// 2026-09-14, a frame two hops behind the proxy came back as 0000-01-00, the
-// same address as the bridge in front of it.
-//
-// So a far entry with no route has one composed for it: the bridge's own route,
-// then the hop across the bridge, then the node on the far segment. A route
-// fills from the top nibble down (spec 5.3), so the bridge's unit is inserted at
-// the nibble after the hops already in the bridge's address. A bridge already at
-// the four-hop limit has no room for another and its far side is left as given.
+// reachThrough composes the address that reaches a far-side device from here,
+// where bridge is the node it was found behind. The transform is codec.Compose,
+// shared with the proxy provider so both sides agree on the route (spec 5.3).
 func reachThrough(bridge, far codec.Address) codec.Address {
-	if far.Net != 0 {
-		return far.Device()
-	}
-	h := bridge.HopCount()
-	if h >= 4 {
-		return far.Device()
-	}
-	far.Net = bridge.Net | (uint16(bridge.Unit&0x0F) << uint(12-4*h))
-	return far.Device()
+	return bridge.Compose(far)
 }
 
 // appendFarPorts adds the cards of every frame reached through a bridge.
@@ -288,15 +267,20 @@ func (p *Plugin) appendFarPorts(ctx context.Context, l *link, t *nodeTable) {
 	// The frames to ask, snapshot before the table grows: a card added below is
 	// not itself a frame whose ports are enumerated. A frame here is a node
 	// reached through a bridge (a routed address), at port zero (a frame, not one
-	// of its cards), that advertises the port service and is not itself a bridge.
-	// The measured IQ gateway behind the proxy advertises the port service; a far
-	// node that offers only the map service is not something measured here and is
-	// left as a node without cards rather than guessed at.
+	// of its cards), that is not itself a bridge and offers BOTH the map and the
+	// port service — which is what a segment's own gateway offers and nothing
+	// else on the segment does. Measured 2026-09-17 through our proxy: the IQ
+	// gateway advertises Map|Ports and its ports are its cards; the Centra
+	// controller advertises Map without Ports; and every Centra matrix and card
+	// advertises Ports without Map, its ports being its own levels or channels —
+	// 123 per card — which a direct connection to the Centra never enumerates
+	// as nodes either. Reading only the gateway's ports is what makes the far
+	// side look exactly like the near side would.
 	var frames []codec.Address
 	for i := range t.info {
 		a := t.addrs[i]
 		s := t.info[i].ID.Services
-		if a.Net != 0 && a.Port == 0 && s.Has(codec.SvcPorts) && !s.Has(codec.SvcNet) {
+		if a.Net != 0 && a.Port == 0 && s.Has(codec.SvcPorts) && s.Has(codec.SvcMap) && !s.Has(codec.SvcNet) {
 			frames = append(frames, a)
 		}
 	}
@@ -336,7 +320,7 @@ func (p *Plugin) appendFarPorts(ctx context.Context, l *link, t *nodeTable) {
 // a far frame is enumerated once during discovery, and a session left open is
 // one the frame never reclaims.
 func (p *Plugin) portsAt(ctx context.Context, l *link, node codec.Address) ([]codec.DeviceInfo, error) {
-	s, err := session.Call(ctx, l.sess, node.Device(), codec.SvcPorts, codec.LevelSupervisor, p.identity())
+	s, err := session.Call(ctx, l.sess, node.Device(), codec.SvcPorts, p.userLevel(), p.identity())
 	if err != nil {
 		return nil, err
 	}

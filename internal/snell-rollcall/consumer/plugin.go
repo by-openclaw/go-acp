@@ -29,6 +29,7 @@
 package rollcall
 
 import (
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -81,7 +82,27 @@ func New(deps plugin.Deps) *Plugin {
 		trees:  make(map[int]*slotTree),
 		subs:   make(map[subKey]consumer.EventFunc),
 		events: make(chan struct{}),
+		level:  codec.LevelSupervisor,
 	}
+}
+
+// SetUserLevel chooses the level every session is opened at. It takes effect
+// on the next connection: a session keeps the level it was called with.
+func (p *Plugin) SetUserLevel(level codec.UserLevel) error {
+	if !level.Valid() {
+		return fmt.Errorf("rollcall: user level %d is not one a client may request", level)
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.level = level
+	return nil
+}
+
+// userLevel is the level sessions are opened at.
+func (p *Plugin) userLevel() codec.UserLevel {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.level
 }
 
 // Plugin is one connection to one RollCall gateway.
@@ -97,6 +118,13 @@ type Plugin struct {
 	recorder session.Recorder
 
 	mu sync.RWMutex
+
+	// level is the user level every session is opened at. Supervisor unless
+	// told otherwise: it is what blind control runs at and what every DM on
+	// disk was walked at. Factory is what a factory-gated command needs — a
+	// unit refuses such a write below it and hides the line — and it can only
+	// be had on a connected session, never over blind control.
+	level codec.UserLevel
 
 	// name labels this client in the network map, for the operator reading the
 	// list of who is attached. Empty means the default.

@@ -233,6 +233,13 @@ type Provider struct {
 	// unlike a client, because it is the one doing the stamping.
 	unit uint8
 
+	// proxy, when set, makes this provider present as a RollCall IP Proxy in
+	// front of one or more frames: the connected unit is the proxy, and a
+	// routed address resolves to a frame — the tree this provider serves,
+	// whose ports the model answers, or a real one its traffic is carried to.
+	// Nil in the ordinary case of serving a frame directly.
+	proxy *proxyTopology
+
 	done     chan struct{}
 	doneOnce sync.Once
 	wg       sync.WaitGroup
@@ -264,6 +271,10 @@ type linkState struct {
 	// subscribed holds the sessions that asked for pushes, each with the
 	// queue and the goroutine that sends them.
 	subscribed map[int16]*subscriber
+
+	// relays carry this client's routed traffic to the real frames the proxy
+	// fronts, one per frame; nil when it fronts none.
+	relays *relaySet
 }
 
 // setTransfer records the transfer a session has open.
@@ -370,6 +381,14 @@ func (p *Provider) serveConn(conn net.Conn) {
 		KeepaliveInterval: -1,
 	}
 
+	// Fronting real frames, this client's routed traffic is carried to them on
+	// connections of its own, taken off the link before any session sees it.
+	var relays *relaySet
+	if p.proxy != nil && p.proxy.hasRelay() {
+		relays = newRelaySet(p)
+		cfg.Intercept = relays.intercept
+	}
+
 	l := session.NewLink(conn, cfg, p.deps)
 
 	p.mu.Lock()
@@ -379,6 +398,7 @@ func (p *Provider) serveConn(conn net.Conn) {
 		open:       make(map[int16]*transfer),
 		subscribed: make(map[int16]*subscriber),
 		assigned:   firstClientPort,
+		relays:     relays,
 	}
 	p.mu.Unlock()
 
@@ -394,9 +414,15 @@ func (p *Provider) serveConn(conn net.Conn) {
 	//
 	// Only the gateway announces. A frame's cards are ports of it and are
 	// found through the port service, not by announcing themselves (spec 7.6).
-	session.NewAnnouncer(context.Background(), l, session.Identity{
-		Info: p.gatewayInfo(),
-	})
+	//
+	// A proxy announces nothing. The vendor RollProxy sends a client no Iam at
+	// all (measured 2026-09-16, fifty-five seconds of a walk): a client reads
+	// its map, and what is behind the proxy is found through it.
+	if p.proxy == nil {
+		session.NewAnnouncer(context.Background(), l, session.Identity{
+			Info: p.gatewayInfo(),
+		})
+	}
 
 	p.log.Debug("rollcall: client connected", "remote", conn.RemoteAddr().String())
 
@@ -409,6 +435,9 @@ func (p *Provider) serveConn(conn net.Conn) {
 		delete(p.links, l)
 		p.mu.Unlock()
 
+		if relays != nil {
+			relays.close()
+		}
 		p.log.Debug("rollcall: client gone", "remote", conn.RemoteAddr().String())
 	}()
 }
@@ -441,6 +470,47 @@ func (p *Provider) SetUnit(u uint8) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.unit = u
+}
+
+// SetProxy makes this provider present as a RollCall IP Proxy fronting frames
+// at the network addresses the config names.
+//
+// It is the emulator of the vendor RollProxy: a client sees the proxy unit, its
+// virtual routing nodes and, behind them, the frames — the same chains the
+// vendor box presents, one subnet per frame. A frame is the one this provider
+// was built to serve, or a real one reached over the network. Each real frame
+// is probed here to learn its unit and identity; one that does not answer is
+// kept and called again when a client asks for it, the way the vendor box
+// shows a chassis as "Calling" until it appears. It must be called before
+// Serve, because a client that has walked the proxy has already been told
+// where everything is, and it sets the unit the proxy answers as.
+func (p *Provider) SetProxy(ctx context.Context, cfg ProxyConfig) error {
+	p.mu.RLock()
+	serving := p.listener != nil
+	p.mu.RUnlock()
+	if serving {
+		return fmt.Errorf("rollcall: the proxy is configured before the frame is served")
+	}
+
+	t, err := buildProxyTopology(cfg)
+	if err != nil {
+		return err
+	}
+	for _, c := range t.frames {
+		if c.upstream == "" {
+			continue
+		}
+		if err := p.probe(ctx, c); err != nil {
+			p.log.Warn("rollcall: the frame behind the proxy does not answer yet; it will be called again when asked for",
+				"frame", c.upstream, "subnet", fmt.Sprintf("%04X", c.subnet), "err", err)
+		}
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.proxy = t
+	p.unit = cfg.Unit
+	return nil
 }
 
 // SetLongStrings chooses which generation this frame offers.

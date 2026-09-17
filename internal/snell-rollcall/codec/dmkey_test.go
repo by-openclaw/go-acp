@@ -30,6 +30,48 @@ func TestParseDMKeyReadsBackWhatTheFrameReported(t *testing.T) {
 	}
 }
 
+func TestAWalkAtAnotherLevelHasItsOwnKey(t *testing.T) {
+	v := Version{Major: 5, Minor: 0, Alpha: ' ', CmdSet: 5}
+	// Supervisor is the plain key every DM on disk carries.
+	if got := DMKeyAt(562, v, LevelSupervisor); got != "IQDBE00@5.0.cs5" {
+		t.Errorf("supervisor key = %q", got)
+	}
+	// Any other level names itself, and reads back to the same unit.
+	for _, level := range []UserLevel{LevelUser, LevelEngineer, LevelFactory} {
+		key := DMKeyAt(562, v, level)
+		if key != "IQDBE00@5.0.cs5@"+level.String() {
+			t.Errorf("key at %s = %q", level, key)
+		}
+		id, got, ok := ParseDMKey(key)
+		if !ok || id != 562 || got != v {
+			t.Errorf("ParseDMKey(%q) = %d %+v %v", key, id, got, ok)
+		}
+		if DMKeyLevel(key) != level {
+			t.Errorf("DMKeyLevel(%q) = %s", key, DMKeyLevel(key))
+		}
+	}
+	if DMKeyLevel("IQDBE00@5.0.cs5") != LevelSupervisor {
+		t.Error("a plain key is not read as a supervisor walk")
+	}
+}
+
+func TestParseUserLevel(t *testing.T) {
+	for in, want := range map[string]UserLevel{
+		"user": LevelUser, "Engineer": LevelEngineer, "SUPERVISOR": LevelSupervisor,
+		"factory": LevelFactory, " 3 ": LevelFactory, "0": LevelUser,
+	} {
+		got, ok := ParseUserLevel(in)
+		if !ok || got != want {
+			t.Errorf("ParseUserLevel(%q) = %s %v, want %s", in, got, ok, want)
+		}
+	}
+	for _, in := range []string{"", "all", "4", "root", "-1"} {
+		if _, ok := ParseUserLevel(in); ok {
+			t.Errorf("ParseUserLevel(%q) was accepted", in)
+		}
+	}
+}
+
 func TestAnUnlistedTypeIsFiledAndReadByItsNumber(t *testing.T) {
 	// The vendor allocates ids with every product, so a card our table has
 	// never heard of is still filed — by its number, which identifies the

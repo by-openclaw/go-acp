@@ -282,7 +282,7 @@ Three paths reach the same plant, and all three are worth testing:
 |---|---|
 | direct | our session layer against the vendor's own code |
 | through the vendor proxy | that we behave like a RollCall Control Panel |
-| through our own bridge | that our aggregation is indistinguishable from theirs |
+| through our own IPShare (§9.6) | that our aggregation is indistinguishable from theirs |
 
 ### 9.1 Emulators, one per chassis
 
@@ -362,7 +362,8 @@ cd ansible
 DHS_BIN=/root/acp/bin/dhs ROLLCALL_SIM_HOST=<emulator>   ROLLCALL_SIM_PORT=2050 ROLLCALL_PROXY_HOST=<proxy>    ROLLCALL_PROXY_PORT=2050 ROLLCALL_SETTLE_SECONDS=12   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
 ```
 
-`ROLLCALL_BRIDGE_HOST` adds our own bridge when there is one, and
+`ROLLCALL_BRIDGE_HOST=10.6.250.104 ROLLCALL_BRIDGE_PORT=2050` adds our own
+IPShare on `dhs-tools` (§9.6), and
 `ROLLCALL_TEST_HOST` adds real hardware, read-only — the IQ 3U frame at
 `10.6.255.113` is the one on the fabric today:
 
@@ -387,6 +388,57 @@ loopback      127.0.0.1:22050     2 node(s) [ 0000-01-01 0000-01-02 ]
 It reports rather than asserts. A proxy publishes one node per chassis, so
 those counts differing is correct on both paths; asserting they matched would
 be asserting a bug. The report is there for the difference nobody predicted.
+
+### 9.6 Our own IPShare in front of the real frame
+
+The provider fronts a real frame the way the vendor proxy does
+([provider.md](provider.md) "As a RollCall IP Proxy"). Subnet `2100` is ours by
+convention, so a client holding both the vendor proxy (`1100`) and ours sees the
+same rack at two routes and never confuses them:
+
+```
+dhs producer rollcall serve --proxy-subnet 2100 --proxy-upstream 10.6.255.113 --port 2050 --log-level debug
+```
+
+Or the whole plant at once — the rack, the Centra emulator on `win11` and our
+own router served on the same host — one subnet each:
+
+```
+dhs producer rollcall serve --tree router_tree.json --port 2052 --unit 32 &
+dhs producer rollcall serve --proxy-upstream 2100=10.6.255.113,3000=10.6.250.105:2057,4000=10.6.250.104:2052 --port 2050
+```
+
+It probes each frame at start; one that does not answer is listed with an
+empty far side and called again whenever a client asks for it.
+
+The standing plant is Ansible-owned, per ADR-0025 §5 — no hand-run sessions:
+
+```
+cd /root/acp-plant/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml
+ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml   # again -> changed=0
+```
+
+It runs the Sirius 800 emulator on `win11` as the scheduled task `dhs-centra`
+(at boot, restarted if it dies, unpacked from the committed zip if absent),
+and on `dhs-tools` the units `dhs-rollcall-router` (our router, `:2052`, unit
+`0x20`) and `dhs-rollcall-ipshare` (the proxy, `:2050`, fronting 2100 / 3000
+/ 4000). It then asserts the proxy lists one virtual node per frame and
+reports which frames answered. Measured 2026-09-17: second pass `changed=0`
+on both hosts, all three frames reached. Then, from any host that reaches it:
+
+```
+dhs consumer rollcall info <our-host>:2050        # RollProxy Service, unit FF, Map
+dhs consumer rollcall walk <our-host>:2050 --slot <n>   # a card at 2100-0C-xx
+```
+
+For the Tier 2 oracle, add `<our-host>:2050` to the vendor RollCall Control
+Panel on `win11` as an IP Proxy connection and walk it: expect the proxy unit,
+two virtual nodes, the gateway at `2100-0C-00`, the eight cards at
+`2100-0C-01` … `0D`, and a card's own panel. Capture on our host's port 2050
+and on the leg to the frame at the same time; anything the Control Panel shows
+differently from the vendor proxy is the finding, and the two captures say
+which byte.
 
 ## 10. Known device quirks
 

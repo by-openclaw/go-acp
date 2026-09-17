@@ -24,8 +24,8 @@ same PR — and the inventory wins on any disagreement.
 | `dhs-debian` | LXC 651 | Debian 12 | `10.6.250.101` | **Ansible control node** + AMWA plant registry (`:8235`); dhs producer host; Docker |
 | `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
-| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
-| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and a Centra emulator (`:2057`). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet**. Also the RollCall plant front: `dhs-rollcall-ipshare` (our IPShare `:2050`, fronting the IQ frame at 2100, the Sirius 800 emulator at 3000, our router at 4000) and `dhs-rollcall-router` (`:2052`, unit `0x20`), both systemd units from `ansible/playbooks/snell-rollcall-ipshare.yml` |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and the Centra emulator as a Sirius 800 (`:2057`, scheduled task `dhs-centra` from `ansible/playbooks/snell-rollcall-ipshare.yml`, at boot, restarted if it dies). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
 | `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
 
 ## Physical devices under test

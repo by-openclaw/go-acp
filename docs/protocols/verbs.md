@@ -141,7 +141,11 @@ Global flags: `--mtx-id --level --dsts --srcs` (`--dsts` enables bootstrap rx01 
 
 A RollCall device is a frame of nodes, and which verbs apply depends on which
 node. Cards take the whole Tree/DM set from §2 — `info`, `walk`, `get`, `set`,
-`ensure`, `export`, `validate` — addressed by `--slot`. The router takes the
+`ensure`, `export`, `validate` — addressed by `--slot`. Every verb takes
+`--user-level user|engineer|supervisor|factory` (default supervisor; factory is
+what a factory-gated command needs, and a walk at another level is filed under
+its own DM key) and `--client-name` (what the unit's connection list calls
+us). The router takes the
 four below, addressed by matrix, level and destination, because a crosspoint
 has no slot and no label and never did.
 
@@ -218,7 +222,7 @@ slot/matrix protocol below): `serve · tree · status · stop · ensure · valid
 | emberplus | common | `serve --tree --port` (+ `--mdns`, `--stream-ttl`, `--admin`) |
 | probel-sw08p | common | `serve --tree matrix.json --port 2008` |
 | probel-sw02p | common | reaches the generic dispatch; `serve` needs the sw02p provider plugin |
-| snell-rollcall | common | `serve --tree` or `--manifest --cache-dir`; `--generation 16\|32` picks the wire generation, `--generation-16-slots` makes named cards speak the older one; `--unit N` sets the unit address every card is reached at |
+| snell-rollcall | common | `serve --tree` or `--manifest --cache-dir`; `--generation 16\|32` picks the wire generation, `--generation-16-slots` makes named cards speak the older one; `--unit N` sets the unit address every card is reached at; `--proxy-subnet NNNN` presents as a RollCall IP Proxy with the served tree (`--proxy-frame UU`) or a real frame (`--proxy-upstream host[:port]`, no tree needed) behind that route; `--proxy-upstream NNNN=host[:port],...` fronts several real frames, one subnet each |
 | osc-v10 / osc-v11 | `send`, `fader`, `serve` | push model (own dispatch): emit / high-rate fader / bind+log |
 | tsl-v31/v40/v50 | `serve`, `send` | push model (own dispatch, `runTSLProducer`) — not the generic lifecycle set |
 | cerebrum-nb | ❌ none | consumer-only by design |

@@ -32,7 +32,7 @@ func (p *Provider) Call(l *session.Link, req codec.Frame, conn codec.Connect) er
 	// Against what this node offers, not what the frame does: an old card and
 	// a new one in the same rack answer differently, and a session belongs to
 	// the node it was opened on.
-	if missing := conn.Services &^ p.servedAt(req.Dst.Port); missing != 0 {
+	if missing := conn.Services &^ p.servedAtAddr(req.Dst); missing != 0 {
 		p.fire(EventUnservedService, fmt.Sprintf(
 			"%s asked for %s, which this device does not serve", req.Src, missing))
 		return session.RefuseNack("service not available: " + missing.String())
@@ -109,6 +109,27 @@ func (p *Provider) servedAt(port uint8) codec.Service {
 	return p.served()
 }
 
+// servedAtAddr is what the node at a full address offers. Off proxy mode it is
+// servedAt by port. On it, the proxy offers the map service, a virtual node the
+// net service, and the frame and its cards what each port serves; an address
+// that resolves to nothing offers nothing, and the client is refused.
+func (p *Provider) servedAtAddr(dst codec.Address) codec.Service {
+	if p.proxy == nil {
+		return p.servedAt(dst.Port)
+	}
+	role, frame, hop, port, ok := p.proxy.resolve(dst)
+	switch {
+	case !ok:
+		return 0
+	case role == roleProxy:
+		return p.proxy.proxyID().Services
+	case role == roleVirtual:
+		return p.proxy.virtualID(frame, hop).Services
+	default:
+		return p.servedAt(port)
+	}
+}
+
 func generationName(s codec.Service) string {
 	if s.LongStrings() {
 		return "32-bit"
@@ -152,7 +173,40 @@ func (p *Provider) Request(s *session.Session, req codec.Frame) {
 
 // answer handles one request, returning an error to refuse it.
 func (p *Provider) answer(s *session.Session, req codec.Frame) error {
+	// Continuing an open transfer belongs to the session rather than to whatever
+	// node the request is addressed to, so it is answered before any routing: the
+	// transfer it advances was scoped when it was opened.
+	if req.Type == codec.MsgGetNextPkt {
+		return p.nextItem(s, req)
+	}
+
 	slot := req.Dst.Port
+	stampUnit := p.unit
+
+	// In proxy mode the address is a route, not just a port. The proxy unit and
+	// its virtual nodes answer for themselves; a routed address resolves to a
+	// port of the frame behind them, which the ordinary path below then serves —
+	// stamped with the frame's own unit rather than the proxy's.
+	if p.proxy != nil {
+		// The peer was resolved and its service checked when the session was
+		// opened (servedAtAddr in Call), so a request on an established session
+		// always names a node the proxy knows. The proxy unit and its virtual
+		// nodes answer for themselves; anything else is a port of the frame, which
+		// the ordinary path serves under the frame's own unit.
+		role, frame, hop, port, _ := p.proxy.resolve(req.Dst)
+		switch role {
+		case roleProxy:
+			return p.answerProxyNode(s, req)
+		case roleVirtual:
+			return p.answerVirtualNode(s, req, frame, hop)
+		case roleFrame:
+			// A real frame's traffic never arrives here: its relay took it off
+			// the link. This is the served tree, under its own unit.
+			slot = port
+			stampUnit = p.proxy.frames[frame].unit
+		}
+	}
+
 	prt := p.model.port(slot)
 
 	p.checkGeneration(s, req)
@@ -175,7 +229,7 @@ func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 		return s.Answer(codec.MsgRetStat, p.statusOf(slot).AppendTo(nil))
 
 	case codec.MsgGetDevInfo:
-		return s.Answer(codec.MsgRetDevInfo, p.deviceInfoFor(slot))
+		return s.Answer(codec.MsgRetDevInfo, p.deviceInfoAt(stampUnit, slot))
 
 	case codec.MsgBkChnReady:
 		return p.backChannel(s, req)
@@ -189,12 +243,6 @@ func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 
 	case codec.MsgGetDispData:
 		return p.displayData(s, prt, req)
-
-	case codec.MsgGetNextPkt:
-		// Not a menu message: it continues whichever transfer is open, which
-		// may equally be a device list or a directory. What it may fetch was
-		// decided when that transfer was opened.
-		return p.nextItem(s, req)
 
 	case codec.MsgGetFunc, codec.MsgGetMenuCount, codec.MsgGetMenuItem:
 		return p.menuRequest(s, prt, req)
@@ -211,7 +259,7 @@ func (p *Provider) answer(s *session.Session, req codec.Frame) error {
 		return p.writeValue(s, prt, req)
 
 	case codec.MsgGetDevList, codec.MsgGetLocDevMap:
-		return p.deviceList(s, req)
+		return p.deviceListAt(s, req, slot, stampUnit)
 
 	case codec.MsgFileOpen, codec.MsgFileRead, codec.MsgFileClose, codec.MsgFileDir:
 		return p.fileRequest(s, req)
@@ -300,12 +348,25 @@ func (p *Provider) handshake(l *session.Link, req codec.Frame) {
 	if req.Src.Index == codec.IndexUnknown {
 		dst = codec.Address{Unit: p.unit, Port: assigned, Index: codec.IndexUnknown}
 	}
+	src := codec.Address{Unit: p.unit, Port: req.Dst.Port, Index: codec.IndexUnknown}
+	payload := p.deviceInfoFor(req.Dst.Port)
+
+	// In proxy mode the connected unit is the proxy, not a frame: a client learns
+	// it is talking to a RollProxy Service and reads the frame through its map.
+	// The vendor proxy answers from 0000-FF-01 and assigns the client nothing —
+	// the reply goes back to the zero address it asked from, and every client of
+	// the proxy stays 0000-00-00 (measured 2026-09-16). So does this one.
+	if p.proxy != nil {
+		dst = req.Src
+		src = p.proxy.proxyAddr()
+		payload = proxyInfoPayload(src, p.proxy.proxyID())
+	}
 
 	err := l.SendFrame(codec.Frame{
 		Dst:     dst,
-		Src:     codec.Address{Unit: p.unit, Port: req.Dst.Port, Index: codec.IndexUnknown},
+		Src:     src,
 		Type:    codec.MsgRetDevInfo,
-		Payload: p.deviceInfoFor(req.Dst.Port),
+		Payload: payload,
 	})
 	if err != nil {
 		p.log.Debug("rollcall: handshake reply failed", "err", err)
@@ -350,9 +411,17 @@ func (p *Provider) statusOf(slot uint8) codec.UnitStatus {
 	return codec.UnitStatus{}
 }
 
-// deviceInfoFor renders what a slot says about itself. Port zero is the
-// gateway; every other port is whichever card is in it.
+// deviceInfoFor renders what a slot says about itself, stamped with the unit
+// this provider presents as. Port zero is the gateway; every other port is
+// whichever card is in it.
 func (p *Provider) deviceInfoFor(slot uint8) []byte {
+	return p.deviceInfoAt(p.unit, slot)
+}
+
+// deviceInfoAt is deviceInfoFor with the stamped unit given, which the proxy
+// needs: a frame it fronts lists its ports under the frame's own unit, net zero,
+// not under the proxy's, so a client composes the route to them.
+func (p *Provider) deviceInfoAt(unit, slot uint8) []byte {
 	id, ok := p.identityOf(slot)
 	if !ok {
 		// An empty slot still answers, with the frame's identity and a status
@@ -363,7 +432,7 @@ func (p *Provider) deviceInfoFor(slot uint8) []byte {
 
 	info := codec.DeviceInfo{
 		ProtocolVersion: codec.ProtocolVersion,
-		Address:         codec.Address{Unit: p.unit, Port: slot, Index: codec.IndexUnknown},
+		Address:         codec.Address{Unit: unit, Port: slot, Index: codec.IndexUnknown},
 		ID:              id,
 		Status:          p.statusOf(slot),
 	}
@@ -373,9 +442,11 @@ func (p *Provider) deviceInfoFor(slot uint8) []byte {
 	return payload
 }
 
-// deviceList answers the map and port enumerations, which is how a client
-// discovers what is in the frame.
-func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
+// deviceListAt answers the map and port enumerations, which is how a client
+// discovers what is in the frame. slot is the node the list was asked of and
+// stampUnit is the unit its entries are stamped with — the proxy asks the frame
+// for its ports under the frame's own unit, net zero.
+func (p *Provider) deviceListAt(s *session.Session, req codec.Frame, slot, stampUnit uint8) error {
 	// A port list is scoped to the node it was asked of.
 	//
 	// Only the gateway has ports. A card is a leaf, and answering a card's
@@ -385,7 +456,7 @@ func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
 	//
 	// The empty list is the honest answer and the specification's: a unit with
 	// nothing below it reports nothing below it.
-	if req.Dst.Port != 0 {
+	if slot != 0 {
 		return p.beginTransfer(s, req.Type, codec.MsgRetDevInfo, nil)
 	}
 
@@ -401,7 +472,7 @@ func (p *Provider) deviceList(s *session.Session, req codec.Frame) error {
 
 	items := make([][]byte, 0, len(ports))
 	for _, n := range ports {
-		items = append(items, p.deviceInfoFor(n))
+		items = append(items, p.deviceInfoAt(stampUnit, n))
 	}
 
 	// Map and port list now carry the same thing, and both are answered.

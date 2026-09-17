@@ -52,6 +52,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		bind           = fs.String("bind", "", "alternate spelling of --host. e.g. --bind 10.6.239.200 binds the listener AND pins the broadcast source IP to the VIP, so multi-instance emulators on the same machine appear as distinct From: addresses to consumers (#263).")
 		generation     = fs.String("generation", "32", "snell-rollcall only: which wire generation the served frame offers — 32 advertises SV_LONGSTR so a client may negotiate either; 16 withholds it, so every client speaks the older generation. Emulates a 16-bit frame from the same tree.")
 		unitAddr       = fs.Int("unit", -1, "snell-rollcall only: the unit address the gateway answers as, 1 to 255. Every card address a client sees carries it: the IQ frame at 10.6.255.113 is unit 12 (0x0C), so its first Nodal card is 0000-0C-01. Unset keeps unit 1.")
+		proxySubnet    = fs.String("proxy-subnet", "", "snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.")
+		proxyUpstream  = fs.String("proxy-upstream", "", "snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.")
+		proxyFrame     = fs.String("proxy-frame", "", "snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.")
 		gen16Slots     = fs.String("generation-16-slots", "", "snell-rollcall only: comma-separated card slots that speak the 16-bit generation whatever --generation says, e.g. 2,5. A rack holds cards of different ages and the service mask is per unit, so an old card is reached in the older forms while the card beside it is not.")
 		logLevel       = fs.String("log-level", "info", "log level: debug, info, warn, error")
 		logFormat      = fs.String("log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default; severity mapped incl. critical — #751 G6) | json (Loki/Promtail) | text (human) — epic #987")
@@ -79,8 +82,9 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
-	if *treePath == "" && *manifestPath == "" {
-		return fmt.Errorf("one of --tree | --manifest is required")
+	// A proxy fronting a real frame serves that frame, not a tree.
+	if *treePath == "" && *manifestPath == "" && *proxyUpstream == "" {
+		return fmt.Errorf("one of --tree | --manifest is required (or --proxy-upstream to front a real frame)")
 	}
 	if *treePath != "" && *manifestPath != "" {
 		return fmt.Errorf("--tree and --manifest are mutually exclusive")
@@ -117,7 +121,8 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 
 	var tree *canonical.Export
 	var mf *manifest.Manifest
-	if *manifestPath != "" {
+	switch {
+	case *manifestPath != "":
 		var err error
 		mf, err = manifest.Load(*manifestPath)
 		if err != nil {
@@ -136,7 +141,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 			slog.Int("endpoints", len(mf.Device.Endpoints)),
 			slog.Int("frames", len(mf.Frames)),
 		)
-	} else {
+	case *treePath != "":
 		var err error
 		tree, err = loadTree(*treePath)
 		if err != nil {
@@ -206,6 +211,11 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 		}
 	}
 	if err := placeManifestCards(srv, mf, logger); err != nil {
+		return err
+	}
+	if err := applyProxy(ctx, srv, proxyOptions{
+		subnet: *proxySubnet, upstream: *proxyUpstream, frame: *proxyFrame, unit: *unitAddr,
+	}, logger); err != nil {
 		return err
 	}
 	// Initialise the rack-controller frame-status from the served tree so a

@@ -43,6 +43,28 @@ Two indices matter and confusing them is the defect the session layer exists to
 prevent. Ours goes in the source of everything we send; the peer's goes in the
 destination. A push arrives addressed to ours.
 
+### User level
+
+Every session is opened at one level — `user`, `engineer`, `supervisor` or
+`factory` — and the level is the session's for its life. A unit serves a
+different menu at each: a line above the session's level comes back hidden
+and disabled as `"Reserved"`, and a factory-gated command is refused with
+`SP_NACK` below factory ([dm-and-ui.md §5A](dm-and-ui.md)). Blind control on
+session 0 is supervisor by definition, so factory can only be had on a
+connected session.
+
+`--user-level factory` opens every session at factory (default supervisor,
+which every DM on disk was walked at). The level is part of what a walk is
+filed under: a supervisor walk is `IQDBE00@5.0.cs5`, a factory walk
+`IQDBE00@5.0.cs5@factory`, so the two never overwrite each other and a
+provider given either key serves the same identity. The vendor Control Panel
+offers only the first three in its preferences; factory is what enabling a
+gated command needs.
+
+`--client-name` sets what the unit's connection list and our announcements
+call this client (default `dhs rollcall`), which is what an operator reads
+before disconnecting clients for a firmware upgrade.
+
 ## Slots
 
 A slot is a position in the device's own enumeration, and its address is
@@ -53,6 +75,18 @@ is a position in a list rather than a place in a frame.
 A slot past the end of the enumeration is still addressed rather than refused:
 a gateway ages a map entry out after sixty seconds of silence, so a node
 missing from the list is one that has gone quiet.
+
+### Behind a proxy
+
+A proxy's map lists one bridge per subnet; a bridge's net service lists the
+far segment, already routed; and only the far segment's **gateway** — the one
+node offering map and ports both — is asked for its ports, which are its
+cards. A Centra matrix or card behind a bridge offers ports without map (its
+levels, or 123 channels on a card) and is listed as a node, not descended:
+that is what a direct connection to the Centra shows too. Measured
+2026-09-17 through our IPShare fronting the IQ frame, a Sirius 800 and our
+router: 39 nodes, the same set a direct connection to each would give,
+where descending every port list gave 545.
 
 ## Walking a menu
 

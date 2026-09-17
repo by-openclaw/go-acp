@@ -1,0 +1,285 @@
+---
+# Our own IPShare — the RollCall plant behind one proxy, Ansible-owned (#1074).
+#
+# What the vendor RollProxy does with a plant, our provider does: one
+# connection for a client, one subnet per frame. This play stands the whole
+# thing up so it survives a reboot and a run-twice is zero changes:
+#
+#   win11 (Windows)   the Snell Centra emulator run as a Sirius 800 — the
+#                     Tier 2 oracle — as the scheduled task `dhs-centra`,
+#                     started at boot, restarted if it dies. Deployed from the
+#                     committed vendor zip if it is not there yet.
+#   dhs-tools (Linux) dhs-rollcall-router.service   our own router, a frame
+#                                                   with a matrix, unit 0x20
+#                     dhs-rollcall-ipshare.service  the proxy, fronting the
+#                                                   IQ rack, the emulator and
+#                                                   the router, one subnet each
+#
+# Then it verifies from the serving host: the proxy answers as a RollProxy
+# Service, lists one virtual node per frame, and reports which frames it
+# reached. A frame that is down is REPORTED, not a failure: the proxy calls
+# it again when a client asks, which is the vendor box's "Calling" column,
+# and a deploy must not depend on the rack's mood.
+#
+#   cd /root/acp-plant/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-ipshare.yml   # again -> changed=0
+#
+# The proxy flags landed after the pinned fleet release, so the binary comes
+# from the built artifact bin/dhs-linux-amd64 (the same path every producer
+# play uses) into its own directory; the release-managed /usr/local/bin/dhs is
+# untouched. Point ipshare_bin_src elsewhere to deploy another build.
+#
+# Point a RollCall Control Panel at <dhs-tools>:2050 and it walks the plant.
+# Our consumer walks it the same way, and the integration play takes it as
+# the dhs-bridge path:
+#   ROLLCALL_BRIDGE_HOST=10.6.250.104 ROLLCALL_BRIDGE_PORT=2050 \
+#     ansible-playbook -i inventory/hosts.ini playbooks/snell-rollcall-integration.yml
+
+- name: Sirius 800 emulator on win11, as a scheduled task
+  hosts: windows
+  gather_facts: false
+  vars:
+    centra_dir: 'C:\tools\Rollcall\Router2'
+    centra_zip_src: "{{ playbook_dir }}/../../internal/snell-rollcall/assets/Emulator/RouterSimulator/Router2.zip"
+    centra_task: dhs-centra
+    # 3 = eSirius800Router. Ids 0-3 are byte-identical on the wire (the
+    # controller is a Nucleus 2 either way); 4 is a Vega. See
+    # internal/snell-rollcall/docs/oracle-centra.md §11.
+    centra_router_id: 3
+    centra_port: 2057
+  tasks:
+    - name: Is the emulator unpacked?
+      ansible.windows.win_stat:
+        path: '{{ centra_dir }}\CentraController.exe'
+      register: centra_exe
+
+    - name: Unpack the committed vendor simulator
+      when: not centra_exe.stat.exists
+      block:
+        - name: Stage the zip
+          ansible.windows.win_copy:
+            src: "{{ centra_zip_src }}"
+            dest: 'C:\tools\Rollcall\Router2.zip'
+        - name: Unzip it
+          community.windows.win_unzip:
+            src: 'C:\tools\Rollcall\Router2.zip'
+            dest: 'C:\tools\Rollcall'
+            creates: '{{ centra_dir }}\CentraController.exe'
+
+    # The emulator dies with the session that started it, so it gets a
+    # session of its own: a task run as SYSTEM, at boot, with no time limit.
+    # Its own launcher batch sets the simulated cards; the router id is set in
+    # front of it, so the vendor's file stays as shipped.
+    - name: "Scheduled task {{ centra_task }} (Sirius 800 at boot, restart if it dies)"
+      community.windows.win_scheduled_task:
+        name: "{{ centra_task }}"
+        description: "Snell Centra emulator as a Sirius 800 — the RollCall Tier 2 oracle (ansible/playbooks/snell-rollcall-ipshare.yml)"
+        actions:
+          - path: cmd.exe
+            arguments: '/c set CENTRA_SIMULATED_ROUTER={{ centra_router_id }} && CentraController.bat'
+            working_directory: "{{ centra_dir }}"
+        triggers:
+          - type: boot
+        username: SYSTEM
+        run_level: highest
+        execution_time_limit: PT0S
+        restart_count: 3
+        restart_interval: PT1M
+        allow_demand_start: true
+        start_when_available: true
+        stop_if_going_on_batteries: false
+        disallow_start_if_on_batteries: false
+        state: present
+        enabled: true
+      register: centra_task_state
+
+    - name: Emulator running under the task
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $proc = Get-Process CentraController -ErrorAction SilentlyContinue
+        if ($proc -and -not ${{ 'true' if centra_task_state.changed else 'false' }}) { 'OK'; exit 0 }
+        if ($proc) { Stop-ScheduledTask -TaskName '{{ centra_task }}' -ErrorAction SilentlyContinue; Stop-Process -Name CentraController -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+        Start-ScheduledTask -TaskName '{{ centra_task }}'
+        'CHANGED'
+      register: centra_start
+      changed_when: "'CHANGED' in centra_start.stdout"
+
+    - name: Emulator answers on its IPShare port
+      ansible.windows.win_wait_for:
+        port: "{{ centra_port }}"
+        timeout: 90
+
+- name: Our router and our IPShare on the tooling host
+  hosts: tooling
+  gather_facts: false
+  vars:
+    ipshare_root: /etc/dhs/rollcall
+    ipshare_bin_dir: /opt/dhs/rollcall
+    ipshare_bin: "{{ ipshare_bin_dir }}/dhs"
+    ipshare_bin_src: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
+    ipshare_port: 2050
+    router_tree_src: "{{ playbook_dir }}/../../internal/snell-rollcall/testdata/exports/router_tree.json"
+    router_port: 2052
+    router_unit: 32
+    # One subnet per frame, the vendor's substitution addresses. 2100 is
+    # ours for the rack (the vendor proxy on win11 uses 1100 for the same
+    # rack, so a panel holding both never confuses them).
+    ipshare_frames:
+      - { subnet: "2100", upstream: "10.6.255.113:2050", what: "the Snell IQ 3U frame FRAME_12 EMB" }
+      - { subnet: "3000", upstream: "10.6.250.105:2057", what: "the Sirius 800 emulator on win11" }
+      - { subnet: "4000", upstream: "127.0.0.1:{{ router_port }}", what: "our own router, served on this host" }
+  tasks:
+    - name: Directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ ipshare_root }}"
+        - "{{ ipshare_bin_dir }}"
+        - /var/log/dhs
+
+    - name: The dhs build that carries the proxy
+      ansible.builtin.copy:
+        src: "{{ ipshare_bin_src }}"
+        dest: "{{ ipshare_bin }}"
+        mode: "0755"
+      notify:
+        - restart dhs-rollcall-router
+        - restart dhs-rollcall-ipshare
+
+    - name: Our router's tree (two cards and a matrix)
+      ansible.builtin.copy:
+        src: "{{ router_tree_src }}"
+        dest: "{{ ipshare_root }}/router_tree.json"
+        mode: "0644"
+      notify: restart dhs-rollcall-router
+
+    - name: dhs-rollcall-router.service
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/snell-rollcall-ipshare.yml (#1074).
+          [Unit]
+          Description=dhs RollCall provider — our own router (frame with a matrix), unit 0x{{ '%02X' | format(router_unit | int) }}
+          After=network.target
+          [Service]
+          ExecStart={{ ipshare_bin }} producer rollcall serve \
+            --tree {{ ipshare_root }}/router_tree.json \
+            --port {{ router_port }} --host 0.0.0.0 --unit {{ router_unit }} \
+            --log-level info --log-format text
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-rollcall-router.service
+        mode: "0644"
+      notify: restart dhs-rollcall-router
+
+    - name: dhs-rollcall-ipshare.service
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/snell-rollcall-ipshare.yml (#1074).
+          # Frames, one subnet each:
+          {% for f in ipshare_frames %}
+          #   {{ f.subnet }} = {{ f.upstream }}  {{ f.what }}
+          {% endfor %}
+          [Unit]
+          Description=dhs RollCall IP Proxy — our own IPShare fronting the plant
+          After=network.target dhs-rollcall-router.service
+          Wants=dhs-rollcall-router.service
+          [Service]
+          ExecStart={{ ipshare_bin }} producer rollcall serve \
+            --proxy-upstream {{ ipshare_frames | map(attribute='subnet') | zip(ipshare_frames | map(attribute='upstream')) | map('join', '=') | join(',') }} \
+            --port {{ ipshare_port }} --host 0.0.0.0 \
+            --log-level info --log-format text
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-rollcall-ipshare.service
+        mode: "0644"
+      notify: restart dhs-rollcall-ipshare
+
+    # The plant was first stood up by hand: nohup jobs started as ./dhs from
+    # /root/dhs-ipshare. They hold the ports the units need. The anchor keeps
+    # the pattern off the units' own /opt/dhs/rollcall/dhs command lines, and
+    # off pkill's own. rc 1 = nothing matched = nothing changed.
+    - name: Stop hand-run producers left from the manual session
+      ansible.builtin.shell: "pkill -f '^[.]/dhs producer rollcall'"
+      register: ipshare_handrun
+      changed_when: ipshare_handrun.rc == 0
+      failed_when: ipshare_handrun.rc not in [0, 1]
+
+    - name: Services enabled + running
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+      loop:
+        - dhs-rollcall-router
+        - dhs-rollcall-ipshare
+
+    - name: Flush handlers (restart before verifying)
+      ansible.builtin.meta: flush_handlers
+
+    # ---- verify ----
+    - name: Both listeners are up
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        host: 127.0.0.1
+        timeout: 20
+      loop:
+        - "{{ router_port }}"
+        - "{{ ipshare_port }}"
+
+    - name: The proxy answers as a RollProxy Service and lists one node per frame
+      ansible.builtin.command: >-
+        {{ ipshare_bin }} consumer rollcall info 127.0.0.1:{{ ipshare_port }} --output json
+      register: ipshare_info
+      changed_when: false
+      retries: 4
+      delay: 3
+      until: ipshare_info.rc == 0
+
+    - name: Virtual nodes the proxy lists
+      ansible.builtin.set_fact:
+        ipshare_nodes: >-
+          {{ (ipshare_info.stdout | from_json).slot_status
+             | selectattr('identity', 'defined')
+             | map(attribute='identity') | selectattr('type_id', 'equalto', '306')
+             | selectattr('address', 'match', '^0000-') | map(attribute='name') | list }}
+        ipshare_reached: >-
+          {{ (ipshare_info.stdout | from_json).slot_status
+             | selectattr('identity', 'defined')
+             | map(attribute='identity') | map(attribute='address')
+             | map('regex_replace', ':.*$', '') | select('match', '^[1-9A-F]') | list }}
+
+    - name: ASSERT one virtual node per frame
+      ansible.builtin.assert:
+        that:
+          - ipshare_nodes | length == ipshare_frames | length
+        fail_msg: "the proxy lists {{ ipshare_nodes }}, want one Network(NNNN) node per frame: {{ ipshare_frames | map(attribute='subnet') | list }}"
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          our IPShare on {{ ansible_host | default(inventory_hostname) }}:{{ ipshare_port }} —
+          nodes {{ ipshare_nodes | join(', ') }};
+          {% for f in ipshare_frames %}
+          {{ f.subnet }} ({{ f.what }}): {{ 'reached' if (ipshare_reached | select('match', '^' ~ f.subnet ~ '-') | list | length) > 0 else 'CALLING — nothing answered yet at ' ~ f.upstream }}{{ '; ' if not loop.last else '' }}
+          {% endfor %}
+          — point a RollCall Control Panel here, or set ROLLCALL_BRIDGE_HOST for the integration play.
+
+  handlers:
+    - name: restart dhs-rollcall-router
+      ansible.builtin.systemd:
+        name: dhs-rollcall-router
+        state: restarted
+        daemon_reload: true
+    - name: restart dhs-rollcall-ipshare
+      ansible.builtin.systemd:
+        name: dhs-rollcall-ipshare
+        state: restarted
+        daemon_reload: true

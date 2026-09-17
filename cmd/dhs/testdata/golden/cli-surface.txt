@@ -3582,6 +3582,12 @@ Usage of producer acp1 serve:
     	TCP listen port (0 = plugin default)
   -preload string
     	acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1
+  -proxy-frame string
+    	snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.
+  -proxy-subnet string
+    	snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.
+  -proxy-upstream string
+    	snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)
   -tcp-port int
@@ -3694,6 +3700,12 @@ Usage of producer acp2 serve:
     	TCP listen port (0 = plugin default)
   -preload string
     	acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1
+  -proxy-frame string
+    	snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.
+  -proxy-subnet string
+    	snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.
+  -proxy-upstream string
+    	snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)
   -tcp-port int
@@ -3806,6 +3818,12 @@ Usage of producer emberplus serve:
     	TCP listen port (0 = plugin default)
   -preload string
     	acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1
+  -proxy-frame string
+    	snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.
+  -proxy-subnet string
+    	snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.
+  -proxy-upstream string
+    	snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)
   -tcp-port int
@@ -4175,6 +4193,12 @@ Usage of producer probel-sw02p serve:
     	TCP listen port (0 = plugin default)
   -preload string
     	acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1
+  -proxy-frame string
+    	snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.
+  -proxy-subnet string
+    	snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.
+  -proxy-upstream string
+    	snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)
   -tcp-port int
@@ -4287,6 +4311,12 @@ Usage of producer probel-sw08p serve:
     	TCP listen port (0 = plugin default)
   -preload string
     	acp1 only: pre-populate slots at boot with NO cascade. External controllers see a stable device from first walk and don't discard the cached template on producer restart. Format: slot=card[,slot=card,...] e.g. 0=axon/synapse/RRS18-1601/acp1,1=axon/synapse/2GS110-2728/acp1
+  -proxy-frame string
+    	snell-rollcall only: hex unit of the fronted frame, e.g. 0C. Required with --proxy-subnet when fronting the served tree; with --proxy-upstream it is learned from the frame and this overrides it.
+  -proxy-subnet string
+    	snell-rollcall only: present as a RollCall IP Proxy (the vendor RollProxy) with a frame behind this four-hex-digit network address, e.g. 2100. Non-zero from the leftmost digit; each digit is a virtual routing node a client crosses to reach the frame (spec 5.3), so 2100 puts the frame's gateway at 2100-<unit>-00. The proxy answers as unit FF unless --unit says otherwise. The frame is the served tree, or the real one --proxy-upstream names.
+  -proxy-upstream string
+    	snell-rollcall only: real frames to front — our own IPShare. One frame: host[:port] with --proxy-subnet, e.g. 10.6.255.113. Several, one subnet each as the vendor RollProxy adds chassis: NNNN=host[:port],... e.g. 2100=10.6.255.113,3000=10.6.250.105:2057; --proxy-subnet/--proxy-frame then add the served tree beside them. Every routed request a client sends is carried to that frame on a connection of the client's own and its answers carried back; the proxy unit and its routing nodes are still answered here. Each frame is probed at start to learn its unit and identity; one that does not answer is called again when a client asks for it. --tree / --manifest become optional.
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops are counted and reported on stderr — #934)
   -tcp-port int
