@@ -83,7 +83,7 @@ func (c *channel) acquire(ctx context.Context, req codec.PacketType) (*pending, 
 	defer c.mu.Unlock()
 	if c.closed {
 		// Pass the token on so the next waiter also wakes and learns why.
-		c.free <- struct{}{}
+		c.wake()
 		return nil, c.err
 	}
 	p := &pending{req: req, frames: make(chan codec.Frame, 4)}
@@ -208,6 +208,18 @@ func (c *channel) closeWith(err error) {
 		close(c.inFlight.frames)
 	}
 	// Wake one waiter, which will wake the next in turn.
+	c.wake()
+}
+
+// wake puts the token in the slot if there is none, which wakes one waiter.
+//
+// It never blocks, because the token may be there already. A waiter that took
+// the token just before the channel closed puts it back through here, after
+// closeWith has already deposited one into the slot it emptied: two tokens,
+// one slot. A blocking put-back there stalls forever with the mutex held and
+// everything behind it: measured on main CI run 35255362032, where a push
+// pump sat ten minutes at exactly that line and Stop never returned.
+func (c *channel) wake() {
 	select {
 	case c.free <- struct{}{}:
 	default:

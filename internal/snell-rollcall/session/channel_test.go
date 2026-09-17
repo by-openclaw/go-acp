@@ -483,3 +483,35 @@ func TestWaitDuration(t *testing.T) {
 		})
 	}
 }
+
+// TestChannel_ClosedUnderAWaiterHoldingTheToken pins the shutdown race that
+// hung TestAFlushStopsWhenTheProviderDoes for ten minutes on main CI run
+// 35255362032: a waiter is past the token wait but not yet at the mutex, the
+// channel closes underneath it and deposits a wake token into the slot it
+// emptied, and the waiter then finds the channel closed and passes its own
+// token on. Two tokens, one slot: the put-back must not block, and the token
+// that is there must still wake the next waiter with the reason.
+func TestChannel_ClosedUnderAWaiterHoldingTheToken(t *testing.T) {
+	clk := clock.NewFake(time.Time{})
+	c := newChannel("test", clk, time.Second, 5)
+
+	<-c.free // a waiter holds the token, short of the mutex
+	boom := errors.New("link went")
+	c.closeWith(boom) // the slot is empty, so this deposits a wake token
+
+	returned := make(chan struct{})
+	go func() {
+		defer close(returned)
+		c.wake() // the waiter's put-back, with the slot already full
+	}()
+	select {
+	case <-returned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the put-back blocked on a slot that already held the wake token")
+	}
+
+	// The next waiter still wakes and learns why.
+	if _, err := c.acquire(context.Background(), codec.MsgGetStat); !errors.Is(err, boom) {
+		t.Errorf("acquire after close = %v, want %v", err, boom)
+	}
+}
