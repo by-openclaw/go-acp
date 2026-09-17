@@ -1,0 +1,48 @@
+---
+# dhs_capture — the host side of raw frame capture, which dhs needs to read
+# LLDP (Ethertype 0x88CC) off a local interface and fill IS-04
+# interfaces[].attached_network_device.
+#
+# Linux and macOS need NO package: AF_PACKET and BPF are kernel interfaces
+# reached from stdlib syscall. They need a PRIVILEGE, which this role grants
+# to the dhs binary via file capabilities instead of running dhs as root.
+#
+# Windows needs Npcap, because Windows raw sockets are IP-level and cannot
+# see a non-IP Ethertype at all. Npcap is the one host dependency this repo
+# may not stage the way it stages Bonjour — see the licence note below.
+
+# ---- Linux -----------------------------------------------------------------
+# cap_net_raw on the binary. Narrower than root and survives reinstalls
+# because dhs_host re-applies it after a version bump.
+dhs_capture_linux_setcap: true
+dhs_capture_linux_capability: cap_net_raw+ep
+
+# ---- Windows ---------------------------------------------------------------
+# Detection: Npcap installs its own DLL directory and a driver service. Either
+# is proof enough; both are checked because a half-removed install leaves one.
+dhs_capture_npcap_dll: 'C:\Windows\System32\Npcap\wpcap.dll'
+dhs_capture_npcap_service: npcap
+
+# Npcap CANNOT be installed unattended by this role, and that is a licence
+# limit rather than a gap in the automation:
+#
+#   * the FREE edition's /S silent switch does not exist — silent mode is
+#     Npcap OEM only, so an unattended install is impossible without a paid
+#     licence;
+#   * the free edition permits at most FIVE systems and NO redistribution,
+#     so committing the installer next to BonjourPSSetup.exe would be
+#     redistributing it from a public repo.
+#
+# Point this at an OEM installer the operator holds OUTSIDE the repo to let
+# the role install it. Left empty, the role only verifies.
+dhs_capture_npcap_oem_installer_src: ""
+dhs_capture_npcap_installer_dst: 'C:\dhs\installers\npcap-oem.exe'
+
+# Whether a Windows host WITHOUT Npcap fails the converge.
+#
+# Default false, and deliberately: ADR-0016's stdlib floor says a missing host
+# dependency degrades a capability, never breaks the connector. Without Npcap
+# everything runs; only LOCAL LLDP capture is unavailable, and the usual
+# source of LLDP is the device's own API anyway. Set true on hosts whose job
+# actually is local capture.
+dhs_capture_npcap_required: false

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // fixture builds a tiny on-disk DM library tree under t.TempDir() with two
@@ -255,7 +255,7 @@ func TestDiff_AddedRemovedChanged(t *testing.T) {
 		Fingerprint: Fingerprint{Model: "RRS18", SwRev: "1601", Proto: "acp1"},
 		Slots: map[int]*export.Snapshot{
 			1: makeSnapshot("RRS18", []consumer.Object{
-				{Slot: 1, ID: 1, Label: "A", Kind: consumer.KindInt}, // unchanged
+				{Slot: 1, ID: 1, Label: "A", Kind: consumer.KindInt},   // unchanged
 				{Slot: 1, ID: 2, Label: "B", Kind: consumer.KindFloat}, // changed kind
 				// C removed
 				{Slot: 1, ID: 4, Label: "D", Kind: consumer.KindBool}, // added

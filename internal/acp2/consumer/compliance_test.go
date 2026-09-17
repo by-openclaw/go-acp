@@ -8,8 +8,10 @@
 // compliance event label.
 //
 // Replay inputs are the unmodified CLI --capture output from
-//   acp set 10.41.40.195 --protocol acp2 --slot 1 --id 2 --value "X"
-//   acp get 10.41.40.195 --protocol acp2 --slot 1 --id 999999
+//
+//	acp set 10.41.40.195 --protocol acp2 --slot 1 --id 2 --value "X"
+//	acp get 10.41.40.195 --protocol acp2 --slot 1 --id 999999
+//
 // on the production VM. Re-capturing with newer firmware and
 // dropping the file in place re-validates the mapping; no test code
 // changes required.
@@ -20,8 +22,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"dhs/internal/acp2/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/acp2/consumer"
 )
 
 // findACP2Error walks every frame in the capture and returns the

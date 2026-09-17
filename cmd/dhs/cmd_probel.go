@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,13 +16,18 @@ import (
 // runProbel dispatches `dhs consumer probel-sw08p <subcommand>` — the Probel SW-P-08
 // toolset. Each subcommand runs a single round-trip request and prints
 // the decoded reply + the wire hex on stderr (hex goes via the slog
-// INFO handler inside codec.Client).
+// INFO handler inside session.Client).
 //
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
 func runProbelsw08p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip them here so every verb's own
+	// FlagSet is unaffected; consumerLogger reads them back from ctx.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -101,6 +104,15 @@ func runProbelsw08p(ctx context.Context, args []string) error {
 		return runProbelSingleSourceAssocName(ctx, rest)
 	case "update-name":
 		return runProbelUpdateName(ctx, rest)
+	case "health":
+		// Cross-protocol verbs. The probel dispatcher owns its own verb
+		// table, which is why `health` used to answer "unknown probel
+		// subcommand" on a connector that implements HealthChecker like
+		// any other. Prepending --protocol is what dispatchConsumer does
+		// for every generic verb.
+		return runHealth(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
+	case "status":
+		return runStatus(ctx, append([]string{"--protocol", "probel-sw08p"}, rest...))
 	case "bench":
 		return runProbelBench(ctx, rest)
 	case "export":
@@ -151,6 +163,8 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  health                    3-layer session health (reachable / connected / live)
+  status                    one-shot device status: session health + identity
   bench                     scale benchmark: interrogate-all + connect-all
                             on a persistent TCP connection
   export                    write router config of (matrix, level) as 3 CSVs:
@@ -185,23 +199,25 @@ space-separated lowercase-hex line for debugging:
 // the probel root dispatcher) it is attached before Connect so the
 // JSONL file captures the full TX/RX stream.
 func dialProbel(ctx context.Context, addr string) (*probelproto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw08p", host, "session")
 	f := &probelproto.Factory{}
-	p := f.New(logger).(*probelproto.Plugin)
+	p := f.New(pluginDeps(logger)).(*probelproto.Plugin)
 	if rec, ok := ctx.Value(probelRecorderKey{}).(*transport.Recorder); ok && rec != nil {
 		p.SetRecorder(rec)
 	}
 	if mc, ok := ctx.Value(probelMatrixConfigKey{}).(probelproto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelproto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
 }
 
 // probelTarget resolves the wire (matrix, level) a read verb should query.

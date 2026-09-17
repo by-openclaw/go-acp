@@ -68,8 +68,8 @@ func TestDiffCerebrumCategory(t *testing.T) {
 		{Index: 3, Type: "SOURCE", Value: "10099"},
 	}}
 	desired := []cerebrumCatItem{
-		{Type: "TEXT", Value: "Cameras"},   // identical -> none
-		{Type: "SOURCE", Value: "10002"},   // differs -> modify slot 2
+		{Type: "TEXT", Value: "Cameras"}, // identical -> none
+		{Type: "SOURCE", Value: "10002"}, // differs -> modify slot 2
 	}
 	got := diffCerebrumCategory("C", live, desired)
 	want := []cerebrumCatChange{

@@ -15,12 +15,12 @@ import (
 // A spec-strict watcher MUST browse both to find Registries across
 // every supported minor — see root CLAUDE.md "AMWA NMOS strict".
 const (
-	ServiceRegister       = "_nmos-register._tcp"      // IS-04 v1.2+ Registration API (Registry left face)
-	ServiceRegisterLegacy = "_nmos-registration._tcp"  // IS-04 v1.0 / v1.1 Registration API (legacy name)
-	ServiceQuery          = "_nmos-query._tcp"         // IS-04 Query API (Registry right face)
-	ServiceSystem         = "_nmos-system._tcp"        // IS-09 System API
-	ServiceNode           = "_nmos-node._tcp"          // IS-04 Node API (P2P fallback)
-	ServiceAuth           = "_nmos-auth._tcp"          // IS-10 Authorization Server (BCP-003-02)
+	ServiceRegister       = "_nmos-register._tcp"     // IS-04 v1.2+ Registration API (Registry left face)
+	ServiceRegisterLegacy = "_nmos-registration._tcp" // IS-04 v1.0 / v1.1 Registration API (legacy name)
+	ServiceQuery          = "_nmos-query._tcp"        // IS-04 Query API (Registry right face)
+	ServiceSystem         = "_nmos-system._tcp"       // IS-09 System API
+	ServiceNode           = "_nmos-node._tcp"         // IS-04 Node API (P2P fallback)
+	ServiceAuth           = "_nmos-auth._tcp"         // IS-10 Authorization Server (BCP-003-02)
 )
 
 // DefaultDomain is the link-local mDNS suffix (RFC 6762 §3).

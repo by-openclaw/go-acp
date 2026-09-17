@@ -15,12 +15,12 @@ import (
 //
 // Mindmap notation (one line per element, depth encoded by `*` count):
 //
-//	* root
-//	** identity [oid=1.0]
-//	*** product (string) = "Tiny Ember+ Router"
-//	*** dtdVersion (string) = "2.60"
-//	** types [oid=1.6]
-//	*** vInteger (int) = 0
+//   - root
+//     ** identity [oid=1.0]
+//     *** product (string) = "Tiny Ember+ Router"
+//     *** dtdVersion (string) = "2.60"
+//     ** types [oid=1.6]
+//     *** vInteger (int) = 0
 //
 // Containers render as `* <ident> [oid=X]`; leaves render as
 // `* <ident> (<kind>) = <value>` so docs viewers see the type + current

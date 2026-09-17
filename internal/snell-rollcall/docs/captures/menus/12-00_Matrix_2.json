@@ -1,0 +1,76 @@
+{
+ "unit": {
+  "addr": "0000-12-00",
+  "net": 0,
+  "unit": 18,
+  "port": 0,
+  "id": 636,
+  "version": "3.0 ",
+  "cmdSet": 12,
+  "name": "Matrix 2",
+  "services": [
+   "MENUS",
+   "CONTROL",
+   "FILE",
+   "PORTS",
+   "LONGSTR"
+  ],
+  "serviceBits": 32907
+ },
+ "longStrings": true,
+ "partials": {
+  "0": {
+   "count": 3
+  }
+ },
+ "itemCount": 3,
+ "items": [
+  {
+   "index": 0,
+   "style": "LIST",
+   "styleRaw": 16,
+   "flags": [],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 2,
+   "divScale": 0,
+   "text": "Menu",
+   "format": ""
+  },
+  {
+   "index": 1,
+   "style": "PARTIAL",
+   "styleRaw": 184,
+   "flags": [
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "RETURN",
+   "format": ""
+  },
+  {
+   "index": 2,
+   "style": "TILED",
+   "styleRaw": 1,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "Warning",
+   "format": ""
+  }
+ ],
+ "sampledValues": []
+}

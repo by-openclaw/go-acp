@@ -52,7 +52,7 @@ func runValidate(ctx context.Context, args []string) error {
 		return err
 	}
 
-	plug := factory.New(slog.Default())
+	plug := factory.New(pluginDeps(slog.Default()))
 
 	validator, ok := plug.(consumer.Validator)
 	if !ok {

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // Listener receives ACP1 announcements broadcast by rack controllers on

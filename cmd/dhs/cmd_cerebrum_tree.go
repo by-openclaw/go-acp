@@ -311,6 +311,7 @@ func cerebrumDeviceWalkValues(sess *cerebrum.Session, timeout time.Duration, dev
 		return got.Device.ObjectValues, nil
 	}
 
+	visited := map[string]bool{}
 	var leaves []codec.DeviceObjectValue
 	truncated := false
 	var walk func(group string) error
@@ -323,25 +324,36 @@ func cerebrumDeviceWalkValues(sess *cerebrum.Session, timeout time.Duration, dev
 		if err != nil {
 			return err
 		}
-		// A single self-echo row = this path is a real LEAF (possibly
-		// unavailable), not a group.
+		// NB self-echo semantics (the protocol's own group-vs-leaf rule):
+		// a path that answers with a single row echoing itself is a real
+		// LEAF (possibly unavailable), never a node.
 		if group != "" && len(rows) == 1 && rows[0].Object == group {
 			leaves = append(leaves, rows[0])
 			return nil
 		}
 		for _, ov := range rows {
-			if ov.Object == group {
+			if ov.Object == "" || ov.Object == group || visited[ov.Object] {
 				continue
 			}
-			// Group candidate: no value, not available, no descriptor —
-			// descend; the self-echo check above re-classifies real leaves.
-			if !ov.Available && ov.Value == "" && ov.DataType == "" {
-				if err := walk(ov.Object); err != nil {
-					return err
-				}
+			// Descent by the NB self-echo rule, not by a value shortcut.
+			// A row with a scalar descriptor (INTEGER/ENUM/BOOL/FLOAT/…) can
+			// never be a node — record it as a leaf without another obtain.
+			// Anything else is OBTAINED to find out: a typeless handle, or a
+			// STRING row that may be a *summary/list node* — on this family
+			// io.sdi / io.ip.receivers.audio answer with a CSV of child
+			// UUIDs AND have those UUIDs as real children. The old
+			// `!available && no value` shortcut wrongly classified those
+			// value-bearing summary nodes as leaves and stopped, truncating
+			// the DM; obtaining them lets the self-echo check above recurse
+			// them (or re-classify a genuine STRING leaf).
+			if nbScalarLeaf(ov) || !nbMaybeNode(ov) {
+				leaves = append(leaves, ov)
 				continue
 			}
-			leaves = append(leaves, ov)
+			visited[ov.Object] = true
+			if err := walk(ov.Object); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -351,6 +363,61 @@ func cerebrumDeviceWalkValues(sess *cerebrum.Session, timeout time.Duration, dev
 		}
 	}
 	return leaves, requests, truncated, nil
+}
+
+// nbScalarLeaf reports whether an NB object row carries a scalar
+// descriptor — a type that can never be a node, so the walk records it as
+// a leaf without spending an obtain to probe it. STRING and typeless rows
+// are deliberately NOT scalar (see nbMaybeNode).
+func nbScalarLeaf(ov codec.DeviceObjectValue) bool {
+	switch strings.ToUpper(strings.TrimSpace(ov.DataType)) {
+	case "INTEGER", "INT", "UNSIGNED", "ENUM", "BOOL", "BOOLEAN",
+		"FLOAT", "DOUBLE", "REAL", "IDENTIFIER":
+		return true
+	}
+	return false
+}
+
+// nbMaybeNode reports whether a non-scalar row is worth obtaining to see
+// whether it is really a node. A typeless handle always is. A STRING row
+// is only worth probing when its value could be a list of child handles —
+// empty, comma-separated, or a bare UUID (a single-child list) — so a
+// plain STRING leaf like name="SDI Input 6" is NOT re-obtained, while a
+// summary node like io.sdi="uuid,uuid,…" is. A false positive costs one
+// extra obtain that self-echoes back to a leaf; it never loses data.
+func nbMaybeNode(ov codec.DeviceObjectValue) bool {
+	if strings.TrimSpace(ov.DataType) == "" {
+		return true
+	}
+	if !strings.EqualFold(strings.TrimSpace(ov.DataType), "STRING") {
+		return false
+	}
+	v := strings.TrimSpace(ov.Value)
+	return v == "" || strings.Contains(v, ",") || looksLikeUUID(v)
+}
+
+// looksLikeUUID reports whether s is a single canonical UUID
+// (8-4-4-4-12 hex) — a summary/list node with exactly one child answers
+// with one bare UUID, which carries no comma to key off.
+func looksLikeUUID(s string) bool {
+	s = strings.TrimSpace(s)
+	if len(s) != 36 {
+		return false
+	}
+	for i, r := range s {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' {
+				return false
+			}
+		default:
+			isHex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+			if !isHex {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // cerebrumMneTreeObjects renders the resource inventory PER ROUTER (owner

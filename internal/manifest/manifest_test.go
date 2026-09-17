@@ -128,9 +128,9 @@ func TestSlotProtos(t *testing.T) {
 		Name: "chassis",
 		Slots: []Slot{
 			{Addr: map[string]any{"slot": 0}, DM: "A@1", Protos: []uint8{2, 3, 4}},
-			{Addr: map[string]any{"slot": 1}, DM: "B@1"},                             // no override
-			{Addr: map[string]any{"oid": "1.4"}, DM: "C@1", Protos: []uint8{2}},      // non-numeric addr
-			{Addr: map[string]any{"slot": 999}, DM: "D@1", Protos: []uint8{2}},       // out of range
+			{Addr: map[string]any{"slot": 1}, DM: "B@1"},                        // no override
+			{Addr: map[string]any{"oid": "1.4"}, DM: "C@1", Protos: []uint8{2}}, // non-numeric addr
+			{Addr: map[string]any{"slot": 999}, DM: "D@1", Protos: []uint8{2}},  // out of range
 			{Addr: map[string]any{"slot": float64(2)}, DM: "E@1", Protos: []uint8{2, 3}},
 		},
 	}}}
@@ -154,10 +154,10 @@ func TestParamTypeAndFormat_ACP2Meta(t *testing.T) {
 		objType, numType float64
 		wantType, wantF  string
 	}{
-		{3, 4, "integer", "u8"},   // number u8 (the live failure)
+		{3, 4, "integer", "u8"}, // number u8 (the live failure)
 		{3, 2, "integer", "s32"},
 		{3, 7, "integer", "u64"},
-		{3, 8, "real", ""},        // float
+		{3, 8, "real", ""}, // float
 		{2, 0, "enum", ""},
 		{4, 10, "string", "ipv4"},
 		{5, 11, "string", ""},
@@ -426,5 +426,27 @@ func TestSlugifyDeviceName(t *testing.T) {
 		if got := slugifyDeviceName(in); got != want {
 			t.Fatalf("slugify(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestSlotDMs pins where each card sits and what it is, in manifest order —
+// the order BuildExport grafts the DMs under the root, which is how a provider
+// pairs each entry with the card it describes.
+func TestSlotDMs(t *testing.T) {
+	m := &Manifest{Frames: []Frame{
+		{Name: "a", Slots: []Slot{
+			{Addr: map[string]any{"slot": 3}, DM: "IQDBE00@5.0.cs5"},
+			{Addr: map[string]any{"oid": "1.4"}, DM: "B@1"}, // not a slot
+		}},
+		{Name: "b", Slots: []Slot{
+			{Addr: map[string]any{"slot": float64(11)}, DM: "IQMUX42@8.5.cs17"},
+		}},
+	}}
+	got := fmt.Sprintf("%v", m.SlotDMs())
+	if got != "[{3 IQDBE00@5.0.cs5} {-1 B@1} {11 IQMUX42@8.5.cs17}]" {
+		t.Fatalf("SlotDMs = %s", got)
+	}
+	if (&Manifest{}).SlotDMs() != nil {
+		t.Error("a manifest with no slots listed some")
 	}
 }

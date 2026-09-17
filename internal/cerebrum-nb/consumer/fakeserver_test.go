@@ -143,7 +143,16 @@ func (fc *fakeConn) readClientFrame() ([]byte, error) {
 		switch opcode {
 		case 0x8: // close
 			return nil, io.EOF
-		case 0x9, 0xA: // ping/pong — ignore
+		case 0x9: // ping — answer with a pong, as a real server does.
+			// The client's keep-alive relies on this: the pong is the
+			// inbound frame that re-arms its idle read deadline and proves
+			// the peer is alive. A fake that stayed silent here would make
+			// every healthy session look dead.
+			if err := fc.writePong(body); err != nil {
+				return nil, err
+			}
+			continue
+		case 0xA: // pong — ignore
 			continue
 		default:
 			return body, nil
@@ -178,6 +187,22 @@ func (fc *fakeConn) writeText(payload []byte) error {
 // the client's ws.Conn and never surfaced to the consumer dispatcher).
 func (fc *fakeConn) writePing() error {
 	_, err := fc.c.Write([]byte{0x89, 0})
+	return err
+}
+
+// writePong answers a client ping. Body must be echoed verbatim per
+// RFC 6455 §5.5.3 and is always ≤125 bytes for a control frame.
+func (fc *fakeConn) writePong(body []byte) error {
+	if len(body) > 125 {
+		body = body[:125]
+	}
+	if _, err := fc.c.Write([]byte{0x8A, byte(len(body))}); err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return nil
+	}
+	_, err := fc.c.Write(body)
 	return err
 }
 

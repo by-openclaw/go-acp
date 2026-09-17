@@ -23,6 +23,7 @@ import (
 	"dhs/internal/amwa/session/certmgr"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
 	httpsession "dhs/internal/amwa/session/http"
+	"dhs/internal/lldp"
 
 	"dhs/internal/amwa/codec/est"
 )
@@ -99,6 +100,18 @@ type IS04NodeConfig struct {
 	// per IS-04 §3.1 for plants that block multicast.
 	UnicastResolver string
 	UnicastDomain   string
+
+	// LLDP supplies interfaces[].attached_network_device. Nil leaves the
+	// field unset, which is its correct value when the Node does not know
+	// what it is patched into — IS-04 v1.3 defines it as what this Node
+	// "received in LLDP", so it can only come from outside.
+	//
+	// Injected, not constructed: lldp.Capture reads local frames where the
+	// platform allows it, a device that reports its own LLDP over an API
+	// satisfies the same interface with no privileges, and on Windows the
+	// latter is the only option. Wrap in lldp.NewCache to bound how often
+	// a slow source is consulted.
+	LLDP lldp.Source
 
 	// RegistryURL — when non-empty the producer also registers itself
 	// against this Registration API base (e.g. http://10.6.239.113:8235/).
@@ -440,6 +453,11 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	s.secure = s.cfg.ESTHost != "" || s.cfg.TLSCertFile != ""
 
 	expandNodeEndpoints(&s.bundle.Node, s.cfg.AdvertiseHost, s.cfg.Bind, s.authOn())
+
+	// attached_network_device before anything publishes the Node: the mDNS
+	// announce, the served /node resource and the registration POST all read
+	// this same bundle, so filling it here covers all three.
+	s.applyLLDPLocked(ctx)
 
 	// The Node's own href follows the same authority: it is the Node
 	// API base a controller will fetch, and a bundle-file leftover

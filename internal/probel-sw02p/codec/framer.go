@@ -5,6 +5,17 @@ import (
 	"io"
 )
 
+// DefaultReadBufferSize is the capacity a reader should give its
+// accumulating buffer. SW-P-02 frames are small (§3.1 command table tops
+// out under 256 bytes per frame); 4 KiB comfortably holds one or two
+// in-flight frames.
+//
+// It lives with the framer rather than with the session that allocates the
+// buffer: how big a frame can get is what the WIRE says, and both the
+// consumer's client and the provider's accept loop size their buffers from
+// the same fact.
+const DefaultReadBufferSize = 4096
+
 // Frame is one logical SW-P-02 command as it rides the wire. ID is the
 // COMMAND byte; Payload is the MESSAGE bytes (may be empty).
 type Frame struct {

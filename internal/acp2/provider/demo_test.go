@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"testing"
 	"time"
 
@@ -77,7 +78,7 @@ func TestEmitFloatAnnounce_ToSubscriber(t *testing.T) {
 // TestEmitFloatAnnounce_GuardBranches covers the early-returns:
 // missing object and wrong object type.
 func TestEmitFloatAnnounce_GuardBranches(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 
 	// Missing obj-id → silent return, no panic.
 	srv.emitFloatAnnounce(1, 9999, 0.5)
@@ -126,7 +127,7 @@ func TestRunAnnounceDemo_TicksThenCancel(t *testing.T) {
 // branch: passing 0 must coerce to a positive ticker and still exit on
 // cancel without firing immediately.
 func TestRunAnnounceDemo_DefaultInterval(t *testing.T) {
-	srv := newServer(quietLogger(), floatDemoExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, floatDemoExport())
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {

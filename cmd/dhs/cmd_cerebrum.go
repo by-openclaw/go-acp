@@ -18,9 +18,10 @@ import (
 	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
-	"dhs/internal/cerebrum-nb/codec/ws"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/transport/ws"
 )
 
 // cerebrumValErr returns a client-side ValidationError — mapped to exit 2
@@ -61,15 +62,26 @@ func printCerebrumJSON(v any) error {
 // cerebrumFlags is the common flag set for every dhs consumer cerebrum-nb
 // verb. host[:port] is positional; everything else is a flag.
 type cerebrumFlags struct {
-	port     int
-	user     string
-	pass     string
-	tls      bool
-	insecure bool
-	debug    bool
-	logPath  string
-	capture  string
-	timeout  time.Duration
+	port         int
+	user         string
+	pass         string
+	tls          bool
+	insecure     bool
+	debug        bool
+	logPath      string
+	logFormat    string
+	logLevel     string
+	syslogAddr   string
+	logRetention int
+	capture      string
+	timeout      time.Duration
+
+	// logger + logCleanup are built once by newLogger and cached so a verb
+	// (e.g. watch) can route its own event stream through the SAME logger
+	// the plugin uses — one set of sinks (stderr/file/syslog-addr), one
+	// format. Do not set directly.
+	logger     *slog.Logger
+	logCleanup func()
 }
 
 func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
@@ -80,35 +92,105 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
-	fs.StringVar(&c.logPath, "log", "", "write the diagnostic log (incl. RX/TX XML at full debug verbosity) to this file — clean UTF-8, no PowerShell 2> stderr wrapping; stderr stays silent. Literal \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (ADR-0028)")
+	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
+	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
+	fs.StringVar(&c.logLevel, "log-level", "", "log level: debug | info | warn | error (default: warn, or debug with --log/--debug)")
+	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal \"auto\" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	fs.DurationVar(&c.timeout, "timeout", 5*time.Second, "per-request timeout")
 	return c
 }
 
-// newLogger builds the verb logger per flags: --log FILE writes a clean
-// debug-verbosity log to the file (stderr untouched — avoids PowerShell 5.1
-// wrapping redirected native stderr into error records, the "red flag");
-// otherwise stderr at Warn (quiet success) or Debug with --debug. The
-// returned closer is a no-op for stderr.
+// newLogger builds the verb logger under the uniform contract (epic #987,
+// Model B): the TERMINAL is always human, the SINKS are structured.
+//
+//   - stderr: human TEXT at Warn (quiet success) / Debug with --debug — the
+//     operator's operational log. Data tables print to STDOUT separately;
+//     Info-level EVENTS sit below Warn so they never clutter the terminal.
+//   - --log FILE: structured (--log-format, default syslog) at Info (or
+//     Debug with --debug) — local machine sink.
+//   - --syslog-addr host:port: structured RFC 5424 at Info — remote server.
+//
+// So `--log-format` chooses the SINK format only; the terminal stays
+// readable. Events reach file/server (Info) but not stderr (Warn). A tee
+// with per-handler levels does the routing.
 func (c *cerebrumFlags) newLogger() (*slog.Logger, func(), error) {
-	if c.logPath != "" {
-		if dir := filepath.Dir(c.logPath); dir != "." {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
-			}
+	if c.logger != nil { // built once, shared by the plugin and the verb
+		return c.logger, c.logCleanup, nil
+	}
+	format := c.logFormat
+	if format == "" {
+		format = DefaultLogFormat
+	}
+	var closers []func()
+	cleanup := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			closers[i]()
 		}
-		f, err := os.Create(c.logPath)
+	}
+
+	// Terminal (human, operational). Never the structured format.
+	termLevel := slog.LevelWarn
+	if c.debug {
+		termLevel = slog.LevelDebug
+	}
+	if c.logLevel != "" {
+		termLevel = parseLogLevel(c.logLevel)
+	}
+	handlers := []slog.Handler{slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: termLevel})}
+
+	// Sink level: Info carries the verb's events; Debug with --debug adds
+	// the RX/TX wire detail; --log-level overrides.
+	sinkLevel := slog.LevelInfo
+	if c.debug {
+		sinkLevel = slog.LevelDebug
+	}
+	if c.logLevel != "" {
+		sinkLevel = parseLogLevel(c.logLevel)
+	}
+
+	// Local file sink (structured). ON by default ("auto" is resolved to
+	// the ADR-0028 path by cerebrumExpandAutoPaths before this runs);
+	// "off"/"none"/"-" disable it.
+	switch c.logPath {
+	case "off", "none", "-":
+		c.logPath = ""
+	}
+	if c.logPath != "" {
+		// One file per calendar day (logrotate.go). cerebrum-nb watch is the
+		// canonical 24/7/365 verb, so it must never write a single unbounded
+		// file that a restart truncates.
+		f, err := newDailyWriter(c.logPath, c.logRetention, clock.System())
 		if err != nil {
 			return nil, nil, fmt.Errorf("--log %s: %w", c.logPath, err)
 		}
-		return slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: slog.LevelDebug})), func() { _ = f.Close() }, nil
+		handlers = append(handlers, newLoggerTo(f, sinkLevel, format).Handler())
+		closers = append(closers, func() { _ = f.Close() })
 	}
-	level := slog.LevelWarn // quiet stderr on success (PS 2> flags any stderr as error)
-	if c.debug {
-		level = slog.LevelDebug
+
+	// Remote server sink (structured RFC 5424, non-blocking).
+	if c.syslogAddr != "" {
+		udp, err := dialSyslogUDP(c.syslogAddr)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("--syslog-addr %s: %w", c.syslogAddr, err)
+		}
+		handlers = append(handlers, udp.Handler(sinkLevel))
+		closers = append(closers, func() { udp.Close() })
 	}
-	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})), func() {}, nil
+
+	logger := slog.New(teeHandler(handlers))
+	c.logger, c.logCleanup = logger, cleanup
+	return logger, cleanup, nil
+}
+
+// hasLogSink reports whether a structured sink (local file or remote
+// server) is configured — the terminal (stderr) is human and never carries
+// the Info-level event stream, so the verb only emits structured events
+// when there is somewhere for them to go.
+func (c *cerebrumFlags) hasLogSink() bool {
+	return c.logPath != "" || c.syslogAddr != ""
 }
 
 // cerebrumWriteFile writes an output file, creating missing parent
@@ -193,6 +275,14 @@ func runCerebrum(ctx context.Context, args []string) error {
 	switch verb {
 	case "connect":
 		return cerebrumConnect(ctx, rest)
+	case "health":
+		// Cross-protocol verb. This dispatcher owns its own verb table, so
+		// `health` never reached the shared implementation even though the
+		// plugin satisfies HealthChecker like every other. Prepending
+		// --protocol is what dispatchConsumer does for every generic verb.
+		// No credentials needed: LOGIN is not required to open an NB
+		// session, so the three layers answer without one.
+		return runHealth(ctx, append([]string{"--protocol", "cerebrum-nb"}, rest...))
 	case "validate":
 		// Canonical offline validate (D2 #700, #243 residual): decode a
 		// --capture frames.jsonl through the codec; --out-tree = the
@@ -306,6 +396,7 @@ VERBS
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
+  health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
@@ -1641,11 +1732,48 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
-	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "watch")
-	if err != nil {
-		return err
+	// A watch runs 24/7/365, so it is supervised: the session is re-dialled
+	// and re-subscribed whenever the link dies. Every (re)connect builds a
+	// fresh Plugin, so the live one is kept in a guarded slot and the old one
+	// is disconnected as it is replaced — otherwise a week of reconnects
+	// leaks a week of sockets.
+	var (
+		plugMu sync.Mutex
+		plug   *cerebrum.Plugin
+	)
+	swapPlugin := func(p *cerebrum.Plugin) {
+		plugMu.Lock()
+		old := plug
+		plug = p
+		plugMu.Unlock()
+		if old != nil && old != p {
+			_ = old.Disconnect()
+		}
 	}
-	defer func() { _ = p.Disconnect() }()
+	defer func() {
+		plugMu.Lock()
+		p := plug
+		plugMu.Unlock()
+		if p != nil {
+			_ = p.Disconnect()
+		}
+	}()
+	// The logger is built by the first dial, so the cleanup is resolved at
+	// exit rather than captured now (when it is still nil).
+	defer func() {
+		if cf.logCleanup != nil {
+			cf.logCleanup()
+		}
+	}()
+
+	dialWatch := func(context.Context) (*cerebrum.Session, error) {
+		p, sess, _, derr := dialCerebrumAuth(cf, fs.Args(), "watch")
+		if derr != nil {
+			return nil, derr
+		}
+		swapPlugin(p)
+		return sess, nil
+	}
 
 	newRow := func(obj string) *codec.DeviceChange {
 		dc := &codec.DeviceChange{}
@@ -1672,14 +1800,44 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return dc
 	}
 
-	// Resolve the object list BEFORE subscribing, so an expansion that
-	// finds nothing fails loudly instead of quietly watching one row.
-	objects := []string{object}
-	if subDev != "" {
-		objects, err = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
-		if err != nil {
-			return err
+	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
+	// the wire (no type/access/units), so the resolve step's descriptors are
+	// remembered here and merged into every rendered row — giving the watch
+	// the same detail (type, R/W, units, enum/range) as acp1/acp2/ember+.
+	//
+	// Guarded, because a reconnect re-resolves it on the supervisor's
+	// goroutine while the event handler is reading it on the session's.
+	var (
+		descMu sync.RWMutex
+		desc   = map[string]codec.DeviceObjectValue{}
+	)
+	lookupDesc := func(obj string) (codec.DeviceObjectValue, bool) {
+		descMu.RLock()
+		defer descMu.RUnlock()
+		d, ok := desc[obj]
+		return d, ok
+	}
+
+	// resolveObjects re-reads the object list and its descriptors on a given
+	// session. Run BEFORE subscribing, so an expansion that finds nothing
+	// fails loudly instead of quietly watching one row.
+	resolveObjects := func(sess *cerebrum.Session) ([]string, error) {
+		objectRows := []codec.DeviceObjectValue{{Object: object}}
+		if subDev != "" {
+			var rerr error
+			objectRows, rerr = cerebrumWatchObjects(sess, cf.timeout, device, byName, subDev, object, only)
+			if rerr != nil {
+				return nil, rerr
+			}
 		}
+		objects := make([]string, 0, len(objectRows))
+		descMu.Lock()
+		for _, r := range objectRows {
+			objects = append(objects, r.Object)
+			desc[r.Object] = r
+		}
+		descMu.Unlock()
+		return objects, nil
 	}
 
 	// A VALUE watch is Tree/DM data, so it renders in the Tree/DM
@@ -1723,62 +1881,137 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		return prev != v
 	}
 
-	sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
-		switch {
-		case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
-			return // spurious §1.6 deviation
-		case f.Kind == codec.KindAck:
-			return // transaction plumbing, not an event
-		}
-		if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
-			now := time.Now()
-			for _, ov := range f.Device.ObjectValues {
-				// --only filters what is PRINTED as well as what is
-				// subscribed. It has to: a group subscription is
-				// indivisible — "Nodes.*" registers 68 node groups and
-				// each one reports every field of its node — so the
-				// subscription list cannot express "SubID only", and
-				// filtering the rows is the only place that can.
-				if !wantLeaf(onlyLeaves, ov.Object) {
-					continue
-				}
-				if !changed(ov) {
-					continue
-				}
-				header.Do(cerebrumDMHeader)
-				cerebrumDMRow(now, ov)
-			}
-			return
-		}
-		printEventLabeled(f, nil)
-	})
+	// attach re-establishes everything that lives on the SERVER or in the
+	// render state: the object list, the descriptor cache, the event handler
+	// and the subscriptions. The supervisor calls it after every successful
+	// dial, including the first — a Cerebrum subscription does not survive
+	// the socket, so a reconnect that skipped this would come back connected
+	// and silent, which is the very bug being fixed.
+	attach := func(ctx context.Context, sess *cerebrum.Session) error {
+		// Model B (epic #987): the terminal ALWAYS gets the human table; when
+		// a structured sink (--log file / --syslog-addr server) is configured,
+		// each change is ALSO emitted as a structured record to that sink — so
+		// you read the table live AND ship syslog/json to file/Loki at once.
+		logToSink := cf.hasLogSink()
+		evLogger := cf.logger
 
-	// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
-	// batch fails WHOLESALE if any row is bad, and then names none of
-	// them. So a failed batch is retried row by row: the cost falls on
-	// the run that already has a problem, and the operator learns which
-	// path was refused instead of being told the batch was.
-	rows := make([]codec.SubItem, 0, len(objects))
-	for _, o := range objects {
-		rows = append(rows, newRow(o))
+		objects, rerr := resolveObjects(sess)
+		if rerr != nil {
+			return rerr
+		}
+
+		sess.OnEvent(codec.KindUnknown, func(f *codec.Frame) {
+			switch {
+			case f.Kind == codec.KindWildcardComplete && f.Root != nil && f.Root.Attr("mtid") == "":
+				return // spurious §1.6 deviation
+			case f.Kind == codec.KindAck:
+				return // transaction plumbing, not an event
+			}
+			if dmView && f.Kind == codec.KindDeviceChange && f.Device != nil {
+				now := time.Now()
+				for _, ov := range f.Device.ObjectValues {
+					// --only filters what is PRINTED as well as what is
+					// subscribed. It has to: a group subscription is
+					// indivisible — "Nodes.*" registers 68 node groups and
+					// each one reports every field of its node — so the
+					// subscription list cannot express "SubID only", and
+					// filtering the rows is the only place that can.
+					if !wantLeaf(onlyLeaves, ov.Object) {
+						continue
+					}
+					if !changed(ov) {
+						continue
+					}
+					// Enrich the value-only change event with the cached
+					// descriptor so type/access/units/enum render on every row.
+					if ov.DataType == "" {
+						if d, ok := lookupDesc(ov.Object); ok {
+							live := ov
+							ov = d
+							ov.Value = live.Value
+							ov.Available = live.Available
+						}
+					}
+					// Terminal: the human table, always.
+					header.Do(cerebrumDMHeader)
+					cerebrumDMRow(now, ov)
+					// Sinks: the same change as a structured record (file/server),
+					// only when a sink exists (stderr is human, never the events).
+					if logToSink && evLogger != nil {
+						label := ov.Label
+						if label == "" {
+							if i := strings.LastIndex(ov.Object, "."); i >= 0 {
+								label = ov.Object[i+1:]
+							} else {
+								label = ov.Object
+							}
+						}
+						evLogger.Info("cerebrum_value_change",
+							slog.String("device", device),
+							slog.String("sub_device", subDev),
+							slog.String("object", ov.Object),
+							slog.String("label", label),
+							slog.String("value", ov.Value),
+							slog.String("type", strings.ToLower(ov.DataType)),
+							slog.String("access", cerebrumAccess(ov)),
+							slog.String("units", ov.Units),
+							slog.Bool("available", ov.Available),
+						)
+					}
+				}
+				return
+			}
+			printEventLabeled(f, nil)
+		})
+
+		// One row per object. NACK 9 is ONE_OR_MORE_EVENTS_INVALID — a
+		// batch fails WHOLESALE if any row is bad, and then names none of
+		// them. So a failed batch is retried row by row: the cost falls on
+		// the run that already has a problem, and the operator learns which
+		// path was refused instead of being told the batch was.
+		rows := make([]codec.SubItem, 0, len(objects))
+		for _, o := range objects {
+			rows = append(rows, newRow(o))
+		}
+		okRows, bad, serr := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
+		if serr != nil {
+			return serr
+		}
+		if okRows == 0 {
+			return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
+		}
+		for _, b := range bad {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
+		}
+
+		what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
+		if okRows > 1 {
+			what = fmt.Sprintf("%s on %d object(s)", what, okRows)
+		}
+		fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
+		return nil
 	}
-	okRows, bad, err := cerebrumSubscribeRows(ctx, sess, rows, objects, device, byName)
-	if err != nil {
+
+	// The supervisor owns the connection for the life of the watch: it dials,
+	// attaches, and on loss reconnects with backoff and re-attaches. Both
+	// transitions are announced on stderr so a gap in the table is explained
+	// rather than mysterious — the operator's original complaint was silence.
+	sup := &cerebrum.Supervisor{
+		Dial:  dialWatch,
+		Setup: attach,
+		OnLost: func(err error) {
+			fmt.Fprintf(os.Stderr, "cerebrum-nb watch: connection lost (%v) — reconnecting…\n", err)
+		},
+		OnReconnected: func(attempt int, downtime time.Duration) {
+			fmt.Fprintf(os.Stderr,
+				"cerebrum-nb watch: reconnected after %s (attempt %d) — subscriptions restored\n",
+				downtime.Round(time.Second), attempt)
+		},
+	}
+	sup.LoggerFn = func() *slog.Logger { return cf.logger }
+	if err := sup.Run(ctx); err != nil {
 		return err
 	}
-	if okRows == 0 {
-		return fmt.Errorf("cerebrum-nb watch: no object could be subscribed (%d refused)", len(bad))
-	}
-	for _, b := range bad {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb watch: REFUSED %s\n", b)
-	}
-
-	what := "TYPE=" + rows[0].(*codec.DeviceChange).Type
-	if okRows > 1 {
-		what = fmt.Sprintf("%s on %d object(s)", what, okRows)
-	}
-	fmt.Fprintf(os.Stderr, "watching DEVICE_CHANGE %s on %s — Ctrl+C to stop\n", what, device)
-	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "watch stopped.")
 	return nil
 }
@@ -1798,9 +2031,9 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 // response, not a recursive registration. Change events come from leaf
 // rows only, so watching a subtree means enumerating it first and
 // subscribing to each leaf.
-func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]string, error) {
+func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, object, only string) ([]codec.DeviceObjectValue, error) {
 	want := parseOnly(only)
-	var out []string
+	var out []codec.DeviceObjectValue
 	for _, part := range strings.Split(object, ";") {
 		part = strings.TrimSpace(part)
 		if part == "" {
@@ -1813,7 +2046,22 @@ func cerebrumWatchObjects(sess *cerebrum.Session, timeout time.Duration, device 
 			group, expand = strings.CutSuffix(part, ".*")
 		}
 		if !expand {
-			out = append(out, part)
+			// A literal single object: obtain it once so the watch has its
+			// descriptor (type/access/units) to render change events with —
+			// a leaf self-echoes, carrying the full descriptor. If the
+			// obtain fails or it is not a leaf, subscribe it bare.
+			row := codec.DeviceObjectValue{Object: part}
+			if sess != nil {
+				if rows, err := cerebrumChildren(sess, timeout, device, byName, subDev, part); err == nil {
+					for _, ov := range rows {
+						if ov.Object == part {
+							row = ov
+							break
+						}
+					}
+				}
+			}
+			out = append(out, row)
 			continue
 		}
 		leaves, err := cerebrumExpand(sess, timeout, device, byName, subDev, group, deep, want)
@@ -1899,14 +2147,9 @@ func cerebrumChildren(sess *cerebrum.Session, timeout time.Duration, device stri
 	return got.Device.ObjectValues, nil
 }
 
-// maxExpandDepth bounds "**". The deepest live NB tree seen is a node's
-// Interfaces/Devices at two levels; the cap is a guard against a cyclic
-// or pathological tree, not a real limit.
-const maxExpandDepth = 8
-
-// maxExpandObjects bounds what one expansion may subscribe.
+// maxExpandObjects bounds what one "**" expansion may subscribe.
 //
-// A deep walk probes every child, so "Nodes.**" on a live NOC is 68
+// A deep walk descends every node, so "Nodes.**" on a live NOC is 68
 // nodes x ~16 fields, then into Interfaces and Devices, then into each
 // device's Senders/Receivers/Sources — tens of thousands of obtains
 // against a production control system, from one careless command.
@@ -1928,75 +2171,56 @@ const maxExpandObjects = 2000
 // regardless, and for a deep expansion the available=0 rows are PROBED:
 // a group answers with rows for OTHER paths, a valueless leaf does
 // not. One obtain per candidate, and only for candidates.
-func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]string, error) {
-	var out []string
+func cerebrumExpand(sess *cerebrum.Session, timeout time.Duration, device string, byName bool, subDev, group string, deep bool, want map[string]bool) ([]codec.DeviceObjectValue, error) {
 	seen := map[string]bool{}
-
-	var walk func(g string, depth int) error
-	walk = func(g string, depth int) error {
-		if len(out) > maxExpandObjects {
-			return fmt.Errorf("expansion exceeded %d objects at %q — narrow the path (one node rather than Nodes) or use .* instead of .**", maxExpandObjects, g)
+	var out []codec.DeviceObjectValue
+	// Rows are returned WITH their descriptor (type/access/units/enum/range)
+	// so the watch can render change events — which arrive value-only over
+	// the wire — with the same detail as every other protocol's watch.
+	keep := func(ov codec.DeviceObjectValue) {
+		if ov.Object == "" || seen[ov.Object] {
+			return
 		}
-		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, g)
+		seen[ov.Object] = true
+		if wantLeaf(want, ov.Object) {
+			out = append(out, ov)
+		}
+	}
+
+	if !deep {
+		// Shallow ("GROUP.*"): the group's direct children, one obtain.
+		kids, err := cerebrumChildren(sess, timeout, device, byName, subDev, group)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, ov := range kids {
-			if ov.Object == "" || ov.Object == g || seen[ov.Object] {
+			if ov.Object == group {
 				continue
 			}
-			if !deep || depth >= maxExpandDepth {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-				continue
-			}
-			// Every child is probed on a deep walk, including the ones
-			// that already carry a value.
-			//
-			// Carrying a value does NOT mean being a leaf here.
-			// Interfaces answers with "en8,en12" AND has [en8]/[en12]
-			// beneath it, each holding Chassis_ID and Port_ID; Devices
-			// does the same with its UUID list. Skipping value-carrying
-			// rows stopped the descent exactly at the two nodes worth
-			// descending into.
-			//
-			// A value-carrying group is kept as well as descended into
-			// — the summary string is real data, not a placeholder for
-			// the children.
-			if ov.Available {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-			}
-			// Candidate group. Ask it for children; anything that
-			// answers with OTHER paths is a group and is descended
-			// into, anything else is a valueless leaf and is kept.
-			sub, err := cerebrumChildren(sess, timeout, device, byName, subDev, ov.Object)
-			if err != nil || !hasOtherPaths(sub, ov.Object) {
-				seen[ov.Object] = true
-				out = append(out, ov.Object)
-				continue
-			}
-			if err := walk(ov.Object, depth+1); err != nil {
-				return err
-			}
+			keep(ov)
 		}
-		return nil
+		return out, nil
 	}
-	if err := walk(group, 0); err != nil {
+
+	// Deep ("GROUP.**"): reuse the DM walk — the SAME NB self-echo
+	// recursion extract and tree use — so a subtree watch registers exactly
+	// the LEAVES the DM holds, and only leaves (intermediate group handles
+	// deliver no change events, so subscribing them is pointless). The wire
+	// refuses wildcards, so this is client-side enumeration; a subtree too
+	// large to enumerate is refused (not truncated) so the caller narrows
+	// the path or raises the limit rather than getting a watch that
+	// silently misses objects.
+	leaves, _, truncated, err := cerebrumDeviceWalkValues(sess, timeout, device, byName, subDev, []string{group}, maxExpandObjects)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-// hasOtherPaths reports whether an obtain answered with rows for paths
-// other than the one asked for — the signature of a group.
-func hasOtherPaths(rows []codec.DeviceObjectValue, self string) bool {
-	for _, ov := range rows {
-		if ov.Object != "" && ov.Object != self {
-			return true
-		}
+	if truncated {
+		return nil, fmt.Errorf("%q expands past %d objects — narrow the path (a node rather than the whole subtree) or raise --max-requests", group, maxExpandObjects)
 	}
-	return false
+	for _, lv := range leaves {
+		keep(lv)
+	}
+	return out, nil
 }
 
 // cerebrumSubscribeRows registers every row, batching first and
@@ -3507,12 +3731,12 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 // deviceConfigBodyFlags carries the flattened per-type body flags so
 // buildDeviceConfigBody can map them onto the right codec struct.
 type deviceConfigBodyFlags struct {
-	device, version, name             string
-	connType, port, timeout, poll     string
-	cpf, panelID, panelType           string
-	routerType, baud, parity          string
-	maxLevel, maxSource, maxDest      string
-	snmpPort, snmpName                string
+	device, version, name         string
+	connType, port, timeout, poll string
+	cpf, panelID, panelType       string
+	routerType, baud, parity      string
+	maxLevel, maxSource, maxDest  string
+	snmpPort, snmpName            string
 }
 
 // buildDeviceConfigBody attaches the body struct chosen by deviceType to dc

@@ -11,6 +11,10 @@
 //     (periodic refresh with jitter, stale keys kept when the server
 //     is unreachable), satisfying the http session's KeyProvider.
 //
+// token.go completes the picture: the NMOS reading of a verified
+// token. The keys and the JWS live in internal/auth (imported as jwt),
+// because neither is NMOS-specific; only the claim policy is.
+//
 // Both start from the RFC 8414 server-metadata document at the
 // Authorization Server's .well-known endpoint; endpoint URLs are
 // never assumed.
@@ -30,6 +34,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is10"
+	jwt "dhs/internal/auth"
 )
 
 // httpTimeout caps every exchange with the Authorization Server.
@@ -183,7 +188,7 @@ type KeyCache struct {
 	hc          *stdhttp.Client
 
 	mu   sync.RWMutex
-	keys []is10.JWK
+	keys []jwt.JWK
 }
 
 // NewKeyCache builds a cache for one Authorization Server.
@@ -199,10 +204,10 @@ func NewKeyCache(metadataURL string, logger *slog.Logger) *KeyCache {
 // KeyProvider). Stale keys are deliberately served while the
 // Authorization Server is unreachable — the spec says currently held
 // keys remain valid until a connection is re-established.
-func (k *KeyCache) Keys() []is10.JWK {
+func (k *KeyCache) Keys() []jwt.JWK {
 	k.mu.RLock()
 	defer k.mu.RUnlock()
-	return append([]is10.JWK(nil), k.keys...)
+	return append([]jwt.JWK(nil), k.keys...)
 }
 
 // Fetch resolves metadata → jwks_uri → key set once.
@@ -219,7 +224,7 @@ func (k *KeyCache) Fetch(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	set, err := is10.DecodeJWKS(raw)
+	set, err := jwt.DecodeJWKS(raw)
 	if err != nil {
 		return err
 	}
@@ -248,7 +253,7 @@ func (k *KeyCache) FetchIssuer(ctx context.Context, issuer string) error {
 	if err != nil {
 		return err
 	}
-	set, err := is10.DecodeJWKS(raw)
+	set, err := jwt.DecodeJWKS(raw)
 	if err != nil {
 		return err
 	}

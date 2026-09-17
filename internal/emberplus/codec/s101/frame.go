@@ -37,8 +37,8 @@ const (
 	FlagEmpty  byte = 0x20 // Empty packet
 
 	// DTD fields.
-	DTDGlow         byte = 0x01 // Glow DTD identifier
-	AppBytesLen     byte = 0x02 // Length of app bytes (DTD minor + major)
+	DTDGlow     byte = 0x01 // Glow DTD identifier
+	AppBytesLen byte = 0x02 // Length of app bytes (DTD minor + major)
 	// Provider advertises Glow DTD 2.60 — every element kind in
 	// `Ember+ Documentation.pdf` v2.50 is fully implemented, including
 	// Templates / QualifiedTemplates (spec p.84) and the DTD 2.30+

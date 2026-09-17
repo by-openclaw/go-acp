@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // DualControllerStatus queries the 1:1 redundancy state (master vs.

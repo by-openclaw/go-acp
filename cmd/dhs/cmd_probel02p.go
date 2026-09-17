@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +20,10 @@ import (
 // connect, protect-*, dual-status, router-config) follow the
 // per-command file pattern from SW-P-08.
 func runProbelsw02p(ctx context.Context, args []string) error {
+	// Uniform logging flags (epic #987): strip + stash before verb dispatch.
+	var lf *logFlags
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	args, rec, err := extractCaptureFlag(args)
 	if err != nil {
 		return err
@@ -84,6 +86,12 @@ func runProbelsw02p(ctx context.Context, args []string) error {
 		return runProbelsw02pLockStatus(ctx, rest)
 	case "status":
 		return runProbelsw02pStatus(ctx, rest)
+	case "health":
+		// Cross-protocol verb, routed the way dispatchConsumer routes every
+		// generic verb. `status` is NOT forwarded here: SW-P-02 already
+		// defines its own status (the rx 75 router status above), and that
+		// meaning wins inside this dispatcher.
+		return runHealth(ctx, append([]string{"--protocol", "probel-sw02p"}, rest...))
 	case "router-config":
 		return runProbelsw02pRouterConfig(ctx, rest)
 	case "watch":
@@ -137,6 +145,7 @@ SUBCOMMANDS
   dual-status         read dual-controller redundancy state (rx 050)
   lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
   status              read controller status — 2 (rx 07)
+  health              3-layer session health (reachable / connected / live)
   router-config       read router configuration / level map (rx 075)
   usage               reverse tally: one interrogate per dst (rx 01/65 sweep;
                       size from --dsts or rx 075); --srce/--dest filter,
@@ -352,23 +361,25 @@ func probelSW02Subcommand(args []string) string {
 // dialProbelSW02 mirrors dialProbel for sw08p — connect-or-die helper
 // returning a connected plugin + a deferred-close callback.
 func dialProbelSW02(ctx context.Context, addr string) (*probelsw02proto.Plugin, func(), error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	host, port, err := splitHostPort(addr, probelsw02proto.DefaultPort)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "probel-sw02p", host, "session")
 	f := &probelsw02proto.Factory{}
-	p := f.New(logger).(*probelsw02proto.Plugin)
+	p := f.New(pluginDeps(logger)).(*probelsw02proto.Plugin)
 	if rec, ok := ctx.Value(probelSW02RecorderKey{}).(*transport.Recorder); ok && rec != nil {
 		p.SetRecorder(rec)
 	}
 	if mc, ok := ctx.Value(probelSW02MatrixConfigKey{}).(probelsw02proto.MatrixConfig); ok {
 		p.SetMatrixConfig(mc)
 	}
-	host, port, err := splitHostPort(addr, probelsw02proto.DefaultPort)
-	if err != nil {
-		return nil, func() {}, err
-	}
 	if err := p.Connect(ctx, host, port); err != nil {
+		logClean()
 		return nil, func() {}, err
 	}
-	return p, func() { _ = p.Disconnect() }, nil
+	return p, func() { _ = p.Disconnect(); logClean() }, nil
 }
 
 // runProbelsw02pWatch keeps the session open and prints every async

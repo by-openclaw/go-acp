@@ -84,7 +84,11 @@ func cerebrumExpandAutoPaths(cf *cerebrumFlags, verb, host string) {
 	if cf.logPath == "auto" {
 		cf.logPath = defaultLogPath("cerebrum-nb", host, verb)
 		_ = os.MkdirAll(filepath.Dir(cf.logPath), 0o755)
-		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: --log auto → %s (ADR-0028)\n", verb, cf.logPath)
+		// Report the file that will actually be written. The local log
+		// rotates daily, so the logical path ".../watch.log" never exists on
+		// disk — printing it sends the operator looking for the wrong file.
+		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: --log auto → %s (ADR-0028, rolls daily)\n",
+			verb, dailyPathFor(cf.logPath, time.Now()))
 	}
 }
 

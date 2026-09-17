@@ -16,8 +16,8 @@ type IdleControllerStatus uint8
 
 // Idle controller status values — §3.2.46.
 const (
-	IdleControllerOK      IdleControllerStatus = 0x00
-	IdleControllerFaulty  IdleControllerStatus = 0x01
+	IdleControllerOK     IdleControllerStatus = 0x00
+	IdleControllerFaulty IdleControllerStatus = 0x01
 )
 
 // DualControllerStatusResponseParams carries tx 051 DUAL CONTROLLER

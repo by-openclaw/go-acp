@@ -7,78 +7,81 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 )
+
+// The health LOGIC is specified once, in internal/consumer. What is ACP1's,
+// and what these cover, is the stale window, the timestampSink as the time
+// source, and which network Connect reports — the last being the thing that
+// was wrong before: a live UDP session used to report Reachable=false.
 
 func TestPlugin_SatisfiesHealthChecker(t *testing.T) {
 	var _ consumer.HealthChecker = (*Plugin)(nil)
 }
 
-func TestSessionHealth_DefaultsWhenNotConnected(t *testing.T) {
-	p := &Plugin{logger: slog.Default()}
+func newHealthPlugin() *Plugin {
+	return (&Factory{}).New(plugin.Deps{Logger: slog.Default()}).(*Plugin)
+}
 
-	// Use a context with a sub-millisecond deadline to fail-fast on
-	// the Reachable probe (no host, no port set anyway).
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	h := p.SessionHealth(ctx)
-	if h.Reachable {
-		t.Errorf("Reachable = true on disconnected plugin")
+func TestSessionHealthBeforeConnect(t *testing.T) {
+	got := newHealthPlugin().SessionHealth(context.Background())
+	if got.Reachable || got.Connected || got.Live {
+		t.Errorf("nothing is open before Connect, got %+v", got)
 	}
-	if h.Connected {
-		t.Errorf("Connected = true on disconnected plugin")
+	if !got.LastRx.IsZero() || !got.LastTx.IsZero() {
+		t.Errorf("timestamps must be zero, got rx=%v tx=%v", got.LastRx, got.LastTx)
 	}
-	if h.Live {
-		t.Errorf("Live = true on disconnected plugin")
-	}
-	if !h.LastRx.IsZero() || !h.LastTx.IsZero() {
-		t.Errorf("Timestamps non-zero on disconnected plugin: rx=%v tx=%v", h.LastRx, h.LastTx)
-	}
-	if h.StaleAfter != acp1StaleAfter {
-		t.Errorf("StaleAfter = %v, want %v", h.StaleAfter, acp1StaleAfter)
+	if got.StaleAfter != acp1StaleAfter {
+		t.Errorf("StaleAfter = %v, want the ACP1 window %v", got.StaleAfter, acp1StaleAfter)
 	}
 }
 
-func TestSessionHealth_LiveAfterRecentRx(t *testing.T) {
-	p := &Plugin{
-		logger: slog.Default(),
-		tsSink: &timestampSink{},
-	}
+func TestSessionHealthReadsTheTimestampSink(t *testing.T) {
+	p := newHealthPlugin()
+	p.tsSink = &timestampSink{}
+	p.Opened("udp", "10.6.250.105", 2071, p.tsSink)
+
 	p.tsSink.recordRx()
 	p.tsSink.recordTx()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	h := p.SessionHealth(ctx)
-	if !h.Live {
-		t.Errorf("Live = false despite fresh rx; LastRx=%v", h.LastRx)
+	got := p.SessionHealth(context.Background())
+	if !got.Live || got.LastRx.IsZero() || got.LastTx.IsZero() {
+		t.Errorf("a fresh sink makes the session live with both instants, got %+v", got)
 	}
-	if h.LastRx.IsZero() {
-		t.Errorf("LastRx zero after recordRx()")
-	}
-	if h.LastTx.IsZero() {
-		t.Errorf("LastTx zero after recordTx()")
+	// The regression: a UDP session that is receiving is reachable. The old
+	// code dialled TCP here and reported false.
+	if !got.Reachable {
+		t.Error("a UDP session receiving frames is reachable")
 	}
 }
 
-func TestSessionHealth_StaleAfterWindow(t *testing.T) {
-	p := &Plugin{
-		logger: slog.Default(),
-		tsSink: &timestampSink{},
-	}
-	// Forge a stale rx timestamp 100s ago > 90s threshold.
+func TestSessionHealthGoesStale(t *testing.T) {
+	p := newHealthPlugin()
+	p.tsSink = &timestampSink{}
+	p.Opened("udp", "10.6.250.105", 2071, p.tsSink)
 	p.tsSink.lastRxNS.Store(time.Now().Add(-100 * time.Second).UnixNano())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	h := p.SessionHealth(ctx)
-	if h.Live {
-		t.Errorf("Live = true despite stale rx (100s ago)")
+	got := p.SessionHealth(context.Background())
+	if got.Live {
+		t.Errorf("rx 100s ago is past the %v window", acp1StaleAfter)
 	}
-	if h.LastRx.IsZero() {
-		t.Errorf("LastRx zero")
+	if got.LastRx.IsZero() {
+		t.Error("the instant is still reported, it is just old")
+	}
+}
+
+// Whether a connect attempt means anything depends on the transport, which
+// is what Connect passes through.
+func TestTransportKindNetwork(t *testing.T) {
+	for kind, want := range map[TransportKind]string{
+		TransportUDP:       "udp",
+		TransportTCPDirect: "tcp",
+		TransportAN2:       "tcp",
+		TransportAuto:      "udp",
+	} {
+		if got := kind.network(); got != want {
+			t.Errorf("%v.network() = %q, want %q", kind, got, want)
+		}
 	}
 }
 
@@ -141,32 +144,3 @@ func (s *stubTimestampInner) Receive(_ context.Context, _ int) ([]byte, error) {
 	return s.rxData, nil
 }
 func (s *stubTimestampInner) Close() error { return nil }
-
-func TestProbeReachable_NoListener(t *testing.T) {
-	// Pick a definitely-closed port: bind+release then probe.
-	// This is racy in theory; in practice an ephemeral port immediately
-	// after release is closed.
-	const closedPort = 1 // privileged + unlikely to listen
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", closedPort) {
-		t.Fatalf("probe returned reachable for closed port")
-	}
-}
-
-func TestItoaPort(t *testing.T) {
-	cases := []struct {
-		in   int
-		want string
-	}{
-		{0, "0"},
-		{1, "1"},
-		{2071, "2071"},
-		{65535, "65535"},
-	}
-	for _, tc := range cases {
-		if got := itoaPort(tc.in); got != tc.want {
-			t.Errorf("itoaPort(%d) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}

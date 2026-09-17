@@ -9,7 +9,10 @@ import (
 // and "--pass=value" forms (single-dash included) never reach the
 // meta record; everything else survives verbatim.
 func TestRedactCLI(t *testing.T) {
-	cases := []struct{ in []string; want string }{
+	cases := []struct {
+		in   []string
+		want string
+	}{
 		{[]string{"dhs", "consumer", "cerebrum-nb", "export", "h", "--user", "YOB", "--pass", "s3cret"},
 			"dhs consumer cerebrum-nb export h --user YOB --pass ***"},
 		{[]string{"dhs", "--pass=s3cret", "--token=abc", "-password", "x"},

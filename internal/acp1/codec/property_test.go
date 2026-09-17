@@ -138,9 +138,9 @@ func TestDecodeFloat(t *testing.T) {
 	// Float: IEEE-754 single, MSB first. Spec p. 23.
 	// -6.0 dB in float32 BE: 0xC0 0xC0 0x00 0x00
 	in := []byte{
-		0x03, // type = 3
-		0x0A, // num_props = 10
-		0x03, // access
+		0x03,                   // type = 3
+		0x0A,                   // num_props = 10
+		0x03,                   // access
 		0xC0, 0xC0, 0x00, 0x00, // value = -6.0
 		0x00, 0x00, 0x00, 0x00, // default = 0.0
 		0x3F, 0x80, 0x00, 0x00, // step = 1.0
@@ -171,9 +171,9 @@ func TestDecodeIPAddr(t *testing.T) {
 	// IPAddr: uint32 value + uint32 constraints. Spec p. 22.
 	// 192.168.1.5 as uint32 big-endian = 0xC0A80105
 	in := []byte{
-		0x02, // type = 2
-		0x0A, // num_props = 10
-		0x03, // access
+		0x02,                   // type = 2
+		0x0A,                   // num_props = 10
+		0x03,                   // access
 		0xC0, 0xA8, 0x01, 0x05, // value
 		0x00, 0x00, 0x00, 0x00, // default
 		0x00, 0x00, 0x00, 0x01, // step
@@ -256,11 +256,11 @@ func TestDecodeEnum_SubGroupMarker(t *testing.T) {
 func TestDecodeString(t *testing.T) {
 	// String: access, value(NUL-term), max_len, label. Spec p. 24.
 	in := []byte{
-		0x05, // type = 5
-		0x06, // num_props = 6
-		0x03, // access
+		0x05,                // type = 5
+		0x06,                // num_props = 6
+		0x03,                // access
 		'C', 'H', '1', 0x00, // value
-		0x10, // max_len = 16
+		0x10,                     // max_len = 16
 		'N', 'a', 'm', 'e', 0x00, // label
 	}
 	o, err := DecodeObject(in)
@@ -282,10 +282,10 @@ func TestDecodeFrame(t *testing.T) {
 	// Frame Status: access + num_slots + slot_status[]. Spec p. 24.
 	// 5-slot frame, all present except slot 3 = error.
 	in := []byte{
-		0x06, // type = 6
-		0x04, // num_props = 4
-		0x01, // access = read-only
-		0x05, // num_slots = 5
+		0x06,                         // type = 6
+		0x04,                         // num_props = 4
+		0x01,                         // access = read-only
+		0x05,                         // num_slots = 5
 		0x02, 0x02, 0x02, 0x03, 0x02, // statuses
 	}
 	o, err := DecodeObject(in)

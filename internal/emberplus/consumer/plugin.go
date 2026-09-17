@@ -16,6 +16,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"math"
@@ -26,10 +27,8 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/matrix"
-	"dhs/internal/transport"
 )
 
 func init() {
@@ -51,9 +50,18 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 
 // New constructs a fresh Plugin instance. Each device connection uses a
 // separate Plugin so cached tree state cannot cross devices.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{logger: logger}
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{logger: deps.Logger}
+	p.Init(deps, emberStaleAfter)
+	return p
 }
+
+// emberStaleAfter is the silence past which an Ember+ session is judged not
+// Live. It is the session's own dead-man threshold (3x the keep-alive
+// interval), so health and the reconnect watcher agree on when a provider
+// has gone quiet.
+const emberStaleAfter = 30 * time.Second
 
 // Freshness marks how current a treeEntry's value is believed to be.
 // Documented in CLAUDE.md (Value freshness states) and
@@ -75,6 +83,10 @@ const (
 
 // Plugin implements consumer.Protocol for Ember+ providers.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: Ember+
+	// contributes the dead-man window and the Session as the time source.
+	consumer.Base
+
 	logger  *slog.Logger
 	session *Session
 	mu      sync.Mutex
@@ -113,22 +125,26 @@ type Plugin struct {
 	walkGraceInterval  time.Duration
 	walkGraceMax       int
 
+	// walkInitialDelay is the pause after GetDirectory before the settle
+	// loop starts, giving the first burst of elements time to arrive.
+	// walkPollInterval paces that loop.
+	//
+	// Both were hardcoded sleeps, which made them the one part of Walk a
+	// test could not shorten — every walk test paid 500 ms plus 100 ms per
+	// pass, and there are seven of them. Injectable on the same terms as
+	// the settle knobs above: zero means the production default.
+	walkInitialDelay time.Duration
+	walkPollInterval time.Duration
+
+	// writeTimeout bounds the wait for a provider to echo a SetValue.
+	// Zero means defaultWriteTimeout; see effectiveWriteTimeout.
+	writeTimeout time.Duration
+
 	// templates is keyed by the canonical numeric RelOID of the
 	// template; used by ResolveTemplate and TemplateFor callers.
 	// Spec p.54–58 (Ember+ 1.4 Templates).
 	templates   map[string]*glow.Template
 	templatesMu sync.RWMutex
-
-	// profile tracks tolerance events (spec deviations absorbed
-	// during this session). Exposed via ComplianceProfile(); a
-	// summary line is logged on Disconnect. See compliance/profile.go
-	// and internal/emberplus/docs/consumer.md §A9.
-	profile *compliance.Profile
-
-	// recorder captures raw S101 frames (tx + rx) to a JSONL file
-	// when the CLI passed --capture. Shared with the Session so the
-	// reader/writer taps fire on every frame.
-	recorder *transport.Recorder
 
 	// connIP / connPort are captured at Connect time for log context.
 	connIP   string
@@ -246,24 +262,6 @@ func (p *Plugin) wildcardMatches(entry *treeEntry) bool {
 	return false
 }
 
-// ComplianceProfile returns the live compliance profile for this
-// connection. Callers use it to classify the peer provider (strict
-// vs partial) and to drive a compatibility matrix.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	return p.profile
-}
-
-// SetRecorder attaches a raw-traffic recorder to this plugin. When set,
-// every S101 frame (both TX and RX) is written to the recorder with
-// proto="emberplus" and the raw bytes include BOF/EOF/CRC, so the
-// capture file is sufficient input for replay-based unit tests.
-// Call before Connect.
-func (p *Plugin) SetRecorder(r *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = r
-	p.mu.Unlock()
-}
-
 // treeEntry is the in-RAM record per decoded element. It keeps both the
 // protocol-agnostic Object (consumed by CLI/format code) and the raw Glow
 // struct (consumed by matrix / invoke operations that need the numeric
@@ -312,8 +310,10 @@ type treeEntry struct {
 // keep-alive reply is received first.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	s := NewSession(p.logger)
+	s.SetMetrics(p.Metrics())
 	p.mu.Lock()
 	p.session = s
+	p.Opened("tcp", ip, port, sessionTimes{s})
 	p.treeMu.Lock()
 	p.numIndex = make(map[string]*treeEntry)
 	p.pathIndex = make(map[string]*treeEntry)
@@ -325,17 +325,16 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.streamIndex = make(map[int64][]string)
 	p.templates = make(map[string]*glow.Template)
 	p.pendingSets = newPendingSetRegistry()
-	p.profile = &compliance.Profile{}
 	p.connIP = ip
 	p.connPort = port
 	p.unknownCTX = newUnknownCTXAudit()
 	p.mu.Unlock()
 
 	s.SetOnElement(p.handleElements)
-	s.SetProfile(p.profile)
+	s.SetProfile(p.ComplianceProfile())
 	s.SetOnStateChange(p.onSessionStateChange)
-	if p.recorder != nil {
-		s.SetRecorder(p.recorder)
+	if rec := p.Recorder(); rec != nil {
+		s.SetRecorder(rec)
 	}
 	return s.Connect(ctx, ip, port)
 }
@@ -472,24 +471,24 @@ func (p *Plugin) Disconnect() error {
 
 	p.unsubscribeAll()
 
-	if p.profile != nil {
-		summary := p.profile.SummaryLine()
-		class := p.profile.Classification()
-		if summary == "" {
-			p.logger.Info("emberplus: compliance profile",
-				"host", p.connIP, "port", p.connPort,
-				"classification", class)
-		} else {
-			p.logger.Info("emberplus: compliance profile",
-				"host", p.connIP, "port", p.connPort,
-				"classification", class,
-				"deviations", summary)
-		}
+	summary := p.ComplianceProfile().SummaryLine()
+	class := p.ComplianceProfile().Classification()
+	if summary == "" {
+		p.logger.Info("emberplus: compliance profile",
+			"host", p.connIP, "port", p.connPort,
+			"classification", class)
+	} else {
+		p.logger.Info("emberplus: compliance profile",
+			"host", p.connIP, "port", p.connPort,
+			"classification", class,
+			"deviations", summary)
 	}
 
 	p.mu.Lock()
 	s := p.session
 	p.session = nil
+	p.Closed()
+	p.logger.Info("emberplus session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.mu.Unlock()
 	if s != nil {
 		return s.Disconnect()
@@ -597,10 +596,26 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 		return nil, err
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	// Settle/grace timings — zero fields take the production defaults; tests
 	// set small values to exercise the grace loop deterministically.
+	initialDelay := p.walkInitialDelay
+	if initialDelay == 0 {
+		initialDelay = 500 * time.Millisecond
+	}
+	pollIvl := p.walkPollInterval
+	if pollIvl == 0 {
+		pollIvl = 100 * time.Millisecond
+	}
+
+	// Let the first burst of elements arrive before the settle loop starts
+	// counting. Interruptible: a cancelled walk should stop here, not sit
+	// out the delay first.
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(initialDelay):
+	}
+
 	settleInit := p.walkSettleInitial
 	if settleInit == 0 {
 		settleInit = 15 * time.Second
@@ -649,11 +664,21 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 				lastCount = count
 				settle.Reset(settleIvl)
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(pollIvl)
 		}
 	}
 done:
 	return p.snapshot(), nil
+}
+
+// effectiveWriteTimeout resolves the SetValue confirmation window: zero means
+// the production default. Split out so both arms are testable without a test
+// sitting out three real seconds to prove the default is three seconds.
+func (p *Plugin) effectiveWriteTimeout() time.Duration {
+	if p.writeTimeout == 0 {
+		return defaultWriteTimeout
+	}
+	return p.writeTimeout
 }
 
 // snapshot returns every live Object under RLock, enriched for cache
@@ -871,7 +896,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	}
 
 	// Await confirmation or timeout.
-	timer := time.NewTimer(defaultWriteTimeout)
+	timer := time.NewTimer(p.effectiveWriteTimeout())
 	defer timer.Stop()
 
 	select {
@@ -1068,7 +1093,7 @@ func (p *Plugin) MatrixConnect(ctx context.Context, matrixPath string, target in
 		// profile`. Refs #465.
 		if stolen := entry.matrixState.DetectOneToOneSourceSteal(target, sources); len(stolen) > 0 {
 			for _, pair := range stolen {
-				p.profile.Note(OneToOneSourceStealAccepted)
+				p.ComplianceProfile().Note(OneToOneSourceStealAccepted)
 				p.logger.Debug("emberplus: oneToOne source-steal accepted",
 					"matrix_path", matrixPath,
 					"target", target,
@@ -1231,7 +1256,7 @@ func (p *Plugin) resolveNumPath(explicit []int32, parent []int32, number int32) 
 	if len(explicit) > 0 {
 		return cloneInt32Slice(explicit)
 	}
-	p.profile.Note(NonQualifiedElement)
+	p.ComplianceProfile().Note(NonQualifiedElement)
 	// Provider speaks legacy non-qualified Glow (DTD <2.10). Pin the
 	// session so subscribe / unsubscribe / setvalue use the nested
 	// Node/Parameter chain wire form the provider's path index
@@ -1893,16 +1918,16 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 	stringPath := p.pathForElement(numPath, param.Identifier, param.Number, parentPath)
 
 	obj := consumer.Object{
-		Slot:   0,
-		ID:     int(param.Number),
-		OID:    numericKey(numPath),
-		Label:  param.Identifier,
-		Path:   stringPath,
-		Min:    param.Minimum,
-		Max:    param.Maximum,
-		Step:   param.Step,
-		Def:    param.Default,
-		Meta:   parameterMeta(param),
+		Slot:  0,
+		ID:    int(param.Number),
+		OID:   numericKey(numPath),
+		Label: param.Identifier,
+		Path:  stringPath,
+		Min:   param.Minimum,
+		Max:   param.Maximum,
+		Step:  param.Step,
+		Def:   param.Default,
+		Meta:  parameterMeta(param),
 	}
 	if len(stringPath) > 1 {
 		obj.Group = stringPath[0]
@@ -1975,7 +2000,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 		// new registrant's side; duplicate-detection-on-existing would
 		// require re-reading numIndex entries here, which we avoid on
 		// the hot path.
-		if len(existing) > 0 && param.StreamDescriptor == nil && p.profile != nil {
+		if len(existing) > 0 && param.StreamDescriptor == nil {
 			isNewPath := true
 			for _, k := range existing {
 				if k == key {
@@ -1984,7 +2009,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 				}
 			}
 			if isNewPath {
-				p.profile.Note(StreamIDCollisionNoDescriptor)
+				p.ComplianceProfile().Note(StreamIDCollisionNoDescriptor)
 			}
 		}
 		p.streamIndex[param.StreamIdentifier] = appendUnique(existing, key)
@@ -2609,3 +2634,11 @@ func valueToGlow(val consumer.Value) any {
 	}
 	return val.Int
 }
+
+// sessionTimes adapts a Session to consumer.RxTxTimes. The session stamps rx
+// on every decoded frame (touchRX); there is no single tx point to stamp, so
+// LastTx is reported as unknown rather than invented.
+type sessionTimes struct{ s *Session }
+
+func (t sessionTimes) LastRx() time.Time { return t.s.LastRx() }
+func (t sessionTimes) LastTx() time.Time { return time.Time{} }

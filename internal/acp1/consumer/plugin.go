@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
@@ -9,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
-	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/transport"
 )
 
 // init registers the ACP1 plugin with the global protocol registry.
@@ -33,8 +33,11 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{logger: logger}
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{logger: deps.Logger}
+	p.Init(deps, acp1StaleAfter)
+	return p
 }
 
 // TransportKind selects how the ACP1 plugin talks to the device.
@@ -99,6 +102,12 @@ type announceFanout interface {
 // for transactions, and a per-slot cache of walked trees that GetValue
 // / SetValue consult to translate labels into (group, id).
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented:
+	// ACP1 contributes only the stale window, the time source and —
+	// the part that used to be wrong — which network it is actually
+	// talking over.
+	consumer.Base
+
 	logger *slog.Logger
 
 	mu        sync.Mutex
@@ -131,13 +140,9 @@ type Plugin struct {
 
 	subHandles map[subKey]SubHandle
 
-	// Optional traffic capture for unit test data generation.
-	recorder *transport.Recorder
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
+	// dialer opens the AN2 (Mode C) socket. Injected rather than built
+	// inline so the pipe is substitutable — see dial() for the default.
+	dialer transport.Dialer
 
 	// tsSink tracks the most-recent rx/tx wire timestamps so
 	// SessionHealth() can compute Live without blocking. Nil until
@@ -156,23 +161,6 @@ type Plugin struct {
 	// failure on the connected port can't be forced cross-platform with
 	// SO_REUSEADDR enabled).
 	newListener func(logger *slog.Logger, port int) (*Listener, error)
-}
-
-// ComplianceProfile returns the session-scoped compliance profile.
-// Returns nil if Connect hasn't been called yet. Safe to call from
-// any goroutine.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a traffic recorder to this plugin.
-// Call before Connect. All sent and received frames are recorded.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
 }
 
 // SetTransport selects UDP or TCP for subsequent Connect calls. Must be
@@ -259,15 +247,15 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	p.host = ip
 	p.port = port
+	p.Opened(p.transport.network(), ip, port, p.tsSink)
 	cfg := defaultCacheConfig()
 	p.trees = newSlotTreeCache(cfg.MaxSize, cfg.TTL)
 	p.subHandles = map[subKey]SubHandle{}
-	p.profile = &compliance.Profile{}
 	// p.tsSink is guaranteed non-nil here: every transport path
 	// (connectUDP/connectTCP/connectAN2 above) allocates it before
 	// returning, so the former `if p.tsSink == nil` guard was unreachable.
 	p.walker = NewWalker(p.client)
-	p.walker.SetProfile(p.profile)
+	p.walker.SetProfile(p.ComplianceProfile())
 	p.logger.Info("acp1 connected",
 		"host", ip, "port", port, "transport", p.transport)
 
@@ -289,6 +277,34 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	return nil
 }
 
+// clientHooks is the one place the rx/tx taps are built, so all three
+// transports (UDP, TCP direct, AN2) count and timestamp identically.
+//
+// Counting is aggregate rather than per-command: these hooks see a byte
+// count, not a decoded message, and ACP1's command axis (MCODE) is inside
+// the frame. Frames and bytes are what the scrape was missing entirely.
+func (p *Plugin) clientHooks() ClientConfig {
+	sink, met := p.tsSink, p.Metrics()
+	return ClientConfig{
+		OnRx: func(n int) {
+			if sink != nil {
+				sink.recordRx()
+			}
+			if met != nil {
+				met.ObserveRx(n)
+			}
+		},
+		OnTx: func(n int) {
+			if sink != nil {
+				sink.recordTx()
+			}
+			if met != nil {
+				met.ObserveTx(n, 0)
+			}
+		},
+	}
+}
+
 // connectUDP builds the UDP session: connected datagram socket +
 // request/reply Client + best-effort Listener on the same port for
 // announcements. Listener bind failure is non-fatal.
@@ -299,15 +315,15 @@ func (p *Plugin) connectUDP(ctx context.Context, ip string, port int) error {
 	}
 	p.udpConn = conn
 	var tr Transport = conn
-	if p.recorder != nil {
-		tr = p.recorder.WrapTransport(conn, "acp1")
+	if rec := p.Recorder(); rec != nil {
+		tr = rec.WrapTransport(conn, "acp1")
 	}
 	// Wrap with timestamp tap so SessionHealth (#266) sees rx/tx
 	// activity without each call needing to probe the wire.
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	tr = &timestampingTransport{inner: tr, sink: p.tsSink}
+	tr = &timestampingTransport{inner: tr, sink: p.tsSink, met: p.Metrics()}
 	p.client = NewClient(tr, p.logger, ClientConfig{})
 
 	mkListener := p.newListener
@@ -339,15 +355,11 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	cfg := ClientConfig{
-		// Keep-alive RX tap — TCP doesn't go through
-		// timestampingTransport (the UDP-only wrapper), so the
-		// TCPClient surfaces every received frame through OnRx
-		// instead. Without this the watchdog never sees rx and
-		// flips the session to dead after the first timeout window.
-		OnRx: p.tsSink.recordRx,
-	}
-	p.client = NewTCPClient(conn, p.logger, cfg)
+	// TCP doesn't go through timestampingTransport (the UDP-only wrapper),
+	// so the TCPClient surfaces every frame through OnRx/OnTx instead.
+	// Without the rx tap the watchdog never sees traffic and flips the
+	// session to dead after the first timeout window.
+	p.client = NewTCPClient(conn, p.logger, p.clientHooks())
 	return nil
 }
 
@@ -357,20 +369,33 @@ func (p *Plugin) connectTCP(ctx context.Context, ip string, port int) error {
 // handles replies and announcements on the one socket — no separate
 // listener needed.
 func (p *Plugin) connectAN2(ctx context.Context, ip string, port int) error {
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp4", net.JoinHostPort(ip, strconv.Itoa(port)))
+	conn, err := p.dial().DialContext(ctx, "tcp4", net.JoinHostPort(ip, strconv.Itoa(port)))
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
-	// unreachable type-assert guard elided: net.Dialer.DialContext over
-	// "tcp4" always yields a *net.TCPConn on success.
-	tcpConn := conn.(*net.TCPConn)
-	_ = tcpConn.SetNoDelay(true)
 	if p.tsSink == nil {
 		p.tsSink = &timestampSink{}
 	}
-	p.client = NewAN2Client(tcpConn, p.logger, ClientConfig{OnRx: p.tsSink.recordRx})
+	p.client = NewAN2Client(conn, p.logger, p.clientHooks())
 	return nil
+}
+
+// dial returns the injected dialer, or the shared default.
+//
+// AN2 was the one acp1 transport that opened its own socket — UDP and TCP
+// direct already go through transport.DialUDP / transport.DialTCP — so it
+// also missed the socket policy those apply. The default here keeps Nagle
+// off (ACP1 messages are ≤141 bytes and latency-sensitive) and adds the
+// SO_KEEPALIVE this path never had.
+//
+// Plugin is built as a bare struct literal throughout the package, so the
+// nil case is the normal one; a caller that wants a different pipe sets the
+// field.
+func (p *Plugin) dial() transport.Dialer {
+	if p.dialer != nil {
+		return p.dialer
+	}
+	return transport.TCPDialer{Options: transport.SocketOptions{NoDelay: true}}
 }
 
 // Disconnect tears down whichever transport is active and clears all
@@ -400,6 +425,11 @@ func (p *Plugin) Disconnect() error {
 	p.udpConn = nil
 	p.tcpConn = nil
 	p.client = nil
+	p.Closed()
+	// One-line session summary, the same shape probel has emitted since the
+	// metrics work landed. Most consumer verbs are one-shot, so this is
+	// where the counters become visible at all.
+	p.logger.Info("acp1 session metrics", slog.String("summary", p.Metrics().Summary()))
 	p.walker = nil
 	p.trees = nil
 	p.subHandles = nil
@@ -418,6 +448,18 @@ func (k TransportKind) String() string {
 		return "an2"
 	case TransportAuto:
 		return "auto"
+	default:
+		return "udp"
+	}
+}
+
+// network is the net package name for this transport, which is what
+// decides whether a connect attempt carries any information. TCP direct
+// and AN2 are both TCP streams; UDP is not.
+func (k TransportKind) network() string {
+	switch k {
+	case TransportTCPDirect, TransportAN2:
+		return "tcp"
 	default:
 		return "udp"
 	}

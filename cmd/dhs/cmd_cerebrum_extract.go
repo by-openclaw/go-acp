@@ -105,13 +105,29 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	if swRev == "" {
 		swRev = probe("IDENTITY.Product Version", "Identity.Software rev", "BOARD.Hardware Version", "Identity.Hardware rev")
 	}
+	// Contract (ADR-0022): the DM is keyed by Model@SwRev — but that is a
+	// key, not an operator input. A device with no identity object (the
+	// Cerebrum SERVER itself, and any node that simply does not publish one)
+	// must STILL walk and store: fall back to the device's own address/name
+	// as Model and "unknown" as SwRev, loudly. --product / --version
+	// override; they are never required.
+	identityFromTree := model != "" && swRev != ""
 	if model == "" {
-		return fmt.Errorf("cerebrum-nb extract: no Model — the device tree answered no known Card-Name spelling (Neuron or Synapse family); pass --product explicitly")
+		model = sanitizeKey(strings.TrimSpace(deviceName))
+		if model == "" {
+			model = "device"
+		}
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: NOTE — no identity object in the tree; Model defaulted to %q (override with --product)\n", model)
 	}
 	if swRev == "" {
-		return fmt.Errorf("cerebrum-nb extract: no SwRev — the device tree answered no known version spelling (Neuron or Synapse family); pass --version explicitly")
+		swRev = "unknown"
+		fmt.Fprintf(os.Stderr, "cerebrum-nb extract: NOTE — no version object in the tree; SwRev defaulted to %q (override with --version)\n", swRev)
 	}
-	fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
+	if identityFromTree {
+		fmt.Printf("identity: %s@%s (from the device tree — same objects as the acp2 probe)\n", model, swRev)
+	} else {
+		fmt.Printf("identity: %s@%s (defaulted — device published no identity object)\n", model, swRev)
+	}
 
 	// ADR-0028 manifest key = the device's OWN IP (never the NB server
 	// endpoint — every device behind one Cerebrum would collide on it).

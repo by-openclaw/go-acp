@@ -50,9 +50,9 @@ func netCodes(fs []Finding) map[string]int {
 
 func TestNetworkMulticastRanges(t *testing.T) {
 	h := netHarvest(map[string]activeEndpoint{
-		"aaaa": ep("224.0.0.55", "192.168.1.10"),   // link-local control → ERROR
-		"bbbb": ep("233.252.0.9", "192.168.1.11"),  // doc range → WARN
-		"cccc": ep("239.10.0.5", "192.168.1.12"),   // admin-scoped, clean
+		"aaaa": ep("224.0.0.55", "192.168.1.10"),  // link-local control → ERROR
+		"bbbb": ep("233.252.0.9", "192.168.1.11"), // doc range → WARN
+		"cccc": ep("239.10.0.5", "192.168.1.12"),  // admin-scoped, clean
 	}, nil, nil)
 	by := netCodes(checkNetworkPlane(h, nil))
 	if by["NMOS-NET-MCAST-LINKLOCAL"] != 1 {

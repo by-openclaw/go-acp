@@ -6,9 +6,9 @@ import (
 
 func TestSplitDevicePath(t *testing.T) {
 	cases := []struct {
-		in              string
-		dev, sub, obj   string
-		wantErr         bool
+		in            string
+		dev, sub, obj string
+		wantErr       bool
 	}{
 		{"BOARD-A.SUB1.Status.Connected", "BOARD-A", "SUB1", "Status.Connected", false},
 		{"DeviceX.Y.Z", "DeviceX", "Y", "Z", false},

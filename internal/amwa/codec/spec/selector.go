@@ -41,8 +41,8 @@ func SelectHighestMutual[T Versioned](r *Registry[T], peerVersions []string) (T,
 		}
 	}
 	return zero, ErrNoCommonVersion{
-		SpecID:        r.SpecID(),
-		Mine:          mine,
+		SpecID:         r.SpecID(),
+		Mine:           mine,
 		PeerAdvertised: peerVersions,
 	}
 }

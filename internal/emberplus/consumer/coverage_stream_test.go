@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
 	"dhs/internal/emberplus/codec/glow"
 )
 
@@ -24,7 +23,6 @@ func newStreamTestPlugin(t *testing.T, streamID int64, desc *glow.StreamDescript
 		subs:        map[string]consumer.EventFunc{},
 		streamSubs:  map[string][]int32{},
 		streamIndex: map[int64][]string{},
-		profile:     &compliance.Profile{},
 	}
 	gp := &glow.Parameter{
 		Number:              1,

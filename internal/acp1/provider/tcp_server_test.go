@@ -256,7 +256,7 @@ func TestServeTCP_AnnounceBroadcast_AcrossSessions(t *testing.T) {
 
 	setReq := &codec.Message{
 		MTID: 1, MType: codec.MTypeRequest, MAddr: 1,
-		MCode: byte(codec.MethodSetValue),
+		MCode:    byte(codec.MethodSetValue),
 		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05}, // i16 BE = 5
 	}

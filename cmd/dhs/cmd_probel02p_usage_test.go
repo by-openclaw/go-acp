@@ -87,10 +87,10 @@ func TestSW02ImportPlan(t *testing.T) {
 		{Src: 5, Dst: 2, Levels: "0"},
 	}
 	rows := []cerebrumXpointRow{
-		{Dest: "1", Srce: "3", Levels: []string{"0"}},        // already converged
-		{Dest: "2", Srce: "9", Levels: []string{"0"}},        // change 5 -> 9
-		{Dest: "4", Srce: "7", Levels: []string{"0", "1"}},   // new route (level 1 part skipped)
-		{Dest: "6", Srce: "2", Levels: []string{"2"}},        // other level entirely
+		{Dest: "1", Srce: "3", Levels: []string{"0"}},      // already converged
+		{Dest: "2", Srce: "9", Levels: []string{"0"}},      // change 5 -> 9
+		{Dest: "4", Srce: "7", Levels: []string{"0", "1"}}, // new route (level 1 part skipped)
+		{Dest: "6", Srce: "2", Levels: []string{"2"}},      // other level entirely
 	}
 	cells, skipped, err := sw02ImportPlan(current, rows, 0)
 	if err != nil {

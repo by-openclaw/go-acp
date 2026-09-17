@@ -2,19 +2,39 @@ package main
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"flag"
 	"fmt"
+	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	"dhs/internal/logging"
-	"dhs/internal/consumer"
 	"dhs/internal/acp1/consumer"
+	"dhs/internal/consumer"
 	"dhs/internal/datastore"
+	"dhs/internal/logging"
+	rccodec "dhs/internal/snell-rollcall/codec"
 	"dhs/internal/transport"
 )
+
+// pluginDeps builds the dependency set every connector is constructed with.
+//
+// One place, so that arming TLS, a keepalive policy or a peer allow-list
+// later is a change here rather than in ten connectors. WithDefaults fills
+// whatever this does not set, so a connector always receives a usable set.
+func pluginDeps(logger *slog.Logger) plugin.Deps {
+	return plugin.Deps{Logger: logger}
+}
+
+// pluginDepsWithLevel is pluginDeps for a caller that kept the level it built
+// the logger with, so a connector can offer its own logging as a control.
+func pluginDepsWithLevel(logger *slog.Logger, level *slog.LevelVar) plugin.Deps {
+	return plugin.Deps{Logger: logger, LogLevel: level}
+}
 
 // treeStore is the global file-backed tree store, initialized once.
 // Per ADR-0020 Bucket 4: rooted at <project>/.cache/devices/{ip}/slot_{n}.json
@@ -33,16 +53,32 @@ func init() {
 type commonFlags struct {
 	// verb is the FlagSet name ("export", "walk", …) — labels the
 	// ADR-0028 default capture folder; never user-visible otherwise.
-	verb              string
-	protocol          string
-	transport         string
-	port              int
-	timeout           time.Duration
-	keepalive         time.Duration
-	keepaliveTimeout  time.Duration
-	verbose           bool
-	logLevel          string
-	capture           string
+	verb             string
+	protocol         string
+	transport        string
+	port             int
+	timeout          time.Duration
+	keepalive        time.Duration
+	keepaliveTimeout time.Duration
+	userLevel        string
+	clientName       string
+	verbose          bool
+	logLevel         string
+	logFormat        string
+	logPath          string
+	syslogAddr       string
+	logRetention     int
+	capture          string
+
+	// eventLogger + logHasSink are set by connect(): the uniform-logging
+	// contract (epic #987, Model B). The terminal always shows the human
+	// data tables; when a structured sink (--log file / --syslog-addr
+	// server) is configured, a verb (e.g. watch) ALSO emits each event as a
+	// structured record through eventLogger — which writes ONLY to the
+	// sinks, never the terminal. nil / false when no sink is configured.
+	eventLogger *slog.Logger
+	logHasSink  bool
+	logCleanup  func()
 
 	// captureDir is populated by connect() when --capture points at a
 	// directory (or at a path without a .jsonl extension). In that
@@ -80,8 +116,21 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"keep-alive dead-man threshold (0 = 3× --keepalive; -1 = never "+
 			"declare session dead). Watch verb shows freshness=cache once "+
 			"this elapses without rx; values stay decoded against the cached schema.")
+	fs.StringVar(&cf.userLevel, "user-level", "",
+		"snell-rollcall only: the user level every session is opened at — user, engineer, "+
+			"supervisor (the default) or factory. A unit hides menu lines above the session's "+
+			"level and refuses writes to a factory-gated command below factory, so a walk at "+
+			"another level is filed under its own DM key (IQDBE00@5.0.cs5@factory).")
+	fs.StringVar(&cf.clientName, "client-name", "",
+		"snell-rollcall only: how this client is named in the unit's connection list and "+
+			"in its announcements (default 'dhs rollcall'). Twenty bytes; an operator reads it "+
+			"before disconnecting clients for a firmware upgrade.")
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
+	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
+	fs.StringVar(&cf.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/<proto>/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
+	fs.StringVar(&cf.syslogAddr, "syslog-addr", "", "also forward logs as RFC 5424 UDP datagrams to host:port (remote server sink; non-blocking, drops counted)")
+	fs.IntVar(&cf.logRetention, "log-retention", 0, "days of rotated daily log files to keep (the local log rolls at midnight into <verb>-YYYY-MM-DD.log). 0 = keep every day")
 	fs.StringVar(&cf.capture, "capture", "",
 		"capture traffic. Path ending in .jsonl → single-file raw frame log "+
 			"(ACP1/ACP2/Ember+). Any other path → directory mode: writes "+
@@ -156,11 +205,37 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		return nil, nil, fmt.Errorf("host argument is required")
 	}
 
+	// A target may be written "host:port" — every operator does, and the
+	// help text for several verbs shows it that way. Split it here, once,
+	// rather than in each plugin: without this the port survives into the
+	// host string and the session appends the default on top, producing
+	// "10.6.250.105:9000:9000" and a "too many colons" dial error.
+	//
+	// An explicit --port wins, so a caller can override a pasted address.
+	if h, p, err := net.SplitHostPort(host); err == nil {
+		if n, cerr := strconv.Atoi(p); cerr == nil && n > 0 && n <= 65535 {
+			host = h
+			if cf.port == 0 {
+				cf.port = n
+			}
+		}
+	}
+
 	lvl := logging.ParseLevel(cf.logLevel)
 	if cf.verbose && lvl > logging.LevelDebug {
 		lvl = logging.LevelDebug // --verbose is shortcut for --log-level debug
 	}
-	logger := logging.NewTextLogger(lvl)
+	// Uniform logging (epic #987, Model B): stderr stays human; --log FILE
+	// and --syslog-addr are structured sinks in --log-format (syslog
+	// default). With no sink this is exactly the old stderr text logger.
+	op, event, logCleanup, hasSink, lerr := buildConsumerLoggers(
+		lvl, cf.logFormat, cf.logPath, cf.syslogAddr,
+		defaultLogPath(cf.protocol, hostOnly(host), cf.verb), cf.logRetention)
+	if lerr != nil {
+		return nil, nil, lerr
+	}
+	cf.eventLogger, cf.logHasSink, cf.logCleanup = event, hasSink, logCleanup
+	logger := op
 
 	// Optional traffic capture for test data generation. The literal
 	// "auto" resolves to the ADR-0028 evidence home as a capture DIR
@@ -198,7 +273,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 		return nil, nil, err
 	}
-	plug := factory.New(logger)
+	plug := factory.New(pluginDeps(logger))
 
 	// Attach recorder if --capture was given.
 	if recorder != nil {
@@ -222,6 +297,13 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		default:
 			return nil, nil, fmt.Errorf("unknown --transport %q (use auto / udp / tcp / an2)", cf.transport)
 		}
+	}
+
+	// The user level and the client name are RollCall's, applied through the
+	// optional setters; a flag given to a protocol that has no such thing is a
+	// mistake worth refusing rather than ignoring.
+	if err := applyRollCallIdentity(plug, cf.userLevel, cf.clientName); err != nil {
+		return nil, nil, err
 	}
 
 	// Keep-alive selection is also plugin-specific via the optional
@@ -258,8 +340,75 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		if recorder != nil {
 			_ = recorder.Close()
 		}
+		if cf.logCleanup != nil {
+			cf.logCleanup()
+		}
 	}
 	return plug, cleanup, nil
+}
+
+// applyRollCallIdentity sets the user level and client name on a plugin that
+// has them. Nothing given is nothing done; something given to a plugin that
+// cannot take it is refused, since the operator asked for a level they would
+// not be getting.
+func applyRollCallIdentity(plug any, level, name string) error {
+	if level != "" {
+		p, ok := plug.(interface{ SetUserLevel(rccodec.UserLevel) error })
+		if !ok {
+			return fmt.Errorf("--user-level: this protocol has no user levels")
+		}
+		lv, ok := rccodec.ParseUserLevel(level)
+		if !ok {
+			return fmt.Errorf("--user-level %q: want user, engineer, supervisor or factory", level)
+		}
+		if err := p.SetUserLevel(lv); err != nil {
+			return err
+		}
+	}
+	if name != "" {
+		p, ok := plug.(interface{ SetName(string) })
+		if !ok {
+			return fmt.Errorf("--client-name: this protocol has no client name")
+		}
+		p.SetName(name)
+	}
+	return nil
+}
+
+// reconnectPlugin re-establishes an existing plugin's session IN PLACE, for
+// a long-running verb whose link died mid-run.
+//
+// It reuses the plugin rather than building a new one through connect(),
+// which matters for three reasons. The caller's `plug` variable never
+// changes, so nothing racing the reconnect can observe a half-swapped
+// plugin. The loggers and the --capture recorder stay open, instead of a
+// reconnect silently rotating the operator's log or truncating the capture.
+// And the per-plugin configuration applied at connect time — transport kind,
+// keep-alive cadence, recorder — persists, because it lives on the plugin.
+//
+// Protocol.Connect is documented as callable more than once for exactly
+// this. Disconnect first so a half-open session is released rather than
+// leaked.
+func reconnectPlugin(ctx context.Context, plug consumer.Protocol, host string, cf *commonFlags) error {
+	port := cf.port
+	if port == 0 {
+		factory, err := consumer.Get(cf.protocol)
+		if err != nil {
+			return err
+		}
+		port = factory.Meta().DefaultPort
+	}
+	_ = plug.Disconnect()
+
+	// Same floor as connect(): a tight --timeout must not kill a reconnect
+	// that legitimately needs several round trips.
+	dialTimeout := cf.timeout
+	if dialTimeout < 5*time.Second {
+		dialTimeout = 5 * time.Second
+	}
+	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+	defer cancel()
+	return plug.Connect(dialCtx, host, port)
 }
 
 // connectWithRetry wraps connect() with the same exponential backoff

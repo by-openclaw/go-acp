@@ -24,22 +24,22 @@ type Process struct {
 	lastSampleAt atomic.Int64
 
 	// Go heap / GC metrics (subset of runtime.MemStats).
-	heapAlloc      atomic.Uint64
-	heapSys        atomic.Uint64
-	heapIdle       atomic.Uint64
-	heapInuse      atomic.Uint64
-	heapReleased   atomic.Uint64
-	stackInuse     atomic.Uint64
-	totalAlloc     atomic.Uint64
-	mallocs        atomic.Uint64
-	frees          atomic.Uint64
-	numGC          atomic.Uint64
-	pauseTotalNs   atomic.Uint64
-	gcCPUFraction  atomic.Uint64 // stored as ppm (parts-per-million) since atomic.Float64 is Go 1.25+
-	nextGC         atomic.Uint64
-	goroutines     atomic.Int64
-	osThreads      atomic.Int64
-	numCPU         atomic.Int64
+	heapAlloc     atomic.Uint64
+	heapSys       atomic.Uint64
+	heapIdle      atomic.Uint64
+	heapInuse     atomic.Uint64
+	heapReleased  atomic.Uint64
+	stackInuse    atomic.Uint64
+	totalAlloc    atomic.Uint64
+	mallocs       atomic.Uint64
+	frees         atomic.Uint64
+	numGC         atomic.Uint64
+	pauseTotalNs  atomic.Uint64
+	gcCPUFraction atomic.Uint64 // stored as ppm (parts-per-million) since atomic.Float64 is Go 1.25+
+	nextGC        atomic.Uint64
+	goroutines    atomic.Int64
+	osThreads     atomic.Int64
+	numCPU        atomic.Int64
 }
 
 // NewProcess returns a Process with one initial sample.

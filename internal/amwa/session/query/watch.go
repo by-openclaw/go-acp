@@ -108,11 +108,51 @@ func (c *Client) Subscribe(ctx context.Context, req SubscribeRequest) (*Subscrip
 type GrainFunc func(*is04.Grain) error
 
 // WatchOptions tunes a Watch call.
+// Defaults for a 24/7 subscription. A quiet plant is normal, so liveness
+// cannot be inferred from grain traffic; it is established by our own pings,
+// and only then is a read deadline safe.
+const (
+	DefaultKeepAlive   = 30 * time.Second
+	DefaultReadTimeout = 90 * time.Second
+)
+
 type WatchOptions struct {
-	// ReadTimeout bounds a single frame read. Zero means wait indefinitely,
-	// which is what a low-traffic plant needs — an idle subscription is
-	// normal, not a fault.
+	// ReadTimeout bounds how long the peer may be silent before the read
+	// fails. It is a LIVENESS bound, not a traffic bound: KeepAlive pings
+	// and their pongs re-arm it, so an idle-but-healthy subscription never
+	// trips it. Zero takes DefaultReadTimeout; negative disables it.
+	//
+	// It used to default to "wait indefinitely" on the grounds that an idle
+	// subscription is normal. It is — but "indefinitely" also covers a
+	// half-open socket, and then a 24/7 watch parks forever: connected to
+	// nothing, reporting nothing, never failing.
 	ReadTimeout time.Duration
+
+	// KeepAlive is the client-side ping cadence that proves the peer is
+	// still there on a quiet subscription. Zero takes DefaultKeepAlive;
+	// negative disables pinging.
+	KeepAlive time.Duration
+}
+
+// resolve expands the zero/negative sentinels into concrete durations.
+func (o WatchOptions) resolve() (readTimeout, keepAlive time.Duration) {
+	switch {
+	case o.ReadTimeout < 0:
+		readTimeout = 0
+	case o.ReadTimeout == 0:
+		readTimeout = DefaultReadTimeout
+	default:
+		readTimeout = o.ReadTimeout
+	}
+	switch {
+	case o.KeepAlive < 0:
+		keepAlive = 0
+	case o.KeepAlive == 0:
+		keepAlive = DefaultKeepAlive
+	default:
+		keepAlive = o.KeepAlive
+	}
+	return readTimeout, keepAlive
 }
 
 // Watch dials a subscription's WebSocket and streams grains to fn until the
@@ -146,14 +186,39 @@ func Watch(ctx context.Context, wsHref string, fn GrainFunc, opts WatchOptions) 
 		}
 	}()
 
+	readTimeout, keepAlive := opts.resolve()
+	// The deadline lives in the socket and is re-armed by the WS layer on
+	// every inbound frame, so a pong counts as liveness just like a grain.
+	ws.SetIdleTimeout(readTimeout)
+
+	// Client-side keep-alive. A Registry with nothing to report sends
+	// nothing, so without our own pings there is no way to tell a quiet
+	// subscription from a dead one.
+	if keepAlive > 0 {
+		ticker := time.NewTicker(keepAlive)
+		defer ticker.Stop()
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := ws.SendPing(nil); err != nil {
+						// The socket is gone; closing makes the blocked
+						// ReadText return instead of waiting out the deadline.
+						_ = ws.Close()
+						return
+					}
+				}
+			}
+		}()
+	}
+
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
-		}
-		if opts.ReadTimeout > 0 {
-			if err := ws.SetReadDeadline(time.Now().Add(opts.ReadTimeout)); err != nil {
-				return fmt.Errorf("query: set read deadline: %w", err)
-			}
 		}
 		frame, err := ws.ReadText()
 		if err != nil {

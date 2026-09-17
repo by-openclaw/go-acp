@@ -66,7 +66,7 @@ func TestCanonicalize_RichParameterAndLeafNode(t *testing.T) {
 				Kind: consumer.KindInt, Access: 3,
 				Value: consumer.Value{Kind: consumer.KindInt, Int: 0},
 				Min:   int64(-10), Max: int64(10), Step: int64(1), Def: int64(0),
-				Unit:  unit},
+				Unit: unit},
 			// A Node object whose path == GRP — GRP was already materialised
 			// as a placeholder by the leaf above → exercises the
 			// existing-node upgrade arm.
@@ -208,7 +208,7 @@ func TestConnect_GetDeviceInfoCloses(t *testing.T) {
 	host, port, stop := handshakeListener(t, 1, nil) // answer only GetVersion
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err == nil {
@@ -229,7 +229,7 @@ func TestConnect_ACP2GetVersionCloses(t *testing.T) {
 	})
 	defer stop()
 
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 	if err := s.Connect(ctx, host, port); err == nil {

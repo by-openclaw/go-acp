@@ -109,7 +109,7 @@ NMOS Phase 2 Steps 1-14 all merged on main 2026-05-01:
   IS-04 Controller `watch` verb, IS-05 plugin (#163), IS-08 plugin
   (#165), IS-12+MS-05-02 plugin layer (#166), IS-07 MQTT (#185).
 
-**Phase A real-peer test against EVS Cerebrum 10.100.0.5:8080
+**Phase A real-peer test against EVS Cerebrum 10.6.250.5:8080
 in progress 2026-05-01.** A1-A5 passed (reach + decode + register
 all 6 resource types + heartbeat + round-trip walk). 1 codec bug
 found and fixed (PR #187 above). 3 Cerebrum-side mismatches under
@@ -276,7 +276,23 @@ terminal and a tshark capture can be diffed line-for-line.
 Cerebrum NB (feature branch): see `dhs consumer cerebrum-nb -h` and
 `internal/cerebrum-nb/CLAUDE.md`. Spec is authoritative — DOCX in
 `internal/cerebrum-nb/assets/`. Default port 40007. Credentials via
-`$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`. Workflow rule
+`$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`.
+
+**One secret per credential, KV v2 shape only.** A credential lives in
+exactly ONE file under `.secrets/`, in the Vault KV v2 envelope — a
+`vault_path` naming its KV v2 path (ADR-0010), plus `fields` holding the
+secret. Never add a second copy in another format (a flat `.env`, a shell
+export file): the duplicate drifts, and the stale copy then fails auth
+against a rotated account while looking correct. Populate the environment
+from the KV2 file at run time instead of storing it twice:
+
+```sh
+S=.secrets/staging-cerebrum.json
+export DHS_CEREBRUM_USER=$(grep -o '"user"[[:space:]]*:[[:space:]]*"[^"]*"' "$S" | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')
+export DHS_CEREBRUM_PASS=$(grep -o '"pass"[[:space:]]*:[[:space:]]*"[^"]*"' "$S" | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')
+```
+
+Workflow rule
 (2026-04-30): every new verb is described as text first (name + wire
 frame + flags + RX + output); implement only after explicit user
 approval — see [`docs/user.md`](docs/user.md) "Approval discipline".

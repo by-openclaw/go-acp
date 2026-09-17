@@ -16,7 +16,7 @@ func TestUDPSender_MessageReachesListener(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 	dest := listener.LocalAddr().(*net.UDPAddr)
 
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	defer func() { _ = s.close() }()
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
@@ -53,7 +53,7 @@ func TestUDPSender_BundleReachesListener(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 	dest := listener.LocalAddr().(*net.UDPAddr)
 
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	defer func() { _ = s.close() }()
 	_ = s.bind("127.0.0.1:0")
 	_ = s.addDest(dest.IP.String(), dest.Port)
@@ -81,7 +81,7 @@ func TestUDPSender_BundleReachesListener(t *testing.T) {
 }
 
 func TestUDPSender_NoDest(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	_ = s.bind("127.0.0.1:0")
 	defer func() { _ = s.close() }()
 	if err := s.sendMessage(codec.Message{Address: "/x"}); err == nil {

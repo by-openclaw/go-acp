@@ -18,15 +18,15 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	"dhs/internal/metrics"
-	"dhs/internal/probel-sw02p/codec"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
+	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 	"dhs/internal/transport"
 )
 
@@ -66,9 +66,12 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	}
 }
 
-// New constructs a fresh consumer plugin bound to the given logger.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{logger: logger}
+// New constructs a fresh consumer plugin bound to the injected dependencies.
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, DefaultOnlineStaleAfter)
+	return p
 }
 
 // MatrixConfig holds the externally-supplied matrix shape. SW-P-02
@@ -109,13 +112,22 @@ type MatrixConfig struct {
 // one matrix (host:port). Per-command state (name caches, tally cache,
 // etc.) is added as subsequent commits land their PRs.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: the
+	// only protocol-specific parts are the stale window and the metrics
+	// Connector this consumer already counts every frame through.
+	consumer.Base
+
 	logger *slog.Logger
 
-	mu       sync.Mutex
-	host     string
-	port     int
-	client   *codec.Client
-	recorder *transport.Recorder
+	// net is the only way this plugin reaches a socket. Injected, so the
+	// process decides the transport posture (TLS, keepalive, source
+	// address) and a test substitutes a fake without a real port.
+	net transport.Net
+
+	mu     sync.Mutex
+	host   string
+	port   int
+	client *session.Client
 
 	// matrixCfg holds caller-supplied matrix shape + bootstrap/keep-
 	// alive knobs. Set via SetMatrixConfig before Connect; defaults
@@ -125,16 +137,6 @@ type Plugin struct {
 	// keepaliveCancel stops the per-session bootstrap + keep-alive
 	// goroutine. Nil unless one is running.
 	keepaliveCancel context.CancelFunc
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
-
-	// metricsConn carries rx/tx counters + error counters. Nil until
-	// Connect fires; callers read via Metrics(). Preserved after
-	// Disconnect so post-mortem summaries are still available.
-	metricsConn *metrics.Connector
 }
 
 // SetMatrixConfig records the caller-supplied matrix shape + poll
@@ -154,15 +156,6 @@ func (p *Plugin) MatrixConfig() MatrixConfig {
 	return p.matrixCfg
 }
 
-// Metrics returns the session-scoped connector metrics. Nil before
-// Connect, non-nil after (preserved across Disconnect). Safe from any
-// goroutine — metrics.Connector is internally synchronised.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.metricsConn
-}
-
 // IsOnline reports whether the plugin considers the matrix alive —
 // true if we have seen any rx frame within DefaultOnlineStaleAfter.
 // Mirrors the canonical.Header.IsOnline flag surfaced by the Ember+
@@ -175,33 +168,11 @@ func (p *Plugin) IsOnline() bool {
 
 // IsOnlineWithin is IsOnline with an explicit staleness threshold.
 func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
-	p.mu.Lock()
-	met := p.metricsConn
-	p.mu.Unlock()
-	if met == nil {
-		return false
-	}
-	snap := met.Snapshot()
+	snap := p.Metrics().Snapshot()
 	if snap.LastRxAt.IsZero() {
 		return false
 	}
 	return time.Since(snap.LastRxAt) < stale
-}
-
-// ComplianceProfile returns the session-scoped compliance profile.
-// Nil before Connect, non-nil after.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
 }
 
 // Connect opens a TCP session to the matrix. Idempotent when called
@@ -221,20 +192,18 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	prof := &compliance.Profile{}
-	met := metrics.NewConnector()
+	met := p.Metrics()
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids. Empty in the scaffold;
 	// per-command commits populate the catalogue.
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
-	cfg := codec.ClientConfig{
+	cfg := session.ClientConfig{
 		OnTx: func(b []byte) { observeTxBytes(met, b) },
 		OnRx: func(b []byte) { observeRxBytes(met, b) },
 	}
-	if p.recorder != nil {
-		rec := p.recorder
+	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
 		cfg.OnTx = func(b []byte) {
@@ -246,15 +215,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw02p", "rx", b)
 		}
 	}
-	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
+	cli, err := session.Dial(ctx, p.net, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.client = cli
 	p.host = ip
 	p.port = port
-	p.profile = prof
-	p.metricsConn = met
+	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
 	p.logger.Info("probel-sw02p connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
@@ -274,11 +242,12 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	cli := p.client
-	met := p.metricsConn
+	met := p.Metrics()
 	cancel := p.keepaliveCancel
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.Closed()
 	p.keepaliveCancel = nil
 	p.mu.Unlock()
 	if cancel != nil {
@@ -297,7 +266,7 @@ func (p *Plugin) Disconnect() error {
 
 // getClient returns the in-flight TCP client, or ErrNotConnected.
 // Helper for per-command methods added by follow-up commits.
-func (p *Plugin) getClient() (*codec.Client, error) {
+func (p *Plugin) getClient() (*session.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
@@ -306,9 +275,9 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	return p.client, nil
 }
 
-// ExposeClient returns the underlying codec.Client for callers that
+// ExposeClient returns the underlying session.Client for callers that
 // need direct Subscribe / raw frame access.
-func (p *Plugin) ExposeClient() (*codec.Client, error) {
+func (p *Plugin) ExposeClient() (*session.Client, error) {
 	return p.getClient()
 }
 

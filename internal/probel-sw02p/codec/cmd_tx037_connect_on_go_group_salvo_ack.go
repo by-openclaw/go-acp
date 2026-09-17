@@ -46,8 +46,8 @@ func DecodeConnectOnGoGroupSalvoAck(f Frame) (ConnectOnGoGroupSalvoAckParams, er
 	}
 	mult := f.Payload[0]
 	return ConnectOnGoGroupSalvoAckParams{
-		Destination: (uint16(mult>>4) & 0x07) * 128 + uint16(f.Payload[1]),
-		Source:      (uint16(mult) & 0x07) * 128 + uint16(f.Payload[2]),
+		Destination: (uint16(mult>>4)&0x07)*128 + uint16(f.Payload[1]),
+		Source:      (uint16(mult)&0x07)*128 + uint16(f.Payload[2]),
 		SalvoID:     f.Payload[3] & 0x7F,
 	}, nil
 }

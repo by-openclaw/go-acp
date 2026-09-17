@@ -952,7 +952,7 @@ func (s *Store) ingestTyped(env *is04.RegistrationRequest) error {
 // inbound JSON shape differs across minors:
 //
 //   - v1.0:        required = {id, version, label}
-//                  (`tags` and `description` were added in v1.1)
+//     (`tags` and `description` were added in v1.1)
 //   - v1.1, v1.2:  required = {id, version, label, description, tags}
 //   - v1.3:        required = {id, version, label, description, tags}
 //

@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"dhs/internal/consumer"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
-	"dhs/internal/consumer"
 	"dhs/internal/wiretrace"
 )
 

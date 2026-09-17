@@ -2,6 +2,7 @@ package probelsw02p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -236,7 +237,7 @@ func TestStopWithoutListener(t *testing.T) {
 // a nil logger is replaced with slog.Default() and the server still
 // builds.
 func TestNewServerNilLogger(t *testing.T) {
-	srv := newServer(nil, nil)
+	srv := newServer(plugin.Deps{Logger: nil}, nil)
 	if srv == nil || srv.logger == nil {
 		t.Fatal("newServer(nil,nil) produced nil server/logger")
 	}
@@ -362,7 +363,7 @@ func TestSessionCloseIdempotent(t *testing.T) {
 // session rather than aborting.
 func TestFanOutWriteFailureNotesEventAndContinues(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, nil)
+	srv := newServer(plugin.Deps{Logger: logger}, nil)
 
 	// A dead session: pipe with the far end already closed so Write
 	// errors deterministically.
@@ -414,7 +415,7 @@ func TestSessionRunReturnsOnCancelledContext(t *testing.T) {
 // the debug-log branch and ends the session.
 func TestSessionRunReadErrorDebugBranch(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	srv := newServer(logger, nil)
+	srv := newServer(plugin.Deps{Logger: logger}, nil)
 
 	a, b := net.Pipe()
 	defer func() { _ = b.Close() }()
@@ -465,7 +466,7 @@ func TestSessionRunPartialFrameWaitsThenCompletes(t *testing.T) {
 // a session with a debug-level logger and sending a valid frame.
 func TestSessionRunDebugLoggingPath(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	srv := newServer(logger, nil)
+	srv := newServer(plugin.Deps{Logger: logger}, nil)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -620,7 +621,7 @@ func TestSessionWriteFailureClosesSession(t *testing.T) {
 // coverage flapped run to run.
 func TestStopClosesRegisteredSessions(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, nil)
+	srv := newServer(plugin.Deps{Logger: logger}, nil)
 
 	a, b := net.Pipe()
 	defer func() { _ = b.Close() }()

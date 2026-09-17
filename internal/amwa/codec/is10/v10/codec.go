@@ -22,10 +22,6 @@ func (Codec) APIVer() string    { return "v1.0" }
 func (Codec) SpecPatch() string { return SpecPatch }
 
 func (Codec) DecodeMetadata(raw []byte) (is10.Metadata, error) { return is10.DecodeMetadata(raw) }
-func (Codec) DecodeJWKS(raw []byte) (is10.JWKS, error)         { return is10.DecodeJWKS(raw) }
-func (Codec) VerifyWithKeys(tok string, keys []is10.JWK) (is10.Claims, error) {
-	return is10.VerifyWithKeys(tok, keys)
-}
 
 func init() {
 	is10.Register(Codec{})

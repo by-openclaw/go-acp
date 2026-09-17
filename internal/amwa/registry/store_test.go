@@ -135,7 +135,7 @@ func TestStoreEmitsChangeEvents(t *testing.T) {
 	n := validNode("f47ac10b-58cc-4372-a567-0e02b2c3d479")
 	_ = s.PutNode(n) // created
 	n.Label = "n2"
-	_ = s.PutNode(n) // updated
+	_ = s.PutNode(n)   // updated
 	s.DeleteNode(n.ID) // deleted
 
 	mu.Lock()

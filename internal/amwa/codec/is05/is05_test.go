@@ -8,12 +8,12 @@ import (
 
 func TestActivationModeValidity(t *testing.T) {
 	cases := map[ActivationMode]bool{
-		ActivationModeNone:               true,
-		ActivationModeImmediate:          true,
-		ActivationModeScheduledRelative:  true,
-		ActivationModeScheduledAbsolute:  true,
+		ActivationModeNone:                 true,
+		ActivationModeImmediate:            true,
+		ActivationModeScheduledRelative:    true,
+		ActivationModeScheduledAbsolute:    true,
 		ActivationMode("activate_unknown"): false,
-		ActivationMode("garbage"):           false,
+		ActivationMode("garbage"):          false,
 	}
 	for m, want := range cases {
 		if got := IsValidActivationMode(m); got != want {

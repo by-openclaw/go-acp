@@ -109,9 +109,9 @@ func TestMXLSenderIS04Rules(t *testing.T) {
 		t.Fatalf("sender GET = %d", st)
 	}
 	var snd struct {
-		Transport         string          `json:"transport"`
-		ManifestHref      *string         `json:"manifest_href"`
-		InterfaceBindings []string        `json:"interface_bindings"`
+		Transport         string   `json:"transport"`
+		ManifestHref      *string  `json:"manifest_href"`
+		InterfaceBindings []string `json:"interface_bindings"`
 	}
 	if err := json.Unmarshal(body, &snd); err != nil {
 		t.Fatalf("decode sender: %v", err)

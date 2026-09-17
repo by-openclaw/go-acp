@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"encoding/binary"
 	"io"
 	"log/slog"
@@ -258,7 +259,7 @@ func (c *fakeClient) lastAnnounce() *codec.ACP2Message {
 // server, the dial address, and a stop func that cancels Serve + Stops.
 func startServe(t *testing.T, exp *canonical.Export) (*server, string, func()) {
 	t.Helper()
-	srv := newServer(quietLogger(), exp)
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, exp)
 
 	// Bind ephemeral ourselves to read back the port, then hand the
 	// listener to Serve via a tiny shim: Serve binds its own listener,
@@ -556,7 +557,7 @@ func TestServe_ListenError(t *testing.T) {
 	defer func() { _ = ln.Close() }()
 	addr := ln.Addr().String()
 
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	err = srv.Serve(context.Background(), addr)
 	if err == nil {
 		t.Fatal("Serve on an occupied port should error")
@@ -566,7 +567,7 @@ func TestServe_ListenError(t *testing.T) {
 // TestProviderSetValue_NotImplemented pins the documented Step-2e stub:
 // Provider.SetValue returns an error until that step ships.
 func TestProviderSetValue_NotImplemented(t *testing.T) {
-	srv := newServer(quietLogger(), buildServeExport())
+	srv := newServer(plugin.Deps{Logger: quietLogger()}, buildServeExport())
 	_, err := srv.SetValue(context.Background(), "/some/path", 1)
 	if err == nil {
 		t.Fatal("SetValue should return the not-implemented error")

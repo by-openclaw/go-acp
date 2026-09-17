@@ -9,10 +9,10 @@ func ptr[T any](v T) *T { return &v }
 
 func TestNcMethodStatusValues(t *testing.T) {
 	cases := map[NcMethodStatus]string{
-		NcMethodStatusOk:                 "200",
-		NcMethodStatusBadCommandFormat:   "400",
-		NcMethodStatusBadOid:             "404",
-		NcMethodStatusDeviceError:        "500",
+		NcMethodStatusOk:                   "200",
+		NcMethodStatusBadCommandFormat:     "400",
+		NcMethodStatusBadOid:               "404",
+		NcMethodStatusDeviceError:          "500",
 		NcMethodStatusProtocolVersionError: "505",
 	}
 	for s, want := range cases {

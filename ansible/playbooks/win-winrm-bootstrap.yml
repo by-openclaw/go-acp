@@ -8,11 +8,11 @@
 #
 # RUN IT YOURSELF (the password is prompted, never stored, never logged):
 #
-#   ssh -t root@10.100.0.101
+#   ssh -t root@10.6.250.101
 #   cd ~/acp/ansible && git pull
 #   ansible-playbook playbooks/win-winrm-bootstrap.yml
 #
-# It asks for the Windows password of `by-rune` on dhs-win11 (10.100.0.105) —
+# It asks for the Windows password of `by-rune` on dhs-win11 (10.6.250.105) —
 # the local admin account Ansible already uses over SSH. It is needed ONLY to
 # register the client-certificate mapping; afterwards PSRP authenticates with
 # the certificate and no password is used at runtime.

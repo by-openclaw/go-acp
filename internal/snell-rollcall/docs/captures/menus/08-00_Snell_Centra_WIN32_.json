@@ -1,0 +1,1272 @@
+{
+ "unit": {
+  "addr": "0000-08-00",
+  "net": 0,
+  "unit": 8,
+  "port": 0,
+  "id": 605,
+  "version": "3.0 ",
+  "cmdSet": 12,
+  "name": "Snell Centra WIN32 ",
+  "services": [
+   "MENUS",
+   "CONTROL",
+   "FILE",
+   "MAP",
+   "LONGSTR"
+  ],
+  "serviceBits": 32843
+ },
+ "longStrings": true,
+ "partials": {
+  "0": {
+   "count": 57
+  }
+ },
+ "itemCount": 57,
+ "items": [
+  {
+   "index": 0,
+   "style": "LIST",
+   "styleRaw": 17,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 12,
+   "divScale": 0,
+   "text": "Setup",
+   "format": ""
+  },
+  {
+   "index": 1,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16407,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Controller Active",
+   "format": ""
+  },
+  {
+   "index": 2,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16408,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Controller Type",
+   "format": ""
+  },
+  {
+   "index": 3,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16406,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Config Checksum",
+   "format": ""
+  },
+  {
+   "index": 4,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16409,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Firmware Version",
+   "format": ""
+  },
+  {
+   "index": 5,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16410,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Software Version",
+   "format": ""
+  },
+  {
+   "index": 6,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16411,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "Software Build Date",
+   "format": ""
+  },
+  {
+   "index": 7,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16388,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Unit Name",
+   "format": "Controller"
+  },
+  {
+   "index": 8,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17140,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Information1",
+   "format": "\"Not Set\""
+  },
+  {
+   "index": 9,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17141,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Information2",
+   "format": "\"Not Set\""
+  },
+  {
+   "index": 10,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17200,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Network Nibbles",
+   "format": "1000"
+  },
+  {
+   "index": 11,
+   "style": "NUMBER",
+   "styleRaw": 81,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17203,
+   "min": -1,
+   "max": 3600,
+   "step": 1,
+   "divScale": 1,
+   "text": "Changeover If No Net%d",
+   "format": "%d"
+  },
+  {
+   "index": 12,
+   "style": "CHECKBOX",
+   "styleRaw": 65,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17201,
+   "min": 1,
+   "max": 2,
+   "step": 0,
+   "divScale": 0,
+   "text": "Use Long Names",
+   "format": ""
+  },
+  {
+   "index": 13,
+   "style": "LIST",
+   "styleRaw": 17,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 12,
+   "divScale": 0,
+   "text": "Comms Setup",
+   "format": ""
+  },
+  {
+   "index": 14,
+   "style": "LIST",
+   "styleRaw": 17,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 10,
+   "divScale": 0,
+   "text": "Ethernet",
+   "format": ""
+  },
+  {
+   "index": 15,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16802,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "IP address",
+   "format": "192.168.151.1"
+  },
+  {
+   "index": 16,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16803,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Subnet mask",
+   "format": "255.255.0.0"
+  },
+  {
+   "index": 17,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16804,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Default IP gateway",
+   "format": "0.0.0.0"
+  },
+  {
+   "index": 18,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16801,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 1,
+   "text": "MAC address",
+   "format": ""
+  },
+  {
+   "index": 19,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16810,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "DCCP Port",
+   "format": "2007"
+  },
+  {
+   "index": 20,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16809,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "RollCall IPShare Por2015",
+   "format": "2015"
+  },
+  {
+   "index": 21,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17031,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "RollCall Bridge Port2600",
+   "format": "2600"
+  },
+  {
+   "index": 22,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16900,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Peer IP address",
+   "format": "192.168.151.1"
+  },
+  {
+   "index": 23,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 16901,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Peer DCCP Port",
+   "format": "2007"
+  },
+  {
+   "index": 24,
+   "style": "BUTTON",
+   "styleRaw": 49,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17300,
+   "min": 1,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "Restart",
+   "format": ""
+  },
+  {
+   "index": 25,
+   "style": "CHECKBOX",
+   "styleRaw": 65,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17202,
+   "min": 1,
+   "max": 2,
+   "step": 0,
+   "divScale": 0,
+   "text": "Net Show",
+   "format": ""
+  },
+  {
+   "index": 26,
+   "style": "LIST",
+   "styleRaw": 17,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 10,
+   "divScale": 0,
+   "text": "IP Bridge",
+   "format": ""
+  },
+  {
+   "index": 27,
+   "style": "EDITSTRING",
+   "styleRaw": 129,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17030,
+   "min": 0,
+   "max": 0,
+   "step": 3,
+   "divScale": 0,
+   "text": "Bridge IP Addr",
+   "format": "128.1.1.1"
+  },
+  {
+   "index": 28,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17031,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Bridge IP Port",
+   "format": "%.0f"
+  },
+  {
+   "index": 29,
+   "style": "BUTTON",
+   "styleRaw": 49,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17032,
+   "min": 1,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "Connect",
+   "format": ""
+  },
+  {
+   "index": 30,
+   "style": "BUTTON",
+   "styleRaw": 49,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17033,
+   "min": 1,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "Disconnect",
+   "format": ""
+  },
+  {
+   "index": 31,
+   "style": "CHECKBOX",
+   "styleRaw": 65,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17034,
+   "min": 1,
+   "max": 2,
+   "step": 0,
+   "divScale": 0,
+   "text": "Auto Connect",
+   "format": ""
+  },
+  {
+   "index": 32,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17040,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Addr",
+   "format": "%.0f"
+  },
+  {
+   "index": 33,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17041,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Packets Received",
+   "format": "%.0f"
+  },
+  {
+   "index": 34,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17042,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Packets Sent",
+   "format": "%.0f"
+  },
+  {
+   "index": 35,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17043,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Start Time",
+   "format": "%.0f"
+  },
+  {
+   "index": 36,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17044,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Started By",
+   "format": "%.0f"
+  },
+  {
+   "index": 37,
+   "style": "LIST",
+   "styleRaw": 17,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 0,
+   "min": 0,
+   "max": 0,
+   "step": 14,
+   "divScale": 0,
+   "text": "IP Share Stats",
+   "format": ""
+  },
+  {
+   "index": 38,
+   "style": "NUMBER",
+   "styleRaw": 81,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17010,
+   "min": 1,
+   "max": 200,
+   "step": 1,
+   "divScale": 1,
+   "text": "Select Connection",
+   "format": "%.0f"
+  },
+  {
+   "index": 39,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17013,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Client IP Addr",
+   "format": "%.0f"
+  },
+  {
+   "index": 40,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17025,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Client IP Port",
+   "format": "%.0f"
+  },
+  {
+   "index": 41,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17012,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Client Name",
+   "format": "%.0f"
+  },
+  {
+   "index": 42,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17011,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "RollCall Port",
+   "format": "%.0f"
+  },
+  {
+   "index": 43,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17014,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Packets Received",
+   "format": "%.0f"
+  },
+  {
+   "index": 44,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17015,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Packets Sent",
+   "format": "%.0f"
+  },
+  {
+   "index": 45,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17017,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Start Time",
+   "format": "%.0f"
+  },
+  {
+   "index": 46,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17021,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Reject Count",
+   "format": "%.0f"
+  },
+  {
+   "index": 47,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17022,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Last Reject Client",
+   "format": "%.0f"
+  },
+  {
+   "index": 48,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17023,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Closed Count",
+   "format": "%.0f"
+  },
+  {
+   "index": 49,
+   "style": "DISPLAY",
+   "styleRaw": 33,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17024,
+   "min": 0,
+   "max": 65536,
+   "step": 0,
+   "divScale": 1,
+   "text": "Last Closed Client",
+   "format": "%.0f"
+  },
+  {
+   "index": 50,
+   "style": "CHECKBOX",
+   "styleRaw": 65,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17051,
+   "min": 1,
+   "max": 2,
+   "step": 0,
+   "divScale": 0,
+   "text": "Enable Stats",
+   "format": ""
+  },
+  {
+   "index": 51,
+   "style": "BUTTON",
+   "styleRaw": 49,
+   "flags": [
+    "CACHEABLE"
+   ],
+   "deferred": false,
+   "cmd": 17050,
+   "min": 1,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "Reset Stats",
+   "format": ""
+  },
+  {
+   "index": 52,
+   "style": "DATA",
+   "styleRaw": 204,
+   "flags": [
+    "DISABLED",
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 4294967295,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "",
+   "format": ""
+  },
+  {
+   "index": 53,
+   "style": "DATA",
+   "styleRaw": 204,
+   "flags": [
+    "DISABLED",
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 4294967295,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "",
+   "format": ""
+  },
+  {
+   "index": 54,
+   "style": "DATA",
+   "styleRaw": 204,
+   "flags": [
+    "DISABLED",
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 4294967295,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "",
+   "format": ""
+  },
+  {
+   "index": 55,
+   "style": "DATA",
+   "styleRaw": 204,
+   "flags": [
+    "DISABLED",
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 4294967295,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "",
+   "format": ""
+  },
+  {
+   "index": 56,
+   "style": "DATA",
+   "styleRaw": 204,
+   "flags": [
+    "DISABLED",
+    "HIDDEN"
+   ],
+   "deferred": false,
+   "cmd": 4294967295,
+   "min": 0,
+   "max": 0,
+   "step": 0,
+   "divScale": 0,
+   "text": "",
+   "format": ""
+  }
+ ],
+ "sampledValues": [
+  {
+   "cmd": 16407,
+   "mode": [
+    "VALUE",
+    "STRING"
+   ],
+   "value": 1,
+   "string": "Active"
+  },
+  {
+   "cmd": 16408,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Centra WIN32 Controller"
+  },
+  {
+   "cmd": 16406,
+   "mode": [
+    "VALUE",
+    "STRING"
+   ],
+   "value": -1686180113,
+   "string": "0x9B7EEEEF"
+  },
+  {
+   "cmd": 16409,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "N/A"
+  },
+  {
+   "cmd": 16410,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "3.0.12.Beta"
+  },
+  {
+   "cmd": 16411,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Feb  6 2015 11:49:00"
+  },
+  {
+   "cmd": 16388,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "<not set>"
+  },
+  {
+   "cmd": 17140,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not Set"
+  },
+  {
+   "cmd": 17141,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not Set"
+  },
+  {
+   "cmd": 17200,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "1000"
+  },
+  {
+   "cmd": 17203,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 2,
+   "string": null
+  },
+  {
+   "cmd": 17201,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 0,
+   "string": null
+  },
+  {
+   "cmd": 16802,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "10.6.250.105"
+  },
+  {
+   "cmd": 16803,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "255.255.240.0"
+  },
+  {
+   "cmd": 16804,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "10.6.254.254"
+  },
+  {
+   "cmd": 16801,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "BC2411-10AEF8"
+  },
+  {
+   "cmd": 16810,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "2007"
+  },
+  {
+   "cmd": 16809,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "2057"
+  },
+  {
+   "cmd": 17031,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "2607"
+  },
+  {
+   "cmd": 16900,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not Set"
+  },
+  {
+   "cmd": 16901,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not Set"
+  },
+  {
+   "cmd": 17300,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 0,
+   "string": null
+  },
+  {
+   "cmd": 17202,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 1,
+   "string": null
+  },
+  {
+   "cmd": 17030,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not Set"
+  },
+  {
+   "cmd": 17031,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "2607"
+  },
+  {
+   "cmd": 17032,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 0,
+   "string": null
+  },
+  {
+   "cmd": 17033,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 0,
+   "string": null
+  },
+  {
+   "cmd": 17034,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 0,
+   "string": null
+  },
+  {
+   "cmd": 17040,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": ""
+  },
+  {
+   "cmd": 17041,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "-"
+  },
+  {
+   "cmd": 17042,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "-"
+  },
+  {
+   "cmd": 17043,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": ""
+  },
+  {
+   "cmd": 17044,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Not In Use"
+  },
+  {
+   "cmd": 17010,
+   "mode": [
+    "VALUE"
+   ],
+   "value": 1,
+   "string": null
+  },
+  {
+   "cmd": 17013,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "10.6.239.107"
+  },
+  {
+   "cmd": 17025,
+   "mode": [
+    "VALUE",
+    "STRING"
+   ],
+   "value": 62193,
+   "string": "62193"
+  },
+  {
+   "cmd": 17012,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "Name Not Known"
+  },
+  {
+   "cmd": 17011,
+   "mode": [
+    "VALUE",
+    "STRING"
+   ],
+   "value": 45,
+   "string": "2D"
+  },
+  {
+   "cmd": 17014,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "-"
+  },
+  {
+   "cmd": 17015,
+   "mode": [
+    "STRING"
+   ],
+   "value": 0,
+   "string": "-"
+  }
+ ]
+}

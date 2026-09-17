@@ -164,7 +164,7 @@ func TestCTAExtensionAudioAndVideo(t *testing.T) {
 	ext[7] = (1 << 3) | 0x01 // format 1 (LPCM), channels-1 = 1 -> 2ch
 	ext[8] = 0x04            // sample rate bit2 -> 48000
 	ext[9] = 0x05            // LPCM depths: bit0 16-bit + bit2 24-bit
-	ext[2] = 0x00           // no DTDs in this extension
+	ext[2] = 0x00            // no DTDs in this extension
 	var sum byte
 	for _, v := range ext[:127] {
 		sum += v

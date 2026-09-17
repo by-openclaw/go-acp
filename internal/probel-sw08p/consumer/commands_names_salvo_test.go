@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"dhs/internal/probel-sw08p/codec"
 	"dhs/internal/consumer"
+	"dhs/internal/probel-sw08p/codec"
 )
 
 // ---- rx 100 All Source Names ----------------------------------------------

@@ -2,6 +2,7 @@ package osc
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"io"
 	"log/slog"
@@ -88,7 +89,7 @@ func TestFactory_MetaAndNew(t *testing.T) {
 	}
 
 	tree := &canonical.Export{}
-	p := f.New(discardLogger(), tree)
+	p := f.New(plugin.Deps{Logger: discardLogger()}, tree)
 	srv, ok := p.(*Server)
 	if !ok {
 		t.Fatalf("New returned %T, want *Server", p)
@@ -372,7 +373,7 @@ func TestSendBundle_EncodeError(t *testing.T) {
 // --- sendBytes write-error fan-out (closed conn) --------------------------
 
 func TestSendBytes_WriteError(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -391,7 +392,7 @@ func TestSendBytes_WriteError(t *testing.T) {
 // --- udpSender.bind: already-bound guard + empty-addr default + nil addr ---
 
 func TestUDPSender_BindTwice(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("127.0.0.1:0"); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -404,7 +405,7 @@ func TestUDPSender_BindTwice(t *testing.T) {
 // TestUDPSender_BoundAddr_Nil drives boundAddr's conn==nil arm on a
 // freshly-constructed (unbound) sender.
 func TestUDPSender_BoundAddr_Nil(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if got := s.boundAddr(); got != nil {
 		t.Fatalf("boundAddr on unbound sender=%v want nil", got)
 	}
@@ -413,7 +414,7 @@ func TestUDPSender_BoundAddr_Nil(t *testing.T) {
 // TestUDPSender_Bind_EmptyAddrDefault drives the addr=="" -> ":0" default
 // branch in bind.
 func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind(""); err != nil {
 		t.Fatalf("bind empty addr: %v", err)
 	}
@@ -424,7 +425,7 @@ func TestUDPSender_Bind_EmptyAddrDefault(t *testing.T) {
 }
 
 func TestUDPSender_SendBytes_NotBound(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.sendMessage(codec.Message{Address: "/x"}); err == nil {
 		t.Fatalf("sendBytes unbound should error")
 	}
@@ -432,7 +433,7 @@ func TestUDPSender_SendBytes_NotBound(t *testing.T) {
 
 // TestUDPSender_BindError drives bind's ListenPacket-error arm.
 func TestUDPSender_BindError(t *testing.T) {
-	s := newUDPSender()
+	s := newUDPSender(nil)
 	if err := s.bind("256.256.256.256:99999"); err == nil {
 		t.Fatalf("want bind error for invalid addr")
 	}
@@ -446,74 +447,6 @@ func TestUDPSender_BindError(t *testing.T) {
 // *net.UDPConn. The seam (bind_seam.go) is nil in production — these tests
 // install a hook, prove bind propagates the defensive error, then restore
 // nil. The guards in bind are untouched.
-
-func TestBind_SockOptReuseAddrError(t *testing.T) {
-	want := errors.New("setsockopt reuseaddr boom")
-	sockReuseAddrHook = func(uintptr) error { return want }
-	t.Cleanup(func() { sockReuseAddrHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error from SetSocketReuseAddr failure")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_SockOptBroadcastError(t *testing.T) {
-	// ReuseAddr runs for real (succeeds) so the short-circuit reaches the
-	// Broadcast call, then the seam forces its error arm.
-	want := errors.New("setsockopt broadcast boom")
-	sockBroadcastHook = func(uintptr) error { return want }
-	t.Cleanup(func() { sockBroadcastHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error from SetSocketBroadcast failure")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_ControlDispatchReturnsError(t *testing.T) {
-	want := errors.New("rawconn control boom")
-	dispatchControlErrHook = func() error { return want }
-	t.Cleanup(func() { dispatchControlErrHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error when RawConn.Control dispatch errors")
-	}
-	if !errors.Is(err, want) {
-		t.Fatalf("bind err=%v want wrapping %v", err, want)
-	}
-}
-
-func TestBind_ConnTypeAssertFails(t *testing.T) {
-	assertUDPConnHook = func() bool { return false }
-	t.Cleanup(func() { assertUDPConnHook = nil })
-
-	s := newUDPSender()
-	err := s.bind("127.0.0.1:0")
-	if err == nil {
-		_ = s.close()
-		t.Fatalf("want bind error when conn type assertion fails")
-	}
-	if !strings.Contains(err.Error(), "unexpected conn type") {
-		t.Fatalf("bind err=%v want 'unexpected conn type'", err)
-	}
-	if s.boundAddr() != nil {
-		t.Errorf("bind cached a conn despite failed type assertion")
-	}
-}
 
 // --- Stop: aggregates sender + dialer errors; nil-safe ---------------------
 
@@ -852,7 +785,7 @@ func TestTCPDialer_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix)
+	d := newTCPDialer(framerLenPrefix, nil)
 	defer func() { _ = d.close() }()
 	m := codec.Message{Address: "/a", Args: []codec.Arg{codec.Int32(1)}}
 	if err := d.sendMessage(host, port, m); err != nil {
@@ -903,7 +836,7 @@ func TestTCPDialer_SendBundle_SLIP_WriteError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerSLIP)
+	d := newTCPDialer(framerSLIP, nil)
 	defer func() { _ = d.close() }()
 	b := codec.Bundle{Timetag: 1, Elements: []codec.Packet{codec.Message{Address: "/a"}}}
 	if err := d.sendBundle(host, port, b); err != nil {
@@ -942,7 +875,7 @@ func TestTCPDialer_CloseError(t *testing.T) {
 		}
 	}()
 
-	d := newTCPDialer(framerLenPrefix)
+	d := newTCPDialer(framerLenPrefix, nil)
 	c, err := d.dial(host, port)
 	if err != nil {
 		t.Fatalf("dial: %v", err)

@@ -121,7 +121,7 @@ func TestBroadcastAnnounce_GatedSilently_WhenOff(t *testing.T) {
 
 	ann := &codec.Message{
 		MTID: 0, MType: codec.MTypeReply, MAddr: 1,
-		MCode: byte(codec.MethodSetValue),
+		MCode:    byte(codec.MethodSetValue),
 		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}
@@ -145,7 +145,7 @@ func TestBroadcastAnnounce_FlowsThroughWhenOn(t *testing.T) {
 
 	ann := &codec.Message{
 		MTID: 0, MType: codec.MTypeReply, MAddr: 1,
-		MCode: byte(codec.MethodSetValue),
+		MCode:    byte(codec.MethodSetValue),
 		ObjGroup: codec.GroupControl, ObjID: 0,
 		Value: []byte{0x00, 0x05},
 	}

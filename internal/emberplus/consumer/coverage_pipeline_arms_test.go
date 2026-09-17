@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -10,9 +11,9 @@ import (
 
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/compliance"
+	"dhs/internal/datastore"
 	"dhs/internal/emberplus/codec/glow"
 	"dhs/internal/emberplus/codec/s101"
-	"dhs/internal/datastore"
 	"dhs/internal/transport"
 )
 
@@ -107,7 +108,7 @@ func TestProcessParameter_StreamIDCollision(t *testing.T) {
 		{Parameter: &glow.Parameter{Number: 2, Identifier: "b", Type: glow.ParamTypeInteger,
 			HasStreamIdentifier: true, StreamIdentifier: 5}},
 	})
-	if p.profile.Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
+	if p.ComplianceProfile().Snapshot()[StreamIDCollisionNoDescriptor] == 0 {
 		t.Error("expected StreamIDCollisionNoDescriptor compliance event")
 	}
 }
@@ -255,7 +256,7 @@ func TestSession_ConnectWithRecorder(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(addr)
 	port, _ := strconv.Atoi(portStr)
 
-	p := (&Factory{}).New(discardLogger()).(*Plugin)
+	p := fastWalk((&Factory{}).New(plugin.Deps{Logger: discardLogger()}).(*Plugin))
 	// Attach a recorder so Plugin.Connect's recorder!=nil arm + the
 	// session writer/reader SetTap arms execute.
 	rec, err := transport.NewRecorder(filepath.Join(t.TempDir(), "cap.jsonl"))

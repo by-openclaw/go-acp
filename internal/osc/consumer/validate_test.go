@@ -153,11 +153,11 @@ func TestValidate_Framings(t *testing.T) {
 
 func TestValidate_ErrorArms(t *testing.T) {
 	trames := []wiretrace.Trame{
-		{Direction: wiretrace.DirectionRx, Hex: "zz"},               // hex error
-		tr(wiretrace.DirectionRx, "c0ff"),                           // SLIP garbage
-		tr(wiretrace.DirectionRx, "00000010deadbeef"),               // len-prefix truncated
-		tr(wiretrace.DirectionRx, hex.EncodeToString([]byte("Q"))),  // undecodable, non-framed
-		tr(wiretrace.DirectionRx, ""),                               // empty raw
+		{Direction: wiretrace.DirectionRx, Hex: "zz"},              // hex error
+		tr(wiretrace.DirectionRx, "c0ff"),                          // SLIP garbage
+		tr(wiretrace.DirectionRx, "00000010deadbeef"),              // len-prefix truncated
+		tr(wiretrace.DirectionRx, hex.EncodeToString([]byte("Q"))), // undecodable, non-framed
+		tr(wiretrace.DirectionRx, ""),                              // empty raw
 	}
 	rep, err := newV10(t).Validate(context.Background(), trames, consumer.ValidateOpts{})
 	if err != nil {

@@ -1,6 +1,7 @@
 package probelsw08p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -10,7 +11,7 @@ import (
 // to the supplied export. Covers plugin.go New (previously 0%).
 func TestFactoryNew(t *testing.T) {
 	f := &Factory{}
-	p := f.New(slog.New(slog.NewTextHandler(io.Discard, nil)), demoMatrixExport(8, 8))
+	p := f.New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, demoMatrixExport(8, 8))
 	if p == nil {
 		t.Fatal("Factory.New returned nil")
 	}

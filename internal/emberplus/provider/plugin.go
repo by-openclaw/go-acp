@@ -17,7 +17,7 @@
 package emberplus
 
 import (
-	"log/slog"
+	"dhs/internal/plugin"
 
 	"dhs/internal/export/canonical"
 	"dhs/internal/provider"
@@ -44,6 +44,6 @@ func (f *Factory) Meta() provider.Meta {
 }
 
 // New constructs a fresh provider around the supplied tree.
-func (f *Factory) New(logger *slog.Logger, tree *canonical.Export) provider.Provider {
-	return newServer(logger, tree)
+func (f *Factory) New(deps plugin.Deps, tree *canonical.Export) provider.Provider {
+	return newServer(deps, tree)
 }

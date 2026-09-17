@@ -49,25 +49,25 @@ type NcMethodStatus uint16
 
 // Recognised NcMethodStatus values per MS-05-02 v1.0.0.
 const (
-	NcMethodStatusOk                    NcMethodStatus = 200
-	NcMethodStatusPropertyDeprecated    NcMethodStatus = 298
-	NcMethodStatusMethodDeprecated      NcMethodStatus = 299
-	NcMethodStatusBadCommandFormat      NcMethodStatus = 400
-	NcMethodStatusUnauthorized          NcMethodStatus = 401
-	NcMethodStatusBadOid                NcMethodStatus = 404
-	NcMethodStatusReadonly              NcMethodStatus = 405
-	NcMethodStatusInvalidRequest        NcMethodStatus = 406
-	NcMethodStatusConflict              NcMethodStatus = 409
-	NcMethodStatusBufferOverflow        NcMethodStatus = 413
-	NcMethodStatusIndexOutOfBounds      NcMethodStatus = 414
-	NcMethodStatusParameterError        NcMethodStatus = 417
-	NcMethodStatusLocked                NcMethodStatus = 423
-	NcMethodStatusDeviceError           NcMethodStatus = 500
-	NcMethodStatusMethodNotImplemented  NcMethodStatus = 501
+	NcMethodStatusOk                     NcMethodStatus = 200
+	NcMethodStatusPropertyDeprecated     NcMethodStatus = 298
+	NcMethodStatusMethodDeprecated       NcMethodStatus = 299
+	NcMethodStatusBadCommandFormat       NcMethodStatus = 400
+	NcMethodStatusUnauthorized           NcMethodStatus = 401
+	NcMethodStatusBadOid                 NcMethodStatus = 404
+	NcMethodStatusReadonly               NcMethodStatus = 405
+	NcMethodStatusInvalidRequest         NcMethodStatus = 406
+	NcMethodStatusConflict               NcMethodStatus = 409
+	NcMethodStatusBufferOverflow         NcMethodStatus = 413
+	NcMethodStatusIndexOutOfBounds       NcMethodStatus = 414
+	NcMethodStatusParameterError         NcMethodStatus = 417
+	NcMethodStatusLocked                 NcMethodStatus = 423
+	NcMethodStatusDeviceError            NcMethodStatus = 500
+	NcMethodStatusMethodNotImplemented   NcMethodStatus = 501
 	NcMethodStatusPropertyNotImplemented NcMethodStatus = 502
-	NcMethodStatusNotReady              NcMethodStatus = 503
-	NcMethodStatusTimeout               NcMethodStatus = 504
-	NcMethodStatusProtocolVersionError  NcMethodStatus = 505
+	NcMethodStatusNotReady               NcMethodStatus = 503
+	NcMethodStatusTimeout                NcMethodStatus = 504
+	NcMethodStatusProtocolVersionError   NcMethodStatus = 505
 )
 
 // NcDatatypeType is the kind discriminator on NcDatatypeDescriptor.

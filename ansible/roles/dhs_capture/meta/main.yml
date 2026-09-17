@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: dhs_capture
+  author: by-rune
+  description: >-
+    Ensure a fleet host can capture raw LLDP frames — cap_net_raw on the dhs
+    binary on Linux (AF_PACKET needs no package), Npcap on Windows (verified,
+    and installed only from an operator-supplied OEM installer, because the
+    free edition permits neither redistribution nor silent install).
+    Idempotent: run-twice = 0 changes.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

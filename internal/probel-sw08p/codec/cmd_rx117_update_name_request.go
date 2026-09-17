@@ -7,10 +7,10 @@ import "fmt"
 type UpdateNameType uint8
 
 const (
-	UpdateNameSource       UpdateNameType = 0x00
-	UpdateNameSourceAssoc  UpdateNameType = 0x01
-	UpdateNameDestAssoc    UpdateNameType = 0x02
-	UpdateNameUMDLabel     UpdateNameType = 0x03
+	UpdateNameSource      UpdateNameType = 0x00
+	UpdateNameSourceAssoc UpdateNameType = 0x01
+	UpdateNameDestAssoc   UpdateNameType = 0x02
+	UpdateNameUMDLabel    UpdateNameType = 0x03
 )
 
 // UpdateNameRequestParams: rx 117 UPDATE NAME REQUEST. No response.

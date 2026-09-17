@@ -1,6 +1,7 @@
 package probelsw02p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -29,7 +30,7 @@ func TestFactoryMeta(t *testing.T) {
 func TestNewServerWithEmptyTree(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	exp := &canonical.Export{Root: &canonical.Node{Header: canonical.Header{Number: 1, Identifier: "root", OID: "1"}}}
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	if srv.Metrics() == nil {
 		t.Error("Metrics() = nil; want non-nil")
 	}

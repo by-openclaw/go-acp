@@ -7,11 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"sync"
-	"syscall"
 
 	"dhs/internal/acp1/codec"
 	"dhs/internal/devicemodel"
 	"dhs/internal/export/canonical"
+	"dhs/internal/metrics"
+	"dhs/internal/plugin"
 	"dhs/internal/transport"
 )
 
@@ -37,6 +38,13 @@ type Server = server
 type server struct {
 	logger *slog.Logger
 	tree   *tree
+
+	// metrics is the server-wide connector snapshot exposed via Metrics()
+	// so `producer acp1 serve --metrics-addr` scrapes it. Frames are
+	// attributed by ACP1 method (getValue / setValue / … / getObject) —
+	// the protocol's own command axis, and the one a decoded message
+	// hands us for free. Always non-nil.
+	metrics *metrics.Connector
 
 	mu      sync.Mutex
 	conn    *net.UDPConn // listener + unicast reply socket
@@ -124,12 +132,19 @@ func (s *server) SetInsertTiming(t InsertTiming) {
 	}
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
+	met := deps.Metrics
+	for _, m := range []codec.Method{
+		codec.MethodGetValue, codec.MethodSetValue, codec.MethodSetIncValue,
+		codec.MethodSetDecValue, codec.MethodSetDefValue, codec.MethodGetObject,
+	} {
+		met.RegisterCmd(uint8(m), methodName(m))
 	}
 	s := &server{
 		logger:      logger,
+		metrics:     met,
 		stopped:     make(chan struct{}),
 		slotMachine: newSlotStateMachine(InsertTimingReal),
 	}
@@ -159,24 +174,15 @@ func (s *server) Serve(ctx context.Context, addr string) error {
 	if err != nil {
 		return fmt.Errorf("acp1 provider: resolve %q: %w", addr, err)
 	}
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			// c.Control only errors on an invalid RawConn (impossible during
-			// listen setup); the real failure flows through opErr.
-			_ = c.Control(func(fd uintptr) {
-				opErr = transport.SetSocketReuseAddr(fd)
-			})
-			return opErr
-		},
-	}
-	pc, err := lc.ListenPacket(ctx, "udp4", udpAddr.String())
+	// SO_REUSEADDR is set before bind — the only window in which it takes
+	// effect — so an emulator or dev rig can share the port with a
+	// controller already listening on it. The type assertion that used to
+	// sit here now lives in transport, tested once.
+	conn, err := transport.ListenUDPAddr(ctx, "udp4", udpAddr.String(),
+		transport.UDPBindOptions{ReuseAddr: true})
 	if err != nil {
 		return fmt.Errorf("acp1 provider: listen %q: %w", addr, err)
 	}
-	// unreachable type-assert guard elided: ListenConfig.ListenPacket over
-	// "udp4" always yields a *net.UDPConn on success.
-	conn := pc.(*net.UDPConn)
 
 	// Dial a second socket to the limited broadcast address. Go stdlib
 	// auto-sets SO_BROADCAST on dialed sockets with broadcast peers,
@@ -391,3 +397,8 @@ func (s *server) readLoop(ctx context.Context, conn *net.UDPConn) error {
 		s.handleDatagram2(data, src.String(), send)
 	}
 }
+
+// Metrics returns the server-wide connector metrics — satisfies the
+// cmd/dhs metricsExposer optional interface so --metrics-addr scrapes the
+// acp1 provider. Always non-nil.
+func (s *server) Metrics() *metrics.Connector { return s.metrics }

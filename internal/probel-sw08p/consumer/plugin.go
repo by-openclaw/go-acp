@@ -18,15 +18,16 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	"dhs/internal/metrics"
-	"dhs/internal/probel-sw08p/codec"
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
-	"dhs/internal/consumer/compliance"
+	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 	"dhs/internal/transport"
 )
 
@@ -55,8 +56,11 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 }
 
 // New constructs a fresh consumer plugin bound to the given logger.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{logger: logger}
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{logger: deps.Logger, net: deps.Net}
+	p.Init(deps, DefaultOnlineStaleAfter)
+	return p
 }
 
 // MatrixConfig holds the externally-supplied matrix shape — mirrors
@@ -84,27 +88,34 @@ type MatrixConfig struct {
 // that individual commands populate (source/destination name caches,
 // tie-line tally cache, etc.) as their PRs land.
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented: the
+	// only protocol-specific parts are the stale window and the metrics
+	// Connector this consumer already counts every frame through.
+	consumer.Base
+
 	logger *slog.Logger
 
-	mu       sync.Mutex
-	host     string
-	port     int
-	client   *codec.Client
-	recorder *transport.Recorder
+	// net is the only way this plugin reaches a socket. Injected, so the
+	// process owns the transport posture and a test substitutes a fake.
+	net transport.Net
+
+	mu     sync.Mutex
+	host   string
+	port   int
+	client *sw08session.Client
+
+	// kaPoll owns the spec-sanctioned cmd 08 keep-alive prober (§5
+	// "Supporting dual controllers over IP" — poll "to keep the connections
+	// open"). See keepalive_poll.go.
+	kaPoll *keepalivePollState
+
+	// kaPollSpacing is the cmd 08 poll cadence. 0 = DefaultKeepalivePollSpacing;
+	// negative disables the poll AND its dead-man deadline.
+	kaPollSpacing time.Duration
 
 	// matrixCfg holds caller-supplied matrix shape. Set via
 	// SetMatrixConfig before Connect; defaults applied at use sites.
 	matrixCfg MatrixConfig
-
-	// profile aggregates wire-tolerance events observed during this
-	// session. See compliance_events.go for the catalog. Nil until
-	// Connect fires; callers read via ComplianceProfile().
-	profile *compliance.Profile
-
-	// metricsConn carries rx/tx counters + error counters. Nil until
-	// Connect fires; callers read via Metrics(). Preserved after
-	// Disconnect so post-mortem summaries are still available.
-	metricsConn *metrics.Connector
 }
 
 // SetMatrixConfig records the caller-supplied matrix shape. Call
@@ -124,15 +135,6 @@ func (p *Plugin) MatrixConfig() MatrixConfig {
 	return p.matrixCfg
 }
 
-// Metrics returns the session-scoped connector metrics. Nil before
-// Connect, non-nil after (preserved across Disconnect). Safe from any
-// goroutine — metrics.Connector is internally synchronised.
-func (p *Plugin) Metrics() *metrics.Connector {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.metricsConn
-}
-
 // IsOnline reports whether the plugin considers the matrix alive — true
 // if we have seen any rx frame (application or DLE ACK / NAK) within
 // DefaultOnlineStaleAfter. Mirrors the canonical.Header.IsOnline flag
@@ -147,13 +149,7 @@ func (p *Plugin) IsOnline() bool {
 // when the caller knows the peer's keepalive cadence (e.g. an Ember+
 // mirror polling at 5 s can pass stale=15 s).
 func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
-	p.mu.Lock()
-	met := p.metricsConn
-	p.mu.Unlock()
-	if met == nil {
-		return false
-	}
-	snap := met.Snapshot()
+	snap := p.Metrics().Snapshot()
 	if snap.LastRxAt.IsZero() {
 		return false
 	}
@@ -161,25 +157,6 @@ func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
 }
 
 // ComplianceProfile returns the session-scoped compliance profile.
-// Nil before Connect, non-nil after. Safe to call from any goroutine —
-// compliance.Profile is internally synchronized.
-func (p *Plugin) ComplianceProfile() *compliance.Profile {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.profile
-}
-
-// SetRecorder attaches a JSONL traffic recorder to this plugin. Call
-// before Connect — the recorder is wired into the codec.Client at
-// Dial time and captures every TX and RX frame (including DLE ACK /
-// DLE NAK control sequences) in the same format the ACP1/ACP2/Ember+
-// plugins produce.
-func (p *Plugin) SetRecorder(rec *transport.Recorder) {
-	p.mu.Lock()
-	p.recorder = rec
-	p.mu.Unlock()
-}
-
 // Connect opens a TCP session to the matrix. Idempotent when called
 // twice with the same endpoint. Port 0 resolves to DefaultPort.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
@@ -197,14 +174,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", ip, port)
-	prof := &compliance.Profile{}
-	met := metrics.NewConnector()
+	prof := p.ComplianceProfile()
+	met := p.Metrics()
 	// Register every known command byte so the metrics snapshot can
 	// pretty-print names alongside raw ids.
 	for _, id := range codec.CommandIDs() {
 		met.RegisterCmd(uint8(id), codec.CommandName(id))
 	}
-	cfg := codec.ClientConfig{
+	cfg := sw08session.ClientConfig{
 		OnCapSoft: func(int) { prof.Note(DataFieldOversize) },
 		OnNAK:     func() { prof.Note(NAKReceived); met.ObserveNAK() },
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
@@ -226,8 +203,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		},
 		OnEvent: p.keepaliveAutoResponder(),
 	}
-	if p.recorder != nil {
-		rec := p.recorder
+	if rec := p.Recorder(); rec != nil {
 		wrappedTx := cfg.OnTx
 		wrappedRx := cfg.OnRx
 		cfg.OnTx = func(b []byte) {
@@ -239,20 +215,42 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			rec.Record("probel-sw08p", "rx", b)
 		}
 	}
-	cli, err := codec.Dial(ctx, addr, p.logger, cfg)
+	cli, err := sw08session.Dial(ctx, p.net, addr, p.logger, cfg)
 	if err != nil {
 		return &consumer.TransportError{Op: "connect", Err: err}
 	}
 	p.client = cli
 	p.host = ip
 	p.port = port
-	p.profile = prof
-	p.metricsConn = met
+	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: met})
+	// Start the spec-sanctioned cmd 08 poll (§5 "…to keep the connections
+	// open") and arm the reader's dead-man deadline alongside it. Our own
+	// 0x11/0x22 responder is passive — matrix-initiated — so without this a
+	// matrix that never pings leaves the session with no liveness signal.
+	p.startKeepalivePoll(p.resolvedKeepalivePollSpacing(), clock.System())
 	p.logger.Info("probel connected",
 		slog.String("host", ip),
 		slog.Int("port", port),
 	)
 	return nil
+}
+
+// SetKeepalivePollSpacing sets the cmd 08 keep-alive cadence. 0 selects
+// DefaultKeepalivePollSpacing; a negative value disables the poll and, with
+// it, the reader's dead-man deadline — the two are meaningless apart. Call
+// before Connect.
+func (p *Plugin) SetKeepalivePollSpacing(d time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.kaPollSpacing = d
+}
+
+// resolvedKeepalivePollSpacing expands the 0 = default sentinel.
+func (p *Plugin) resolvedKeepalivePollSpacing() time.Duration {
+	if p.kaPollSpacing == 0 {
+		return DefaultKeepalivePollSpacing
+	}
+	return p.kaPollSpacing
 }
 
 // Disconnect closes the TCP session. Safe to call on an unconnected plugin.
@@ -261,16 +259,19 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 // summary at INFO before closing.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
+	// Stop the prober BEFORE dropping the client, so its final tick cannot
+	// race the close and log a spurious write failure.
+	p.stopKeepalivePoll()
 	cli := p.client
-	met := p.metricsConn
 	p.client = nil
 	p.host = ""
 	p.port = 0
+	p.Closed()
 	p.mu.Unlock()
 	if cli == nil {
 		return nil
 	}
-	if met != nil {
+	if met := p.Metrics(); met != nil {
 		p.logger.Info("probel session metrics",
 			slog.String("summary", met.Summary()),
 		)
@@ -280,7 +281,7 @@ func (p *Plugin) Disconnect() error {
 
 // client returns the in-flight TCP client, or ErrNotConnected. Helper
 // for per-command methods added by follow-up PRs.
-func (p *Plugin) getClient() (*codec.Client, error) {
+func (p *Plugin) getClient() (*sw08session.Client, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.client == nil {
@@ -289,11 +290,11 @@ func (p *Plugin) getClient() (*codec.Client, error) {
 	return p.client, nil
 }
 
-// ExposeClient returns the underlying codec.Client for callers that
+// ExposeClient returns the underlying sw08session.Client for callers that
 // need direct Subscribe / raw frame access (e.g. the CLI's watch
 // subcommand, which just prints every async tally it sees). Returns
 // ErrNotConnected before Connect fires.
-func (p *Plugin) ExposeClient() (*codec.Client, error) {
+func (p *Plugin) ExposeClient() (*sw08session.Client, error) {
 	return p.getClient()
 }
 
@@ -332,7 +333,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 }
 
 // Subscribe attaches a callback for async tallies. The wiring of
-// codec.Client.Subscribe into consumer.Event lands in the
+// sw08session.Client.Subscribe into consumer.Event lands in the
 // CrosspointTally per-command PR.
 func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
 	return consumer.ErrNotImplemented

@@ -44,7 +44,7 @@ func DecodeExtendedConnect(f Frame) (ExtendedConnectParams, error) {
 		return ExtendedConnectParams{}, ErrShortPayload
 	}
 	return ExtendedConnectParams{
-		Destination: (uint16(f.Payload[0]) & 0x7F) * 128 + uint16(f.Payload[1]),
-		Source:      (uint16(f.Payload[2]) & 0x7F) * 128 + uint16(f.Payload[3]),
+		Destination: (uint16(f.Payload[0])&0x7F)*128 + uint16(f.Payload[1]),
+		Source:      (uint16(f.Payload[2])&0x7F)*128 + uint16(f.Payload[3]),
 	}, nil
 }

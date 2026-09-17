@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // startKeepalive spawns the background goroutine that handles two
@@ -20,10 +21,10 @@ import (
 //
 // The goroutine exits cleanly when ctx is cancelled (Disconnect).
 //
-// Holds no Plugin lock — it reads the codec.Client pointer once and
+// Holds no Plugin lock — it reads the session.Client pointer once and
 // fires through it. If the client is closed mid-sweep, the underlying
 // Send returns net.ErrClosed and the goroutine exits.
-func (p *Plugin) startKeepalive(ctx context.Context, cli *codec.Client) {
+func (p *Plugin) startKeepalive(ctx context.Context, cli *session.Client) {
 	cfg := p.matrixCfg
 	if cfg.Dsts == 0 {
 		// Nothing to poll — caller didn't set a matrix size. Leaving
@@ -48,7 +49,7 @@ func (p *Plugin) startKeepalive(ctx context.Context, cli *codec.Client) {
 // callers can drive it with a stub client + cancellable ctx.
 func (p *Plugin) runKeepalive(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	bootstrapSpacing time.Duration,
 	keepaliveSpacing time.Duration,
@@ -56,6 +57,20 @@ func (p *Plugin) runKeepalive(
 	if cfg.InitialPoll {
 		p.bootstrapSweep(ctx, cli, cfg, bootstrapSpacing)
 	}
+	// Arm the reader's dead-man deadline for exactly as long as we are
+	// polling. SW-P-02 gives us no unsolicited heartbeat from the matrix,
+	// so our rx01 poll is the ONLY thing that makes silence meaningful: with
+	// it, no reply within the window means the link is gone; without it, a
+	// quiet router is indistinguishable from a dead one and a deadline would
+	// tear down a perfectly good session.
+	//
+	// The window is a multiple of the poll spacing so a single missed or
+	// delayed reply never trips it.
+	if keepaliveSpacing > 0 {
+		cli.SetIdleTimeout(idleWindowFor(keepaliveSpacing))
+		defer cli.SetIdleTimeout(0)
+	}
+
 	if keepaliveSpacing < 0 {
 		// Caller explicitly disabled the keep-alive ping.
 		return
@@ -67,7 +82,7 @@ func (p *Plugin) runKeepalive(
 // across 0..Dsts-1. Cancels promptly on ctx.Done.
 func (p *Plugin) bootstrapSweep(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	spacing time.Duration,
 ) {
@@ -105,7 +120,7 @@ func (p *Plugin) bootstrapSweep(
 // cursor. Mirrors VSM's continuous-poll keep-alive trick.
 func (p *Plugin) keepalivePingLoop(
 	ctx context.Context,
-	cli *codec.Client,
+	cli *session.Client,
 	cfg MatrixConfig,
 	spacing time.Duration,
 ) {
@@ -135,7 +150,7 @@ func (p *Plugin) keepalivePingLoop(
 // alive ping doesn't compete with caller-driven Sends. Replies (tx 03)
 // flow through the Subscribe path to whoever owns the tally cache.
 // ctx is honoured at the outer goroutine; this call is sync.
-func sendInterrogate(ctx context.Context, cli *codec.Client, dst uint16) error {
+func sendInterrogate(ctx context.Context, cli *session.Client, dst uint16) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -146,4 +161,24 @@ func sendInterrogate(ctx context.Context, cli *codec.Client, dst uint16) error {
 		f = codec.EncodeExtendedInterrogate(codec.ExtendedInterrogateParams{Destination: dst})
 	}
 	return cli.Write(codec.Pack(f))
+}
+
+// idleWindowMultiple is how many keep-alive periods the matrix may miss
+// before the link is judged dead. Three gives a delayed or dropped reply
+// two more chances before a healthy session is torn down.
+const idleWindowMultiple = 3
+
+// minIdleWindow floors the dead-man window. The keep-alive spacing is
+// deliberately aggressive (2s by default), and 3x that is short enough that
+// ordinary scheduling jitter on a loaded host could trip it; 30s keeps the
+// detection useful without making it twitchy.
+const minIdleWindow = 30 * time.Second
+
+// idleWindowFor derives the reader's dead-man window from the poll spacing.
+func idleWindowFor(keepaliveSpacing time.Duration) time.Duration {
+	w := keepaliveSpacing * idleWindowMultiple
+	if w < minIdleWindow {
+		return minIdleWindow
+	}
+	return w
 }

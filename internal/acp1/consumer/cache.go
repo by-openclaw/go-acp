@@ -173,7 +173,6 @@ func (c *slotTreeCache) UpdateObjectValue(slot int, group string, id int, val co
 	}
 }
 
-
 // removeElement deletes an entry from both the order list and the
 // lookup map. Must be called with c.mu held.
 func (c *slotTreeCache) removeElement(el *list.Element) {

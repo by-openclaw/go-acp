@@ -67,7 +67,7 @@ type Attribute struct {
 
 // Media is one m= section.
 type Media struct {
-	Type       string   // audio | video | application
+	Type       string // audio | video | application
 	Port       int
 	Proto      string   // e.g. RTP/AVP
 	Formats    []string // payload types

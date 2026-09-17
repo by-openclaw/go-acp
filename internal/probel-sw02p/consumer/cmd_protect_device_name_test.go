@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendProtectDeviceNameRequestRoundTrip drives SendProtectDevice
@@ -22,7 +23,7 @@ func TestSendProtectDeviceNameRequestRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// rx 103 = 5 bytes.
 	matrixDone := make(chan struct{})
@@ -75,7 +76,7 @@ func TestSubscribeProtectDeviceNameRequest(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	p := &Plugin{logger: logger}
 	p.client = client

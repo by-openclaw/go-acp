@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/transport"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/transport"
 )
 
 // TCPClient is the ACP1 session layer for TCP direct mode (spec v1.4
@@ -54,7 +54,20 @@ type TCPClient struct {
 	closed    bool
 
 	readerDone chan struct{}
+
+	// idleTimeout, when > 0, bounds how long the device may be silent before
+	// a read fails. Without it the reader blocks forever on a half-open
+	// connection (a NAT/firewall drop with no RST): closing the socket
+	// locally unblocks it, but a DEAD PEER never does, so the reader parks
+	// in the kernel and the watch goes quiet with no error to report.
+	idle transport.Idle
 }
+
+// SetIdleTimeout arms (d > 0) or disables (d <= 0) the per-read deadline.
+func (c *TCPClient) SetIdleTimeout(d time.Duration) { c.idle.Set(d) }
+
+// IdleTimeout reports the currently armed per-read deadline.
+func (c *TCPClient) IdleTimeout() time.Duration { return c.idle.Get() }
 
 // NewTCPClient takes an already-connected TCPConn and starts the
 // multiplexing reader goroutine. The caller retains ownership of the
@@ -154,6 +167,9 @@ func (c *TCPClient) Do(ctx context.Context, req *codec.Message) (*codec.Message,
 	if err := c.conn.Send(sendCtx, payload); err != nil {
 		return nil, fmt.Errorf("acp1 tcp send: %w", err)
 	}
+	if c.cfg.OnTx != nil {
+		c.cfg.OnTx(len(payload))
+	}
 
 	// Wait for the reader goroutine to route the matching reply.
 	select {
@@ -215,9 +231,19 @@ func (c *TCPClient) readerLoop() {
 	}()
 
 	for {
-		// Blocking read with no deadline — closing the socket (via
-		// Close) unblocks it with an error.
-		raw, err := c.conn.Receive(context.Background(), codec.MaxPacket)
+		// Bounded read. Closing the socket locally unblocks it, but a DEAD
+		// peer never does — only a deadline reveals a half-open link. The
+		// keep-alive prober's replies re-arm it every pass, so a healthy
+		// but quiet device is never torn down.
+		rctx := context.Background()
+		var rcancel context.CancelFunc
+		if d := c.IdleTimeout(); d > 0 {
+			rctx, rcancel = context.WithTimeout(rctx, d)
+		}
+		raw, err := c.conn.Receive(rctx, codec.MaxPacket)
+		if rcancel != nil {
+			rcancel()
+		}
 		if err != nil {
 			// Close → exit. Any other error → also exit, since a
 			// framing error on a TCP stream means we can't resync.
@@ -234,7 +260,7 @@ func (c *TCPClient) readerLoop() {
 		// still counts as wire activity — the dead-man cares about
 		// "anything received from this peer", not "anything decoded".
 		if c.cfg.OnRx != nil {
-			c.cfg.OnRx()
+			c.cfg.OnRx(len(raw))
 		}
 
 		msg, derr := codec.Decode(raw)
@@ -301,3 +327,9 @@ func (c *TCPClient) readerLoop() {
 		}
 	}
 }
+
+// ReaderDone is closed when the reader goroutine exits — the session is over,
+// whether from a peer close, an I/O error, or the idle deadline firing. A
+// supervisor blocks on it to drive reconnection (mirrors acp2's
+// Session.Done()).
+func (c *TCPClient) ReaderDone() <-chan struct{} { return c.readerDone }

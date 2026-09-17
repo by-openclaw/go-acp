@@ -126,13 +126,18 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -162,6 +167,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1002,6 +1011,8 @@ SUBCOMMANDS
   protect-name              resolve device id → 8-char name
   protect-dump              dump every protect on (matrix, level)
   master-protect            master-override protect connect
+  health                    3-layer session health (reachable / connected / live)
+  status                    one-shot device status: session health + identity
   bench                     scale benchmark: interrogate-all + connect-all
                             on a persistent TCP connection
   export                    write router config of (matrix, level) as 3 CSVs:
@@ -1068,6 +1079,7 @@ SUBCOMMANDS
   dual-status         read dual-controller redundancy state (rx 050)
   lock-status         read source-lock bitmap, GET only (rx 014; SW-P-02 lock is read-only)
   status              read controller status — 2 (rx 07)
+  health              3-layer session health (reachable / connected / live)
   router-config       read router configuration / level map (rx 075)
   usage               reverse tally: one interrogate per dst (rx 01/65 sweep;
                       size from --dsts or rx 075); --srce/--dest filter,
@@ -1129,6 +1141,7 @@ VERBS
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
+  health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
 
@@ -1186,13 +1199,18 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1222,6 +1240,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1247,13 +1269,18 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1283,6 +1310,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.

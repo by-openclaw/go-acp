@@ -41,9 +41,9 @@ func TestRouteActionEncoding(t *testing.T) {
 
 func TestParseRouteFlag(t *testing.T) {
 	for _, tc := range []struct {
-		in      string
-		ok      bool
-		want    routeSpec
+		in   string
+		ok   bool
+		want routeSpec
 	}{
 		{"60:60:1", true, routeSpec{Dest: "60", Srce: "60", Level: "1"}},
 		{"61:62:3", true, routeSpec{Dest: "61", Srce: "62", Level: "3"}},
@@ -87,4 +87,3 @@ func TestReadRoutesCSV(t *testing.T) {
 		t.Errorf("row 3 = %+v", got[3])
 	}
 }
-

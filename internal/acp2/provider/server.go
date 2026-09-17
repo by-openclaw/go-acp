@@ -2,15 +2,18 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
-	"dhs/internal/export/canonical"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/export/canonical"
 	"dhs/internal/metrics"
+	"dhs/internal/transport"
 )
 
 // Server is the exported alias for the concrete provider — lets
@@ -31,6 +34,8 @@ type Server = server
 // tree.mu's write lock; reads take RLock. Consistent with the emberplus
 // + acp1 providers.
 type server struct {
+	// net is the only way this server binds a socket. Injected.
+	net    transport.Net
 	logger *slog.Logger
 	tree   *tree
 
@@ -39,11 +44,15 @@ type server struct {
 	// slotInfo reads it under the same lock as perSlot.
 	slotProtos map[uint8][]uint8
 
-	mu       sync.Mutex
-	listener net.Listener
-	sessions map[*session]struct{}
-	closed   bool
-	stopped  chan struct{}
+	mu sync.Mutex
+
+	// sessionIdle, when > 0, reaps a client session that has sent nothing
+	// for that long. Guarded by mu; 0 = disabled (the default).
+	sessionIdle time.Duration
+	listener    net.Listener
+	sessions    map[*session]struct{}
+	closed      bool
+	stopped     chan struct{}
 
 	// metrics is the server-wide connector snapshot exposed via
 	// Metrics() so `producer acp2 serve --metrics-addr` scrapes it
@@ -52,11 +61,10 @@ type server struct {
 	metrics *metrics.Connector
 }
 
-func newServer(logger *slog.Logger, exp *canonical.Export) *server {
-	if logger == nil {
-		logger = slog.Default()
-	}
-	met := metrics.NewConnector()
+func newServer(deps plugin.Deps, exp *canonical.Export) *server {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
+	met := deps.Metrics
 	for _, t := range []codec.AN2Type{
 		codec.AN2TypeRequest, codec.AN2TypeReply, codec.AN2TypeEvent,
 		codec.AN2TypeError, codec.AN2TypeData,
@@ -65,6 +73,7 @@ func newServer(logger *slog.Logger, exp *canonical.Export) *server {
 	}
 	s := &server{
 		logger:   logger,
+		net:      deps.Net,
 		sessions: map[*session]struct{}{},
 		stopped:  make(chan struct{}),
 		metrics:  met,
@@ -94,7 +103,10 @@ func (s *server) Metrics() *metrics.Connector { return s.metrics }
 // Serve binds addr (e.g. "0.0.0.0:2072") and blocks until ctx is
 // cancelled or a fatal listen error occurs.
 func (s *server) Serve(ctx context.Context, addr string) error {
-	ln, err := net.Listen("tcp4", addr)
+	// tcp4 preserved: acp2 binds IPv4-only. The bind goes through the
+	// injected transport; the accept loop applies the socket policy per connection, which is also
+	// the arm that covers a listener injected by a test.
+	ln, err := s.net.Listen(ctx, "tcp4", addr)
 	if err != nil {
 		return fmt.Errorf("acp2 provider: listen %q: %w", addr, err)
 	}
@@ -138,6 +150,12 @@ func (s *server) acceptLoop(ln net.Listener) error {
 			close(s.stopped)
 			return err
 		}
+		// OS-level dead-peer probe. Without it a half-open client session
+		// (a NAT or firewall drop with no RST) holds a goroutine and a
+		// socket here for ever — the inbound twin of the consumer-side
+		// stall. Applied here rather than at bind time so an injected
+		// listener gets it too.
+		_ = transport.ApplySocketOptions(conn, transport.SocketOptions{})
 		sess := newSession(s, conn)
 		s.registerSession(sess)
 		go func() {
@@ -246,4 +264,24 @@ func (s *server) unregisterSession(sess *session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, sess)
+}
+
+// SetSessionIdleTimeout arms (d > 0) or disables (d <= 0) reaping of silent
+// client sessions. Applies to sessions accepted after this call.
+//
+// Off by default. ACP2 announces are event-driven, so a consumer that has
+// subscribed and is simply waiting for something to change is healthy and
+// silent; enable this only where the consumer keeps the link warm (the acp2
+// consumer's own keep-alive prober does, at 5s).
+func (s *server) SetSessionIdleTimeout(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIdle = d
+}
+
+// idleTimeout reports the configured reaper window (0 = disabled).
+func (s *server) idleTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionIdle
 }

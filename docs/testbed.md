@@ -24,9 +24,144 @@ same PR — and the inventory wins on any disagreement.
 | `dhs-debian` | LXC 651 | Debian 12 | `10.6.250.101` | **Ansible control node** + AMWA plant registry (`:8235`); dhs producer host; Docker |
 | `dhs-ubuntu` | LXC 652 | Ubuntu 24.04 | `10.6.250.102` | dhs producer host; binary-test target |
 | `dhs-rocky` | LXC 653 | Rocky 9.4 | `10.6.250.103` | dhs producer host; binary-test target |
-| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet** |
-| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11` (guest static unconfirmed post-migration) |
-| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | (VLAN600 IP — confirm) | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+| `dhs-tools` | LXC 655 | Ubuntu | `10.6.250.104` | tooling: Go build host, AMWA NMOS Testing tool (`scripts/amwa/`), tshark; **only host needing internet**. Also the RollCall plant front: `dhs-rollcall-ipshare` (our IPShare `:2050`, fronting the IQ frame at 2100, the Sirius 800 emulator at 3000, our router at 4000) and `dhs-rollcall-router` (`:2052`, unit `0x20`), both systemd units from `ansible/playbooks/snell-rollcall-ipshare.yml` |
+| `win11` | VM 654 | Windows 11 Pro | `10.6.250.105` | Windows producer-parity row (ADR-0016); guest name `dhs-win11`; runs the vendor **RollCall IP Proxy** (`RollIPProxy` service, control `:2050`) and the Centra emulator as a Sirius 800 (`:2057`, scheduled task `dhs-centra` from `ansible/playbooks/snell-rollcall-ipshare.yml`, at boot, restarted if it dies). SSH and WinRM (5985/5986) both answer; SSH is the `by-rune_lxc` key, **not** `id_ed25519_dhswin11` |
+| `cerebrum` | VM `vm-cerebrum-stg-01` | Windows 11 | `10.6.250.5` | external reference peer (EVS Cerebrum staging) — real-peer integration target, not part of the converge set |
+
+## Physical devices under test
+
+Real hardware on the same `10.6.240.0/20` management fabric as the fleet, so
+the Ansible control node reaches them directly. These are the Tier 3 oracles
+ADR-0025 requires — a connector is not DONE against our own provider.
+
+| Device | Address | Serves | Connector |
+| --- | --- | --- | --- |
+| **EVS Neuron** | `10.6.255.102` | acp2 `:2072` · Probel SW-P-08 `:7800` · NMOS · REST API (OASIS 3.1) | `acp2`, `probel-sw08p`, `amwa`, `ccm` (REST, later) |
+| **Riedel Fusion 6** | (being commissioned) | NMOS · REST API | `amwa` |
+| ACP1 frame (controller + cards) | (to confirm) | ACP1 | `acp1` |
+| **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
+| **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | none yet — `internal/snmp` is unwritten |
+| **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
+
+The IQ frame is unit `0x0C` and carries nine cards, reached as **ports of the
+gateway** (spec 7.6) rather than as units of their own:
+
+| Address | Type | Name |
+| --- | --- | --- |
+| `0000-0C-00` | IQH3UM4-S | FRAME_12 EMB (the gateway itself) |
+| `0000-0C-01` … `0000-0C-09` odd | IQDBE00 | EMB.06 – EMB.10 (Nodal), five cards |
+| `0000-0C-0B` … `0000-0C-0D` | IQMUX42 | EMB.11 – EMB.13 (AES), three cards |
+| `0000-0C-8E` and up | the connected clients | **client ports, stamped by the gateway from `0x8E` upward, one per RollCall client connected at the time**. Measured: on 2026-09-09 `8E` was our own `dhs rollcall` (type 483) because it was alone; on 2026-09-11 `8E` was the vendor ControlPanel (type 500) on `win11` and ours was `8F`. A session asked of one is refused, since it is a client and not a node. Our provider stamps clients from `0xE0` instead |
+
+It advertises `Menus|Control|File|Map|Ports` and **no long strings**, so it is
+the 16-bit generation — the one a proxy also speaks, and the one the emulator
+does not exercise. Its cards advertise `Menus|Control|File` only: no
+`SV_LOC1`, so no thumbnails from this frame (they are audio cards).
+
+**When the frame stops answering RollCall** (TCP on 2050 still accepts, but
+`GETDEVINFO` times out), restart the gateway board over SNMP, which is out of
+band and keeps working. The command is Restart Unit in the gateway command set,
+cmdID 16706 (`iqh3aSystemSetupRestartUnit` in `SNELL-IQH3A-CMD-MIB`), at
+instance 256: the row whose Unit Name (16388) reads `FRAME_12 EMB`.
+
+```
+# prove the write community first: the MIB defines 0 as noAction, so this changes nothing
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 0
+# then restart the gateway board; the set times out because the board reboots before replying
+snmpset -v1 -c private 10.6.255.113 .1.3.6.1.4.1.7995.1.3.1.429.1.1.16706.256 i 1
+```
+
+Measured 2026-09-11 from `dhs-tools`, the only fleet host with net-snmp: SNMP
+answered 35 s later with a fresh uptime; RollCall did not answer within 2.5
+minutes and did within 4. Only the gateway board restarts; every card is a unit
+of its own and keeps running. SNMP read community `public`, write `private`.
+The vendor RollCall Control Panel on `win11` holds a connection to this frame
+of its own.
+
+Drive it with `ROLLCALL_TEST_HOST=10.6.255.113`. It is **read-only** in the
+play, like every real device.
+
+Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
+NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
+services this one Neuron offers cannot yet be driven at a real device — see
+"Integration tiers" below.
+
+### IRD satellite receivers — SNMP only
+
+Installed and addressed 2026-09-07. Both answer on the management fabric;
+the MIBs belong in `internal/snmp/assets/mibs/`.
+
+| | TT1260 | RX1290 |
+| --- | --- | --- |
+| Address | `10.6.255.110` | `10.6.255.111` |
+| `sysDescr` | "Tandberg TV TT1260 Professional MPEG Receiver" | "Tandberg Television RX1290 Professional AVC Receiver" |
+| `sysObjectID` | `1.3.6.1.4.1.1773.1.3.200` | `1.3.6.1.4.1.1773.1.3.200` |
+| Objects under 1773 | 577 | 842 |
+
+**The MIB to find is Tandberg Television, IANA enterprise 1773.** Both units
+report the SAME sysObjectID, so one product-family MIB covers both — which
+matches their identical web UI and their shared alarm-ID namespace
+(1 = Signal Lock lost, 2 = BER too high, 4 = Video stopped, 5/6 = Audio
+stopped, 8 = CN margin too low, 9 = PreBER too high). Ericsson acquired
+Tandberg Television in 2007, so vendor material may be filed under either
+name.
+
+Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
+
+- **SNMPv1 ONLY.** v2c gets no response at all, on either unit, for either
+  community. Community `public` reads. This happens to match Cerebrum's own
+  manager default (v1, `public`), so Cerebrum can poll them as they stand.
+- Tree shape: `1773.1.1.x` is the common chassis branch (network config at
+  `.1.1.1.1-4`, trap destinations at `.1.1.2.1`, a card/module table at
+  `.1.1.3.1` carrying per-slot type, firmware and card names), and
+  `1773.1.3.200.x` is the product branch — 299 of the TT1260's objects.
+
+Two things to fix on the devices before trap work starts:
+
+1. **The trap destination is stale.** `.1.1.2.1.2.1` still reads
+   `192.168.0.229`, an address from a previous network, so traps currently
+   go nowhere. Point it at Cerebrum (`10.6.250.5`, receiver Active on 162)
+   for an independent confirmation the devices emit at all.
+2. **The clock is unset** — both report `0000-00-00 00:00:00`, and every
+   alarm row carries that timestamp. Trap and alarm times are meaningless
+   until NTP is configured.
+
+Scope, per the codeowner:
+
+Scope, per the codeowner:
+
+- **SNMP + MIB** — the whole reason these are in the testbed. This is what
+  `internal/snmp` will be built against as its Tier 3 vendor oracle.
+- **HTTP management page** — expected to work. Useful for reading the device's
+  own view of a value while checking ours, and for setting the SNMP community
+  and trap destination. Not a connector target.
+- **No REST API.** There is none to consume; do not plan one.
+- **A raw vendor protocol exists but is OUT OF SCOPE** — the same call as
+  Probel and ACP1/ACP2, i.e. deliberately not pursued here, not an oversight.
+
+So one connector serves these devices, and it is the SNMP one.
+
+### Cerebrum is a multi-protocol peer, not only the NB API
+
+Cerebrum speaks syslog and SNMP as well as its Northbound API, which means
+SNMP work needs no additional hardware — it is BOTH directions of the loop.
+Read off Configuration → SNMP (2026-09-07):
+
+| Cerebrum role | Where | Settings | What it is for |
+| --- | --- | --- | --- |
+| **SNMP agent** (answers) | port **1161**, status Active | RO community `public`, RW `private` | the target our SNMP CONSUMER polls. Note 1161, not 161 — above 1024, so polling it needs no capability grant |
+| **SNMP manager** (polls) | port **161**, SNMPv1, community `public`, poll 3 s | — | the peer that will poll an agent WE expose |
+| **Trap receiver** | port **162**, status Active | "Enable SNMP Trap reception" on | receives traps we emit; sending to it needs no local privilege |
+| **Trap sender** | Notifications → SNMP Traps | SNMPv1, dest port 162, dest IP unset, "on startup" only | a trap SOURCE for a listener of ours. **"Test SNMP Trap"** triggers one on demand, so a test need not restart Cerebrum |
+
+A "V3 Settings" button exists beside the version dropdown (greyed while v1
+is selected), so v3 is supported by the product. SNMP sub-system logging is
+at level Emergency with "Show MIB value type mismatch" off — turn that on
+when debugging our MIB against it.
+
+Only a trap LISTENER of our own would need `CAP_NET_BIND_SERVICE` (port 162
+is privileged), and neither direction above requires one.
 
 All LXCs are unprivileged with `nesting=1`. MAC addresses per NIC live
 in `ansible/inventory/host_vars/<name>.yml` (`nics:`).
@@ -37,10 +172,11 @@ host — `eth0` = `ansible_host` on `10.6.250.101`–`.105`, fabric gateway
 (`netX: …,ip=<addr>/20[,gw=…]`, `nameserver`, `searchdomain`, written
 via the API, applied by a CT reboot); the Windows VM gets it guest-side.
 No DHCP dependency. The inventory is the source of truth, not an
-overlay. **The `dhs_netaddr` role (#786) still carries the retired
-`10.100.0.x` plan — do NOT run it until it is reworked for VLAN 600**
-(the live addresses above were set during the migration, not by that
-role).
+overlay. The `dhs_netaddr` role (#786) carries this plan since 2026-09-17
+(prefix /20, gateway `10.6.255.254`, DNS `10.6.240.1`, host_vars on
+`10.6.250.101`–`.105`); run against the fleet it reported changed=0 on
+every CT — the migration had set exactly these values — and converged the
+one guest-side leftover, dhs-rocky's NetworkManager resolver.
 
 A second management NIC (`eth1` = eth0 + 10, `.111`–`.113`, no default
 route) existed until 2026-08-23 and is **parked, not deleted** — re-adding
@@ -111,7 +247,7 @@ forward and show as transient extras. Only one mirror at a time.
 | AMWA NMOS Registry (Registration/Query) | HTTP + WS | `8235` |
 | AMWA NMOS IS-07 events | WS | `8090` |
 | AMWA NMOS IS-09 System | HTTP | `10641` |
-| Cerebrum NB | TCP | `40007` |
+| Cerebrum NB | TCP | `40007` (staging Cerebrum answers on `40009`) |
 | mDNS (Avahi / Bonjour) | UDP | `5353` |
 | metrics (`--metrics-addr`) | HTTP | `9100` |
 | SSH / WinRM (mgmt) | TCP | `22` / `5985` |
@@ -306,5 +442,5 @@ Tracked in epic #780: static addressing (#786, `dhs_netaddr`), unique
 hostnames (#783), actor-key convergence (#782), mDNS (#784, #797),
 firewall (#785), host baseline (#800), OS updates + reboot (#799),
 time sync + IPv6 (#804), win11 Ansible latency (#790, #812, #815).
-Post-migration follow-ups: confirm Cerebrum's VLAN 600 address; rework
-`dhs_netaddr` for VLAN 600 before re-enabling it.
+Post-migration follow-up still open: confirm Cerebrum's VLAN 600 address.
+`dhs_netaddr` was reworked for VLAN 600 on 2026-09-17.

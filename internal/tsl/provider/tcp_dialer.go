@@ -1,11 +1,14 @@
 package tsl
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
+	"dhs/internal/metrics"
+	"dhs/internal/transport"
 	"dhs/internal/tsl/codec"
 )
 
@@ -22,12 +25,29 @@ const DefaultTCPKeepalivePeriod = 30 * time.Second
 // lazily established on first send; a failed send closes the connection
 // and returns the error so the caller can retry.
 type tcpDialer struct {
+	// met counts what this dialer puts on the wire. Set by the Server at
+	// construction; nil-safe so a dialer built by a test still works.
+	met *metrics.Connector
+
 	mu    sync.Mutex
 	conns map[string]net.Conn // keyed by "host:port"
+
+	// dialer opens each outbound connection. Injected rather than calling
+	// net.Dial inline so the pipe is substitutable, and so SO_KEEPALIVE is
+	// applied by the shared dialer instead of by a separate call here.
+	dialer transport.Dialer
 }
 
-func newTCPDialer() *tcpDialer {
-	return &tcpDialer{conns: map[string]net.Conn{}}
+func newTCPDialer(met *metrics.Connector) *tcpDialer {
+	return &tcpDialer{
+		met:   met,
+		conns: map[string]net.Conn{},
+		dialer: transport.TCPDialer{
+			Options: transport.SocketOptions{
+				KeepalivePeriod: DefaultTCPKeepalivePeriod,
+			},
+		},
+	}
 }
 
 // destKey formats a dest into the conns map key.
@@ -43,13 +63,9 @@ func (d *tcpDialer) dial(host string, port int) (net.Conn, error) {
 	if c, ok := d.conns[key]; ok {
 		return c, nil
 	}
-	c, err := net.Dial("tcp", key)
+	c, err := d.dialer.DialContext(context.Background(), "tcp", key)
 	if err != nil {
 		return nil, fmt.Errorf("tsl v5.0 TCP dial %s: %w", key, err)
-	}
-	if tc, ok := c.(*net.TCPConn); ok {
-		_ = tc.SetKeepAlive(true)
-		_ = tc.SetKeepAlivePeriod(DefaultTCPKeepalivePeriod)
 	}
 	d.conns[key] = c
 	return c, nil
@@ -69,7 +85,11 @@ func (d *tcpDialer) sendV50TCP(host string, port int, p codec.V50Packet) error {
 	if err != nil {
 		return err
 	}
-	if _, werr := c.Write(wrapped); werr != nil {
+	if _, werr := c.Write(wrapped); werr == nil {
+		if d.met != nil {
+			d.met.ObserveTx(len(wrapped), 0)
+		}
+	} else {
 		// Close + forget on write failure.
 		d.mu.Lock()
 		_ = c.Close()

@@ -116,6 +116,16 @@ func (p *Plugin) startKeepAlive(ctx context.Context) {
 	}
 	p.ka = &keepAliveState{cfg: p.kaCfg, done: make(chan struct{})}
 
+	// Arm the reader's dead-man deadline. The watchdog below reports
+	// silence but deliberately leaves the socket open; the read deadline is
+	// what turns a half-open connection (a NAT/firewall drop with no RST)
+	// into an error the read loop can actually surface — which closes
+	// session.Done() and lets the warm-restart reconnect in reconnect.go
+	// re-dial and replay the subscriptions.
+	if p.session != nil {
+		p.session.SetIdleTimeout(timeout)
+	}
+
 	if interval > 0 {
 		p.ka.stopped.Add(1)
 		go p.keepAliveProber(ctx, interval)

@@ -15,6 +15,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"dhs/internal/transport"
 )
 
 // Options configures one broker connection.
@@ -50,6 +52,12 @@ type Client struct {
 	queue    chan message
 	cancel   context.CancelFunc
 	done     chan struct{}
+
+	// dialer opens the broker connection each session establishes. Injected
+	// rather than built inline so the pipe is substitutable — which matters
+	// more here than anywhere else, because session() is the body of a
+	// reconnect loop and every retry asks it for a fresh connection.
+	dialer transport.Dialer
 }
 
 // New starts a client; the connection is managed in the background.
@@ -72,6 +80,11 @@ func New(opts Options) (*Client, error) {
 		queue:    make(chan message, 256),
 		cancel:   cancel,
 		done:     make(chan struct{}),
+		// Same 10 s connect bound as before, plus the SO_KEEPALIVE this
+		// client never set. MQTT has its own PINGREQ keep-alive, but that
+		// only detects a broker still speaking MQTT; a half-open socket
+		// needs the OS probe underneath it.
+		dialer: transport.TCPDialer{Timeout: 10 * time.Second},
 	}
 	go c.run(ctx)
 	return c, nil
@@ -132,8 +145,7 @@ func (c *Client) run(ctx context.Context) {
 
 // session runs one connect-publish-ping loop until an error.
 func (c *Client) session(ctx context.Context) error {
-	d := net.Dialer{Timeout: 10 * time.Second}
-	conn, err := d.DialContext(ctx, "tcp", c.opts.Addr)
+	conn, err := c.dialer.DialContext(ctx, "tcp", c.opts.Addr)
 	if err != nil {
 		return err
 	}

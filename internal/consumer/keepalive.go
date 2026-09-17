@@ -53,3 +53,21 @@ type KeepAliver interface {
 type SessionLiveAccessor interface {
 	SessionLive() bool
 }
+
+// SessionDoneAccessor is the push-side twin of SessionLiveAccessor: a channel
+// that closes when the session ends, whether from a peer close, an I/O error
+// or an idle deadline firing.
+//
+// SessionLive answers "is the data I am showing fresh?" — it is polled.
+// SessionDone answers "is this session over?" — it is waited on, and it is
+// what a Supervisor blocks in order to drive reconnection. Detection without
+// it is a watcher that knows the link is dead and keeps running anyway, which
+// is the 24/7 stall the operator reported.
+//
+// Optional, like every capability in this file. A plugin that does not
+// implement it keeps today's behaviour exactly: the watch verb runs without a
+// supervisor. Connectionless transports (ACP1 over UDP) have no session to
+// lose and correctly do not implement it.
+type SessionDoneAccessor interface {
+	SessionDone() <-chan struct{}
+}

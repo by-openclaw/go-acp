@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // TestKeepaliveResponderIgnoresNonKeepalive: a frame that is not a
@@ -34,7 +35,7 @@ func TestKeepaliveResponderWriteFailureLogged(t *testing.T) {
 	_ = b.Close()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	cli := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	cli := sw08session.NewClientFromConn(a, logger, sw08session.ClientConfig{WireHexLog: &disable})
 	_ = cli.Close() // closing makes Write return net.ErrClosed
 
 	p := &Plugin{logger: logger}

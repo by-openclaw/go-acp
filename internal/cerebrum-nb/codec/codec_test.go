@@ -470,8 +470,12 @@ func TestDecodeDeviceChange_LiveValueShape(t *testing.T) {
 		`<object_value available="0" object="foo"/>` +
 		`</device_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
-	if f.Kind != KindDeviceChange { t.Fatalf("kind: %v", f.Kind) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if f.Kind != KindDeviceChange {
+		t.Fatalf("kind: %v", f.Kind)
+	}
 	d := f.Device
 	if d.Type != "VALUE" || d.IPAddress != "10.107.30.100" || d.DeviceName != "Powercore 2M1" {
 		t.Errorf("outer attrs: %+v", d)
@@ -479,7 +483,9 @@ func TestDecodeDeviceChange_LiveValueShape(t *testing.T) {
 	if d.SubDevice != "0" || d.Object != "foo" {
 		t.Errorf("addressing: sub=%q obj=%q", d.SubDevice, d.Object)
 	}
-	if d.ObjectValue == nil { t.Fatalf("ObjectValue nil") }
+	if d.ObjectValue == nil {
+		t.Fatalf("ObjectValue nil")
+	}
 	if d.ObjectValue.Available || d.ObjectValue.Object != "foo" {
 		t.Errorf("ObjectValue: %+v", d.ObjectValue)
 	}
@@ -492,12 +498,16 @@ func TestDecodeCategoryChange_LiveDetailsShape(t *testing.T) {
 		`<items/>` +
 		`</category_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	c := f.Category
 	if c.Type != "CATEGORY_DETAILS" || c.Category != "DST_PLAYER" {
 		t.Errorf("outer attrs: %+v", c)
 	}
-	if c.Details == nil { t.Fatalf("Details nil") }
+	if c.Details == nil {
+		t.Fatalf("Details nil")
+	}
 	if c.Details.Label != "PLA" || !c.Details.Available || c.Details.Description != "" {
 		t.Errorf("Details: %+v", c.Details)
 	}
@@ -508,7 +518,9 @@ func TestDecodeCategoryChange_DescriptionTypoFallback(t *testing.T) {
 	// decoder picks it up just as readily.
 	wire := `<category_change type="CATEGORY_DETAILS" category="X"><details label="L" available="1" description="hello"/></category_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	if f.Category.Details.Description != "hello" {
 		t.Errorf("Description = %q", f.Category.Details.Description)
 	}
@@ -518,7 +530,9 @@ func TestDecodeSalvoChange_LiveInstanceListShape(t *testing.T) {
 	// Empty list — captured live; field is nil-or-empty.
 	wire := `<salvo_change type="INSTANCE_LIST" group="Salvo Group 1"><instances list=""/></salvo_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	s := f.Salvo
 	if s.Type != "INSTANCE_LIST" || s.Group != "Salvo Group 1" {
 		t.Errorf("outer attrs: %+v", s)
@@ -530,7 +544,7 @@ func TestDecodeSalvoChange_LiveInstanceListShape(t *testing.T) {
 	// CSV-split shape so when we see it we know the parser handles it).
 	wire2 := `<salvo_change type="INSTANCE_LIST" group="G"><instances list="A,B,C"/></salvo_change>`
 	f2, _ := Decode([]byte(wire2))
-	if !equalSlice(f2.Salvo.Instances, []string{"A","B","C"}) {
+	if !equalSlice(f2.Salvo.Instances, []string{"A", "B", "C"}) {
 		t.Errorf("populated list: %v", f2.Salvo.Instances)
 	}
 }
@@ -538,12 +552,16 @@ func TestDecodeSalvoChange_LiveInstanceListShape(t *testing.T) {
 func TestDecodeSalvoChange_LiveInstanceDetailsShape(t *testing.T) {
 	wire := `<salvo_change type="INSTANCE_DETAILS" group="Salvo Group 1" instance="x"><details available="0"/></salvo_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	s := f.Salvo
 	if s.Type != "INSTANCE_DETAILS" || s.Instance != "x" {
 		t.Errorf("outer attrs: %+v", s)
 	}
-	if s.InstanceDetails == nil { t.Fatalf("InstanceDetails nil") }
+	if s.InstanceDetails == nil {
+		t.Fatalf("InstanceDetails nil")
+	}
 	if s.InstanceDetails.Available {
 		t.Errorf("Available = true, want false")
 	}
@@ -563,18 +581,22 @@ func TestDecodeCategoryChange_LiveItemsPositional(t *testing.T) {
 		`</items>` +
 		`</category_change>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	d := f.Category.Details
-	if d == nil { t.Fatalf("Details nil") }
+	if d == nil {
+		t.Fatalf("Details nil")
+	}
 	if d.Label != "SOURCES" || !d.Available {
 		t.Errorf("details: %+v", d)
 	}
 	// BLANK dropped, 5 non-blank items remain in their original positions.
 	want := []CategoryItem{
-		{Index: 1,  Type: "CATEGORY", Value: "SRC_SI_GATEWAYS"},
-		{Index: 2,  Type: "CATEGORY", Value: "SRC_SI_INGEST_SRV"},
-		{Index: 10, Type: "SOURCE",   Value: "465"},
-		{Index: 11, Type: "SOURCE",   Value: "466"},
+		{Index: 1, Type: "CATEGORY", Value: "SRC_SI_GATEWAYS"},
+		{Index: 2, Type: "CATEGORY", Value: "SRC_SI_INGEST_SRV"},
+		{Index: 10, Type: "SOURCE", Value: "465"},
+		{Index: 11, Type: "SOURCE", Value: "466"},
 		{Index: 17, Type: "CATEGORY", Value: "SRC-TEST-YOB"},
 	}
 	if len(d.Items) != len(want) {
@@ -599,7 +621,9 @@ func TestDecodeDeviceChange_MultiInstancePerDevice(t *testing.T) {
 		`<DEVICE IP="10.0.0.3"><INSTANCE DEVICE_TYPE="DEVICE"/></DEVICE>` +
 		`</DEVICE_CHANGE>`
 	f, err := Decode([]byte(wire))
-	if err != nil { t.Fatalf("decode: %v", err) }
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	if got, want := len(f.Device.Devices), 3; got != want {
 		t.Fatalf("entries: got %d want %d", got, want)
 	}

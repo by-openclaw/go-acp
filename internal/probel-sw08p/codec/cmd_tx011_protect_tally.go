@@ -84,8 +84,8 @@ func DecodeProtectTally(f Frame) (ProtectTallyParams, error) {
 			MatrixID:      f.Payload[0] >> 4,
 			LevelID:       f.Payload[0] & 0x0F,
 			State:         ProtectState(f.Payload[1]),
-			DestinationID: (uint16(f.Payload[2]>>4) & 0x07) * 128 + uint16(f.Payload[3]),
-			DeviceID:      (uint16(f.Payload[2]) & 0x07) * 128 + uint16(f.Payload[4]),
+			DestinationID: (uint16(f.Payload[2]>>4)&0x07)*128 + uint16(f.Payload[3]),
+			DeviceID:      (uint16(f.Payload[2])&0x07)*128 + uint16(f.Payload[4]),
 		}, nil
 	case TxProtectTallyExt:
 		if len(f.Payload) < 7 {

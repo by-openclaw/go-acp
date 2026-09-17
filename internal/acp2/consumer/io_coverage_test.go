@@ -2,6 +2,7 @@ package acp2
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"math"
 	"testing"
 	"time"
@@ -354,7 +355,7 @@ func TestFactory_NewAndMeta(t *testing.T) {
 	if meta.DefaultPort != codec.DefaultPort {
 		t.Errorf("meta.DefaultPort = %d, want %d", meta.DefaultPort, codec.DefaultPort)
 	}
-	pl := f.New(testLogger())
+	pl := f.New(plugin.Deps{Logger: testLogger()})
 	if pl == nil {
 		t.Fatal("New returned nil")
 	}
@@ -369,9 +370,14 @@ func TestAccessors_RecorderProfileWalkProgress(t *testing.T) {
 		Interval: consumer.DisableInterval,
 		Timeout:  consumer.DisableTimeout,
 	})
-	// Before Connect: no profile.
-	if p.ComplianceProfile() != nil {
-		t.Error("ComplianceProfile non-nil before Connect")
+	// The profile exists from the start and survives reconnects. It used to
+	// be nil until Connect and replaced on every Connect, which threw away
+	// every deviation seen before a link blip — and made every caller carry
+	// a nil check, including cmd/dhs, which type-asserts and calls this
+	// straight.
+	before := p.ComplianceProfile()
+	if before == nil {
+		t.Error("ComplianceProfile must never be nil")
 	}
 	rec, err := transport.NewRecorder(t.TempDir() + "/cap.jsonl")
 	if err != nil {
@@ -389,15 +395,16 @@ func TestAccessors_RecorderProfileWalkProgress(t *testing.T) {
 	}
 	defer func() { _ = p.Disconnect() }()
 
-	// After Connect: profile exists.
-	if p.ComplianceProfile() == nil {
-		t.Error("ComplianceProfile nil after Connect")
+	// Connect attaches that same profile to the session rather than
+	// installing a fresh one.
+	if got := p.ComplianceProfile(); got != before {
+		t.Error("Connect replaced the profile instead of reusing it")
 	}
 	_ = progressCount
 }
 
 func TestSession_SlotStatusAndSetRecorder(t *testing.T) {
-	s := NewSession(testLogger())
+	s := NewSession(nil, testLogger())
 	rec, err := transport.NewRecorder(t.TempDir() + "/cap.jsonl")
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"dhs/internal/export/canonical"
-	"dhs/internal/consumer"
 	"dhs/internal/acp2/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/export/canonical"
 )
 
 // Canonicalize walks every cached WalkedTree on this plugin and emits

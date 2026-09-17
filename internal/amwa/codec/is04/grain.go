@@ -11,12 +11,12 @@ import (
 // resource changes of its own, so watching a plant means watching a Registry's
 // Query API subscription.
 type Grain struct {
-	GrainType         string    `json:"grain_type"`
-	SourceID          string    `json:"source_id"`
-	FlowID            string    `json:"flow_id"`
-	OriginTimestamp   string    `json:"origin_timestamp"`
-	SyncTimestamp     string    `json:"sync_timestamp"`
-	CreationTimestamp string    `json:"creation_timestamp"`
+	GrainType         string `json:"grain_type"`
+	SourceID          string `json:"source_id"`
+	FlowID            string `json:"flow_id"`
+	OriginTimestamp   string `json:"origin_timestamp"`
+	SyncTimestamp     string `json:"sync_timestamp"`
+	CreationTimestamp string `json:"creation_timestamp"`
 	// Reuses the Source/Flow GrainRate — the same numerator/denominator pair.
 	Rate     GrainRate `json:"rate"`
 	Duration GrainRate `json:"duration"`

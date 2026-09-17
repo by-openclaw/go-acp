@@ -1,0 +1,110 @@
+Frame 1: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51239, Dst Port: 2057, Seq: 1, Ack: 1, Len: 24
+Snell RollCall: GETVALUE cmd=102 CMD_NUM_MATRICES, or DstNameIndex on a level
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-81-00:32
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 32
+    Source: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    RollCall length: 6
+    Type: 69 (GETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00000066
+        Command: 102
+        Routing command: CMD_NUM_MATRICES, or DstNameIndex on a level [unidentified node]
+
+Frame 2: Packet, 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51239, Seq: 1, Ack: 25, Len: 32
+Snell RollCall: RETVALUE cmd=102 CMD_NUM_MATRICES, or DstNameIndex on a level 2
+    TX flags: 12
+    TX length: 28
+    Destination: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    Source: 0000-81-00:32
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 32
+    RollCall length: 14
+    Type: 71 (RETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 000000660000000100000002
+        Command: 102
+        Routing command: CMD_NUM_MATRICES, or DstNameIndex on a level [unidentified node]
+        Match unit type: 0
+        Mode: 0x0001 (VALUE)
+        Value: 2
+
+Frame 3: Packet, 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51239, Dst Port: 2057, Seq: 25, Ack: 33, Len: 24
+Snell RollCall: GETVALUE cmd=103 CMD_MATRIX_BASE
+    TX flags: 12
+    TX length: 20
+    Destination: 0000-81-00:32
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 32
+    Source: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    RollCall length: 6
+    Type: 69 (GETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 00000067
+        Command: 103
+        Routing command: CMD_MATRIX_BASE [unidentified node]
+
+Frame 4: Packet, 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51239, Seq: 33, Ack: 49, Len: 32
+Snell RollCall: RETVALUE cmd=103 CMD_MATRIX_BASE 121
+    TX flags: 12
+    TX length: 28
+    Destination: 0000-00-00:16
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 16
+    Source: 0000-81-00:32
+        Net: 0x0000
+        Unit: 0x81
+        Port: 0x00
+        Session index: 32
+    RollCall length: 14
+    Type: 71 (RETVALUE)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 000000670000000100000079
+        Command: 103
+        Routing command: CMD_MATRIX_BASE [unidentified node]
+        Match unit type: 0
+        Mode: 0x0001 (VALUE)
+        Value: 121
+

@@ -8,10 +8,10 @@ import (
 
 // TestSalvoBuildFireInterrogate exercises the full salvo lifecycle on
 // the provider side:
-//   1. rx 120 adds two crosspoints to salvo 5
-//   2. rx 124 iterates the slots via tx 125 with ascending validity
-//   3. rx 121 (op=set) applies and returns tx 123 status=set
-//   4. tree now reflects the crosspoints
+//  1. rx 120 adds two crosspoints to salvo 5
+//  2. rx 124 iterates the slots via tx 125 with ascending validity
+//  3. rx 121 (op=set) applies and returns tx 123 status=set
+//  4. tree now reflects the crosspoints
 func TestSalvoBuildFireInterrogate(t *testing.T) {
 	srv := newComplianceServer(t)
 

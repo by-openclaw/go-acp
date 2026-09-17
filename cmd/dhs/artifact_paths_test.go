@@ -65,8 +65,8 @@ func TestArtifactPaths_AcceptanceMatrix(t *testing.T) {
 		// Matrix-domain folder classes (facet sets per connector
 		// capability — a missing facet is a protocol fact).
 		{"cerebrum-nb", "0.0.0.0", []string{"xpoint", "src", "dst", "level", "lock", "cat-src", "cat-dst", "cat-mixed"}}, // Route Master
-		{"cerebrum-nb", "10.44.72.24", []string{"xpoint", "src", "dst", "level"}},                                       // physical router
-		{"probel-sw08p", "10.44.72.27", []string{"xpoint", "src", "dst", "protect"}},                                    // lock/protect in-protocol
+		{"cerebrum-nb", "10.44.72.24", []string{"xpoint", "src", "dst", "level"}},                                        // physical router
+		{"probel-sw08p", "10.44.72.27", []string{"xpoint", "src", "dst", "protect"}},                                     // lock/protect in-protocol
 		// Tree/DM folder classes: one facet, params.
 		{"cerebrum-nb", "10.44.72.28", nil},
 		{"acp1", "10.100.0.103", nil},

@@ -15,9 +15,11 @@ package tsl
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"dhs/internal/consumer"
 )
@@ -86,9 +88,21 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 }
 
 // New instantiates a Plugin for this version.
-func (f *Factory) New(logger *slog.Logger) consumer.Protocol {
-	return &Plugin{version: f.version, logger: logger}
+func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	p := &Plugin{version: f.version, logger: deps.Logger}
+	p.Init(deps, tslStaleAfter)
+	return p
 }
+
+// tslStaleAfter is the silence past which a TSL session stops being reported
+// Live. Short, because UMD producers that do emit are chatty.
+//
+// As with the idle reaper, it is a weaker statement than elsewhere: TSL UMD
+// defines no heartbeat in v3.1/v4.0/v5.0 and tallies are emitted on change,
+// so a quiet link is not a dead one. Live means "we have heard from it
+// recently", nothing more.
+const tslStaleAfter = 5 * time.Second
 
 // NewPluginV31 constructs a v3.1-bound Plugin directly (used by tests and
 // by callers that want the concrete type rather than the interface).
@@ -110,11 +124,23 @@ func NewPluginV50(logger *slog.Logger) *Plugin {
 // v4.0 it opens a UDP listener; v5.0 additionally supports TCP with
 // DLE/STX wrapper (wired alongside v5 codec).
 type Plugin struct {
+	// Health supplies SessionHealth. Inherited, not reimplemented.
+	//
+	// This connector LISTENS rather than dials, so Opened is given no host:
+	// there is no remote to probe, and probing our own bound port would
+	// report a reachability that means nothing. Liveness comes from packets
+	// actually arriving, stamped through RecordRx.
+	consumer.Base
+
 	version Version
 	logger  *slog.Logger
 
 	session    *udpSession // set for v3.1, v4.0, or v5.0-UDP
 	tcpSession *tcpSession // set for v5.0-TCP
+
+	// tcpIdleTimeout is applied to the v5.0-TCP session on Connect. 0 = off
+	// (the default) — see SetTCPIdleTimeout for why.
+	tcpIdleTimeout time.Duration
 }
 
 // Connect binds a UDP listener on (ip, port). ip may be empty for
@@ -138,10 +164,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	default:
 		return fmt.Errorf("tsl consumer: unknown version %v", p.version)
 	}
+	// Set before listen: listen starts the read goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	s.onRx = p.noteRx
 	if err := s.listen(ctx, addr, decode); err != nil {
 		return err
 	}
 	p.session = s
+	p.Opened("udp", "", 0, nil)
 	return nil
 }
 
@@ -157,11 +187,36 @@ func (p *Plugin) ConnectV50TCP(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	ts := newTCPSession()
+	ts.SetIdleTimeout(p.tcpIdleTimeout)
+	// Set before listen: listen starts the accept goroutine, so assigning
+	// the hook afterwards races with it and can miss the first packets.
+	ts.onRx = p.noteRx
 	if err := ts.listen(ctx, addr); err != nil {
 		return err
 	}
 	p.tcpSession = ts
+	p.Opened("tcp", "", 0, nil)
 	return nil
+}
+
+// SetTCPIdleTimeout arms the v5.0-TCP idle reaper for connections accepted
+// after this call. Must be set before ConnectV50TCP.
+//
+// Off (0) by default: TSL is one-way (spec §1.0 "for one way communication
+// only"), so a receiver can never ask a producer for state — whether a TCP
+// producer keeps sending after its initial burst is entirely the producer's
+// choice, and the spec's TCP section defines only the DLE/STX wrapper, not
+// any cadence. A default-on reaper would therefore disconnect a healthy
+// dump-then-deltas producer. Enable it when you know your producer refreshes
+// (Lawo VSM loops per-UMD on a configurable period).
+func (p *Plugin) SetTCPIdleTimeout(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	p.tcpIdleTimeout = d
+	if p.tcpSession != nil {
+		p.tcpSession.SetIdleTimeout(d)
+	}
 }
 
 // Disconnect closes the active listener and stops the read loop.
@@ -177,6 +232,7 @@ func (p *Plugin) Disconnect() error {
 		}
 		p.tcpSession = nil
 	}
+	p.Closed()
 	return err
 }
 
@@ -266,4 +322,14 @@ func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) err
 
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
+}
+
+// noteRx is the tap both session kinds fire on every packet received: it
+// stamps liveness for the inherited Health and counts the frame on the
+// metrics connector. One function so UDP and TCP report identically.
+func (p *Plugin) noteRx(n int) {
+	p.RecordRx()
+	if p.Metrics() != nil {
+		p.Metrics().ObserveRx(n)
+	}
 }

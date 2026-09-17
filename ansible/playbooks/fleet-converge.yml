@@ -8,8 +8,8 @@
 #   ansible-playbook playbooks/fleet-converge.yml --check  # dry-run
 #
 # Roles land one per task issue: dhs_access (#782) · dhs_hostname (#783)
-# · dhs_mdns (#784) · dhs_firewall (#785). fleet-verify.yml (#786) asserts
-# the result without changing anything.
+# · dhs_mdns (#784) · dhs_capture · dhs_firewall (#785).
+# fleet-verify.yml (#786) asserts the result without changing anything.
 - name: Converge fleet access, names, mDNS and firewall
   hosts: dhs_clients
   gather_facts: true
@@ -21,6 +21,10 @@
     - dhs_access
     - dhs_hostname
     - dhs_mdns
+    # raw-frame capture posture: cap_net_raw on Linux, Npcap verified on
+    # Windows. Verifies by default and never fails the converge — Npcap
+    # cannot be installed unattended without an OEM licence.
+    - dhs_capture
     - dhs_firewall
     # last: may reboot the CT to apply static addressing (#786); the control
     # node's own reboot ends the play — re-run afterwards = 0 changes.

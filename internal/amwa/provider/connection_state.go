@@ -579,6 +579,7 @@ func splitBroker(addr string) (string, int) {
 	}
 	return host, port
 }
+
 const (
 	transportWebSocketURN = "urn:x-nmos:transport:websocket"
 	transportMQTTURN      = "urn:x-nmos:transport:mqtt"

@@ -1,6 +1,7 @@
 package probelsw02p
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -14,7 +15,7 @@ import (
 // Used by Extended* tests that need to cross the 1023 narrow boundary.
 func newBareTestServer(t *testing.T) *server {
 	t.Helper()
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, nil)
 }
 
 // TestExtendedInterrogateRepliesWithExtendedTally locks in the rx 65 /

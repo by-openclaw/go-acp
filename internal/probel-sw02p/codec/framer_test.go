@@ -220,3 +220,29 @@ func TestUnpackStreamsTwoFrames(t *testing.T) {
 		t.Errorf("second ID = %#x; want %#x", f2.ID, TxConnectOnGoAck)
 	}
 }
+
+// HexDump had no test of its own until the session client moved out of this
+// package and took its only caller with it. It was covered incidentally,
+// which is not the same as being tested — the same shape of gap that let a
+// wrong error-classification arm ship elsewhere in this repo.
+func TestHexDump(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []byte
+		want string
+	}{
+		{"empty", nil, ""},
+		{"empty slice", []byte{}, ""},
+		{"single byte", []byte{0x00}, "00"},
+		{"low nibble only", []byte{0x0f}, "0f"},
+		{"high nibble only", []byte{0xf0}, "f0"},
+		{"lowercase hex", []byte{0xab, 0xcd, 0xef}, "ab cd ef"},
+		{"a real frame", []byte{SOM, 0x02, 0x01, 0x00}, "ff 02 01 00"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HexDump(tc.in); got != tc.want {
+				t.Errorf("HexDump(%v) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}

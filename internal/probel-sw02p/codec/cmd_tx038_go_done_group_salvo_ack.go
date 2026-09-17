@@ -7,9 +7,9 @@ package codec
 type GoGroupResult uint8
 
 const (
-	GoGroupResultSet    GoGroupResult = 0x00 // Crosspoints set
+	GoGroupResultSet     GoGroupResult = 0x00 // Crosspoints set
 	GoGroupResultCleared GoGroupResult = 0x01 // Stored crosspoints cleared
-	GoGroupResultEmpty  GoGroupResult = 0x02 // No crosspoints to set / clear
+	GoGroupResultEmpty   GoGroupResult = 0x02 // No crosspoints to set / clear
 )
 
 // GoDoneGroupSalvoAckParams carries tx 38 GO DONE GROUP SALVO

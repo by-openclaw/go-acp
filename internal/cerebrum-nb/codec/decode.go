@@ -18,8 +18,8 @@ const (
 	KindAck
 	KindNack
 	KindBusy
-	KindContinue         // <CONTINUE/> flow-control after BUSY (§1.4 p5)
-	KindWildcardComplete // <WILDCARD_COMPLETE MTID/> end-of-snapshot (§1.6 p6)
+	KindContinue           // <CONTINUE/> flow-control after BUSY (§1.4 p5)
+	KindWildcardComplete   // <WILDCARD_COMPLETE MTID/> end-of-snapshot (§1.6 p6)
 	KindDeviceConfigResult // <DEVICE_CONFIGURATION …><RESULT VALUE=…/> (§4.5 p20-23)
 
 	// Async events (§5)

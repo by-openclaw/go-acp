@@ -1,6 +1,7 @@
 // Glow encoder — builds BER payloads for all Ember+ Glow messages.
 // Encoding pattern per Ember+ spec v2.50 (Lawo GmbH):
-//   ApplicationTag → Context(0)=number/path → Context(1)=contents(SET) → Context(2)=children
+//
+//	ApplicationTag → Context(0)=number/path → Context(1)=contents(SET) → Context(2)=children
 //
 // Reference: internal/emberplus/assets/Ember+ Documentation.pdf
 package glow

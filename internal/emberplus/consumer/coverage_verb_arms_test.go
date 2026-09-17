@@ -131,7 +131,7 @@ func TestUnsubscribe_StreamSendsCommand31(t *testing.T) {
 	p.session = s
 	e := &treeEntry{
 		numericPath: []int32{1, 1},
-		glowParam:   &glow.Parameter{Path: []int32{1, 1}, Type: glow.ParamTypeInteger,
+		glowParam: &glow.Parameter{Path: []int32{1, 1}, Type: glow.ParamTypeInteger,
 			HasStreamIdentifier: true, StreamIdentifier: 7},
 		obj: consumer.Object{OID: "1.1"},
 	}
@@ -171,7 +171,7 @@ func TestMatrixConnect_SourceStealAccepted(t *testing.T) {
 	if err := p.MatrixConnect(context.Background(), "mtx", 2, []int32{3}, glow.ConnOpAbsolute); err != nil {
 		t.Errorf("oneToOne source-steal connect should succeed: %v", err)
 	}
-	if p.profile.Snapshot()[OneToOneSourceStealAccepted] == 0 {
+	if p.ComplianceProfile().Snapshot()[OneToOneSourceStealAccepted] == 0 {
 		t.Error("expected OneToOneSourceStealAccepted compliance event")
 	}
 }

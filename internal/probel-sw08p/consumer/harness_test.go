@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw08p/codec"
+	sw08session "dhs/internal/probel-sw08p/session"
 )
 
 // matrixPeer plays the matrix side of a SW-P-08 session over one half of
@@ -32,14 +33,14 @@ type matrixPeer struct {
 }
 
 // newPeerHarness wires a Plugin to a fresh in-memory matrix peer. The
-// returned Plugin has a live codec.Client on the A side; the peer plays
+// returned Plugin has a live sw08session.Client on the A side; the peer plays
 // the B side using handler to script replies. cleanup tears both down.
 func newPeerHarness(t *testing.T, handler func(req codec.Frame) []codec.Frame) (*Plugin, *matrixPeer, func()) {
 	t.Helper()
 	a, b := net.Pipe()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := sw08session.NewClientFromConn(a, logger, sw08session.ClientConfig{WireHexLog: &disable})
 
 	peer := &matrixPeer{
 		t:       t,

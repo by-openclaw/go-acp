@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dhs/internal/probel-sw02p/codec"
+	session "dhs/internal/probel-sw02p/session"
 )
 
 // TestSendExtendedConnectOnGoRoundTrip drives SendExtendedConnectOnGo
@@ -22,7 +23,7 @@ func TestSendExtendedConnectOnGoRoundTrip(t *testing.T) {
 	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	disable := false
-	client := codec.NewClientFromConn(a, logger, codec.ClientConfig{WireHexLog: &disable})
+	client := session.NewClientFromConn(a, logger, session.ClientConfig{WireHexLog: &disable})
 
 	// rx 069 = SOM + cmd + 4 payload + checksum = 7 bytes.
 	matrixDone := make(chan struct{})

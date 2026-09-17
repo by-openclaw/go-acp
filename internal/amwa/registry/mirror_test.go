@@ -59,11 +59,11 @@ func grainFrame(topic, id, pre, post string) []byte {
 // Registration API sharing one recorder.
 type fakePlant struct {
 	mu       sync.Mutex
-	posts    []string // "topic:id" in arrival order at the TARGET
-	deletes  []string // "topic/id"
-	healths  []string // node ids
-	healthCL []string // Content-Length header per health POST
-	evict    int      // answer this many health POSTs with 404 first
+	posts    []string       // "topic:id" in arrival order at the TARGET
+	deletes  []string       // "topic/id"
+	healths  []string       // node ids
+	healthCL []string       // Content-Length header per health POST
+	evict    int            // answer this many health POSTs with 404 first
 	rejectN  map[string]int // "type:id" -> answer this many POSTs with 400 first (parent-missing sim)
 }
 

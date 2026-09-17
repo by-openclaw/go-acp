@@ -2,7 +2,7 @@ package probelsw08p
 
 import "dhs/internal/probel-sw08p/codec"
 
-// collectDone builds a codec.SendCollect done-predicate that stops once the
+// collectDone builds a sw08session.SendCollect done-predicate that stops once the
 // running total reported by count across the collected frames reaches want.
 // want <= 0 returns nil, meaning "no deterministic stop" — SendCollect then
 // relies solely on its idle gap. The returned closure is stateful (tracks how

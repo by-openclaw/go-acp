@@ -13,8 +13,8 @@ package export_test
 import (
 	"testing"
 
-	"dhs/internal/export"
 	"dhs/internal/consumer"
+	"dhs/internal/export"
 )
 
 // TestFilter_EmptyPassesEverything — nil filter and zero-value filter

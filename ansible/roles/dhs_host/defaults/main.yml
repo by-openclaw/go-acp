@@ -6,7 +6,7 @@
 # ansible-platform, dhs application layer = this role + siblings.
 
 # Release to deploy on the whole fleet (tag name). Bump here, converge.
-dhs_version: "v0.18.0"
+dhs_version: "v0.22.0"
 dhs_release_repo: by-openclaw/go-acp
 dhs_release_base: "https://github.com/{{ dhs_release_repo }}/releases/download/{{ dhs_version }}"
 
@@ -42,7 +42,7 @@ dhs_host_defender_exclusions:
 
 # NTP peers for win11 (w32time). LXCs inherit the Proxmox host clock and
 # cannot set time themselves — the pve node is chrony's job (ansible-platform#168).
-dhs_host_ntp_peers: ["10.100.0.1,0x8", "pool.ntp.org,0x8"]
+dhs_host_ntp_peers: ["10.6.255.254,0x8", "pool.ntp.org,0x8"]
 
 # GOARCH mapping for the release asset name.
 dhs_host_goarch:

@@ -121,9 +121,17 @@ func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 		_ = t.conn.SetReadDeadline(time.Time{})
 	}
 
+	// A deadline covers a timeout; it does not cover a CANCEL, because the
+	// socket knows nothing about the context. See cancel.go.
+	stop := watchCancel(ctx, t.conn)
+	defer stop()
+
 	// Read MLEN (4 bytes, big-endian).
 	var lenBuf [4]byte
 	if _, err := io.ReadFull(t.conn, lenBuf[:]); err != nil {
+		if cerr := cancelledReadErr(ctx, err); cerr != nil {
+			return nil, cerr
+		}
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}
@@ -145,6 +153,9 @@ func (t *TCPConn) Receive(ctx context.Context, maxPayload int) ([]byte, error) {
 
 	payload := make([]byte, mlen)
 	if _, err := io.ReadFull(t.conn, payload); err != nil {
+		if cerr := cancelledReadErr(ctx, err); cerr != nil {
+			return nil, cerr
+		}
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			return nil, context.DeadlineExceeded
 		}

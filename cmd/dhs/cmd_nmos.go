@@ -39,6 +39,9 @@ import (
 
 // runNMOSConsumer dispatches `dhs consumer nmos <verb> [args]`.
 func runNMOSConsumer(ctx context.Context, args []string) error {
+	var lf *logFlags // uniform logging flags (epic #987), stripped before dispatch
+	lf, args = stripLogFlags(args)
+	ctx = withLogFlags(ctx, lf)
 	// Help IN PLACE of a verb = catalogue; after the verb it belongs to
 	// the verb's own FlagSet (#462).
 	if len(args) == 0 || isHelpToken(args[0]) {
@@ -178,7 +181,9 @@ func runNMOSDiscoverUnicast(ctx context.Context, resolver, service string, timeo
 }
 
 func runNMOSDiscoverMDNS(ctx context.Context, service string, timeout time.Duration) error {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 	br, err := session.NewBrowser(logger)
 	if err != nil {
 		return err
@@ -338,7 +343,9 @@ func runNMOSNodeServeLegacy(ctx context.Context, args []string) error {
 		return fmt.Errorf("producer nmos serve --role node: --config FILE required (use Phase 0 #1 mDNS-only placeholder via --discover-only flag if you really mean to)")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	bundle, err := provider.LoadNodeConfigFromFile(*configPath)
 	if err != nil {
@@ -420,7 +427,9 @@ func runNMOSSystem(ctx context.Context, args []string) error {
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	// Direct override — skip discovery entirely.
 	if *direct != "" {
@@ -554,7 +563,9 @@ func runNMOSSystemServe(ctx context.Context, args []string) error {
 		return fmt.Errorf("producer nmos serve --role system: --config FILE required")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	g, err := provider.LoadIS09GlobalFromFile(*configPath)
 	if err != nil {
@@ -621,7 +632,9 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		mode = "static"
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Uniform logging (epic #987): human stderr + default local syslog file.
+	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "run")
+	defer logClean()
 
 	f, ok := registryslot.Lookup("nmos")
 	if !ok {
@@ -1044,7 +1057,7 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 	}
 
 	var grains, changes int
-	err = query.Watch(ctx, sub.WSHref, func(g *is04.Grain) error {
+	onGrain := func(g *is04.Grain) error {
 		grains++
 		for _, row := range g.Grain.Data {
 			changes++
@@ -1056,7 +1069,49 @@ func runNMOSWatch(ctx context.Context, args []string) error {
 				row.Kind(), strings.Trim(g.Grain.Topic, "/"), row.Path, label)
 		}
 		return nil
-	}, query.WatchOptions{})
+	}
+
+	// A Query WS watch runs 24/7, so a dropped subscription must be
+	// re-established rather than ending the verb. Two things can go: the
+	// socket (reconnect to the same wsHref) and the subscription itself,
+	// which the Registry garbage-collects — so a failed re-dial re-POSTs
+	// the subscription before trying again.
+	//
+	// Liveness comes from query.WatchOptions defaults (30s client ping /
+	// 90s idle deadline): a quiet plant is normal, so silence alone proves
+	// nothing and only our own pings distinguish idle from dead.
+	backoff := time.Second
+	const backoffMax = 30 * time.Second
+	for {
+		err = query.Watch(ctx, sub.WSHref, onGrain, query.WatchOptions{})
+		if err == nil || ctx.Err() != nil {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "nmos watch: stream lost (%v) — reconnecting in %s…\n",
+			err, backoff)
+		select {
+		case <-ctx.Done():
+		case <-time.After(backoff):
+		}
+		if ctx.Err() != nil {
+			err = nil
+			break
+		}
+		if backoff *= 2; backoff > backoffMax {
+			backoff = backoffMax
+		}
+		// Re-POST the subscription: after a Registry restart or a GC the old
+		// wsHref is gone, and re-dialling it forever would never recover.
+		if newSub, serr := qc.Subscribe(ctx, query.SubscribeRequest{
+			ResourcePath:  *resource,
+			Params:        filter,
+			Persist:       *persist,
+			MaxUpdateRate: *rate,
+		}); serr == nil {
+			sub = newSub
+			fmt.Fprintf(os.Stderr, "nmos watch: re-subscribed -> %s (id=%s)\n", sub.WSHref, sub.ID)
+		}
+	}
 
 	fmt.Fprintf(os.Stderr, "\n%d grain(s), %d change row(s)\n", grains, changes)
 	if events := rep.Snapshot(); len(events) > 0 {

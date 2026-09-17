@@ -37,10 +37,10 @@ const (
 type TargetState struct {
 	Target         int32
 	Sources        []int32
-	Operation      int64 // glow.ConnOp*
-	Disposition    int64 // glow.ConnDisp*
-	LabelTarget    string // resolved from MatrixContents.labels (basePath lookup)
-	LabelSources   []string // resolved per source
+	Operation      int64             // glow.ConnOp*
+	Disposition    int64             // glow.ConnDisp*
+	LabelTarget    string            // resolved from MatrixContents.labels (basePath lookup)
+	LabelSources   []string          // resolved per source
 	ResolvedGainDb map[int32]float64 // source -> gain (dB) if parametersLocation points at a gain param
 
 	LastChanged time.Time

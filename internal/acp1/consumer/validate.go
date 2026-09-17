@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"dhs/internal/export"
-	"dhs/internal/consumer"
-	"dhs/internal/wiretrace"
 	"dhs/internal/acp1/codec"
+	"dhs/internal/consumer"
+	"dhs/internal/export"
+	"dhs/internal/wiretrace"
 )
 
 // Validate decodes captured ACP1 wire-trace records (Trames per ADR-0021)

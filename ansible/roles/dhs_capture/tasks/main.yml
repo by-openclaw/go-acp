@@ -1,0 +1,8 @@
+---
+- name: Converge (Linux — cap_net_raw on the dhs binary)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family != "Windows"
+
+- name: Converge (Windows — Npcap)
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

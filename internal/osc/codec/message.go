@@ -9,17 +9,17 @@ import (
 // are widely deployed and handled here. 1.1 additions `T F N I [ ]` are
 // wired via tagstring.go (PhaseA vs PhaseB guard).
 const (
-	TagInt32     = 'i'
-	TagFloat32   = 'f'
-	TagString    = 's'
-	TagBlob      = 'b'
-	TagInt64     = 'h'
-	TagFloat64   = 'd'
-	TagTimetag   = 't'
-	TagSymbol    = 'S'
-	TagChar      = 'c'
-	TagRGBA32    = 'r'
-	TagMIDI      = 'm'
+	TagInt32   = 'i'
+	TagFloat32 = 'f'
+	TagString  = 's'
+	TagBlob    = 'b'
+	TagInt64   = 'h'
+	TagFloat64 = 'd'
+	TagTimetag = 't'
+	TagSymbol  = 'S'
+	TagChar    = 'c'
+	TagRGBA32  = 'r'
+	TagMIDI    = 'm'
 
 	// OSC 1.1 tags (payload-less)
 	TagTrue       = 'T'
@@ -57,16 +57,16 @@ type Arg struct {
 }
 
 // Convenience constructors.
-func Int32(v int32) Arg     { return Arg{Tag: TagInt32, Int32: v} }
-func Float32(v float32) Arg { return Arg{Tag: TagFloat32, Float32: v} }
-func Int64(v int64) Arg     { return Arg{Tag: TagInt64, Int64: v} }
-func Float64(v float64) Arg { return Arg{Tag: TagFloat64, Float64: v} }
-func String(s string) Arg   { return Arg{Tag: TagString, String: s} }
-func Blob(b []byte) Arg     { return Arg{Tag: TagBlob, Blob: b} }
-func Symbol(s string) Arg   { return Arg{Tag: TagSymbol, String: s} }
-func Char(r int32) Arg      { return Arg{Tag: TagChar, Int32: r} }
-func RGBA(b []byte) Arg     { return Arg{Tag: TagRGBA32, Blob: b} }
-func MIDI(b []byte) Arg     { return Arg{Tag: TagMIDI, Blob: b} }
+func Int32(v int32) Arg      { return Arg{Tag: TagInt32, Int32: v} }
+func Float32(v float32) Arg  { return Arg{Tag: TagFloat32, Float32: v} }
+func Int64(v int64) Arg      { return Arg{Tag: TagInt64, Int64: v} }
+func Float64(v float64) Arg  { return Arg{Tag: TagFloat64, Float64: v} }
+func String(s string) Arg    { return Arg{Tag: TagString, String: s} }
+func Blob(b []byte) Arg      { return Arg{Tag: TagBlob, Blob: b} }
+func Symbol(s string) Arg    { return Arg{Tag: TagSymbol, String: s} }
+func Char(r int32) Arg       { return Arg{Tag: TagChar, Int32: r} }
+func RGBA(b []byte) Arg      { return Arg{Tag: TagRGBA32, Blob: b} }
+func MIDI(b []byte) Arg      { return Arg{Tag: TagMIDI, Blob: b} }
 func Timetag(ntp uint64) Arg { return Arg{Tag: TagTimetag, Uint64: ntp} }
 func True() Arg              { return Arg{Tag: TagTrue} }
 func False() Arg             { return Arg{Tag: TagFalse} }

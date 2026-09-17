@@ -190,11 +190,11 @@ func TestManifestServeWalk(t *testing.T) {
 	// DMs: oneToN/oneToOne/nToN/dynamic matrices, functions-strict builtins,
 	// glow-types-strict typed params, identity-strict.
 	wantIDs := []string{
-		"dhs-emberplus-integration",              // manifest device.name
-		"oneToN", "oneToOne", "nToN", "dynamic",  // all matrix behaviours
-		"functions", "getSalvo", "recallSalvo",   // function elements
+		"dhs-emberplus-integration",             // manifest device.name
+		"oneToN", "oneToOne", "nToN", "dynamic", // all matrix behaviours
+		"functions", "getSalvo", "recallSalvo", // function elements
 		"vInteger", "vReal", "vString", "vBoolean", "vEnum", "vOctets", "vTrigger", // every glow value type
-		"identity", "product",                    // identity tree
+		"identity", "product", // identity tree
 	}
 	for _, want := range wantIDs {
 		if !strings.Contains(text, want) {

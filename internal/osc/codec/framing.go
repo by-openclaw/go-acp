@@ -88,10 +88,10 @@ func (lp *LenPrefixReader) ReadPacket() ([]byte, error) {
 // -----------------------------------------------------------------------------
 
 const (
-	SLIPEnd     = 0xC0
-	SLIPEsc     = 0xDB
-	SLIPEscEnd  = 0xDC // replaces an END byte in the body
-	SLIPEscEsc  = 0xDD // replaces an ESC byte in the body
+	SLIPEnd    = 0xC0
+	SLIPEsc    = 0xDB
+	SLIPEscEnd = 0xDC // replaces an END byte in the body
+	SLIPEscEsc = 0xDD // replaces an ESC byte in the body
 )
 
 var (

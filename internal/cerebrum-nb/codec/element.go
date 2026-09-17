@@ -73,9 +73,9 @@ func (e *Element) ChildrenNamed(name string) []*Element {
 // Any leading / trailing whitespace + <?xml ?> declarations are ignored.
 func ParseElement(data []byte) (*Element, error) {
 	dec := xml.NewDecoder(bytes.NewReader(data))
-	dec.Strict = false        // tolerate trailing whitespace
-	dec.AutoClose = nil       // no implicit close behaviour
-	dec.CharsetReader = nil   // UTF-8 only per spec
+	dec.Strict = false      // tolerate trailing whitespace
+	dec.AutoClose = nil     // no implicit close behaviour
+	dec.CharsetReader = nil // UTF-8 only per spec
 	return parseRoot(dec)
 }
 

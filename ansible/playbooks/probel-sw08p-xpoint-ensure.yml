@@ -10,7 +10,7 @@
 # (matrix_id,level_id,dst_id,src_id) on the control node.
 #
 #   ansible-playbook -i inventory/probel.ini playbooks/probel-sw08p-xpoint-ensure.yml \
-#     -e 'addr=10.100.0.42:2008 in_dir=routes/mcr'
+#     -e 'addr=10.6.250.42:2008 in_dir=routes/mcr'
 #
 - name: Probel SW-P-08 crosspoint ensure (idempotency contract)
   hosts: "{{ target | default('localhost') }}"

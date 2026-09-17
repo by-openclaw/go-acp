@@ -12,9 +12,9 @@ import (
 // It captures the registered RawEventFunc so tests can drive announcements
 // straight through the Plugin's filter+wrapper without a real socket.
 type fanoutClient struct {
-	fn       RawEventFunc
-	removed  []int
-	nextH    int
+	fn      RawEventFunc
+	removed []int
+	nextH   int
 }
 
 func (f *fanoutClient) Do(ctx context.Context, req *codec.Message) (*codec.Message, error) {

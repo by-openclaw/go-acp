@@ -77,8 +77,8 @@ func TestServeAdmin_AcceptWarn(t *testing.T) {
 				c   net.Conn
 				err error
 			}{
-				{nil, errAdminIO},     // transient → warn + continue
-				{nil, net.ErrClosed},  // → return nil
+				{nil, errAdminIO},    // transient → warn + continue
+				{nil, net.ErrClosed}, // → return nil
 			},
 		}, nil
 	}
@@ -357,12 +357,12 @@ func (c *scriptConn) Read(p []byte) (int, error) {
 	c.readPos += n
 	return n, nil
 }
-func (c *scriptConn) Close() error                       { return nil }
-func (c *scriptConn) LocalAddr() net.Addr                { return nil }
-func (c *scriptConn) RemoteAddr() net.Addr               { return nil }
-func (c *scriptConn) SetDeadline(time.Time) error        { return nil }
-func (c *scriptConn) SetReadDeadline(time.Time) error    { return nil }
-func (c *scriptConn) SetWriteDeadline(time.Time) error   { return nil }
+func (c *scriptConn) Close() error                     { return nil }
+func (c *scriptConn) LocalAddr() net.Addr              { return nil }
+func (c *scriptConn) RemoteAddr() net.Addr             { return nil }
+func (c *scriptConn) SetDeadline(time.Time) error      { return nil }
+func (c *scriptConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *scriptConn) SetWriteDeadline(time.Time) error { return nil }
 
 var errAdminIO = &adminIOErr{}
 

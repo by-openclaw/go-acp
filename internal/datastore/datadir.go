@@ -16,9 +16,9 @@ import (
 //     logs/, captures/ all live next to dhs.exe). This keeps the
 //     "drop the .exe on the Cerebrum host" workflow self-contained.
 //  3. Else fall back to the user data dir per OS:
-//       Linux:    $XDG_DATA_HOME/dhs   (default $HOME/.local/share/dhs)
-//       macOS:    $HOME/Library/Application Support/dhs
-//       Windows:  %APPDATA%\dhs        (only reached when os.Executable failed)
+//     Linux:    $XDG_DATA_HOME/dhs   (default $HOME/.local/share/dhs)
+//     macOS:    $HOME/Library/Application Support/dhs
+//     Windows:  %APPDATA%\dhs        (only reached when os.Executable failed)
 //
 // The returned path is the directory; callers compose subpaths
 // (logs, captures, devices) with filepath.Join.

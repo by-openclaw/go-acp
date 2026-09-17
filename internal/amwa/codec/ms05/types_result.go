@@ -42,8 +42,8 @@ type NcMethodResultLength struct {
 // NcMethodResultClassDescriptor wraps a NcClassDescriptor return —
 // used by ClassManager.GetClassDescriptor.
 type NcMethodResultClassDescriptor struct {
-	Status NcMethodStatus      `json:"status"`
-	Value  NcClassDescriptor   `json:"value"`
+	Status NcMethodStatus    `json:"status"`
+	Value  NcClassDescriptor `json:"value"`
 }
 
 // NcMethodResultDatatypeDescriptor wraps a NcDatatypeDescriptor

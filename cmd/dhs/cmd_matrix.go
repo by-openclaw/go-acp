@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	emberplus "dhs/internal/emberplus/consumer"
 	"dhs/internal/emberplus/codec/matrix"
+	emberplus "dhs/internal/emberplus/consumer"
 )
 
 func runMatrix(ctx context.Context, args []string) error {

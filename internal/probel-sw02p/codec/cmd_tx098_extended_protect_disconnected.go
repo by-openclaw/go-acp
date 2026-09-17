@@ -49,7 +49,7 @@ func DecodeExtendedProtectDisconnected(f Frame) (ExtendedProtectDisconnectedPara
 	}
 	return ExtendedProtectDisconnectedParams{
 		Protect:     ProtectState(f.Payload[0] & 0x03),
-		Destination: (uint16(f.Payload[1]) & 0x7F) * 128 + uint16(f.Payload[2]),
-		Device:      (uint16(f.Payload[3]) & 0x7F) * 128 + uint16(f.Payload[4]),
+		Destination: (uint16(f.Payload[1])&0x7F)*128 + uint16(f.Payload[2]),
+		Device:      (uint16(f.Payload[3])&0x7F)*128 + uint16(f.Payload[4]),
 	}, nil
 }

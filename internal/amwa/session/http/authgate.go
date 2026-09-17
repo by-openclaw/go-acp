@@ -31,14 +31,15 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/amwa/codec/is10"
+	nmosauth "dhs/internal/amwa/session/auth"
+	jwt "dhs/internal/auth"
 )
 
 // KeyProvider hands the gate the Authorization Server's current
 // public keys. Implementations cache per Resource Server rules
 // (hourly refresh, keep stale keys when the server is unreachable).
 type KeyProvider interface {
-	Keys() []is10.JWK
+	Keys() []jwt.JWK
 }
 
 // IssuerFetcher is optionally implemented by a KeyProvider that can
@@ -50,10 +51,10 @@ type IssuerFetcher interface {
 
 // StaticKeys is a KeyProvider for fixed key sets (tests, pinned
 // deployments).
-type StaticKeys []is10.JWK
+type StaticKeys []jwt.JWK
 
 // Keys returns the fixed set.
-func (s StaticKeys) Keys() []is10.JWK { return s }
+func (s StaticKeys) Keys() []jwt.JWK { return s }
 
 // retryAfterSeconds is the Retry-After we advertise while fetching a
 // missing public key.
@@ -82,11 +83,11 @@ type AuthGate struct {
 
 // bearerToken extracts the access token from the Authorization
 // header, falling back to the RFC 6750 access_token query parameter
-// (the WebSocket-handshake affordance).
+// (the WebSocket-handshake affordance — a browser cannot set a header
+// on a WebSocket handshake, so the spec allows the query form there).
 func bearerToken(r *stdhttp.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) >= 7 && strings.EqualFold(h[:7], "Bearer ") {
-		return strings.TrimSpace(h[7:])
+	if t := jwt.BearerToken(r); t != "" {
+		return t
 	}
 	return r.URL.Query().Get("access_token")
 }
@@ -138,18 +139,23 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 		return deny(stdhttp.StatusUnauthorized, `Bearer realm=nmos`, "no access token presented")
 	}
 
-	var keys []is10.JWK
+	var keys []jwt.JWK
 	if g.Keys != nil {
 		keys = g.Keys.Keys()
 	}
-	claims, err := is10.VerifyWithKeys(tok, keys)
+	claims, err := nmosauth.Verify(tok, keys)
 	if err != nil {
 		// A structurally valid RS512 token that no held key verifies
 		// may belong to an issuer we have not met — the spec's answer
 		// is to fetch that issuer's keys (via its RFC 8414 metadata)
 		// and answer 503 + Retry-After meanwhile, not to reject a
 		// legitimate token forever.
-		if _, c2, _, _, perr := is10.ParseToken(tok); perr == nil && c2.Iss != "" {
+		// Only the issuer is wanted here, so this reads the raw JWS
+		// rather than the NMOS token: a token whose x-nmos-* claim is
+		// malformed still deserves its signing key to be fetched, and
+		// then a truthful 401 about the claim — not a silent 401 about
+		// a key we never went to get.
+		if _, c2, _, _, perr := jwt.ParseToken(tok, nmosauth.AlgRS512); perr == nil && c2.Iss != "" {
 			if fetcher, okF := g.Keys.(IssuerFetcher); okF && g.startIssuerFetch(c2.Iss) {
 				go func(iss string) {
 					fctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -167,20 +173,20 @@ func (g *AuthGate) Check(r *stdhttp.Request) (status int, headers map[string]str
 		log.Info("auth: rejected", "reason", "signature", "method", r.Method, "path", r.URL.Path, "err", err)
 		return deny(stdhttp.StatusUnauthorized, `Bearer error=invalid_token`, err.Error())
 	}
-	if err := is10.ValidateClaimsExceptAud(claims, time.Now(), leeway); err != nil {
+	if err := nmosauth.ValidateClaimsExceptAud(claims, time.Now(), leeway); err != nil {
 		log.Info("auth: rejected", "reason", "claims", "method", r.Method, "path", r.URL.Path,
 			"iss", claims.Iss, "sub", claims.Sub, "client", claims.ClientID, "err", err)
 		return deny(stdhttp.StatusUnauthorized, `Bearer error=invalid_token`, err.Error())
 	}
 	// Wrong audience: the token is genuine but addressed to someone
 	// else — a FORBIDDEN use of this server (the suite pins 403 here).
-	if !is10.AudienceMatchesAny(claims.Aud, g.Hosts) {
+	if !nmosauth.AudienceMatchesAny(claims.Aud, g.Hosts) {
 		log.Info("auth: forbidden", "reason", "audience", "method", r.Method, "path", r.URL.Path,
 			"iss", claims.Iss, "aud", []string(claims.Aud))
 		return deny(stdhttp.StatusForbidden, `Bearer error=insufficient_scope`,
 			"token audience does not name this server")
 	}
-	if err := is10.Authorize(claims, r.Method, r.URL.Path); err != nil {
+	if err := nmosauth.Authorize(claims, r.Method, r.URL.Path); err != nil {
 		log.Info("auth: forbidden", "method", r.Method, "path", r.URL.Path,
 			"iss", claims.Iss, "sub", claims.Sub, "client", claims.ClientID, "err", err)
 		return deny(stdhttp.StatusForbidden, `Bearer error=insufficient_scope`, err.Error())

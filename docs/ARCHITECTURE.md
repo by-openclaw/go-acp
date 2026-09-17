@@ -93,7 +93,7 @@ concerns here.
 
 | Folder | State |
 |---|---|
-| `internal/snell-rollcall/` | **future protocol**, gated on every current connector first satisfying the ADR-0025 six-deliverable bar. Today the directory only holds `assets/` with a gitignored local vendor SDK dump (1656 files of `.tpl` / `.mib` / `.zip` / `.exe` / `.doc`) — already laid out per ADR-0001 so when work begins the scaffolded `consumer/` / `provider/` / `codec/` / `wireshark/` / `CLAUDE.md` land alongside it. No Go code, no registry entry yet. |
+| `internal/snell-rollcall/` | **shipping the connector** (epic #1009). Consumer, provider, session layer and codec are all at 100% statement coverage with CI floors, registered in both registries, and driven from the CLI. Both wire generations are served from one model. Router control implements the Full Control command set — discovery, matrices, levels, names in bulk, crosspoints, protects, salvos, tally — and every offset in it is measured against the vendor Centra controller running as a Sirius 800 (`docs/oracle-centra.md`). Ships `wireshark/dhs_snell_rollcall.lua` with a replay test over 90 KB of captured live traffic, and an Ansible integration play with an emulator tier, a read-only live-device tier and a loopback tier. Outstanding: a DM/manifest generator and the per-product fixture set. |
 | `internal/cerebrum-nb/provider/` | **consumer-only by design at this stage** — only the consumer + codec + wireshark layers are shipped; no `provider/` folder exists yet on disk. Intentionally not in scope at the current stage per `internal/cerebrum-nb/CLAUDE.md`. |
 
 ---

@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/transport"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,10 @@ import (
 	"sync"
 	"time"
 )
+
+// adminDialTimeout bounds a single admin request's connect. The admin socket
+// is on loopback, so this only ever fires when the producer is gone.
+const adminDialTimeout = 5 * time.Second
 
 // AdminRequest is one JSON command from a CLI client. Verbs map 1:1 to
 // the issue's `dhs producer acp1 admin <verb> ...` surface. The Args map
@@ -55,7 +60,17 @@ func (s *server) ServeAdmin(ctx context.Context, name string) error {
 	if name == "" {
 		name = "dhs-acp1"
 	}
-	listen := func() (net.Listener, error) { return net.Listen("tcp4", "127.0.0.1:0") }
+	// Loopback-only by design: the admin socket is a local control channel,
+	// never a network surface. The bind goes through transport; the shared
+	// socket policy is applied to each accepted connection below, which is
+	// also what covers a listener injected by adminListenHook.
+	listen := func() (net.Listener, error) {
+		ln, lerr := transport.ListenTCP(ctx, "tcp4", "127.0.0.1:0", transport.SocketOptions{})
+		if lerr != nil {
+			return nil, lerr
+		}
+		return ln.Listener, nil
+	}
 	if s.adminListenHook != nil {
 		listen = s.adminListenHook
 	}
@@ -193,7 +208,7 @@ func (s *server) writeAdminErr(conn net.Conn, err error) {
 type AdminClient struct {
 	addr string
 
-	// dial overrides the transport dial. Nil ⇒ net.DialTimeout. Test-only
+	// dial overrides the transport dial. Nil ⇒ transport.TCPDialer. Test-only
 	// injection seam so the request write-error and reply read-error arms of
 	// Call are deterministically reachable with a scripted net.Conn (a real
 	// loopback peer almost never fails a write synchronously).
@@ -215,7 +230,10 @@ func NewAdminClient(name string) (*AdminClient, error) {
 func (c *AdminClient) Call(ctx context.Context, req *AdminRequest) (*AdminResponse, error) {
 	dial := c.dial
 	if dial == nil {
-		dial = func() (net.Conn, error) { return net.DialTimeout("tcp4", c.addr, 5*time.Second) }
+		dial = func() (net.Conn, error) {
+			return transport.TCPDialer{Timeout: adminDialTimeout}.
+				DialContext(ctx, "tcp4", c.addr)
+		}
 	}
 	conn, err := dial()
 	if err != nil {

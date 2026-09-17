@@ -2,6 +2,7 @@ package probelsw08p
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -18,7 +19,7 @@ import (
 func TestProtectRoundTripLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	srv.tree.setDeviceName(42, "PANEL01")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -28,7 +29,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 	host, port := splitAddr(t, addr)
 
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancelDC()
 	if err := plugin.Connect(dc, host, port); err != nil {
@@ -100,7 +101,7 @@ func TestProtectRoundTripLoopback(t *testing.T) {
 func TestMasterProtectOverrideLoopback(t *testing.T) {
 	exp := demoMatrixExport(16, 16)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := newServer(logger, exp)
+	srv := newServer(plugin.Deps{Logger: logger}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = srv.Serve(ctx, "127.0.0.1:0") }()
@@ -113,7 +114,7 @@ func TestMasterProtectOverrideLoopback(t *testing.T) {
 	}
 
 	f := &probelproto.Factory{}
-	plugin := f.New(logger).(*probelproto.Plugin)
+	plugin := f.New(plugin.Deps{Logger: logger}).(*probelproto.Plugin)
 	dc, cancelDC := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelDC()
 	if err := plugin.Connect(dc, host, port); err != nil {

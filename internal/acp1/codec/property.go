@@ -21,47 +21,47 @@ import (
 // All strings are NUL-terminated ASCII per spec p. 20. The NUL byte is
 // consumed by the decoder and stripped from the returned Go string.
 type DecodedObject struct {
-	Type       ObjectType
-	NumProps   uint8
-	Access     uint8
-	Label      string // common to most objects
-	Unit       string // Integer, IPAddr, Float, Long, Byte
+	Type     ObjectType
+	NumProps uint8
+	Access   uint8
+	Label    string // common to most objects
+	Unit     string // Integer, IPAddr, Float, Long, Byte
 
 	// Numeric value fields. Which one is populated depends on Type.
 	// Only one of {IntVal, UintVal, FloatVal, ByteVal} carries the value.
-	IntVal     int64   // Integer (int16), Long (int32)
-	UintVal    uint64  // IPAddr (uint32)
-	FloatVal   float64 // Float (float32)
-	ByteVal    uint8   // Byte, Enum current index
+	IntVal   int64   // Integer (int16), Long (int32)
+	UintVal  uint64  // IPAddr (uint32)
+	FloatVal float64 // Float (float32)
+	ByteVal  uint8   // Byte, Enum current index
 
 	// Numeric constraints. Same representation rules as *Val above.
-	DefInt     int64
-	DefUint    uint64
-	DefFloat   float64
-	DefByte    uint8
+	DefInt   int64
+	DefUint  uint64
+	DefFloat float64
+	DefByte  uint8
 
-	StepInt    int64
-	StepUint   uint64
-	StepFloat  float64
-	StepByte   uint8
+	StepInt   int64
+	StepUint  uint64
+	StepFloat float64
+	StepByte  uint8
 
-	MinInt     int64
-	MinUint    uint64
-	MinFloat   float64
-	MinByte    uint8
+	MinInt   int64
+	MinUint  uint64
+	MinFloat float64
+	MinByte  uint8
 
-	MaxInt     int64
-	MaxUint    uint64
-	MaxFloat   float64
-	MaxByte    uint8
+	MaxInt   int64
+	MaxUint  uint64
+	MaxFloat float64
+	MaxByte  uint8
 
 	// Root
-	BootMode       uint8
-	NumIdentity    uint8
-	NumControl     uint8
-	NumStatus      uint8
-	NumAlarm       uint8
-	NumFile        uint8
+	BootMode    uint8
+	NumIdentity uint8
+	NumControl  uint8
+	NumStatus   uint8
+	NumAlarm    uint8
+	NumFile     uint8
 
 	// Enum
 	NumItems  uint8

@@ -1,13 +1,13 @@
 package acp2
 
 import (
+	"dhs/internal/acp2/codec"
 	"io"
 	"log/slog"
 	"net"
 	"sync"
 	"testing"
 	"time"
-	"dhs/internal/acp2/codec"
 )
 
 // newTestSession builds a session bound to a net.Pipe so handshake
@@ -275,10 +275,10 @@ func TestAN2Handshake_EnableProtocolEvents(t *testing.T) {
 	defer func() { _ = peer.Close() }()
 
 	req := &codec.AN2Frame{
-		Proto:   codec.AN2ProtoInternal,
-		Slot:    0,
-		MTID:    6,
-		Type:    codec.AN2TypeRequest,
+		Proto: codec.AN2ProtoInternal,
+		Slot:  0,
+		MTID:  6,
+		Type:  codec.AN2TypeRequest,
 		// count=1, proto=ACP2
 		Payload: []byte{codec.AN2FuncEnableProtocolEvents, 1, uint8(codec.AN2ProtoACP2)},
 	}

@@ -114,7 +114,7 @@ func (r *Recorder) Close() error {
 // RecordingTransport wraps an ACP1 Transport and records every Send/Receive.
 // It satisfies the acp1.Transport interface (Send, Receive, Close).
 type RecordingTransport struct {
-	inner    interface {
+	inner interface {
 		Send(ctx context.Context, payload []byte) error
 		Receive(ctx context.Context, maxSize int) ([]byte, error)
 		Close() error

@@ -13,10 +13,10 @@ import "strings"
 type CommandKind string
 
 const (
-	KindElement CommandKind = "kind"  // Glow element kind (Parameter, Node, …)
-	KindCommand CommandKind = "cmd"   // Glow Command verb (GetDirectory, Subscribe, …)
-	KindOID     CommandKind = "oid"   // numeric OID path (e.g. 1.2.4.1.0.2)
-	KindPath    CommandKind = "path"  // dotted-label path (e.g. root.foo.bar)
+	KindElement CommandKind = "kind" // Glow element kind (Parameter, Node, …)
+	KindCommand CommandKind = "cmd"  // Glow Command verb (GetDirectory, Subscribe, …)
+	KindOID     CommandKind = "oid"  // numeric OID path (e.g. 1.2.4.1.0.2)
+	KindPath    CommandKind = "path" // dotted-label path (e.g. root.foo.bar)
 )
 
 // CatalogueEntry is the structured row used by the CLI catalogue

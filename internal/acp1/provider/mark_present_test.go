@@ -1,6 +1,7 @@
 package acp1
 
 import (
+	"dhs/internal/plugin"
 	"io"
 	"log/slog"
 	"testing"
@@ -49,7 +50,7 @@ func newServerFromSlots(t *testing.T, slots ...*canonical.Node) *server {
 			Children: children,
 		},
 	}}
-	return newServer(slog.New(slog.NewTextHandler(io.Discard, nil)), exp)
+	return newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 }
 
 // TestMarkTreeSlotsPresent_MultiCardFrame is the multi-card frame case: a tree

@@ -3,8 +3,6 @@ package acp1
 import (
 	"context"
 	"log/slog"
-	"net"
-	"strconv"
 	"testing"
 	"time"
 
@@ -102,49 +100,4 @@ func TestKeepAliveWatchdog_Transitions(t *testing.T) {
 
 	close(p.ka.done)
 	p.ka.stopped.Wait()
-}
-
-// TestSessionHealth_Reachable covers the host!="" probe branch with a live
-// TCP listener (successful dial + close) and the LastRx/Live fields.
-func TestSessionHealth_Reachable(t *testing.T) {
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
-	go func() {
-		for {
-			c, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			_ = c.Close()
-		}
-	}()
-	h, p, _ := net.SplitHostPort(ln.Addr().String())
-	port, _ := strconv.Atoi(p)
-
-	pl := &Plugin{
-		host:   h,
-		port:   port,
-		tsSink: &timestampSink{},
-	}
-	pl.tsSink.recordRx()
-	hp := pl.SessionHealth(context.Background())
-	if !hp.Reachable {
-		t.Error("expected Reachable true against live listener")
-	}
-	if !hp.Live {
-		t.Error("expected Live true after recordRx")
-	}
-}
-
-// TestProbeReachable_DeadlinePassed covers the "deadline already passed"
-// early false return.
-func TestProbeReachable_DeadlinePassed(t *testing.T) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
-	defer cancel()
-	if probeReachable(ctx, "127.0.0.1", 9) {
-		t.Error("expired deadline: probeReachable should be false")
-	}
 }

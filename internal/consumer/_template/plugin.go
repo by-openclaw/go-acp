@@ -4,6 +4,7 @@ package template
 
 import (
 	"context"
+	"dhs/internal/plugin"
 	"log/slog"
 
 	"dhs/internal/consumer"
@@ -19,13 +20,15 @@ type TemplateFactory struct{}
 
 func (f *TemplateFactory) Meta() consumer.ProtocolMeta {
 	return consumer.ProtocolMeta{
-		Name:        "TEMPLATE",   // change to your protocol name e.g. "ACMP"
-		DefaultPort: 0,            // set default port
+		Name:        "TEMPLATE", // change to your protocol name e.g. "ACMP"
+		DefaultPort: 0,          // set default port
 		Description: "Template protocol — replace this description",
 	}
 }
 
-func (f *TemplateFactory) New(logger *slog.Logger) consumer.Protocol {
+func (f *TemplateFactory) New(deps plugin.Deps) consumer.Protocol {
+	deps = deps.WithDefaults()
+	logger := deps.Logger
 	return &TemplateProtocol{logger: logger}
 }
 

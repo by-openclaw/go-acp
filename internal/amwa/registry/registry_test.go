@@ -25,11 +25,11 @@ func TestFactoryRegisteredViaInit(t *testing.T) {
 
 func TestPickAdvertiseHostPort(t *testing.T) {
 	cases := []struct {
-		name      string
-		opts      registryslot.ServeOptions
-		hostFrag  string // substring check (avoids OS hostname leakage)
-		port      uint16
-		wantErr   bool
+		name     string
+		opts     registryslot.ServeOptions
+		hostFrag string // substring check (avoids OS hostname leakage)
+		port     uint16
+		wantErr  bool
 	}{
 		{
 			"AdvertiseHost wins",

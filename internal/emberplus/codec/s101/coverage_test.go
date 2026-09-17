@@ -47,10 +47,10 @@ func TestIsEmBER(t *testing.T) {
 // too-short input guard.
 func TestDecode_BadFrame(t *testing.T) {
 	cases := map[string][]byte{
-		"empty":      {},
-		"single":     {BOF},
-		"no-bof":     {0x00, 0x01, EOF},
-		"no-eof":     {BOF, 0x01, 0x02},
+		"empty":  {},
+		"single": {BOF},
+		"no-bof": {0x00, 0x01, EOF},
+		"no-eof": {BOF, 0x01, 0x02},
 	}
 	for name, in := range cases {
 		if _, err := Decode(in); !errors.Is(err, ErrBadFrame) {
