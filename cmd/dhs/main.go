@@ -383,6 +383,9 @@ func dispatchProducer(ctx context.Context, args []string) error {
 	if proto == "nmos" {
 		return runNMOSProducer(ctx, rest)
 	}
+	if proto == "ccm" {
+		return runCCMProducer(ctx, rest)
+	}
 	if proto == "snmp" {
 		return runSNMPProducer(ctx, rest)
 	}
@@ -643,6 +646,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
   snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)

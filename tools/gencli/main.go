@@ -63,6 +63,11 @@ var matrix = []helpEntry{
 	{"NMOS live probe", []string{"consumer", "nmos", "probe", "--help"}},
 	{"NMOS parameter registers", []string{"consumer", "nmos", "registers", "--help"}},
 
+	// EVS CCM (BRIDGE / Neuron REST) — the acp2 successor for Tree/DM device
+	// control. The producer replays a captured device model as a CCM device;
+	// the consumer walks and exports one.
+	{"CCM device (producer)", []string{"producer", "ccm", "serve", "--help"}},
+	{"CCM controller (consumer)", []string{"consumer", "ccm", "--help"}},
 	// SNMP — both roles, and the notification path in both directions.
 	{"SNMP consumer", []string{"consumer", "snmp", "--help"}},
 	{"SNMP: get", []string{"consumer", "snmp", "get", "--help"}},

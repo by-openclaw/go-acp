@@ -26,6 +26,8 @@ Ansible templates render the same shape.
 - [NMOS plant audit](#nmos-plant-audit)
 - [NMOS live probe](#nmos-live-probe)
 - [NMOS parameter registers](#nmos-parameter-registers)
+- [CCM device (producer)](#ccm-device-producer)
+- [CCM controller (consumer)](#ccm-controller-consumer)
 - [SNMP consumer](#snmp-consumer)
 - [SNMP: get](#snmp-get)
 - [SNMP: walk](#snmp-walk)
@@ -144,7 +146,6 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
-  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -220,6 +221,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
   snmp                BE an agent; serve | trap (run 'dhs producer snmp -h')
 
 FLAGS (common, slot-based protocols)
@@ -626,6 +628,43 @@ usage: dhs consumer nmos registers <list|show> [urn] [--json]
   list          every parameter, URN-sorted
   show <urn>    one parameter's typed constraint
   --json        machine-readable output
+```
+
+## CCM device (producer)
+
+`dhs producer ccm serve --help`
+
+```text
+Usage of producer ccm serve:
+  -api-spec string
+    	the device's OpenAPI 3.1 api.yml: served at /api/v1/docs/api.yml and the write contract (without it: GET only)
+  -bind string
+    	listen address (a real device serves https on :443) (default ":8080")
+  -dm-tree string
+    	device model to replay (resource path -> resource JSON), from 'dhs consumer ccm export' (required)
+  -metrics-addr string
+    	if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json on this address
+  -pidfile dhs producer ccm stop|ensure --pidfile PATH
+    	if set, write this process's PID to PATH on start (removed on exit) so dhs producer ccm stop|ensure --pidfile PATH can manage it
+  -readme string
+    	Markdown document to serve rendered at /x-dhs/readme (default: the provider's own README)
+  -tls-cert string
+    	server certificate PEM; with --tls-key, serve HTTPS
+  -tls-key string
+    	private key for --tls-cert
+```
+
+## CCM controller (consumer)
+
+`dhs consumer ccm --help`
+
+```text
+usage: dhs consumer ccm <verb> <host> [flags]
+  walk <host>    connect to the CCM (Neuron REST) API and list its streams by UUID
+  export <host>  store api.yml (schema) + tree (DM) + extract, versioned for firmware diff
+  flags: --json  emit the whole device as JSON
+         --verify-tls  verify the device certificate (default: skip, lab self-signed)
+         --timeout D   per-request timeout (default 8s)
 ```
 
 ## SNMP consumer
@@ -1505,7 +1544,6 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
-  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -1580,7 +1618,6 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
-  snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
