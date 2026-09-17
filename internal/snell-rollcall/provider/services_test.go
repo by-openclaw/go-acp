@@ -185,7 +185,6 @@ func TestFlushingToASessionWithNoValuesToSend(t *testing.T) {
 		t.Fatalf("%d subscribers, want the one that enabled the back channel", len(subs))
 	}
 
-	s.p.wg.Add(1)
 	s.p.flush(subs[0])
 
 	select {

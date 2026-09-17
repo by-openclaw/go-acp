@@ -531,8 +531,7 @@ func (p *Provider) backChannel(s *session.Session, req codec.Frame) error {
 	// without it having to read every value. Asking for future changes only
 	// is the other state, and it skips exactly this.
 	if req.Payload[0] == codec.BackChannelEnable {
-		p.wg.Add(1)
-		go p.flush(sub)
+		p.spawn(func() { p.flush(sub) })
 	}
 	return nil
 }

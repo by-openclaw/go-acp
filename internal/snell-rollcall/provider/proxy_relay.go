@@ -237,9 +237,7 @@ func (r *relayLink) upstream() (*session.Link, error) {
 	r.up = up
 	r.p.log.Debug("rollcall: relay connected to the frame", "frame", r.chain.upstream)
 
-	r.p.wg.Add(1)
-	go func() {
-		defer r.p.wg.Done()
+	r.p.spawn(func() {
 		<-up.Done()
 		r.mu.Lock()
 		if r.up == up {
@@ -248,7 +246,7 @@ func (r *relayLink) upstream() (*session.Link, error) {
 		r.mu.Unlock()
 		r.p.log.Debug("rollcall: relay connection to the frame ended",
 			"frame", r.chain.upstream, "err", up.Err())
-	}()
+	})
 	return up, nil
 }
 

@@ -491,9 +491,7 @@ func (p *Provider) probeLater(c *frameChain) {
 	c.probing = true
 	c.mu.Unlock()
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	p.spawn(func() {
 		defer func() {
 			c.mu.Lock()
 			c.probing = false
@@ -503,7 +501,7 @@ func (p *Provider) probeLater(c *frameChain) {
 			p.log.Warn("rollcall: the frame behind the proxy still does not answer",
 				"frame", c.upstream, "err", err)
 		}
-	}()
+	})
 }
 
 // proxyInfoPayload renders a DeviceInfo for a proxy-chain node at an address.

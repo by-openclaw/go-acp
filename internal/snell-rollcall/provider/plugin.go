@@ -242,7 +242,15 @@ type Provider struct {
 
 	done     chan struct{}
 	doneOnce sync.Once
+
+	// wg counts the goroutines Stop waits for. Every one of them starts
+	// through spawn, and stopMu orders those starts against Stop: a
+	// goroutine may not be added once Stop has begun to wait, which the race
+	// detector calls a WaitGroup misuse and which would otherwise leave it
+	// running after Stop returned.
 	wg       sync.WaitGroup
+	stopMu   sync.Mutex
+	stopping bool
 
 	comp compliance
 }
@@ -334,16 +342,17 @@ func (p *Provider) Serve(ctx context.Context, addr string) error {
 	// returning on its own — a listener that failed — because otherwise the
 	// wait below would be waiting for a goroutine waiting for it.
 	stopped := make(chan struct{})
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	if !p.spawn(func() {
 		select {
 		case <-ctx.Done():
 		case <-p.done:
 		case <-stopped:
 		}
 		_ = ln.Close()
-	}()
+	}) {
+		_ = ln.Close()
+		return fmt.Errorf("rollcall: serve %s: provider stopped", addr)
+	}
 
 	err = p.accept(ctx, ln)
 	close(stopped)
@@ -426,9 +435,7 @@ func (p *Provider) serveConn(conn net.Conn) {
 
 	p.log.Debug("rollcall: client connected", "remote", conn.RemoteAddr().String())
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	if !p.spawn(func() {
 		<-l.Done()
 
 		p.mu.Lock()
@@ -439,7 +446,40 @@ func (p *Provider) serveConn(conn net.Conn) {
 			relays.close()
 		}
 		p.log.Debug("rollcall: client gone", "remote", conn.RemoteAddr().String())
+	}) {
+		// Stop began while this connection was being accepted, so nothing
+		// will wait for it or end it: end it here, the way Stop ends the
+		// others.
+		_ = l.Close()
+		p.mu.Lock()
+		delete(p.links, l)
+		p.mu.Unlock()
+		if relays != nil {
+			relays.close()
+		}
+	}
+}
+
+// spawn starts fn on a goroutine Stop waits for, and reports whether it did.
+//
+// Once Stop has begun it starts nothing: an add racing the wait is the
+// WaitGroup misuse the race detector flagged on the release run for 0.23.0
+// (a connection accepted as Stop closed the listener), and a goroutine
+// started then would outlive the provider. Callers that opened something
+// for fn to mind close it themselves on false; the rest have nothing to do,
+// the provider is stopping.
+func (p *Provider) spawn(fn func()) bool {
+	p.stopMu.Lock()
+	defer p.stopMu.Unlock()
+	if p.stopping {
+		return false
+	}
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		fn()
 	}()
+	return true
 }
 
 // gatewayInfo is what this provider announces about itself: port zero of its
@@ -571,6 +611,12 @@ const firstClientPort uint8 = 0xE0
 // Stop closes the listener and every link.
 func (p *Provider) Stop() error {
 	p.doneOnce.Do(func() { close(p.done) })
+
+	// From here nothing new is counted, so the wait below waits for a set
+	// that only shrinks.
+	p.stopMu.Lock()
+	p.stopping = true
+	p.stopMu.Unlock()
 
 	p.mu.Lock()
 	ln := p.listener
