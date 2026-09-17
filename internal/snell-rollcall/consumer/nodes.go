@@ -267,15 +267,20 @@ func (p *Plugin) appendFarPorts(ctx context.Context, l *link, t *nodeTable) {
 	// The frames to ask, snapshot before the table grows: a card added below is
 	// not itself a frame whose ports are enumerated. A frame here is a node
 	// reached through a bridge (a routed address), at port zero (a frame, not one
-	// of its cards), that advertises the port service and is not itself a bridge.
-	// The measured IQ gateway behind the proxy advertises the port service; a far
-	// node that offers only the map service is not something measured here and is
-	// left as a node without cards rather than guessed at.
+	// of its cards), that is not itself a bridge and offers BOTH the map and the
+	// port service — which is what a segment's own gateway offers and nothing
+	// else on the segment does. Measured 2026-09-17 through our proxy: the IQ
+	// gateway advertises Map|Ports and its ports are its cards; the Centra
+	// controller advertises Map without Ports; and every Centra matrix and card
+	// advertises Ports without Map, its ports being its own levels or channels —
+	// 123 per card — which a direct connection to the Centra never enumerates
+	// as nodes either. Reading only the gateway's ports is what makes the far
+	// side look exactly like the near side would.
 	var frames []codec.Address
 	for i := range t.info {
 		a := t.addrs[i]
 		s := t.info[i].ID.Services
-		if a.Net != 0 && a.Port == 0 && s.Has(codec.SvcPorts) && !s.Has(codec.SvcNet) {
+		if a.Net != 0 && a.Port == 0 && s.Has(codec.SvcPorts) && s.Has(codec.SvcMap) && !s.Has(codec.SvcNet) {
 			frames = append(frames, a)
 		}
 	}

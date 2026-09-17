@@ -76,6 +76,18 @@ A slot past the end of the enumeration is still addressed rather than refused:
 a gateway ages a map entry out after sixty seconds of silence, so a node
 missing from the list is one that has gone quiet.
 
+### Behind a proxy
+
+A proxy's map lists one bridge per subnet; a bridge's net service lists the
+far segment, already routed; and only the far segment's **gateway** — the one
+node offering map and ports both — is asked for its ports, which are its
+cards. A Centra matrix or card behind a bridge offers ports without map (its
+levels, or 123 channels on a card) and is listed as a node, not descended:
+that is what a direct connection to the Centra shows too. Measured
+2026-09-17 through our IPShare fronting the IQ frame, a Sirius 800 and our
+router: 39 nodes, the same set a direct connection to each would give,
+where descending every port list gave 545.
+
 ## Walking a menu
 
 A menu is a flat array with nested spans: a container's step is the size of its

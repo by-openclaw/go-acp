@@ -162,7 +162,8 @@ func TestCardsBehindAFrameReachedThroughABridge(t *testing.T) {
 	// addressable at the frame's own route and unit with the card's port — which
 	// is how a client of the proxy walks a card two hops out.
 	frame := farDevice(0x1000, 0x0C, "the frame")
-	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcPorts
+	// A gateway: map and ports both, as the IQ frame's advertises.
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcMap | codec.SvcPorts
 	h := newHarness(t, func(d *device) {
 		d.ports = 1
 		d.services |= codec.SvcNet
@@ -216,7 +217,7 @@ func TestAFrameThatWillNotListItsCards(t *testing.T) {
 	// is kept as a node — a client still sees the frame — and the refusal is
 	// counted rather than swallowed.
 	frame := farDevice(0x1000, 0x0C, "a mute frame")
-	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcPorts
+	frame.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcMap | codec.SvcPorts
 	h := newHarness(t, func(d *device) {
 		d.ports = 1
 		d.services |= codec.SvcNet
@@ -661,4 +662,51 @@ func TestConcurrentNetSessionsKeepOne(t *testing.T) {
 	if results[0] != results[1] {
 		t.Error("two callers got two net sessions on one bridge; one is leaked")
 	}
+}
+
+func TestAFarUnitWithPortsButNoMapIsNotDescended(t *testing.T) {
+	// A Centra matrix or card behind a bridge offers the port service — its
+	// levels or its channels, 123 on a card — but no map. A direct connection
+	// to the Centra never lists those as nodes, so neither does the far side:
+	// only the segment's gateway, which offers map and ports both, is asked
+	// for its ports.
+	card := farDevice(0x3000, 0x41, "IP Slot 1: 5915")
+	card.ID.Services = codec.SvcMenus | codec.SvcControl | codec.SvcFile | codec.SvcPorts
+	h := newHarness(t, func(d *device) {
+		d.ports = 1
+		d.services |= codec.SvcNet
+		d.farByBridge = map[codec.Address][]codec.DeviceInfo{
+			{Unit: gatewayAddr.Unit, Port: 0, Index: codec.IndexUnknown}: {card},
+		}
+		// Were it asked, it would list a channel; it must not be asked.
+		d.cardsByFrame = map[codec.Address][]codec.DeviceInfo{
+			{Net: 0x3000, Unit: 0x41, Index: codec.IndexUnknown}: {frameCard(0x01, 623, "channel 1")},
+		}
+	})
+
+	tbl, err := h.plugin.nodes(context.Background())
+	if err != nil {
+		t.Fatalf("enumerate: %v", err)
+	}
+	for _, a := range tbl.addrs {
+		if a.Net == 0x3000 && a.Unit == 0x41 && a.Port != 0 {
+			t.Errorf("a channel of a far card was listed as a node: %s", a)
+		}
+	}
+	if !containsAddr(tbl.addrs, codec.Address{Net: 0x3000, Unit: 0x41, Index: codec.IndexUnknown}) {
+		t.Error("the far card itself is not listed")
+	}
+	if hasEvent(h.plugin, EventFrameUnreadable) {
+		t.Error("a node that was never asked for its ports was reported as unreadable")
+	}
+}
+
+// containsAddr reports whether addrs holds a, ignoring the session index.
+func containsAddr(addrs []codec.Address, a codec.Address) bool {
+	for _, x := range addrs {
+		if x.SameDevice(a) {
+			return true
+		}
+	}
+	return false
 }
