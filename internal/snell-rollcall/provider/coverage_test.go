@@ -255,7 +255,6 @@ func TestAFlushStopsWhenTheSubscriberGoes(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	s.p.wg.Add(1)
 	go func() {
 		defer close(done)
 		s.p.flush(sub)
@@ -283,7 +282,6 @@ func TestAFlushStopsWhenTheProviderDoes(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	s.p.wg.Add(1)
 	go func() {
 		defer close(done)
 		s.p.flush(sub)
@@ -363,3 +361,31 @@ func (n *recordingNet) ListenPacket(context.Context, string, string) (net.Packet
 }
 
 var _ transport.Net = (*recordingNet)(nil)
+
+// A provider that has begun to stop starts nothing it would have to wait for:
+// Serve is refused, and a connection accepted as the listener closed is ended
+// on the spot rather than left to a goroutine nobody waits for. Pins the
+// WaitGroup add-during-wait race the detector caught on the 0.23.0 release
+// run (35259088416).
+func TestNothingStartsAfterStopBegan(t *testing.T) {
+	p := New(testDeps(clock.NewFake(time.Time{})), testTree())
+	_ = p.Stop()
+
+	if err := p.Serve(context.Background(), "127.0.0.1:0"); err == nil {
+		t.Error("Serve after Stop was accepted")
+	}
+
+	ours, theirs := net.Pipe()
+	defer func() { _ = ours.Close() }()
+	p.serveConn(theirs)
+	_ = ours.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if _, err := ours.Read(make([]byte, 1)); err == nil {
+		t.Error("a connection accepted after Stop began was kept open")
+	}
+	if n := len(p.links); n != 0 {
+		t.Errorf("%d links tracked after Stop, want none", n)
+	}
+	if p.spawn(func() {}) {
+		t.Error("spawn after Stop started a goroutine")
+	}
+}

@@ -80,8 +80,7 @@ func (st *linkState) setSubscribed(s *session.Session, on bool) (*subscriber, bo
 func (p *Provider) subscribe(st *linkState, s *session.Session) *subscriber {
 	sub, created := st.setSubscribed(s, true)
 	if created {
-		p.wg.Add(1)
-		go p.pump(sub)
+		p.spawn(func() { p.pump(sub) })
 	}
 	return sub
 }
@@ -100,8 +99,6 @@ func (st *linkState) subscribers() []*subscriber {
 
 // pump sends one subscriber's queue in order, waiting for each acknowledgement.
 func (p *Provider) pump(sub *subscriber) {
-	defer p.wg.Done()
-
 	for {
 		select {
 		case <-sub.done:
@@ -229,8 +226,6 @@ func (p *Provider) slotSubscribers(slot uint8, need codec.Service) []*subscriber
 // that is slow to acknowledge should be made to wait, not given a partial
 // picture it cannot tell from a complete one.
 func (p *Provider) flush(sub *subscriber) {
-	defer p.wg.Done()
-
 	prt := p.model.port(sub.s.LocalAddress().Port)
 	if prt == nil {
 		return
