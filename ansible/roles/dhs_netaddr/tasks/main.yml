@@ -21,6 +21,10 @@
     - ansible_os_family != "Windows"
     - not (dhs_netaddr_proxmox_enabled | bool)
 
+- name: Converge (Linux guest resolver, NetworkManager hosts)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family != "Windows"
+
 - name: Converge (Windows guest static IPv4)
   ansible.builtin.include_tasks: windows.yml
   when: ansible_os_family == "Windows"

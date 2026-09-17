@@ -1,0 +1,141 @@
+{
+  "root": {
+    "number": 1,
+    "identifier": "frame",
+    "path": "frame",
+    "oid": "1",
+    "isOnline": true,
+    "access": "read",
+    "children": [
+      {
+        "number": 1,
+        "identifier": "card1",
+        "path": "frame.card1",
+        "oid": "1.1",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "identity",
+            "path": "frame.card1.identity",
+            "oid": "1.1.1",
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 1,
+                "identifier": "product",
+                "path": "frame.card1.identity.product",
+                "oid": "1.1.1.1",
+                "isOnline": true,
+                "access": "read",
+                "type": "string",
+                "value": "IQMIX-4"
+              },
+              {
+                "number": 2,
+                "identifier": "serial",
+                "path": "frame.card1.identity.serial",
+                "oid": "1.1.1.2",
+                "isOnline": true,
+                "access": "read",
+                "type": "string",
+                "value": "SN-000241"
+              }
+            ]
+          },
+          {
+            "number": 2,
+            "identifier": "video",
+            "path": "frame.card1.video",
+            "oid": "1.1.2",
+            "isOnline": true,
+            "access": "read",
+            "children": [
+              {
+                "number": 1,
+                "identifier": "gain",
+                "path": "frame.card1.video.gain",
+                "oid": "1.1.2.1",
+                "isOnline": true,
+                "access": "readWrite",
+                "type": "real",
+                "value": 0.0,
+                "minimum": -60.0,
+                "maximum": 6.0,
+                "step": 0.5,
+                "unit": "dB",
+                "factor": 10
+              },
+              {
+                "number": 2,
+                "identifier": "enable",
+                "path": "frame.card1.video.enable",
+                "oid": "1.1.2.2",
+                "isOnline": true,
+                "access": "readWrite",
+                "type": "boolean",
+                "value": true
+              },
+              {
+                "number": 3,
+                "identifier": "name",
+                "path": "frame.card1.video.name",
+                "oid": "1.1.2.3",
+                "isOnline": true,
+                "access": "readWrite",
+                "type": "string",
+                "value": "SDI 1"
+              }
+            ]
+          },
+          {
+            "number": 3,
+            "identifier": "status",
+            "path": "frame.card1.status",
+            "oid": "1.1.3",
+            "isOnline": true,
+            "access": "read",
+            "type": "integer",
+            "value": 3,
+            "minimum": 0,
+            "maximum": 9
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "identifier": "card2",
+        "path": "frame.card2",
+        "oid": "1.2",
+        "isOnline": true,
+        "access": "read",
+        "children": [
+          {
+            "number": 1,
+            "identifier": "level",
+            "path": "frame.card2.level",
+            "oid": "1.2.1",
+            "isOnline": true,
+            "access": "readWrite",
+            "type": "integer",
+            "value": 5,
+            "minimum": 0,
+            "maximum": 10
+          },
+          {
+            "number": 2,
+            "identifier": "mute",
+            "path": "frame.card2.mute",
+            "oid": "1.2.2",
+            "isOnline": true,
+            "access": "readWrite",
+            "type": "boolean",
+            "value": false
+          }
+        ]
+      }
+    ]
+  }
+}

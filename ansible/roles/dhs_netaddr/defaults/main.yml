@@ -8,12 +8,20 @@
 # No DHCP dependency; pfSense only needs the range excluded from its pool as
 # hygiene. fleet-verify.yml keeps asserting live IP == inventory IP.
 #
+# Network: VLAN 600, MGMT_CTRL 10.6.240.0/20 since the 2026-08-29 migration
+# (docs/testbed.md). Gateway is the fabric VRRP, DNS the fabric resolver.
 # Scheme (owner 2026-08-23, "reorganize per LXC two mgmt ports"):
-#   eth0 = mgmt-A (ansible_host, default gateway), eth1 = eth0 + 10 (mgmt-B,
-#   no default route). 101..105 / 111..113. Cerebrum staging stays .5.
-dhs_netaddr_prefix: 24
-dhs_netaddr_gateway: 10.100.0.1
-dhs_netaddr_dns: [10.100.0.1]
+#   eth0 = mgmt-A (ansible_host, default gateway) on 10.6.250.101..105;
+#   eth1 = eth0 + 10 (mgmt-B, no default route) is PARKED since #822 —
+#   re-adding it is a host_vars edit. Cerebrum staging stays .5.
+#
+# Guest side: Proxmox renders the guest network from the CT config at every
+# start and never in between, so linux.yml checks the live resolver against
+# the inventory and restarts a CT that was never restarted after its config
+# changed (dhs-rocky kept the retired resolver for three weeks that way).
+dhs_netaddr_prefix: 20
+dhs_netaddr_gateway: 10.6.255.254
+dhs_netaddr_dns: [10.6.240.1]
 dhs_netaddr_searchdomain: by-systems.arpa
 
 # Proxmox API (token vars come from the control-node-only secrets file,

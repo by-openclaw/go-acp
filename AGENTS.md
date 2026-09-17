@@ -109,7 +109,7 @@ NMOS Phase 2 Steps 1-14 all merged on main 2026-05-01:
   IS-04 Controller `watch` verb, IS-05 plugin (#163), IS-08 plugin
   (#165), IS-12+MS-05-02 plugin layer (#166), IS-07 MQTT (#185).
 
-**Phase A real-peer test against EVS Cerebrum 10.100.0.5:8080
+**Phase A real-peer test against EVS Cerebrum 10.6.250.5:8080
 in progress 2026-05-01.** A1-A5 passed (reach + decode + register
 all 6 resource types + heartbeat + round-trip walk). 1 codec bug
 found and fixed (PR #187 above). 3 Cerebrum-side mismatches under

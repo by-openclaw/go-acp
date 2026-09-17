@@ -1,15 +1,17 @@
 ---
-# dhs-tools — Proxmox LXC 655 "dhs.tools", Ubuntu, single NIC 10.100.0.104
-# (static, #786; the old DHCP lease was .106).
+# dhs-tools — Proxmox LXC 655 "dhs.tools", Ubuntu, single NIC 10.6.250.104
+# (static, #786, VLAN 600 since 2026-08-29).
 # Tooling host: Docker + the AMWA NMOS Testing tool (scripts/amwa/*),
 # tshark / Wireshark dissector validation. Not a dhs producer host by
-# default (no ember_tree_src).
+# default (no ember_tree_src) — except the RollCall plant front:
+# playbooks/snell-rollcall-ipshare.yml runs our IPShare (:2050) and our
+# router (:2052) here as systemd units on the release-managed dhs binary.
 pve_vmid: 655
 pve_name: dhs.tools
 pve_cores: 6          # P1 sizing (#817): ANSIBLE CONTROL NODE - forking, templating, module assembly and SSH/TLS crypto all run here
 os_label: "Ubuntu"
 nics:
-  - { name: eth0, mac: "BC:24:11:C1:92:FF", ip: 10.100.0.104 }
+  - { name: eth0, mac: "BC:24:11:C1:92:FF", ip: 10.6.250.104 }
 fleet_hostname: dhs-tools
 
 # Tooling host: no dhs producers -> only management rules (ssh, metrics).
