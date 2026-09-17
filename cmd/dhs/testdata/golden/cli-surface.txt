@@ -3499,6 +3499,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -3617,6 +3618,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -3735,6 +3737,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -4110,6 +4113,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
@@ -4228,6 +4232,7 @@ VERBS
 PROTOCOLS
   acp1 | acp2 | emberplus | probel-sw02p | probel-sw08p
   osc-v10 | osc-v11   (run 'dhs producer osc-v10 -h' for OSC-specific verbs)
+  ccm                 (run 'dhs producer ccm -h' — replay a captured CCM device model)
 
 FLAGS (common, slot-based protocols)
   --tree PATH             canonical tree.json (required)
