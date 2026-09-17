@@ -7,6 +7,20 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.23.0](https://github.com/by-openclaw/go-acp/compare/v0.22.0...v0.23.0) (2026-09-17)
+
+
+### Features
+
+* **ccm:** provider — replay a captured device model as a CCM device ([#1065](https://github.com/by-openclaw/go-acp/issues/1065)) ([c209511](https://github.com/by-openclaw/go-acp/commit/c2095114501097cbff4e36f3b87b268dff107016))
+* **ccm:** recursive full-DM walk (walk --tree / export dm-tree.json) ([#984](https://github.com/by-openclaw/go-acp/issues/984)) ([2a3f76b](https://github.com/by-openclaw/go-acp/commit/2a3f76b7dc9d65bfbc953709cedbb410a01d28c6))
+
+
+### Bug Fixes
+
+* **ansible:** dhs_netaddr on VLAN 600, and the retired 10.100.0.x plan swept out ([#1077](https://github.com/by-openclaw/go-acp/issues/1077)) ([aad5a10](https://github.com/by-openclaw/go-acp/commit/aad5a108f3dc259295e1273498b84991a8a47d1b))
+* **snell-rollcall:** never block the closed-channel token put-back ([#1085](https://github.com/by-openclaw/go-acp/issues/1085)) ([7cbcdf8](https://github.com/by-openclaw/go-acp/commit/7cbcdf80a56797a6fee416edcf721cae9dfed041)), closes [#1084](https://github.com/by-openclaw/go-acp/issues/1084)
+
 ## [0.22.0](https://github.com/by-openclaw/go-acp/compare/v0.21.0...v0.22.0) (2026-09-17)
 
 
