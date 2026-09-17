@@ -140,7 +140,14 @@ func TestTheAgentAnswersOverUDP(t *testing.T) {
 	// The exchange is counted on both sides, which is what --metrics-addr
 	// surfaces and what an operator uses to tell "nobody is polling us"
 	// from "we are answering wrong".
+	//
+	// The reply is counted after it is written, so the manager can hold it
+	// before the agent's loop has reached the count: wait for that, bounded.
 	snap := s.Metrics().Snapshot()
+	for deadline := time.Now().Add(5 * time.Second); snap.TxBytes == 0 && time.Now().Before(deadline); {
+		time.Sleep(5 * time.Millisecond)
+		snap = s.Metrics().Snapshot()
+	}
 	if snap.RxBytes == 0 || snap.TxBytes == 0 {
 		t.Errorf("metrics = rx %d / tx %d, want the exchange counted",
 			snap.RxBytes, snap.TxBytes)
