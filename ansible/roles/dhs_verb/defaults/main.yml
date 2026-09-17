@@ -25,7 +25,7 @@ dv_proto: ""
 dv_global_argv: []
 
 # The verb and everything after it: target host[:port] + per-verb
-# flags, e.g. [get, "10.100.0.104:2072", --slot, "1", --path, "..."].
+# flags, e.g. [get, "10.6.250.104:2072", --slot, "1", --path, "..."].
 dv_argv: []
 
 # Append `--output json` and parse stdout into dv_result_json.

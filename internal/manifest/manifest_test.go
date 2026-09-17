@@ -428,3 +428,25 @@ func TestSlugifyDeviceName(t *testing.T) {
 		}
 	}
 }
+
+// TestSlotDMs pins where each card sits and what it is, in manifest order —
+// the order BuildExport grafts the DMs under the root, which is how a provider
+// pairs each entry with the card it describes.
+func TestSlotDMs(t *testing.T) {
+	m := &Manifest{Frames: []Frame{
+		{Name: "a", Slots: []Slot{
+			{Addr: map[string]any{"slot": 3}, DM: "IQDBE00@5.0.cs5"},
+			{Addr: map[string]any{"oid": "1.4"}, DM: "B@1"}, // not a slot
+		}},
+		{Name: "b", Slots: []Slot{
+			{Addr: map[string]any{"slot": float64(11)}, DM: "IQMUX42@8.5.cs17"},
+		}},
+	}}
+	got := fmt.Sprintf("%v", m.SlotDMs())
+	if got != "[{3 IQDBE00@5.0.cs5} {-1 B@1} {11 IQMUX42@8.5.cs17}]" {
+		t.Fatalf("SlotDMs = %s", got)
+	}
+	if (&Manifest{}).SlotDMs() != nil {
+		t.Error("a manifest with no slots listed some")
+	}
+}

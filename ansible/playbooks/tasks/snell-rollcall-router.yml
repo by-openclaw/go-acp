@@ -1,0 +1,292 @@
+---
+# The router verbs, asserted against ONE endpoint that has a routing interface.
+#
+# Included once per path that reaches a router — the vendor Centra, a real
+# controller, or our own producer serving a committed router tree — and it does
+# not know which. A path that needs its own assertions is a path nobody can
+# compare against another.
+#
+# Caller supplies `rt`:
+#   name      short label, used in task names and artifact filenames
+#   host      address to dial
+#   port      TCP port
+#   why       one line on what this path proves
+#   writable  true to take a route and fire a salvo; false keeps it read-only
+#   dest      destination to work on, counting from one
+#   source    source to route to it, counting from one
+#
+# READ-ONLY IS THE DEFAULT. A real device in a plant is never written to by a
+# test; writes happen against the emulator when the operator nominates a
+# crosspoint, and against our own ephemeral producer, which is torn down after.
+#
+# The idempotency proof (ADR-0025 deliverable 6) lives here: a take reports
+# changed, a second take of the same crosspoint reports unchanged, and --check
+# then agrees without sending anything. That is run-twice = zero changes
+# measured on the wire rather than asserted in prose.
+
+- name: "{{ rt.name }} — settle before the routing interface"
+  ansible.builtin.pause:
+    seconds: "{{ settle_seconds | int }}"
+  when: settle_seconds | int > 0
+
+- name: "{{ rt.name }} — read the routing interface"
+  ansible.builtin.command:
+    cmd: >-
+      {{ dhs_bin }} consumer rollcall router {{ rt.host }}:{{ rt.port }}
+      --timeout {{ endpoint_timeout }} --output json
+  register: rtr
+  changed_when: false
+
+- name: "{{ rt.name }} — decode it"
+  ansible.builtin.set_fact:
+    rtr_json: "{{ rtr.stdout | from_json }}"
+
+# The interface lives on the panel node, not on the matrices, and it answers
+# command 100 with a version number. A client that finds nothing has usually
+# asked a matrix — see internal/snell-rollcall/docs/oracle-centra.md §2.
+- name: "{{ rt.name }} — the interface published a version and a plant"
+  ansible.builtin.assert:
+    that:
+      - rtr_json.interface_version | int > 0
+      - rtr_json.matrices | length > 0
+      - rtr_json.matrices[0].levels | length > 0
+    fail_msg: >-
+      {{ rt.name }} published no routing interface. This path proves
+      {{ rt.why }}, so nothing below it can be trusted.
+
+- name: "{{ rt.name }} — every level says how big it is"
+  ansible.builtin.assert:
+    that:
+      - rtr_json.matrices[0].levels[0].sources | int > 0
+      - rtr_json.matrices[0].levels[0].destinations | int > 0
+    fail_msg: >-
+      A level that reports no sources or no destinations has published a
+      count of zero or a base this client could not follow. The counts come
+      from the level's own table; a zero there makes every crosspoint below
+      it unaddressable.
+
+- name: "{{ rt.name }} — keep the interface beside the node tables"
+  ansible.builtin.copy:
+    content: "{{ rtr.stdout }}"
+    dest: "{{ artifact_dir }}/router-{{ rt.name }}.json"
+    mode: "0644"
+  changed_when: false
+
+# ---------------------------------------------------------------------------
+# salvo — the names live in a file, not in commands
+# ---------------------------------------------------------------------------
+
+- name: "{{ rt.name }} — settle before the salvo list"
+  ansible.builtin.pause:
+    seconds: "{{ settle_seconds | int }}"
+  when: settle_seconds | int > 0
+
+- name: "{{ rt.name }} — list the salvos"
+  ansible.builtin.command:
+    cmd: >-
+      {{ dhs_bin }} consumer rollcall salvo {{ rt.host }}:{{ rt.port }}
+      --timeout {{ endpoint_timeout }}
+  register: salvos
+  changed_when: false
+  # A plant with no salvos configured is a plant with no salvos, not a fault.
+  failed_when: false
+
+- name: "{{ rt.name }} — the salvo list either names salvos or says there are none"
+  ansible.builtin.assert:
+    that:
+      - salvos.rc == 0
+    fail_msg: >-
+      Listing salvos failed. The count is a command and the names are a file
+      fetched over the file service, so this failing while the interface reads
+      means the file service is the part that is not answering.
+
+# ---------------------------------------------------------------------------
+# route — read a crosspoint
+# ---------------------------------------------------------------------------
+
+- name: "{{ rt.name }} — settle before reading a crosspoint"
+  ansible.builtin.pause:
+    seconds: "{{ settle_seconds | int }}"
+  when: settle_seconds | int > 0
+
+- name: "{{ rt.name }} — read destination {{ rt.dest }}"
+  ansible.builtin.command:
+    cmd: >-
+      {{ dhs_bin }} consumer rollcall route {{ rt.host }}:{{ rt.port }}
+      --matrix {{ rt.matrix | default(1) }} --level {{ rt.level | default(1) }} --dest {{ rt.dest }}
+      --timeout {{ endpoint_timeout }} --output json
+  register: xpt_read
+  changed_when: false
+
+- name: "{{ rt.name }} — the crosspoint names a matrix, a level and a source"
+  ansible.builtin.assert:
+    that:
+      - (xpt_read.stdout | from_json).destination | int == rt.dest | int
+      - (xpt_read.stdout | from_json).source.matrix is defined
+      - (xpt_read.stdout | from_json).source.level is defined
+      - (xpt_read.stdout | from_json).source.source is defined
+    fail_msg: >-
+      A routed source is Data Transfer Params carrying a packed pin, not a
+      plain number. A reading with no matrix or level in it is a client that
+      decoded the parameters as an integer.
+
+# ---------------------------------------------------------------------------
+# tally — the back channel, which is the whole point of the verb
+# ---------------------------------------------------------------------------
+
+- name: "{{ rt.name }} — settle before the tally"
+  ansible.builtin.pause:
+    seconds: "{{ settle_seconds | int }}"
+  when: settle_seconds | int > 0
+
+# tally reads the level and then follows it until interrupted, so it is given a
+# bounded run rather than a flag: exit 124 is the bound expiring, which is the
+# expected end of a verb that has no other one.
+- name: "{{ rt.name }} — read the level and follow it"
+  ansible.builtin.command:
+    cmd: >-
+      timeout {{ tally_seconds }}
+      {{ dhs_bin }} consumer rollcall tally {{ rt.host }}:{{ rt.port }}
+      --matrix {{ rt.matrix | default(1) }} --level {{ rt.level | default(1) }} --names
+  register: tally_out
+  changed_when: false
+  failed_when: tally_out.rc not in [0, 124]
+
+- name: "{{ rt.name }} — the tally dumped the level before following it"
+  ansible.builtin.assert:
+    that:
+      - tally_out.stdout | length > 0
+    fail_msg: >-
+      The tally printed nothing. Enabling the back channel does not replay
+      the current state, so a panel that only subscribes sees nothing until
+      something moves — the reading has to come first, and it did not.
+
+# ---------------------------------------------------------------------------
+# The idempotency contract (ADR-0007, ADR-0025 deliverable 6)
+#
+# Only where writing is allowed. This is the proof that run-twice is zero
+# changes, and it is measured: the destination is read before the take and
+# again after it, and "changed" is whether those two differ.
+# ---------------------------------------------------------------------------
+
+- name: "{{ rt.name }} — the idempotency contract"
+  when: rt.writable | bool
+  block:
+    - name: "{{ rt.name }} — settle before the take"
+      ansible.builtin.pause:
+        seconds: "{{ settle_seconds | int }}"
+      when: settle_seconds | int > 0
+
+    - name: "{{ rt.name }} — take source {{ rt.source }} to destination {{ rt.dest }}"
+      ansible.builtin.command:
+        cmd: >-
+          {{ dhs_bin }} consumer rollcall route {{ rt.host }}:{{ rt.port }}
+          --matrix {{ rt.matrix | default(1) }} --level {{ rt.level | default(1) }} --dest {{ rt.dest }} --source {{ rt.source }}
+          --timeout {{ endpoint_timeout }} --output json
+      register: take_first
+      changed_when: (take_first.stdout | from_json).changed | bool
+
+    - name: "{{ rt.name }} — the router reported what it actually routed"
+      ansible.builtin.assert:
+        that:
+          - (take_first.stdout | from_json).routed
+        fail_msg: >-
+          Nothing is routed to that destination after the take. The reported
+          source may differ from the one asked for — where a route crosses a
+          tieline the controller reports the far end — but it may not be
+          nothing.
+
+    - name: "{{ rt.name }} — take it again (run-twice, the proof)"
+      ansible.builtin.command:
+        cmd: >-
+          {{ dhs_bin }} consumer rollcall route {{ rt.host }}:{{ rt.port }}
+          --matrix {{ rt.matrix | default(1) }} --level {{ rt.level | default(1) }} --dest {{ rt.dest }} --source {{ rt.source }}
+          --timeout {{ endpoint_timeout }} --output json
+      register: take_again
+      changed_when: (take_again.stdout | from_json).changed | bool
+
+    - name: "{{ rt.name }} — the second take changed nothing"
+      ansible.builtin.assert:
+        that:
+          - not ((take_again.stdout | from_json).changed | bool)
+        fail_msg: >-
+          Taking the same crosspoint twice reported a change the second time.
+          changed is a comparison of the destination read before the take with
+          the destination read after it, so a change here means the controller
+          moved something — or that the reading is not stable, which is worse.
+
+    - name: "{{ rt.name }} — the two takes agree on what is routed"
+      ansible.builtin.assert:
+        that:
+          - (take_first.stdout | from_json).source ==
+            (take_again.stdout | from_json).source
+        fail_msg: "The same crosspoint read back differently on two takes."
+
+    - name: "{{ rt.name }} — a dry run agrees, and sends nothing"
+      ansible.builtin.command:
+        cmd: >-
+          {{ dhs_bin }} consumer rollcall route {{ rt.host }}:{{ rt.port }}
+          --matrix {{ rt.matrix | default(1) }} --level {{ rt.level | default(1) }} --dest {{ rt.dest }} --source {{ rt.source }}
+          --check --timeout {{ endpoint_timeout }} --output json
+      register: take_check
+      changed_when: false
+
+    - name: "{{ rt.name }} — --check reports the destination already converged"
+      ansible.builtin.assert:
+        that:
+          - not ((take_check.stdout | from_json).would_change | bool)
+          - (take_check.stdout | from_json).diff | length == 0
+        fail_msg: >-
+          A dry run of a route already made said it would change something.
+          Across matrices that is expected — the controller reports the far
+          end of the tieline rather than the source asked for — but this take
+          was within one matrix and one level, where the reading is the
+          request.
+
+    - name: "{{ rt.name }} — the take answered in the shape every converge answers in"
+      ansible.builtin.assert:
+        that:
+          # ADR-0007 requires diff to be emitted even when empty, so that a
+          # play never has to tell "nothing changed" from "this verb forgot
+          # to say".
+          - (take_again.stdout | from_json).diff is defined
+          - (take_again.stdout | from_json).diff | length == 0
+          - (take_first.stdout | from_json).diff | length == 1
+          - (take_first.stdout | from_json).diff[0].field == 'source'
+          - (take_again.stdout | from_json).current ==
+            (take_again.stdout | from_json).previous
+        fail_msg: >-
+          The take did not answer in the ADR-0007 shape. A converge reports
+          changed, previous, current, target and a diff that is always
+          present — the same fields under the same names as every other
+          converge here, so one play can read any of them.
+
+    - name: "{{ rt.name }} — settle before the salvo"
+      ansible.builtin.pause:
+        seconds: "{{ settle_seconds | int }}"
+      when: settle_seconds | int > 0
+
+    - name: "{{ rt.name }} — fire salvo {{ rt.salvo | default(1) }}"
+      ansible.builtin.command:
+        cmd: >-
+          {{ dhs_bin }} consumer rollcall salvo {{ rt.host }}:{{ rt.port }}
+          --fire {{ rt.salvo | default(1) }} --timeout {{ endpoint_timeout }}
+      register: salvo_fire
+      changed_when: true
+
+    - name: "{{ rt.name }} — the salvo said how many routes it made"
+      ansible.builtin.assert:
+        that:
+          - salvo_fire.stdout is search('route')
+        fail_msg: >-
+          Firing a salvo answered with nothing countable. There is no result
+          code on a fire: the count of routes made IS the result, and zero
+          means it did nothing — whether it was empty, absent, or refused.
+
+- name: "{{ rt.name }} — router verbs"
+  ansible.builtin.debug:
+    msg:
+      - "interface v{{ rtr_json.interface_version }}, {{ rtr_json.matrices | length }} matrix/matrices"
+      - "{{ xpt_read.stdout }}"
+      - "{{ salvos.stdout_lines | default([]) }}"
+    verbosity: 1

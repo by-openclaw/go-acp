@@ -135,14 +135,19 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
   snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -172,6 +177,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1487,14 +1496,19 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
   snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1524,6 +1538,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1553,14 +1571,19 @@ USAGE
   dhs consumer <protocol> <verb> <target> [flags]
 
 PROTOCOLS
-  acp1          Axon Control Protocol v1 (UDP/TCP direct, AN2/TCP)
-  acp2          Axon Control Protocol v2 (AN2/TCP only)
-  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket / Neuron Bridge)
-  emberplus     Ember+ (Lawo)
-  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix router control
-  osc-v10       Open Sound Control 1.0 (UDP + TCP/length-prefix)
-  osc-v11       Open Sound Control 1.1 (UDP + TCP/SLIP, adds T/F/N/I + arrays)
+  acp1          Axon Control Protocol v1.4 (UDP direct)
+  acp2          Axon Control Protocol v2 (AN2/TCP)
+  cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
+  emberplus     Ember+ (Glow/S101/TCP) consumer
+  osc-v10       Open Sound Control 1.0
+  osc-v11       Open Sound Control 1.1
+  probel-sw02p  Probel SW-P-02 matrix controller (TCP)
+  probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
+  rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
   snmp          SNMP v1 / v2c polling and v1 / v2c / v3 notifications
+  tsl-v31       TSL UMD v3.1
+  tsl-v40       TSL UMD v4.0
+  tsl-v50       TSL UMD v5.0
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1590,6 +1613,10 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
+  router     read a router's routing interface: matrices, levels, sizes (RollCall only)
+  route      read or make one crosspoint (RollCall only)
+  tally      print a level's crosspoints and follow them live (RollCall only)
+  salvo      list a controller's salvos, or fire one (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.

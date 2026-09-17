@@ -17,6 +17,7 @@ clash with upstream built-ins.
 | Ember+         | S101 over TCP                           | 9000 / 9090 / 9092                    | [`internal/emberplus/wireshark/dhs_emberplus.lua`](../internal/emberplus/wireshark/dhs_emberplus.lua) | `dhs_emberplus`     |
 | OSC 1.0 + 1.1  | UDP + TCP length-prefix + TCP SLIP      | 8000 UDP/TCP-LP, 8001 TCP-SLIP        | [`internal/osc/wireshark/dhs_osc.lua`](../internal/osc/wireshark/dhs_osc.lua)                         | `dhs_osc`           |
 | Probel SW-P-08 | TCP                                     | 2008                                  | [`internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua`](../internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua) | `dhs_probel_sw08p`  |
+| Snell RollCall | TCP (IPShare)                           | 2050–2060 (a Centra listens on 2057)  | [`internal/snell-rollcall/wireshark/dhs_snell_rollcall.lua`](../internal/snell-rollcall/wireshark/dhs_snell_rollcall.lua) | `dhs_snell_rollcall` |
 | TSL UMD (v3.1 / v4.0 / v5.0) | v3.1 + v4.0: UDP only · v5.0: UDP **and** TCP/DLE-STX | v3.1/v4.0: UDP 4000 · v5.0: UDP 8901 · v5.0 TCP: 8901 | [`internal/tsl/wireshark/dhs_tsl.lua`](../internal/tsl/wireshark/dhs_tsl.lua) | `dhs_tsl`           |
 
 All target **Wireshark 4.x** (Lua 5.2+). They install the same way.
@@ -85,6 +86,7 @@ Close and re-open Wireshark. On the start screen open
 - `dhs_emberplus` / `dhs_emberplus_glow` — Ember+ S101 + Glow BER sub-tree
 - `dhs_osc` — OSC 1.0 + 1.1 (all three transports: UDP + TCP length-prefix + TCP SLIP)
 - `dhs_probel_sw08p` — Probel SW-P-08/88
+- `dhs_snell_rollcall` — Snell RollCall over IPShare, both wire generations
 
 If one is missing, check **View → Reload Lua Plugins** (Ctrl-Shift-L) — the
 status bar reports Lua errors you can then copy from **View → Lua →
@@ -129,6 +131,29 @@ dhs consumer emberplus walk localhost:9092 --capture out/emberplus/
 | OSC 1.1 only                 | `dhs_osc.version == "OSC 1.1"`                            |
 | All Probel SW-P-08 traffic   | `dhs_probel_sw08p`                                        |
 | Probel salvo fire (cmd 121)  | `dhs_probel_sw08p.cmd == 0x79`                            |
+| All RollCall traffic         | `dhs_snell_rollcall`                                      |
+| RollCall session opens       | `dhs_snell_rollcall.type == 2`                            |
+| RollCall on one node         | `dhs_snell_rollcall.dst.unit == 0x81`                     |
+| RollCall crosspoints         | `dhs_snell_rollcall.source_pin`                           |
+| RollCall tally, not replies  | `dhs_snell_rollcall.flags.back_channel == 1`              |
+| RollCall routing interface   | `dhs_snell_rollcall.router_command`                       |
+| RollCall one matrix          | `dhs_snell_rollcall.matrix == 1`                          |
+| RollCall one level           | `dhs_snell_rollcall.matrix == 1 && dhs_snell_rollcall.level == 2` |
+| RollCall one destination     | `dhs_snell_rollcall.destination == 40`                    |
+| RollCall route refusals      | `dhs_snell_rollcall.route_result > 0`                     |
+| RollCall levels + panels     | `dhs_snell_rollcall.router_node`                          |
+| RollCall refusals            | `dhs_snell_rollcall.type in {0,14,15,23}`                 |
+
+RollCall's command numbers mean nothing on their own: 100 is the interface
+version on the panel node and the selected destination on a level, and
+everything above 119 is addressed by bases and steps the controller publishes
+at run time. The dissector reads both out of the capture — each node's type
+from the RETID it answers with, the tables from the replies that carry them —
+so `dhs_snell_rollcall.matrix`, `.level`, `.source` and `.destination` are
+filled in for any command that resolves. **Start the capture before the
+client connects.** A capture that joins a session already in progress has
+missed the identities and the tables, and those commands then read as
+unresolved rather than as a plant.
 
 ### Non-default ports
 

@@ -1,0 +1,51 @@
+Frame 1: Packet, 64 bytes on wire (512 bits), 64 bytes captured (512 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 51236, Dst Port: 2057, Seq: 1, Ack: 1, Len: 20
+Snell RollCall: GETID
+    TX flags: 12
+    TX length: 16
+    Destination: 0000-08-00:2
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 2
+    Source: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    RollCall length: 2
+    Type: 6 (GETID)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+
+Frame 2: Packet, 92 bytes on wire (736 bits), 92 bytes captured (736 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+Transmission Control Protocol, Src Port: 2057, Dst Port: 51236, Seq: 1, Ack: 21, Len: 48
+Snell RollCall: RETID <not set>
+    TX flags: 12
+    TX length: 44
+    Destination: 0000-00-00:2
+        Net: 0x0000
+        Unit: 0x00
+        Port: 0x00
+        Session index: 2
+    Source: 0000-08-00:2
+        Net: 0x0000
+        Unit: 0x08
+        Port: 0x00
+        Session index: 2
+    RollCall length: 30
+    Type: 7 (RETID)
+    Flags: 0x00
+        0... .... = Back channel: False
+        .0.. .... = Wide area: False
+    Payload: 804b025d0300200c3c6e6f74207365743e0072612057494e33322000
+        Services: 0x804b (Menus|Control|File|Map|LongStr)
+        Unit type: 605
+        Version: 3.0 cs12
+        Name: <not set>
+

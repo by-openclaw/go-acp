@@ -1,0 +1,17 @@
+{
+  "protocol": "rollcall",
+  "manufacturer": "Snell",
+  "product": "IQMUX42",
+  "direction": "consumer",
+  "version": "8.5",
+  "version_kind": "firmware",
+  "discovered_at": "2026-09-11T00:34:29Z",
+  "dm_fingerprint": "sha256:7f2db2625af573311840f5b78fa28eaa449acfe2a8aed9ad92a296d1e6b2f8ee",
+  "object_count": 91,
+  "capture_tool": {
+    "name": "dhs",
+    "version": "devel",
+    "git_tag": "devel-d8b951a-dirty",
+    "git_commit": "d8b951a"
+  }
+}

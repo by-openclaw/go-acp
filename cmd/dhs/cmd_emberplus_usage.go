@@ -163,7 +163,7 @@ have no levels — grammar parity with the levelled protocols).
                   per ADR-0028; "-" = stdout)
 
 EXAMPLES
-  dhs consumer emberplus usage 10.100.0.102 --port 9000 --path router.nToN.matrix --srce 3 --format ascii`)
+  dhs consumer emberplus usage 10.6.250.102 --port 9000 --path router.nToN.matrix --srce 3 --format ascii`)
 }
 
 func helpEmberReplace() {
@@ -176,7 +176,7 @@ source set ABSOLUTELY (never toggles); NtoM connects B and EXPLICITLY
 disconnects A.
 
 EXAMPLES
-  dhs consumer emberplus replace 10.100.0.102 --port 9000 --path router.nToN.matrix --srce 3 --with 7 --check`)
+  dhs consumer emberplus replace 10.6.250.102 --port 9000 --path router.nToN.matrix --srce 3 --with 7 --check`)
 }
 
 // runEmberUsage drives `dhs consumer emberplus usage`.

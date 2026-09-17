@@ -372,7 +372,7 @@ down by the test, so net change = 0 → run-twice = same result;
 ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-integration.yml
 
 # plus a live SW-P-08 matrix (lab, VPN):
-PROBEL_SW08P_TEST_HOST=10.100.0.42 \
+PROBEL_SW08P_TEST_HOST=10.6.250.42 \
   ansible-playbook -i inventory/hosts.ini playbooks/probel-sw08p-integration.yml
 ```
 

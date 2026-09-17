@@ -1,6 +1,6 @@
 ---
 # dhs-debian — Proxmox LXC 651 "dhs.debian12", Debian 12 (bookworm).
-# Dual-NIC: eth0 10.100.0.101 (ansible_host) / eth1 10.100.0.111.
+# eth0 10.6.250.101 (ansible_host); eth1 (mgmt-B, 10.6.250.111) parked since #822.
 # Roles: Ansible CONTROL NODE for the whole fleet; Docker host.
 # Never bring eth1/.111 down — it is part of the access path.
 # This host is USUALLY the control node: run local, no SSH loop-back.
@@ -16,7 +16,7 @@ pve_name: dhs.debian12
 pve_cores: 2          # P1 sizing (#817): binary-test host - SAME size as .102/.103 so cross-distro binary perf is comparable
 os_label: "Debian 12"
 nics:
-  - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.100.0.101 }
+  - { name: eth0, mac: "BC:24:11:80:E3:AC", ip: 10.6.250.101 }
 fleet_hostname: dhs-debian
 
 # Ember+ producer: our integration DM — the synthetic tree that carries the

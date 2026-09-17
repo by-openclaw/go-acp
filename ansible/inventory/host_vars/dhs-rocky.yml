@@ -1,13 +1,13 @@
 ---
 # dhs-rocky — Proxmox LXC 653 "dhs.rocky9", Rocky Linux 9.4.
-# Dual-NIC: eth0 10.100.0.103 (ansible_host) / eth1 10.100.0.113.
+# eth0 10.6.250.103 (ansible_host); eth1 (mgmt-B, 10.6.250.113) parked since #822.
 # (one host, two mgmt ports; the old .104/.105 leases were this host.)
 pve_vmid: 653
 pve_name: dhs.rocky9
 pve_cores: 2          # P1 sizing (#817): LXC cores are a cgroup ceiling, not a reservation
 os_label: "Rocky 9.4"
 nics:
-  - { name: eth0, mac: "BC:24:11:2B:F7:C7", ip: 10.100.0.103 }
+  - { name: eth0, mac: "BC:24:11:2B:F7:C7", ip: 10.6.250.103 }
 fleet_hostname: dhs-rocky
 
 # Ember+ producer: the Lawo PowerCore tree (1024-target matrix), rebuilt from

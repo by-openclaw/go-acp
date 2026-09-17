@@ -32,9 +32,9 @@
 #   ansible-playbook -i inventory/hosts.ini playbooks/osc-integration.yml
 #
 #   # plus a live OSC peer (lab, VPN):
-#   OSC_TEST_HOST=10.100.0.42 \
+#   OSC_TEST_HOST=10.6.250.42 \
 #     ansible-playbook -i inventory/hosts.ini playbooks/osc-integration.yml
-#   OSC_TEST_HOST=10.100.0.42 OSC_TEST_PORT=8000 ansible-playbook ...
+#   OSC_TEST_HOST=10.6.250.42 OSC_TEST_PORT=8000 ansible-playbook ...
 - name: OSC integration (loopback verb-drive osc-v11 + optional live peer)
   hosts: localhost
   connection: local
