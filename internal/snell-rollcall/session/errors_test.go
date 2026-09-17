@@ -154,23 +154,27 @@ func TestLink_IndexExhaustion(t *testing.T) {
 // taking the one-in-flight slot and writing. The slot has to come back, or
 // every later request on that channel blocks for ever behind a message that
 // was never sent.
+//
+// The write is made to fail while the link is otherwise alive. Closing the
+// peer instead would race the read loop: once it sees the closed pipe the
+// session is shut before the request takes the slot, and the branch this
+// test exists for is never entered (the session floor read 99.6% on CI run
+// 35254763606 for exactly that reason).
 func TestExchange_SendFailureReleasesTheSlot(t *testing.T) {
-	h := newHarness(t, Config{})
+	h, blocked := newBlockedHarness(t, Config{})
 	s := h.callSession(t, codec.SvcControl)
 
-	h.peer.close()
+	blocked.failing.Store(true)
 
-	// Give the link a moment to notice, then confirm the failure surfaces
-	// rather than hanging on the reply deadline.
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		_, err := s.Do(context.Background(), codec.MsgGetStat, nil)
-		if err != nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("a request on a dead link should fail")
-		}
+	// The failure surfaces at once rather than after the reply deadline.
+	if _, err := s.Do(context.Background(), codec.MsgGetStat, nil); err == nil {
+		t.Fatal("a request whose write failed should fail")
+	}
+	// And a write that fails ends the link.
+	select {
+	case <-h.link.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("the link outlived a failed write")
 	}
 
 	// The channel is not wedged: a second attempt fails the same way rather
