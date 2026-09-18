@@ -72,13 +72,9 @@
 # closes the capture; reading before that got an empty file (PowerShell holds
 # buffered stdout until the process ends), and force-killing it discarded the
 # buffer — the whole reason this tier was Linux-only (#1094).
-- name: Wait for the listener to finish and flush its capture
-  ansible.windows.win_async_status:
-    jid: "{{ vt_listen_job.ansible_job_id }}"
-  register: vt_listen_done
-  until: vt_listen_done.finished
-  retries: "{{ (vt_listen_duration | int) + 10 }}"
-  delay: 1
+- name: Wait past the listener's --duration so it has exited and flushed
+  ansible.builtin.pause:
+    seconds: "{{ vt_listen_duration }}"
 
 - name: Read the listener capture back from the target
   ansible.builtin.slurp:
