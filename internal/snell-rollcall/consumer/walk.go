@@ -74,6 +74,23 @@ func (p *Plugin) walkTree(ctx context.Context, slot int) (*slotTree, error) {
 		return nil, fmt.Errorf("rollcall: slot %d is outside the port range", slot)
 	}
 
+	// A node that serves no menu — a proxy's bridge or a RollNet segment node —
+	// has nothing to walk. Its identity is already known from enumeration, and
+	// opening a menu session on it only draws a NACK for a service it never
+	// advertised. Report an empty tree, which is what walking a node with no
+	// menu honestly is, the way info lists such a node without incident (#1095).
+	if t, nerr := p.nodes(ctx); nerr == nil && slot < len(t.info) &&
+		!t.info[slot].ID.Services.Has(codec.SvcMenus) &&
+		!t.info[slot].ID.Services.Has(codec.SvcControl) {
+		tree := buildTree(slot, nil, p)
+		p.mu.Lock()
+		p.trees[slot] = tree
+		p.mu.Unlock()
+		p.log.Debug("rollcall: slot serves no menu; nothing to walk",
+			"slot", slot, "node", t.addrs[slot].Device().String())
+		return tree, nil
+	}
+
 	s, err := p.session(ctx, slot)
 	if err != nil {
 		return nil, err
