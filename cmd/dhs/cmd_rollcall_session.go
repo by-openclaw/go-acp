@@ -57,7 +57,7 @@ func runRollcallSession(ctx context.Context, args []string) error {
 	defer cleanup()
 
 	// The one connection is open now and stays open for every read below.
-	fmt.Fprintf(os.Stderr, "rollcall session on %s — one held connection; verbs on stdin (probe|info|router|salvo), EOF or 'quit' to end\n", host)
+	fmt.Fprintf(os.Stderr, "rollcall session on %s — one held connection; verbs on stdin (probe|info|router|salvo|release), EOF or 'quit' to end\n", host)
 
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
@@ -112,7 +112,16 @@ func runSessionVerb(ctx context.Context, p *rollcall.Plugin, verb string, slot i
 			return err
 		}
 		return listSalvos(ctx, p, r, router.NameWidth32, output)
+	case "release":
+		if slot < 0 {
+			return fmt.Errorf("release needs a slot: \"release <N>\"")
+		}
+		if err := p.Release(ctx, slot); err != nil {
+			return err
+		}
+		fmt.Printf("released slot %d\n", slot)
+		return nil
 	default:
-		return fmt.Errorf("unknown session verb %q (want probe|info|router|salvo)", verb)
+		return fmt.Errorf("unknown session verb %q (want probe|info|router|salvo|release)", verb)
 	}
 }

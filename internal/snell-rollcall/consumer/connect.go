@@ -489,3 +489,51 @@ func (p *Plugin) Uses32Bit(ctx context.Context, slot int) (bool, error) {
 	}
 	return s.Uses32Bit(), nil
 }
+
+// Release terminates our sessions to one node without dropping the link.
+//
+// Before a card firmware upgrade the precondition is that no connection is
+// still established on that card. Disconnect drops the whole frame; Release
+// drops only this node's control and file sessions, sending SP_TERM so the
+// card reclaims them at once rather than waiting out its own timeout, and
+// leaves the link, the map and port sessions, and every other node untouched.
+//
+// It is idempotent: releasing a node we hold nothing on terminates nothing and
+// is not an error, so an upgrade script can call it without first checking.
+func (p *Plugin) Release(ctx context.Context, slot int) error {
+	l, err := p.conn()
+	if err != nil {
+		return err
+	}
+	addr, err := p.slotAddress(ctx, slot)
+	if err != nil {
+		return err
+	}
+	node := addr.Device()
+
+	// Under the lock, take this node's control and file sessions out of the
+	// maps. If the link closed underneath us the maps are nil, and reading and
+	// deleting a nil map is a safe no-op, so no closed-check is needed.
+	l.mu.Lock()
+	var toTerm []*session.Session
+	if s, ok := l.sessions[node]; ok {
+		toTerm = append(toTerm, s)
+		delete(l.sessions, node)
+	}
+	if s, ok := l.fileSessions[node]; ok {
+		toTerm = append(toTerm, s)
+		delete(l.fileSessions, node)
+	}
+	l.mu.Unlock()
+
+	// SP_TERM each, so the card reclaims the slot at once. The error is
+	// ignored for the same reason Close ignores it: the session is being torn
+	// down regardless, and the code the peer acts on is the term code, which
+	// was already put on the wire.
+	for _, s := range toTerm {
+		_ = s.Term(ctx, codec.TermUser, "release")
+	}
+	p.log.Debug("rollcall: released a node's sessions",
+		"node", node.String(), "sessions", len(toTerm))
+	return nil
+}
