@@ -63,16 +63,21 @@ func runRollcallProbe(ctx context.Context, args []string) error {
 	}
 	defer cleanup()
 
-	// One connection, every read. Device info first, then the router
-	// interface and its salvos — all on the link opened above.
+	return probePlant(ctx, p, *slot, *output)
+}
+
+// probePlant reads device info, the routing interface and the salvos over the
+// already-open connection p. It is the probe verb's body, shared with the
+// session verb so both read a plant the same way over one connection.
+func probePlant(ctx context.Context, p *rollcall.Plugin, slot int, output string) error {
 	info, err := p.GetDeviceInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("probe: device info: %w", err)
 	}
 
-	r, rErr := findRouter(ctx, p, *slot)
+	r, rErr := findRouter(ctx, p, slot)
 
-	if strings.EqualFold(*output, "json") {
+	if strings.EqualFold(output, "json") {
 		rep := probeReport{Device: fmt.Sprintf("%s:%d", info.IP, info.Port), Slots: info.NumSlots}
 		if rErr != nil {
 			rep.Note = "no router reachable: " + rErr.Error()
