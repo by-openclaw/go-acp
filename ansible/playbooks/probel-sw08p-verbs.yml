@@ -82,6 +82,6 @@
           - [single-source-assoc-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7"]
           - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --first-id, "7", --names, VT-SRC7, --type, source]
           # --- watch + bench ---
-          - [watch, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "1"]
-          - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "8"]
+          - [watch, "{{ vt_host }}:{{ vt_port }}", --timeout, "3s"]
+          - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --size, "8", --skip-warmup]
           - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "1"]
