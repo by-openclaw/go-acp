@@ -36,13 +36,17 @@
 # redirected to vt_listen_capture (a Windows path); stderr (dhs logs) is
 # dropped. win_shell runs the line under PowerShell on the target.
 - name: Start the {{ vt_proto }} consumer listener on the target
-  # --duration makes the listener exit cleanly on its own after the window.
-  # On Windows that clean exit is what flushes PowerShell's buffered stdout to
-  # the capture file — a force-kill discarded it, which is why the push tier
-  # was Linux-only (#1094).
+  # --duration makes the listener exit cleanly on its own after the window,
+  # which is what closes and completes the capture (#1094).
+  #
+  # The decoded lines go through Out-File -Encoding ascii, NOT PowerShell's
+  # `1>`: the redirection operator writes UTF-16LE (BOM + a null byte between
+  # every character), so an ASCII token assertion never matched even though the
+  # content was there. -Width keeps a long UMD line from being wrapped.
   ansible.windows.win_shell: >-
     & {{ vt_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }} --duration {{ vt_listen_duration }}s
-    1> {{ vt_listen_capture }} 2> {{ vt_listen_capture }}.err
+    2> {{ vt_listen_capture }}.err |
+    Out-File -FilePath {{ vt_listen_capture }} -Encoding ascii -Width 4096
   async: "{{ (vt_listen_duration | int) + 15 }}"
   poll: 0
   register: vt_listen_job
