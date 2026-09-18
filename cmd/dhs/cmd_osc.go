@@ -90,8 +90,14 @@ func runOSCWatch(ctx context.Context, proto string, args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 	listen := fs.String("listen", "udp:8000", "transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001")
 	pattern := fs.String("pattern", "", "OSC address pattern to subscribe to (empty = match all)")
+	duration := fs.Duration("duration", 0, "watch for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+	if *duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *duration)
+		defer cancel()
 	}
 	transport, port, err := parseListenAddr(*listen)
 	if err != nil {

@@ -67,8 +67,15 @@ func runTSLListen(ctx context.Context, proto string, args []string) error {
 	// honestly rather than pretending to be adjustable.
 	_ = fs.Duration("keepalive", 30*time.Second, "v5.0 TCP only — OS SO_KEEPALIVE period applied to accepted connections (fixed at 30s; ignored on UDP)")
 	idleTimeout := fs.Duration("idle-timeout", 0, "v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)")
+	duration := fs.Duration("duration", 0, "listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
+	}
+
+	if *duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *duration)
+		defer cancel()
 	}
 
 	version, err := parseTSLVersion(proto)

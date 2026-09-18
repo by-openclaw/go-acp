@@ -36,11 +36,20 @@
 # redirected to vt_listen_capture (a Windows path); stderr (dhs logs) is
 # dropped. win_shell runs the line under PowerShell on the target.
 - name: Start the {{ vt_proto }} consumer listener on the target
+  # --duration makes the listener exit cleanly on its own after the window,
+  # which is what closes and completes the capture (#1094).
+  #
+  # The decoded lines go through Out-File -Encoding ascii, NOT PowerShell's
+  # `1>`: the redirection operator writes UTF-16LE (BOM + a null byte between
+  # every character), so an ASCII token assertion never matched even though the
+  # content was there. -Width keeps a long UMD line from being wrapped.
   ansible.windows.win_shell: >-
-    & {{ vt_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }}
-    1> {{ vt_listen_capture }} 2> {{ vt_listen_capture }}.err
-  async: "{{ vt_listen_ttl }}"
+    & {{ vt_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }} --duration {{ vt_listen_duration }}s
+    2> {{ vt_listen_capture }}.err |
+    Out-File -FilePath {{ vt_listen_capture }} -Encoding ascii -Width 4096
+  async: "{{ (vt_listen_duration | int) + 15 }}"
   poll: 0
+  register: vt_listen_job
   changed_when: false
 
 - name: Give the listener a moment to bind its socket
@@ -58,15 +67,18 @@
     label: "{{ item | join(' ') }}"
   changed_when: false
 
-# ---- Let the frames arrive, read the capture, assert --------------------
+# ---- Let the frames arrive, wait for the clean exit, read, assert -------
 - name: Let the pushed frames arrive at the listener
   ansible.builtin.pause:
     seconds: "{{ vt_push_settle }}"
 
-- name: Stop the listener so its capture file is no longer held open
-  ansible.windows.win_shell: Get-Process dhs -ErrorAction SilentlyContinue | Stop-Process -Force
-  changed_when: false
-  failed_when: false
+# Wait for the listener to exit at --duration. Its clean exit flushes and
+# closes the capture; reading before that got an empty file (PowerShell holds
+# buffered stdout until the process ends), and force-killing it discarded the
+# buffer — the whole reason this tier was Linux-only (#1094).
+- name: Wait past the listener's --duration so it has exited and flushed
+  ansible.builtin.pause:
+    seconds: "{{ vt_listen_duration }}"
 
 - name: Read the listener capture back from the target
   ansible.builtin.slurp:

@@ -40,9 +40,14 @@
     # keeps its newline, and the shell then ran the listener FIRST and the
     # redirect as a second command it never reached: no capture file while
     # the listener lived (#620, finding 1).
-    cmd: "{{ ([vt_bin, 'consumer', vt_proto] + vt_listen_argv) | map('quote') | join(' ') }} > {{ vt_listen_capture | quote }} 2> {{ (vt_listen_capture ~ '.err') | quote }}"
-  async: "{{ vt_listen_ttl }}"
+    #
+    # --duration makes the listener exit cleanly on its own after the window,
+    # flushing its capture, so it is read after a real close rather than
+    # killed mid-write (#1094).
+    cmd: "{{ ([vt_bin, 'consumer', vt_proto] + vt_listen_argv + ['--duration', (vt_listen_duration | string) + 's']) | map('quote') | join(' ') }} > {{ vt_listen_capture | quote }} 2> {{ (vt_listen_capture ~ '.err') | quote }}"
+  async: "{{ (vt_listen_duration | int) + 15 }}"
   poll: 0
+  register: vt_listen_job
   changed_when: false
 
 - name: Give the listener a moment to bind its socket
@@ -60,10 +65,17 @@
     label: "{{ item | join(' ') }}"
   changed_when: false
 
-# ---- Let the frames arrive, read the capture, assert --------------------
+# ---- Let the frames arrive, wait for the clean exit, read, assert -------
 - name: Let the pushed frames arrive at the listener
   ansible.builtin.pause:
     seconds: "{{ vt_push_settle }}"
+
+# The listener exits on its own at --duration, flushing and closing its
+# capture. Wait for that before reading, so the file is complete — the flush
+# is exactly what a force-kill would have thrown away.
+- name: Wait past the listener's --duration so it has exited and flushed
+  ansible.builtin.pause:
+    seconds: "{{ vt_listen_duration }}"
 
 - name: Read the listener capture back from the target
   ansible.builtin.slurp:

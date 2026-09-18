@@ -28,12 +28,8 @@
 #
 #   ansible-playbook -i inventory/hosts.ini playbooks/osc-verbs.yml \
 #     -e @secrets/credentials.json
-# Push capture runs on Linux only. On Windows the listener's stdout is
-# buffered by PowerShell and lost when the process is stopped, and the
-# osc/tsl listener has no clean-exit flag to flush it first; a dhs-side
-# listen --duration/--count that exits and flushes is the follow-up (#1094).
 - name: OSC verb test (deploy binary, watch on target, send messages, assert decode)
-  hosts: linux
+  hosts: linux:windows
   gather_facts: true
   vars:
     vt_host: "127.0.0.1"
