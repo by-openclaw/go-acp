@@ -80,7 +80,7 @@
           - [single-dest-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [all-source-assoc-names, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [single-source-assoc-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7"]
-          - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7", --name, VT-SRC7]
+          - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --first-id, "7", --names, VT-SRC7, --type, source]
           # --- watch + bench ---
           - [watch, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "1"]
           - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "8"]
