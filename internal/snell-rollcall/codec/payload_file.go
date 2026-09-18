@@ -141,13 +141,30 @@ func (f File) String() string {
 		f.SrcHandle, f.FileHandle, f.Offset, f.Extra)
 }
 
+// FileError is the error a file-service reply carries, keyed by the errno the
+// peer put in Extra (RC3FILE.H ErrorValues). It is a type rather than a
+// formatted string so a caller can act on the reason with errors.As — a
+// controller with salvos but no SalvoNames file answers a read with NoEntry,
+// and the salvo list degrades to numbers-without-names on exactly that, which
+// a string match could not tell from any other refusal.
+type FileError struct {
+	Code int16
+}
+
+func (e *FileError) Error() string {
+	return "rollcall file: " + FileErrorName(e.Code)
+}
+
+// NotFound reports whether the peer answered "no such file or directory".
+func (e *FileError) NotFound() bool { return e.Code == FileErrNoEntry }
+
 // Err returns the error a reply carries, or nil. A negative or zero Extra is
 // not an error: only the documented errno values are.
 func (f File) Err() error {
 	if f.Extra <= 0 {
 		return nil
 	}
-	return fmt.Errorf("rollcall file: %s", FileErrorName(f.Extra))
+	return &FileError{Code: f.Extra}
 }
 
 // AppendTo appends the 10-byte wire form.

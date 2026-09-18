@@ -54,6 +54,22 @@ func TestFile_Err(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "no such file") {
 		t.Errorf("err = %v, want it to name the missing file", err)
 	}
+
+	// The error is a typed *FileError so a caller acts on the reason with
+	// errors.As rather than matching the string: a missing SalvoNames file is
+	// the one a salvo list degrades to numbers-only on.
+	var fe *FileError
+	if !errors.As(err, &fe) {
+		t.Fatalf("Err() = %T, want *FileError", err)
+	}
+	if fe.Code != FileErrNoEntry || !fe.NotFound() {
+		t.Errorf("FileError{%d}.NotFound() = %v, want the no-entry case", fe.Code, fe.NotFound())
+	}
+	if other := (File{Extra: FileErrAccess}.Err()); other == nil {
+		t.Error("an access error should not be nil")
+	} else if oe := new(FileError); errors.As(other, &oe) && oe.NotFound() {
+		t.Error("access denied must not report NotFound")
+	}
 }
 
 // TestFileErrorName pins the errno values the file service uses. They are C
