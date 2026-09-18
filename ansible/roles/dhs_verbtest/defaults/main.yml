@@ -93,6 +93,12 @@ vt_push_assert_contains: []
 # Ansible auto-expires it — no manual kill. Must outlast the send loop + read.
 vt_listen_ttl: 30
 
+# How long (seconds) the listener stays up before exiting itself, via the
+# consumer's `listen --duration`. Its clean exit flushes and closes the
+# capture, which is what lets a Windows target be read without a force-kill
+# (#1094). Must outlast the bind pause (2s) + the send loop + vt_push_settle.
+vt_listen_duration: 15
+
 # Seconds to let the listener bind + the sent frames arrive before reading the
 # capture back. Push transports (UDP/TCP) deliver fast; a small settle suffices.
 vt_push_settle: 5

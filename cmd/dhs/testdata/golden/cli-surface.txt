@@ -2863,6 +2863,8 @@ EXAMPLES
 ========== consumer/osc-v10/watch ==========
 $ dhs consumer osc-v10 watch --help
 Usage of watch:
+  -duration duration
+    	watch for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -listen string
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
@@ -2871,6 +2873,8 @@ Usage of watch:
 ========== consumer/osc-v10/listen ==========
 $ dhs consumer osc-v10 listen --help
 Usage of watch:
+  -duration duration
+    	watch for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -listen string
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
@@ -2909,6 +2913,8 @@ EXAMPLES
 ========== consumer/osc-v11/watch ==========
 $ dhs consumer osc-v11 watch --help
 Usage of watch:
+  -duration duration
+    	watch for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -listen string
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
@@ -2917,6 +2923,8 @@ Usage of watch:
 ========== consumer/osc-v11/listen ==========
 $ dhs consumer osc-v11 listen --help
 Usage of watch:
+  -duration duration
+    	watch for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -listen string
     	transport:port to bind, e.g. udp:8000, tcp-len:8000, tcp-slip:8001 (default "udp:8000")
   -pattern string
@@ -3356,6 +3364,8 @@ $ dhs consumer tsl-v31 listen --help
 Usage of tsl-v31-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
@@ -3368,6 +3378,8 @@ $ dhs consumer tsl-v31 watch --help
 Usage of tsl-v31-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
@@ -3409,6 +3421,8 @@ $ dhs consumer tsl-v40 listen --help
 Usage of tsl-v40-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
@@ -3421,6 +3435,8 @@ $ dhs consumer tsl-v40 watch --help
 Usage of tsl-v40-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
@@ -3462,6 +3478,8 @@ $ dhs consumer tsl-v50 listen --help
 Usage of tsl-v50-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
@@ -3474,6 +3492,8 @@ $ dhs consumer tsl-v50 watch --help
 Usage of tsl-v50-listen:
   -bind string
     	bind address e.g. ':4000' or '0.0.0.0:4000' (default: protocol's standard port on all interfaces)
+  -duration duration
+    	listen for this long, then exit cleanly (0 = until Ctrl-C). Lets a capture flush and a test read it without a kill.
   -idle-timeout duration
     	v5.0 TCP only — close a connection that has sent nothing for this long. Default 0 = off: TSL is one-way, so whether a producer keeps sending after its first burst is producer-specific; enable it only when your producer refreshes periodically (e.g. Lawo VSM loops per-UMD)
   -keepalive duration
