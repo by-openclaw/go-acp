@@ -36,10 +36,11 @@
 # shell line over SSH.
 - name: Start the {{ vt_proto }} consumer listener on the target
   ansible.builtin.shell:
-    cmd: >-
-      {{ ([vt_bin, 'consumer', vt_proto] + vt_listen_argv)
-         | map('quote') | join(' ') }}
-      > {{ vt_listen_capture | quote }} 2> {{ (vt_listen_capture ~ '.err') | quote }}
+    # One line on purpose. In a folded block a more-indented continuation
+    # keeps its newline, and the shell then ran the listener FIRST and the
+    # redirect as a second command it never reached: no capture file while
+    # the listener lived (#620, finding 1).
+    cmd: "{{ ([vt_bin, 'consumer', vt_proto] + vt_listen_argv) | map('quote') | join(' ') }} > {{ vt_listen_capture | quote }} 2> {{ (vt_listen_capture ~ '.err') | quote }}"
   async: "{{ vt_listen_ttl }}"
   poll: 0
   changed_when: false
