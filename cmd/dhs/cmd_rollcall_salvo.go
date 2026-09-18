@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"text/tabwriter"
 
+	codec "dhs/internal/snell-rollcall/codec"
 	"dhs/internal/snell-rollcall/codec/router"
 	rollcall "dhs/internal/snell-rollcall/consumer"
 )
@@ -113,6 +115,15 @@ func listSalvos(ctx context.Context, p *rollcall.Plugin, r *rollcall.RouterInter
 
 	names, err := p.SalvoNames(ctx, r, width)
 	if err != nil {
+		// A controller can hold salvos and ship no names file for them: the
+		// vendor Centra does exactly this, answering the read with NoEntry.
+		// The count is authoritative either way (the interface reported it),
+		// so list the salvos by number with unset names rather than failing —
+		// an unnamed salvo is still one a client fires.
+		var fe *codec.FileError
+		if errors.As(err, &fe) && fe.NotFound() {
+			return listSalvosByNumber(int(r.Salvos), r.Slot, width, output)
+		}
 		return err
 	}
 
@@ -134,6 +145,29 @@ func listSalvos(ctx context.Context, p *rollcall.Plugin, r *rollcall.RouterInter
 	_, _ = fmt.Fprintln(w, "SALVO\tNAME")
 	for i, n := range names.Srcs {
 		_, _ = fmt.Fprintf(w, "%d\t%s\n", i+1, nameOrUnset(n))
+	}
+	return w.Flush()
+}
+
+// listSalvosByNumber lists salvos that a controller holds but has no names
+// file for: the numbers a client fires, with the names shown as unset.
+func listSalvosByNumber(count int, slot, width int, output string) error {
+	if strings.EqualFold(output, "json") {
+		list := make([]map[string]any, 0, count)
+		for i := 0; i < count; i++ {
+			list = append(list, map[string]any{"salvo": i + 1, "name": ""})
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"slot":       slot,
+			"width":      width,
+			"names_file": false,
+			"salvos":     list,
+		})
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(w, "SALVO\tNAME")
+	for i := 0; i < count; i++ {
+		_, _ = fmt.Fprintf(w, "%d\t%s\n", i+1, nameOrUnset(""))
 	}
 	return w.Flush()
 }
