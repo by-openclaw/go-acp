@@ -17,6 +17,13 @@
 
 # The binary alone isn't enough — `producer serve --tree <path>` needs the
 # fixture ON the target. Deploy each {src, dest} the connector play supplies.
+- name: Create the fixture directories on the target
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ vt_serve_files | map(attribute='dest') | map('dirname') | unique | list }}"
+
 - name: Deploy the producer tree fixture(s) to the target
   ansible.builtin.copy:
     src: "{{ item.src }}"

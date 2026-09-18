@@ -62,7 +62,7 @@
           - [connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3", --src, "7"]
           - [interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [tally-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
-          - [dual-status, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [dual-status, "{{ vt_host }}:{{ vt_port }}"]
           - [maintenance, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [discover, "{{ vt_host }}:{{ vt_port }}"]
           - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --srcs, "4,5"]

@@ -16,6 +16,12 @@
 
 # The binary alone isn't enough — `producer serve --tree <path>` needs the
 # fixture ON the target. Deploy each {src, dest} the connector play supplies.
+- name: Create the fixture directories on the target
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop: "{{ vt_serve_files | map(attribute='dest') | map('win_dirname') | unique | list }}"
+
 - name: Deploy the producer tree fixture(s) to the target
   ansible.windows.win_copy:
     src: "{{ item.src }}"

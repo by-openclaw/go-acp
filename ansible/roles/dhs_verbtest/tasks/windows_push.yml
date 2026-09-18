@@ -59,7 +59,7 @@
     seconds: "{{ vt_push_settle }}"
 
 - name: Read the listener capture back from the target
-  ansible.windows.win_slurp:
+  ansible.builtin.slurp:
     src: "{{ vt_listen_capture }}"
   register: vt_capture_raw
 
