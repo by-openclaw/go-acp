@@ -182,6 +182,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   route      read or make one crosspoint (RollCall only)
   tally      print a level's crosspoints and follow them live (RollCall only)
   salvo      list a controller's salvos, or fire one (RollCall only)
+  probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1582,6 +1583,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   route      read or make one crosspoint (RollCall only)
   tally      print a level's crosspoints and follow them live (RollCall only)
   salvo      list a controller's salvos, or fire one (RollCall only)
+  probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1656,6 +1658,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   route      read or make one crosspoint (RollCall only)
   tally      print a level's crosspoints and follow them live (RollCall only)
   salvo      list a controller's salvos, or fire one (RollCall only)
+  probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
