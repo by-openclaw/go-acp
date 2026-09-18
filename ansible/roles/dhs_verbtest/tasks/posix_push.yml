@@ -7,14 +7,14 @@
 # ---- Deploy (mirror dhs_acp1/tasks/linux.yml exactly) --------------------
 - name: Create the dhs install directory
   ansible.builtin.file:
-    path: "{{ dhs_dir }}"
+    path: "{{ vt_dir }}"
     state: directory
     mode: "0755"
 
 - name: Deploy the linux dhs binary
   ansible.builtin.copy:
     src: "{{ dhs_local_binary }}"
-    dest: "{{ dhs_bin }}"
+    dest: "{{ vt_bin }}"
     mode: "0755"
 
 # Any fixtures the push test needs on the target (usually none for tsl/osc).
@@ -37,9 +37,9 @@
 - name: Start the {{ vt_proto }} consumer listener on the target
   ansible.builtin.shell:
     cmd: >-
-      {{ ([dhs_bin, 'consumer', vt_proto] + vt_listen_argv)
+      {{ ([vt_bin, 'consumer', vt_proto] + vt_listen_argv)
          | map('quote') | join(' ') }}
-      > {{ vt_listen_capture | quote }} 2>/dev/null
+      > {{ vt_listen_capture | quote }} 2> {{ (vt_listen_capture ~ '.err') | quote }}
   async: "{{ vt_listen_ttl }}"
   poll: 0
   changed_when: false
@@ -53,7 +53,7 @@
 # send is a one-shot UDP/TCP emit — assert rc, not change.
 - name: "send: producer {{ vt_proto }}"
   ansible.builtin.command:
-    argv: "{{ ([dhs_bin, 'producer', vt_proto] + item) }}"
+    argv: "{{ ([vt_bin, 'producer', vt_proto] + item) }}"
   loop: "{{ vt_send_argv_list }}"
   loop_control:
     label: "{{ item | join(' ') }}"

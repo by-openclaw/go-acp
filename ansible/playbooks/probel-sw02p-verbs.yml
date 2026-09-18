@@ -30,12 +30,12 @@
         # Committed single-matrix demo tree; dest under dhs_dir (per-OS path).
         vt_serve_files:
           - src: "{{ playbook_dir }}/../../internal/probel-sw02p/testdata/exports/matrix_tree.json"
-            dest: "{{ dhs_dir }}/sw02p_matrix_tree.json"
+            dest: "{{ vt_dir }}/sw02p_matrix_tree.json"
 
         # producer serve argv — --tree points at the DEPLOYED fixture on target.
         vt_serve_argv:
           - --tree
-          - "{{ dhs_dir }}/sw02p_matrix_tree.json"
+          - "{{ vt_dir }}/sw02p_matrix_tree.json"
           - --port
           - "{{ vt_port }}"
           - --host

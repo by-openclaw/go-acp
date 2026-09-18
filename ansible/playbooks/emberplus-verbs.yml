@@ -46,30 +46,30 @@
         # The 7 DMs are the slots in emberplus-integration.json (oid 1.0..1.6).
         vt_serve_files:
           - src: "{{ ember_fix }}/manifest/emberplus-integration.json"
-            dest: "{{ dhs_dir }}/emberfix/manifest/emberplus-integration.json"
+            dest: "{{ vt_dir }}/emberfix/manifest/emberplus-integration.json"
           - src: "{{ ember_fix }}/dm/emberplus/identity-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/identity-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/identity-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/oneToN-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/oneToN-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/oneToN-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/oneToOne-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/oneToOne-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/oneToOne-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/nToN-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/nToN-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/nToN-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/dynamic-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/dynamic-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/dynamic-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/functions-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/functions-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/functions-strict@1.0.0.json"
           - src: "{{ ember_fix }}/dm/emberplus/glow-types-strict@1.0.0.json"
-            dest: "{{ dhs_dir }}/emberfix/dm/emberplus/glow-types-strict@1.0.0.json"
+            dest: "{{ vt_dir }}/emberfix/dm/emberplus/glow-types-strict@1.0.0.json"
 
         # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
         # --cache-dir (lines 46-47) + --port/--host (48-49). No --transport: it
         # is acp1-only (cmd_producer.go:60); emberplus serves S101/TCP by default.
         vt_serve_argv:
           - --manifest
-          - "{{ dhs_dir }}/emberfix/manifest/emberplus-integration.json"
+          - "{{ vt_dir }}/emberfix/manifest/emberplus-integration.json"
           - --cache-dir
-          - "{{ dhs_dir }}/emberfix"
+          - "{{ vt_dir }}/emberfix"
           - --port
           - "{{ vt_port }}"
           - --host

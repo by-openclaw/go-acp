@@ -8,13 +8,13 @@
 # ---- Deploy (mirror dhs_acp1/tasks/windows.yml exactly) ------------------
 - name: Create the dhs install directory
   ansible.windows.win_file:
-    path: "{{ dhs_dir }}"
+    path: "{{ vt_dir }}"
     state: directory
 
 - name: Deploy the windows dhs binary
   ansible.windows.win_copy:
     src: "{{ dhs_local_binary }}"
-    dest: "{{ dhs_bin }}"
+    dest: "{{ vt_bin }}"
 
 # Any fixtures the push test needs on the target (usually none for tsl/osc).
 - name: Deploy push fixtures to the target
@@ -32,8 +32,8 @@
 # dropped. win_shell runs the line under PowerShell on the target.
 - name: Start the {{ vt_proto }} consumer listener on the target
   ansible.windows.win_shell: >-
-    & {{ dhs_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }}
-    1> {{ vt_listen_capture }} 2> $null
+    & {{ vt_bin }} consumer {{ vt_proto }} {{ vt_listen_argv | join(' ') }}
+    1> {{ vt_listen_capture }} 2> {{ vt_listen_capture }}.err
   async: "{{ vt_listen_ttl }}"
   poll: 0
   changed_when: false
@@ -47,7 +47,7 @@
 # is a one-shot UDP/TCP emit — assert rc, not change.
 - name: "send: producer {{ vt_proto }}"
   ansible.windows.win_command:
-    argv: "{{ ([dhs_bin, 'producer', vt_proto] + item) }}"
+    argv: "{{ ([vt_bin, 'producer', vt_proto] + item) }}"
   loop: "{{ vt_send_argv_list }}"
   loop_control:
     label: "{{ item | join(' ') }}"

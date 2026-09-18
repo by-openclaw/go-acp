@@ -6,13 +6,13 @@
 # ---- Deploy (mirror dhs_acp1/tasks/windows.yml exactly) ------------------
 - name: Create the dhs install directory
   ansible.windows.win_file:
-    path: "{{ dhs_dir }}"
+    path: "{{ vt_dir }}"
     state: directory
 
 - name: Deploy the windows dhs binary
   ansible.windows.win_copy:
     src: "{{ dhs_local_binary }}"
-    dest: "{{ dhs_bin }}"
+    dest: "{{ vt_bin }}"
 
 # The binary alone isn't enough — `producer serve --tree <path>` needs the
 # fixture ON the target. Deploy each {src, dest} the connector play supplies.
@@ -29,7 +29,7 @@
 # producer's bounded lifetime, so Ansible auto-expires it — no manual kill.
 - name: Start the {{ vt_proto }} producer on the target
   ansible.windows.win_command:
-    argv: "{{ ([dhs_bin, 'producer', vt_proto, 'serve'] + vt_serve_argv) }}"
+    argv: "{{ ([vt_bin, 'producer', vt_proto, 'serve'] + vt_serve_argv) }}"
   async: "{{ vt_serve_ttl }}"
   poll: 0
   changed_when: false

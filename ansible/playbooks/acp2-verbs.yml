@@ -42,11 +42,11 @@
         # CONVERT Hybrid).
         vt_serve_files:
           - src: "{{ acp2_fix }}/manifest/neuron-test.json"
-            dest: "{{ dhs_dir }}/acp2fix/manifest/neuron-test.json"
+            dest: "{{ vt_dir }}/acp2fix/manifest/neuron-test.json"
           - src: "{{ acp2_fix }}/dm/acp2/SHPRM1@5.3.5.json"
-            dest: "{{ dhs_dir }}/acp2fix/dm/acp2/SHPRM1@5.3.5.json"
+            dest: "{{ vt_dir }}/acp2fix/dm/acp2/SHPRM1@5.3.5.json"
           - src: "{{ acp2_fix }}/dm/acp2/CONVERT Hybrid@6.7.4.json"
-            dest: "{{ dhs_dir }}/acp2fix/dm/acp2/CONVERT Hybrid@6.7.4.json"
+            dest: "{{ vt_dir }}/acp2fix/dm/acp2/CONVERT Hybrid@6.7.4.json"
 
         # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
         # --cache-dir (lines 46-47) + --port/--host (48-49); bind loopback on the
@@ -54,9 +54,9 @@
         # acp2 serves its default AN2/TCP.
         vt_serve_argv:
           - --manifest
-          - "{{ dhs_dir }}/acp2fix/manifest/neuron-test.json"
+          - "{{ vt_dir }}/acp2fix/manifest/neuron-test.json"
           - --cache-dir
-          - "{{ dhs_dir }}/acp2fix"
+          - "{{ vt_dir }}/acp2fix"
           - --port
           - "{{ vt_port }}"
           - --host

@@ -39,13 +39,13 @@
         # group_vars) so it resolves on both linux and windows.
         vt_serve_files:
           - src: "{{ playbook_dir }}/../../internal/probel-sw08p/testdata/exports/matrix_tree.json"
-            dest: "{{ dhs_dir }}/matrix_tree.json"
+            dest: "{{ vt_dir }}/matrix_tree.json"
 
         # producer serve argv — --tree points at the DEPLOYED fixture path on the
         # target, NOT the repo path.
         vt_serve_argv:
           - --tree
-          - "{{ dhs_dir }}/matrix_tree.json"
+          - "{{ vt_dir }}/matrix_tree.json"
           - --port
           - "{{ vt_port }}"
           - --host

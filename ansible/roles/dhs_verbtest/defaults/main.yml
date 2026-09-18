@@ -4,13 +4,16 @@
 # cross-built on the CONTROL NODE and DEPLOYED here (mirrors dhs_acp1); the
 # target needs NO Go toolchain.
 #
-# Binary + install paths come from inventory group_vars (linux.yml / windows.yml):
-#   dhs_dir / dhs_bin / dhs_local_binary
-# Do NOT redefine those here when a host is in the linux/windows groups — the
-# group_vars own them. The fallbacks below only exist so the role does not
-# explode if an ungrouped host happens to run it; a grouped host overrides them.
-dhs_dir: /usr/local/bin
-dhs_bin: /usr/local/bin/dhs
+# The build under test lives in its OWN directory on the target, never at the
+# release-managed dhs_bin the dhs_host role pins from a GitHub release (#1076).
+# A verb run replaced the fleet's pinned binary on four hosts once (#620); the
+# paths below are what keep a build under test and the release apart.
+# dhs_local_binary (the cross-built artifact) comes from group_vars.
+# Forward slashes on the Windows path on purpose: PowerShell and the
+# ansible.windows modules take them, and they keep the value clear of
+# YAML and Jinja backslash escaping.
+vt_dir: "{{ 'C:/dhs-verbtest' if ansible_os_family == 'Windows' else '/opt/dhs-verbtest' }}"
+vt_bin: "{{ vt_dir ~ ('/dhs.exe' if ansible_os_family == 'Windows' else '/dhs') }}"
 dhs_local_binary: "{{ playbook_dir }}/../../bin/dhs-linux-amd64"
 
 # ---- Role parameters the connector play supplies -------------------------
@@ -77,10 +80,10 @@ vt_listen_argv: []
 vt_send_argv_list: []
 
 # Absolute path on the TARGET where the backgrounded listener's decoded output
-# is captured (then read back + asserted). Defaults under dhs_dir, which is
-# per-OS from group_vars (/usr/local/bin on linux, C:\dhs on windows), so this
-# one expression resolves on both target families.
-vt_listen_capture: "{{ dhs_dir }}/dhs-{{ vt_proto }}-listen.out"
+# is captured (then read back + asserted), with the listener's stderr next to
+# it as <capture>.err. Defaults under vt_dir, which is per-OS, so this one
+# expression resolves on both target families.
+vt_listen_capture: "{{ vt_dir }}/dhs-{{ vt_proto }}-listen.out"
 
 # Substrings that MUST appear in the captured listener output after the sends.
 # Each is asserted with `<token> in capture`.

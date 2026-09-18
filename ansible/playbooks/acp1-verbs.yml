@@ -36,27 +36,27 @@
         # dhs_dir. manifest.BuildExport resolves DMs at <cache-dir>/dm/acp1/.
         vt_serve_files:
           - src: "{{ acp1_fix }}/manifest/synapse-test.json"
-            dest: "{{ dhs_dir }}/acp1fix/manifest/synapse-test.json"
+            dest: "{{ vt_dir }}/acp1fix/manifest/synapse-test.json"
           - src: "{{ acp1_fix }}/dm/acp1/RRS18@1601.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/RRS18@1601.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/RRS18@1601.json"
           - src: "{{ acp1_fix }}/dm/acp1/2GS110@2728.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2GS110@2728.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/2GS110@2728.json"
           - src: "{{ acp1_fix }}/dm/acp1/2HF110@4326.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2HF110@4326.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/2HF110@4326.json"
           - src: "{{ acp1_fix }}/dm/acp1/GED130@2522.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/GED130@2522.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/GED130@2522.json"
           - src: "{{ acp1_fix }}/dm/acp1/SDB20@0806.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/SDB20@0806.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/SDB20@0806.json"
           - src: "{{ acp1_fix }}/dm/acp1/2GS110@2929.json"
-            dest: "{{ dhs_dir }}/acp1fix/dm/acp1/2GS110@2929.json"
+            dest: "{{ vt_dir }}/acp1fix/dm/acp1/2GS110@2929.json"
 
         # producer serve argv (cmd/dhs/cmd_producer.go runProducer). --manifest +
         # --cache-dir + --transport tcp; bind loopback on the test port.
         vt_serve_argv:
           - --manifest
-          - "{{ dhs_dir }}/acp1fix/manifest/synapse-test.json"
+          - "{{ vt_dir }}/acp1fix/manifest/synapse-test.json"
           - --cache-dir
-          - "{{ dhs_dir }}/acp1fix"
+          - "{{ vt_dir }}/acp1fix"
           - --transport
           - tcp
           - --port
