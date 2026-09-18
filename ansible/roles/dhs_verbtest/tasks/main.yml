@@ -38,11 +38,29 @@
   run_once: true
   changed_when: false
 
-# ---- Dispatch by OS family (mirror dhs_acp1) -----------------------------
-- name: Drive the verb test on a POSIX client (SSH)
+# ---- Dispatch by OS family (mirror dhs_acp1) × test mode ------------------
+# serve mode = producer serve + consumer verbs (matrix/tree connectors).
+# push  mode = consumer listen (backgrounded) + producer send (tsl/osc).
+- name: Drive the SERVE verb test on a POSIX client (SSH)
   ansible.builtin.include_tasks: posix.yml
-  when: ansible_os_family != "Windows"
+  when:
+    - ansible_os_family != "Windows"
+    - vt_mode == "serve"
 
-- name: Drive the verb test on a Windows client (WinRM)
+- name: Drive the SERVE verb test on a Windows client (WinRM)
   ansible.builtin.include_tasks: windows.yml
-  when: ansible_os_family == "Windows"
+  when:
+    - ansible_os_family == "Windows"
+    - vt_mode == "serve"
+
+- name: Drive the PUSH verb test on a POSIX client (SSH)
+  ansible.builtin.include_tasks: posix_push.yml
+  when:
+    - ansible_os_family != "Windows"
+    - vt_mode == "push"
+
+- name: Drive the PUSH verb test on a Windows client (WinRM)
+  ansible.builtin.include_tasks: windows_push.yml
+  when:
+    - ansible_os_family == "Windows"
+    - vt_mode == "push"

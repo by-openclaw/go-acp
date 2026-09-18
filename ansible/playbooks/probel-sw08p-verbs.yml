@@ -39,13 +39,13 @@
         # group_vars) so it resolves on both linux and windows.
         vt_serve_files:
           - src: "{{ playbook_dir }}/../../internal/probel-sw08p/testdata/exports/matrix_tree.json"
-            dest: "{{ dhs_dir }}/matrix_tree.json"
+            dest: "{{ vt_dir }}/matrix_tree.json"
 
         # producer serve argv — --tree points at the DEPLOYED fixture path on the
         # target, NOT the repo path.
         vt_serve_argv:
           - --tree
-          - "{{ dhs_dir }}/matrix_tree.json"
+          - "{{ vt_dir }}/matrix_tree.json"
           - --port
           - "{{ vt_port }}"
           - --host
@@ -62,15 +62,15 @@
           - [connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3", --src, "7"]
           - [interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [tally-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
-          - [dual-status, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [dual-status, "{{ vt_host }}:{{ vt_port }}"]
           - [maintenance, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [discover, "{{ vt_host }}:{{ vt_port }}"]
-          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --srcs, "4,5"]
+          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --src, "4"]
           # --- protect verbs ---
           - [protect-interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [protect-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [protect-disconnect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
-          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --device, "3"]
           - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [master-protect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           # --- name verbs ---
@@ -80,8 +80,8 @@
           - [single-dest-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [all-source-assoc-names, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [single-source-assoc-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7"]
-          - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --src, "7", --name, VT-SRC7]
+          - [update-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --first-id, "7", --names, VT-SRC7, --type, source]
           # --- watch + bench ---
-          - [watch, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "1"]
-          - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --count, "8"]
+          - [watch, "{{ vt_host }}:{{ vt_port }}", --timeout, "3s"]
+          - [bench, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --size, "8", --skip-warmup]
           - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "1"]

@@ -3,7 +3,7 @@
 # `dhs consumer <vt_proto>` (e.g. [connect, host:port, --matrix, "0", ...]).
 - name: "verb: {{ vt_verb | join(' ') }}"
   ansible.windows.win_command:
-    argv: "{{ ([dhs_bin, 'consumer', vt_proto] + vt_verb) }}"
+    argv: "{{ ([vt_bin, 'consumer', vt_proto] + vt_verb) }}"
   register: vt_result
   # Read-only verb drive against an ephemeral producer — assert rc, not change.
   changed_when: false

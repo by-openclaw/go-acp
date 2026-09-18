@@ -22,13 +22,17 @@
 # (The integration tier = the same <proto>-verbs.yml verb matrices pointed at a
 # live device/oracle; the smoke tier above is the loopback equivalent.)
 - import_playbook: unit-tests.yml
+# SMOKE — per-connector verb matrices (data-only replication via the dhs_verbtest
+# role). serve mode: probel-sw08p / probel-sw02p / acp1 / acp2 / emberplus drive
+# `producer serve` + every consumer verb. push mode: tsl / osc start a consumer
+# listen + fire producer sends, asserting the decoded frames. external-only:
+# cerebrum-nb deploys the binary and drives read-only verbs vs a live licensed
+# oracle (skips cleanly when CEREBRUM_TEST_HOST + creds are unset).
 - import_playbook: probel-sw08p-verbs.yml
-# TODO (data-only replication via the dhs_verbtest role, once the probel-sw08p
-# template is confirmed green on a live Linux + win11 run):
-#   - import_playbook: acp1-verbs.yml
-#   - import_playbook: acp2-verbs.yml
-#   - import_playbook: emberplus-verbs.yml
-#   - import_playbook: probel-sw02p-verbs.yml
-#   - import_playbook: tsl-verbs.yml
-#   - import_playbook: osc-verbs.yml
-#   - import_playbook: cerebrum-nb-verbs.yml   # external-only (no provider/loopback)
+- import_playbook: probel-sw02p-verbs.yml
+- import_playbook: acp1-verbs.yml
+- import_playbook: acp2-verbs.yml
+- import_playbook: emberplus-verbs.yml
+- import_playbook: tsl-verbs.yml
+- import_playbook: osc-verbs.yml
+- import_playbook: cerebrum-nb-verbs.yml   # external-only (no provider/loopback)
