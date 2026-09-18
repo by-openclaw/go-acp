@@ -70,7 +70,7 @@
           - [protect-interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [protect-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [protect-disconnect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
-          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
+          - [protect-name, "{{ vt_host }}:{{ vt_port }}", --device, "3"]
           - [protect-dump, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [master-protect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           # --- name verbs ---
