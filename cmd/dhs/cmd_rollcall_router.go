@@ -146,8 +146,13 @@ func runRollcallRouter(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	return printRouterInterface(r, *output)
+}
 
-	if strings.EqualFold(*output, "json") {
+// printRouterInterface renders a routing interface — the router verb's body,
+// pulled out so the one-connection probe verb prints it the same way.
+func printRouterInterface(r *rollcall.RouterInterface, output string) error {
+	if strings.EqualFold(output, "json") {
 		return json.NewEncoder(os.Stdout).Encode(routerJSON(r))
 	}
 

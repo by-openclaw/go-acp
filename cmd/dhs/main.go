@@ -191,6 +191,7 @@ var commands = []command{
 	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
 	{"tally", "print a level's crosspoints and follow them live (RollCall only)", helpRollcallTally, runRollcallTally},
 	{"salvo", "list a controller's salvos, or fire one (RollCall only)", helpRollcallSalvo, runRollcallSalvo},
+	{"probe", "read a plant (info + router + salvos) over ONE connection (RollCall only)", helpRollcallProbe, runRollcallProbe},
 }
 
 func helpBench() {
