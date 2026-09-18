@@ -6,6 +6,11 @@
 # mirror dhs_acp1/tasks/windows.yml. No serve, no on-target build.
 
 # ---- Deploy (mirror dhs_acp1/tasks/windows.yml exactly) ------------------
+- name: Stop any dhs left running from an earlier verb test (frees the exe)
+  ansible.windows.win_shell: Get-Process dhs -ErrorAction SilentlyContinue | Stop-Process -Force
+  changed_when: false
+  failed_when: false
+
 - name: Create the dhs install directory
   ansible.windows.win_file:
     path: "{{ vt_dir }}"

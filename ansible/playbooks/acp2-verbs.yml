@@ -82,7 +82,8 @@
           - [tree, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "25s"]
           # export slot 0 to json on stdout (cmd_export.go:24-26 / main.go:166).
           - [export, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --format, json, --timeout, "25s"]
-          # diag slot 0 — ACP2 diagnostic probes (cmd_diag.go:17 / main.go:176).
-          - [diag, "{{ vt_host }}", --port, "{{ vt_port }}", --slot, "0", --timeout, "20s"]
+          # diag is a real-device probe: it dials the ACP2 default port (2072),
+          # not the ephemeral serve port, so it belongs to the Tier 2/3 device
+          # runs, not this loopback (Tier 4) play. Left out here on purpose.
           # health — 3-layer session health (cmd_health.go / main.go:178).
           - [health, "{{ vt_host }}", --port, "{{ vt_port }}", --timeout, "15s"]

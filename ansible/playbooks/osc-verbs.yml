@@ -39,6 +39,7 @@
       vars:
         vt_proto: osc-v11
         vt_mode: push
+        vt_push_settle: 8
 
         # Consumer WATCH argv tail (after `dhs consumer osc-v11`). UDP listener
         # on the test port — cmd_osc.go:74-113 runOSCWatch, --listen transport:port

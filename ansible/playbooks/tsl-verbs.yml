@@ -39,6 +39,7 @@
       vars:
         vt_proto: tsl-v50
         vt_mode: push
+        vt_push_settle: 8
 
         # Consumer LISTEN argv tail (after `dhs consumer tsl-v50`). UDP listener
         # bound on the test port — cmd_tsl.go:42-49 runTSLListen, --bind at

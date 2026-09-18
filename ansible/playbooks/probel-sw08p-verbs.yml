@@ -65,7 +65,7 @@
           - [dual-status, "{{ vt_host }}:{{ vt_port }}"]
           - [maintenance, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0"]
           - [discover, "{{ vt_host }}:{{ vt_port }}"]
-          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --srcs, "4,5"]
+          - [salvo-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dsts, "1,2", --src, "4"]
           # --- protect verbs ---
           - [protect-interrogate, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
           - [protect-connect, "{{ vt_host }}:{{ vt_port }}", --matrix, "0", --level, "0", --dst, "3"]
