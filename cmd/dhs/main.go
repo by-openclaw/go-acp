@@ -193,6 +193,7 @@ var commands = []command{
 	{"salvo", "list a controller's salvos, or fire one (RollCall only)", helpRollcallSalvo, runRollcallSalvo},
 	{"probe", "read a plant (info + router + salvos) over ONE connection (RollCall only)", helpRollcallProbe, runRollcallProbe},
 	{"session", "hold ONE connection and run reads from stdin, for monitoring without reconnect churn (RollCall only)", helpRollcallSession, runRollcallSession},
+	{"release", "terminate one node's sessions without leaving the frame (RollCall only)", helpRollcallRelease, runRollcallRelease},
 }
 
 func helpBench() {

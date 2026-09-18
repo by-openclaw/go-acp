@@ -184,6 +184,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   salvo      list a controller's salvos, or fire one (RollCall only)
   probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
   session    hold ONE connection and run reads from stdin, for monitoring without reconnect churn (RollCall only)
+  release    terminate one node's sessions without leaving the frame (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1586,6 +1587,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   salvo      list a controller's salvos, or fire one (RollCall only)
   probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
   session    hold ONE connection and run reads from stdin, for monitoring without reconnect churn (RollCall only)
+  release    terminate one node's sessions without leaving the frame (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
@@ -1662,6 +1664,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   salvo      list a controller's salvos, or fire one (RollCall only)
   probe      read a plant (info + router + salvos) over ONE connection (RollCall only)
   session    hold ONE connection and run reads from stdin, for monitoring without reconnect churn (RollCall only)
+  release    terminate one node's sessions without leaving the frame (RollCall only)
 
 PROBEL VERBS
   run 'dhs consumer probel-sw08p -h' for the Probel subcommand catalogue.
