@@ -59,6 +59,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0027](0027-workflow-contract-dod-windows.md) | Workflow contract during DOD windows | proposed |
 | [0028](0028-artifact-layout.md) | Artifact layout — one deterministic home per artifact, keyed by IP | proposed |
 | [0029](0029-ci-event-step-matrix.md) | CI event→step matrix — no retries, single-pass coverage | proposed |
+| [0032](0032-transport-hardening.md) | Transport hardening — fuzzed decoders, gateway as protective proxy | proposed |
 
 ## ADR-0017 parking note
 
