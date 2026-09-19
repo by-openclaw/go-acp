@@ -7,6 +7,32 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.24.0](https://github.com/by-openclaw/go-acp/compare/v0.23.1...v0.24.0) (2026-09-19)
+
+
+### Features
+
+* **monitor,snmp:** device monitor (ADR-0030) + SNMP watch CLI ([aa350b3](https://github.com/by-openclaw/go-acp/commit/aa350b3d63f5240cd8bc0e647b873b5b657be851))
+* **monitor,snmp:** SNMP adapter + `dhs monitor watch` CLI ([48c33ff](https://github.com/by-openclaw/go-acp/commit/48c33ff394377b3a4c2dcfc1cba302e116a48e7c))
+* **monitor:** neutral per-device monitor — ADR-0030 core ([bcfdb6b](https://github.com/by-openclaw/go-acp/commit/bcfdb6b01e880ceee7cd0fffa411bd0a1b00e0cc))
+* **snell-rollcall:** probe — read a plant over ONE connection ([#1100](https://github.com/by-openclaw/go-acp/issues/1100)) ([ab7f046](https://github.com/by-openclaw/go-acp/commit/ab7f04676ddfe87a406bc1cad99b2abce244810c)), closes [#1051](https://github.com/by-openclaw/go-acp/issues/1051)
+* **snell-rollcall:** release — free one node's sessions without leaving the frame ([#1102](https://github.com/by-openclaw/go-acp/issues/1102)) ([9a0047b](https://github.com/by-openclaw/go-acp/commit/9a0047b0e12735700321a2073510a4fa12f19dee)), closes [#1059](https://github.com/by-openclaw/go-acp/issues/1059)
+* **snell-rollcall:** session — hold ONE connection for churn-free monitoring ([#1101](https://github.com/by-openclaw/go-acp/issues/1101)) ([78a88d7](https://github.com/by-openclaw/go-acp/commit/78a88d7ac2132c64db4a3d63adf172cca31d869f)), closes [#1051](https://github.com/by-openclaw/go-acp/issues/1051)
+* **snmp/usm:** NewRemoteEngine — model a peer's authoritative engine ([b33c052](https://github.com/by-openclaw/go-acp/commit/b33c052c0079aa0cedb46cc498a7dc5dcec382b8))
+* **snmp:** `producer snmp serve --v3-user` — run the agent as v3 ([f8149b3](https://github.com/by-openclaw/go-acp/commit/f8149b352b0c4e87ed5319994d7677bf5bf7b2e7))
+* **snmp:** name ETV alarm traps sent as v1 enterprise-specific ([b778f87](https://github.com/by-openclaw/go-acp/commit/b778f87e1443708afcf4a604f292c2402c890b05))
+* **snmp:** v3 agent — answer authenticated USM requests ([2ef89ac](https://github.com/by-openclaw/go-acp/commit/2ef89acfb86f31d0d610c8e546465cc6bc6a4e84))
+* **snmp:** v3 agent + GETBULK hardening ([e65a039](https://github.com/by-openclaw/go-acp/commit/e65a039b6f279565ff9cc5268db65db0081d0a67))
+* **snmp:** Wireshark dissector — v1/v2c/v3, every PDU, full BER ([#1097](https://github.com/by-openclaw/go-acp/issues/1097)) ([0dc3cd1](https://github.com/by-openclaw/go-acp/commit/0dc3cd1d9538491f519f1e7dfc284e9bbf8f6851)), closes [#1096](https://github.com/by-openclaw/go-acp/issues/1096)
+* **tsl,osc:** listen --duration; re-enable Windows push verb tests ([#1104](https://github.com/by-openclaw/go-acp/issues/1104)) ([7e326f4](https://github.com/by-openclaw/go-acp/commit/7e326f44bf4e9b106b432574b1868b7508e92d61))
+
+
+### Bug Fixes
+
+* **snell-rollcall:** salvo list degrades to numbers when a controller ships no names file ([#1099](https://github.com/by-openclaw/go-acp/issues/1099)) ([4c30c75](https://github.com/by-openclaw/go-acp/commit/4c30c75fbdc2dcb99da58157b1402a4cd9ecb120))
+* **snell-rollcall:** walk a menuless node to an empty tree, not a NACK ([#1103](https://github.com/by-openclaw/go-acp/issues/1103)) ([901c81b](https://github.com/by-openclaw/go-acp/commit/901c81b227e6f1ec8c7b55989c65c5c26792b776)), closes [#1095](https://github.com/by-openclaw/go-acp/issues/1095)
+* **snmp:** bound GETBULK work and drop v1 GETBULK (hardening) ([6cb8584](https://github.com/by-openclaw/go-acp/commit/6cb858487b658ce2bc295c5609b3b1dcf97d745c))
+
 ## [0.23.1](https://github.com/by-openclaw/go-acp/compare/v0.23.0...v0.23.1) (2026-09-17)
 
 
