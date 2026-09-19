@@ -888,6 +888,10 @@ Usage of serve:
     	sysContact.0
   -descr string
     	sysDescr.0 (default: this build's version line)
+  -engine-boots int
+    	this engine's restart count; persist and increment across restarts, or a peer accepts messages recorded before the last reboot (default 1)
+  -engine-id string
+    	text in this agent's RFC 3411 engine ID (default "dhs-agent")
   -location string
     	sysLocation.0
   -metrics-addr string
@@ -898,6 +902,16 @@ Usage of serve:
     	write this process's PID to PATH so dhs producer snmp stop|ensure --pidfile PATH can manage it
   -read-community string
     	community that admits GET, GETNEXT and GETBULK (default "public")
+  -v3-auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -v3-auth-pass string
+    	v3 authentication password
+  -v3-priv string
+    	v3 privacy: des or aes
+  -v3-priv-pass string
+    	v3 privacy password
+  -v3-user string
+    	USM user to accept authenticated v3 requests as. Setting it makes the agent answer v3 (as well as v1/v2c).
   -write-community string
     	community that admits SET. EMPTY REFUSES EVERY SET, including one carrying the read community — a plant where one password does both is one typo from a re-route.
 ```
