@@ -126,6 +126,27 @@ func (e *Engine) Time() int32 {
 	return int32(e.clk.Now().Sub(started).Seconds())
 }
 
+// NewRemoteEngine models a PEER's authoritative engine — what a manager
+// builds after discovering an agent's engine ID, boots and time. NewEngine
+// is authoritative for its own clock and starts its time at zero; a manager
+// is authoritative for nothing and must track the agent's clock, so
+// engineTime seeds the start backwards. Seal then stamps the agent's
+// engine ID, boots and current time, and Open verifies a reply the agent
+// sealed with the same, keeping both inside the RFC 3414 §2.2.3 window.
+func NewRemoteEngine(id []byte, boots, engineTime int32, clk clock.Clock) (*Engine, error) {
+	if engineTime < 0 {
+		return nil, fmt.Errorf("snmp/usm: a remote engine time cannot be negative")
+	}
+	e, err := NewEngine(id, boots, clk)
+	if err != nil {
+		return nil, err
+	}
+	e.mu.Lock()
+	e.started = e.clk.Now().Add(-time.Duration(engineTime) * time.Second)
+	e.mu.Unlock()
+	return e, nil
+}
+
 // AddUser configures a user and derives its keys for this engine.
 func (e *Engine) AddUser(u User) error {
 	keys, err := DeriveKeys(u, e.id)

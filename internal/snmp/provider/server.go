@@ -11,6 +11,7 @@ import (
 	"dhs/internal/plugin"
 	"dhs/internal/provider"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/usm"
 	"dhs/internal/transport"
 )
 
@@ -36,6 +37,7 @@ type Server struct {
 
 	agent  *Agent
 	logger *slog.Logger
+	engine *usm.Engine // set for v3; nil means v1/v2c only
 
 	mu   sync.Mutex
 	conn *net.UDPConn
@@ -152,6 +154,12 @@ func (s *Server) handle(raw []byte, from *net.UDPAddr) ([]byte, bool) {
 		s.logger.Debug("snmp agent: undecodable datagram",
 			slog.String("from", from.String()), slog.String("err", err.Error()))
 		return nil, false
+	}
+
+	// v3 is opened, answered and sealed by the security engine; v1/v2c
+	// answer directly.
+	if req.Version == codec.Version3 {
+		return s.handleV3(raw, req)
 	}
 
 	// The agent hands back the datagram it already encoded, so the

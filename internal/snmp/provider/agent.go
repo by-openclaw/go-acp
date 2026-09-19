@@ -26,6 +26,13 @@ type Communities struct {
 // DefaultReadCommunity is what an empty Communities.Read means.
 const DefaultReadCommunity = "public"
 
+// maxBulkVarBinds caps how many varbinds one GETBULK builds, whatever
+// max-repetitions it asked for. It bounds the work a single request can
+// cost (GETBULK amplification defence) while sitting well above what a
+// response could carry anyway — a full datagram of minimal varbinds — so
+// no legitimate bulk walk is ever shortened by it in practice.
+const maxBulkVarBinds = 10000
+
 // read resolves the default once, so the check below reads as the rule
 // rather than as the defaulting. There is no matching write(): an empty
 // write community is not a default, it is a refusal.
@@ -65,26 +72,15 @@ func NewAgent(mib *MIB, communities Communities, logger *slog.Logger) *Agent {
 	}
 }
 
-// Respond answers one request, returning both the response and the
-// datagram that carries it.
-//
-// The bytes come back because the size rule cannot be applied without
-// them: RFC 3416 §4.2.1 asks for tooBig when a response does not FIT,
-// which is a fact about the encoding. Returning what was already encoded
-// spares the caller a second pass over every varbind on the reply path.
-//
-// The bool is whether to send anything at all. An agent is SILENT rather
-// than informative when it will not serve a request: a wrong community
-// or a PDU an agent has no business receiving gets no datagram back, so
-// that a scanner learns nothing from the difference between a wrong
-// password and a closed port. RFC 1157 §4.1 says as much, and it is also
-// why a community mismatch is worth a log line here — it is the only
-// place it will ever be visible.
-func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
+// respondPDU builds the response PDU for one request, or reports that an
+// agent does not answer it. It carries no version framing, so both the
+// v1/v2c path (which encodes with a community) and the v3 path (which
+// seals with a security engine) can share it.
+func (a *Agent) respondPDU(req codec.Message) (codec.PDU, bool) {
 	if req.PDU == nil {
 		// A v1 trap, or a message with nothing in it. Either way an
 		// agent does not answer it.
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 	p := req.PDU
 
@@ -95,13 +91,24 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 		// else's traffic, or a reflection attempt. Dropped.
 		a.logger.Debug("snmp agent: ignoring a PDU an agent does not answer",
 			"type", p.Type.String())
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 
-	if !a.admits(req.Community, p.Type) {
+	// GETBULK arrived with v2c (RFC 3416); a v1 message carrying one is
+	// malformed. Drop it silently rather than answer a request the
+	// version does not define.
+	if p.Type == codec.PDUTypeGetBulk && req.Version == codec.Version1 {
+		a.logger.Debug("snmp agent: dropping a GETBULK in a v1 message")
+		return codec.PDU{}, false
+	}
+
+	// v3 is admitted by USM: the message reached here only after the
+	// security engine opened it, so the user is already authenticated.
+	// Community admission is a v1/v2c concept and does not apply.
+	if req.Version != codec.Version3 && !a.admits(req.Community, p.Type) {
 		a.logger.Warn("snmp agent: refused community",
 			"type", p.Type.String(), "version", req.Version.String())
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 
 	out := codec.PDU{
@@ -119,6 +126,25 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 	case codec.PDUTypeSet:
 		out.VarBinds, out.ErrorStatus, out.ErrorIndex = a.set(req.Version, p.VarBinds)
 	}
+	return out, true
+}
+
+// Respond answers one v1/v2c request, returning the response message, the
+// datagram it already encoded, and whether there is anything to send.
+//
+// The bytes come back because the size rule cannot be applied without
+// them (RFC 3416 §4.2.1 asks for tooBig when a response does not FIT), and
+// returning what was already encoded spares the caller a second pass. The
+// bool is whether to send anything: an agent is SILENT rather than
+// informative when it will not serve a request, so a scanner learns
+// nothing from the difference between a wrong password and a closed port
+// (RFC 1157 §4.1).
+func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
+	built, ok := a.respondPDU(req)
+	if !ok {
+		return codec.Message{}, nil, false
+	}
+	out := built
 
 	resp := codec.Message{Version: req.Version, Community: req.Community, PDU: &out}
 
@@ -131,7 +157,7 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 	// tooBig carrying no bindings, never truncated — a manager cannot
 	// tell a short table from the end of a table.
 	a.logger.Debug("snmp agent: response replaced by tooBig",
-		"request", p.RequestID, "bytes", len(raw))
+		"request", out.RequestID, "bytes", len(raw))
 	out.ErrorStatus, out.ErrorIndex = codec.TooBig, 0
 	out.VarBinds = nil
 
@@ -141,7 +167,7 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 		// named a version this package cannot answer in. Nothing useful
 		// can be sent, so nothing is.
 		a.logger.Error("snmp agent: no response can be encoded",
-			"request", p.RequestID, "version", req.Version.String(), "err", err)
+			"request", out.RequestID, "version", req.Version.String(), "err", err)
 		return codec.Message{}, nil, false
 	}
 	return resp, raw, true
@@ -266,8 +292,19 @@ func (a *Agent) getBulk(p *codec.PDU) []codec.VarBind {
 	for i, vb := range repeaters {
 		cursors[i] = vb.Name
 	}
-	for r := 0; r < maxReps; r++ {
+	// Stop once the response would fill a datagram, whatever
+	// max-repetitions asked for. RFC 3416 §4.2.3 lets an agent return
+	// fewer repetitions than requested, and this is the difference
+	// between answering a bulk walk and letting one spoofed request with
+	// max-repetitions in the millions spend unbounded CPU building a
+	// reply that would only be discarded as tooBig — the classic GETBULK
+	// amplification. A manager sees a short response and asks again from
+	// the last name, exactly as a walk already does.
+	for r := 0; r < maxReps && len(out) < maxBulkVarBinds; r++ {
 		for i := range cursors {
+			if len(out) >= maxBulkVarBinds {
+				break
+			}
 			vb := a.step(cursors[i])
 			out = append(out, vb)
 			cursors[i] = vb.Name
