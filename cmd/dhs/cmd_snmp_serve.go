@@ -339,7 +339,15 @@ func parseIPArg(s string) net.IP {
 // it is what a receiver's filter is written against.
 func trapLine(t snmpcons.Trap) string {
 	line := t.String()
-	if name := mib.Name(t.TrapOID); name != t.TrapOID.String() {
+	name := mib.Name(t.TrapOID)
+	// ETV (Ericsson/Tandberg) devices send their alarms as v1
+	// enterprise-specific traps under the product OID, so the trap OID
+	// alone renders numerically (rx1290.0.5). Recover the notification
+	// name from the specific number when it maps to an ETV alarm trap.
+	if vn, ok := mib.ETVAlarmTrapName(t.Enterprise, t.Generic, t.Specific); ok {
+		name = vn
+	}
+	if name != t.TrapOID.String() {
 		line += " " + name
 	}
 	return line
