@@ -493,3 +493,36 @@ func TestAResponseThatWillNotFitIsTooBig(t *testing.T) {
 			out.ErrorIndex)
 	}
 }
+
+func TestGetBulkCapsRepetitions(t *testing.T) {
+	m := NewMIB()
+	if err := m.Register(Scalar(oid("1.3.6.1.2.1.1.5.0"), codec.String("x"))); err != nil {
+		t.Fatal(err)
+	}
+	a := NewAgent(m, Communities{Read: "public"}, quiet())
+	// A single spoofed request asking for a million repetitions must not
+	// cost a million tree steps.
+	// Three repeaters, so the cap is reached mid-round and the inner
+	// break stops the walk exactly at the ceiling.
+	out := a.getBulk(&codec.PDU{
+		Type: codec.PDUTypeGetBulk, NonRepeaters: 0, MaxRepetitions: 1_000_000,
+		VarBinds: []codec.VarBind{
+			{Name: oid("1.3.6.1.2.1.1.5"), Value: codec.Null()},
+			{Name: oid("1.3.6.1.2.1.1.6"), Value: codec.Null()},
+			{Name: oid("1.3.6.1.2.1.1.7"), Value: codec.Null()},
+		},
+	})
+	if len(out) != maxBulkVarBinds {
+		t.Errorf("GETBULK returned %d varbinds, want the cap %d", len(out), maxBulkVarBinds)
+	}
+}
+
+func TestV1GetBulkDropped(t *testing.T) {
+	m := NewMIB()
+	_ = m.Register(Scalar(oid("1.3.6.1.2.1.1.5.0"), codec.String("x")))
+	a := NewAgent(m, Communities{Read: "public"}, quiet())
+	req := request(codec.Version1, "public", codec.PDUTypeGetBulk, "1.3.6.1.2.1.1.5")
+	if _, _, ok := a.Respond(req); ok {
+		t.Error("a v1 message carrying GETBULK must be dropped")
+	}
+}

@@ -60,6 +60,8 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0028](0028-artifact-layout.md) | Artifact layout — one deterministic home per artifact, keyed by IP | proposed |
 | [0029](0029-ci-event-step-matrix.md) | CI event→step matrix — no retries, single-pass coverage | proposed |
 | [0030](0030-neutral-device-monitor.md) | Neutral device monitor — actor-per-device, event-driven, per-request interval scheduler | proposed |
+| [0031](0031-event-model.md) | Event model — notification/trap/alarm, schema vs stream, OID+kind spine | proposed |
+| [0032](0032-transport-hardening.md) | Transport hardening — fuzzed decoders, gateway as protective proxy | proposed |
 
 ## ADR-0017 parking note
 
