@@ -179,9 +179,10 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 			"rx/tx per instance, labelled proto/device/verb. Unset serves nothing.")
 	fs.IntVar(&cf.walkConcurrency, "walk-concurrency", 0,
 		"how many object round-trips a walk keeps in flight (acp2 today). "+
-			"0 = plugin default; 1 = strictly serial, the escape hatch for a "+
-			"device that dislikes being pushed. Raising it does not change the "+
-			"walk result — object order stays byte-identical either way.")
+			"0 and 1 both walk SERIALLY, which is the default: the ACP2 spec "+
+			"requires a device to handle one request at a time, and a real "+
+			"Neuron stalls mid-walk if pushed. Raise it only against a "+
+			"responder known to answer in parallel.")
 	return cf
 }
 

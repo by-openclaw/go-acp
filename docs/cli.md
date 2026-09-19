@@ -1039,15 +1039,6 @@ FLAGS
   --all              walk every present slot
   --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
-  --walk-concurrency N
-                     how many object round-trips the walk keeps in flight (acp2
-                     today). 0 = plugin default (16); 1 = strictly serial, the
-                     escape hatch for a device that dislikes being pushed.
-                     Object order is byte-identical at every setting.
-  --metrics-addr ADDR
-                     serve Prometheus /metrics + /snapshot.json for THIS consumer
-                     instance on ADDR (e.g. :9100) — heap, CPU, RSS and rx/tx,
-                     labelled proto/device/role/verb. Unset serves nothing.
 
 EXAMPLES
   acp walk 10.6.239.113 --slot 0                                       # rack controller

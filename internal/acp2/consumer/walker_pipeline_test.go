@@ -34,6 +34,21 @@ func TestPrefetchChildrenNoChildren(t *testing.T) {
 	}
 }
 
+// The in-flight bound is clamped to the number of children, so a wide
+// Concurrency never allocates a semaphore larger than the work. Only
+// reachable above the serial default, hence the explicit Concurrency.
+func TestPrefetchChildrenClampsLimitToChildCount(t *testing.T) {
+	w := &Walker{logger: testLogger(), Concurrency: 8}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	ids := []uint32{1, 2}
+	got := w.prefetchChildren(ctx, 1, ids, nil)
+	if len(got) != len(ids) {
+		t.Fatalf("got %d entries, want %d", len(got), len(ids))
+	}
+}
+
 func TestPrefetchChildrenCancelledFillsEveryEntry(t *testing.T) {
 	w := &Walker{logger: testLogger()}
 	ctx, cancel := context.WithCancel(context.Background())

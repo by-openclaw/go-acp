@@ -171,13 +171,21 @@ type fetched struct {
 	err      error
 }
 
-// defaultWalkConcurrency is how many get_object round-trips ride at
-// once when the caller expresses no preference. The session allocates
-// an mtid per request from a pool of 255 and blocks when it is empty,
-// so this stays far below the protocol ceiling: enough to keep the link
-// busy, nowhere near enough to flood a device that is also serving
-// announces and keepalive on the same socket.
-const defaultWalkConcurrency = 16
+// defaultWalkConcurrency is SERIAL, and that default is load-bearing.
+//
+// acp2_protocol.docx para 66 requires a device to "handle single
+// request at a time", and a real Axon Neuron does exactly that: walking
+// slot 1 (49,849 objects) at concurrency 1 took 171s and completed,
+// while the same walk at concurrency 16 stalled at 10,141 objects and
+// was still stuck 840s later with zero errors reported — the device
+// simply stopped answering. A walk has no overall deadline (only
+// per-request timeouts), so the prefetch waited forever.
+//
+// Pipelining therefore only ever pays against a responder that does NOT
+// serialise, and costs a hung export against one that does. It stays
+// available through --walk-concurrency for that case, but nobody opts
+// a real device into it by accident.
+const defaultWalkConcurrency = 1
 
 func (w *Walker) concurrency() int {
 	if w.Concurrency > 0 {
