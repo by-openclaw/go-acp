@@ -65,26 +65,15 @@ func NewAgent(mib *MIB, communities Communities, logger *slog.Logger) *Agent {
 	}
 }
 
-// Respond answers one request, returning both the response and the
-// datagram that carries it.
-//
-// The bytes come back because the size rule cannot be applied without
-// them: RFC 3416 §4.2.1 asks for tooBig when a response does not FIT,
-// which is a fact about the encoding. Returning what was already encoded
-// spares the caller a second pass over every varbind on the reply path.
-//
-// The bool is whether to send anything at all. An agent is SILENT rather
-// than informative when it will not serve a request: a wrong community
-// or a PDU an agent has no business receiving gets no datagram back, so
-// that a scanner learns nothing from the difference between a wrong
-// password and a closed port. RFC 1157 §4.1 says as much, and it is also
-// why a community mismatch is worth a log line here — it is the only
-// place it will ever be visible.
-func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
+// respondPDU builds the response PDU for one request, or reports that an
+// agent does not answer it. It carries no version framing, so both the
+// v1/v2c path (which encodes with a community) and the v3 path (which
+// seals with a security engine) can share it.
+func (a *Agent) respondPDU(req codec.Message) (codec.PDU, bool) {
 	if req.PDU == nil {
 		// A v1 trap, or a message with nothing in it. Either way an
 		// agent does not answer it.
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 	p := req.PDU
 
@@ -95,13 +84,16 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 		// else's traffic, or a reflection attempt. Dropped.
 		a.logger.Debug("snmp agent: ignoring a PDU an agent does not answer",
 			"type", p.Type.String())
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 
-	if !a.admits(req.Community, p.Type) {
+	// v3 is admitted by USM: the message reached here only after the
+	// security engine opened it, so the user is already authenticated.
+	// Community admission is a v1/v2c concept and does not apply.
+	if req.Version != codec.Version3 && !a.admits(req.Community, p.Type) {
 		a.logger.Warn("snmp agent: refused community",
 			"type", p.Type.String(), "version", req.Version.String())
-		return codec.Message{}, nil, false
+		return codec.PDU{}, false
 	}
 
 	out := codec.PDU{
@@ -119,6 +111,25 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 	case codec.PDUTypeSet:
 		out.VarBinds, out.ErrorStatus, out.ErrorIndex = a.set(req.Version, p.VarBinds)
 	}
+	return out, true
+}
+
+// Respond answers one v1/v2c request, returning the response message, the
+// datagram it already encoded, and whether there is anything to send.
+//
+// The bytes come back because the size rule cannot be applied without
+// them (RFC 3416 §4.2.1 asks for tooBig when a response does not FIT), and
+// returning what was already encoded spares the caller a second pass. The
+// bool is whether to send anything: an agent is SILENT rather than
+// informative when it will not serve a request, so a scanner learns
+// nothing from the difference between a wrong password and a closed port
+// (RFC 1157 §4.1).
+func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
+	built, ok := a.respondPDU(req)
+	if !ok {
+		return codec.Message{}, nil, false
+	}
+	out := built
 
 	resp := codec.Message{Version: req.Version, Community: req.Community, PDU: &out}
 
@@ -131,7 +142,7 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 	// tooBig carrying no bindings, never truncated — a manager cannot
 	// tell a short table from the end of a table.
 	a.logger.Debug("snmp agent: response replaced by tooBig",
-		"request", p.RequestID, "bytes", len(raw))
+		"request", out.RequestID, "bytes", len(raw))
 	out.ErrorStatus, out.ErrorIndex = codec.TooBig, 0
 	out.VarBinds = nil
 
@@ -141,7 +152,7 @@ func (a *Agent) Respond(req codec.Message) (codec.Message, []byte, bool) {
 		// named a version this package cannot answer in. Nothing useful
 		// can be sent, so nothing is.
 		a.logger.Error("snmp agent: no response can be encoded",
-			"request", p.RequestID, "version", req.Version.String(), "err", err)
+			"request", out.RequestID, "version", req.Version.String(), "err", err)
 		return codec.Message{}, nil, false
 	}
 	return resp, raw, true
