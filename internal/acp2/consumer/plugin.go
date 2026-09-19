@@ -392,6 +392,9 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 	}
 
 	p.trees.Put(slot, tree)
+	// Publish what this walk now retains. Without this the connector
+	// reports mem=0B while holding the whole tree — see treesize.go.
+	p.Metrics().SetTreeBytes(p.trees.Bytes())
 	return tree.Objects, nil
 }
 

@@ -40,6 +40,7 @@ func pluginDeps(logger *slog.Logger) plugin.Deps {
 var processNet = sync.OnceValue(func() transport.Net {
 	return transport.New(transport.Config{})
 })
+
 // pluginDepsWithLevel is pluginDeps for a caller that kept the level it built
 // the logger with, so a connector can offer its own logging as a control.
 func pluginDepsWithLevel(logger *slog.Logger, level *slog.LevelVar) plugin.Deps {
@@ -79,6 +80,13 @@ type commonFlags struct {
 	syslogAddr       string
 	logRetention     int
 	capture          string
+
+	// metricsAddr mirrors the producer's --metrics-addr on the consumer
+	// side: when set, connect() serves Prometheus /metrics +
+	// /snapshot.json for THIS instance, so a consumer is scrapeable the
+	// same way a provider is. Empty (the default) starts no listener and
+	// costs nothing — the atomic-footprint rule.
+	metricsAddr string
 
 	// eventLogger + logHasSink are set by connect(): the uniform-logging
 	// contract (epic #987, Model B). The terminal always shows the human
@@ -160,6 +168,10 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"canonical export mode for parametersLocation (Ember+ only): "+
 			"pointer (wire-faithful), inline (absorb params subtree, populate "+
 			"targetParams/sourceParams/connectionParams), both (keep both).")
+	fs.StringVar(&cf.metricsAddr, "metrics-addr", "",
+		"if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json "+
+			"for this consumer instance on this address — heap, CPU, RSS and "+
+			"rx/tx per instance, labelled proto/device/verb. Unset serves nothing.")
 	return cf
 }
 
@@ -345,6 +357,27 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	if err := plug.Connect(dialCtx, host, port); err != nil {
 		return nil, nil, err
 	}
+
+	// --metrics-addr on the consumer side. Every plugin embeds
+	// consumer.Base, whose Metrics() is documented never-nil, so the
+	// assertion always holds — unlike the provider path there is no
+	// skip-with-warn branch to write. serveMetricsEndpoint returns
+	// immediately (listener + shutdown are its own goroutines) and
+	// stops itself on ctx.Done(), which is the verb's context.
+	if cf.metricsAddr != "" {
+		if mp, ok := plug.(metricsExposer); ok {
+			serveMetricsEndpoint(ctx, logger, cf.metricsAddr, mp.Metrics(), map[string]string{
+				"proto":  cf.protocol,
+				"role":   "consumer",
+				"device": hostOnly(host),
+				"verb":   cf.verb,
+			})
+		} else {
+			logger.Warn("--metrics-addr set but this plugin does not expose Metrics() — skipping",
+				slog.String("protocol", cf.protocol))
+		}
+	}
+
 	cleanup := func() {
 		_ = plug.Disconnect()
 		if recorder != nil {
