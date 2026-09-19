@@ -88,6 +88,11 @@ type commonFlags struct {
 	// costs nothing — the atomic-footprint rule.
 	metricsAddr string
 
+	// walkConcurrency bounds how many object round-trips a walk keeps in
+	// flight, for protocols whose walker supports it. 0 = the plugin
+	// default; 1 = the strictly serial walk.
+	walkConcurrency int
+
 	// eventLogger + logHasSink are set by connect(): the uniform-logging
 	// contract (epic #987, Model B). The terminal always shows the human
 	// data tables; when a structured sink (--log file / --syslog-addr
@@ -172,6 +177,11 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json "+
 			"for this consumer instance on this address — heap, CPU, RSS and "+
 			"rx/tx per instance, labelled proto/device/verb. Unset serves nothing.")
+	fs.IntVar(&cf.walkConcurrency, "walk-concurrency", 0,
+		"how many object round-trips a walk keeps in flight (acp2 today). "+
+			"0 = plugin default; 1 = strictly serial, the escape hatch for a "+
+			"device that dislikes being pushed. Raising it does not change the "+
+			"walk result — object order stays byte-identical either way.")
 	return cf
 }
 
@@ -375,6 +385,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		} else {
 			logger.Warn("--metrics-addr set but this plugin does not expose Metrics() — skipping",
 				slog.String("protocol", cf.protocol))
+		}
+	}
+
+	// --walk-concurrency, for the plugins whose walker can pipeline.
+	// Silently ignored elsewhere: a protocol that walks serially by
+	// construction has nothing to tune, and refusing the flag would make
+	// one shared command line unusable across protocols.
+	if cf.walkConcurrency > 0 {
+		if wc, ok := plug.(interface{ SetWalkConcurrency(int) }); ok {
+			wc.SetWalkConcurrency(cf.walkConcurrency)
 		}
 	}
 

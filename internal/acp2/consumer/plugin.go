@@ -82,6 +82,12 @@ type Plugin struct {
 	// Optional walk progress callback.
 	walkProgress WalkProgressFunc
 
+	// walkConcurrency bounds how many get_object round-trips the walker
+	// keeps in flight. 0 leaves the walker's own default; 1 restores the
+	// strictly serial walk, which is the escape hatch for a device that
+	// dislikes being pushed.
+	walkConcurrency int
+
 	// kaCfg captures the operator's --keepalive / --keepalive-timeout
 	// choice (set via SetKeepAlive). Zero values mean "use plugin
 	// defaults"; sentinel constants disable the prober / watchdog.
@@ -235,6 +241,19 @@ func (p *Plugin) SetWalkProgress(fn WalkProgressFunc) {
 	p.mu.Unlock()
 }
 
+// SetWalkConcurrency bounds how many get_object round-trips a walk keeps
+// in flight. n <= 0 leaves the walker default; 1 walks strictly
+// serially. Safe before or after Connect: it is applied to the live
+// walker when there is one and remembered for the next session.
+func (p *Plugin) SetWalkConcurrency(n int) {
+	p.mu.Lock()
+	if p.walker != nil {
+		p.walker.Concurrency = n
+	}
+	p.walkConcurrency = n
+	p.mu.Unlock()
+}
+
 // Connect establishes the AN2/TCP connection and runs the full handshake:
 // AN2 GetVersion, GetDeviceInfo, GetSlotInfo, EnableProtocolEvents, ACP2 GetVersion.
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
@@ -257,6 +276,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.session = s
 	p.walker = NewWalker(s, p.logger)
 	p.walker.OnProgress = p.walkProgress
+	p.walker.Concurrency = p.walkConcurrency
 	p.host = ip
 	p.port = port
 	p.Opened("tcp", ip, port, s)
