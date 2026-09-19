@@ -26,6 +26,13 @@ type Communities struct {
 // DefaultReadCommunity is what an empty Communities.Read means.
 const DefaultReadCommunity = "public"
 
+// maxBulkVarBinds caps how many varbinds one GETBULK builds, whatever
+// max-repetitions it asked for. It bounds the work a single request can
+// cost (GETBULK amplification defence) while sitting well above what a
+// response could carry anyway — a full datagram of minimal varbinds — so
+// no legitimate bulk walk is ever shortened by it in practice.
+const maxBulkVarBinds = 10000
+
 // read resolves the default once, so the check below reads as the rule
 // rather than as the defaulting. There is no matching write(): an empty
 // write community is not a default, it is a refusal.
@@ -84,6 +91,14 @@ func (a *Agent) respondPDU(req codec.Message) (codec.PDU, bool) {
 		// else's traffic, or a reflection attempt. Dropped.
 		a.logger.Debug("snmp agent: ignoring a PDU an agent does not answer",
 			"type", p.Type.String())
+		return codec.PDU{}, false
+	}
+
+	// GETBULK arrived with v2c (RFC 3416); a v1 message carrying one is
+	// malformed. Drop it silently rather than answer a request the
+	// version does not define.
+	if p.Type == codec.PDUTypeGetBulk && req.Version == codec.Version1 {
+		a.logger.Debug("snmp agent: dropping a GETBULK in a v1 message")
 		return codec.PDU{}, false
 	}
 
@@ -277,8 +292,19 @@ func (a *Agent) getBulk(p *codec.PDU) []codec.VarBind {
 	for i, vb := range repeaters {
 		cursors[i] = vb.Name
 	}
-	for r := 0; r < maxReps; r++ {
+	// Stop once the response would fill a datagram, whatever
+	// max-repetitions asked for. RFC 3416 §4.2.3 lets an agent return
+	// fewer repetitions than requested, and this is the difference
+	// between answering a bulk walk and letting one spoofed request with
+	// max-repetitions in the millions spend unbounded CPU building a
+	// reply that would only be discarded as tooBig — the classic GETBULK
+	// amplification. A manager sees a short response and asks again from
+	// the last name, exactly as a walk already does.
+	for r := 0; r < maxReps && len(out) < maxBulkVarBinds; r++ {
 		for i := range cursors {
+			if len(out) >= maxBulkVarBinds {
+				break
+			}
 			vb := a.step(cursors[i])
 			out = append(out, vb)
 			cursors[i] = vb.Name
