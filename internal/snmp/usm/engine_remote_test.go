@@ -35,3 +35,10 @@ func TestNewRemoteEngineRejectsNegativeTime(t *testing.T) {
 		t.Error("negative engine time should error")
 	}
 }
+
+func TestNewRemoteEngineRejectsBadEngineID(t *testing.T) {
+	// A too-short engine ID fails inside NewEngine and the error surfaces.
+	if _, err := NewRemoteEngine([]byte{1, 2}, 0, 0, clock.NewFake(time.Time{})); err == nil {
+		t.Error("a 2-byte engine ID should be rejected")
+	}
+}
