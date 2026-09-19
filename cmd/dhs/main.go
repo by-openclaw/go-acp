@@ -272,6 +272,9 @@ func main() {
 	case "metrics":
 		exitOnErr(runMetrics(ctx, args[1:]))
 		return
+	case "monitor":
+		exitOnErr(runMonitor(ctx, args[1:]))
+		return
 	}
 
 	fmt.Fprintf(os.Stderr, "unknown top-level command: %q\n\n", args[0])
@@ -583,6 +586,13 @@ SERVE FLAGS (common to every producer)
   --log-level LEVEL       debug | info | warn | error
   --announce-demo         oscillate a target value + broadcast announces
                           (acp1/acp2 only; see 'dhs producer <proto> serve -h')
+
+MONITOR (poll a device on a per-OID schedule, print only what changes)
+  Verbs:     watch | validate     (the ADR-0030 device monitor; SNMP first)
+
+  Examples:
+    dhs monitor validate --profile rx1290.json
+    dhs monitor watch 10.6.255.111 --version 1 --community private --profile rx1290.json
 
 EXIT CODES
   0  success

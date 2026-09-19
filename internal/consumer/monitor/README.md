@@ -191,20 +191,35 @@ instance (e.g. `...1.11.0`). Table columns take their row index.
 
 ## CLI
 
-Arriving with the SNMP wiring (epic #1096). The planned surface, subject
-to the ADR-0002 verb rules:
+SNMP is the first CLI user. The command is `dhs monitor`.
 
 ```
-dhs monitor watch <target> --profile <file.json> [--proto snmp] [--filter <prefix>]
-        # live table: address, value, last-change, sequence; follows changes
-dhs monitor validate --profile <file.json>
-        # load-and-validate a profile, report duplicates / bad intervals
-dhs monitor stats <target>
-        # per-device counters: reads, writes, changes, errors
+dhs monitor validate --profile rx1290.json
+        # load-and-validate a profile, report model + distinct intervals
+
+dhs monitor watch <target> [snmp flags] --profile rx1290.json \
+        [--filter PREFIX] [--min-gap DUR] [--duration DUR]
+        # dial the agent, schedule the profile, and print a line only when
+        # a value moves — MIB-resolved name, enum-named integers, and what
+        # it changed from. Ends counters: reads, changes, errors.
 ```
 
-This section is filled in with runnable examples when the CLI lands.
-Until then the library API above is the supported surface.
+The target host goes **last**, after the flags (the CLI stops flag
+parsing at the first positional). Example against a live RX1290:
+
+```
+$ dhs monitor watch --version 1 --community public \
+        --profile rx1290.json --duration 10s 10.6.255.111
+watching 10.6.255.111 — 5 objects, 1 distinct intervals (Ctrl-C to stop)
+08:22:34  controlMode.0        = snmp(4)
+08:22:35  unitAlarmStatus.0    = major(5)
+08:22:35  cfgAlarmStatus.0     = 0
+stopped: 16 reads, 5 changes, 0 errors
+```
+
+`--proto` defaults to `snmp` (the only protocol wired today). Other
+protocols reuse the same command once their `consumer.Protocol` is
+adapted, as SNMP is in `internal/snmp/monitor`.
 
 ---
 
