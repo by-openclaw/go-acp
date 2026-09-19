@@ -59,6 +59,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0027](0027-workflow-contract-dod-windows.md) | Workflow contract during DOD windows | proposed |
 | [0028](0028-artifact-layout.md) | Artifact layout — one deterministic home per artifact, keyed by IP | proposed |
 | [0029](0029-ci-event-step-matrix.md) | CI event→step matrix — no retries, single-pass coverage | proposed |
+| [0030](0030-neutral-device-monitor.md) | Neutral device monitor — actor-per-device, event-driven, per-request interval scheduler | proposed |
 
 ## ADR-0017 parking note
 
