@@ -108,3 +108,4 @@ No push channel on the module → `Subscribe` is `ErrNotImplemented`; poll
 - `receivers`/`senders` are thin pointers; never read config from them —
   resolve through `flows`.
 - ST2110 uses two legs (RED/BLUE); always set both `network[]` entries.
+- Never poll SNMP on the module itself: it has no agent (UDP 161 port-unreachable, no SNMP keys in its DM); it only emits towards MN SET. Events come from the module's own syslog (`self.syslog.*`), values from REST polling.

@@ -153,3 +153,14 @@ control. **Needs from you:** the NBAPI doc.
 - MIB website URL (point 2), NBAPI tech doc (point 3)
 - agree the connector runs on Linux (LXC / media-VLAN host)
 - agree the syslog-to-Loki step is the alarm path for the REST phase
+
+## Decisions 2026-09-20 (operator) — what goes through MN SET and what does not
+
+| channel | path | status |
+|---|---|---|
+| control / DM (REST) | **module direct**, `http://<module>/emsfp/node/v1` | done (this PR) |
+| syslog events | **module direct**: `self.syslog.config.{server,port,enable}` + `self.syslog.monitoring.*` flags → our promtail `:1514` → Loki | **verified live**: after enabling the event classes and provoking a 15 s flow loss on CH2, Loki holds `host=emsfp-a2-10-0c` lines "Video frame repeated error on device 1/2 {Rate…}", "Flywheel sdi_load event occurred on device 2" |
+| SNMP | **the module has no SNMP agent**: UDP 161 answers ICMP port-unreachable (v1 and v2c, from 10.6.250.101), and its DM carries no SNMP/trap setting. The module only *emits* SNMP towards MN SET's 1620; the pollable agent (1610) and traps are MN SET's. | parked: only possible through MN SET, which the operator does not want |
+| NBAPI (`:9080`) | MN SET only | parked, in case of future need |
+
+Consequence for monitoring: events = syslog (module → promtail → Loki), values = REST polling (ADR-0030 monitor). No SNMP layer on the module side.

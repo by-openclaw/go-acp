@@ -91,3 +91,22 @@ the querier interval; `pkt_cnt` stops climbing. That transition is the
 | `set` succeeds, `get` shows the old value | the module reverted it (licence / program type); read `self.license`, `diag.flow` |
 | picture on HDMI but no audio | audio receivers (2 per channel) not pointed: ports 30000 on the Neuron |
 | Arista shows no group | `enable` still 0, or the leg IP is on the wrong VLAN (RED 10.6.40/640, BLUE 10.7.40/740) |
+
+## 6. Events without MN SET — the module's syslog
+
+The module reports events itself; nothing goes through MN SET.
+
+```
+dhs consumer mnset set 10.6.40.53 --path self.syslog.config.server --value 10.6.250.101
+dhs consumer mnset set 10.6.40.53 --path self.syslog.config.port   --value 1514        # promtail syslog receiver (UDP)
+dhs consumer mnset set 10.6.40.53 --path self.syslog.config.enable --value true
+for e in common.ptp_event common.temp_event common.fan_speed decap.flow_impairment decap.frame_skipped decap.frame_repeat encap.no_signal; do
+  dhs consumer mnset set 10.6.40.53 --path self.syslog.monitoring.$e --value true
+done
+```
+
+Then in Grafana / Loki: `{host="emsfp-a2-10-0c"}`. Verified 2026-09-20 with a
+15 s flow loss on CH2 (`flows.<uuid>.network.0.enable` 0 → 1): "Video frame
+repeated error on device 2 {Rate: 28802 …}", "Flywheel sdi_load event
+occurred on device 2". The module has **no SNMP agent** (UDP 161 unreachable);
+SNMP for these modules exists only in MN SET and is not used.
