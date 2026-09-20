@@ -79,7 +79,7 @@ acp1     port=2071  Axon Control Protocol v1.4 (UDP direct)
 acp2     port=2072  Axon Control Protocol v2 (AN2/TCP)
 cerebrum-nb port=40007 EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)
 emberplus port=9000  Ember+ (Glow/S101/TCP) consumer
-mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1), MN SET not in the path
+mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)
 osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core types i/f/s/b
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)

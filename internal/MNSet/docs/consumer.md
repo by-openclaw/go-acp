@@ -1,8 +1,22 @@
 # `dhs consumer mnset` — CLI walkthrough
 
-One module is one device with **one slot (0)**. Its channels (CH1..CH8 on
-a FusioN6) are not slots; they are entries inside the `devices`,
-`receivers`, `senders` and `flows` resources, addressed by path.
+Two shapes, same verbs (ADR-0022 frame / slot / card):
+
+| host | shape |
+|---|---|
+| a module (`10.6.40.53`, port 80) | one slot, **0** |
+| MN SET (`10.6.250.105 --port 8080`) | the **frame**: one slot per managed module, ordered by module MAC; `info` prints the map (slot → id / ip / serial / lldp / MN SET status) |
+
+Port 0 (the default) tries the module on 80, then MN SET on 8080. In
+both shapes a module's channels (CH1..CH8 on a FusioN6) are not slots;
+they are entries inside the `devices`, `receivers`, `senders` and
+`flows` resources, addressed by path. With a frame, add `--slot N`.
+
+Slot status: `present` = the module answers; `error` = MN SET lists it
+ONLINE but it does not answer; `no_card` = MN SET lists it OFFLINE. The
+frame reads `/api/device` unauthenticated (as this deployment serves
+it); a token-gated MN SET is logged into with `$MNSET_USER` /
+`$MNSET_PASS` from the environment — never a flag, never printed.
 
 ## Verbs
 
@@ -10,7 +24,7 @@ a FusioN6) are not slots; they are entries inside the `devices`,
 |---|---|
 | `discover --range R …` | sweep addresses for modules (`self/information` answers) |
 | `inventory <mnset-host> --user U` | ask MN SET for the modules it manages (`$MNSET_PASS`) |
-| `info <host>` | slot count (1) + identity `FusioN6@0x68cd783f` |
+| `info <host>` | slots + identity `FusioN6@0x68cd783f` per slot |
 | `walk <host>` | every leaf of every resource, as `resource.path = value` |
 | `export <host> --format csv` | the same, to a file (the DM export, like acp2 / ccm) |
 | `import <host> <file>` | apply a snapshot's writable values (read-modify-write per field) |
@@ -58,6 +72,9 @@ system syslog protocols`); listings nest to four (`route.bulk.sender.<uuid>`).
 ## Examples
 
 ```
+dhs consumer mnset info 10.6.250.105 --port 8080        # the frame: every module MN SET manages
+dhs consumer mnset export 10.6.250.105 --port 8080 --format csv --out fleet.csv   # all slots
+
 dhs consumer mnset discover --range 10.6.40.0/24
 IP               PORT  BASE       SERIAL         FW           TYPE                           APP
 10.6.40.53       80    FusioN6    125061600012   0x68cd783f   22 - ST2110 UHD Transceiver    MN-FusioN-6-B-APP-25-2110-SDI-2R6T-N

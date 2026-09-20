@@ -292,6 +292,14 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 
+	// MN SET (mnset frame mode) login, only used when its device list
+	// is token-gated. From the environment, never a flag, never printed.
+	if p, ok := plug.(interface{ SetCredentials(user, pass string) }); ok {
+		if u := os.Getenv("MNSET_USER"); u != "" {
+			p.SetCredentials(u, os.Getenv("MNSET_PASS"))
+		}
+	}
+
 	// Transport selection is plugin-specific; cast when possible and
 	// apply. Protocols that don't expose SetTransport just ignore it.
 	if tcfg, ok := plug.(interface{ SetTransport(acp1.TransportKind) }); ok {

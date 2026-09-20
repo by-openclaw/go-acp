@@ -86,7 +86,8 @@ its device list (`Inventory`, login = raw-text password body, `X-AUTH-TOKEN`).
 |---|---|---|
 | tree rules + writability | `resources.go` | the module's own LISTINGS (`["name/",…]`) drive the walk and path resolution — no catalogue in code; `writable` (by root) gates `set` and `Object.Access` |
 | document → objects | `flatten.go` | keys sorted, arrays by index, `json.Number` kept so ints PUT back as ints; `null` → `KindRaw` |
-| plugin | `plugin.go` | one slot (0); `Walk` descends listings from the root (depth ≤ 6), unserved resources are deviations; `resolve` follows listings token by token; `SetValue` = resolve → replace field → PUT whole doc to the item URL → GET read-back (the read-back is the answer) |
+| frame | `frame.go` | host = MN SET (:8080) → one slot per managed module, ordered by module MAC; `/api/device` gives the list + ONLINE/OFFLINE + media IP, the data still comes from each module; slot status: present (answers) / error (MN SET says ONLINE, module silent) / no_card (OFFLINE); login only if `/api/device` is token-gated (`MNSET_USER`/`MNSET_PASS` env, via `SetCredentials`) |
+| plugin | `plugin.go` | host = module → one slot (0); port 0 tries the module on 80 then MN SET on 8080; `Walk` descends listings from the root (depth ≤ 6), unserved resources are deviations; `resolve` follows listings token by token; `SetValue` = resolve → replace field → PUT whole doc to the item URL → GET read-back (the read-back is the answer) |
 | sweep + inventory | `discover.go` | `Discover` probes `self/information` per address (worker pool, sorted by IP); `Inventory` = MN SET `/api/device` |
 | CLI | `cmd/dhs/cmd_mnset.go` | `discover`, `inventory` only; every other verb is the generic one through the registry |
 | dissector | `wireshark/dhs_mnset.lua` | post-dissector over http; filter `dhs_mnset` |

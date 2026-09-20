@@ -241,22 +241,12 @@ func Inventory(ctx context.Context, host string, port int, user, pass string, ti
 	base := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
 	hc := &stdhttp.Client{Timeout: timeout}
 
-	raw, status, err := mnsetCall(ctx, hc, stdhttp.MethodPost, base+"/api/authentication/login/"+user, pass, "")
+	token, err := login(ctx, hc, base, user, pass)
 	if err != nil {
-		return nil, fmt.Errorf("mnset inventory: login: %w", err)
-	}
-	var login struct {
-		Token   string `json:"token"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(raw, &login); err != nil || login.Token == "" {
-		if login.Message != "" {
-			return nil, fmt.Errorf("mnset inventory: login refused: %s", login.Message)
-		}
-		return nil, fmt.Errorf("mnset inventory: login: no token in answer (http %d)", status)
+		return nil, fmt.Errorf("mnset inventory: %w", err)
 	}
 
-	raw, _, err = mnsetCall(ctx, hc, stdhttp.MethodGet, base+"/api/device", "", login.Token)
+	raw, _, err := mnsetCall(ctx, hc, stdhttp.MethodGet, base+"/api/device", "", token)
 	if err != nil {
 		return nil, fmt.Errorf("mnset inventory: device list: %w", err)
 	}
@@ -301,7 +291,7 @@ func mnsetCall(ctx context.Context, hc *stdhttp.Client, method, url, body, token
 		return nil, 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxBody))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, frameMaxBody))
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("read: %w", err)
 	}

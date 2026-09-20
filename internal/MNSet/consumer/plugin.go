@@ -35,22 +35,23 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 	return consumer.ProtocolMeta{
 		Name:        Name,
 		DefaultPort: DefaultPort,
-		Description: "Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1), MN SET not in the path",
+		Description: "Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)",
 	}
 }
 
 // New builds a plugin from the injected dependency set.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, timeout: defaultTimeout}
+	p := &Plugin{logger: deps.Logger, timeout: defaultTimeout, modulePort: DefaultPort, framePort: FramePort}
 	p.Init(deps, staleAfter)
 	return p
 }
 
-// Plugin is one module. One slot: the module is slot 0 and its channels
-// (Device CH1..CH8) are entries inside devices / receivers / senders /
-// flows, addressed by path — which keeps the generic export / import /
-// get / set verbs unchanged.
+// Plugin is one module (host = module: one slot, 0) or one frame (host
+// = MN SET on :8080: one slot per managed module, ordered by module
+// MAC). Channels (Device CH1..CH8) are entries inside devices /
+// receivers / senders / flows, addressed by path — which keeps the
+// generic export / import / get / set verbs unchanged.
 type Plugin struct {
 	consumer.Base
 
@@ -58,15 +59,18 @@ type Plugin struct {
 	// Tests substitute one; production leaves it nil.
 	Transport stdhttp.RoundTripper
 
-	logger  *slog.Logger
-	timeout time.Duration
+	logger     *slog.Logger
+	timeout    time.Duration
+	modulePort int    // node API port of the modules behind a frame
+	framePort  int    // the port that means "this host is MN SET" (8080)
+	user, pass string // MN SET login, only used when /api/device is gated
 
 	mu   sync.Mutex
-	c    *client
 	host string
 	port int
-	// info is self/information as read at Connect: identity, versions.
-	info any
+	// slots is the frame: one entry per module. Module mode is a
+	// one-entry frame whose slot is the host itself.
+	slots []slotModule
 	// deviations are what the last Walk could not read.
 	deviations []string
 }
@@ -78,36 +82,82 @@ func (p *Plugin) SetTimeout(d time.Duration) {
 	p.mu.Unlock()
 }
 
-// Connect opens the module: it reads self/information to prove the
-// address is an emSFP node and holds its identity. Callable again to
-// reconnect.
-func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
-	if port <= 0 {
-		port = DefaultPort
-	}
+// SetModulePort sets the node API port used for the modules behind a
+// frame (default 80). Tests point it at a fake.
+func (p *Plugin) SetModulePort(port int) {
 	p.mu.Lock()
-	c := newClient(ip, port, p.timeout, p.Transport, p.Metrics())
+	p.modulePort = port
 	p.mu.Unlock()
+}
 
-	info, err := c.get(ctx, "self/information")
+// SetFramePort sets the port on which a host is taken for MN SET
+// (default 8080). Tests point it at a fake.
+func (p *Plugin) SetFramePort(port int) {
+	p.mu.Lock()
+	p.framePort = port
+	p.mu.Unlock()
+}
+
+// SetCredentials gives the MN SET login used only when the frame's
+// /api/device is token-gated. Never logged, never printed.
+func (p *Plugin) SetCredentials(user, pass string) {
+	p.mu.Lock()
+	p.user, p.pass = user, pass
+	p.mu.Unlock()
+}
+
+// Connect opens the host. Port 8080 (MN SET) is a frame; any other
+// port is a module, proven by self/information. Port 0 tries the module
+// on 80 first and MN SET on 8080 second, so `dhs consumer mnset info
+// <ip>` works for both without a flag. Callable again to reconnect.
+func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
+	var slots []slotModule
+	var err error
+	switch {
+	case port == p.framePort:
+		slots, err = p.connectFrame(ctx, ip, port)
+	case port <= 0:
+		port = DefaultPort
+		if slots, err = p.connectModule(ctx, ip, port); err != nil {
+			if fslots, ferr := p.connectFrame(ctx, ip, p.framePort); ferr == nil {
+				slots, err, port = fslots, nil, p.framePort
+			}
+		}
+	default:
+		slots, err = p.connectModule(ctx, ip, port)
+	}
 	if err != nil {
-		return fmt.Errorf("mnset connect %s:%d: %w", ip, port, err)
+		return err
 	}
 
 	p.mu.Lock()
-	p.c, p.host, p.port, p.info = c, ip, port, info
+	p.host, p.port, p.slots = ip, port, slots
 	p.mu.Unlock()
 	p.Opened("tcp", ip, port, consumer.MetricsTimes{C: p.Metrics()})
-	p.logger.Info("mnset: connected",
-		slog.String("host", ip), slog.Int("port", port), slog.String("identity", identityOf(info)))
+	for i, s := range slots {
+		if s.c != nil {
+			p.logger.Info("mnset: connected", slog.Int("slot", i), slog.String("host", s.ip), slog.String("identity", identityOf(s.info)))
+		}
+	}
 	return nil
 }
 
-// Disconnect forgets the module. Safe when not connected.
+// connectModule opens one module as a one-slot frame.
+func (p *Plugin) connectModule(ctx context.Context, ip string, port int) ([]slotModule, error) {
+	c := newClient(ip, port, p.timeout, p.Transport, p.Metrics())
+	info, err := c.get(ctx, "self/information")
+	if err != nil {
+		return nil, fmt.Errorf("mnset connect %s:%d: %w", ip, port, err)
+	}
+	m, _ := info.(map[string]any)
+	return []slotModule{{ip: ip, status: "ONLINE", typ: str(m["type"]), serial: str(m["serial_number"]), c: c, info: info}}, nil
+}
+
+// Disconnect forgets the host. Safe when not connected.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
-	was := p.c != nil
-	p.c = nil
+	was := p.slots != nil
+	p.slots = nil
 	p.mu.Unlock()
 	if was {
 		p.Closed()
@@ -115,47 +165,64 @@ func (p *Plugin) Disconnect() error {
 	return nil
 }
 
-// session returns the live client or ErrNotConnected.
-func (p *Plugin) session() (*client, error) {
+// slot returns the module behind a slot number, or why not.
+func (p *Plugin) slot(n int) (*slotModule, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.c == nil {
+	if p.slots == nil {
 		return nil, consumer.ErrNotConnected
 	}
-	return p.c, nil
+	if n < 0 || n >= len(p.slots) {
+		return nil, fmt.Errorf("mnset: slot %d (frame has %d): %w", n, len(p.slots), consumer.ErrObjectNotFound)
+	}
+	return &p.slots[n], nil
 }
 
-// GetDeviceInfo reports the module as one slot.
-func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
-	if _, err := p.session(); err != nil {
-		return consumer.DeviceInfo{}, err
+// clientFor returns the live client of a slot, or why it cannot answer.
+func (p *Plugin) clientFor(n int) (*client, error) {
+	s, err := p.slot(n)
+	if err != nil {
+		return nil, err
 	}
+	if s.c == nil {
+		return nil, fmt.Errorf("mnset: slot %d (%s, MN SET says %s) is not answering: %w", n, s.ip, s.status, consumer.ErrNotConnected)
+	}
+	return s.c, nil
+}
+
+// GetDeviceInfo reports the frame: one slot per module.
+func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return consumer.DeviceInfo{IP: p.host, Port: p.port, NumSlots: 1, ProtocolVersion: 1}, nil
+	if p.slots == nil {
+		return consumer.DeviceInfo{}, consumer.ErrNotConnected
+	}
+	return consumer.DeviceInfo{IP: p.host, Port: p.port, NumSlots: len(p.slots), ProtocolVersion: 1}, nil
 }
 
-// GetSlotInfo: slot 0 is the module, present whenever Connect succeeded.
+// GetSlotInfo reports one module: present and online when it answers,
+// error when MN SET lists it ONLINE but it does not, no card when MN
+// SET lists it OFFLINE. Identity carries ip / serial / type / lldp.
 func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (consumer.SlotInfo, error) {
-	if _, err := p.session(); err != nil {
+	s, err := p.slot(slot)
+	if err != nil {
 		return consumer.SlotInfo{}, err
 	}
-	if slot != 0 {
-		return consumer.SlotInfo{}, fmt.Errorf("mnset: slot %d (a module is slot 0 only): %w", slot, consumer.ErrObjectNotFound)
-	}
-	return consumer.SlotInfo{Slot: 0, Status: consumer.SlotPresent, State: consumer.SlotPresent.State(), IsOnline: true}, nil
+	return slotInfoOf(slot, *s), nil
 }
 
-// IdentityProbe returns the ADR-0022 DM key of the module,
+// IdentityProbe returns the ADR-0022 DM key of a slot's module,
 // "<base_type>@<current_version>" — FusioN6@0x68cd783f — so an export
 // lands under .cache/dm/mnset/ per firmware.
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
-	if _, err := p.session(); err != nil {
+	s, err := p.slot(slot)
+	if err != nil {
 		return "", err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return identityOf(p.info), nil
+	if s.c == nil {
+		return "", fmt.Errorf("mnset: slot %d is not answering: %w", slot, consumer.ErrNotConnected)
+	}
+	return identityOf(s.info), nil
 }
 
 // identityOf renders the DM key from self/information; a module that
@@ -179,12 +246,9 @@ func identityOf(info any) string {
 // continues — a partial module is still worth what it did say. A
 // cancelled context stops it.
 func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) {
-	c, err := p.session()
+	c, err := p.clientFor(slot)
 	if err != nil {
 		return nil, err
-	}
-	if slot != 0 {
-		return nil, fmt.Errorf("mnset: slot %d (a module is slot 0 only): %w", slot, consumer.ErrObjectNotFound)
 	}
 	var objs []consumer.Object
 	var dev []string
@@ -192,6 +256,9 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 		return nil, err
 	}
 	labelObjects(objs)
+	for i := range objs {
+		objs[i].Slot = slot
+	}
 	p.mu.Lock()
 	p.deviations = dev
 	p.mu.Unlock()
@@ -200,7 +267,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 	// POST-only actions), and that must not drown a walk's log.
 	if len(dev) > 0 {
 		p.logger.Warn("mnset: walk: listed resources not readable",
-			slog.Int("count", len(dev)), slog.String("first", dev[0]), slog.Int("objects", len(objs)))
+			slog.Int("slot", slot), slog.Int("count", len(dev)), slog.String("first", dev[0]), slog.Int("objects", len(objs)))
 		for _, d := range dev {
 			p.logger.Debug("mnset: walk: deviation", slog.String("deviation", d))
 		}
@@ -307,11 +374,11 @@ func contains(names []string, s string) bool {
 	return false
 }
 
-// GetValue reads one leaf. A path that lands on a node or a list is
-// refused — a value is a scalar; a text resource (an SDP) is its own
-// value.
+// GetValue reads one leaf of req.Slot's module. A path that lands on a
+// node or a list is refused — a value is a scalar; a text resource (an
+// SDP) is its own value.
 func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
-	c, err := p.session()
+	c, err := p.clientFor(req.Slot)
 	if err != nil {
 		return consumer.Value{}, err
 	}
@@ -332,12 +399,13 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 	return leafValue(cur), nil
 }
 
-// SetValue is read-modify-write: resolve the owning document, replace
-// the one field, PUT the whole document back to the same URL (the
-// module refuses partial bodies), then read it again and return what the
-// module holds now — the confirmed value, never the requested one.
+// SetValue is read-modify-write on req.Slot's module: resolve the
+// owning document, replace the one field, PUT the whole document back
+// to the same URL (the module refuses partial bodies), then read it
+// again and return what the module holds now — the confirmed value,
+// never the requested one.
 func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val consumer.Value) (consumer.Value, error) {
-	c, err := p.session()
+	c, err := p.clientFor(req.Slot)
 	if err != nil {
 		return consumer.Value{}, err
 	}
@@ -386,9 +454,13 @@ func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	return consumer.ErrNotImplemented
 }
 
-// String renders the plugin for logs: host and identity, never a secret.
+// String renders the plugin for logs: host and slot count, never a secret.
 func (p *Plugin) String() string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return strings.TrimSpace(fmt.Sprintf("mnset %s:%d %s", p.host, p.port, identityOf(p.info)))
+	ids := make([]string, 0, len(p.slots))
+	for _, s := range p.slots {
+		ids = append(ids, identityOf(s.info))
+	}
+	return strings.TrimSpace(fmt.Sprintf("mnset %s:%d %s", p.host, p.port, strings.Join(ids, ",")))
 }

@@ -6,7 +6,8 @@ Lab: Neuron 10.6.255.102 (VTX-01 = 239.131.3.134:20000 RED /
 ## 1. Find the module
 
 ```
-dhs consumer mnset discover --range 10.6.40.50-99
+dhs consumer mnset info 10.6.250.105 --port 8080      # frame: every module MN SET manages, with slot numbers
+dhs consumer mnset discover --range 10.6.40.50-99     # or sweep the media VLAN
 ```
 
 No answer → the module is on another VLAN or off (10.6.40.3 was powered
