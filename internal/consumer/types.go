@@ -656,3 +656,13 @@ type ProtocolFactory interface {
 	Meta() ProtocolMeta
 	New(deps plugin.Deps) Protocol
 }
+
+// PathNative is implemented by plugins whose GetValue / SetValue resolve
+// ValueRequest.Path against the device itself — a REST tree addressed by
+// URL, say — and therefore never need a walked tree to answer a --path
+// request. The generic verbs skip the walk-on-miss for them (a --label
+// still needs the tree). A plugin returns true unconditionally; the
+// method exists so the capability is declared, not inferred.
+type PathNative interface {
+	PathNative() bool
+}

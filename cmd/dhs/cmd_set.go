@@ -124,7 +124,7 @@ func runSet(ctx context.Context, args []string) error {
 		}
 	}
 
-	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") {
+	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") && !pathNative(plug, *pathFlag, *label) {
 		// Identity-keyed DM cache (acp1/acp2) before any walk — the
 		// host/slot-keyed resolvePathFromCache above never sees these
 		// (.cache/dm/<proto>/<Card>@<Ver>.json, #353/#363). SetValue then
@@ -161,7 +161,7 @@ func runSet(ctx context.Context, args []string) error {
 	// read-only target fails as exit 2 (validation) instead of exit 1 (wire) —
 	// matching `ensure`. Out-of-range numerics are intentionally NOT rejected
 	// (the device clamps them). --raw bypasses this; the caller owns the bytes.
-	meta := findObjectMeta(plug, *slot, *group, *label, *id)
+	meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id)
 	if *valueHex == "" && meta != nil {
 		want, cerr := coerceDesired(meta.Kind, *valueStr)
 		if cerr != nil {

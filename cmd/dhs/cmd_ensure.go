@@ -104,7 +104,7 @@ func runEnsure(ctx context.Context, args []string) error {
 			}
 		}
 	}
-	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") {
+	if cf.protocol != "emberplus" && !resolvedFromCache && (*pathFlag != "" || *label != "") && !pathNative(plug, *pathFlag, *label) {
 		if *noWalk {
 			return ensureValErr(fmt.Sprintf("--no-walk: %q not found in cache for slot %d (run 'walk --slot %d' first or drop --no-walk)", orFirst(*pathFlag, *label), *slot, *slot))
 		}
@@ -153,7 +153,7 @@ func runEnsure(ctx context.Context, args []string) error {
 	// object's range client-side keeps the idempotency decision — and the
 	// --check dry-run — consistent with what the device will do.
 	target := desired
-	if meta := findObjectMeta(plug, *slot, *group, *label, *id); meta != nil {
+	if meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id); meta != nil {
 		target = predictStored(meta, current.Kind, desired)
 	}
 
@@ -437,4 +437,16 @@ Change is signalled by the field, never the exit code.
 Examples:
   dhs consumer acp1 ensure 10.6.239.113 --slot 0 --group control --label Broadcasts --value On
   dhs consumer acp1 ensure 10.6.239.113 --slot 0 --group control --label Broadcasts --value On --check --json`)
+}
+
+// findObjectMetaFor is findObjectMeta unless the plugin is path-native
+// (consumer.PathNative): such a plugin carries no object metadata, and
+// its Walk is a live device walk rather than a cached tree — asking it
+// for meta after the op timer has started would burn the whole
+// --timeout on a re-walk (33 s on a FusioN6).
+func findObjectMetaFor(plug consumer.Protocol, path string, slot int, group, label string, id int) *consumer.Object {
+	if pathNative(plug, path, label) {
+		return nil
+	}
+	return findObjectMeta(plug, slot, group, label, id)
 }

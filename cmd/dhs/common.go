@@ -584,3 +584,12 @@ func popHost(args []string) (string, []string, error) {
 	}
 	return "", nil, fmt.Errorf("host argument missing")
 }
+
+// pathNative reports whether plug answers a --path straight from the
+// device (consumer.PathNative — a REST tree addressed by URL), so the
+// walk-for-resolution before get / set / ensure / inc is skipped. A
+// --label still needs the walked tree.
+func pathNative(plug consumer.Protocol, path, label string) bool {
+	pn, ok := plug.(consumer.PathNative)
+	return ok && pn.PathNative() && path != "" && label == ""
+}
