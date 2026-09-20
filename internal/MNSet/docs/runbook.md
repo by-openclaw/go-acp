@@ -33,20 +33,22 @@ indices are read from the export:
 
 ```
 dhs consumer mnset export 10.6.40.53 --format csv --out .cache/exports/fusion-53.csv
-grep -n 'devices\.[0-9]*\.label\|receivers\.[0-9]*\.flow_id\|receivers\.[0-9]*\.label' .cache/exports/fusion-53.csv
+grep -n 'devices\.[0-9]*\.label\|devices\.[0-9]*\.receivers\|receivers\.[0-9]*\.flow_id\|receivers\.[0-9]*\.format' .cache/exports/fusion-53.csv
 ```
 
 ## 3. Point the receiver at the Neuron sender
 
-`<uuid>` is the receiver's `flow_id` from step 2. Both legs, RED and BLUE, always (ST 2022-7):
+A receiver has two flows: `receivers.N.flow_id.0` = primary (RED) and `receivers.N.flow_id.1` = secondary (BLUE); each flow has one `network` record. Set both, always (ST 2022-7):
 
 ```
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.0.dst_ip_addr'  --value 239.131.3.134
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.0.dst_udp_port' --value 20000
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.0.enable'       --value 1
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.1.dst_ip_addr'  --value 239.132.3.134
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.1.dst_udp_port' --value 20000
-dhs consumer mnset set 10.6.40.53 --path 'flows.<uuid>.network.1.enable'       --value 1
+RED=$(dhs consumer mnset get 10.6.40.53 --path receivers.N.flow_id.0 | sed 's/.*= "\(.*\)"//')
+BLUE=$(dhs consumer mnset get 10.6.40.53 --path receivers.N.flow_id.1 | sed 's/.*= "\(.*\)"//')
+dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.dst_ip_addr   --value 239.131.3.134
+dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.dst_udp_port  --value 20000
+dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.enable        --value 1
+dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.dst_ip_addr  --value 239.132.3.134
+dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.dst_udp_port --value 20000
+dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.enable       --value 1
 ```
 
 Alternative, when the plant has an NMOS registry: IS-05 PATCH through
@@ -58,7 +60,7 @@ Alternative, when the plant has an NMOS registry: IS-05 PATCH through
 On the module:
 
 ```
-dhs consumer mnset get 10.6.40.53 --path 'flows.<uuid>.network.0.pkt_cnt'   # must climb
+dhs consumer mnset get 10.6.40.53 --path flows.$RED.network.pkt_cnt   # must climb
 dhs consumer mnset walk 10.6.40.53 | grep self.diag.flow                    # per-flow diagnostics
 ```
 

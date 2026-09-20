@@ -39,10 +39,11 @@ a path typed by hand agree.
 |---|---|
 | `self.ipconfig.hostname` | management hostname |
 | `self.syslog.config.server` | where the module sends its events |
-| `flows.<uuid>.network.0.dst_ip_addr` | RED leg multicast of that flow |
-| `flows.<uuid>.network.1.dst_ip_addr` | BLUE leg multicast |
-| `flows.<uuid>.network.0.dst_udp_port` | leg port (20000 video / 30000 audio / 40000 anc on the Neuron) |
-| `flows.<uuid>.network.0.enable` | leg enabled (1/0) |
+| `receivers.N.flow_id.0` / `.flow_id.1` | the receiver's primary (RED) and secondary (BLUE) flow uuids |
+| `flows.<uuid>.network.dst_ip_addr` | that flow's multicast (one `network` record per flow; RED and BLUE are two flows) |
+| `flows.<uuid>.network.dst_udp_port` | its port (20000 video / 30000 audio / 40000 anc on the Neuron) |
+| `flows.<uuid>.network.enable` | flow enabled (1/0) |
+| `flows.<uuid>.network.igmp_src_ip` | SSM source (0.0.0.0 = any) |
 | `devices.7.label` | channel 8 label (`devices` is a plain array, indexed) |
 | `port.1.link` | SFP cage 1 link state |
 | `sdp.<uuid>` | the SDP text of that flow |
@@ -63,10 +64,10 @@ IP               PORT  BASE       SERIAL         FW           TYPE              
 
 dhs consumer mnset export 10.6.40.53 --format csv --out .cache/exports/fusion-53.csv
 
-dhs consumer mnset get 10.6.40.53 --path flows.fee338d3-edfe-30ba-812c-40a36ba2100c.network.0.dst_ip_addr
+dhs consumer mnset get 10.6.40.53 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr
 239.0.1.2
 
-dhs consumer mnset set 10.6.40.53 --path flows.fee338d3-edfe-30ba-812c-40a36ba2100c.network.0.dst_ip_addr --value 239.131.3.134
+dhs consumer mnset set 10.6.40.53 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr --value 239.131.3.134
 239.131.3.134            ← the value the module holds AFTER the write, read back
 ```
 

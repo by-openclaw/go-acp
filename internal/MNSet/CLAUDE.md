@@ -53,9 +53,9 @@ One Fusion 6 device carries 44 top-level keys. The ones that matter:
 | `nmos` / `diagNmos` | IS-04/05 state |
 | `interfaces`, `ipconfig`, `sfps` | media network |
 
-### The subscription record (`flows[].network[]`)
+### The subscription record (`flows/<uuid>` → `network`)
 
-To make a receiver pull a stream, edit its flow's `network[]` entry:
+A receiver/sender has two flows — `flow_id.0` primary (RED) and `flow_id.1` secondary (BLUE) — each with ONE `network` record (only the 4 `route/bulk` flows carry a `network[]` array). To make a receiver pull a stream, edit `network` on both flows:
 
 ```
 dst_ip_addr   multicast group to join   (e.g. 239.131.3.134 = Neuron VTX-01 RED)
@@ -64,7 +64,7 @@ igmp_src_ip   sender source IP for SSM  (e.g. 10.6.40.50 RED / 10.7.40.50 BLUE)
 rtp_pt        96
 enable        1
 ```
-Two entries per flow = RED + BLUE (ST 2022-7). Default unconfigured is
+RED + BLUE = the two flows (ST 2022-7). Default unconfigured is
 `192.168.0.1:10000 → 239.0.1.2:20000`.
 
 ## HDMI monitoring of a Neuron output (the use case)
@@ -92,7 +92,7 @@ its device list (`Inventory`, login = raw-text password body, `X-AUTH-TOKEN`).
 | dissector | `wireshark/dhs_mnset.lua` | post-dissector over http; filter `dhs_mnset` |
 
 Path grammar: listing tokens then the JSON path, dotted or indexed —
-`flows.<uuid>.network[1].dst_ip_addr` ≡ `flows.<uuid>.network.1.dst_ip_addr`;
+`flows.<uuid>.network.dst_ip_addr` (one `network` record per flow; a receiver's RED and BLUE are two flows, `receivers.N.flow_id.0/1`);
 `self.ipconfig.hostname`, `self.diag.flow…`. Text items (`sdp.<uuid>`) are
 one string leaf; there is no `diag` root (404) — it is `self/diag`.
 
