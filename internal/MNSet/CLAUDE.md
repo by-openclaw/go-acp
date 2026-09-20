@@ -109,3 +109,4 @@ No push channel on the module → `Subscribe` is `ErrNotImplemented`; poll
   resolve through `flows`.
 - ST2110 uses two legs (RED/BLUE); always set both `network[]` entries.
 - Never poll SNMP on the module itself: it has no agent (UDP 161 port-unreachable, no SNMP keys in its DM); it only emits towards MN SET. Events come from the module's own syslog (`self.syslog.*`), values from REST polling.
+- Never `set` the six `flows.<uuid>.format.format_code_*` one by one: the module validates the tuple on every PUT. Write the node with a JSON object (`--path flows.<uuid>.format --value '{…}'`) — one merged PUT. Codes: `testdata/video-formats.json` (from MN SET's bundle). The ST 2110 program has no SD format; 625i50 is refused.

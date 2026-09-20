@@ -417,7 +417,7 @@ func TestSetValueErrors(t *testing.T) {
 		{"flows.fee338d3.network.9.dst_ip_addr", "not-found", consumer.Value{Str: "x"}},
 		{"self.syslog.config.enable", "not a boolean", consumer.Value{Str: "maybe"}},
 		{"flows.fee338d3.network.0.dst_udp_port", "not a number", consumer.Value{Str: "high"}},
-		{"self.syslog.config", "not a settable scalar", consumer.Value{Str: "x"}},
+		{"self.syslog.config", "node takes a JSON object", consumer.Value{Str: "x"}},
 		{"nosuch.field", "not listed under /", consumer.Value{Str: "x"}},
 		{"sdp.fee338d3", "text document", consumer.Value{Str: "x"}},
 	}

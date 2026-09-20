@@ -107,8 +107,43 @@ func TestLeafValueAndCoerceCorners(t *testing.T) {
 	if got, err := coerce(true, consumer.Value{Str: "no"}); err != nil || got != false {
 		t.Errorf("coerce no = %v, %v", got, err)
 	}
-	if _, err := coerce([]any{}, consumer.Value{Str: "x"}); err == nil || !strings.Contains(err.Error(), "not a settable scalar") {
+	if _, err := coerce([]any{}, consumer.Value{Str: "x"}); err == nil || !strings.Contains(err.Error(), "list takes a JSON array") {
 		t.Errorf("coerce into list err = %v", err)
+	}
+	if _, err := coerce([]any{}, consumer.Value{Str: `{"a":1}`}); err == nil || !strings.Contains(err.Error(), "list takes a JSON array, not") {
+		t.Errorf("coerce object into list err = %v", err)
+	}
+	if got, err := coerce([]any{json.Number("1")}, consumer.Value{Str: `[2,3]`}); err != nil || len(got.([]any)) != 2 {
+		t.Errorf("coerce list = %v, %v", got, err)
+	}
+	if _, err := coerce(map[string]any{}, consumer.Value{Str: "x"}); err == nil || !strings.Contains(err.Error(), "node takes a JSON object") {
+		t.Errorf("coerce into node err = %v", err)
+	}
+	if _, err := coerce(map[string]any{}, consumer.Value{Str: `[1]`}); err == nil || !strings.Contains(err.Error(), "node takes a JSON object, not") {
+		t.Errorf("coerce list into node err = %v", err)
+	}
+	if _, err := coerce(42, consumer.Value{Str: "1"}); err == nil || !strings.Contains(err.Error(), "not a settable scalar") {
+		t.Errorf("coerce into a non-JSON leaf err = %v", err)
+	}
+}
+
+func TestSetValueOnANodeMergesOneAtomicPut(t *testing.T) {
+	m := newModule(t)
+	m.docs["refclk"] = `{"mode":"0","status":"3","fmt":{"a":1,"b":2,"c":"keep"}}`
+	p := connected(t, m)
+	got, err := p.SetValue(context.Background(), consumer.ValueRequest{Path: "refclk.fmt"}, consumer.Value{Str: `{"a":10,"b":20}`})
+	if err != nil {
+		t.Fatalf("set node: %v", err)
+	}
+	if got.Kind != consumer.KindRaw {
+		t.Errorf("read-back of a node is raw, got %+v", got)
+	}
+	put := m.puts["refclk"]
+	if !strings.Contains(put, `"a":10`) || !strings.Contains(put, `"b":20`) || !strings.Contains(put, `"c":"keep"`) || !strings.Contains(put, `"mode":"0"`) {
+		t.Errorf("one PUT must carry the merged node inside the whole document: %s", put)
+	}
+	if strings.Count(put, `"a":`) != 1 {
+		t.Errorf("merge must not duplicate keys: %s", put)
 	}
 }
 

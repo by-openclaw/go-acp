@@ -151,7 +151,7 @@ func coerce(existing any, val consumer.Value) (any, error) {
 	if val.Kind == consumer.KindBool {
 		return val.Bool, nil
 	}
-	switch existing.(type) {
+	switch cur := existing.(type) {
 	case bool:
 		switch strings.ToLower(strings.TrimSpace(s)) {
 		case "true", "1", "on", "yes":
@@ -174,6 +174,38 @@ func coerce(existing any, val consumer.Value) (any, error) {
 		return json.Number(s), nil
 	case string, nil:
 		return s, nil
+	case map[string]any:
+		// A node takes a JSON object and MERGES it: the keys given replace
+		// the module's, the rest stay. That is how a validated tuple is
+		// written — the FusioN6 checks the six format_code_* of a flow
+		// together on every PUT, so six single-field writes can only pass
+		// by accident; one merged write passes or is refused as a whole.
+		obj, err := decodeDoc([]byte(s))
+		if err != nil {
+			return nil, fmt.Errorf("node takes a JSON object: %w", err)
+		}
+		patch, ok := obj.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("node takes a JSON object, not %T", obj)
+		}
+		merged := make(map[string]any, len(cur)+len(patch))
+		for k, v := range cur {
+			merged[k] = v
+		}
+		for k, v := range patch {
+			merged[k] = v
+		}
+		return merged, nil
+	case []any:
+		// A list takes a JSON array and is replaced whole.
+		arr, err := decodeDoc([]byte(s))
+		if err != nil {
+			return nil, fmt.Errorf("list takes a JSON array: %w", err)
+		}
+		if _, ok := arr.([]any); !ok {
+			return nil, fmt.Errorf("list takes a JSON array, not %T", arr)
+		}
+		return arr, nil
 	}
 	return nil, fmt.Errorf("field is a %T, not a settable scalar", existing)
 }

@@ -116,3 +116,24 @@ module lists but does not serve is recorded as a deviation (logged at
 WARN) and the walk continues. Values only — the API carries no
 min/max/enum/description; that metadata lives in the SNMP MIB (later
 layer, see `scope.md`).
+
+## Writing a validated tuple (a node) in one PUT
+
+Some records are validated as a whole on every PUT — a flow's video
+format is six `format_code_*` fields the FusioN6 checks together
+("Flow failed specific application validation" when they disagree).
+Single-field `set`s can only pass by accident and leave the record in a
+mixed state. Give the node a JSON object instead; the keys you give are
+merged over the module's, and the module gets ONE PUT:
+
+```
+dhs consumer mnset set 10.6.40.53 --path flows.<uuid>.format   --value '{"format_code_t_scan":0,"format_code_p_scan":0,"format_code_mode":0,"format_code_format":0,"format_code_rate":5120,"format_code_sampling":0}'   # 1080i50
+```
+
+The code tables are MN SET's own, extracted to
+[`../testdata/video-formats.json`](../testdata/video-formats.json)
+(`VIDEO_FORMATS` = the ST 2110 program list, `VIDEO_FORMATS_2022` = the
+2022-6 list). The ST 2110 list holds **no SD**: 625i50 is refused by the
+module (verified 2026-09-21), so an SD source (the RX1290 at 625) must be
+delivered to the Fusion as HD (1080i50 / 720p50 / 1080p50). A list node
+takes a JSON array and is replaced whole.
