@@ -150,7 +150,7 @@ func (p *Plugin) connectModule(ctx context.Context, ip string, port int) ([]slot
 		return nil, fmt.Errorf("mnset connect %s:%d: %w", ip, port, err)
 	}
 	m, _ := info.(map[string]any)
-	return []slotModule{{ip: ip, status: "ONLINE", typ: str(m["type"]), serial: str(m["serial_number"]), c: c, info: info}}, nil
+	return []slotModule{{ip: ip, status: "ONLINE", typ: str(m["type"]), serial: str(m["serial_number"]), c: c, info: info, cages: readCages(ctx, c)}}, nil
 }
 
 // Disconnect forgets the host. Safe when not connected.

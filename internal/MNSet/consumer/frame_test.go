@@ -226,7 +226,7 @@ func TestConnectPortZeroFallsBackToFrame(t *testing.T) {
 	// Port 0 tries the module on 80 (nothing there), then MN SET on
 	// 8080 (nothing there either): the module error is what comes back,
 	// so the operator sees the address that was tried first.
-	p := (&Factory{}).New(plugin.Deps{}).(*Plugin)
+	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*Plugin)
 	err := p.Connect(context.Background(), "127.0.0.1", 0)
 	if err == nil || !strings.Contains(err.Error(), "mnset connect 127.0.0.1:80") {
 		t.Errorf("err = %v", err)

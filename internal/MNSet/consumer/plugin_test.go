@@ -92,6 +92,13 @@ func newModule(t *testing.T) *module {
 	m.docs["clean_switch"] = `["dev8/"]`
 	m.docs["clean_switch/dev8"] = `{"clean_switch":{"mode":"disabled"}}`
 	m.docs["flows/fee338d3"] = `{"id":"fee338d3","name":"rx ch8 flow 0 pri","network":[{"dst_ip_addr":"239.0.1.2","dst_udp_port":20000,"enable":1,"pkt_cnt":"0"},{"dst_ip_addr":"239.0.1.3","dst_udp_port":20000,"enable":1}]}`
+	// SFP cages: 1 = HDMI SFP, 3 = the 25G optic, 5 = empty, 6 = listed but not served, 7 = not a document.
+	m.docs[""] = `["self/","flows/","sources/","refclk/","telemetry/","sdp/","broken/","devices/","receivers/","sdi_output/","clean_switch/","port/"]`
+	m.docs["port"] = `["1/","3/","5/","6/","7/"]`
+	m.docs["port/1"] = `{"detected_sfp_part_number":"1913052","detected_sfp_serial_number":"324091100087","host_pinout":"2T","link":"up","speed":"25Gbps"}`
+	m.docs["port/3"] = `{"detected_sfp_part_number":"GSS-MPO250-SRC","detected_sfp_serial_number":"M2106074571","host_pinout":"RT","link":"up","speed":"25Gbps"}`
+	m.docs["port/5"] = `{"detected_sfp_part_number":"N/A","detected_sfp_serial_number":"N/A","host_pinout":"RT","link":"down","speed":"25Gbps"}`
+	m.docs["port/7"] = `["odd/"]`
 	return m
 }
 
@@ -144,6 +151,16 @@ func TestConnectReadsIdentityAndReportsHealth(t *testing.T) {
 	si, err := p.GetSlotInfo(context.Background(), 0)
 	if err != nil || si.Status != consumer.SlotPresent || !si.IsOnline {
 		t.Fatalf("slot info = %+v, %v", si, err)
+	}
+	// The cages read like a frame's cards: what is fitted, serial, link.
+	if si.Identity["cage1"] != "1913052 sn 324091100087 · 2T · link up 25Gbps" || si.Identity["cage3"] != "GSS-MPO250-SRC sn M2106074571 · RT · link up 25Gbps" || si.Identity["cage5"] != "empty · RT · link down 25Gbps" {
+		t.Errorf("cages = %v", si.Identity)
+	}
+	if _, listed := si.Identity["cage6"]; listed {
+		t.Error("a cage the module lists but does not serve must not be invented")
+	}
+	if _, listed := si.Identity["cage7"]; listed {
+		t.Error("a cage that is not a document must not be invented")
 	}
 	if _, err := p.GetSlotInfo(context.Background(), 1); !errors.Is(err, consumer.ErrObjectNotFound) {
 		t.Errorf("slot 1 err = %v, want not-found", err)
@@ -248,9 +265,10 @@ func TestWalkDescendsListingsAndRecordsTheRest(t *testing.T) {
 		t.Errorf("sdp leaf = %+v", o)
 	}
 	// A listed resource the fake does not serve is a deviation, not a failure.
+	// sources (listed, 404), port/6 (listed, 404), port/7/odd (a listing under a listing, 404).
 	devs := p.Deviations()
-	if len(devs) != 1 || !strings.Contains(devs[0], "sources") {
-		t.Errorf("deviations = %v, want exactly the unserved 'sources'", devs)
+	if len(devs) != 3 || !strings.Contains(devs[0], "sources") || !strings.Contains(devs[1], "port/6") || !strings.Contains(devs[2], "port/7/odd") {
+		t.Errorf("deviations = %v, want exactly the three unserved resources", devs)
 	}
 	if _, err := p.Walk(context.Background(), 1); !errors.Is(err, consumer.ErrObjectNotFound) {
 		t.Errorf("walk slot 1 err = %v", err)

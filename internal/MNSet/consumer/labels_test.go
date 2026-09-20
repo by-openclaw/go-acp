@@ -69,3 +69,20 @@ func TestLabelObjectsCorners(t *testing.T) {
 		t.Error("shortChannel")
 	}
 }
+
+func TestCagesAbsentWhenPortIsNotListedOrNotAListing(t *testing.T) {
+	m := newModule(t)
+	delete(m.docs, "port")
+	p := connected(t, m)
+	si, _ := p.GetSlotInfo(context.Background(), 0)
+	if _, any := si.Identity["cage1"]; any {
+		t.Errorf("port 404 must give no cages: %v", si.Identity)
+	}
+	m2 := newModule(t)
+	m2.docs["port"] = `{"not":"a listing"}`
+	p2 := connected(t, m2)
+	si2, _ := p2.GetSlotInfo(context.Background(), 0)
+	if _, any := si2.Identity["cage1"]; any {
+		t.Errorf("port as a document must give no cages: %v", si2.Identity)
+	}
+}

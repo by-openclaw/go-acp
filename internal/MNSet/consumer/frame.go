@@ -38,8 +38,42 @@ type slotModule struct {
 	typ    string
 	serial string
 	lldp   string
-	c      *client // nil when the module is not reachable
-	info   any     // self/information when reachable
+	c      *client           // nil when the module is not reachable
+	info   any               // self/information when reachable
+	cages  map[string]string // "cage3" → what is fitted, from port/<n>
+}
+
+// readCages lists the module's SFP cages (port/<n>) and renders what is
+// fitted in each — part number, serial, pinout, link, speed — so `info`
+// shows a module the way it shows a frame: slot, card, serial. A module
+// that hides port/ simply has no cages listed.
+func readCages(ctx context.Context, c *client) map[string]string {
+	doc, err := c.get(ctx, "port")
+	if err != nil {
+		return nil
+	}
+	names, ok := listing(doc)
+	if !ok {
+		return nil
+	}
+	out := make(map[string]string, len(names))
+	for _, n := range names {
+		pd, err := c.get(ctx, "port/"+n)
+		if err != nil {
+			continue
+		}
+		m, ok := pd.(map[string]any)
+		if !ok {
+			continue
+		}
+		part, serial := str(m["detected_sfp_part_number"]), str(m["detected_sfp_serial_number"])
+		fitted := "empty"
+		if part != "" && part != "N/A" {
+			fitted = part + " sn " + serial
+		}
+		out["cage"+n] = fmt.Sprintf("%s · %s · link %s %s", fitted, str(m["host_pinout"]), str(m["link"]), str(m["speed"]))
+	}
+	return out
 }
 
 // connectFrame reads MN SET's device list and opens every ONLINE module.
@@ -106,7 +140,7 @@ func (p *Plugin) connectFrame(ctx context.Context, ip string, port int) ([]slotM
 				"slot", i, "id", s.id, "ip", s.ip, "err", err.Error())
 			continue
 		}
-		s.c, s.info = c, info
+		s.c, s.info, s.cages = c, info, readCages(ctx, c)
 	}
 	return slots, nil
 }
@@ -137,6 +171,9 @@ func slotInfoOf(n int, s slotModule) consumer.SlotInfo {
 	si := consumer.SlotInfo{Slot: n, Identity: map[string]string{
 		"id": s.id, "ip": s.ip, "type": s.typ, "serial": s.serial, "lldp": s.lldp, "mnset_status": s.status,
 	}}
+	for k, v := range s.cages {
+		si.Identity[k] = v
+	}
 	switch {
 	case s.c != nil:
 		si.Status, si.IsOnline = consumer.SlotPresent, true
