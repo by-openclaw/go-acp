@@ -28,6 +28,9 @@ Ansible templates render the same shape.
 - [NMOS parameter registers](#nmos-parameter-registers)
 - [CCM device (producer)](#ccm-device-producer)
 - [CCM controller (consumer)](#ccm-controller-consumer)
+- [MNSet (consumer)](#mnset-consumer)
+- [MNSet: discover](#mnset-discover)
+- [MNSet: inventory](#mnset-inventory)
 - [SNMP consumer](#snmp-consumer)
 - [SNMP: get](#snmp-get)
 - [SNMP: walk](#snmp-walk)
@@ -148,6 +151,7 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
@@ -677,6 +681,57 @@ usage: dhs consumer ccm <verb> <host> [flags]
   flags: --json  emit the whole device as JSON
          --verify-tls  verify the device certificate (default: skip, lab self-signed)
          --timeout D   per-request timeout (default 8s)
+```
+
+## MNSet (consumer)
+
+`dhs consumer mnset --help`
+
+```text
+usage: dhs consumer mnset <verb> [<host>] [flags]
+
+Riedel MuoN eMSFP / FusioN modules, direct REST (http://<module>/emsfp/node/v1).
+One module = one device, slot 0. Paths are the resource then the JSON path:
+  self.ipconfig.hostname    flows[0].network[1].dst_ip_addr    devices[7].name
+
+mnset-only verbs:
+  discover  --range R [--range R …] [--port 80] [--timeout 2s] [--concurrency 32]
+            sweep addresses for modules (R: 10.6.40.53 | 10.6.40.50-99 | 10.6.40.0/24)
+  inventory <mnset-host> --user U [--port 8080]   list the modules MN SET manages
+            password read from $MNSET_PASS (never a flag, never printed)
+
+generic verbs (see 'dhs consumer --help'):
+  info | walk | get --path P | set --path P --value V | export | import | status | health
+```
+
+## MNSet: discover
+
+`dhs consumer mnset discover --help`
+
+```text
+Usage of consumer mnset discover:
+  -concurrency int
+    	probes in flight (default 32)
+  -port int
+    	module REST port (default 80)
+  -range value
+    	address, last-octet range a.b.c.x-y or CIDR (repeatable)
+  -timeout duration
+    	per-address probe timeout (default 2s)
+```
+
+## MNSet: inventory
+
+`dhs consumer mnset inventory --help`
+
+```text
+Usage of consumer mnset inventory:
+  -port int
+    	MN SET application port (default 8080)
+  -timeout duration
+    	per-request timeout (default 8s)
+  -user string
+    	MN SET login name (password from $MNSET_PASS)
 ```
 
 ## SNMP consumer
@@ -1565,6 +1620,7 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
@@ -1642,6 +1698,7 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)

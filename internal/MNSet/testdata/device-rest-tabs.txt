@@ -1,0 +1,4 @@
+# Device emSFP node REST (screenshot "Rest" page, GET/PUT per Device IP) — page 1
+self port flows sources receivers senders route devices sdi sdi_output sdi_input sdi_audio sdp receivers_sdp senders_sdp clean_switch refclk lldp telemetry
+# page 2
+information diag firmware phy interfaces ipconfig static_route license system syslog protocols

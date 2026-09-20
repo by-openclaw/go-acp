@@ -39,6 +39,7 @@ import (
 	"dhs/internal/errcode"
 
 	// Consumer plugins — blank imports register with internal/consumer.
+	_ "dhs/internal/MNSet/consumer"
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
@@ -324,6 +325,12 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	}
 	if proto == "snmp" {
 		return runSNMPConsumer(ctx, rest)
+	}
+	if proto == "mnset" {
+		// discover / inventory are mnset-only; every other verb is generic.
+		if handled, err := runMNSet(ctx, rest); handled {
+			return err
+		}
 	}
 
 	// Catalogue help ONLY when help is asked in place of a verb — a help
