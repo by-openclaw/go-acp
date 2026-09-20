@@ -191,6 +191,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 	if err := p.walkResource(ctx, c, "", 0, &objs, &dev); err != nil {
 		return nil, err
 	}
+	labelObjects(objs)
 	p.mu.Lock()
 	p.deviations = dev
 	p.mu.Unlock()

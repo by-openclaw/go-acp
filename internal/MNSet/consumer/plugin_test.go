@@ -79,6 +79,19 @@ func newModule(t *testing.T) *module {
 	m.docs["sdp/fee338d3"] = "v=0\r\no=- 1 1 IN IP4 10.6.40.53\r\ns=CH1 VidTx\r\n"
 	m.docs["broken"] = `{"a":`
 	// "sources" is listed by the root but not served.
+	// Channel naming: one decoder device with one receiver on two flows,
+	// one SDI output, one clean switch — the shapes labelObjects reads.
+	m.docs[""] = `["self/","flows/","sources/","refclk/","telemetry/","sdp/","broken/","devices/","receivers/","sdi_output/","clean_switch/"]`
+	m.docs["devices"] = `[{"id":"dev8","label":"Device CH8","receivers":["rx0"],"node_id":"n"}]`
+	m.docs["receivers"] = `[{"id":"rx0","device_id":"dev8","format":"video","flow_id":["fee338d3","fee338d3-sec"],"label":" "}]`
+	m.docs["flows"] = `["fee338d3/","fee338d3-sec/","orphan/"]`
+	m.docs["flows/fee338d3-sec"] = `{"id":"fee338d3-sec","name":"rx ch8 flow 0 sec","network":{"dst_ip_addr":"239.132.3.134","enable":1}}`
+	m.docs["flows/orphan"] = `{"id":"orphan","network":{"dst_ip_addr":"0.0.0.0"}}`
+	m.docs["sdi_output"] = `["out1/"]`
+	m.docs["sdi_output/out1"] = `{"id":"out1","device_id":"dev8","label":"HDMI 4","color_bar":0}`
+	m.docs["clean_switch"] = `["dev8/"]`
+	m.docs["clean_switch/dev8"] = `{"clean_switch":{"mode":"disabled"}}`
+	m.docs["flows/fee338d3"] = `{"id":"fee338d3","name":"rx ch8 flow 0 pri","network":[{"dst_ip_addr":"239.0.1.2","dst_udp_port":20000,"enable":1,"pkt_cnt":"0"},{"dst_ip_addr":"239.0.1.3","dst_udp_port":20000,"enable":1}]}`
 	return m
 }
 
@@ -203,7 +216,7 @@ func TestWalkDescendsListingsAndRecordsTheRest(t *testing.T) {
 	}
 	// An item under a collection, with the right kind and the write bit.
 	o, ok := byPath["flows.fee338d3.network.1.dst_ip_addr"]
-	if !ok || o.Kind != consumer.KindString || o.Value.Str != "239.0.1.3" || o.Access&accessWrite == 0 || o.Label != "dst_ip_addr" {
+	if !ok || o.Kind != consumer.KindString || o.Value.Str != "239.0.1.3" || o.Access&accessWrite == 0 || o.Label != "CH8 · rx ch8 flow 0 pri · network.1.dst_ip_addr" {
 		t.Errorf("flows leaf = %+v (found %v)", o, ok)
 	}
 	// Integer stays integer; float stays float; null is raw; bool is bool.
