@@ -147,13 +147,13 @@ func TestSetValueOnANodeMergesOneAtomicPut(t *testing.T) {
 	}
 }
 
-func TestSubscribeIsNotImplemented(t *testing.T) {
+func TestSubscribeNeedsASession(t *testing.T) {
 	p := (&Factory{}).New(plugin.Deps{}).(*Plugin)
-	if err := p.Subscribe(consumer.ValueRequest{}, nil); !errors.Is(err, consumer.ErrNotImplemented) {
+	if err := p.Subscribe(consumer.ValueRequest{}, nil); !errors.Is(err, consumer.ErrNotConnected) {
 		t.Errorf("Subscribe = %v", err)
 	}
-	if err := p.Unsubscribe(consumer.ValueRequest{}); !errors.Is(err, consumer.ErrNotImplemented) {
-		t.Errorf("Unsubscribe = %v", err)
+	if err := p.Unsubscribe(consumer.ValueRequest{}); err != nil {
+		t.Errorf("Unsubscribe of nothing = %v", err)
 	}
 	p.SetTimeout(time.Second)
 	if p.timeout != time.Second {

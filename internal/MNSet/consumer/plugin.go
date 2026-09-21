@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/consumer/monitor"
+	"dhs/internal/consumer/pollwatch"
 	"dhs/internal/plugin"
 )
 
@@ -42,8 +44,10 @@ func (f *Factory) Meta() consumer.ProtocolMeta {
 // New builds a plugin from the injected dependency set.
 func (f *Factory) New(deps plugin.Deps) consumer.Protocol {
 	deps = deps.WithDefaults()
-	p := &Plugin{logger: deps.Logger, timeout: defaultTimeout, modulePort: DefaultPort, framePort: FramePort}
+	p := &Plugin{logger: deps.Logger, timeout: defaultTimeout, modulePort: DefaultPort, framePort: FramePort,
+		lastWalk: map[int][]consumer.Object{}, docs: map[string]cachedDoc{}}
 	p.Init(deps, staleAfter)
+	p.poller = pollwatch.New(p, p.pollProfileFor, deps.Logger, deps.Clock)
 	return p
 }
 
@@ -73,7 +77,33 @@ type Plugin struct {
 	slots []slotModule
 	// deviations are what the last Walk could not read.
 	deviations []string
+	// lastWalk keeps each slot's last walked leaves: the poll plan is
+	// expanded over them, so a watch after a walk costs no second walk.
+	lastWalk map[int][]consumer.Object
+	// docs is a short-lived cache of fetched documents, so the leaves of
+	// one record polled in the same second cost the module one GET.
+	docs map[string]cachedDoc
+	// poller answers Subscribe by polling (the module has no push).
+	poller *pollwatch.Poller
+	// frameStop ends the frame-refresh loop of a frame-wide Subscribe.
+	frameStop context.CancelFunc
 }
+
+// cachedDoc is one fetched document with its fetch time.
+type cachedDoc struct {
+	doc any
+	at  time.Time
+}
+
+// docTTL bounds how long a fetched document answers resolves. Two
+// seconds: a poll of 36 receivers' pkt_cnt reads 36 documents once,
+// not 36 x 3 URLs; an operator get after a set still sees the module
+// (SetValue always reads fresh).
+const docTTL = 2 * time.Second
+
+// frameRefresh is how often a frame-wide watch re-reads MN SET's device
+// list to notice a module appearing, vanishing or falling silent.
+var frameRefresh = 10 * time.Second
 
 // SetTimeout bounds each request; applied at the next Connect.
 func (p *Plugin) SetTimeout(d time.Duration) {
@@ -153,12 +183,20 @@ func (p *Plugin) connectModule(ctx context.Context, ip string, port int) ([]slot
 	return []slotModule{{ip: ip, status: "ONLINE", typ: str(m["type"]), serial: str(m["serial_number"]), c: c, info: info, cages: readCages(ctx, c)}}, nil
 }
 
-// Disconnect forgets the host. Safe when not connected.
+// Disconnect forgets the host and stops every watch. Safe when not
+// connected.
 func (p *Plugin) Disconnect() error {
+	p.poller.Close()
 	p.mu.Lock()
 	was := p.slots != nil
 	p.slots = nil
+	stop := p.frameStop
+	p.frameStop = nil
+	p.docs = map[string]cachedDoc{}
 	p.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
 	if was {
 		p.Closed()
 	}
@@ -262,6 +300,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 	}
 	p.mu.Lock()
 	p.deviations = dev
+	p.lastWalk[slot] = objs
 	p.mu.Unlock()
 	// One line per walk, not one per resource: a FusioN6 lists six
 	// route/bulk/receiver items that answer 400 to GET (they are
@@ -331,13 +370,17 @@ type resolved struct {
 // Walk does — until a token lands on a document; the remaining tokens
 // address a leaf inside it. Every step is one GET, so the answer is
 // always the module's current shape, never a guessed catalogue.
-func (p *Plugin) resolve(ctx context.Context, c *client, path string) (resolved, error) {
+func (p *Plugin) resolve(ctx context.Context, c *client, path string, cached bool) (resolved, error) {
 	toks := splitPath(path)
 	if len(toks) == 0 {
 		return resolved{}, fmt.Errorf("mnset: %q: %w", path, consumer.ErrObjectNotFound)
 	}
+	get := c.get
+	if cached {
+		get = func(ctx context.Context, url string) (any, error) { return p.cachedGet(ctx, c, url) }
+	}
 	url := ""
-	doc, err := c.get(ctx, url)
+	doc, err := get(ctx, url)
 	if err != nil {
 		return resolved{}, err
 	}
@@ -359,11 +402,31 @@ func (p *Plugin) resolve(ctx context.Context, c *client, path string) (resolved,
 			url += "/" + toks[i]
 		}
 		i++
-		if doc, err = c.get(ctx, url); err != nil {
+		if doc, err = get(ctx, url); err != nil {
 			return resolved{}, err
 		}
 	}
 	return resolved{url: url, doc: doc, leaf: toks[i:]}, nil
+}
+
+// cachedGet answers from the document cache inside docTTL, else fetches
+// and remembers. Listings and documents alike.
+func (p *Plugin) cachedGet(ctx context.Context, c *client, url string) (any, error) {
+	key := c.base + url
+	p.mu.Lock()
+	if d, ok := p.docs[key]; ok && time.Since(d.at) < docTTL {
+		p.mu.Unlock()
+		return d.doc, nil
+	}
+	p.mu.Unlock()
+	doc, err := c.get(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	p.docs[key] = cachedDoc{doc: doc, at: time.Now()}
+	p.mu.Unlock()
+	return doc, nil
 }
 
 func contains(names []string, s string) bool {
@@ -383,7 +446,7 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 	if err != nil {
 		return consumer.Value{}, err
 	}
-	r, err := p.resolve(ctx, c, req.Path)
+	r, err := p.resolve(ctx, c, req.Path, true)
 	if err != nil {
 		return consumer.Value{}, err
 	}
@@ -410,7 +473,7 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	if err != nil {
 		return consumer.Value{}, err
 	}
-	r, err := p.resolve(ctx, c, req.Path)
+	r, err := p.resolve(ctx, c, req.Path, false)
 	if err != nil {
 		return consumer.Value{}, err
 	}
@@ -442,17 +505,168 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 // module (~330 GETs, 33 s on a FusioN6) just to answer one --path.
 func (p *Plugin) PathNative() bool { return true }
 
-// Subscribe: the module has no push channel (no WebSocket, no IS-07).
-// Change is observed by polling through the ADR-0030 monitor and by the
-// module's own syslog events (self/syslog). That is how the device
-// works, not a gap to fill here.
+// Subscribe: the module has no push channel (no WebSocket, no IS-07),
+// so a watch is a poll: the dictionary's poll plan (which leaves, how
+// often) expanded over the slot's tree and run by the neutral monitor;
+// every change reaches fn. Slot -1 covers every present slot. A
+// frame-wide watch (no path, MN SET as host) also re-reads MN SET's
+// device list every frameRefresh and reports slots that appear, vanish
+// or fall silent as events on path "slot". Events the module itself
+// raises (no signal, PTP, temperature) travel by its syslog.
 func (p *Plugin) Subscribe(req consumer.ValueRequest, fn consumer.EventFunc) error {
-	return consumer.ErrNotImplemented
+	if _, err := p.session(); err != nil {
+		return err
+	}
+	if err := p.poller.Subscribe(req, fn); err != nil {
+		return err
+	}
+	if req.Path == "" && p.isFrame() {
+		p.startFrameRefresh(fn)
+	}
+	return nil
 }
 
-// Unsubscribe mirrors Subscribe.
+// Unsubscribe stops that watch.
 func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
-	return consumer.ErrNotImplemented
+	err := p.poller.Unsubscribe(req)
+	if p.poller.Active() == 0 {
+		p.mu.Lock()
+		stop := p.frameStop
+		p.frameStop = nil
+		p.mu.Unlock()
+		if stop != nil {
+			stop()
+		}
+	}
+	return err
+}
+
+// session reports whether the plugin is connected at all, and how many
+// slots it holds.
+func (p *Plugin) session() (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.slots == nil {
+		return 0, consumer.ErrNotConnected
+	}
+	return len(p.slots), nil
+}
+
+// isFrame reports whether the host is MN SET.
+func (p *Plugin) isFrame() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.port == p.framePort
+}
+
+// pollProfileFor builds the monitor profile for one Subscribe: the
+// dictionary's poll plan over the walked leaves of the requested slot
+// (or of every present slot for -1), under the request's path filter.
+// A slot never walked is walked now, once.
+func (p *Plugin) pollProfileFor(ctx context.Context, req consumer.ValueRequest) (*monitor.Profile, error) {
+	n, _ := p.session() // Subscribe checked the session; 0 slots just yields "nothing to watch"
+	slots := []int{req.Slot}
+	if req.Slot < 0 {
+		slots = slots[:0]
+		for i := 0; i < n; i++ {
+			if s, err := p.slot(i); err == nil && s.c != nil {
+				slots = append(slots, i)
+			}
+		}
+	}
+	d, _, err := parseDictionary(fusion6Dictionary, videoFormatsJSON)
+	if err != nil {
+		return nil, err
+	}
+	merged := &monitor.Profile{Model: d.Model}
+	for _, slot := range slots {
+		p.mu.Lock()
+		objs, walked := p.lastWalk[slot]
+		p.mu.Unlock()
+		if !walked {
+			if objs, err = p.Walk(ctx, slot); err != nil {
+				return nil, err
+			}
+		}
+		prof, err := pollProfile(d, objs, slot, req.Path)
+		if err != nil {
+			return nil, err
+		}
+		merged.Defaults = prof.Defaults
+		merged.Entries = append(merged.Entries, prof.Entries...)
+	}
+	if len(merged.Entries) == 0 {
+		return nil, fmt.Errorf("mnset: no present slot to watch")
+	}
+	return merged, nil
+}
+
+// startFrameRefresh re-reads MN SET's device list on a timer and reports
+// slot changes as events: Path "slot", Label the slot's module id, Value
+// the new state (present / error / no_card / removed), Description the
+// module address.
+func (p *Plugin) startFrameRefresh(fn consumer.EventFunc) {
+	p.mu.Lock()
+	if p.frameStop != nil {
+		p.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	p.frameStop = cancel
+	host, port := p.host, p.port
+	p.mu.Unlock()
+	go func() {
+		t := time.NewTicker(frameRefresh)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				p.refreshFrame(ctx, host, port, fn)
+			}
+		}
+	}()
+}
+
+// refreshFrame is one frame-refresh pass: connectFrame again, diff the
+// slot table against the held one by module id, emit one event per
+// change, swap in the new table.
+func (p *Plugin) refreshFrame(ctx context.Context, host string, port int, fn consumer.EventFunc) {
+	fresh, err := p.connectFrame(ctx, host, port)
+	if err != nil {
+		p.logger.Warn("mnset: frame refresh failed", slog.String("err", err.Error()))
+		return
+	}
+	p.mu.Lock()
+	old := p.slots
+	p.slots = fresh
+	p.mu.Unlock()
+	state := func(s slotModule) string { return slotInfoOf(0, s).Status.String() }
+	seen := map[string]bool{}
+	for i, s := range fresh {
+		seen[s.id] = true
+		prev, had := findSlot(old, s.id)
+		if !had || state(prev) != state(s) {
+			fn(consumer.Event{Slot: i, Path: "slot", Label: s.id, Description: s.ip,
+				Value: consumer.Value{Kind: consumer.KindString, Str: state(s)}, Timestamp: time.Now()})
+		}
+	}
+	for i, s := range old {
+		if !seen[s.id] {
+			fn(consumer.Event{Slot: i, Path: "slot", Label: s.id, Description: s.ip,
+				Value: consumer.Value{Kind: consumer.KindString, Str: "removed"}, Timestamp: time.Now()})
+		}
+	}
+}
+
+func findSlot(slots []slotModule, id string) (slotModule, bool) {
+	for _, s := range slots {
+		if s.id == id {
+			return s, true
+		}
+	}
+	return slotModule{}, false
 }
 
 // String renders the plugin for logs: host and slot count, never a secret.

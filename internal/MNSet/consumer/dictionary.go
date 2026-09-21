@@ -7,8 +7,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"dhs/internal/consumer"
+	"dhs/internal/consumer/monitor"
 )
 
 // The module publishes values and structure only. Units, ranges, enum
@@ -57,6 +59,24 @@ type dictionary struct {
 	Model    string        `json:"model"`
 	Entries  []dictEntry   `json:"entries"`
 	Siblings []siblingRule `json:"sibling_thresholds"`
+	// Poll is the model's poll plan for watch: which leaves, how often.
+	// The module has no push channel, so "watch" = these intervals.
+	Poll pollSection `json:"poll"`
+}
+
+// pollSection mirrors monitor.Profile with path PATTERNS instead of
+// addresses: a pattern is expanded over the walked tree at Subscribe.
+type pollSection struct {
+	Defaults struct {
+		Interval string `json:"interval"`
+	} `json:"defaults"`
+	Entries []pollEntry `json:"oids"`
+}
+
+type pollEntry struct {
+	Match    string `json:"match"`
+	Interval string `json:"interval"`
+	Source   string `json:"source,omitempty"`
 }
 
 // videoFormat is one row of MN SET's format table: the six codes and
@@ -95,7 +115,8 @@ func parseDictionary(dict, formatsJSON []byte) (dictionary, []videoFormat, error
 
 // matchPath reports whether a dotted pattern matches a dotted path:
 // "*" matches exactly one segment; a leading "**" matches any number of
-// leading segments ("**.dst_udp_port" = every leaf named dst_udp_port).
+// leading segments ("**.dst_udp_port" = every leaf named dst_udp_port);
+// a trailing "**" matches everything under a prefix ("telemetry.node.**").
 func matchPath(pattern string, path []string) bool {
 	pat := strings.Split(pattern, ".")
 	if pat[0] == "**" {
@@ -104,6 +125,14 @@ func matchPath(pattern string, path []string) bool {
 			return false
 		}
 		path = path[len(path)-len(pat):]
+	}
+	if n := len(pat); n > 0 && pat[n-1] == "**" {
+		// trailing "**": everything under the prefix
+		pat = pat[:n-1]
+		if len(path) < len(pat) {
+			return false
+		}
+		path = path[:len(pat)]
 	}
 	if len(pat) != len(path) {
 		return false
@@ -267,4 +296,49 @@ func nameVideoFormats(objs []consumer.Object, byPath map[string]*consumer.Object
 			setMeta(byPath[prefix+c], "value_name", name)
 		}
 	}
+}
+
+// pollProfile expands the dictionary's poll plan over a walked tree:
+// every leaf matching a pattern becomes one monitor address at that
+// pattern's interval (first matching pattern wins, so list the
+// specific ones first). filter, when set, keeps only leaves under that
+// dotted prefix — the watch --path scope. Leaves no pattern names are
+// not polled: the plan says what matters, 7,000 leaves at once would
+// not.
+func pollProfile(d dictionary, objs []consumer.Object, slot int, filter string) (*monitor.Profile, error) {
+	def, err := time.ParseDuration(d.Poll.Defaults.Interval)
+	if err != nil {
+		return nil, fmt.Errorf("mnset: dictionary poll default interval: %w", err)
+	}
+	type rule struct {
+		pattern string
+		every   time.Duration
+	}
+	rules := make([]rule, 0, len(d.Poll.Entries))
+	for _, e := range d.Poll.Entries {
+		every := def
+		if e.Interval != "" {
+			if every, err = time.ParseDuration(e.Interval); err != nil {
+				return nil, fmt.Errorf("mnset: dictionary poll interval for %s: %w", e.Match, err)
+			}
+		}
+		rules = append(rules, rule{e.Match, every})
+	}
+	prof := &monitor.Profile{Model: d.Model, Defaults: monitor.Defaults{Interval: monitor.Duration(def), OnChange: true}}
+	for _, o := range objs {
+		path := strings.Join(o.Path, ".")
+		if filter != "" && path != filter && !strings.HasPrefix(path, filter+".") {
+			continue
+		}
+		for _, r := range rules {
+			if matchPath(r.pattern, o.Path) {
+				prof.Entries = append(prof.Entries, monitor.Entry{Path: path, Slot: slot, Interval: monitor.Duration(r.every)})
+				break
+			}
+		}
+	}
+	if len(prof.Entries) == 0 {
+		return nil, fmt.Errorf("mnset: nothing to poll under %q (the dictionary's poll plan names no leaf there)", filter)
+	}
+	return prof, nil
 }

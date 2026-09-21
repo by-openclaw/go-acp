@@ -350,8 +350,11 @@ func TestGetValueLiveAndErrors(t *testing.T) {
 			t.Errorf("GetValue(%q) err = %v, want %q", path, err, want)
 		}
 	}
-	// The root itself cannot be fetched: surfaced.
+	// The root itself cannot be fetched: surfaced (past the document cache).
 	delete(m.docs, "")
+	p.mu.Lock()
+	p.docs = map[string]cachedDoc{}
+	p.mu.Unlock()
 	if _, err := p.GetValue(ctx, consumer.ValueRequest{Path: "refclk.mode"}); err == nil || !strings.Contains(err.Error(), "GET :") {
 		t.Errorf("root missing err = %v", err)
 	}

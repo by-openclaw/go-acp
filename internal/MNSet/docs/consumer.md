@@ -32,8 +32,18 @@ it); a token-gated MN SET is logged into with `$MNSET_USER` /
 | `set <host> --path P --value V` | one leaf; the PUT carries the whole resource document |
 | `status` / `health` | session health (reachable / connected / live) |
 
-`watch` is not available: the module has no push channel. Poll with the
-ADR-0030 monitor, or ship the module's own syslog (`self/syslog`).
+`watch` **polls**: the module has no push channel, so a watch is the
+dictionary's poll plan (`dm/fusion6.json` → `poll`: which leaves, how
+often — stream counters 15 s, telemetry/PTP/links 10 s, SFP/temperature
+30 s, configuration 60 s) expanded over the slot's tree and run by the
+ADR-0030 monitor; only changes are printed. `--path P` narrows the plan
+to that subtree; `--slot -1` (the default) covers every present slot of
+a frame. On a frame (MN SET host) the watch also re-reads MN SET's
+device list every 10 s and prints slot events (`slot` path: present /
+error / no_card / removed) when a module appears, vanishes or falls
+silent. Leaves of one record polled in the same 2 s cost one GET.
+Events the module raises itself (no signal, PTP, temperature) travel by
+its syslog (runbook §6).
 
 ## Path grammar
 

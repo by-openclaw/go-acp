@@ -98,8 +98,14 @@ Path grammar: listing tokens then the JSON path, dotted or indexed —
 one string leaf; there is no `diag` root (404) — it is `self/diag`.
 
 Identity (ADR-0022): `<base_type>@<current_version>` → `FusioN6@0x68cd783f`.
-No push channel on the module → `Subscribe` is `ErrNotImplemented`; poll
-(ADR-0030) or ship the module's syslog. Coverage floor 100 % in CI.
+No push channel on the module → `Subscribe` **polls**: `pollwatch.Poller`
+(neutral, `internal/consumer/pollwatch`) runs the ADR-0030 monitor over the
+dictionary's `poll` plan (`dm/fusion6.json`: patterns → intervals) expanded
+on the walked tree; slot -1 = every present slot; a frame-wide watch also
+re-reads MN SET's device list every 10 s and emits `slot` events. Fetched
+documents are cached 2 s so polled leaves of one record cost one GET
+(`SetValue` always reads fresh). Module-raised events travel by syslog.
+Coverage floor 100 % in CI (mnset and pollwatch).
 
 ## What NOT to do
 
