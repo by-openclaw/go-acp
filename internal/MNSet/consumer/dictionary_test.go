@@ -108,9 +108,15 @@ func TestWalkAnnotatesUnitsRangesEnumsAndFormatNames(t *testing.T) {
 	if strings.Join(o.EnumItems, "|") != "a=Class A (10 ms)|b=Class B (50 ms)|d=Class D (150 µs)" || o.Meta["value_name"] != "Class D (150 µs)" || o.Meta["description"] == "" {
 		t.Errorf("class = %v %v", o.EnumItems, o.Meta)
 	}
-	// unit with description + source
-	if o := byPath["flows.fee338d3.network.pkt_cnt"]; o.Unit != "packets" || o.Meta["source"] == "" {
-		t.Errorf("pkt_cnt = %q %v", o.Unit, o.Meta)
+	// unit with description + source, and the write bit cleared on a counter
+	if o := byPath["flows.fee338d3.network.pkt_cnt"]; o.Unit != "packets" || o.Meta["source"] == "" || o.Access&accessWrite != 0 {
+		t.Errorf("pkt_cnt = %q %v access %d", o.Unit, o.Meta, o.Access)
+	}
+	if o := byPath["self.system.core_temp"]; o.Access&accessWrite != 0 || o.Unit != "°C" {
+		t.Errorf("core_temp must be read-only: access %d unit %q", o.Access, o.Unit)
+	}
+	if o := byPath["flows.fee338d3.network.dst_udp_port"]; o.Access&accessWrite == 0 {
+		t.Error("a setting keeps its write bit")
 	}
 	// format tuple → name on all six, list on rate
 	for _, c := range []string{"format_code_t_scan", "format_code_rate", "format_code_sampling"} {

@@ -37,7 +37,11 @@ type dictEntry struct {
 	Max         *float64          `json:"max,omitempty"`
 	Enum        map[string]string `json:"enum,omitempty"`
 	Description string            `json:"description,omitempty"`
-	Source      string            `json:"source"`
+	// Access "R" clears the write bit: the module reports access per
+	// RESOURCE (what accepts a PUT), so a counter or a measurement inside
+	// a writable record would otherwise read RW-.
+	Access string `json:"access,omitempty"`
+	Source string `json:"source"`
 }
 
 // siblingRule takes min/max from fields the module publishes beside
@@ -143,6 +147,9 @@ func annotate(objs []consumer.Object) {
 			if e.Description != "" {
 				setMeta(o, "description", e.Description)
 				setMeta(o, "source", e.Source)
+			}
+			if e.Access == "R" {
+				o.Access &^= accessWrite
 			}
 			if len(e.Enum) > 0 {
 				keys := make([]string, 0, len(e.Enum))
