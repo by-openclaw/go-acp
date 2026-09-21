@@ -256,6 +256,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]consumer.Object, error) 
 		return nil, err
 	}
 	labelObjects(objs)
+	annotate(objs)
 	for i := range objs {
 		objs[i].Slot = slot
 	}
