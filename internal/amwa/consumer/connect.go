@@ -22,6 +22,14 @@ type ConnectRequest struct {
 	// ReceiverID is the IS-04 Receiver to drive. Required.
 	ReceiverID string
 
+	// SenderNode is the Sender's own Node (http://host:port) for the
+	// peer-to-peer case where the Sender lives on another device than
+	// the Receiver and no Registry knows either: the Controller walks
+	// that Node too and fetches the transport file from ITS IS-05,
+	// which is the only place the SDP exists. Ignored when the Sender
+	// is already in the catalogue.
+	SenderNode string
+
 	// Mode defaults to activate_immediate. Scheduled modes need When.
 	Mode is05.ActivationMode
 
@@ -89,6 +97,23 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 
 	snap, _ := c.Walk(ctx)
 
+	// The Sender may live on a Node this catalogue never saw.
+	senderSnap, senderCtrl := snap, c
+	if req.SenderID != "" && req.SenderNode != "" && !hasSender(snap, req.SenderID) {
+		sc, err := NewController(ctx, ControllerOptions{
+			Logger: c.logger, Deps: c.opts.Deps, Reporter: c.reporter,
+			NodeURL: req.SenderNode, APIVer: c.opts.APIVer,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("nmos connect: sender node %s: %w", req.SenderNode, err)
+		}
+		ss, _ := sc.Walk(ctx)
+		if !hasSender(ss, req.SenderID) {
+			return nil, fmt.Errorf("nmos connect: sender %s is on neither this catalogue nor %s", req.SenderID, req.SenderNode)
+		}
+		senderSnap, senderCtrl = ss, sc
+	}
+
 	href, err := c.connectionHref(snap, req.ReceiverID)
 	if err != nil {
 		return nil, err
@@ -122,7 +147,17 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 		patch["sender_id"] = req.SenderID
 	} else {
 		patch["sender_id"] = req.SenderID
-		sdp, err := cl.TransportFile(ctx, req.SenderID)
+		// The transport file is served by the Sender's own IS-05 — its
+		// Device's sr-ctrl control, which is the Receiver's only when
+		// both sit on one device. Asking the Receiver's IS-05 for a
+		// foreign Sender's SDP is what staged "{}" on a FusioN6 (#1114).
+		tf := cl
+		if shref, err := senderCtrl.senderConnectionHref(senderSnap, req.SenderID); err == nil {
+			if scl, err := connection.NewClient(shref); err == nil {
+				tf = scl
+			}
+		}
+		sdp, err := tf.TransportFile(ctx, req.SenderID)
 		switch {
 		case err != nil:
 			// Not fatal. A Sender on a non-RTP transport has no SDP,
@@ -132,7 +167,9 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 			c.fire(spec.SeverityWarn, "nmos_is05_no_transport_file",
 				fmt.Sprintf("sender %s served no transport file: %v", req.SenderID, err),
 				req.SenderID)
-		case strings.TrimSpace(sdp) == "":
+		case strings.TrimSpace(sdp) == "" || strings.TrimSpace(sdp) == "{}":
+			// "{}" is what a Node answers for a Sender it does not own:
+			// not an SDP, never staged.
 			c.fire(spec.SeverityWarn, "nmos_is05_empty_transport_file",
 				fmt.Sprintf("sender %s served an empty transport file", req.SenderID),
 				req.SenderID)
@@ -198,6 +235,16 @@ func (c *Controller) connectionHref(snap *CatalogueSnapshot, receiverID string) 
 			"(walk it first to see what is there)", receiverID)
 	}
 	return c.hrefForDevice(snap, deviceID, receiverID, "receiver")
+}
+
+// hasSender reports whether the catalogue lists the Sender.
+func hasSender(snap *CatalogueSnapshot, id string) bool {
+	for _, s := range snap.Senders {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // senderConnectionHref is the Sender-side twin. Same rule: the endpoint

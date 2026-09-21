@@ -2696,6 +2696,8 @@ Usage of connect:
     	unicast DNS resolver IP (implies unicast discovery)
   -sender string
     	IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver
+  -sender-node string
+    	the Sender's own Node (http://host:port) when it lives on another device than --node and no Registry knows it — the SDP is fetched from THAT Node's IS-05
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
   -when string

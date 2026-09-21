@@ -84,6 +84,10 @@ type Controller struct {
 	reporter spec.Reporter
 	client   *query.Client
 	met      *metrics.Connector
+	// opts is kept so Connect can open a second, sender-side Controller
+	// with the same logger / deps / reporter / api-ver (peer-to-peer
+	// routing across two Nodes with no Registry).
+	opts ControllerOptions
 }
 
 // Metrics returns the controller's counter set: every request it sent
@@ -100,7 +104,7 @@ func newController(opts ControllerOptions, rep spec.Reporter, client *query.Clie
 		logger = deps.Logger
 	}
 	client.HTTP.Metrics = deps.Metrics
-	return &Controller{logger: logger, reporter: rep, client: client, met: deps.Metrics}
+	return &Controller{logger: logger, reporter: rep, client: client, met: deps.Metrics, opts: opts}
 }
 
 // NewController resolves the Registry per ControllerOptions and
