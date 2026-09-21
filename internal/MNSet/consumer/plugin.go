@@ -85,8 +85,10 @@ type Plugin struct {
 	docs map[string]cachedDoc
 	// poller answers Subscribe by polling (the module has no push).
 	poller *pollwatch.Poller
-	// frameStop ends the frame-refresh loop of a frame-wide Subscribe.
+	// frameStop ends the frame-refresh loop of a frame-wide Subscribe;
+	// frameDone closes when that loop has exited.
 	frameStop context.CancelFunc
+	frameDone chan struct{}
 }
 
 // cachedDoc is one fetched document with its fetch time.
@@ -190,12 +192,13 @@ func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	was := p.slots != nil
 	p.slots = nil
-	stop := p.frameStop
-	p.frameStop = nil
+	stop, done := p.frameStop, p.frameDone
+	p.frameStop, p.frameDone = nil, nil
 	p.docs = map[string]cachedDoc{}
 	p.mu.Unlock()
 	if stop != nil {
 		stop()
+		<-done
 	}
 	if was {
 		p.Closed()
@@ -531,11 +534,12 @@ func (p *Plugin) Unsubscribe(req consumer.ValueRequest) error {
 	err := p.poller.Unsubscribe(req)
 	if p.poller.Active() == 0 {
 		p.mu.Lock()
-		stop := p.frameStop
-		p.frameStop = nil
+		stop, done := p.frameStop, p.frameDone
+		p.frameStop, p.frameDone = nil, nil
 		p.mu.Unlock()
 		if stop != nil {
 			stop()
+			<-done
 		}
 	}
 	return err
@@ -612,11 +616,14 @@ func (p *Plugin) startFrameRefresh(fn consumer.EventFunc) {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	p.frameStop = cancel
+	done := make(chan struct{})
+	p.frameStop, p.frameDone = cancel, done
 	host, port := p.host, p.port
+	every := frameRefresh
 	p.mu.Unlock()
 	go func() {
-		t := time.NewTicker(frameRefresh)
+		defer close(done)
+		t := time.NewTicker(every)
 		defer t.Stop()
 		for {
 			select {

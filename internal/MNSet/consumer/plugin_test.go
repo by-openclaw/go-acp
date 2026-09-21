@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -24,6 +25,7 @@ import (
 // without that tree.
 type module struct {
 	ts    *httptest.Server
+	mu    sync.Mutex // the handler and a test that changes the module while a watch polls
 	docs  map[string]string
 	puts  map[string]string
 	fail  map[string]int  // resource → status to answer PUT with
@@ -36,6 +38,8 @@ func newModule(t *testing.T) *module {
 	m := &module{docs: map[string]string{}, puts: map[string]string{}, fail: map[string]int{}, drop: map[string]bool{}, calls: map[string]int{}}
 	m.ts = httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		res := strings.TrimPrefix(r.URL.Path, apiPrefix)
+		m.mu.Lock()
+		defer m.mu.Unlock()
 		m.calls[r.Method+" "+res]++
 		switch r.Method {
 		case stdhttp.MethodGet:
@@ -100,6 +104,20 @@ func newModule(t *testing.T) *module {
 	m.docs["port/5"] = `{"detected_sfp_part_number":"N/A","detected_sfp_serial_number":"N/A","host_pinout":"RT","link":"down","speed":"25Gbps"}`
 	m.docs["port/7"] = `["odd/"]`
 	return m
+}
+
+// count reads a request counter while requests may be in flight.
+func (m *module) count(key string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.calls[key]
+}
+
+// setDoc changes what the module serves while requests may be in flight.
+func (m *module) setDoc(res, body string) {
+	m.mu.Lock()
+	m.docs[res] = body
+	m.mu.Unlock()
 }
 
 func (m *module) hostPort(t *testing.T) (string, int) {

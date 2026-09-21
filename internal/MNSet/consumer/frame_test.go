@@ -9,6 +9,7 @@ import (
 	stdhttp "net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -19,6 +20,7 @@ import (
 // fake module of plugin_test.go (127.0.0.1, port via SetModulePort).
 type mnsetServer struct {
 	ts      *httptest.Server
+	mu      sync.Mutex // the handler and a test that changes MN SET's answer while a refresh runs
 	devices string
 	gated   bool // /api/device wants X-AUTH-TOKEN
 	status  int  // non-zero: answer /api/device with this status and no body
@@ -29,6 +31,8 @@ func newMNSet(t *testing.T) *mnsetServer {
 	t.Helper()
 	m := &mnsetServer{}
 	m.ts = httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/authentication/login/"):
 			b, _ := io.ReadAll(r.Body)
@@ -60,6 +64,13 @@ func newMNSet(t *testing.T) *mnsetServer {
 	}))
 	t.Cleanup(m.ts.Close)
 	return m
+}
+
+// set changes MN SET's answer while a refresh may be reading it.
+func (m *mnsetServer) set(devices string, status int) {
+	m.mu.Lock()
+	m.devices, m.status = devices, status
+	m.mu.Unlock()
 }
 
 func (m *mnsetServer) hostPort(t *testing.T) (string, int) {

@@ -62,7 +62,7 @@ func TestWatchPollsAndReportsChanges(t *testing.T) {
 	}
 	// The counter moves; the document cache expires within docTTL, then
 	// the next poll sees it.
-	m.docs["flows/fee338d3"] = `{"id":"fee338d3","name":"rx","network":{"dst_ip_addr":"239.0.1.2","pkt_cnt":2}}`
+	m.setDoc("flows/fee338d3", `{"id":"fee338d3","name":"rx","network":{"dst_ip_addr":"239.0.1.2","pkt_cnt":2}}`)
 	if !waitFor(t, docTTL+3*time.Second, func() bool {
 		for _, ev := range got() {
 			if ev.Path == "flows.fee338d3.network.pkt_cnt" && ev.Value.Int == 2 {
@@ -117,7 +117,7 @@ func TestWatchErrors(t *testing.T) {
 func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	withPlan(t, fastPlan)
 	frameRefresh = 30 * time.Millisecond
-	t.Cleanup(func() { frameRefresh = 10 * time.Second })
+	t.Cleanup(func() { frameRefresh = 10 * time.Second }) // after Disconnect joined the loop
 	mod := newModule(t)
 	modHost, _ := mod.hostPort(t)
 	mn := newMNSet(t)
@@ -151,8 +151,9 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	}
 	// MN SET's list changes: the offline module comes ONLINE (but is silent
 	// → error), a module vanishes, a new one appears.
-	mn.devices = strings.Replace(deviceList(modHost), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
-	mn.devices = strings.Replace(mn.devices, `"id":"40:a3:6b:ff:ff:ff"`, `"id":"40:a3:6b:ff:ff:fe"`, 1)
+	next := strings.Replace(deviceList(modHost), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
+	next = strings.Replace(next, `"id":"40:a3:6b:ff:ff:ff"`, `"id":"40:a3:6b:ff:ff:fe"`, 1)
+	mn.set(next, 0)
 	if !waitFor(t, 3*time.Second, func() bool {
 		states := map[string]string{}
 		for _, ev := range got() {
@@ -165,7 +166,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 		t.Fatalf("frame refresh events missing: %+v", got())
 	}
 	// MN SET unreachable: the refresh warns and keeps the old table.
-	mn.status = 500
+	mn.set(next, 500)
 	host, port := mn.hostPort(t)
 	p.refreshFrame(context.Background(), host, port, fn)
 	if n, _ := p.session(); n != 3 {
@@ -217,13 +218,13 @@ func TestWatchWalksAnUnwalkedSlotOnce(t *testing.T) {
 	withPlan(t, fastPlan)
 	m := newModule(t)
 	p := connected(t, m)
-	before := m.calls["GET "]
+	before := m.count("GET ")
 	if err := p.Subscribe(consumer.ValueRequest{Slot: 0}, func(consumer.Event) {}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = p.Unsubscribe(consumer.ValueRequest{Slot: 0}) })
-	if m.calls["GET "] != before+1 {
-		t.Errorf("one walk expected at Subscribe (root GET %d → %d)", before, m.calls["GET "])
+	if got := m.count("GET "); got != before+1 {
+		t.Errorf("one walk expected at Subscribe (root GET %d → %d)", before, got)
 	}
 	p.mu.Lock()
 	_, walked := p.lastWalk[0]
