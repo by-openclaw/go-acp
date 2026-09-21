@@ -121,9 +121,13 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	mod := newModule(t)
 	modHost, _ := mod.hostPort(t)
 	mn := newMNSet(t)
-	mn.devices = deviceList(modHost) // OFFLINE 00:1b…, ONLINE 40:a3:6b:a2…, ONLINE 40:a3:6b:ff…
+	// OFFLINE 00:1b…, ONLINE 40:a3:6b:a2…, ONLINE 40:a3:6b:ff…; the offline
+	// one sits on 127.0.0.2, where nothing listens on the module port, so
+	// when it comes ONLINE its probe is refused at once — no timeout to
+	// tune, no stall under -race.
+	silent := func(list string) string { return strings.Replace(list, "10.6.40.99/24", "127.0.0.2/24", 1) }
+	mn.devices = silent(deviceList(modHost))
 	p := frameConnected(t, mod, mn, 0)
-	p.SetTimeout(200 * time.Millisecond) // a silent module must not stall a refresh
 	fn, got := collect()
 	req := consumer.ValueRequest{Slot: -1}
 	if err := p.Subscribe(req, fn); err != nil {
@@ -151,7 +155,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	}
 	// MN SET's list changes: the offline module comes ONLINE (but is silent
 	// → error), a module vanishes, a new one appears.
-	next := strings.Replace(deviceList(modHost), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
+	next := strings.Replace(silent(deviceList(modHost)), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
 	next = strings.Replace(next, `"id":"40:a3:6b:ff:ff:ff"`, `"id":"40:a3:6b:ff:ff:fe"`, 1)
 	mn.set(next, 0)
 	if !waitFor(t, 3*time.Second, func() bool {
