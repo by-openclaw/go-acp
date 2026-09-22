@@ -70,6 +70,10 @@ func runWatch(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "group filter (empty = any)")
 	label := fs.String("label", "", "label filter (requires prior walk)")
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
+	alarmFile := fs.String("alarm", "",
+		"evaluate every change against this alarm template instead of the cached one "+
+			"(.cache/alarm/<proto>/<Model@SwRev>.json, then _default.json)")
+	noAlarm := fs.Bool("no-alarm", false, "do not evaluate alarms, even when a template is cached")
 	dmLibrary := fs.String("dm-library", "",
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
 	pathFilter := fs.String("path", "",
@@ -117,6 +121,12 @@ func runWatch(ctx context.Context, args []string) error {
 		return err
 	}
 	defer cleanup()
+
+	// Alarms: the per-model template (internal/consumer/alarm) turns a
+	// change into a verdict. It is the same engine for every protocol,
+	// it reads no device, and a plant that has written no rules simply
+	// gets none — the watch is unchanged.
+	evaluator := loadAlarmEvaluator(ctx, plug, cf.protocol, *slot, *alarmFile, *noAlarm)
 
 	// Load IP-keyed disk cache for instant label/unit resolution while
 	// walk runs. Key by watchCacheKey so groups that re-use the same
@@ -377,6 +387,30 @@ func runWatch(ctx context.Context, args []string) error {
 					attrs = append(attrs, slog.String("value", v))
 				}
 				cf.eventLogger.Info("value_change", attrs...)
+			}
+
+			// One verdict per change, printed under the value line and
+			// mirrored to the structured sink with its RFC 5424 severity.
+			if evaluator != nil {
+				if tr := evaluator.Eval(host, ev); tr != nil {
+					fmt.Printf("%s  %-18s  %s\n", ev.Timestamp.Format("15:04:05"), "[alarm]", tr.String())
+					if cf.logHasSink && cf.eventLogger != nil {
+						cf.eventLogger.Info("alarm",
+							slog.String("proto", cf.protocol),
+							slog.String("dev", host),
+							slog.Int("slot", tr.Slot),
+							slog.String("path", tr.Path),
+							slog.String("severity", tr.Severity.String()),
+							slog.Int("syslog_severity", tr.Severity.Syslog()),
+							slog.String("prior", tr.Prior.String()),
+							slog.String("band", tr.Band),
+							slog.String("value", tr.Value),
+							slog.String("prev", tr.Prev),
+							slog.String("unit", tr.Unit),
+							slog.Bool("flapping", tr.Flapping),
+							slog.String("text", tr.Text))
+					}
+				}
 			}
 
 			// Matrix crosspoint events render differently —

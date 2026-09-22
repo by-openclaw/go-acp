@@ -191,6 +191,23 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 	}
 }
 
+// Explain is the verdict one value would produce on a fresh object,
+// with no hold and no flap discipline: the question an operator asks
+// while authoring a template ("what would 81 do?"). It changes no
+// state, so it can be asked about a device that is not even connected.
+//
+// A counter always answers normal: one sample cannot show a stall.
+func (e *Evaluator) Explain(ev consumer.Event) (Severity, string, *Row) {
+	row := e.tpl.RowFor(ev.Path)
+	if row == nil {
+		return Info, "", nil
+	}
+	now := e.clk.Now()
+	st := &objState{sev: Normal, band: "normal", moved: now}
+	sev, band := e.classify(row, st, ev.Value, stringOf(ev.Value), now)
+	return sev, band, row
+}
+
 // classify is the verdict for one sample, before hold and flap
 // discipline. It returns the severity and the name of the rule that
 // produced it.

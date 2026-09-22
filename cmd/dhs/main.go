@@ -187,6 +187,7 @@ var commands = []command{
 	{"validate", "decode a captured frames.jsonl through the codec offline (per ADR-0021)", helpValidate, runValidate},
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
 	{"status", "one-shot device status: session health + identity (--output json)", helpStatus, runStatus},
+	{"alarm", "read and edit the per-model alarm template (list / get / set / test / export / import)", helpAlarm, runAlarmNeedsProtocol},
 	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
 	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
 	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
@@ -343,6 +344,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	}
 	verb := rest[0]
 	rest = rest[1:]
+
+	// The alarm template is per protocol and needs no device, so the
+	// verb takes the protocol directly instead of the --protocol flag
+	// the device verbs are given below.
+	if verb == "alarm" {
+		return runAlarm(ctx, proto, rest)
+	}
 
 	c := findCommand(verb)
 	if c == nil {

@@ -62,6 +62,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0030](0030-neutral-device-monitor.md) | Neutral device monitor — actor-per-device, event-driven, per-request interval scheduler | proposed |
 | [0031](0031-event-model.md) | Event model — notification/trap/alarm, schema vs stream, OID+kind spine | proposed |
 | [0032](0032-transport-hardening.md) | Transport hardening — fuzzed decoders, gateway as protective proxy | proposed |
+| [0033](0033-alarm-template.md) | Alarm template — thresholds as per-model data, severity ladder, hysteresis, evaluated at the edge | proposed |
 
 ## ADR-0017 parking note
 

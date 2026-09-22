@@ -31,6 +31,7 @@ Ansible templates render the same shape.
 - [MNSet (consumer)](#mnset-consumer)
 - [MNSet: discover](#mnset-discover)
 - [MNSet: inventory](#mnset-inventory)
+- [Alarm template](#alarm-template)
 - [SNMP consumer](#snmp-consumer)
 - [SNMP: get](#snmp-get)
 - [SNMP: walk](#snmp-walk)
@@ -188,6 +189,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)
@@ -734,6 +736,49 @@ Usage of consumer mnset inventory:
     	per-request timeout (default 8s)
   -user string
     	MN SET login name (password from $MNSET_PASS)
+```
+
+## Alarm template
+
+`dhs consumer mnset alarm --help`
+
+```text
+dhs consumer <proto> alarm <verb> — the per-model alarm template
+
+A template says what an object's VALUE means: which band is minor,
+major or critical, what the expected value is, how long a verdict must
+hold before it is raised. It is data (.cache/alarm/<proto>/<model>.json),
+shared by every connector, and every verb below is idempotent.
+
+  list                      show the rules in force
+  get    --path P           explain the rule that covers one object
+  set    --path PATTERN …   write or replace one rule (--remove deletes it)
+  test   --path P --value V evaluate a value against the rules, no device
+  export [--out FILE]       write the template (stdout by default)
+  import FILE               install a template, reporting changed=true/false
+
+Common flags: --model <identity> (default _default, which governs every
+card of the protocol), --template FILE (bypass the cache).
+
+Rule flags on set:
+  --kind number|counter|enum|text
+  --high minor:75/72,major:80/77     high bands as severity:raise/clear
+  --low  minor:-15/-12,critical:-20  low bands
+  --normal V | ~regex                the expected value (text / enum)
+  --values 0=major,2=minor           enum value → severity
+  --severity S                       verdict for a mismatch or a stall
+  --stalled-for D                    a counter may stand still this long
+  --hold D  --clear-hold D           anti-flap: persist before adopting
+  --flap-cap N                       transitions/min before silencing
+  --text T  --source S               what an operator reads, and why
+
+Examples:
+  dhs consumer mnset alarm set --path 'port.*.sfp_ddm_info.temperature.current' \
+      --high minor:75/72,major:80/77,critical:85/82 --hold 10s \
+      --text 'SFP temperature' --source 'module DDM thresholds'
+  dhs consumer mnset alarm set --path '**.network.pkt_cnt' --kind counter \
+      --stalled-for 10s --severity major --text 'stream stopped' --source 'site rule'
+  dhs consumer mnset alarm test --path refclk.status --value 0
 ```
 
 ## SNMP consumer
@@ -1659,6 +1704,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)
@@ -1737,6 +1783,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)

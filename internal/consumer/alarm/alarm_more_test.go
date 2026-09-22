@@ -194,3 +194,46 @@ func TestUncoveredObjectAndUnreadableCounterKeepTheirState(t *testing.T) {
 		t.Errorf("pathless event = %+v", tr)
 	}
 }
+
+func TestExplainAnswersWithoutHoldOrState(t *testing.T) {
+	clk := clock.NewFake(time.Unix(1700000000, 0))
+	e := New(mustLoad(t, fusionTemplate), clk)
+	const p = "port.3.sfp_ddm_info.temperature.current"
+
+	// The hold is about raising an alarm; Explain answers what the
+	// value MEANS, which is the authoring question.
+	for _, c := range []struct {
+		value string
+		sev   Severity
+		band  string
+	}{
+		{"36.5", Normal, "normal"},
+		{"76", Minor, "high minor"},
+		{"81", Major, "high major"},
+		{"86", Critical, "high critical"},
+		{"-18", Minor, "low minor"},
+		{"-25", Critical, "low critical"},
+		{"n/a", Error, "unreadable"},
+	} {
+		sev, band, row := e.Explain(str(p, c.value))
+		if sev != c.sev || band != c.band || row == nil {
+			t.Errorf("Explain(%s) = %v %q, want %v %q", c.value, sev, band, c.sev, c.band)
+		}
+	}
+	// It changes nothing: a later Eval still starts from normal.
+	if got := e.Severity("d", 0, p); got != Info {
+		t.Errorf("Explain must not create state, severity = %v", got)
+	}
+	// An uncovered path has no row.
+	if sev, band, row := e.Explain(str("self.system.fan_speed", "4600")); row != nil || sev != Info || band != "" {
+		t.Errorf("uncovered = %v %q %v", sev, band, row)
+	}
+	// One sample cannot show a stall, so a counter reads normal.
+	if sev, _, row := e.Explain(str("flows.a.network.pkt_cnt", "12345")); sev != Normal || row == nil {
+		t.Errorf("counter = %v", sev)
+	}
+	// Drift needs no hold and answers at once.
+	if sev, band, _ := e.Explain(str("flows.a.network.dst_ip_addr", "239.0.1.2")); sev != Major || band != "drift" {
+		t.Errorf("drift = %v %q", sev, band)
+	}
+}
