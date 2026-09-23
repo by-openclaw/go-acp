@@ -107,7 +107,8 @@ verdict keeps tracking the device.
 
 ### 5. Editing is a verb, and it is idempotent
 
-`dhs consumer <proto> alarm list | get | set | test | export | import`.
+`dhs consumer <proto> alarm list | get | set | test | export | import
+| suggest`.
 `set` and `import` report `changed=true|false`; `export → import →
 export` is byte-stable. `test` evaluates a value against the rules with
 no device at all, which is how a template is authored and how a
@@ -145,6 +146,25 @@ arrive; the template is a file the play owns (`--alarm`), not cache
 state, so a second run is zero changes. `alarm-verify.yml` reports the
 plant's state read-only and fails on a watch that judges nothing.
 
+### 8. A device writes its own first draft
+
+`alarm suggest <host>` walks a device and drafts the rows the device
+itself can source: an enum whose item list names a state the industry
+calls broken, a read-only measurement whose declared range is a real
+range, an object carrying the device's own alarm metadata (ACP1's
+priority and on/off text). Objects that differ only by an index fold
+into one rule (`**.PSU.*.Fan Health *`) merged to the widest evidence.
+
+It refuses more than it writes, and says so: a writable object is a
+setting, not a symptom; an item list with nothing bad in it is a
+choice; a range that is the type's own width is not a limit. Nothing
+is invented — a state the device did not call bad stays normal, and
+every row still names its source.
+
+The draft is for a human to read and cut down, not a policy: it is why
+a plant does not type a hundred templates, and it is not a substitute
+for knowing what its own kit means.
+
 ## Consequences
 
 - One implementation, every protocol. A plant writes its policy once
@@ -172,6 +192,11 @@ plant's state read-only and fails on a watch that judges nothing.
   `alarm` verb (issue #1110 branch). Engine at 100 % coverage; worked
   example is the FusioN6 (SFP temperature bands from the module's own
   DDM thresholds, packet-counter stall, PTP lock enum, multicast drift).
+- 2026-09-23 — `alarm suggest`: a device drafts its own rows from its
+  enum item lists, declared ranges and alarm objects. Proven live —
+  the EVS Neuron shelf (214 objects → 18 sourced rules, 45 settings and
+  97 unevidenced objects refused) and a Riedel FusioN6 over mnset
+  (7183 objects → 5 rules, from the module's own SFP DDM thresholds).
 - 2026-09-23 — Prometheus + Loki + Ansible: `watch --metrics-addr`
   exports the four `dhs_alarm_*` series for every protocol, the
   structured log gained the same `device` label, and

@@ -756,6 +756,9 @@ shared by every connector, and every verb below is idempotent.
   test   --path P --value V evaluate a value against the rules, no device
   export [--out FILE]       write the template (stdout by default)
   import FILE               install a template, reporting changed=true/false
+  suggest HOST              READ THE DEVICE and draft the rules it can
+                            source itself (enum item lists, declared
+                            ranges, its own alarm objects)
 
 Common flags: --model <identity> (default _default, which governs every
 card of the protocol), --template FILE (bypass the cache).
@@ -779,6 +782,7 @@ Examples:
   dhs consumer mnset alarm set --path '**.network.pkt_cnt' --kind counter \
       --stalled-for 10s --severity major --text 'stream stopped' --source 'site rule'
   dhs consumer mnset alarm test --path refclk.status --value 0
+  dhs consumer acp2 alarm suggest 10.6.255.102 --slot 0 --out draft.json
 ```
 
 ## SNMP consumer

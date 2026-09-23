@@ -61,8 +61,10 @@ func runAlarm(ctx context.Context, proto string, args []string) error {
 		return runAlarmExport(proto, rest)
 	case "import":
 		return runAlarmImport(proto, rest)
+	case "suggest":
+		return runAlarmSuggest(ctx, proto, rest)
 	}
-	return fmt.Errorf("consumer %s alarm: unknown sub-verb %q (list, get, set, test, export, import)", proto, sub)
+	return fmt.Errorf("consumer %s alarm: unknown sub-verb %q (list, get, set, test, export, import, suggest)", proto, sub)
 }
 
 // alarmFlags are what every sub-verb needs: which template.
@@ -492,6 +494,9 @@ shared by every connector, and every verb below is idempotent.
   test   --path P --value V evaluate a value against the rules, no device
   export [--out FILE]       write the template (stdout by default)
   import FILE               install a template, reporting changed=true/false
+  suggest HOST              READ THE DEVICE and draft the rules it can
+                            source itself (enum item lists, declared
+                            ranges, its own alarm objects)
 
 Common flags: --model <identity> (default _default, which governs every
 card of the protocol), --template FILE (bypass the cache).
@@ -514,7 +519,8 @@ Examples:
       --text 'SFP temperature' --source 'module DDM thresholds'
   dhs consumer mnset alarm set --path '**.network.pkt_cnt' --kind counter \
       --stalled-for 10s --severity major --text 'stream stopped' --source 'site rule'
-  dhs consumer mnset alarm test --path refclk.status --value 0`)
+  dhs consumer mnset alarm test --path refclk.status --value 0
+  dhs consumer acp2 alarm suggest 10.6.255.102 --slot 0 --out draft.json`)
 }
 
 // loadAlarmEvaluator builds the evaluator a watch runs every change
