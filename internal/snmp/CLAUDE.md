@@ -212,6 +212,47 @@ belong in `assets/mibs/`.
 
 Do not restate ports here — read `docs/testbed.md`, per ADR-0015.
 
+## The agent as a neutral connector
+
+`internal/snmp/consumer` carries two faces of one session. The manager
+is SNMP's own shape — `get`, `walk`, `set`, `trap-listen`. `plugin.go`
+is the same session behind `consumer.Protocol`, registered like every
+other connector, so an agent answers `info`, `tree`, `export`, `watch`
+and `alarm` with no SNMP in the command line.
+
+What the neutral face decides, and why:
+
+- **Version is not asked for.** v2c is tried, then v1, because an agent
+  that speaks only v1 answers a v2c request with silence — which looks
+  exactly like a device that is down. The IRDs in this lab are v1.
+- **One slot.** An agent is a box, so slot 0 is present and nothing
+  else exists.
+- **The model is the system group plus the agent's own enterprise
+  branch**, the one its `sysObjectID` names. Walking all of MIB-2 on a
+  device with 26 000 objects to reach the six that matter is not a
+  device model, it is a denial of service on yourself.
+- **Paths are the MIB's hierarchy, made readable**: each ancestor
+  contributes a segment with the parent's shared head trimmed
+  (`dr5000ChannelConfigurationInputSatInterface` →
+  `ateme.dr5000.Channel.Configuration.Input.Sat.Interface`), the
+  universal head (`org.dod.internet.private.enterprises`, `…mgmt.mib-2`)
+  dropped, and a table row's index last. The MIB's own name works as
+  an alias, so `sysLocation`, `system.Location` and the number all
+  resolve.
+- **No walk to resolve a name** (`PathNative`): the compiled table is
+  the map, so `get --path` on a cold connection is one GET.
+- **Values carry their enumeration's word** — `rf1`, `hdsdi`, `true` —
+  because that is what a manual prints, what an operator says, and what
+  an alarm rule is written against. A SET takes the same word.
+- **Writes go out on their own session.** An agent's write community is
+  rarely its read one, and SNMP carries the community in every PDU.
+  Both come from the environment (`SNMP_COMMUNITY`,
+  `SNMP_WRITE_COMMUNITY`) like every other secret here.
+- **A watch polls** (ADR-0030 through `pollwatch`): notifications are
+  the agent's choice, not the manager's, so a watch that waits for
+  traps watches nothing. `--interval` is the operator's cadence, and
+  `--path` scopes both the poll plan and the walk that builds it.
+
 ## Polling policy
 
 Prefer notification over polling. Where polling is unavoidable, group OIDs

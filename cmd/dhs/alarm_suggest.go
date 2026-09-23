@@ -21,9 +21,16 @@ func runAlarmSuggest(ctx context.Context, proto string, args []string) error {
 	cf := addCommonFlags(fs)
 	cf.protocol = proto
 	slot := fs.Int("slot", -1, "walk this slot (-1 = every present slot)")
+	scope := fs.String("path", "",
+		"draft rules for this branch only, for a device too large to walk whole "+
+			"(connectors that can scope a walk; snmp does)")
 	out := fs.String("out", "", "write the draft here (default: stdout)")
 	install := fs.Bool("install", false,
 		"install the draft into the cache instead of printing it (reports changed=true/false)")
+	writable := fs.Bool("include-writable", false,
+		"judge writable objects too — for a device that marks its status "+
+			"objects read-write (ATEME's IRD MIB does), where the default "+
+			"rule would hide the very values you want alarmed")
 	model := fs.String("model", "",
 		"identity to file the draft under (default: whatever the device reports)")
 
@@ -41,7 +48,7 @@ func runAlarmSuggest(ctx context.Context, proto string, args []string) error {
 	}
 	defer cleanup()
 
-	objs, err := walkForSuggest(ctx, plug, *slot)
+	objs, err := walkForSuggest(ctx, plug, *slot, *scope)
 	if err != nil {
 		return err
 	}
@@ -53,7 +60,11 @@ func runAlarmSuggest(ctx context.Context, proto string, args []string) error {
 		id = alarm.DefaultName
 	}
 
-	tpl, rep := alarm.Suggest(objs, proto, id)
+	var opts []alarm.Option
+	if *writable {
+		opts = append(opts, alarm.IncludeWritable())
+	}
+	tpl, rep := alarm.Suggest(objs, proto, id, opts...)
 	fmt.Fprintf(os.Stderr, "%s — %s\n", host, rep)
 	if len(tpl.Rows) == 0 {
 		return fmt.Errorf("consumer %s alarm suggest: this device declares nothing a rule can be sourced from — write the rules by hand (`alarm set`) with a source naming where the numbers come from", proto)
@@ -90,7 +101,20 @@ func runAlarmSuggest(ctx context.Context, proto string, args []string) error {
 
 // walkForSuggest reads the tree the draft is built from: one slot, or
 // every slot the device says is present.
-func walkForSuggest(ctx context.Context, plug consumer.Protocol, slot int) ([]consumer.Object, error) {
+func walkForSuggest(ctx context.Context, plug consumer.Protocol, slot int, scope string) ([]consumer.Object, error) {
+	if scope != "" {
+		w, ok := plug.(interface {
+			WalkUnder(context.Context, string) ([]consumer.Object, error)
+		})
+		if !ok {
+			return nil, fmt.Errorf("--path: this connector walks a slot, not a branch")
+		}
+		objs, err := w.WalkUnder(ctx, scope)
+		if err != nil {
+			return nil, err
+		}
+		return withSlot(objs, max(slot, 0)), nil
+	}
 	if slot >= 0 {
 		objs, err := plug.Walk(ctx, slot)
 		if err != nil {

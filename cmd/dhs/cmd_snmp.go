@@ -25,31 +25,44 @@ import (
 )
 
 // runSNMPConsumer dispatches `dhs consumer snmp <verb> [args]`.
-func runSNMPConsumer(ctx context.Context, args []string) error {
+// runSNMPConsumer answers the verbs that are SNMP's own shape and says
+// so; handled=false hands the rest to the neutral dispatcher, where the
+// registered plugin answers tree / export / watch / alarm like any
+// other connector.
+func runSNMPConsumer(ctx context.Context, args []string) (bool, error) {
 	var lf *logFlags
 	lf, args = stripLogFlags(args)
 	ctx = withLogFlags(ctx, lf)
 
 	if len(args) == 0 || isHelpToken(args[0]) {
 		printSNMPConsumerHelp()
-		return nil
+		return true, nil
 	}
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
 	case "get":
-		return runSNMPGet(ctx, rest)
+		// get / set exist in both shapes. SNMP's own speaks OIDs and
+		// MIB names (--oid sysDescr.0); the neutral one speaks the
+		// paths a walk produced (--path ateme.dr5000.…). Whichever the
+		// operator named is the one they meant.
+		if namesAPath(rest) {
+			return false, nil
+		}
+		return true, runSNMPGet(ctx, rest)
 	case "walk":
-		return runSNMPWalk(ctx, rest)
+		return true, runSNMPWalk(ctx, rest)
 	case "set":
-		return runSNMPSet(ctx, rest)
+		if namesAPath(rest) {
+			return false, nil
+		}
+		return true, runSNMPSet(ctx, rest)
 	case "trap-listen", "listen":
-		return runSNMPTrapListen(ctx, rest)
+		return true, runSNMPTrapListen(ctx, rest)
 	case "validate":
-		return runValidate(ctx, append([]string{"--protocol", "snmp"}, rest...))
+		return true, runValidate(ctx, append([]string{"--protocol", "snmp"}, rest...))
 	}
-	return fmt.Errorf(
-		"consumer snmp: unknown verb %q (expected: get | walk | set | trap-listen | validate)", verb)
+	return false, nil
 }
 
 // runSNMPProducer dispatches `dhs producer snmp <verb> [args]`.
@@ -488,4 +501,16 @@ NOTE
   Every trap destination on the devices in docs/testbed.md currently
   points at an address that no longer exists, so they emit to nobody.
   ` + "`trap`" + ` is how a receiver is proven before anything depends on it.`)
+}
+
+// namesAPath reports whether the operator addressed the object the
+// neutral way — by the path or the label a walk produced.
+func namesAPath(args []string) bool {
+	for _, a := range args {
+		if a == "--path" || a == "-path" || a == "--label" || a == "-label" ||
+			strings.HasPrefix(a, "--path=") || strings.HasPrefix(a, "--label=") {
+			return true
+		}
+	}
+	return false
 }

@@ -48,6 +48,7 @@ import (
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
 	_ "dhs/internal/snell-rollcall/consumer"
+	_ "dhs/internal/snmp/consumer"
 	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
@@ -325,7 +326,12 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runNMOSConsumer(ctx, rest)
 	}
 	if proto == "snmp" {
-		return runSNMPConsumer(ctx, rest)
+		// get / walk / set / trap-listen / validate are SNMP's own
+		// shape; every other verb is the neutral one, answered by the
+		// registered plugin (tree, export, watch, alarm, …).
+		if handled, err := runSNMPConsumer(ctx, rest); handled {
+			return err
+		}
 	}
 	if proto == "mnset" {
 		// discover / inventory are mnset-only; every other verb is generic.

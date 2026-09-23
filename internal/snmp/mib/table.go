@@ -160,6 +160,20 @@ func (t *Table) pick(rows []int, prefer []string) *Object {
 	return &t.objs[rows[0]]
 }
 
+// Under lists every object at or below a prefix, in OID order. It is
+// how a caller builds its own index of a device's branch — the names
+// under one enterprise root — without parsing a MIB at runtime.
+func (t *Table) Under(prefix codec.OID) []Object {
+	var out []Object
+	for i := range t.objs {
+		if t.objs[i].OID.HasPrefix(prefix) {
+			out = append(out, t.objs[i])
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].OID.Compare(out[j].OID) < 0 })
+	return out
+}
+
 // Lookup finds the object o is, or the deepest one it is under, and the
 // arcs left over — a column's instance index, or nothing for a scalar
 // named exactly. It returns nil when no row is a prefix of o.

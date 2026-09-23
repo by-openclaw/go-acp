@@ -42,6 +42,7 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
 | **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
 | **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
+| **ATEME Kyrion DR5000** (IRD) | `10.6.255.114` | SNMP v1 `:161` · HTTP `:80` (Flex UI) | `snmp` ✅ polled + controlled live |
 | **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP v1 **and** v2c `:161` · 8 trap destinations `:162` | `snmp` ✅ polled live |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
@@ -87,6 +88,49 @@ Only `ACP2_TEST_HOST` among these has an integration gate today. Probel SW-P-08,
 NMOS and the REST API have no `*_TEST_HOST` env var, so three of the four
 services this one Neuron offers cannot yet be driven at a real device — see
 "Integration tiers" below.
+
+### ATEME Kyrion DR5000 — the IRD that ships its own MIB
+
+`10.6.255.114`, serial 1410-00596, `sysObjectID 1.3.6.1.4.1.27338.5.2.2`
+(ATEME, IANA enterprise 27338). SNMP **v1** on 161, read community
+`public`, write community `private` (a write on `public` answers
+`noAccess`, which is the agent behaving correctly).
+
+**The MIB comes from the device.** The Kyrion serves it over HTTP, so
+the copy always matches the firmware in front of you:
+
+```
+http://10.6.255.114/ATEME-DR5000-MIB.smi
+http://10.6.255.114/ATEME-DR5000-MIB-Changelog.txt
+```
+
+Both are committed to `by-protocol/mib` under `ird/DR5000/`. The paths
+are not linked from the Flex UI's HTML — they are inside the
+`DR5000-*.swf` (zlib-compressed; decompress and grep for `.smi`).
+
+As found on 2026-09-23, locked to an MPTS and decoding one service:
+
+| What | Object | Value |
+|---|---|---|
+| Input | `ateme.dr5000.Channel.Configuration.Input.Sat.Interface` | `rf1` |
+| Demod | `…Input.Sat.{Mode,SymbolRate,DownlinkFrequency}` | DVB-S, 27500, 10873000 kHz (LNB LO 9750000) |
+| Lock | `ateme.dr5000.Status.Input.Sat.Locked` | `true`, SNR 71, margin 10, BER 4699, power −37 |
+| Service list | `…Status.TsDescriptor.Program.ServiceName.N` | 128 rows, one per service in the MPTS |
+| Selected | `…Status.TsDescriptor.Program.Selected.N` + `…Decode.CurrentProgram.Id` | row 1, programme 8001 |
+| Selection mode | `…Configuration.Composition.Mode` | `automatic` (`autoservice` / `pidlocked` also defined) |
+| Preferred service | `…Composition.Service.{Primary,Secondary}ServiceId` | 0 = any |
+| Decoded | `…Decode.CurrentProgram.Video.MainFormat` | `sdpal720x576i25` (625) |
+| SDI out | `…Configuration.Output.Mapping.Connector{1,2}` | `hdsdi` / `autosdi` (`sdsdi` also defined) |
+
+**Scale.** ~26 000 objects, most of them the 4096-row programme stream
+table under `Status.TsDescriptor` — a whole-device walk takes minutes
+over v1 GETNEXT, so scope it (`--path ateme.dr5000.Status.Input`).
+
+**Quirk worth knowing: the MIB marks its *status* objects
+`read-write`** (`dr5000StatusInputSatLocked` and friends). Nothing can
+be written to them usefully; it means a tool that treats "writable" as
+"a setting" will skip the whole Status branch — `alarm suggest` needs
+`--include-writable` on this device.
 
 ### IRD satellite receivers — SNMP only
 

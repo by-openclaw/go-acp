@@ -295,3 +295,42 @@ func TestAnIndexedRuleIsNotNamedAfterOneInstance(t *testing.T) {
 		t.Errorf("report = %s", rep)
 	}
 }
+
+func TestIncludeWritableIsTheOperatorsCall(t *testing.T) {
+	// Some devices mark everything read-write, measurements included —
+	// the ATEME IRD declares its whole Status branch that way. The
+	// default rule would hide exactly what wants alarming, so the
+	// operator says so explicitly and the report tells them the flag
+	// exists.
+	o := obj([]string{"Status", "Reference", "Lock"}, consumer.KindEnum)
+	o.EnumItems = []string{"Locked", "Unlocked"}
+	o.Access = 3 // read + write, as that MIB declares it
+
+	tpl, rep := Suggest([]consumer.Object{o}, "snmp", "DR5000")
+	if rep.Writable != 1 || len(tpl.Rows) != 1 {
+		t.Fatalf("default = %s, rows %d", rep, len(tpl.Rows))
+	}
+	if !strings.Contains(rep.String(), "--include-writable") {
+		t.Errorf("the report must name the way out: %q", rep.String())
+	}
+
+	tpl, rep = Suggest([]consumer.Object{o}, "snmp", "DR5000", IncludeWritable())
+	if rep.Writable != 0 || len(tpl.Rows) != 2 { // the rule + the catch-all
+		t.Fatalf("with the flag = %s, rows %d", rep, len(tpl.Rows))
+	}
+	row := tpl.RowFor("Status.Reference.Lock")
+	if row == nil || row.Kind != KindEnum || row.Values["Unlocked"] != "critical" {
+		t.Errorf("row = %+v", row)
+	}
+
+	// And what it still refuses: a true/false object says nothing about
+	// which one is good. "Locked = false" is a fault, "Multistream
+	// enabled = false" is a Tuesday, and the item list cannot tell them
+	// apart — so no rule is written for either.
+	b := obj([]string{"Status", "Input", "Sat", "Locked"}, consumer.KindEnum)
+	b.EnumItems = []string{"true", "false"}
+	tpl, rep = Suggest([]consumer.Object{b}, "snmp", "DR5000", IncludeWritable())
+	if rep.NoEvidence != 1 || len(tpl.Rows) != 1 {
+		t.Errorf("a boolean is not evidence: %s, rows %d", rep, len(tpl.Rows))
+	}
+}

@@ -300,6 +300,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 
+	// SNMP communities are passwords: from the environment, like every
+	// other secret here, so they stay out of shell history and ps.
+	// SNMP_COMMUNITY reads, SNMP_WRITE_COMMUNITY writes (an agent's
+	// write community is rarely its read one).
+	if p, ok := plug.(interface{ SetCommunity(read, write string) }); ok {
+		if r, w := os.Getenv("SNMP_COMMUNITY"), os.Getenv("SNMP_WRITE_COMMUNITY"); r != "" || w != "" {
+			p.SetCommunity(r, w)
+		}
+	}
+
 	// Transport selection is plugin-specific; cast when possible and
 	// apply. Protocols that don't expose SetTransport just ignore it.
 	if tcfg, ok := plug.(interface{ SetTransport(acp1.TransportKind) }); ok {

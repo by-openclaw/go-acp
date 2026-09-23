@@ -46,6 +46,19 @@ var (
 	}
 )
 
+// Option tunes what counts as evidence.
+type Option func(*config)
+
+type config struct{ writable bool }
+
+// IncludeWritable stops a writable object from being dismissed as a
+// setting. Some devices mark everything read-write, measurements
+// included — an ATEME IRD declares its whole Status branch that way —
+// and on those the default rule hides exactly what an operator wants
+// alarmed. It is an operator's statement about their device, not a
+// guess this package makes on its own.
+func IncludeWritable() Option { return func(c *config) { c.writable = true } }
+
 // Report says what Suggest did and, more usefully, what it would not
 // do: an operator reading a generated template needs to know which
 // objects were left unjudged and why.
@@ -59,10 +72,13 @@ type Report struct {
 
 // String renders the report as the one line a CLI prints.
 func (r Report) String() string {
+	writable := fmt.Sprintf("%d writable setting(s) skipped", r.Writable)
+	if r.Writable > 0 {
+		writable += " (--include-writable if this device marks its status objects read-write)"
+	}
 	return fmt.Sprintf(
-		"%d object(s): %d rule(s) (%d object(s) folded into indexed rules), "+
-			"%d writable setting(s) skipped, %d without evidence",
-		r.Objects, r.Rows, r.Merged, r.Writable, r.NoEvidence)
+		"%d object(s): %d rule(s) (%d object(s) folded into indexed rules), %s, %d without evidence",
+		r.Objects, r.Rows, r.Merged, writable, r.NoEvidence)
 }
 
 // Suggest builds a draft template from a walked tree. model and proto
@@ -82,7 +98,11 @@ func (r Report) String() string {
 //
 // What never does: anything writable (a setting is a choice, not a
 // symptom), and anything the device said nothing about.
-func Suggest(objs []consumer.Object, proto, model string) (*Template, Report) {
+func Suggest(objs []consumer.Object, proto, model string, opts ...Option) (*Template, Report) {
+	var cfg config
+	for _, o := range opts {
+		o(&cfg)
+	}
 	var rep Report
 	type draft struct {
 		row   Row
@@ -95,7 +115,7 @@ func Suggest(objs []consumer.Object, proto, model string) (*Template, Report) {
 			continue
 		}
 		rep.Objects++
-		if o.Access&2 != 0 { // write bit
+		if o.Access&2 != 0 && !cfg.writable { // write bit
 			rep.Writable++
 			continue
 		}

@@ -74,6 +74,9 @@ func runWatch(ctx context.Context, args []string) error {
 		"evaluate every change against this alarm template instead of the cached one "+
 			"(.cache/alarm/<proto>/<Model@SwRev>.json, then _default.json)")
 	noAlarm := fs.Bool("no-alarm", false, "do not evaluate alarms, even when a template is cached")
+	interval := fs.Duration("interval", 0,
+		"how often a POLLED connector re-reads each object (snmp, and any "+
+			"connector with no push channel); ignored by protocols that announce")
 	metricsAddr := fs.String("metrics-addr", "",
 		"serve Prometheus /metrics + /snapshot.json on this address while watching "+
 			"(dhs_alarm_* verdicts and dhs_connector_* traffic, labelled proto + device)")
@@ -129,6 +132,17 @@ func runWatch(ctx context.Context, args []string) error {
 	// change into a verdict. It is the same engine for every protocol,
 	// it reads no device, and a plant that has written no rules simply
 	// gets none — the watch is unchanged.
+	// A poll cadence is the operator's, not the connector's: an IRD
+	// that is watched every 2 s during a fault hunt is watched every
+	// 60 s the rest of the week, and no dictionary can know which.
+	if *interval > 0 {
+		p, ok := plug.(interface{ SetPollInterval(time.Duration) })
+		if !ok {
+			return fmt.Errorf("--interval: %s announces its changes; there is no poll to pace", cf.protocol)
+		}
+		p.SetPollInterval(*interval)
+	}
+
 	evaluator := loadAlarmEvaluator(ctx, plug, cf.protocol, *slot, *alarmFile, *noAlarm)
 	meter := &alarmMeter{}
 

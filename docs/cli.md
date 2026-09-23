@@ -158,6 +158,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -1685,6 +1686,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -1764,6 +1766,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
