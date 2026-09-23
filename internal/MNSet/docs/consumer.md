@@ -36,7 +36,13 @@ it); a token-gated MN SET is logged into with `$MNSET_USER` /
 dictionary's poll plan (`dm/fusion6.json` → `poll`: which leaves, how
 often — stream counters 15 s, telemetry/PTP/links 10 s, SFP/temperature
 30 s, configuration 60 s) expanded over the slot's tree and run by the
-ADR-0030 monitor; only changes are printed. `--path P` narrows the plan
+ADR-0030 monitor; only changes are printed. The health leaves (packet
+counters and rates, sequence errors, node telemetry, refclk status and
+locked interface, port link, SFP DDM currents, core temperature, fan
+speed) carry `on_change: false`: every sample is published, marked as a
+repeat, so the alarm engine sees a condition that PERSISTS (a counter
+still stopped, a link still down) while the display still shows changes
+only. `--path P` narrows the plan
 to that subtree; `--slot -1` (the default) covers every present slot of
 a frame. On a frame (MN SET host) the watch also re-reads MN SET's
 device list every 10 s and prints slot events (`slot` path: present /
@@ -44,6 +50,29 @@ error / no_card / removed) when a module appears, vanishes or falls
 silent. Leaves of one record polled in the same 2 s cost one GET.
 Events the module raises itself (no signal, PTP, temperature) travel by
 its syslog (runbook §6).
+
+## Alarms
+
+`watch` judges each value against the per-model alarm template
+(ADR-0033) and prints one `[alarm]` line per verdict change, with its
+RFC 5424 severity on the structured sink. The reference template for
+this module is tracked at `internal/MNSet/alarm/fusion6.alarm.json`;
+install it once per site:
+
+```
+dhs consumer mnset alarm import internal/MNSet/alarm/fusion6.alarm.json     --model FusioN6@0x68cd783f          # changed=true, then changed=false
+dhs consumer mnset alarm list --model FusioN6@0x68cd783f
+dhs consumer mnset alarm test --path refclk.status --value 0
+dhs consumer mnset watch <host> --slot 1            # --no-alarm to silence
+```
+
+It carries four rows, each naming its source: SFP temperature and
+supply voltage for cage 3 (bands read from that optic's own DDM
+thresholds — another part number publishes other numbers and needs its
+own row), PTP lock (`refclk.status` 3 = locked), and the e1 media link.
+Thresholds are site data, so the installed copy lives in the cache
+bucket (`.cache/alarm/mnset/`, ADR-0020) and `alarm set` edits it in
+place.
 
 ## Path grammar
 

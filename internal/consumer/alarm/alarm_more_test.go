@@ -237,3 +237,18 @@ func TestExplainAnswersWithoutHoldOrState(t *testing.T) {
 		t.Errorf("drift = %v %q", sev, band)
 	}
 }
+
+func TestEnumRowMayNameOnlyTheGoodValue(t *testing.T) {
+	// "locked, or not": no per-value table, just the value that means
+	// locked. Every other value takes the row's severity.
+	clk := clock.NewFake(time.Unix(1700000000, 0))
+	e := New(mustLoad(t, `{"model":"m","rows":[{"match":"refclk.status","kind":"enum","normal":"3","severity":"major","source":"observed"}]}`), clk)
+	if sev, _, _ := e.Explain(str("refclk.status", "3")); sev != Normal {
+		t.Errorf("locked = %v", sev)
+	}
+	for _, v := range []string{"0", "2", "9"} {
+		if sev, band, _ := e.Explain(str("refclk.status", v)); sev != Major || band != "value" {
+			t.Errorf("status %q = %v %q", v, sev, band)
+		}
+	}
+}

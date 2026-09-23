@@ -368,8 +368,10 @@ func ruleOf(r alarm.Row) string {
 		}
 		sort.Strings(keys)
 		parts := make([]string, 0, len(keys)+1)
+		// A row may name the good value instead of tabulating them all
+		// ("locked, or not"); say what happens to the others.
 		if r.Normal != "" {
-			parts = append(parts, "normal="+r.Normal)
+			parts = append(parts, "expect "+r.Normal+", else "+sevOr(r.Severity))
 		}
 		for _, k := range keys {
 			parts = append(parts, k+"="+r.Values[k])

@@ -54,7 +54,9 @@ const (
 	// stops. A decrease is a wrap or a reset, not a stall (the FusioN6
 	// packet counters are 32-bit and do wrap).
 	KindCounter Kind = "counter"
-	// KindEnum maps listed values to severities; anything else is normal.
+	// KindEnum maps listed values to severities. A row may instead (or
+	// also) name the good value in Normal, and then every other value
+	// takes the row's Severity — "locked, or not" needs no table.
 	KindEnum Kind = "enum"
 	// KindText compares the value with Normal, literally or as a
 	// regular expression when Normal starts with "~". This is the
@@ -213,8 +215,11 @@ func (t *Template) Validate() error {
 				return fmt.Errorf("alarm: row %d (%s): %w", i, r.Match, err)
 			}
 		}
-		if r.Kind == KindEnum && len(r.Values) == 0 {
-			return fmt.Errorf("alarm: row %d (%s) is an enum rule with no values", i, r.Match)
+		// An enum row says what the values mean, either by mapping them
+		// (0=major) or by naming the good one (normal=3, anything else
+		// takes the row's severity). Neither is a rule.
+		if r.Kind == KindEnum && len(r.Values) == 0 && r.Normal == "" {
+			return fmt.Errorf("alarm: row %d (%s) is an enum rule with neither values nor a normal value", i, r.Match)
 		}
 		if r.Kind == KindText {
 			if r.Normal == "" {

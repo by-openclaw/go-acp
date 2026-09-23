@@ -1,0 +1,48 @@
+{
+ "model": "FusioN6@0x68cd783f",
+ "protocol": "mnset",
+ "rows": [
+  {
+   "match": "port.3.sfp_ddm_info.temperature.current",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 80, "clear": 77},
+    {"severity": "critical", "raise": 85, "clear": 82}
+   ],
+   "low": [
+    {"severity": "minor", "raise": -10, "clear": -7},
+    {"severity": "critical", "raise": -15, "clear": -12}
+   ],
+   "hold": "30s",
+   "text": "media SFP temperature (cage 3)",
+   "source": "the module's own DDM thresholds for this optic: high_warning 80, high_alarm 85, low_warning -10, low_alarm -15 (GSS-MPO250-SRC, read 2026-09-23). Another optic publishes its own numbers, so a cage with a different part needs its own row."
+  },
+  {
+   "match": "port.3.sfp_ddm_info.vcc.current",
+   "kind": "number",
+   "high": [{"severity": "critical", "raise": 3.5, "clear": 3.45}],
+   "low": [{"severity": "critical", "raise": 3.1, "clear": 3.15}],
+   "hold": "30s",
+   "text": "media SFP supply voltage (cage 3)",
+   "source": "the module's own DDM thresholds for this optic: low_alarm 3.10, high_alarm 3.50 (read 2026-09-23)"
+  },
+  {
+   "match": "refclk.status",
+   "kind": "enum",
+   "normal": "3",
+   "hold": "30s",
+   "severity": "major",
+   "text": "PTP lock",
+   "source": "3 is the value the module reports while locked to the grandmaster (observed on the lab module, streams flowing). Any other value is not locked; the manual's meaning for each code is not in the REST API, so no code is given its own severity here."
+  },
+  {
+   "match": "telemetry.node.interfaces.e1.link_status",
+   "kind": "text",
+   "normal": "up",
+   "severity": "critical",
+   "hold": "5s",
+   "text": "media interface e1 (RED) link",
+   "source": "e1 carries every RED-leg stream; the module reports up/down on it"
+  }
+ ]
+}
