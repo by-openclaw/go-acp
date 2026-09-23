@@ -62,6 +62,14 @@ const (
 	// regular expression when Normal starts with "~". This is the
 	// drift check: the value the plant's source of truth expects.
 	KindText Kind = "text"
+	// KindInfo tracks an object and never alarms on it. A device's
+	// model defines thousands of objects and a plant writes rules for
+	// a handful; the rest are not invisible, they are INFO — present
+	// in the view, carrying their value, with no severity. A template
+	// ends with a catch-all ("**") of this kind so every object the
+	// device defines is accounted for, which is what an operator
+	// expects from a monitoring system.
+	KindInfo Kind = "info"
 )
 
 // Band is one rung on one side of normal.
@@ -198,7 +206,7 @@ func (t *Template) Validate() error {
 			if len(r.Low) == 0 && len(r.High) == 0 {
 				return fmt.Errorf("alarm: row %d (%s) is a number rule with no band", i, r.Match)
 			}
-		case KindCounter, KindEnum, KindText:
+		case KindCounter, KindEnum, KindText, KindInfo:
 		default:
 			return fmt.Errorf("alarm: row %d (%s): unknown kind %q", i, r.Match, r.Kind)
 		}

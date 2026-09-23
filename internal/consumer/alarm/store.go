@@ -21,6 +21,28 @@ import (
 // DefaultName is the protocol-wide fallback template's file name.
 const DefaultName = "_default"
 
+// CatchAll is the row every template ends with: the objects no rule
+// names. They are tracked and shown as info, never alarmed.
+const CatchAll = "**"
+
+// Everything is the template a device gets when a plant has written
+// none: every object its model defines is in the view, carrying its
+// value, with no severity. A monitoring system that shows only what
+// someone remembered to configure is how an unwatched object goes
+// unnoticed for a year.
+func Everything() *Template {
+	return &Template{
+		Model: DefaultName,
+		Rows: []Row{{
+			Match: CatchAll,
+			Kind:  KindInfo,
+			Text:  "no rule — reported, never alarmed",
+			Source: "every object the device's model defines; " +
+				"a plant that writes rules replaces this row's scope, it does not remove it",
+		}},
+	}
+}
+
 // Dir is where one protocol's templates live under a cache root.
 func Dir(cacheRoot, proto string) string {
 	return filepath.Join(cacheRoot, "alarm", sanitizeSeg(proto))

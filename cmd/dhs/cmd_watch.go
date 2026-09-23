@@ -329,9 +329,9 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 
 	fmt.Println("watching — Ctrl-C to stop")
-	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  value\n",
-		"time", "oid", "path", "label", "acc", "fr")
-	fmt.Println(strings.Repeat("-", 117))
+	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  value\n",
+		"time", "oid", "path", "label", "acc", "fr", "sev")
+	fmt.Println(strings.Repeat("-", 127))
 
 	// prevFrame remembers the last frame-status slice so we can emit
 	// per-slot deltas instead of dumping the full 31-slot strip on every
@@ -441,6 +441,15 @@ func runWatch(ctx context.Context, args []string) error {
 				reportAlarm(evaluator.Eval(host, ev), host, cf, meter)
 			}
 
+			// Every object carries a verdict, and an object no rule
+			// names carries "info": the device's model defines the
+			// view, a plant's rules only colour it. With no evaluator
+			// there is nothing to say, and the column says that.
+			sev := "-"
+			if evaluator != nil {
+				sev = evaluator.Severity(host, ev.Slot, ev.Path).String()
+			}
+
 			// Matrix crosspoint events render differently —
 			// target/sources/disposition replace the single value
 			// column.
@@ -485,24 +494,26 @@ func runWatch(ctx context.Context, args []string) error {
 					fr = src
 				}
 				if prevFrame == nil {
-					fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+					fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s\n",
 						ts,
 						truncate(oid, 18),
 						truncate(ev.Path, 30),
 						truncate(label, 20),
 						accessStr(ev.Access),
 						fr,
+						sev,
 						"baseline "+formatFrameStatus(cur),
 					)
 				} else {
 					for _, c := range frameStatusDelta(prevFrame, cur) {
-						fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+						fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s\n",
 							ts,
 							truncate(oid, 18),
 							truncate(ev.Path, 30),
 							truncate(label, 20),
 							accessStr(ev.Access),
 							fr,
+							sev,
 							c,
 						)
 					}
@@ -538,13 +549,14 @@ func runWatch(ctx context.Context, args []string) error {
 			if fr == "" {
 				fr = src
 			}
-			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s%s%s\n",
+			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s%s%s\n",
 				ev.Timestamp.Format("15:04:05"),
 				oid,
 				ev.Path,
 				truncate(label, 20),
 				accessStr(ev.Access),
 				fr,
+				sev,
 				valStr,
 				descTag,
 				changesTag,

@@ -37,8 +37,13 @@ func TestSuggestReadsTheDevicesOwnWords(t *testing.T) {
 	if err := tpl.Validate(); err != nil {
 		t.Fatalf("a draft the engine would refuse is not a draft: %v", err)
 	}
-	if rep.Objects != 3 || rep.Rows != 2 || rep.Merged != 1 {
+	// Two sourced rules, plus the catch-all that keeps the rest of the
+	// model in the view as info.
+	if rep.Objects != 3 || rep.Rows != 3 || rep.Merged != 1 {
 		t.Fatalf("report = %s", rep)
+	}
+	if last := tpl.Rows[len(tpl.Rows)-1]; last.Match != CatchAll || last.Kind != KindInfo {
+		t.Errorf("a draft must end with the catch-all: %+v", last)
 	}
 
 	status := tpl.RowFor("ROOT.PSU.7.Status")
@@ -95,8 +100,14 @@ func TestSuggestLeavesAloneWhatTheDeviceDidNotSay(t *testing.T) {
 	bare := obj([]string{"ROOT", "Something"}, consumer.KindFloat)
 
 	tpl, rep := Suggest([]consumer.Object{writable, choice, noGood, wideOpen, backwards, text, bare}, "acp2", "m")
-	if len(tpl.Rows) != 0 {
-		t.Fatalf("nothing here is evidence: %+v", tpl.Rows)
+	if len(tpl.Rows) != 1 || tpl.Rows[0].Kind != KindInfo {
+		t.Fatalf("nothing here is evidence, so only the catch-all is left: %+v", tpl.Rows)
+	}
+	// And nothing is dropped: every one of them is still in the view.
+	for _, o := range []consumer.Object{writable, choice, wideOpen, text} {
+		if row := tpl.RowFor(strings.Join(o.Path, ".")); row == nil || row.Kind != KindInfo {
+			t.Errorf("%v fell out of the view: %+v", o.Path, row)
+		}
 	}
 	if rep.Writable != 1 || rep.NoEvidence != 6 {
 		t.Errorf("report = %s", rep)
@@ -143,9 +154,10 @@ func TestSuggestUsesTheDevicesOwnAlarmObject(t *testing.T) {
 	if tpl.RowFor("alarm.PSU Fail").Values["Failed"] != "major" {
 		t.Errorf("priority 0 = %+v", tpl.Rows[0].Values)
 	}
-	// An alarm object the device gave no states for: nothing to judge.
+	// An alarm object the device gave no states for: nothing to judge,
+	// so it falls to the catch-all like anything else.
 	o.EnumItems = nil
-	if tpl, _ := Suggest([]consumer.Object{o}, "acp1", "x"); len(tpl.Rows) != 0 {
+	if tpl, _ := Suggest([]consumer.Object{o}, "acp1", "x"); len(tpl.Rows) != 1 {
 		t.Errorf("stateless alarm object = %+v", tpl.Rows)
 	}
 }
@@ -201,7 +213,7 @@ func TestSuggestSkipsWhatIsNotAnObject(t *testing.T) {
 	pathless := consumer.Object{Label: "orphan", Kind: consumer.KindEnum, EnumItems: []string{"OK", "Error"}}
 
 	tpl, rep := Suggest([]consumer.Object{marker, pathless}, "acp2", "m")
-	if len(tpl.Rows) != 0 || rep.Objects != 0 {
+	if len(tpl.Rows) != 1 || rep.Objects != 0 {
 		t.Errorf("rows=%v report=%s", tpl.Rows, rep)
 	}
 }
@@ -279,7 +291,7 @@ func TestAnIndexedRuleIsNotNamedAfterOneInstance(t *testing.T) {
 	if row == nil || row.Text != "Fan Health" {
 		t.Fatalf("row = %+v", row)
 	}
-	if rep.Rows != 1 || rep.Merged != 3 {
+	if rep.Rows != 2 || rep.Merged != 3 { // the fan rule + the catch-all
 		t.Errorf("report = %s", rep)
 	}
 }

@@ -66,6 +66,11 @@ dhs consumer mnset alarm test --path refclk.status --value 0
 dhs consumer mnset watch <host> --slot 1            # --no-alarm to silence
 ```
 
+Every other object the module defines is in the view too, as `info`:
+the template ends with a catch-all, and a device with no template
+at all gets the built-in one, so `watch` shows a severity for every
+line rather than hiding what nobody wrote a rule for.
+
 It carries four rows, each naming its source: SFP temperature and
 supply voltage for cage 3 (bands read from that optic's own DDM
 thresholds — another part number publishes other numbers and needs its

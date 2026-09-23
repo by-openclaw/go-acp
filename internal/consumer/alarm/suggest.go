@@ -128,6 +128,11 @@ func Suggest(objs []consumer.Object, proto, model string) (*Template, Report) {
 		tpl.Rows = append(tpl.Rows, d.row)
 	}
 	sort.Slice(tpl.Rows, func(i, j int) bool { return tpl.Rows[i].Match < tpl.Rows[j].Match })
+	// Last, and last on purpose — first match wins, so this catches
+	// everything the rows above did not: the rest of the model, in the
+	// view, as info. A draft that silently dropped 97 objects would
+	// read as "nothing else exists".
+	tpl.Rows = append(tpl.Rows, Everything().Rows...)
 	rep.Rows = len(tpl.Rows)
 	return tpl, rep
 }

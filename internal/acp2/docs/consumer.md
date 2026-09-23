@@ -422,6 +422,11 @@ supplies (`NA|OK|Warning|Error`, mapped onto the ladder) and declares
 its own ranges (`-40..140 C`, `0..100 %`, `0..250 W`). The plant's own
 warning points are a site decision — add them with `alarm set`.
 
+Every other object the shelf defines is in the view too, as `info`:
+the template ends with a catch-all, and a device with no template
+at all gets the built-in one, so `watch` shows a severity for every
+line rather than hiding what nobody wrote a rule for.
+
 Two details are ACP2-specific:
 
 - **Paths carry the device root.** An announce reports

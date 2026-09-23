@@ -43,6 +43,12 @@
    "hold": "5s",
    "text": "media interface e1 (RED) link",
    "source": "e1 carries every RED-leg stream; the module reports up/down on it"
+  },
+  {
+   "match": "**",
+   "kind": "info",
+   "text": "no rule - reported, never alarmed",
+   "source": "every other object the module defines; the model defines the view, these rules only colour it"
   }
  ]
 }

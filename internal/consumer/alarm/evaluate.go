@@ -160,6 +160,15 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 	cand, band := e.classify(row, st, ev.Value, value, now)
 	prev := st.value
 	st.value = value
+	// An object with no rule is INFO: it is in the view, with its
+	// value, and it never raises anything. Tracking it is the point —
+	// an operator asking "what about this object?" gets an answer for
+	// every object the device defines, not only the alarmed ones.
+	if cand == Info {
+		st.sev, st.band, st.known = Info, band, true
+		st.cand, st.candBand, st.since = 0, "", time.Time{}
+		return nil
+	}
 	return e.settle(st, cand, band, prev, now)
 }
 
@@ -279,6 +288,9 @@ func (e *Evaluator) Explain(ev consumer.Event) (Severity, string, *Row) {
 // produced it.
 func (e *Evaluator) classify(row *Row, st *objState, v consumer.Value, s string, now time.Time) (Severity, string) {
 	switch row.Kind {
+	case KindInfo:
+		return Info, "info"
+
 	case KindCounter:
 		n, ok := numberOf(v, s)
 		if !ok {

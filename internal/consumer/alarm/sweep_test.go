@@ -192,3 +192,55 @@ func TestCountsShowEverySeverityIncludingTheEmptyOnes(t *testing.T) {
 		t.Errorf("uncovered object changed the counts: %v", got)
 	}
 }
+
+func TestEveryObjectIsInTheViewEvenWithNoRules(t *testing.T) {
+	// The default a device gets when nobody has written a template:
+	// its whole model is visible, every object carries its value, and
+	// nothing alarms. That is what a monitoring system shows.
+	clk := clock.NewFake(time.Unix(1700000000, 0))
+	tpl := Everything()
+	if err := tpl.Validate(); err != nil {
+		t.Fatalf("the built-in default must be a valid template: %v", err)
+	}
+	e := New(tpl, clk)
+
+	for _, p := range []string{"PSU.1.Status", "flows.abc.network.dst_ip_addr", "anything.at.all"} {
+		if tr := e.Eval("dev", str(p, "whatever")); tr != nil {
+			t.Errorf("an info object must never raise: %v", tr)
+		}
+		if got := e.Severity("dev", 0, p); got != Info {
+			t.Errorf("%s = %v, want info", p, got)
+		}
+	}
+	if c := e.Counts(); c["info"] != 3 || c["normal"] != 0 {
+		t.Errorf("counts = %v", c)
+	}
+	// Info objects are not alarms, so they stay out of the active list
+	// and out of a sweep.
+	if act := e.Active(); len(act) != 0 {
+		t.Errorf("active = %+v", act)
+	}
+	clk.Advance(time.Hour)
+	if trs := e.Sweep(); len(trs) != 0 {
+		t.Errorf("sweep = %+v", trs)
+	}
+}
+
+func TestARuledObjectStillAlarmsWithACatchAllPresent(t *testing.T) {
+	// First match wins: the catch-all is last, so it covers what is
+	// left and nothing else.
+	clk := clock.NewFake(time.Unix(1700000000, 0))
+	e := New(mustLoad(t, `{"model":"m","rows":[
+      {"match":"**.link","kind":"text","normal":"up","severity":"critical","source":"test"},
+      {"match":"**","kind":"info","source":"the rest"}]}`), clk)
+
+	if tr := e.Eval("dev", str("port.1.link", "down")); tr == nil || tr.Severity != Critical {
+		t.Fatalf("a ruled object must still alarm: %v", tr)
+	}
+	if tr := e.Eval("dev", str("port.1.label", "Camera 3")); tr != nil {
+		t.Errorf("an unruled object must not: %v", tr)
+	}
+	if c := e.Counts(); c["critical"] != 1 || c["info"] != 1 {
+		t.Errorf("counts = %v", c)
+	}
+}

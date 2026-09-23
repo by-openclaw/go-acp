@@ -71,6 +71,12 @@
    "hold": "30s",
    "text": "shelf power draw",
    "source": "the object declares 0..250 W as its range"
+  },
+  {
+   "match": "**",
+   "kind": "info",
+   "text": "no rule - reported, never alarmed",
+   "source": "every other object the shelf defines; the model defines the view, these rules only colour it"
   }
  ]
 }

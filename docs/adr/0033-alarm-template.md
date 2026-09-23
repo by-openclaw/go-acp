@@ -52,10 +52,21 @@ prints. Four row kinds cover what a plant alarms on:
 | `counter` | must keep rising; a decrease is a wrap or a reset, not a stall |
 | `enum` | value → severity |
 | `text` | drift from the expected value (literal or regex) |
+| `info` | tracked, never alarmed — the rest of the model |
 
 A row names its `source` — a device threshold, a manual, a site rule.
-A row without one is a guess, and this repo does not ship guesses. An
-object no row covers is `info`: its changes are reported, never alarmed.
+A row without one is a guess, and this repo does not ship guesses.
+
+**The view is the whole model, by definition.** Every object a device
+defines is in the alarm view; a rule only colours it. An object no
+rule names is `info` — present, carrying its value, with no severity —
+and that is a fifth row kind (`info`), not an absence. A template ends
+with a catch-all (`"match": "**", "kind": "info"`), a device with no
+template at all gets the built-in one (`alarm.Everything()`), and
+`watch` prints a severity column for every line. A monitoring system
+that shows only what someone remembered to configure is how an
+unwatched object goes unnoticed for a year; this is the behaviour
+operators already expect from the competition, and the default here.
 
 ### 2. The severity ladder is X.733, and it maps to RFC 5424
 
@@ -192,6 +203,11 @@ for knowing what its own kit means.
   `alarm` verb (issue #1110 branch). Engine at 100 % coverage; worked
   example is the FusioN6 (SFP temperature bands from the module's own
   DDM thresholds, packet-counter stall, PTP lock enum, multicast drift).
+- 2026-09-23 — every object is in the view: the `info` row kind, the
+  catch-all every template ends with, `alarm.Everything()` as the
+  default when a device has no template, and a severity column on
+  every `watch` line. An object with no rule reads `info`, never
+  nothing.
 - 2026-09-23 — `alarm suggest`: a device drafts its own rows from its
   enum item lists, declared ranges and alarm objects. Proven live —
   the EVS Neuron shelf (214 objects → 18 sourced rules, 45 settings and

@@ -361,6 +361,8 @@ func runAlarmImport(proto string, args []string) error {
 // ruleOf renders a row's rule in one column.
 func ruleOf(r alarm.Row) string {
 	switch r.Kind {
+	case alarm.KindInfo:
+		return "tracked, never alarmed"
 	case alarm.KindCounter:
 		return "rising, else " + sevOr(r.Severity) + " after " + durOr(time.Duration(r.StalledFor), "the hold")
 	case alarm.KindEnum:
@@ -558,8 +560,12 @@ func loadAlarmEvaluator(ctx context.Context, plug consumer.Protocol, proto strin
 		fmt.Fprintf(os.Stderr, "alarm: %v — watching without alarms\n", err)
 		return nil
 	}
+	// No template is not "no alarms": it is every object at info. The
+	// device's model defines the view, a plant's rules only colour it,
+	// so an object nobody wrote a rule for is still on screen with its
+	// value — never silently absent.
 	if tpl == nil {
-		return nil
+		tpl, from = alarm.Everything(), "the built-in default (every object, info)"
 	}
 	fmt.Printf("alarms: %d rule(s) from %s\n", len(tpl.Rows), from)
 	return alarm.New(tpl, nil)
