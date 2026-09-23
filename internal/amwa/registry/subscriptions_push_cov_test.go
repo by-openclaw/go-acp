@@ -201,6 +201,11 @@ func TestRemoveSubStopsAPendingFlush(t *testing.T) {
 	ws, _ := wsPair(t)
 	m := NewSubscriptionManager(nil, NewStore(), "127.0.0.1:0", "v1.3")
 	sub := pushSub(ws, 5_000) // long window: the timer is still armed
+	// A fresh subscription may flush at once (nextFlushAllowed is the
+	// zero time), and a timer armed with a zero delay can fire before
+	// the assertion below reads it. Close the rate gate first, so the
+	// flush this test is about is genuinely pending.
+	sub.nextFlushAllowed = time.Now().Add(5 * time.Second)
 	m.mu.Lock()
 	m.subs[sub.ID] = sub
 	m.mu.Unlock()
