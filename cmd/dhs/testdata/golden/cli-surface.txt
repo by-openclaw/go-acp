@@ -369,8 +369,8 @@ EXAMPLES
   acp watch 10.6.239.113 --slot 1 --group control
   acp watch 10.6.239.113 --slot 1 --label GainA
   acp watch 10.6.239.113 --verbose                    # + debug lines
-  acp watch 10.6.239.113 --metrics-addr :9110       --log /var/log/dhs-acp1-10.6.239.113.log --log-format json
-                                                      # Prometheus + Loki
+  acp watch 10.6.239.113 --metrics-addr :9110          # scraped by Prometheus
+  acp watch 10.6.239.113 --log /var/log/dhs-acp1.log --log-format json
 
 ========== consumer/acp1/export ==========
 $ dhs consumer acp1 export --help

@@ -1282,6 +1282,12 @@ FLAGS
   --group G          only events in this group (default: any)
   --label L          only events for this label (requires --slot)
   --id I             only events for this object id
+  --alarm FILE       judge values with this template instead of the
+                     cached one (.cache/alarm/<proto>/<model>.json)
+  --no-alarm         do not judge values at all
+  --metrics-addr A   serve Prometheus /metrics + /snapshot.json while
+                     watching: dhs_alarm_* verdicts and dhs_connector_*
+                     traffic, labelled proto + device
 
 EXAMPLES
   acp watch 10.6.239.113                              # everything
@@ -1289,6 +1295,8 @@ EXAMPLES
   acp watch 10.6.239.113 --slot 1 --group control
   acp watch 10.6.239.113 --slot 1 --label GainA
   acp watch 10.6.239.113 --verbose                    # + debug lines
+  acp watch 10.6.239.113 --metrics-addr :9110          # scraped by Prometheus
+  acp watch 10.6.239.113 --log /var/log/dhs-acp1.log --log-format json
 ```
 
 ## consumer export
