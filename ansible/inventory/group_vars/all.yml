@@ -10,3 +10,30 @@ dhs_port: 2071
 dhs_objects:
   - { slot: 0, group: control, label: Broadcasts, value: "On" }
   - { slot: 0, group: control, label: NetwPrefix, value: "0" }
+
+# ---------------------------------------------------------------------
+# Alarm watches (ADR-0033). One entry = one `dhs consumer <proto> watch`
+# systemd unit on the watcher host: it judges the device against its
+# template, prints verdicts to a JSON log Loki tails, and serves
+# Prometheus on its own port. Protocol-agnostic — poll (mnset) and push
+# (acp2) units differ only by the two words below.
+#
+# Deploy + verify:
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml   # -> changed=0
+#
+# template is a repo-relative path; port must be unique per watcher host.
+dhs_alarm_devices:
+  - name: neuron-shelf
+    host: 10.6.255.102
+    proto: acp2
+    slot: 0
+    template: internal/acp2/alarm/SHPRM1@6.0.4.json
+    port: 9110
+    what: EVS Neuron shelf — PSU health, fans, temperature, power draw
+  - name: fusion6
+    host: 10.6.40.53
+    proto: mnset
+    template: internal/MNSet/alarm/fusion6.alarm.json
+    port: 9111
+    what: Riedel FusioN6 — SFP optics, PTP lock, media link

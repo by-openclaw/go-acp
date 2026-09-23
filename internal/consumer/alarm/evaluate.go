@@ -470,6 +470,23 @@ func (e *Evaluator) Active() []Transition {
 	return out
 }
 
+// Counts is how many objects sit at each severity name, over every
+// object the evaluator has seen and a row covers. Severities with no
+// object are present with a zero, so a scrape shows "nothing is
+// critical" rather than showing nothing.
+func (e *Evaluator) Counts() map[string]int {
+	out := map[string]int{}
+	for s := Info; s <= Error; s++ {
+		out[s.String()] = 0
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, st := range e.state {
+		out[st.sev.String()]++
+	}
+	return out
+}
+
 // Severity returns the verdict in force for one object.
 func (e *Evaluator) Severity(device string, slot int, path string) Severity {
 	e.mu.Lock()

@@ -1,0 +1,172 @@
+{
+  "title": "dhs — alarms by device",
+  "uid": "dhs-alarms",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "",
+  "tags": ["dhs", "alarms"],
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "label": "device (IP)",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(dhs_alarm_rules, device)",
+        "description": "Every device a dhs watch is judging. Type any part of the address — 10.6.2 narrows to that subnet.",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "proto",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(dhs_alarm_rules{device=~\"$device\"}, proto)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "severity",
+        "type": "custom",
+        "query": "minor,major,critical,error",
+        "current": { "text": ["major", "critical", "error"], "value": ["major", "critical", "error"] },
+        "multi": true,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "devices watched",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "count(dhs_alarm_rules{device=~\"$device\", proto=~\"$proto\"})",
+          "legendFormat": "watched"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "devices with no rules",
+      "description": "A watch with no template judges nothing. Install one with `dhs consumer <proto> alarm import`.",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "count(dhs_alarm_rules{device=~\"$device\", proto=~\"$proto\"} == 0) or vector(0)",
+          "legendFormat": "unjudged"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "objects above normal",
+      "gridPos": { "h": 4, "w": 16, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (severity) (dhs_alarm_active{device=~\"$device\", proto=~\"$proto\", severity=~\"minor|major|critical|error\"})",
+          "legendFormat": "{{severity}}"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "what is wrong right now",
+      "description": "One row per object above normal. severity: 2 minor · 3 major · 4 critical · 5 error.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "dhs_alarm_severity{device=~\"$device\", proto=~\"$proto\", severity=~\"$severity\"}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "role": true },
+            "indexByName": {
+              "device": 0,
+              "proto": 1,
+              "slot": 2,
+              "label": 3,
+              "path": 4,
+              "band": 5,
+              "severity": 6,
+              "Value": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "verdict over time (per object)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "dhs_alarm_severity{device=~\"$device\", proto=~\"$proto\"}",
+          "legendFormat": "{{device}} {{path}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 5,
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "verdict changes per minute",
+      "description": "A device that keeps changing its mind wants a longer hold or a flap_cap in its template, not a muted alert.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (device, severity) (rate(dhs_alarm_transitions_total{device=~\"$device\", proto=~\"$proto\"}[5m]) * 60)",
+          "legendFormat": "{{device}} → {{severity}}"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "the same device in Loki",
+      "description": "The alarm lines dhs wrote for this device. Same label name, same value — the variable above drives this panel too.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "{job=\"dhs\", device=~\"$device\"} | json | msg = `alarm`",
+          "queryType": "range"
+        }
+      ],
+      "options": { "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true }
+    }
+  ]
+}

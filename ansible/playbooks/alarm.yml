@@ -1,0 +1,207 @@
+---
+# Alarm watches for the plant — one unit per device, any protocol (ADR-0033).
+#
+# A device is judged by `dhs consumer <proto> watch`: the alarm template
+# turns its values into verdicts, the verdicts go to a JSON log Loki
+# tails and to a Prometheus endpoint labelled with the device's own
+# address. Nothing here is protocol-specific — a poll connector (mnset)
+# and a push connector (acp2) differ by the two words in
+# `dhs_alarm_devices`, which lives in inventory, not in this play.
+#
+#   cd /root/acp/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml   # -> changed=0
+#
+# Verify what is running (and that each endpoint answers):
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm-verify.yml
+#
+# The units run the release-managed binary (dhs_bin). To try a build
+# before it is released, pass -e alarm_bin_src=bin/dhs-linux-amd64: it is
+# copied to its own directory and the units run that instead.
+#
+# Templates are FILES this play owns (/etc/dhs/alarm/<name>.json), not
+# cache state: the unit is given --alarm explicitly, so what a device is
+# judged by is whatever the repo says, on every host, after one run.
+
+- name: Alarm watches — one systemd unit per device, every protocol
+  hosts: "{{ alarm_hosts | default('control') }}"
+  gather_facts: false
+  vars:
+    alarm_repo: "{{ playbook_dir }}/../.."
+    alarm_conf_dir: /etc/dhs/alarm
+    alarm_log_dir: /var/log
+    alarm_bin_dir: /opt/dhs/alarm
+    alarm_bin: "{{ (alarm_bin_dir ~ '/dhs') if (alarm_bin_src | default('')) else dhs_bin }}"
+    # Prometheus discovers the watches from this file: one target per
+    # unit, carrying which device it watches so a scrape is traceable
+    # even before its metrics are read.
+    alarm_file_sd: /etc/prometheus/file_sd/dhs-watch.yml
+
+  handlers:
+    - name: restart dhs-watch
+      ansible.builtin.systemd:
+        name: "dhs-watch-{{ item }}"
+        state: restarted
+        daemon_reload: true
+      loop: "{{ dhs_alarm_devices | map(attribute='name') | list }}"
+      listen: restart dhs-watch
+
+  tasks:
+    - name: The inventory must say what to watch
+      ansible.builtin.assert:
+        that:
+          - dhs_alarm_devices is defined
+          - dhs_alarm_devices | length > 0
+          - dhs_alarm_devices | map(attribute='port') | list | unique | length == dhs_alarm_devices | length
+        fail_msg: >-
+          dhs_alarm_devices must list at least one device and give each a
+          unique metrics port (group_vars/all.yml).
+
+    - name: Directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ alarm_conf_dir }}"
+        - "{{ alarm_file_sd | dirname }}"
+
+    - name: Staged binary (only when -e alarm_bin_src=...)
+      when: alarm_bin_src | default('')
+      block:
+        - name: Directory for the staged binary
+          ansible.builtin.file:
+            path: "{{ alarm_bin_dir }}"
+            state: directory
+            mode: "0755"
+        - name: Copy it
+          ansible.builtin.copy:
+            src: "{{ alarm_repo }}/{{ alarm_bin_src }}"
+            dest: "{{ alarm_bin }}"
+            mode: "0755"
+          notify: restart dhs-watch
+
+    - name: The binary is there
+      ansible.builtin.stat:
+        path: "{{ alarm_bin }}"
+      register: alarm_bin_stat
+
+    - name: Fail early if it is not
+      ansible.builtin.assert:
+        that: alarm_bin_stat.stat.exists
+        fail_msg: >-
+          {{ alarm_bin }} is missing — run playbooks/fleet-update.yml first,
+          or pass -e alarm_bin_src=bin/dhs-linux-amd64.
+
+    # The template is the device's policy. Copying it by content is what
+    # makes this play idempotent: same repo, same file, no change.
+    - name: Alarm templates
+      ansible.builtin.copy:
+        src: "{{ alarm_repo }}/{{ item.template }}"
+        dest: "{{ alarm_conf_dir }}/{{ item.name }}.json"
+        mode: "0644"
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.proto }} {{ item.host }})"
+      notify: restart dhs-watch
+
+    # The binary reads its own template: a rule the CLI refuses is a
+    # rule the watch would refuse at 03:00 instead.
+    - name: Each template is valid for its protocol
+      ansible.builtin.command:
+        cmd: >-
+          {{ alarm_bin }} consumer {{ item.proto }} alarm list
+          --template {{ alarm_conf_dir }}/{{ item.name }}.json
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "{{ item.name }}"
+      changed_when: false
+
+    - name: Watch units
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/alarm.yml (ADR-0033).
+          # {{ item.what | default(item.proto ~ ' ' ~ item.host) }}
+          [Unit]
+          Description=dhs alarm watch — {{ item.proto }} {{ item.host }}
+          After=network.target
+          [Service]
+          ExecStart={{ alarm_bin }} consumer {{ item.proto }} watch {{ item.host }} \
+            {% if item.slot is defined %}--slot {{ item.slot }} \
+            {% endif %}{% if item.path is defined %}--path {{ item.path }} \
+            {% endif %}--alarm {{ alarm_conf_dir }}/{{ item.name }}.json \
+            --metrics-addr :{{ item.port }} \
+            --log {{ alarm_log_dir }}/dhs-watch-{{ item.name }}.log \
+            --log-format json --log-level info
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+        dest: "/etc/systemd/system/dhs-watch-{{ item.name }}.service"
+        mode: "0644"
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "dhs-watch-{{ item.name }}"
+      notify: restart dhs-watch
+
+    - name: Units enabled + running
+      ansible.builtin.systemd:
+        name: "dhs-watch-{{ item.name }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "dhs-watch-{{ item.name }}"
+
+    # Prometheus finds the watches here. The scrape target is the host
+    # running dhs; the device it watches rides inside the metrics as the
+    # `device` label, which is what a dashboard navigates by.
+    - name: Prometheus file_sd targets
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/alarm.yml — do not edit.
+          {% for d in dhs_alarm_devices %}
+          - targets: ["{{ ansible_host | default(inventory_hostname) }}:{{ d.port }}"]
+            labels:
+              service: dhs
+              # Only what the metrics do NOT already carry: a target
+              # label that repeats one of theirs (proto, role, device)
+              # would be renamed exported_* by Prometheus and break
+              # every query in navigation.md.
+              watched: "{{ d.host }}"
+          {% endfor %}
+        dest: "{{ alarm_file_sd }}"
+        mode: "0644"
+
+    - name: Wait for each endpoint
+      ansible.builtin.wait_for:
+        port: "{{ item.port }}"
+        host: 127.0.0.1
+        timeout: 30
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "{{ item.name }}:{{ item.port }}"
+
+    - name: Each watch publishes its rules
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ item.port }}/metrics"
+        return_content: true
+      register: alarm_scrape
+      retries: 6
+      delay: 5
+      until: "'dhs_alarm_rules{' in (alarm_scrape.content | default(''))"
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "{{ item.name }}"
+      changed_when: false
+
+    - name: What is watching what
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.item.name }}: {{ item.item.proto }} {{ item.item.host }}
+          -> :{{ item.item.port }} |
+          {{ item.content | regex_findall('dhs_alarm_rules.device=[^\n]*') | first | default('no rules') }}
+      loop: "{{ alarm_scrape.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"

@@ -31,9 +31,18 @@ scrape_configs:
             proto: proto
             remote: remote
             cmd: cmd
+            # The device is the address the operator typed, and it is
+            # the SAME name Prometheus uses (dhs_alarm_*{device=...}),
+            # so one dashboard variable drives both stacks.
+            device: device
+            severity: severity
       - labels:
           level:
           proto:
+          device:
+          # severity is only set on alarm lines; Loki drops an empty
+          # label, so this does not split the stream for other records.
+          severity:
       - timestamp:
           source: time
           format: RFC3339Nano

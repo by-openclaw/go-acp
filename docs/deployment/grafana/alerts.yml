@@ -99,3 +99,51 @@ groups:
         annotations:
           summary: "connector memory estimate growing"
           description: "per-connector memory attribution monotonically up for 30 min — tree or pool leak?"
+
+  # ---------------------------------------------------------------
+  # Device alarms (ADR-0033). The verdict is decided at the edge by
+  # the alarm template — Prometheus only routes what the connector
+  # already judged, so these rules carry no thresholds of their own.
+  # ---------------------------------------------------------------
+  - name: dhs.alarms
+    interval: 15s
+    rules:
+      - alert: DhsDeviceCritical
+        expr: dhs_alarm_severity >= 4
+        for: 0m
+        labels:
+          severity: critical
+          service: dhs
+        annotations:
+          summary: "{{ $labels.device }} {{ $labels.path }} is {{ $labels.severity }}"
+          description: "{{ $labels.proto }} {{ $labels.device }} slot {{ $labels.slot }}: {{ $labels.label }} ({{ $labels.path }}) fired {{ $labels.band }}"
+
+      - alert: DhsDeviceMajor
+        expr: dhs_alarm_severity == 3
+        for: 1m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "{{ $labels.device }} {{ $labels.path }} is major"
+          description: "{{ $labels.proto }} {{ $labels.device }} slot {{ $labels.slot }}: {{ $labels.label }} ({{ $labels.path }}) fired {{ $labels.band }}"
+
+      - alert: DhsDeviceUnjudged
+        expr: dhs_alarm_rules == 0
+        for: 10m
+        labels:
+          severity: info
+          service: dhs
+        annotations:
+          summary: "{{ $labels.device }} is watched but has no alarm rules"
+          description: "no template resolved for {{ $labels.proto }} {{ $labels.device }} — install one with `dhs consumer {{ $labels.proto }} alarm import`"
+
+      - alert: DhsAlarmFlapping
+        expr: sum by (device, proto) (rate(dhs_alarm_transitions_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          service: dhs
+        annotations:
+          summary: "{{ $labels.device }} keeps changing its mind"
+          description: "more than one verdict change every 5 s for 10 min — raise `hold` / `flap_cap` in the template rather than muting the alert"

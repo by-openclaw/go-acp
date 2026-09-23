@@ -584,17 +584,18 @@ func alarmIdentity(ctx context.Context, plug consumer.Protocol, slot int) string
 // the collector. nil (no change of verdict) prints nothing.
 // A swept verdict has no event behind it, so the line is stamped with
 // the moment the engine adopted it.
-func reportAlarm(tr *alarm.Transition, host string, cf *commonFlags) {
+func reportAlarm(tr *alarm.Transition, host string, cf *commonFlags, meter *alarmMeter) {
 	if tr == nil {
 		return
 	}
+	meter.observe(tr.Severity.String())
 	fmt.Printf("%s  %-18s  %s\n", tr.At.Format("15:04:05"), "[alarm]", tr.String())
 	if !cf.logHasSink || cf.eventLogger == nil {
 		return
 	}
 	cf.eventLogger.Info("alarm",
 		slog.String("proto", cf.protocol),
-		slog.String("dev", host),
+		slog.String("device", host),
 		slog.Int("slot", tr.Slot),
 		slog.String("path", tr.Path),
 		slog.String("severity", tr.Severity.String()),

@@ -41,6 +41,8 @@ Loki direct: <http://localhost:3100>.
 | `promtail-config.yml` | tails `/var/log/dhs*.log`, parses slog JSON |
 | `grafana-provisioning/` | auto-wires Prom + Loki data sources and the dashboards folder |
 | `dashboards/dhs-overview.json` | one dashboard with process + connector + per-cmd + logs panels |
+| `dashboards/dhs-alarms.json` | device alarms: pick a device by its address, see what is wrong, when, and the same device's log lines |
+| `navigation.md` | **how to find a device in all three tools** — the `device` label, the type-ahead, and the query for each question an operator asks |
 
 ## Alerts (seed set)
 
@@ -55,9 +57,36 @@ Loki direct: <http://localhost:3100>.
 | NAK surge | `rate(dhs_connector_naks_total[5m]) > 1` for 2 min | warning |
 | Reconnect storm | `rate(dhs_connector_reconnects_total[5m]) > 0.1` for 5 min | warning |
 | Connector memory growth | `deriv(dhs_connector_memory_bytes[30m]) > 0` for 30 min | info |
+| Device critical | `dhs_alarm_severity >= 4` | critical |
+| Device major | `dhs_alarm_severity == 3` for 1 min | warning |
+| Device unjudged | `dhs_alarm_rules == 0` for 10 min | info |
+| Alarm flapping | `rate(dhs_alarm_transitions_total[5m]) > 0.2` for 10 min | warning |
+
+The device rules carry no thresholds of their own: the verdict was
+decided at the edge by the alarm template (ADR-0033), and Prometheus
+only routes what the connector already judged.
 
 Edit `alerts.yml` and `curl -X POST http://localhost:9090/-/reload`
 to pick up changes without bouncing the container.
+
+## Watching a plant
+
+One `dhs consumer <proto> watch` per device, deployed as a systemd
+unit by `ansible/playbooks/alarm.yml`: each judges its device against
+its alarm template, serves Prometheus on its own port, and writes the
+JSON log Promtail tails. Adding a device is an inventory entry
+(`dhs_alarm_devices` in `group_vars/all.yml`) and one run of the play;
+Prometheus discovers the new target from the file the play writes.
+
+```bash
+cd ansible
+ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml         # deploy
+ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml         # -> changed=0
+ansible-playbook -i inventory/hosts.ini playbooks/alarm-verify.yml  # state of the plant
+```
+
+Then open **dhs — alarms by device** and pick an address. See
+[navigation.md](navigation.md) for what to type in each tool.
 
 ## Linux hosts
 

@@ -166,3 +166,29 @@ func TestMatchPathGlobsInsideASegment(t *testing.T) {
 		}
 	}
 }
+
+func TestCountsShowEverySeverityIncludingTheEmptyOnes(t *testing.T) {
+	clk := clock.NewFake(time.Unix(1700000000, 0))
+	e := New(mustLoad(t, pushTemplate), clk)
+
+	c := e.Counts()
+	if len(c) != 6 || c["critical"] != 0 || c["normal"] != 0 {
+		t.Fatalf("empty evaluator = %v", c)
+	}
+
+	e.Eval("neuron", str("card.1.input.status", "ok"))
+	e.Eval("neuron", str("card.2.input.status", "loss"))
+	clk.Advance(31 * time.Second)
+	e.Sweep()
+
+	c = e.Counts()
+	if c["normal"] != 1 || c["major"] != 1 || c["critical"] != 0 {
+		t.Errorf("counts = %v", c)
+	}
+	// An object no row covers is not counted at all: it is info, and
+	// the evaluator keeps no state for it.
+	e.Eval("neuron", str("card.1.label", "anything"))
+	if got := e.Counts(); got["info"] != 0 || got["normal"] != 1 {
+		t.Errorf("uncovered object changed the counts: %v", got)
+	}
+}

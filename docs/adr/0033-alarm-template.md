@@ -114,6 +114,37 @@ no device at all, which is how a template is authored and how a
 production change (a new expected frequency, a new multicast range) is
 checked before it is applied.
 
+### 6. The verdict is exported; the threshold never leaves the template
+
+Every watch can serve `/metrics` (`--metrics-addr`), and the four
+series are the same for every protocol:
+
+| series | question |
+|---|---|
+| `dhs_alarm_severity{device,slot,path,label,band,severity}` | what is wrong |
+| `dhs_alarm_active{device,severity}` | how much is wrong |
+| `dhs_alarm_transitions_total{device,severity}` | how often it changes |
+| `dhs_alarm_rules{device,model}` | is anything judging this device |
+
+`device` is the address the operator typed, and the structured log
+carries the same label with the same name, so one Grafana variable
+(`label_values(dhs_alarm_rules, device)`) drives Prometheus and Loki
+alike. `dhs_alarm_rules` exists while a device is healthy, so the
+plant is listable, and `rules == 0` is itself reportable: a device
+watched with no template looks quiet and is not.
+
+Prometheus alert rules route severity; they do not compute it. A rule
+that re-derives a threshold in PromQL is a second source of truth, and
+ADR-0015 rules that out.
+
+### 7. A plant is Ansible, one unit per device
+
+`ansible/playbooks/alarm.yml` deploys one `watch` unit per device from
+an inventory list, whatever the protocol and whichever way its values
+arrive; the template is a file the play owns (`--alarm`), not cache
+state, so a second run is zero changes. `alarm-verify.yml` reports the
+plant's state read-only and fails on a watch that judges nothing.
+
 ## Consequences
 
 - One implementation, every protocol. A plant writes its policy once
@@ -125,6 +156,11 @@ checked before it is applied.
   (`watch`), so Loki and Grafana need no new mechanism, only a label.
 - Templates are cache-bucket artifacts (ADR-0020): gitignored, shipped
   per site, restorable by `import`.
+- Devices carry internal alarm triggers of their own, and in the field
+  most are unconfigured. The template is where a plant's policy lives,
+  and where a device does publish its own grades or thresholds they
+  become rows (ACP2 `NA|OK|Warning|Error`, SFP DDM points), so the two
+  never disagree silently.
 - What this ADR does NOT decide: notification routing (mail, Slack,
   Alertmanager) and alarm persistence across restarts. Both are
   `dhs-srv` concerns; the engine deliberately holds its state in memory
@@ -136,6 +172,14 @@ checked before it is applied.
   `alarm` verb (issue #1110 branch). Engine at 100 % coverage; worked
   example is the FusioN6 (SFP temperature bands from the module's own
   DDM thresholds, packet-counter stall, PTP lock enum, multicast drift).
+- 2026-09-23 — Prometheus + Loki + Ansible: `watch --metrics-addr`
+  exports the four `dhs_alarm_*` series for every protocol, the
+  structured log gained the same `device` label, and
+  `ansible/playbooks/alarm.yml` + `alarm-verify.yml` run the plant.
+  Navigation (the "type an address" path through Grafana, Prometheus
+  and Loki) is `docs/deployment/grafana/navigation.md`. Proven live on
+  dhs-debian: both watches scraped, `label_values(device)` =
+  10.6.255.102 + 10.6.40.53 in both stacks, play idempotent.
 - 2026-09-23 — `Sweep()` added, so a hold and a stall no longer depend
   on a next sample that a push protocol may never send; `watch` sweeps
   every second. Second worked example is ACP2: the EVS Neuron shelf

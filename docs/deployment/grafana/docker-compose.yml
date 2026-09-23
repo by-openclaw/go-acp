@@ -33,6 +33,9 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      # Watches deployed by ansible/playbooks/alarm.yml write their
+      # targets here — one file per fleet, no Prometheus restart.
+      - /etc/prometheus/file_sd:/etc/prometheus/file_sd:ro
       - prometheus-data:/prometheus
     restart: unless-stopped
 

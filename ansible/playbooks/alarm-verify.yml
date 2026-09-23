@@ -1,0 +1,86 @@
+---
+# What is the plant's alarm state right now, and is every watch healthy?
+#
+# Read-only: it changes nothing and fails only when a watch is not doing
+# its job — unit dead, endpoint silent, or a device being watched with
+# no rules at all (which looks like "all quiet" and is not).
+#
+#   cd /root/acp/ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/alarm-verify.yml
+#
+# Pass -e allow_unjudged=true to report a rule-less watch instead of
+# failing on it (a device whose template has not been written yet).
+
+- name: Alarm watches — state of the plant
+  hosts: "{{ alarm_hosts | default('control') }}"
+  gather_facts: false
+  vars:
+    allow_unjudged: false
+
+  tasks:
+    - name: Units are running
+      ansible.builtin.systemd:
+        name: "dhs-watch-{{ item.name }}"
+      register: alarm_units
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "dhs-watch-{{ item.name }}"
+      changed_when: false
+
+    - name: Every unit is active
+      ansible.builtin.assert:
+        that: item.status.ActiveState == "active"
+        fail_msg: "dhs-watch-{{ item.item.name }} is {{ item.status.ActiveState }}"
+      loop: "{{ alarm_units.results }}"
+      loop_control:
+        label: "dhs-watch-{{ item.item.name }}"
+
+    - name: Scrape each watch
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ item.port }}/metrics"
+        return_content: true
+      register: alarm_scrape
+      loop: "{{ dhs_alarm_devices }}"
+      loop_control:
+        label: "{{ item.name }}"
+      changed_when: false
+
+    - name: A watch with no rules judges nothing
+      ansible.builtin.assert:
+        # The sample line is the one carrying the labels; HELP and TYPE
+        # do not. Its last field is the count.
+        that: >-
+          allow_unjudged or
+          ((item.content | regex_findall('dhs_alarm_rules.device=[^\n]*')
+            | first | default('x 0')).split(' ') | last | int) > 0
+        fail_msg: >-
+          {{ item.item.name }} ({{ item.item.proto }} {{ item.item.host }}) is
+          watched with 0 alarm rules — install a template, or run with
+          -e allow_unjudged=true.
+      loop: "{{ alarm_scrape.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Objects above normal, per device
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.item.name }} ({{ item.item.proto }} {{ item.item.host }}):
+          {{ item.content | regex_findall('dhs_alarm_severity.device=[^\n]*') | length }}
+          object(s) above normal —
+          {{ item.content
+             | regex_findall('dhs_alarm_severity.device=[^\n]*path="([^"]+)"')
+             | join(', ') | default('none', true) }}
+      loop: "{{ alarm_scrape.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: The device label is the address, in every stack
+      ansible.builtin.assert:
+        that: ('device="' ~ item.item.host ~ '"') in item.content
+        fail_msg: >-
+          {{ item.item.name }} does not label its metrics with
+          device="{{ item.item.host }}" — the Grafana variable and the Loki
+          query both navigate by that address (docs/deployment/grafana/navigation.md).
+      loop: "{{ alarm_scrape.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
