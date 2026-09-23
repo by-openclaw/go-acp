@@ -341,6 +341,17 @@ func runWatch(ctx context.Context, args []string) error {
 				enricher.observe(ctx, plug, ev.Timestamp, ev.Value.SlotStatus)
 			}
 
+			// A repeated sample is not news for the operator — the value
+			// did not move — but the alarm engine needs it to see that a
+			// condition persists (a counter still stopped, a link still
+			// down). Evaluate first, then skip the display.
+			if ev.Repeat {
+				if evaluator != nil {
+					reportAlarm(evaluator.Eval(host, ev), ev, host, cf)
+				}
+				continue
+			}
+
 			// Use disk cache label if plugin hasn't resolved it yet.
 			label := ev.Label
 			src := "live"
@@ -392,25 +403,7 @@ func runWatch(ctx context.Context, args []string) error {
 			// One verdict per change, printed under the value line and
 			// mirrored to the structured sink with its RFC 5424 severity.
 			if evaluator != nil {
-				if tr := evaluator.Eval(host, ev); tr != nil {
-					fmt.Printf("%s  %-18s  %s\n", ev.Timestamp.Format("15:04:05"), "[alarm]", tr.String())
-					if cf.logHasSink && cf.eventLogger != nil {
-						cf.eventLogger.Info("alarm",
-							slog.String("proto", cf.protocol),
-							slog.String("dev", host),
-							slog.Int("slot", tr.Slot),
-							slog.String("path", tr.Path),
-							slog.String("severity", tr.Severity.String()),
-							slog.Int("syslog_severity", tr.Severity.Syslog()),
-							slog.String("prior", tr.Prior.String()),
-							slog.String("band", tr.Band),
-							slog.String("value", tr.Value),
-							slog.String("prev", tr.Prev),
-							slog.String("unit", tr.Unit),
-							slog.Bool("flapping", tr.Flapping),
-							slog.String("text", tr.Text))
-					}
-				}
+				reportAlarm(evaluator.Eval(host, ev), ev, host, cf)
 			}
 
 			// Matrix crosspoint events render differently —

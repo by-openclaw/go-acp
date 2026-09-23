@@ -176,6 +176,7 @@ func (w *worker) observe(key string, req consumer.ValueRequest, v consumer.Value
 		Value:     v,
 		Timestamp: w.clk.Now(),
 		Freshness: fresh,
+		Repeat:    had && !moved,
 	}
 	if moved && had {
 		ev.Changes = []consumer.FieldChange{{Name: "value", Old: valueString(prev), New: valueString(v)}}

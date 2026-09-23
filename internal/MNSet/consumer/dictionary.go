@@ -76,6 +76,11 @@ type pollSection struct {
 type pollEntry struct {
 	Match    string `json:"match"`
 	Interval string `json:"interval"`
+	// OnChange false publishes every sample, not only the ones that
+	// moved: a measurement is judged per sample (a counter that
+	// stopped, a link that is still down), a setting only when it
+	// changes. Absent means true.
+	OnChange *bool  `json:"on_change,omitempty"`
 	Source   string `json:"source,omitempty"`
 }
 
@@ -311,8 +316,9 @@ func pollProfile(d dictionary, objs []consumer.Object, slot int, filter string) 
 		return nil, fmt.Errorf("mnset: dictionary poll default interval: %w", err)
 	}
 	type rule struct {
-		pattern string
-		every   time.Duration
+		pattern  string
+		every    time.Duration
+		onChange *bool
 	}
 	rules := make([]rule, 0, len(d.Poll.Entries))
 	for _, e := range d.Poll.Entries {
@@ -322,7 +328,7 @@ func pollProfile(d dictionary, objs []consumer.Object, slot int, filter string) 
 				return nil, fmt.Errorf("mnset: dictionary poll interval for %s: %w", e.Match, err)
 			}
 		}
-		rules = append(rules, rule{e.Match, every})
+		rules = append(rules, rule{e.Match, every, e.OnChange})
 	}
 	prof := &monitor.Profile{Model: d.Model, Defaults: monitor.Defaults{Interval: monitor.Duration(def), OnChange: true}}
 	for _, o := range objs {
@@ -332,7 +338,9 @@ func pollProfile(d dictionary, objs []consumer.Object, slot int, filter string) 
 		}
 		for _, r := range rules {
 			if matchPath(r.pattern, o.Path) {
-				prof.Entries = append(prof.Entries, monitor.Entry{Path: path, Slot: slot, Interval: monitor.Duration(r.every)})
+				prof.Entries = append(prof.Entries, monitor.Entry{
+					Path: path, Slot: slot, Interval: monitor.Duration(r.every), OnChange: r.onChange,
+				})
 				break
 			}
 		}

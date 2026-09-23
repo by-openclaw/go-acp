@@ -299,3 +299,55 @@ func TestPollProfileFilterAndPatterns(t *testing.T) {
 		}
 	}
 }
+
+func TestPollProfileCarriesOnChangeFromThePlan(t *testing.T) {
+	// A measurement is judged per sample, so its plan row turns
+	// on_change off; a setting is only news when it moves, so its row
+	// says nothing and inherits the default.
+	const plan = `{"model":"FusioN6","entries":[],"sibling_thresholds":[],
+ "poll":{"defaults":{"interval":"40ms"},"oids":[
+   {"match":"**.network.pkt_cnt","interval":"40ms","on_change":false},
+   {"match":"refclk.mode","interval":"40ms"}]}}`
+	d, _, err := parseDictionary([]byte(plan), videoFormatsJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objs := []consumer.Object{
+		{Path: []string{"flows", "a", "network", "pkt_cnt"}},
+		{Path: []string{"refclk", "mode"}},
+	}
+	prof, err := pollProfile(d, objs, 0, "")
+	if err != nil || len(prof.Entries) != 2 {
+		t.Fatalf("profile = %+v, %v", prof, err)
+	}
+	if prof.Entries[0].OnChange == nil || *prof.Entries[0].OnChange {
+		t.Errorf("pkt_cnt must publish every sample: %+v", prof.Entries[0].OnChange)
+	}
+	if prof.Entries[1].OnChange != nil {
+		t.Errorf("a row that says nothing must inherit the default: %+v", prof.Entries[1].OnChange)
+	}
+	if !prof.Defaults.OnChange {
+		t.Error("the default stays on_change: most leaves are settings")
+	}
+}
+
+func TestShippedPlanPublishesEverySampleOfAHealthLeaf(t *testing.T) {
+	// The FusioN6 plan we ship must keep the health leaves on every
+	// sample: a stopped counter and a down link are conditions that
+	// PERSIST, and an alarm rule cannot see them from changes alone.
+	d, _, err := parseDictionary(fusion6Dictionary, videoFormatsJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, e := range d.Poll.Entries {
+		if e.OnChange != nil && !*e.OnChange {
+			seen[e.Match] = true
+		}
+	}
+	for _, pat := range []string{"**.network.pkt_cnt", "refclk.status", "telemetry.node.**", "port.*.link"} {
+		if !seen[pat] {
+			t.Errorf("shipped plan: %q must carry on_change:false", pat)
+		}
+	}
+}

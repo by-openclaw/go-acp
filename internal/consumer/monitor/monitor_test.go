@@ -230,3 +230,51 @@ func TestMonitorStopReturns(t *testing.T) {
 		t.Error("device a should be gone after Stop")
 	}
 }
+
+func TestMonitorRepeatsAreMarkedWhenOnChangeIsOff(t *testing.T) {
+	// A measurement is judged per sample: a link that is still down, a
+	// counter that is still stopped. Such an entry turns on_change off,
+	// and every sample is published — the ones carrying the value the
+	// object already had are marked Repeat, so a display can skip them
+	// and an evaluator can see that the condition persists.
+	fk := clock.NewFake(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	fp := newFakeProto()
+	req := consumer.ValueRequest{Path: "port.1.link"}
+	fp.set(addrKey(req), intVal(0))
+
+	m := New(WithClock(fk), WithLogger(discardLog()))
+	defer m.Stop()
+	_, evc := m.Subscribe(64, nil)
+
+	off := false
+	p := &Profile{
+		Defaults: Defaults{Interval: Duration(time.Second), OnChange: true},
+		Entries:  []Entry{{OID: req.Path, OnChange: &off}},
+	}
+	if err := m.Add(context.Background(), Device{Name: "d", Proto: fp, Profile: p}); err != nil {
+		t.Fatal(err)
+	}
+
+	fk.Advance(time.Second)
+	first := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Path == req.Path })
+	if first.Repeat {
+		t.Errorf("the first sample of an object is news, not a repeat: %+v", first)
+	}
+
+	fk.Advance(time.Second)
+	again := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Path == req.Path })
+	if !again.Repeat {
+		t.Errorf("an unchanged sample must be marked Repeat: %+v", again)
+	}
+	if again.Changes != nil {
+		t.Errorf("a repeat carries no change list: %+v", again.Changes)
+	}
+
+	// When the value does move, the sample is a change again.
+	fp.set(addrKey(req), intVal(1))
+	fk.Advance(time.Second)
+	moved := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Value.Int == 1 })
+	if moved.Repeat || len(moved.Changes) != 1 {
+		t.Errorf("movement = %+v, changes %+v", moved, moved.Changes)
+	}
+}

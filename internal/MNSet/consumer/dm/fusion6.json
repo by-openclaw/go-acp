@@ -1,6 +1,6 @@
 {
  "model": "FusioN6",
- "note": "Per-model dictionary: what the module does not publish. Every entry names its source; nothing is guessed. Patterns: '*' matches one path segment (a uuid, an index, a name); a leading '**' matches any number of leading segments.",
+ "note": "Per-model dictionary: what the module does not publish. Every entry names its source; nothing is guessed. Patterns: '*' matches one path segment (a uuid, an index, a name); a leading '**' matches any number of leading segments. Poll plan: on_change false on the health rows: a measurement is judged per sample (a counter that stopped, a link that is still down), a setting only when it changes.",
  "entries": [
   {
    "match": "**.dst_udp_port",
@@ -255,48 +255,59 @@
    {
     "match": "**.network.pkt_cnt",
     "interval": "15s",
-    "source": "stream presence: the counter must climb"
+    "source": "stream presence: the counter must climb",
+    "on_change": false
    },
    {
     "match": "**.network.*.pkt_cnt",
-    "interval": "15s"
+    "interval": "15s",
+    "on_change": false
    },
    {
     "match": "**.rtp_stream_info.*.pkt_rate",
-    "interval": "15s"
+    "interval": "15s",
+    "on_change": false
    },
    {
     "match": "**.rtp_stream_info.*.sequence_error",
-    "interval": "15s"
+    "interval": "15s",
+    "on_change": false
    },
    {
     "match": "telemetry.node.**",
     "interval": "10s",
-    "source": "health, links, PTP as the module summarises them"
+    "source": "health, links, PTP as the module summarises them",
+    "on_change": false
    },
    {
     "match": "refclk.status",
-    "interval": "10s"
+    "interval": "10s",
+    "on_change": false
    },
    {
     "match": "refclk.locked_interface",
-    "interval": "10s"
+    "interval": "10s",
+    "on_change": false
    },
    {
     "match": "port.*.link",
-    "interval": "10s"
+    "interval": "10s",
+    "on_change": false
    },
    {
     "match": "port.*.sfp_ddm_info.*.current",
-    "interval": "30s"
+    "interval": "30s",
+    "on_change": false
    },
    {
     "match": "self.system.core_temp",
-    "interval": "30s"
+    "interval": "30s",
+    "on_change": false
    },
    {
     "match": "self.system.fan_speed",
-    "interval": "30s"
+    "interval": "30s",
+    "on_change": false
    },
    {
     "match": "flows.*.network.**",

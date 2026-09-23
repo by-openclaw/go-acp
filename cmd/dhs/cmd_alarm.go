@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strconv"
@@ -574,4 +575,31 @@ func alarmIdentity(ctx context.Context, plug consumer.Protocol, slot int) string
 		return ""
 	}
 	return id
+}
+
+// reportAlarm prints one verdict and mirrors it to the structured sink
+// with its RFC 5424 severity, so the same line reaches the terminal and
+// the collector. nil (no change of verdict) prints nothing.
+func reportAlarm(tr *alarm.Transition, ev consumer.Event, host string, cf *commonFlags) {
+	if tr == nil {
+		return
+	}
+	fmt.Printf("%s  %-18s  %s\n", ev.Timestamp.Format("15:04:05"), "[alarm]", tr.String())
+	if !cf.logHasSink || cf.eventLogger == nil {
+		return
+	}
+	cf.eventLogger.Info("alarm",
+		slog.String("proto", cf.protocol),
+		slog.String("dev", host),
+		slog.Int("slot", tr.Slot),
+		slog.String("path", tr.Path),
+		slog.String("severity", tr.Severity.String()),
+		slog.Int("syslog_severity", tr.Severity.Syslog()),
+		slog.String("prior", tr.Prior.String()),
+		slog.String("band", tr.Band),
+		slog.String("value", tr.Value),
+		slog.String("prev", tr.Prev),
+		slog.String("unit", tr.Unit),
+		slog.Bool("flapping", tr.Flapping),
+		slog.String("text", tr.Text))
 }
