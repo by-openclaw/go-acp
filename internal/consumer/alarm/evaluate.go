@@ -88,6 +88,16 @@ type Evaluator struct {
 type objState struct {
 	known bool
 
+	// Identity of the object, kept so a sweep — which has no event in
+	// hand — can name it, and its row, so the rule is not looked up
+	// again on every tick.
+	dev   string
+	slot  int
+	path  string
+	label string
+	unit  string
+	row   *Row
+
 	sev  Severity // adopted verdict
 	band string   // adopted band
 
@@ -138,12 +148,26 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 		st = &objState{sev: Normal, band: "normal", moved: now}
 		e.state[k] = st
 	}
+	st.dev, st.slot, st.path, st.row = device, ev.Slot, ev.Path, row
+	if ev.Label != "" {
+		st.label = ev.Label
+	}
+	if ev.Unit != "" {
+		st.unit = ev.Unit
+	}
 
 	value := stringOf(ev.Value)
 	cand, band := e.classify(row, st, ev.Value, value, now)
 	prev := st.value
 	st.value = value
+	return e.settle(st, cand, band, prev, now)
+}
 
+// settle applies the hold and the flap discipline to a candidate
+// verdict and returns the transition it caused, or nil. It is the
+// half of the decision that does not need a sample, which is why a
+// sweep can call it too.
+func (e *Evaluator) settle(st *objState, cand Severity, band, prev string, now time.Time) *Transition {
 	// A candidate that equals the adopted verdict cancels any pending
 	// change: the object came back before its hold elapsed. Starting
 	// normal is not news either.
@@ -157,7 +181,7 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 	if st.cand != cand || st.candBand != band {
 		st.cand, st.candBand, st.since = cand, band, now
 	}
-	if hold := row.hold(cand < st.sev); hold > 0 && now.Sub(st.since) < hold {
+	if hold := st.row.hold(cand < st.sev); hold > 0 && now.Sub(st.since) < hold {
 		return nil
 	}
 
@@ -173,9 +197,9 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 	if now.Before(st.mutedUntil) {
 		return nil
 	}
-	flapping := row.FlapCap > 0 && len(st.flaps) > row.FlapCap
+	flapping := st.row.FlapCap > 0 && len(st.flaps) > st.row.FlapCap
 	if flapping {
-		quiet := 3 * row.hold(false)
+		quiet := 3 * st.row.hold(false)
 		if quiet <= 0 {
 			quiet = time.Minute
 		}
@@ -183,12 +207,54 @@ func (e *Evaluator) Eval(device string, ev consumer.Event) *Transition {
 	}
 
 	return &Transition{
-		Device: device, Slot: ev.Slot, Path: ev.Path,
-		Label: ev.Label, Unit: ev.Unit, Text: row.Text,
-		Value: value, Prev: prev,
+		Device: st.dev, Slot: st.slot, Path: st.path,
+		Label: st.label, Unit: st.unit, Text: st.row.Text,
+		Value: st.value, Prev: prev,
 		Severity: cand, Prior: prior, Band: band,
 		Flapping: flapping, At: now,
 	}
+}
+
+// Sweep advances the clock without a sample and returns the
+// transitions that fall due: the candidates whose hold has elapsed,
+// and the counters that have stood still for too long.
+//
+// A poller sees a condition persist because it reads the object again
+// (ADR-0030, Event.Repeat). A device that PUSHES says "down" once and
+// then says nothing — the second sample a hold is waiting for never
+// arrives, and a stream that stops is silence by definition. Sweeping
+// costs no wire traffic: it asks the state the evaluator already
+// holds what time has made true. Callers that watch a push protocol
+// call it on a ticker; a caller that only polls may call it too, and
+// gets the same verdicts at the same moments.
+func (e *Evaluator) Sweep() []Transition {
+	now := e.clk.Now()
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	keys := make([]string, 0, len(e.state))
+	for k := range e.state {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	out := make([]Transition, 0, 4)
+	for _, k := range keys {
+		st := e.state[k]
+		cand, band := st.cand, st.candBand
+		if st.since.IsZero() {
+			// Nothing pending. Only a counter can change verdict with
+			// no sample at all: the stall IS the absence.
+			if st.row.Kind != KindCounter || !st.haveNum || now.Sub(st.moved) < st.row.stalledFor() {
+				continue
+			}
+			cand, band = st.row.verdict(), "stalled"
+		}
+		if tr := e.settle(st, cand, band, st.value, now); tr != nil {
+			out = append(out, *tr)
+		}
+	}
+	return out
 }
 
 // Explain is the verdict one value would produce on a fresh object,
@@ -382,15 +448,13 @@ func (e *Evaluator) Active() []Transition {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	out := make([]Transition, 0, len(e.state))
-	for k, st := range e.state {
+	for _, st := range e.state {
 		if !st.sev.IsAlarm() && st.sev != Error {
 			continue
 		}
-		dev, rest, _ := strings.Cut(k, "|")
-		slotStr, path, _ := strings.Cut(rest, "|")
-		slot, _ := strconv.Atoi(slotStr)
 		out = append(out, Transition{
-			Device: dev, Slot: slot, Path: path,
+			Device: st.dev, Slot: st.slot, Path: st.path,
+			Label: st.label, Unit: st.unit, Text: st.row.Text,
 			Value: st.value, Severity: st.sev, Band: st.band,
 		})
 	}

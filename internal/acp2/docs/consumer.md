@@ -403,6 +403,48 @@ loaded 190 labels from cache
 17:01:10  s0  15219  Fan Speed    [live]  10 %
 ```
 
+### Alarms
+
+`watch` judges each announced value against the per-model alarm
+template (ADR-0033) and prints one `[alarm]` line per verdict change,
+with its RFC 5424 severity on the structured sink. The reference
+template for the Neuron shelf is tracked at
+`internal/acp2/alarm/SHPRM1@6.0.4.json`; install it once per site:
+
+```
+dhs consumer acp2 alarm import internal/acp2/alarm/SHPRM1@6.0.4.json     --model 'SHPRM1@6.0.4'              # changed=true, then changed=false
+dhs consumer acp2 alarm test --path PSU.1.Status --value Error
+dhs consumer acp2 watch 10.6.255.102 --slot 0      # --no-alarm to silence
+```
+
+Its eight rows are read off the device itself: the shelf grades its own
+supplies (`NA|OK|Warning|Error`, mapped onto the ladder) and declares
+its own ranges (`-40..140 C`, `0..100 %`, `0..250 W`). The plant's own
+warning points are a site decision — add them with `alarm set`.
+
+Two details are ACP2-specific:
+
+- **Paths carry the device root.** An announce reports
+  `ROOT_NODE_V2.PSU.1.Status` while the CLI prints the stripped
+  `PSU.1.Status`. A row that starts with `**.` matches both, which is
+  why every shipped row does. A `*` inside a segment is a glob within
+  it (`**.PSU.*.Fan Health *`).
+- **Enum values match by name.** The row says `"Error"`, not the
+  ordinal — the same word the device's item list uses.
+
+ACP2 pushes, so a rule that waits (`hold`, `stalled_for`) cannot
+depend on the next sample: the shelf announces `25 C` once and then
+says nothing. The watch sweeps the engine every second — no device
+traffic — so a hold expires and a stopped counter is noticed on time.
+A live proof against the Neuron shelf:
+
+```
+01:33:52  PSU.2.Temperature             25 C          (the one announce)
+01:34:17  [alarm] minor raised PSU.2.Temperature (high minor): 25 C   ← +25s hold, swept
+01:34:38  PSU.BOARD.Power Consumption   110 W
+01:34:58  [alarm] major raised PSU.BOARD.Power Consumption (stalled)  ← +20s, no traffic
+```
+
 ---
 
 ## Export / Import

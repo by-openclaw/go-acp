@@ -40,8 +40,11 @@ Thresholds live in a JSON template keyed by the ADR-0022 identity
 .cache/alarm/<proto>/_default.json        every card of this protocol
 ```
 
-One row per path pattern (`*` one segment, `**` any depth), first
-match wins. Four row kinds cover what a plant alarms on:
+One row per path pattern (`*` one segment, or a glob inside a segment;
+`**` any depth), first match wins. A leading `**` also absorbs a root
+the plugin puts in front of every path (ACP2's `ROOT_NODE_V2`), so a
+row matches the path the device reports and the shorter one the CLI
+prints. Four row kinds cover what a plant alarms on:
 
 | kind | the rule |
 |---|---|
@@ -71,6 +74,18 @@ ADR-0030 monitor — and returns a transition. It reads no device, starts
 no goroutine, and keeps state only for objects a row covers. A
 connector needs no code to gain alarms; a connector that never
 subscribes gains them as soon as it does.
+
+A rule that waits — a `hold`, a `stalled_for` — is a statement about
+time, and time does not arrive as an event. A poller sees a condition
+persist because it reads the object again (ADR-0030; the sample is
+marked `Event.Repeat` so a display can skip it). A device that
+**pushes** says "loss" once and then says nothing, and a stream that
+stops is silence by definition. So the evaluator also answers
+`Sweep()`: what has time alone made true. It reads no device, sends
+nothing, and is called on a ticker by whoever holds the evaluator. A
+rule therefore means the same thing whether its values arrive by
+announce or by poll — which is what makes one template language
+enough for every protocol.
 
 This is deliberate: the observability stack receives verdicts, it does
 not compute them. Prometheus and Loki hold history and routing; the
@@ -121,3 +136,11 @@ checked before it is applied.
   `alarm` verb (issue #1110 branch). Engine at 100 % coverage; worked
   example is the FusioN6 (SFP temperature bands from the module's own
   DDM thresholds, packet-counter stall, PTP lock enum, multicast drift).
+- 2026-09-23 — `Sweep()` added, so a hold and a stall no longer depend
+  on a next sample that a push protocol may never send; `watch` sweeps
+  every second. Second worked example is ACP2: the EVS Neuron shelf
+  (`SHPRM1@6.0.4`), whose rows map the device's own grades
+  (`NA|OK|Warning|Error`) and declared ranges onto the ladder. Proven
+  live on 10.6.255.102 — a `25 C` announced once raised at +25 s, a
+  power figure that stopped moving raised at +20 s, both with no
+  device traffic.

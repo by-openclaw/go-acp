@@ -325,10 +325,27 @@ func runWatch(ctx context.Context, args []string) error {
 	// announce. Kept slot-list-empty until the first frame event arrives.
 	var prevFrame []consumer.SlotStatus
 
+	// A hold and a stall are statements about time, and on a protocol
+	// that PUSHES the next sample may never come: the device announced
+	// "loss" once, or the stream simply stopped sending. The sweep asks
+	// the evaluator what time alone has made true — no device traffic,
+	// no poll — so a rule means the same thing whether its values
+	// arrive by announce or by poll.
+	var sweep <-chan time.Time
+	if evaluator != nil {
+		tk := time.NewTicker(time.Second)
+		defer tk.Stop()
+		sweep = tk.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-sweep:
+			for _, tr := range evaluator.Sweep() {
+				reportAlarm(&tr, host, cf)
+			}
 		case err := <-supErr:
 			// The supervisor gave up: the initial setup failed, or the
 			// attempt budget ran out. Either way the watch is over and the
@@ -347,7 +364,7 @@ func runWatch(ctx context.Context, args []string) error {
 			// down). Evaluate first, then skip the display.
 			if ev.Repeat {
 				if evaluator != nil {
-					reportAlarm(evaluator.Eval(host, ev), ev, host, cf)
+					reportAlarm(evaluator.Eval(host, ev), host, cf)
 				}
 				continue
 			}
@@ -403,7 +420,7 @@ func runWatch(ctx context.Context, args []string) error {
 			// One verdict per change, printed under the value line and
 			// mirrored to the structured sink with its RFC 5424 severity.
 			if evaluator != nil {
-				reportAlarm(evaluator.Eval(host, ev), ev, host, cf)
+				reportAlarm(evaluator.Eval(host, ev), host, cf)
 			}
 
 			// Matrix crosspoint events render differently —

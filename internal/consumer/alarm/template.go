@@ -273,8 +273,14 @@ func (t *Template) RowFor(path string) *Row {
 }
 
 // MatchPath reports whether a dotted pattern matches a dotted path:
-// "*" matches exactly one segment, a leading "**" any number of
-// leading segments, a trailing "**" everything under the prefix.
+// "*" matches exactly one segment (or, inside a segment, any run of
+// characters within it), a leading "**" any number of leading
+// segments, a trailing "**" everything under the prefix.
+//
+// A leading "**" is also how a row stays right about a root a device
+// puts in front of everything (ACP2's ROOT_NODE_V2): "**.PSU.*.Status"
+// matches the path the plugin reports and the shorter one the CLI
+// prints.
 func MatchPath(pattern string, path []string) bool {
 	pat := strings.Split(pattern, ".")
 	if len(pat) > 0 && pat[0] == "**" {
@@ -295,11 +301,38 @@ func MatchPath(pattern string, path []string) bool {
 		return false
 	}
 	for i, p := range pat {
-		if p != "*" && p != path[i] {
+		if !segMatch(p, path[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+// segMatch matches one path segment against one pattern segment. A
+// bare "*" is the whole segment; a "*" inside a segment is a glob
+// within it, which is how a device that numbers its leaves is
+// covered by one row ("Fan Health *", "CONTROL PORT MAC *").
+func segMatch(pat, seg string) bool {
+	if pat == "*" || pat == seg {
+		return true
+	}
+	if !strings.Contains(pat, "*") {
+		return false
+	}
+	parts := strings.Split(pat, "*")
+	if !strings.HasPrefix(seg, parts[0]) {
+		return false
+	}
+	seg = seg[len(parts[0]):]
+	last := parts[len(parts)-1]
+	for _, mid := range parts[1 : len(parts)-1] {
+		i := strings.Index(seg, mid)
+		if i < 0 {
+			return false
+		}
+		seg = seg[i+len(mid):]
+	}
+	return strings.HasSuffix(seg, last) && len(seg) >= len(last)
 }
 
 // hold returns the row's adopt delay in the given direction.

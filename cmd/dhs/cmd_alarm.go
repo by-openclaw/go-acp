@@ -582,11 +582,13 @@ func alarmIdentity(ctx context.Context, plug consumer.Protocol, slot int) string
 // reportAlarm prints one verdict and mirrors it to the structured sink
 // with its RFC 5424 severity, so the same line reaches the terminal and
 // the collector. nil (no change of verdict) prints nothing.
-func reportAlarm(tr *alarm.Transition, ev consumer.Event, host string, cf *commonFlags) {
+// A swept verdict has no event behind it, so the line is stamped with
+// the moment the engine adopted it.
+func reportAlarm(tr *alarm.Transition, host string, cf *commonFlags) {
 	if tr == nil {
 		return
 	}
-	fmt.Printf("%s  %-18s  %s\n", ev.Timestamp.Format("15:04:05"), "[alarm]", tr.String())
+	fmt.Printf("%s  %-18s  %s\n", tr.At.Format("15:04:05"), "[alarm]", tr.String())
 	if !cf.logHasSink || cf.eventLogger == nil {
 		return
 	}
