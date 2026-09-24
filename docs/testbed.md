@@ -126,6 +126,22 @@ As found on 2026-09-23, locked to an MPTS and decoding one service:
 table under `Status.TsDescriptor` — a whole-device walk takes minutes
 over v1 GETNEXT, so scope it (`--path ateme.dr5000.Status.Input`).
 
+**Communities**: `public` read, `private` write — set on the unit's own
+web UI, and what the agent enforces (`noAccess` for a write on
+`public`). dhs takes both from the environment (`SNMP_COMMUNITY`,
+`SNMP_WRITE_COMMUNITY`), never a flag.
+
+**Identity**: `DR5000@1.3.1.1` — `dr5000UnitModel` + 
+`dr5000SoftwareCurrentVersion`, which is also the firmware the
+downloaded MIB matches (its changelog's newest entry is 1.3.1.1). The
+alarm template is `internal/snmp/alarm/DR5000@1.3.1.1.json`.
+
+**Signal, as found**: C/N margin **1.0–1.1 dB** (`SnrMargin` 10–11
+centibels) and BER **~5e-5** (`Ber` ~5000, in multiples of 1e-8). The
+vendor's own text says a margin at or below 0 is undecodable, so this
+link is running about one dB from the cliff — the alarm template's
+major rung fires on it as it stands.
+
 **Quirk worth knowing: the MIB marks its *status* objects
 `read-write`** (`dr5000StatusInputSatLocked` and friends). Nothing can
 be written to them usefully; it means a tool that treats "writable" as

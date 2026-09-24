@@ -929,3 +929,85 @@ func TestAValueTheSyntaxCannotCarryNeverReachesTheWire(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+// answers replies to each GET with the value registered for that OID,
+// and with an empty varbind list for anything else — an agent that
+// publishes some of its identity and not the rest.
+func answers(vals map[string]codec.Value) func(codec.Message) codec.Message {
+	return func(req codec.Message) codec.Message {
+		out := codec.Message{
+			Version: req.Version, Community: req.Community,
+			PDU: &codec.PDU{Type: codec.PDUTypeResponse, RequestID: req.PDU.RequestID},
+		}
+		for _, vb := range req.PDU.VarBinds {
+			if v, ok := vals[vb.Name.String()]; ok {
+				out.PDU.VarBinds = append(out.PDU.VarBinds, codec.VarBind{Name: vb.Name, Value: v})
+			}
+		}
+		return out
+	}
+}
+
+func TestIdentityIsTheDevicesOwnWords(t *testing.T) {
+	const (
+		ateme   = "1.3.6.1.4.1.27338"
+		model   = "1.3.6.1.4.1.27338.5.2.2.0" // dr5000UnitModel
+		version = "1.3.6.1.4.1.27338.5.6.1.0" // dr5000SoftwareCurrentVersion
+	)
+	vals := map[string]codec.Value{
+		sysObjectID.String(): codec.ObjectID(codec.MustParseOID(ateme + ".5.2.2")),
+		model:                codec.String("DR5000"),
+		version:              codec.String("1.3.1.1"),
+	}
+	p := scriptedPlugin(t, &scriptedNet{Net: transport.New(transport.Config{}), reply: answers(vals)})
+	ctx := context.Background()
+	if err := p.Connect(ctx, "127.0.0.1", 161); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	got, err := p.IdentityProbe(ctx, 0)
+	if err != nil {
+		t.Fatalf("IdentityProbe: %v", err)
+	}
+	if got != "DR5000@1.3.1.1" {
+		t.Errorf("identity = %q, want DR5000@1.3.1.1", got)
+	}
+
+	// A device that names itself but not its firmware is still named.
+	delete(vals, version)
+	p2 := scriptedPlugin(t, &scriptedNet{Net: transport.New(transport.Config{}), reply: answers(vals)})
+	if err := p2.Connect(ctx, "127.0.0.1", 161); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := p2.IdentityProbe(ctx, 0); got != "DR5000" {
+		t.Errorf("model only = %q", got)
+	}
+
+	// A device that publishes neither gets no identity rather than a
+	// guess — the protocol default then governs its template.
+	delete(vals, model)
+	p3 := scriptedPlugin(t, &scriptedNet{Net: transport.New(transport.Config{}), reply: answers(vals)})
+	if err := p3.Connect(ctx, "127.0.0.1", 161); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := p3.IdentityProbe(ctx, 0); got != "" {
+		t.Errorf("nothing published = %q", got)
+	}
+}
+
+func TestIdentityNeedsASessionAndABranch(t *testing.T) {
+	f := &Factory{}
+	p := f.New(plugin.Deps{Logger: quiet()}).(*Plugin)
+	if _, err := p.IdentityProbe(context.Background(), 0); !errors.Is(err, dhsc.ErrNotConnected) {
+		t.Errorf("without a session = %v", err)
+	}
+
+	// An agent whose sysObjectID is not under an enterprise has no
+	// vendor branch to read a model from.
+	q := connected(t, provider.Communities{Read: "public"})
+	q.mu.Lock()
+	q.sysOID = codec.MustParseOID("1.3.6.1.2.1.1")
+	q.mu.Unlock()
+	if got, err := q.IdentityProbe(context.Background(), 0); got != "" || err != nil {
+		t.Errorf("no vendor branch = %q, %v", got, err)
+	}
+}

@@ -568,6 +568,60 @@ func (p *Plugin) writeSession(ctx context.Context) (*Session, error) {
 	return sess, nil
 }
 
+// IdentityProbe answers "which card am I talking to" the way ADR-0022
+// asks: Model@SwRev, so a per-model alarm template and a per-model DM
+// find each other.
+//
+// SNMP has no standard object for either — sysDescr on this IRD is
+// "Linux dp2 2.6.37", which says what it boots, not what it is. So the
+// vendor's own branch is read by the convention every MIB in this lab
+// follows: an object whose name ends in Model, and one whose name ends
+// in a version. What comes back is the device's own words, and a
+// device that publishes neither gets no identity rather than a guess.
+func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
+	sess, err := p.session()
+	if err != nil {
+		return "", err
+	}
+	model := p.firstNamed(ctx, sess, "UnitModel", "Model", "UnitName", "ProductName")
+	version := p.firstNamed(ctx, sess, "SoftwareCurrentVersion", "CurrentVersion",
+		"SoftwareVersion", "FirmwareVersion", "Version")
+	switch {
+	case model != "" && version != "":
+		return model + "@" + version, nil
+	case model != "":
+		return model, nil
+	}
+	return "", nil
+}
+
+// firstNamed reads the first object under the device's own branch
+// whose MIB name ends in one of the suffixes, in the order given.
+func (p *Plugin) firstNamed(ctx context.Context, sess *Session, suffixes ...string) string {
+	p.mu.Lock()
+	root := p.sysOID
+	p.mu.Unlock()
+	if len(root) < 7 || !root.HasPrefix(codec.OID{1, 3, 6, 1, 4, 1}) {
+		return ""
+	}
+	under := mib.Compiled().Under(append(codec.OID{}, root[:7]...))
+	for _, suffix := range suffixes {
+		for _, o := range under {
+			if o.Kind != "object-type" || !strings.HasSuffix(o.Name, suffix) || len(o.Index) != 0 {
+				continue
+			}
+			binds, err := sess.Get(ctx, p.instanceOf(o.OID))
+			if err != nil || len(binds) == 0 || binds[0].Value.Type != codec.TypeOctetString {
+				continue
+			}
+			if v := strings.TrimSpace(string(binds[0].Value.Bytes)); v != "" {
+				return v
+			}
+		}
+	}
+	return ""
+}
+
 // PathNative says the plugin resolves a path itself: the MIB is the
 // map, so the CLI must not walk 20 000 objects to find one name.
 func (p *Plugin) PathNative() bool { return true }
