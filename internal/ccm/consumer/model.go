@@ -93,6 +93,11 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		return strings.Join(objs[i].Path, "/") < strings.Join(objs[j].Path, "/")
 	})
 
+	// Resolve what the matrices route, once, into the model — so a
+	// crosspoint carries the resource it addresses rather than a name
+	// every reader would have to resolve again. See link.go.
+	p.linkMatrices(ctx, client, spec, objs)
+
 	p.mu.Lock()
 	p.tree = objs
 	p.byPath = make(map[string]dhsc.Object, len(objs))

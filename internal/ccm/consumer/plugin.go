@@ -122,10 +122,11 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
 	}
-	doc, err := client.FetchSpec(ctx)
+	doc, from, err := client.FetchSpec(ctx)
 	if err != nil {
-		return fmt.Errorf("ccm: %s: api.yml: %w", host, err)
+		return fmt.Errorf("ccm: %s: %w", host, err)
 	}
+	p.deps.Logger.Debug("ccm: model contract", "base", client.Base(), "spec", from)
 	spec, err := codec.ParseSpec(doc)
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
@@ -232,6 +233,7 @@ var dialClient = func(host string) *Client {
 	return New(Options{
 		Host:      host,
 		APIBase:   strings.TrimSpace(os.Getenv("CCM_API_BASE")),
+		APISpec:   strings.TrimSpace(os.Getenv("CCM_API_SPEC")),
 		VerifyTLS: strings.TrimSpace(os.Getenv("CCM_VERIFY_TLS")) != "",
 	})
 }

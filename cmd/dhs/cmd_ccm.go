@@ -90,6 +90,7 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	tree := fs.Bool("tree", false, "walk the FULL recursive DM (every node/resource), not just io/ip streams")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
 	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
+	apiSpec := fs.String("api-spec", "", "the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.")
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
 	start := fs.String("start", "", "with --tree: comma-separated node paths to seed the walk (default: discover from the API root)")
 
@@ -105,7 +106,7 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	}
 
 	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: ccmVerifyTLS(*verifyTLS),
-		Timeout: *timeout, APIBase: ccmAPIBase(*apiBase)})
+		Timeout: *timeout, APIBase: ccmAPIBase(*apiBase), APISpec: ccmAPISpec(*apiSpec)})
 	if err := c.Resolve(ctx); err != nil {
 		return err
 	}
@@ -221,6 +222,7 @@ func takeCCMSettings(args []string) []string {
 		bare bool
 	}{
 		{"api-base", "CCM_API_BASE", false},
+		{"api-spec", "CCM_API_SPEC", false},
 		{"verify-tls", "CCM_VERIFY_TLS", true},
 	}
 
@@ -273,4 +275,14 @@ func ccmAPIBase(flagValue string) string {
 // asks for it — and asking once, anywhere, is enough.
 func ccmVerifyTLS(flagValue bool) bool {
 	return flagValue || strings.TrimSpace(os.Getenv("CCM_VERIFY_TLS")) != ""
+}
+
+// ccmAPISpec is the OpenAPI document a CCM verb should fetch: its own
+// flag when given, otherwise what the dispatcher took off the command
+// line or the operator exported. Empty tries the known names.
+func ccmAPISpec(flagValue string) string {
+	if v := strings.TrimSpace(flagValue); v != "" {
+		return v
+	}
+	return strings.TrimSpace(os.Getenv("CCM_API_SPEC"))
 }

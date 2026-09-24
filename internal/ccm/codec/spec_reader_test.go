@@ -173,3 +173,42 @@ func TestParseSpecAgainstTheDevicesOwnDocument(t *testing.T) {
 		t.Error("/misc/luts is declared — it is the one a tree walk cannot find")
 	}
 }
+
+func TestParseSpecAgainstTheShufflersOwnDocument(t *testing.T) {
+	// A second product, a second generator: 3.1.1 where the bridge is
+	// 3.1.2, no version segment in its paths, and its own model. The
+	// reader has to take both, because one connector serves both
+	// fleets — and if EVS changes the shape again, this fails here.
+	doc, err := os.ReadFile(filepath.Join("testdata", "SHUFFLE@2.0.0-openapi.yml"))
+	if err != nil {
+		t.Skipf("no committed shuffler spec: %v", err)
+	}
+	s, err := ParseSpec(doc)
+	if err != nil {
+		t.Fatalf("the shuffler's document must parse: %v", err)
+	}
+	// Counted from the file, so this asserts the reader against the
+	// document rather than against itself.
+	if got := len(s.With(GET)); got != 55 {
+		t.Errorf("GETs = %d, want 55", got)
+	}
+	if got := len(s.With(PUT)); got != 20 {
+		t.Errorf("PUTs = %d, want 20", got)
+	}
+	// Its paths carry no /v1, and its matrix is spelled differently
+	// from the bridge's — which is the whole reason the model is read
+	// from the device rather than hardcoded.
+	if !s.Readable("/matrices/audio/info") {
+		t.Error("the shuffler's matrix info must be readable")
+	}
+	if s.Readable("/matrix/audio/info") {
+		t.Error("that is the BRIDGE's spelling — this device does not serve it")
+	}
+	if !s.Writable("/matrices/audio/state/main") {
+		t.Error("the shuffler's crosspoint map must be writable")
+	}
+	// And a per-channel resource the bridge does not have at all.
+	if !s.Readable("/io/ip/receivers/audio/{uuid}/channels/{channelUuid}") {
+		t.Error("the shuffler routes audio per channel")
+	}
+}

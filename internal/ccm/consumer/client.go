@@ -28,6 +28,9 @@ type Client struct {
 	// re-base against, and whether the base is already settled.
 	host     string
 	resolved bool
+	// specPath is the OpenAPI document's path relative to the base,
+	// when the operator named one. Empty means try [SpecPaths].
+	specPath string
 	http     *transporthttp.Client
 }
 
@@ -81,6 +84,9 @@ type Options struct {
 	// APIBase is the path the API hangs off, "/api/v1" or "/api".
 	// Empty means find it — see [Client.Resolve].
 	APIBase string
+	// APISpec is the OpenAPI document, relative to the base
+	// ("/docs/openapi.yml"). Empty tries [SpecPaths] in order.
+	APISpec string
 }
 
 // APIBases are the bases tried, in order, when none was given.
@@ -144,6 +150,7 @@ func New(opts Options) *Client {
 		base:     base,
 		resolved: apiBase != "",
 		host:     opts.Host,
+		specPath: normalizeAPIBase(opts.APISpec),
 		http: &transporthttp.Client{
 			HTTP: &stdhttp.Client{
 				Timeout:   opts.Timeout,
@@ -168,11 +175,43 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	return body, nil
 }
 
-// FetchSpec downloads the device's own OpenAPI schema (the CCM DM
-// contract) from /api/v1/docs/api.yml. It is served unauthenticated and
-// is the artifact to diff across firmware upgrades.
-func (c *Client) FetchSpec(ctx context.Context) ([]byte, error) {
-	return c.get(ctx, "/docs/api.yml")
+// SpecPaths are the document names tried, in order, relative to the
+// API base.
+//
+// EVS renamed it along with the base: BRIDGE 7.0.3 serves
+// /api/v1/docs/api.yml, and the firmware on the shuffler serves
+// /api/docs/openapi.yml. Both are the same document — the device's own
+// OpenAPI schema, served unauthenticated, and the artefact to diff
+// across a firmware upgrade — so the connector asks for each in turn
+// rather than knowing which fleet it is on.
+var SpecPaths = []string{"/docs/api.yml", "/docs/openapi.yml"}
+
+// FetchSpec downloads the device's own OpenAPI schema.
+//
+// It returns the document and the path it came from, so a caller can
+// say which one this device serves — a firmware diff wants to know
+// that the name moved, not just that the content did.
+func (c *Client) FetchSpec(ctx context.Context) ([]byte, string, error) {
+	paths := SpecPaths
+	if c.specPath != "" {
+		paths = []string{c.specPath}
+	}
+	var (
+		tried []string
+		first error
+	)
+	for _, p := range paths {
+		body, err := c.get(ctx, p)
+		if err == nil {
+			return body, p, nil
+		}
+		tried = append(tried, c.base+p)
+		if first == nil {
+			first = err
+		}
+	}
+	return nil, "", fmt.Errorf("ccm: no OpenAPI document at %s — name it with --api-spec: %w",
+		strings.Join(tried, ", "), first)
 }
 
 // Walk reads /self plus every io/ip sender and receiver, returning the

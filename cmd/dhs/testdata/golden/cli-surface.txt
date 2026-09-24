@@ -1263,6 +1263,8 @@ $ dhs consumer ccm walk --help
 Usage of consumer ccm walk:
   -api-base string
     	the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.
+  -api-spec string
+    	the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.
   -json
     	emit the whole device as JSON
   -start string
@@ -1279,6 +1281,8 @@ $ dhs consumer ccm export --help
 Usage of consumer ccm export:
   -api-base string
     	the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.
+  -api-spec string
+    	the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.
   -out string
     	output directory root (default "ccm-export")
   -verify-tls
