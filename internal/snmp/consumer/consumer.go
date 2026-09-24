@@ -153,13 +153,30 @@ func Dial(ctx context.Context, opts Options, deps plugin.Deps) (*Session, error)
 		opts:   opts,
 		logger: plugin.LoggerOrDefault(deps.Logger),
 		clk:    deps.Clock,
-		prof:   opts.Compliance,
+		prof:   recorderOr(opts.Compliance),
 		conn:   conn,
 		// A random starting request-id, so a restarted manager does not
 		// accept a late reply to the previous run's request 1.
 		nextID: rand.Int31(), //nolint:gosec // correlation, not secrecy
 	}, nil
 }
+
+// recorderOr keeps the promise Options.Compliance makes. A nil
+// Recorder is a nil INTERFACE, and s.prof.Note on one panics — which
+// is what a walk of the IRD found, in the one path where nothing had
+// supplied a profile. "Nil is fine" has to be made true, not asserted.
+func recorderOr(r compliance.Recorder) compliance.Recorder {
+	if r == nil {
+		return noRecorder{}
+	}
+	return r
+}
+
+// noRecorder counts nothing, which is what a caller who supplied no
+// profile asked for.
+type noRecorder struct{}
+
+func (noRecorder) Note(string) {}
 
 // withDefaultPort adds :161 to a bare host.
 func withDefaultPort(addr string) (string, error) {

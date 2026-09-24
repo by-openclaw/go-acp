@@ -494,3 +494,25 @@ func TestUnsolicitedRepliesAreCountedAndIgnored(t *testing.T) {
 		t.Errorf("counts = %v", snap)
 	}
 }
+
+func TestANilComplianceRecorderIsFine(t *testing.T) {
+	// Options says so, and it has to be true: a nil Recorder is a nil
+	// INTERFACE, and s.prof.Note on one panics. A walk of the IRD found
+	// exactly that, in the one path where nothing had supplied a
+	// profile — the identity probe after a request that got no answer.
+	addr := agentUnder(t, provider.Communities{Read: "public"})
+	sess, err := Dial(context.Background(), Options{Addr: addr}, plugin.Deps{Logger: quiet()})
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	defer func() { _ = sess.Close() }()
+
+	// A reply that is not ours is exactly what makes the session Note
+	// something, and with no recorder given it must simply not count it.
+	if _, ok := sess.acceptable([]byte("not an snmp message"), 1); ok {
+		t.Error("undecodable bytes are not an acceptable reply")
+	}
+	if _, err := sess.Get(context.Background(), oid("1.3.6.1.2.1.1.1.0")); err != nil {
+		t.Errorf("a session with no profile must still work: %v", err)
+	}
+}
