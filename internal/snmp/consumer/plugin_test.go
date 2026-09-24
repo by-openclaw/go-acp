@@ -1011,3 +1011,20 @@ func TestIdentityNeedsASessionAndABranch(t *testing.T) {
 		t.Errorf("no vendor branch = %q, %v", got, err)
 	}
 }
+
+func TestTheConnectorAsksForATimeoutItCanMeet(t *testing.T) {
+	// UDP retries, so one operation is one attempt plus the retry
+	// budget. The CLI's 1 s default is shorter than that, and a device
+	// answering in 700 ms then reads as "context deadline exceeded" —
+	// which is how this was found, on a healthy IRD.
+	p := (&Factory{}).New(plugin.Deps{Logger: quiet()}).(*Plugin)
+	got := p.MinOpTimeout()
+	if want := time.Duration(DefaultRetries+1) * DefaultTimeout; got <= want {
+		t.Errorf("MinOpTimeout = %s, which does not cover %d attempts of %s", got, DefaultRetries+1, DefaultTimeout)
+	}
+	if got > time.Minute {
+		t.Errorf("MinOpTimeout = %s — a floor, not a nap", got)
+	}
+	// noRecorder counts nothing and says nothing.
+	noRecorder{}.Note("anything")
+}

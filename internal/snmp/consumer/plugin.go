@@ -98,7 +98,19 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 	var firstErr error
 	for _, v := range []codec.Version{codec.Version2c, codec.Version1} {
-		sess, err := Dial(ctx, Options{Addr: addr, Version: v, Community: p.community}, p.deps)
+		// Retries is explicit: zero means "one attempt" in Options, and
+		// UDP loses datagrams. A manager that does not retry reports a
+		// device as down because one packet was dropped — which is
+		// exactly what the first live run of the integration suite
+		// caught, on a fabric where the IRD answers in ~700 ms.
+		sess, err := Dial(ctx, Options{
+			Addr: addr, Version: v, Community: p.community,
+			Retries: DefaultRetries, Timeout: DefaultTimeout,
+			// The connector's own profile: an agent's deviations are
+			// counted where every other protocol's are, and `status`
+			// can show them.
+			Compliance: p.ComplianceProfile(),
+		}, p.deps)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -558,6 +570,8 @@ func (p *Plugin) writeSession(ctx context.Context) (*Session, error) {
 	}
 	sess, err := Dial(ctx, Options{
 		Addr: fmt.Sprintf("%s:%d", host, port), Version: ver, Community: cmty,
+		Retries: DefaultRetries, Timeout: DefaultTimeout,
+		Compliance: p.ComplianceProfile(),
 	}, p.deps)
 	if err != nil {
 		return nil, err
@@ -620,6 +634,16 @@ func (p *Plugin) firstNamed(ctx context.Context, sess *Session, suffixes ...stri
 		}
 	}
 	return ""
+}
+
+// MinOpTimeout is how long one exchange may honestly take here. UDP
+// loses datagrams, so a read is one attempt plus DefaultRetries, each
+// bounded by DefaultTimeout; the CLI's 1 s default is shorter than
+// that, and a device that answers in 700 ms then reads as "context
+// deadline exceeded". The floor is the retry budget plus a margin for
+// the walk of round trips a GET of six varbinds makes.
+func (p *Plugin) MinOpTimeout() time.Duration {
+	return time.Duration(DefaultRetries+1)*DefaultTimeout + 4*time.Second
 }
 
 // PathNative says the plugin resolves a path itself: the MIB is the

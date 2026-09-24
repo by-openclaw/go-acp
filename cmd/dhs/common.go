@@ -63,7 +63,10 @@ func init() {
 type commonFlags struct {
 	// verb is the FlagSet name ("export", "walk", …) — labels the
 	// ADR-0028 default capture folder; never user-visible otherwise.
-	verb             string
+	verb string
+	// fs is the FlagSet these flags were parsed from, kept so a
+	// default can be told apart from a value the operator typed.
+	fs               *flag.FlagSet
 	protocol         string
 	transport        string
 	port             int
@@ -111,7 +114,7 @@ type commonFlags struct {
 }
 
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
-	cf := &commonFlags{verb: fs.Name()}
+	cf := &commonFlags{verb: fs.Name(), fs: fs}
 	fs.StringVar(&cf.protocol, "protocol", "acp1", "protocol plugin name")
 	fs.StringVar(&cf.transport, "transport", "auto",
 		"transport: auto (default, TCP-first with UDP fallback like real "+
@@ -372,6 +375,9 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 			cf.logCleanup()
 		}
 	}
+	// A connector whose transport retries needs longer than one
+	// attempt; raised only when the operator did not say otherwise.
+	raiseTimeoutFloor(cf, plug)
 	return plug, cleanup, nil
 }
 
@@ -559,6 +565,37 @@ func resolveLabelFromCache(host, proto string, slot int, group, label string) in
 // withTimeout wraps ctx with the subcommand's --timeout.
 func withTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, d)
+}
+
+// raiseTimeoutFloor lets a connector say that the default per-operation
+// timeout is shorter than one exchange on its transport.
+//
+// SNMP is the case that forced it: UDP loses datagrams, so the manager
+// retries, and a read that retries twice cannot finish inside the 1 s
+// default — a healthy IRD on a normal fabric answered "context
+// deadline exceeded" while the bespoke verbs, which carry their own
+// retry budget, worked. An operator who passed --timeout keeps what
+// they asked for; one who did not gets a floor the protocol can
+// actually meet.
+func raiseTimeoutFloor(cf *commonFlags, plug consumer.Protocol) {
+	explicit := false
+	if cf.fs != nil {
+		cf.fs.Visit(func(f *flag.Flag) {
+			if f.Name == "timeout" {
+				explicit = true
+			}
+		})
+	}
+	if explicit {
+		return
+	}
+	floor, ok := plug.(interface{ MinOpTimeout() time.Duration })
+	if !ok {
+		return
+	}
+	if d := floor.MinOpTimeout(); d > cf.timeout {
+		cf.timeout = d
+	}
 }
 
 // popHost extracts the first non-flag argument as the host and returns

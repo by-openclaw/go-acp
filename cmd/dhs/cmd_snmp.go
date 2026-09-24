@@ -51,6 +51,14 @@ func runSNMPConsumer(ctx context.Context, args []string) (bool, error) {
 		}
 		return true, runSNMPGet(ctx, rest)
 	case "walk":
+		// Same rule as get/set. SNMP's own walk speaks subtrees
+		// (--oid 1.3.6.1.4.1.27338, --limit); the neutral one walks a
+		// SLOT and writes the device model to the DM cache, which is
+		// what every other connector's walk does and what an alarm
+		// template and a fixture are keyed by.
+		if namesASlot(rest) {
+			return false, nil
+		}
 		return true, runSNMPWalk(ctx, rest)
 	case "set":
 		if namesAPath(rest) {
@@ -501,6 +509,17 @@ NOTE
   Every trap destination on the devices in docs/testbed.md currently
   points at an address that no longer exists, so they emit to nobody.
   ` + "`trap`" + ` is how a receiver is proven before anything depends on it.`)
+}
+
+// namesASlot reports whether the operator asked for the neutral walk:
+// a device model for one slot, rather than an OID subtree.
+func namesASlot(args []string) bool {
+	for _, a := range args {
+		if a == "--slot" || a == "-slot" || strings.HasPrefix(a, "--slot=") || strings.HasPrefix(a, "-slot=") {
+			return true
+		}
+	}
+	return false
 }
 
 // namesAPath reports whether the operator addressed the object the
