@@ -29,3 +29,9 @@ internal/*/testdata/fixtures/**/tree.json -text
 internal/*/testdata/fixtures/**/glow.json -text
 internal/neuron/codec/testdata/*.yml text eol=lf
 internal/neuron/codec/testdata/*.json text eol=lf
+
+# Protocol captures are byte-exact evidence: a replay test compares body.txt to the bytes
+# inside wire.jsonl. SDP and other line-based payloads carry CRLF, so line-ending
+# normalisation silently breaks the fixture (it did: 11 CRs lost from sdp-text/body.txt).
+internal/**/testdata/**/body.txt -text
+internal/**/testdata/**/wire.jsonl -text
