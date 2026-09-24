@@ -1,0 +1,310 @@
+---
+# SNMPv3 + InformRequest interop — ADR-0025 deliverable 3, tier 2.
+#
+# The oracle here is NET-SNMP, not us. Our own agent and our own
+# manager agreeing proves they were written by the same person; what
+# matters is whether a foreign implementation agrees, and net-snmp is
+# what every NMS in the field is built on or tested against.
+#
+# Four directions, because each exercises a different half:
+#
+#   1. our manager  -> net-snmp agent      v3 discovery + authPriv poll
+#   2. net-snmp mgr -> our agent           v3 get + walk
+#   3. net-snmp mgr -> our agent           a WRONG password: net-snmp has
+#                                          to read our usmStats Report
+#                                          and say "authentication
+#                                          failure", not time out
+#   4. snmpinform   -> our trap listener   our acknowledgement, or
+#      our inform   -> snmptrapd           snmpinform exits non-zero
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/snmp-v3-verify.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/snmp-v3-verify.yml  # -> changed=0
+#
+# Everything runs on the loopback of the control node, so it needs no
+# device and disturbs no plant. The credentials below are loopback test
+# credentials and are deliberately not secret; a real agent's belong in
+# the environment (SNMP_V3_AUTH_PASS / SNMP_V3_PRIV_PASS).
+
+- name: SNMPv3 interop against net-snmp
+  hosts: "{{ snmp_v3_host | default('control') }}"
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    stage: /root/snmp-v3-verify
+    v3_user: operator
+    v3_auth: "authpass-authpass"
+    v3_priv: "privpass-privpass"
+    # Our agent and our listener, on ports nothing else uses.
+    our_agent: 127.0.0.1:11161
+    our_listener: 127.0.0.1:11162
+    their_trapd: 127.0.0.1:11163
+    # net-snmp's own agent, which Debian binds to the loopback.
+    their_agent: 127.0.0.1:161
+
+  tasks:
+    - name: net-snmp is what we are measured against
+      ansible.builtin.apt:
+        name: [snmp, snmpd, snmptrapd]
+        state: present
+        update_cache: false
+
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: Is there a Go toolchain here?
+      ansible.builtin.command: go version
+      register: v3_go
+      changed_when: false
+      failed_when: false
+
+    - name: Build the CLI (needs Go on this host)
+      ansible.builtin.command:
+        cmd: go build -o {{ stage }}/dhs ./cmd/dhs
+        chdir: "{{ repo }}"
+      when: v3_go.rc == 0
+      changed_when: true
+
+    - name: Or take the binary built elsewhere (-e snmp_bin_dir=…)
+      when: v3_go.rc != 0
+      block:
+        - name: There has to be one
+          ansible.builtin.assert:
+            that: snmp_bin_dir is defined
+            fail_msg: >-
+              This host has no Go toolchain. Cross-compile where there is one
+              (GOOS=linux GOARCH=amd64 go build -o dhs ./cmd/dhs) and pass
+              -e snmp_bin_dir=<path>.
+        - name: Stage it
+          ansible.builtin.copy:
+            src: "{{ snmp_bin_dir }}/dhs"
+            dest: "{{ stage }}/dhs"
+            mode: "0755"
+
+    # net-snmp's agent needs a v3 user before it can be polled as one.
+    # Creating it means stopping snmpd (the createUser line is consumed
+    # at startup), so it is guarded by a read that only succeeds when
+    # the user already works — which is what keeps this idempotent.
+    - name: Does net-snmp's agent already know our v3 user?
+      ansible.builtin.command:
+        cmd: >-
+          snmpget -v3 -u {{ v3_user }} -l authPriv -a SHA-256 -A {{ v3_auth }}
+          -x AES -X {{ v3_priv }} {{ their_agent }} 1.3.6.1.2.1.1.1.0
+      register: v3_user_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Teach it, once
+      when: v3_user_probe.rc != 0
+      block:
+        - name: snmpd stops while its user database is written
+          ansible.builtin.systemd_service:
+            name: snmpd
+            state: stopped
+        - name: Create the v3 user
+          ansible.builtin.command:
+            cmd: >-
+              net-snmp-create-v3-user -ro -A {{ v3_auth }} -a SHA-256
+              -X {{ v3_priv }} -x AES {{ v3_user }}
+          changed_when: true
+        - name: snmpd starts again
+          ansible.builtin.systemd_service:
+            name: snmpd
+            state: started
+
+    # ---- 1. our manager against net-snmp's agent -------------------
+    - name: Our v3 manager reads net-snmp's agent
+      ansible.builtin.command:
+        cmd: >-
+          {{ stage }}/dhs consumer snmp get --version 3
+          --oid 1.3.6.1.2.1.1.1.0 {{ their_agent }}
+      environment:
+        SNMP_V3_USER: "{{ v3_user }}"
+        SNMP_V3_AUTH: sha256
+        SNMP_V3_AUTH_PASS: "{{ v3_auth }}"
+        SNMP_V3_PRIV: aes
+        SNMP_V3_PRIV_PASS: "{{ v3_priv }}"
+      register: v3_poll
+      changed_when: false
+
+    - name: It got an answer, not a timeout
+      ansible.builtin.assert:
+        that: "'sysDescr.0' in v3_poll.stdout"
+        fail_msg: "our manager could not poll net-snmp over v3: {{ v3_poll.stdout }}"
+
+    - name: And the neutral verbs pick v3 by themselves
+      ansible.builtin.command:
+        cmd: "{{ stage }}/dhs consumer snmp info {{ their_agent }}"
+      environment:
+        SNMP_V3_USER: "{{ v3_user }}"
+        SNMP_V3_AUTH: sha256
+        SNMP_V3_AUTH_PASS: "{{ v3_auth }}"
+        SNMP_V3_PRIV: aes
+        SNMP_V3_PRIV_PASS: "{{ v3_priv }}"
+      register: v3_info
+      changed_when: false
+
+    - name: info reports the version it negotiated
+      ansible.builtin.assert:
+        that: "'snmp v3' in v3_info.stdout"
+        fail_msg: "info did not settle on v3: {{ v3_info.stdout }}"
+
+    # ---- 2..4. net-snmp against us ---------------------------------
+    - name: Our agent and our listener, as transient units
+      block:
+        - name: Start our v3 agent
+          ansible.builtin.command:
+            cmd: >-
+              systemd-run --unit=dhs-v3-agent --collect
+              --setenv=SNMP_V3_AUTH_PASS={{ v3_auth }}
+              --setenv=SNMP_V3_PRIV_PASS={{ v3_priv }}
+              {{ stage }}/dhs producer snmp serve --bind {{ our_agent }}
+              --v3-user {{ v3_user }} --v3-auth sha256 --v3-priv aes
+          changed_when: false
+
+        - name: Start our trap listener
+          ansible.builtin.command:
+            cmd: >-
+              systemd-run --unit=dhs-v3-listener --collect
+              {{ stage }}/dhs consumer snmp trap-listen
+              --bind {{ our_listener }} --community public
+          changed_when: false
+
+        - name: Start net-snmp's trap receiver
+          ansible.builtin.copy:
+            content: |
+              # Managed by playbooks/snmp-v3-verify.yml
+              disableAuthorization yes
+            dest: "{{ stage }}/trapd.conf"
+            mode: "0644"
+
+        - name: snmptrapd, on a port nothing else uses
+          ansible.builtin.command:
+            cmd: >-
+              systemd-run --unit=dhs-v3-trapd --collect
+              /usr/sbin/snmptrapd -C -c {{ stage }}/trapd.conf -f
+              -Lf {{ stage }}/trapd.log {{ their_trapd }}
+          changed_when: false
+
+        # wait_for speaks TCP, and every one of these is a UDP socket —
+        # so the wait is on the socket actually appearing in ss.
+        - name: Wait for the three UDP sockets to bind
+          ansible.builtin.shell:
+            cmd: ss -lnuH "sport = :{{ item }}" | grep -q .
+          register: v3_bound
+          retries: 15
+          delay: 1
+          until: v3_bound.rc == 0
+          changed_when: false
+          loop:
+            - "{{ our_agent.split(':')[1] }}"
+            - "{{ our_listener.split(':')[1] }}"
+            - "{{ their_trapd.split(':')[1] }}"
+
+        # A bound port is not proof it is OUR port. A leftover process
+        # from a hand-run test answers just as well and makes the whole
+        # play pass while testing nothing — which is exactly what
+        # happened the first time this was written.
+        - name: Each of the three is the unit this play started
+          ansible.builtin.command:
+            cmd: systemctl is-active {{ item }}
+          register: v3_units
+          changed_when: false
+          failed_when: v3_units.stdout != "active"
+          loop:
+            - dhs-v3-agent
+            - dhs-v3-listener
+            - dhs-v3-trapd
+
+        - name: net-snmp reads our agent over v3
+          ansible.builtin.command:
+            cmd: >-
+              snmpget -v3 -u {{ v3_user }} -l authPriv -a SHA-256 -A {{ v3_auth }}
+              -x AES -X {{ v3_priv }} {{ our_agent }} 1.3.6.1.2.1.1.1.0
+          register: their_get
+          changed_when: false
+
+        - name: net-snmp walks our agent over v3
+          ansible.builtin.command:
+            cmd: >-
+              snmpwalk -v3 -u {{ v3_user }} -l authPriv -a SHA-256 -A {{ v3_auth }}
+              -x AES -X {{ v3_priv }} {{ our_agent }} 1.3.6.1.2.1.1
+          register: their_walk
+          changed_when: false
+
+        - name: A wrong password is a NAMED failure, not a timeout
+          # This is what the usmStats counters buy. An agent that
+          # answered every refusal with the same counter would have
+          # net-snmp print something else, or nothing at all.
+          ansible.builtin.command:
+            cmd: >-
+              snmpget -v3 -u {{ v3_user }} -l authPriv -a SHA-256
+              -A wrongpass-wrongpass -x AES -X {{ v3_priv }}
+              {{ our_agent }} 1.3.6.1.2.1.1.1.0
+          register: their_bad
+          changed_when: false
+          failed_when: false
+
+        - name: net-snmp sends an inform to our listener
+          # snmpinform exits non-zero if it is not acknowledged, so its
+          # exit code IS the assertion.
+          ansible.builtin.command:
+            cmd: snmpinform -v 2c -c public {{ our_listener }} "" 1.3.6.1.6.3.1.1.5.1
+          register: their_inform
+          changed_when: false
+
+        - name: We send an inform to snmptrapd
+          ansible.builtin.command:
+            cmd: "{{ stage }}/dhs producer snmp inform --to {{ their_trapd }}/2c/public"
+          register: our_inform
+          changed_when: false
+
+        - name: Every direction agreed
+          ansible.builtin.assert:
+            that:
+              - "'dhs SNMP agent' in their_get.stdout"
+              - their_walk.stdout_lines | length >= 4
+              - their_bad.rc != 0
+              - "'uthentication failure' in their_bad.stderr + their_bad.stdout"
+              - their_inform.rc == 0
+              - "'acknowledged by' in our_inform.stdout"
+            fail_msg: >-
+              get={{ their_get.stdout }} walk={{ their_walk.stdout_lines | length }}
+              bad={{ their_bad.stdout }}{{ their_bad.stderr }}
+              inform={{ their_inform.rc }} ours={{ our_inform.stdout }}
+
+        # snmpinform's exit code already proved the acknowledgement
+        # went back; this proves the listener also SHOWED the operator
+        # what it was, rather than logging it as an ordinary trap. What
+        # a notification receiver prints goes to stdout, which for a
+        # transient unit is the journal.
+        - name: Our listener showed it as an inform
+          ansible.builtin.shell:
+            cmd: journalctl -u dhs-v3-listener --no-pager -n 50 | grep inform | tail -1
+          register: listener_saw
+          changed_when: false
+          failed_when: "'inform, acknowledged' not in listener_saw.stdout"
+
+        - name: What agreed with what
+          ansible.builtin.debug:
+            msg:
+              - "our manager -> net-snmp agent  : {{ v3_poll.stdout_lines | first }}"
+              - "net-snmp -> our agent (get)    : {{ their_get.stdout_lines | first }}"
+              - "net-snmp -> our agent (bad pw) : {{ (their_bad.stderr + their_bad.stdout) | trim }}"
+              - "net-snmp inform -> our listener: acknowledged (snmpinform rc=0)"
+              - "our inform -> snmptrapd        : {{ our_inform.stdout_lines | first }}"
+
+      always:
+        - name: Stop everything this play started
+          ansible.builtin.systemd_service:
+            name: "{{ item }}"
+            state: stopped
+          loop:
+            - dhs-v3-agent
+            - dhs-v3-listener
+            - dhs-v3-trapd
+          failed_when: false
+          changed_when: false
