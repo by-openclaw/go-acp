@@ -813,7 +813,7 @@ EXAMPLES
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
-  # an IRD, which is v1-only
+  # a Tandberg IRD, which is v1-only
   dhs consumer snmp get --version 1 --oid sysDescr.0 10.6.255.110
 
   # Cerebrum's agent, which answers on 1161 rather than 161
@@ -849,7 +849,7 @@ Usage of get:
   -timeout duration
     	per-request timeout (default 2s)
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: walk
@@ -873,7 +873,7 @@ Usage of walk:
   -timeout duration
     	per-request timeout (default 2s)
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: set
@@ -924,7 +924,7 @@ FLAGS
   -value string
     	the value to write
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: trap-listen
