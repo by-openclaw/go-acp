@@ -53,7 +53,7 @@
    "source": "the object's own description: \"indicates if there is a video on the output\". This is the one an operator is actually paid to watch."
   },
   {
-   "match": "**.Status.Decode.CurrentProgram.Video.DecodedValid",
+   "match": "**.Status.Decode.CurrentProgram.Video.Decoded.Valid",
    "kind": "enum",
    "normal": "true",
    "severity": "major",

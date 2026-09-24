@@ -1,0 +1,17 @@
+{
+  "device": {
+    "name": "dr5000-test",
+    "protocol": "snmp",
+    "endpoints": [
+      { "ip": "10.6.255.114", "port": 161, "transport": "udp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "dr5000-unit",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "DR5000@1.3.1.1" }
+      ]
+    }
+  ]
+}
