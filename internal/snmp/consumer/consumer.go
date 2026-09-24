@@ -23,6 +23,7 @@ import (
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/plugin"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/usm"
 )
 
 // Compliance events this connector records. Each is something a device
@@ -68,6 +69,13 @@ type Options struct {
 	Retries int
 	// MaxRepetitions is the GETBULK window. Zero means the default.
 	MaxRepetitions int
+
+	// V3 is the user a v3 session authenticates as. Required for
+	// Version3 and ignored otherwise: v1 and v2c have no users, only a
+	// community, and silently accepting a credential they cannot use
+	// would be the kind of "configured but not in effect" that gets
+	// noticed after the capture.
+	V3 *V3
 
 	// Compliance records what an agent did that the RFCs do not
 	// describe. Nil is fine — the profile answers every method.
@@ -125,6 +133,10 @@ type Session struct {
 	mu     sync.Mutex
 	conn   net.Conn
 	nextID int32
+	msgID  int32
+	// engine is the AGENT's engine as this manager discovered it —
+	// v3 only, nil otherwise. See v3.go.
+	engine *usm.Engine
 	closed bool
 }
 
@@ -136,8 +148,15 @@ func Dial(ctx context.Context, opts Options, deps plugin.Deps) (*Session, error)
 
 	switch opts.Version {
 	case codec.Version1, codec.Version2c:
+	case codec.Version3:
+		if opts.V3 == nil || opts.V3.User == "" {
+			return nil, fmt.Errorf("snmp: v3 authenticates as a USER — name one")
+		}
+		if err := opts.V3.user().Validate(); err != nil {
+			return nil, err
+		}
 	default:
-		return nil, fmt.Errorf("snmp: this manager speaks v1 and v2c, not %s", opts.Version)
+		return nil, fmt.Errorf("snmp: this manager speaks v1, v2c and v3, not %s", opts.Version)
 	}
 
 	addr, err := withDefaultPort(opts.Addr)
@@ -149,7 +168,7 @@ func Dial(ctx context.Context, opts Options, deps plugin.Deps) (*Session, error)
 		return nil, fmt.Errorf("snmp: dial %s: %w", addr, err)
 	}
 
-	return &Session{
+	s := &Session{
 		opts:   opts,
 		logger: plugin.LoggerOrDefault(deps.Logger),
 		clk:    deps.Clock,
@@ -158,7 +177,19 @@ func Dial(ctx context.Context, opts Options, deps plugin.Deps) (*Session, error)
 		// A random starting request-id, so a restarted manager does not
 		// accept a late reply to the previous run's request 1.
 		nextID: rand.Int31(), //nolint:gosec // correlation, not secrecy
-	}, nil
+		msgID:  rand.Int31(), //nolint:gosec // correlation, not secrecy
+	}
+	if opts.Version == codec.Version3 {
+		// Discovery happens HERE and not on the first request, so that
+		// a wrong user or an agent that does not speak v3 fails at
+		// connect — where an operator is looking — rather than inside
+		// a walk an hour later.
+		if err := s.discover(ctx); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 // recorderOr keeps the promise Options.Compliance makes. A nil

@@ -438,3 +438,28 @@ func TestDigestOneShot(t *testing.T) {
 		t.Error("a digest of the same bytes must be the same digest")
 	}
 }
+
+func TestAuthErrorCarriesItsClassification(t *testing.T) {
+	// The classification exists for the agent's Report path; the error
+	// still reads as an ordinary authentication failure everywhere else.
+	bare := &AuthError{}
+	if !errors.Is(bare, ErrAuth) {
+		t.Error("an AuthError must be an ErrAuth")
+	}
+	if bare.Error() != ErrAuth.Error() {
+		t.Errorf("a detail-less failure reads %q", bare.Error())
+	}
+	if bare.Why != FailureOther {
+		t.Errorf("zero value classifies as %v", bare.Why)
+	}
+	detailed := authFailure(FailureWrongDigest, "digest over %d bytes", 42)
+	if !errors.Is(detailed, ErrAuth) || detailed.Why != FailureWrongDigest {
+		t.Errorf("= %v (%v)", detailed, detailed.Why)
+	}
+	if !strings.Contains(detailed.Error(), "42") {
+		t.Errorf("the detail is for our own logs and must be there: %q", detailed.Error())
+	}
+	if errors.Is(detailed, errors.New("something else")) {
+		t.Error("an AuthError must not claim to be every error")
+	}
+}

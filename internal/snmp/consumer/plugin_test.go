@@ -14,6 +14,7 @@ import (
 	"dhs/internal/snmp/codec"
 	"dhs/internal/snmp/mib"
 	"dhs/internal/snmp/provider"
+	"dhs/internal/snmp/usm"
 	"dhs/internal/transport"
 )
 
@@ -211,7 +212,7 @@ func TestConnectSaysWhichVersionsItTried(t *testing.T) {
 	if err == nil {
 		t.Fatal("a silent address is not a device")
 	}
-	if !strings.Contains(err.Error(), "neither v2c nor v1") {
+	if !strings.Contains(err.Error(), "v2c, v1") {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -600,7 +601,7 @@ func TestConnectReportsAnUnreachableName(t *testing.T) {
 	if err == nil {
 		t.Fatal("a name that does not resolve is not a device")
 	}
-	if !strings.Contains(err.Error(), "neither v2c nor v1") {
+	if !strings.Contains(err.Error(), "v2c, v1") {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -1066,5 +1067,90 @@ func TestProtocolVersionNumberNamesItTheWayTheManualsDo(t *testing.T) {
 		if got := protocolVersionNumber(c.in); got != c.want {
 			t.Errorf("protocolVersionNumber(%v) = %d, want %d", c.in, got, c.want)
 		}
+	}
+}
+
+func TestAConfiguredV3UserIsTriedFirst(t *testing.T) {
+	// v1 and v2c put a password in clear on every datagram. A device
+	// that offers v3 must not be polled the weaker way because the
+	// connector happened to try v2c first.
+	p, _, _ := pluginUnder(t, provider.Communities{Read: "public"})
+	if got := p.versionOrder(nil); len(got) != 2 || got[0] != codec.Version2c {
+		t.Errorf("with no user = %v, want v2c then v1", got)
+	}
+	p.SetV3(&V3{User: "operator"})
+	got := p.versionOrder(&V3{User: "operator"})
+	if len(got) != 3 || got[0] != codec.Version3 {
+		t.Errorf("with a user = %v, want v3 first", got)
+	}
+	// A credential with no user is not a credential: there is no
+	// anonymous v3 to fall back to.
+	if order := p.versionOrder(&V3{}); len(order) != 2 {
+		t.Errorf("an empty credential = %v, want v2c then v1", order)
+	}
+	if list := versionList(got); !strings.Contains(list, "v3") {
+		t.Errorf("versionList = %q", list)
+	}
+}
+
+func TestTheNeutralConnectorPollsOverV3(t *testing.T) {
+	// End to end through the registered plugin: discovery, a sealed
+	// read, the identity probe and a walk, with no version named
+	// anywhere — which is what `info` and `watch` do.
+	user := usm.User{Name: "operator", Auth: usm.HMACSHA256, AuthPass: "authpass-authpass",
+		Priv: usm.AES128CFB, PrivPass: "privpass-privpass"}
+	id, err := usm.NewEngineID(usm.Enterprise, "agent-under-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := usm.NewEngine(id, 1, clock.System())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.AddUser(user); err != nil {
+		t.Fatal(err)
+	}
+	addr := agentUnderWithEngine(t, provider.Communities{Read: "public"}, engine)
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := 0
+	for _, c := range portStr {
+		port = port*10 + int(c-'0')
+	}
+
+	f := &Factory{}
+	p, ok := f.New(plugin.Deps{Logger: quiet(), Clock: clock.System()}).(*Plugin)
+	if !ok {
+		t.Fatal("the factory must build a *Plugin")
+	}
+	p.SetV3(&V3{User: user.Name, Auth: user.Auth, AuthPass: user.AuthPass,
+		Priv: user.Priv, PrivPass: user.PrivPass})
+	if err := p.Connect(context.Background(), host, port); err != nil {
+		t.Fatalf("Connect over v3: %v", err)
+	}
+	t.Cleanup(func() { _ = p.Disconnect() })
+
+	info, err := p.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.ProtocolVersion != 3 {
+		t.Errorf("version = %d, want the session's 3", info.ProtocolVersion)
+	}
+	objs, err := p.Walk(context.Background(), 0)
+	if err != nil || len(objs) < 6 {
+		t.Fatalf("v3 walk: %v (%d objects)", err, len(objs))
+	}
+	// A write goes out on the same authenticated session — there is no
+	// write community to switch to under v3.
+	got, err := p.SetValue(context.Background(),
+		dhsc.ValueRequest{Path: "1.3.6.1.4.1.54981.3.0"}, dhsc.Value{Kind: dhsc.KindInt, Int: 42})
+	if err != nil {
+		t.Fatalf("v3 SET: %v", err)
+	}
+	if got.Int != 42 {
+		t.Errorf("read back %+v", got)
 	}
 }

@@ -801,10 +801,20 @@ VERBS
   validate      decode a captured frames.jsonl offline
 
 VERSIONS
-  --version 1 | 2c. The Tandberg IRDs in this lab answer v1 ONLY — v2c
-  gets no reply at all from them, which looks exactly like a device that
-  is down. v3 POLLING needs engine discovery and is not wired yet; v3
-  notifications are, in both directions.
+  --version 1 | 2c | 3. The Tandberg IRDs in this lab answer v1 ONLY —
+  v2c gets no reply at all from them, which looks exactly like a device
+  that is down. The ATEME DR5000 answers v2c as well, and v2c has
+  GETBULK.
+
+  v3 authenticates as a USER rather than with a community, so it needs
+  --user (or SNMP_V3_USER) and, for anything above noAuthNoPriv,
+  --auth/--auth-pass and --priv/--priv-pass. The manager discovers the
+  agent's engine first (RFC 3414 §4) and re-discovers by itself if the
+  agent reboots mid-session.
+
+  The neutral verbs — info, tree, walk, watch, alarm — take the same
+  credential from SNMP_V3_* and then prefer v3 over v2c and v1, because
+  v1 and v2c put a password in clear on every datagram.
 
 EXAMPLES
   # what a device says it is
@@ -828,6 +838,16 @@ EXAMPLES
 
   # and for v3 notifications, as the sender's engine
   dhs consumer snmp trap-listen --bind :1162 --user operator       --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # poll over v3, authenticated and encrypted. The passwords belong in
+  # the environment: a password on a command line is in the shell
+  # history and visible in ps to everyone on the host.
+  export SNMP_V3_USER=operator SNMP_V3_AUTH=sha256 SNMP_V3_PRIV=aes
+  export SNMP_V3_AUTH_PASS=... SNMP_V3_PRIV_PASS=...
+  dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.114
+
+  # the neutral verbs take the same credential and prefer v3 with it
+  dhs consumer snmp info 10.6.255.114
 ```
 
 ## SNMP: get
@@ -836,18 +856,30 @@ EXAMPLES
 
 ```text
 Usage of get:
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -version string
     	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
@@ -858,8 +890,14 @@ Usage of get:
 
 ```text
 Usage of walk:
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -limit int
     	stop after this many objects; a device whose table grows while it is walked would otherwise never end (default 20000)
   -max-repetitions walk
@@ -868,10 +906,16 @@ Usage of walk:
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -version string
     	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
@@ -907,20 +951,32 @@ page instead. Either way a readOnly, notWritable or noSuchName from a
 device that reads fine is the DEVICE, not this tool.
 
 FLAGS
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	the object to write, by standard name or dotted number
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
   -type string
     	value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -value string
     	the value to write
   -version string

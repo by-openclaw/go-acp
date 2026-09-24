@@ -20,6 +20,7 @@ import (
 	"dhs/internal/logging"
 	"dhs/internal/plugin"
 	rccodec "dhs/internal/snell-rollcall/codec"
+	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/transport"
 )
 
@@ -40,6 +41,7 @@ func pluginDeps(logger *slog.Logger) plugin.Deps {
 var processNet = sync.OnceValue(func() transport.Net {
 	return transport.New(transport.Config{})
 })
+
 // pluginDepsWithLevel is pluginDeps for a caller that kept the level it built
 // the logger with, so a connector can offer its own logging as a control.
 func pluginDepsWithLevel(logger *slog.Logger, level *slog.LevelVar) plugin.Deps {
@@ -310,6 +312,16 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	if p, ok := plug.(interface{ SetCommunity(read, write string) }); ok {
 		if r, w := os.Getenv("SNMP_COMMUNITY"), os.Getenv("SNMP_WRITE_COMMUNITY"); r != "" || w != "" {
 			p.SetCommunity(r, w)
+		}
+	}
+
+	// And the v3 credential, from the same place for the same reason.
+	// A user configured here makes every session v3-FIRST: v1 and v2c
+	// put a password in clear on every datagram, so a device that
+	// offers v3 should never be polled the weaker way by accident.
+	if p, ok := plug.(interface{ SetV3(*snmpcons.V3) }); ok {
+		if cred := snmpV3FromEnv(); cred != nil {
+			p.SetV3(cred)
 		}
 	}
 

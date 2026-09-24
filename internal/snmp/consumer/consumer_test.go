@@ -20,6 +20,7 @@ import (
 	"dhs/internal/snmp/codec"
 	"dhs/internal/snmp/mib"
 	"dhs/internal/snmp/provider"
+	"dhs/internal/snmp/usm"
 )
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -29,6 +30,14 @@ func oid(s string) codec.OID { return codec.MustParseOID(s) }
 // agentUnder returns a live agent's address: the RFC 1213 system group,
 // a two-row table to walk, and one writable object.
 func agentUnder(t *testing.T, communities provider.Communities) string {
+	t.Helper()
+	return agentUnderWithEngine(t, communities, nil)
+}
+
+// agentUnderWithEngine is that same agent speaking v3 as well, when an
+// engine is given. Nil keeps it v1/v2c only — which is what most of
+// these tests want, and what an agent with no USM users is.
+func agentUnderWithEngine(t *testing.T, communities provider.Communities, engine *usm.Engine) string {
 	t.Helper()
 	tree := provider.NewMIB()
 	var stored int64 = 1
@@ -52,6 +61,9 @@ func agentUnder(t *testing.T, communities provider.Communities) string {
 	}
 
 	s := provider.NewServer(tree, communities, plugin.Deps{Logger: quiet()})
+	if engine != nil {
+		s.SetEngine(engine)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- s.Serve(ctx, "127.0.0.1:0") }()
@@ -387,10 +399,20 @@ func TestRequestRefusals(t *testing.T) {
 }
 
 func TestDialRefusals(t *testing.T) {
+	// v3 is spoken now, but it authenticates as a user rather than with
+	// a community — so a v3 dial with no user is refused where the
+	// operator can see it, not at the first GET.
 	if _, err := Dial(context.Background(), Options{Addr: "127.0.0.1:1",
 		Version: codec.Version3}, plugin.Deps{Logger: quiet()}); err == nil ||
-		!strings.Contains(err.Error(), "v1 and v2c") {
-		t.Errorf("= %v, want v3 refused with the reason", err)
+		!strings.Contains(err.Error(), "USER") {
+		t.Errorf("= %v, want v3 with no user refused with the reason", err)
+	}
+	// And a user the security model itself refuses (priv without auth,
+	// RFC 3412 §6.4) fails before a socket is opened.
+	if _, err := Dial(context.Background(), Options{Addr: "127.0.0.1:1",
+		Version: codec.Version3, V3: &V3{User: "operator", Priv: usm.AES128CFB, PrivPass: "hunter2hunter2"}},
+		plugin.Deps{Logger: quiet()}); err == nil {
+		t.Error("privacy without authentication must be refused")
 	}
 	if _, err := Dial(context.Background(), Options{Version: codec.Version(7),
 		Community: "public"}, plugin.Deps{Logger: quiet()}); err == nil {
@@ -463,14 +485,14 @@ func TestUnsolicitedRepliesAreCountedAndIgnored(t *testing.T) {
 			PDU: &codec.PDU{Type: codec.PDUTypeResponse, RequestID: id}}
 	}
 
-	if _, ok := s.acceptable([]byte{0xFF, 0xFF}, 1); ok {
+	if pdu, _ := s.acceptable([]byte{0xFF, 0xFF}, 1); pdu != nil {
 		t.Error("rubbish must not be accepted")
 	}
-	if _, ok := s.acceptable(enc(resp(999)), 1); ok {
+	if pdu, _ := s.acceptable(enc(resp(999)), 1); pdu != nil {
 		t.Error("a reply to another request must not be accepted")
 	}
-	if _, ok := s.acceptable(enc(codec.Message{Version: codec.Version2c,
-		Community: "public", PDU: &codec.PDU{Type: codec.PDUTypeGet, RequestID: 1}}), 1); ok {
+	if pdu, _ := s.acceptable(enc(codec.Message{Version: codec.Version2c,
+		Community: "public", PDU: &codec.PDU{Type: codec.PDUTypeGet, RequestID: 1}}), 1); pdu != nil {
 		t.Error("a request arriving at a manager must not be accepted")
 	}
 	if got := prof.Snapshot()[UnsolicitedResponse]; got != 3 {
@@ -481,12 +503,12 @@ func TestUnsolicitedRepliesAreCountedAndIgnored(t *testing.T) {
 	// ABSORBED — some agents answer v2c as v1 — and counted.
 	v1 := resp(1)
 	v1.Version = codec.Version1
-	if _, ok := s.acceptable(enc(v1), 1); !ok {
+	if pdu, _ := s.acceptable(enc(v1), 1); pdu == nil {
 		t.Error("a version mismatch must be absorbed, not refused")
 	}
 	other := resp(1)
 	other.Community = "private"
-	if _, ok := s.acceptable(enc(other), 1); !ok {
+	if pdu, _ := s.acceptable(enc(other), 1); pdu == nil {
 		t.Error("a community mismatch must be absorbed, not refused")
 	}
 	snap := prof.Snapshot()
@@ -509,7 +531,7 @@ func TestANilComplianceRecorderIsFine(t *testing.T) {
 
 	// A reply that is not ours is exactly what makes the session Note
 	// something, and with no recorder given it must simply not count it.
-	if _, ok := sess.acceptable([]byte("not an snmp message"), 1); ok {
+	if pdu, _ := sess.acceptable([]byte("not an snmp message"), 1); pdu != nil {
 		t.Error("undecodable bytes are not an acceptable reply")
 	}
 	if _, err := sess.Get(context.Background(), oid("1.3.6.1.2.1.1.1.0")); err != nil {

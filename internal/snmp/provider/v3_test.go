@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -224,5 +225,37 @@ func TestAgentV3IgnoresNonAnswerablePDU(t *testing.T) {
 	}
 	if _, ok := s.handle(raw, from); ok {
 		t.Error("agent must not answer a v3 Response-PDU")
+	}
+}
+
+func TestTheReportNamesWhatActuallyFailed(t *testing.T) {
+	// RFC 3414 §3.2: the counter is the diagnosis a manager gets. The
+	// same counter for every cause would leave a manager unable to tell
+	// a wrong password from this agent having rebooted — and unable to
+	// recover from the second one, which is what §4's time
+	// synchronisation is built on.
+	cases := []struct {
+		why  usm.Failure
+		want codec.OID
+	}{
+		{usm.FailureUnknownUser, usmUnknownUserNames},
+		{usm.FailureWrongDigest, usmWrongDigests},
+		{usm.FailureNotInTimeWindow, usmNotInTimeWindows},
+		{usm.FailureUnsupportedLevel, usmUnsupportedLevel},
+		{usm.FailureDecryption, usmDecryptionErrors},
+		{usm.FailureUnknownEngineID, usmUnknownEngineIDs},
+		{usm.FailureOther, usmUnknownEngineIDs},
+		{usm.Failure(99), usmUnknownEngineIDs},
+	}
+	for _, c := range cases {
+		got := counterFor(&usm.AuthError{Why: c.why})
+		if got.Compare(c.want) != 0 {
+			t.Errorf("%v -> %s, want %s", c.why, got, c.want)
+		}
+	}
+	// A failure that is not an AuthError at all still gets an answer:
+	// an unknown engine ID, which invites the manager to re-discover.
+	if got := counterFor(errors.New("something else")); got.Compare(usmUnknownEngineIDs) != 0 {
+		t.Errorf("a non-USM error -> %s", got)
 	}
 }

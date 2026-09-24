@@ -622,3 +622,33 @@ func TestAMessageFromTheFutureIsRefused(t *testing.T) {
 		t.Errorf("= %v, want the future message refused", err)
 	}
 }
+
+func TestOpenNeverReturnsAMessageWithoutAPDU(t *testing.T) {
+	// A contract the manager depends on: openV3 reads m.PDU.Type
+	// straight after a successful Open, at both security levels. If
+	// Open could ever succeed with no PDU, that would be a nil
+	// dereference on a datagram a stranger controls.
+	e, _ := testEngine(t,
+		User{Name: "plain"},
+		User{Name: "signed", Auth: HMACSHA256, AuthPass: "authpass-authpass"},
+		User{Name: "sealed", Auth: HMACSHA256, AuthPass: "authpass-authpass",
+			Priv: AES128CFB, PrivPass: "privpass-privpass"})
+
+	for _, name := range []string{"plain", "signed", "sealed"} {
+		raw, err := e.Seal(codec.Message{
+			Version: codec.Version3,
+			V3:      &codec.V3{ID: 1, MaxSize: codec.DefaultMaxSize, ContextEngineID: e.ID()},
+			PDU:     &codec.PDU{Type: codec.PDUTypeGet, RequestID: 7},
+		}, name)
+		if err != nil {
+			t.Fatalf("%s: seal: %v", name, err)
+		}
+		m, _, err := e.Open(raw)
+		if err != nil {
+			t.Fatalf("%s: open: %v", name, err)
+		}
+		if m.PDU == nil {
+			t.Fatalf("%s: Open succeeded with no PDU", name)
+		}
+	}
+}

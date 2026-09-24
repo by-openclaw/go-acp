@@ -29,15 +29,21 @@ func (s *Session) roundTrip(ctx context.Context, p *codec.PDU) (*codec.PDU, erro
 	conn := s.conn
 	s.mu.Unlock()
 
-	req := codec.Message{Version: s.opts.Version, Community: s.opts.Community, PDU: p}
-	raw, err := codec.Encode(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var lastErr error
-	for attempt := 0; attempt <= s.opts.Retries; attempt++ {
+	var (
+		lastErr   error
+		resynced  bool
+		v3Session = s.opts.Version == codec.Version3
+	)
+	for attempt := 0; attempt <= s.opts.Retries; {
 		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		// v3 is sealed per attempt, not once: the engine time it is
+		// stamped with is only valid for the agent's time window, so a
+		// retry carries a fresh stamp rather than a stale one the agent
+		// would refuse. v1/v2c encode once and re-send the same bytes.
+		raw, err := s.encodeRequest(p)
+		if err != nil {
 			return nil, err
 		}
 		resp, err := s.attempt(ctx, conn, raw, p.RequestID)
@@ -45,15 +51,44 @@ func (s *Session) roundTrip(ctx context.Context, p *codec.PDU) (*codec.PDU, erro
 			return resp, nil
 		}
 		lastErr = err
+		if v3Session && recoverable(err) && !resynced {
+			// The agent told us why it refused, and the reason is one
+			// discovery fixes: it rebooted, or forgot us. Re-discover
+			// and send the SAME request again, without spending a
+			// retry on it — the retry budget is for lost datagrams,
+			// and this datagram was not lost, it was answered. A
+			// manager that gave up here would report a live agent as
+			// down for as long as it stayed up.
+			resynced = true
+			s.prof.Note(EngineResynced)
+			s.logger.Debug("snmp: v3 resync", slog.String("why", err.Error()))
+			if derr := s.discover(ctx); derr != nil {
+				return nil, derr
+			}
+			continue
+		}
+		attempt++
 		if !errors.Is(err, ErrTimeout) {
-			// A socket that is gone, or a datagram we could not send,
-			// will not be better on the next attempt.
+			// A socket that is gone, a datagram we could not send, or a
+			// credential the agent rejects will not be better on the
+			// next attempt.
 			return nil, err
 		}
 		s.logger.Debug("snmp: retrying",
-			slog.Int("attempt", attempt+1), slog.String("to", conn.RemoteAddr().String()))
+			slog.Int("attempt", attempt), slog.String("to", conn.RemoteAddr().String()))
 	}
 	return nil, fmt.Errorf("%w after %d attempt(s)", lastErr, s.opts.Retries+1)
+}
+
+// encodeRequest renders one request on the wire for this session's
+// version: a community message for v1/v2c, a sealed USM message for v3.
+func (s *Session) encodeRequest(p *codec.PDU) ([]byte, error) {
+	if s.opts.Version == codec.Version3 {
+		return s.sealV3(p)
+	}
+	return codec.Encode(codec.Message{
+		Version: s.opts.Version, Community: s.opts.Community, PDU: p,
+	})
 }
 
 // attempt is one send and one wait.
@@ -80,8 +115,14 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 			return nil, fmt.Errorf("snmp: receive: %w", err)
 		}
 
-		resp, ok := s.acceptable(buf[:n], id)
-		if !ok {
+		resp, aerr := s.acceptable(buf[:n], id)
+		if aerr != nil {
+			// The agent answered, and the answer was a refusal it
+			// could name (v3 Report). That is this request's outcome,
+			// not noise to wait past.
+			return nil, aerr
+		}
+		if resp == nil {
 			// Somebody else's datagram, or a late answer to a request
 			// we have given up on. Keep waiting for ours rather than
 			// treating it as this request's failure — the deadline on
@@ -94,26 +135,34 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 
 // acceptable decides whether a received datagram answers this request.
 //
+// Three outcomes, because there are three: the answer (pdu, nil), not
+// ours so keep waiting (nil, nil), and the agent naming a refusal
+// (nil, err) — which only v3 can do, and which is the difference
+// between "wrong password" and a timeout that looks like a dead box.
+//
 // Everything it rejects is COUNTED rather than logged and forgotten: a
 // manager that quietly drops mismatched replies looks identical to one
 // talking to a device that never answers, and the difference is the
 // whole diagnosis.
-func (s *Session) acceptable(raw []byte, id int32) (*codec.PDU, bool) {
+func (s *Session) acceptable(raw []byte, id int32) (*codec.PDU, error) {
+	if s.opts.Version == codec.Version3 {
+		return s.acceptableV3(raw, id)
+	}
 	m, err := codec.Decode(raw)
 	if err != nil {
 		s.prof.Note(UnsolicitedResponse)
 		s.logger.Debug("snmp: undecodable reply", slog.String("err", err.Error()))
-		return nil, false
+		return nil, nil
 	}
 	if m.PDU == nil || m.PDU.Type != codec.PDUTypeResponse {
 		s.prof.Note(UnsolicitedResponse)
-		return nil, false
+		return nil, nil
 	}
 	if m.PDU.RequestID != id {
 		s.prof.Note(UnsolicitedResponse)
 		s.logger.Debug("snmp: reply for another request",
 			slog.Int64("got", int64(m.PDU.RequestID)), slog.Int64("want", int64(id)))
-		return nil, false
+		return nil, nil
 	}
 	// An answer in the wrong version or under the wrong community is
 	// absorbed rather than refused — some agents answer v2c requests as
@@ -125,7 +174,7 @@ func (s *Session) acceptable(raw []byte, id int32) (*codec.PDU, bool) {
 	if m.Community != s.opts.Community {
 		s.prof.Note(CommunityMismatch)
 	}
-	return m.PDU, true
+	return m.PDU, nil
 }
 
 // Walk visits every object under root, calling fn for each.

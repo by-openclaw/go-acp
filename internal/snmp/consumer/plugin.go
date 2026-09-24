@@ -78,6 +78,9 @@ type Plugin struct {
 	paths     map[string]codec.OID
 	community string
 	writeCmty string
+	// v3 is the USM user this connector authenticates as, when one is
+	// configured. It makes every session v3-first; see versionOrder.
+	v3 *V3
 	version   codec.Version
 	writeSess *Session
 	port      int
@@ -96,15 +99,19 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	addr := fmt.Sprintf("%s:%d", ip, port)
 
+	p.mu.Lock()
+	cred := p.v3
+	p.mu.Unlock()
+
 	var firstErr error
-	for _, v := range []codec.Version{codec.Version2c, codec.Version1} {
+	for _, v := range p.versionOrder(cred) {
 		// Retries is explicit: zero means "one attempt" in Options, and
 		// UDP loses datagrams. A manager that does not retry reports a
 		// device as down because one packet was dropped — which is
 		// exactly what the first live run of the integration suite
 		// caught, on a fabric where the IRD answers in ~700 ms.
 		sess, err := Dial(ctx, Options{
-			Addr: addr, Version: v, Community: p.community,
+			Addr: addr, Version: v, Community: p.community, V3: cred,
 			Retries: DefaultRetries, Timeout: DefaultTimeout,
 			// The connector's own profile: an agent's deviations are
 			// counted where every other protocol's are, and `status`
@@ -140,7 +147,42 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		p.Opened("udp", ip, port, dhsc.MetricsTimes{C: p.Metrics()})
 		return nil
 	}
-	return fmt.Errorf("snmp: %s answered neither v2c nor v1: %w", addr, firstErr)
+	return fmt.Errorf("snmp: %s answered no version this manager offered (%s): %w",
+		addr, versionList(p.versionOrder(cred)), firstErr)
+}
+
+// versionOrder is which versions to try, in order.
+//
+// v3 FIRST whenever a user is configured, because v3 is what a plant
+// should be running: it authenticates the manager, and v1/v2c send a
+// password in clear on every datagram. It is not the ONLY one tried —
+// half the devices in this lab predate it, and a connector that
+// refused them would just not monitor them — but a device that offers
+// both should never be polled the weaker way by accident.
+//
+// With no user configured there is nothing to offer: v3 authenticates
+// as a user, and there is no anonymous v3.
+func (p *Plugin) versionOrder(cred *V3) []codec.Version {
+	if cred != nil && cred.User != "" {
+		return []codec.Version{codec.Version3, codec.Version2c, codec.Version1}
+	}
+	return []codec.Version{codec.Version2c, codec.Version1}
+}
+
+func versionList(vs []codec.Version) string {
+	out := make([]string, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, v.String())
+	}
+	return strings.Join(out, ", ")
+}
+
+// SetV3 configures the USM user this connector authenticates as. The
+// CLI fills it from the environment, like the communities.
+func (p *Plugin) SetV3(cred *V3) {
+	p.mu.Lock()
+	p.v3 = cred
+	p.mu.Unlock()
 }
 
 // Disconnect closes the session.
@@ -592,9 +634,14 @@ func (p *Plugin) writeSession(ctx context.Context) (*Session, error) {
 	if sess != nil {
 		return sess, nil
 	}
-	if cmty == "" {
+	if cmty == "" || ver == codec.Version3 {
 		// No write community was given: the read session is what we
 		// have, and the agent will say no if it is not enough.
+		//
+		// v3 always takes this path. There is no write community to
+		// switch to — a USM user's access is the agent's own decision,
+		// applied to the session it already authenticated — so opening
+		// a second one would be the same user asking twice.
 		return p.session()
 	}
 	sess, err := Dial(ctx, Options{
