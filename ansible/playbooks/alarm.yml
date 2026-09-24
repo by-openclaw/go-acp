@@ -129,6 +129,7 @@
           ExecStart={{ alarm_bin }} consumer {{ item.proto }} watch {{ item.host }} \
             {% if item.slot is defined %}--slot {{ item.slot }} \
             {% endif %}{% if item.path is defined %}--path {{ item.path }} \
+            {% endif %}{% if item.interval is defined %}--interval {{ item.interval }} \
             {% endif %}--alarm {{ alarm_conf_dir }}/{{ item.name }}.json \
             --metrics-addr :{{ item.port }} \
             --log {{ alarm_log_dir }}/dhs-watch-{{ item.name }}.log \

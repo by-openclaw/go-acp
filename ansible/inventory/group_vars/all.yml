@@ -23,6 +23,9 @@ dhs_objects:
 #   ansible-playbook -i inventory/hosts.ini playbooks/alarm.yml   # -> changed=0
 #
 # template is a repo-relative path; port must be unique per watcher host.
+# slot, path and interval are optional: path scopes what is watched, and
+# interval is the cadence a POLLED connector re-reads at (a connector
+# that announces ignores it).
 dhs_alarm_devices:
   - name: neuron-shelf
     host: 10.6.255.102
@@ -37,3 +40,16 @@ dhs_alarm_devices:
     template: internal/MNSet/alarm/fusion6.alarm.json
     port: 9111
     what: Riedel FusioN6 — SFP optics, PTP lock, media link
+  - name: dr5000
+    host: 10.6.255.114
+    proto: snmp
+    slot: 0
+    # An agent answers one object per round trip and this one publishes
+    # ~26 000 of them, most in a 4096-row programme table. path scopes
+    # both the poll plan and the walk that builds it, so the watch reads
+    # the demodulator and not the transport stream descriptor.
+    path: ateme.dr5000.Status.Input
+    interval: 30s
+    template: internal/snmp/alarm/DR5000@1.3.1.1.json
+    port: 9112
+    what: ATEME Kyrion DR5000 — demod lock, C/N margin, BER, input bitrate
