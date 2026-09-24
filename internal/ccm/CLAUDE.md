@@ -21,17 +21,24 @@ stream paths the old Walk hardcoded. The acp2 connector stays
 regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 (mixed-firmware, multi-protocol box).
 
-**CCM WebSocket (notifications) — NOT served on 7.0.2 (EVS gap, verified
-2026-09-03 by packet capture).** 443 negotiates http/1.1 only; the WS is
-plain HTTP/1.1-Upgrade-over-TLS on 443 (no separate port; nmap-clean).
-Every candidate path 404s (`/api/v1/ws`, `/ws`, ~25 more) via the
-confirmed-correct handshake, and **EVS's own Cerebrum 2.9.0 CCM driver
-(Prefix `/api/v1`, WS enabled) also fails** — the 1 MB persistent 443
-conn in a Cerebrum-side capture is the REST poll, not a live WS. So
-`ccm watch` is blocked on an EVS firmware that actually serves the WS;
-the message protocol is fully known (PDF §13) and the client is a
-ready-to-build unit (h1 Upgrade over TLS, CreateSubscription/relativeUrl/
-initial `replace ""`/RFC 6902), live-verifiable only once EVS serves it.
+## REST only — do not re-probe the WebSocket
+
+**Decided by the codeowner: CCM is a REST connector.** Not "blocked on
+firmware", not "pending EVS" — a decision. `watch` polls, the way
+SNMP's does. Nothing in this tree should spend time on the WS again,
+and this section exists so the next reader does not go looking.
+
+The evidence behind the decision, so nobody has to re-gather it: the WS
+is not served. Verified 2026-09-03 on 7.0.2 by packet capture and
+re-verified 2026-09-24 on **7.0.3** — 443 negotiates http/1.1 only, the
+WS would be a plain HTTP/1.1-Upgrade-over-TLS on 443 (no separate port,
+nmap-clean), and every candidate path 404s through a
+confirmed-correct handshake (`/api/v1/ws`, `/ws`,
+`/api/v1/subscriptions`, `/api/v1/events`, ~25 more). **EVS's own
+Cerebrum 2.9.0 CCM driver fails the same way** — the 1 MB persistent
+443 connection in a Cerebrum-side capture is the REST poll, not a live
+WS. The message protocol is documented (PDF §13) and would be a small
+unit if EVS ever ships it; that is a decision for then, not a gap now.
 
 **Unit 2 (PR #1065): the PROVIDER.** `dhs producer ccm serve` replays a
 captured device model (a dm-tree: resource path → resource JSON, the
@@ -111,9 +118,9 @@ internal/ccm/
 1. OpenAPI version + auth model (basic? token? none?) — feeds the
    OAS tooling choice shared with dhs-srv.
 2. Endpoint → verb mapping: which canonical verbs (info/walk/get/
-   set/ensure/export/watch) the REST surface can back, and what the
-   subscription story is (polling? SSE? websocket?) — no-polling rule
-   applies if the wire allows better.
+   set/ensure/export/watch) the REST surface can back. The
+   subscription question is CLOSED — REST only, `watch` polls; see
+   "REST only" above.
 3. Object model vs the acp2 tree: can CCM serve the SAME canonical
    tree (label paths, DM identity Model@SwRev) so DMs/manifests/packs
    stay protocol-agnostic? That is the acceptance bar.

@@ -42,6 +42,7 @@ import (
 	_ "dhs/internal/MNSet/consumer"
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
+	_ "dhs/internal/ccm/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
 	_ "dhs/internal/emberplus/consumer"
 	_ "dhs/internal/osc/consumer"
@@ -314,7 +315,11 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runCerebrum(ctx, rest)
 	}
 	if proto == "ccm" {
-		return runCCM(ctx, rest)
+		if handled, err := runCCM(ctx, rest); handled {
+			return err
+		}
+		// Fell through: a neutral verb, answered by the registered
+		// connector below.
 	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)

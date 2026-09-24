@@ -20,7 +20,15 @@ import (
 	ccmc "dhs/internal/ccm/consumer"
 )
 
-func runCCM(ctx context.Context, args []string) error {
+// runCCM dispatches `dhs consumer ccm <verb>`.
+//
+// It answers CCM's own verbs — walk (streams by UUID) and export (the
+// versioned firmware artefacts) — and hands everything else to the
+// neutral dispatcher, which now has this connector in its registry.
+// `handled` is false for those, exactly as the SNMP dispatcher does
+// it: two faces, one session, and whichever shape the operator typed
+// is the one they meant.
+func runCCM(ctx context.Context, args []string) (bool, error) {
 	if len(args) == 0 || isHelpToken(args[0]) {
 		fmt.Println("usage: dhs consumer ccm <verb> <host> [flags]")
 		fmt.Println("  walk <host>            list io/ip streams by UUID")
@@ -30,17 +38,30 @@ func runCCM(ctx context.Context, args []string) error {
 		fmt.Println("  flags: --json  emit the whole device as JSON")
 		fmt.Println("         --verify-tls  verify the device certificate (default: skip, lab self-signed)")
 		fmt.Println("         --timeout D   per-request timeout (default 8s)")
-		return nil
+		fmt.Println("  every neutral verb also works here: info, tree, get, watch, alarm, …")
+		return true, nil
 	}
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
 	case "walk":
-		return runCCMWalk(ctx, rest)
+		// Both shapes exist. CCM's own walk lists streams by UUID; the
+		// neutral one walks a SLOT and writes the device model to the
+		// DM cache, which is what every other connector's walk does and
+		// what an alarm template and a fixture are keyed by. Whichever
+		// the operator named is the one they meant.
+		if namesASlot(rest) {
+			return false, nil
+		}
+		return true, runCCMWalk(ctx, rest)
 	case "export":
-		return runCCMExport(ctx, rest)
+		// CCM's export is the richer one — api.yml, the DM tree and the
+		// extract, versioned for a firmware diff — so it keeps the verb.
+		return true, runCCMExport(ctx, rest)
 	}
-	return fmt.Errorf("consumer ccm: unknown verb %q (expected: walk, export)", verb)
+	// info, tree, get, set, watch, alarm, ensure, validate…: the neutral
+	// dispatcher owns them now.
+	return false, nil
 }
 
 func runCCMWalk(ctx context.Context, args []string) error {
