@@ -133,7 +133,7 @@ func (p *Plugin) connectFrame(ctx context.Context, ip string, port int) ([]slotM
 		if s.status != "ONLINE" || s.ip == "" {
 			continue
 		}
-		c := newClient(s.ip, p.modulePort, p.timeout, p.Transport, p.Metrics())
+		c := newClient(s.ip, p.modulePort, p.timeout, p.Transport, p.Metrics(), p.Recorder())
 		info, err := c.get(ctx, "self/information")
 		if err != nil {
 			p.logger.Warn("mnset frame: module listed ONLINE but not answering",

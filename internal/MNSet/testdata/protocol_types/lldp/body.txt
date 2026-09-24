@@ -1,0 +1,1 @@
+{"configuration":{"rate":"45","untag":true,"enable_rx":"1"},"neighbor":[{"interface":1,"chassis":"c4:ca:2b:dd:6a:c1","port":"Ethernet20/1","ttl":"120"},{"interface":2,"chassis":"","port":"","ttl":"0"},{"interface":3,"chassis":"","port":"","ttl":"0"}]}

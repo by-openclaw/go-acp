@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"dhs/internal/metrics"
+	"dhs/internal/transport"
 	transporthttp "dhs/internal/transport/http"
 )
 
@@ -46,16 +47,19 @@ type client struct {
 // newClient builds a client for host:port. rt (nil = default transport)
 // is the injected RoundTripper; met, when non-nil, receives every
 // request (tx/rx/latency) so the plugin reports like any other.
-func newClient(host string, port int, timeout time.Duration, rt stdhttp.RoundTripper, met *metrics.Connector) *client {
+func newClient(host string, port int, timeout time.Duration, rt stdhttp.RoundTripper,
+	met *metrics.Connector, rec *transport.Recorder) *client {
 	if timeout <= 0 {
 		timeout = defaultTimeout
 	}
 	return &client{
 		base: "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + apiPrefix,
 		http: &transporthttp.Client{
-			HTTP:    &stdhttp.Client{Timeout: timeout, Transport: rt},
-			MaxBody: MaxBody,
-			Metrics: met,
+			HTTP:     &stdhttp.Client{Timeout: timeout, Transport: rt},
+			MaxBody:  MaxBody,
+			Metrics:  met,
+			Recorder: rec,
+			Proto:    Name,
 		},
 	}
 }

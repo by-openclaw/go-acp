@@ -1,0 +1,1 @@
+{ "clean_switch":{"mode":"disabled","switch_time":"idle","igmp_setup_delay":"300","type":"bbm","timeout_option":"switch","status":"ok"}}
