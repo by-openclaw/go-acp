@@ -77,7 +77,10 @@ receiver to an **sdiOutput** wired to an HDMI SFP. See
 
 ## The connector (`consumer/`, package `mnset`) — issue #1110
 
-Consumer only, no producer. It bypasses MN SET: `http://<module>/emsfp/node/v1/…`
+Consumer only. **The producer is PARKED by the codeowner's decision**
+(2026-09-24) — not missing, not pending discovery, and not to be raised
+again; if a producer is ever wanted it gets built then. See
+[`docs/scope.md`](docs/scope.md) §5. It bypasses MN SET: `http://<module>/emsfp/node/v1/…`
 directly (every one of the 30 node resources answered on the module itself,
 verified 2026-09-20 on FusioN6 fw 0x68cd783f). MN SET is asked for one thing,
 its device list (`Inventory`, login = raw-text password body, `X-AUTH-TOKEN`).
