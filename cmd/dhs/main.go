@@ -315,11 +315,14 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runCerebrum(ctx, rest)
 	}
 	if proto == "ccm" {
-		if handled, err := runCCM(ctx, rest); handled {
+		handled, remaining, err := runCCM(ctx, rest)
+		if handled {
 			return err
 		}
 		// Fell through: a neutral verb, answered by the registered
-		// connector below.
+		// connector below — with CCM's own flags taken out of the
+		// arguments, since the neutral verbs do not define them.
+		rest = remaining
 	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)

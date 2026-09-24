@@ -128,8 +128,13 @@ func New(opts Options) *Client {
 		// own defaults, which verify.
 		cfg = nil
 	}
-	base := "https://" + opts.Host + strings.TrimSuffix(opts.APIBase, "/")
-	if opts.APIBase == "" {
+	// Normalise FIRST, then decide whether anything was given: an
+	// environment variable set to whitespace is not a base, and
+	// treating it as one would skip the probe and then ask the device
+	// for "/self" at its web root.
+	apiBase := normalizeAPIBase(opts.APIBase)
+	base := "https://" + opts.Host + apiBase
+	if apiBase == "" {
 		// Unresolved until Resolve runs; APIBases[0] is what a caller
 		// that never resolves falls back to, which is the firmware
 		// this connector was written against.
@@ -137,7 +142,7 @@ func New(opts Options) *Client {
 	}
 	return &Client{
 		base:     base,
-		resolved: opts.APIBase != "",
+		resolved: apiBase != "",
 		host:     opts.Host,
 		http: &transporthttp.Client{
 			HTTP: &stdhttp.Client{
@@ -213,4 +218,26 @@ func (c *Client) Walk(ctx context.Context) (*codec.Device, []string, error) {
 		}
 	}
 	return &dev, deviations, nil
+}
+
+// normalizeAPIBase makes a caller-supplied base a usable path prefix:
+// leading slash, no trailing slash, empty stays empty.
+//
+// "api/v1" is what somebody types when they are reading the URL off a
+// browser, and turning it into "https://host" + "api/v1" would produce
+// a host that does not exist and an error about DNS. The leading slash
+// is added rather than demanded.
+func normalizeAPIBase(base string) string {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return ""
+	}
+	base = strings.TrimSuffix(base, "/")
+	if base == "" {
+		return ""
+	}
+	if !strings.HasPrefix(base, "/") {
+		base = "/" + base
+	}
+	return base
 }

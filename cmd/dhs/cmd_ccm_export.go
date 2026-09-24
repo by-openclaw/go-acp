@@ -45,7 +45,7 @@ func runCCMExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm export: a host is required")
 	}
 
-	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, APIBase: *apiBase})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: ccmVerifyTLS(*verifyTLS), APIBase: ccmAPIBase(*apiBase)})
 	if err := c.Resolve(ctx); err != nil {
 		return err
 	}

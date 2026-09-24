@@ -222,9 +222,16 @@ var errNotConnected = fmt.Errorf("ccm: not connected")
 // the client derives an https base from the host, and a fake device on
 // loopback has no certificate. Production never reassigns it.
 var dialClient = func(host string) *Client {
-	// CCM_API_BASE is how the neutral verbs — info, tree, get, watch,
-	// alarm — are told a non-default base. They are protocol-neutral
-	// and have no CCM flags, so it arrives the way every other
-	// per-connector setting does. Empty means find it.
-	return New(Options{Host: host, APIBase: strings.TrimSpace(os.Getenv("CCM_API_BASE"))})
+	// CCM_API_BASE and CCM_VERIFY_TLS are how the neutral verbs —
+	// info, tree, get, watch, alarm — are told a non-default base and
+	// asked to verify a certificate. They are protocol-neutral and
+	// have no CCM flags, so these arrive the way every other
+	// per-connector setting does; the CCM dispatcher also sets them
+	// from its own flags, so `--api-base` works with either shape.
+	// An empty base means find it.
+	return New(Options{
+		Host:      host,
+		APIBase:   strings.TrimSpace(os.Getenv("CCM_API_BASE")),
+		VerifyTLS: strings.TrimSpace(os.Getenv("CCM_VERIFY_TLS")) != "",
+	})
 }

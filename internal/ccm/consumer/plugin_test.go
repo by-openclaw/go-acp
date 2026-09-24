@@ -596,3 +596,24 @@ func TestAnExplicitBaseIsNotProbed(t *testing.T) {
 		t.Errorf("Resolve changed an explicit base to %q", c.Base())
 	}
 }
+
+func TestABaseTypedWithoutItsLeadingSlashStillWorks(t *testing.T) {
+	// What somebody types when reading the URL off a browser. Without
+	// the slash the host and the path run together and the error is
+	// about DNS, which sends an operator looking in the wrong place.
+	for _, in := range []string{"api", "/api", "api/", "  /api/  "} {
+		c := New(Options{Host: "neuron.invalid", APIBase: in})
+		if got, want := c.Base(), "https://neuron.invalid/api"; got != want {
+			t.Errorf("APIBase(%q) -> %q, want %q", in, got, want)
+		}
+	}
+	// And an empty one is still empty: that means "ask the device",
+	// not "the root".
+	c := New(Options{Host: "neuron.invalid", APIBase: "   "})
+	if got := c.Base(); got != "https://neuron.invalid"+APIBases[0] {
+		t.Errorf("empty base -> %q, want the first candidate", got)
+	}
+	if c.resolved {
+		t.Error("an empty base must stay unresolved so Resolve probes")
+	}
+}
