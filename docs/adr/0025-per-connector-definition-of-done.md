@@ -117,6 +117,7 @@ truth):
 | TSL UMD | v3.1 + v4 + v5 with per-vendor positional tally mapping (internal/tsl/CLAUDE.md). |
 | Cerebrum NB | XML-over-WS uppercase wire form; consumer 12 verbs; provider deferred. |
 | AMWA NMOS | Every published minor version in scope — no deferrals per root CLAUDE.md "AMWA NMOS strict". |
+| SNMP | v1 + v2c in both roles; v3 notifications in both directions. **v3 polling is open** — a manager must discover the agent's engine first, and that is its own unit. MIB source is compiled offline into committed tables (`internal/snmp/mib/tables.tsv.gz`), never parsed at runtime, per `internal/snmp/CLAUDE.md`. |
 
 ## What this ADR does NOT change
 
