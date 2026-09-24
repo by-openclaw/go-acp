@@ -637,17 +637,3 @@ func filterByPaths(objs []consumer.Object, prefixes [][]string) []consumer.Objec
 	}
 	return out
 }
-
-// filterByPath returns only objects whose path matches the given prefix.
-func filterByPath(objs []consumer.Object, prefix []string) []consumer.Object {
-	if len(prefix) == 0 {
-		return objs
-	}
-	var out []consumer.Object
-	for _, o := range objs {
-		if matchPathPrefix(o.Path, prefix) {
-			out = append(out, o)
-		}
-	}
-	return out
-}
