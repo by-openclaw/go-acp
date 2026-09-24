@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	stdhttp "net/http"
+	"strings"
 	"time"
 
 	"dhs/internal/ccm/codec"
@@ -23,7 +24,48 @@ import (
 // Client talks to one Neuron REST API.
 type Client struct {
 	base string
-	http *transporthttp.Client
+	// host and resolved support [Client.Resolve]: which device to
+	// re-base against, and whether the base is already settled.
+	host     string
+	resolved bool
+	http     *transporthttp.Client
+}
+
+// Base is the API root every path is relative to, for provenance and
+// for an operator who needs to know which one was chosen.
+func (c *Client) Base() string { return c.base }
+
+// Resolve finds the base this device's API hangs off, when none was
+// given.
+//
+// It asks for /self under each candidate and keeps the first that
+// answers. That is one extra round trip on a device whose firmware
+// moved, none on the one it did not, and it is the difference between
+// a connector that works on this fleet and one that works on the half
+// of it that has not been upgraded.
+func (c *Client) Resolve(ctx context.Context) error {
+	if c.resolved {
+		return nil
+	}
+	// Keep whatever scheme this client was built with. Production is
+	// always https; a test server on loopback has no certificate.
+	scheme := "https://"
+	if i := strings.Index(c.base, "://"); i >= 0 {
+		scheme = c.base[:i+3]
+	}
+
+	var tried []string
+	for _, candidate := range APIBases {
+		base := scheme + c.host + candidate
+		tried = append(tried, base)
+		if _, err := c.http.GetBytes(ctx, base+"/self"); err != nil {
+			continue
+		}
+		c.base, c.resolved = base, true
+		return nil
+	}
+	return fmt.Errorf("ccm: %s answered none of %s — name the right one with --api-base",
+		c.host, strings.Join(tried, ", "))
 }
 
 // Options configures the client.
@@ -36,7 +78,21 @@ type Options struct {
 	Insecure bool
 	// VerifyTLS, when set, forces verification on (overrides Insecure).
 	VerifyTLS bool
+	// APIBase is the path the API hangs off, "/api/v1" or "/api".
+	// Empty means find it — see [Client.Resolve].
+	APIBase string
 }
+
+// APIBases are the bases tried, in order, when none was given.
+//
+// EVS moved it. BRIDGE 7.0.3 serves /api/v1 and its documents at
+// /api/v1/docs/; the firmware on the shuffler dropped the version
+// segment and serves /api with its documents at /api/docs/. A
+// connector that hardcoded either one is a connector that works on
+// half the fleet, so it asks the device instead — and an operator can
+// still name a base outright, for a deployment behind a proxy prefix
+// that no probe would guess.
+var APIBases = []string{"/api/v1", "/api"}
 
 // MaxBody caps a single Neuron response. The api.yml OpenAPI document is
 // the largest thing this client fetches — a few hundred KiB on BRIDGE
@@ -72,8 +128,17 @@ func New(opts Options) *Client {
 		// own defaults, which verify.
 		cfg = nil
 	}
+	base := "https://" + opts.Host + strings.TrimSuffix(opts.APIBase, "/")
+	if opts.APIBase == "" {
+		// Unresolved until Resolve runs; APIBases[0] is what a caller
+		// that never resolves falls back to, which is the firmware
+		// this connector was written against.
+		base = "https://" + opts.Host + APIBases[0]
+	}
 	return &Client{
-		base: "https://" + opts.Host + "/api/v1",
+		base:     base,
+		resolved: opts.APIBase != "",
+		host:     opts.Host,
 		http: &transporthttp.Client{
 			HTTP: &stdhttp.Client{
 				Timeout:   opts.Timeout,

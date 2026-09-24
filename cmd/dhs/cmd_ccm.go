@@ -76,6 +76,7 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	asJSON := fs.Bool("json", false, "emit the whole device as JSON")
 	tree := fs.Bool("tree", false, "walk the FULL recursive DM (every node/resource), not just io/ip streams")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
+	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
 	start := fs.String("start", "", "with --tree: comma-separated node paths to seed the walk (default: discover from the API root)")
 
@@ -90,7 +91,10 @@ func runCCMWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm walk: a host is required (e.g. 10.6.255.102)")
 	}
 
-	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout, APIBase: *apiBase})
+	if err := c.Resolve(ctx); err != nil {
+		return err
+	}
 
 	if *tree {
 		return runCCMWalkTree(ctx, c, *asJSON, *start)

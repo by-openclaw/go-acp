@@ -3,6 +3,8 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,6 +110,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 	client := dialClient(host)
 
+	// Which base this firmware serves — /api/v1 or /api — before
+	// anything is asked of it. EVS moved it between firmwares, and a
+	// connector that assumed one would report half the fleet as
+	// unreachable.
+	if err := client.Resolve(ctx); err != nil {
+		return err
+	}
+
 	dev, _, err := client.Walk(ctx)
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
@@ -211,4 +221,10 @@ var errNotConnected = fmt.Errorf("ccm: not connected")
 // A variable so a test can point the connector at an http test server:
 // the client derives an https base from the host, and a fake device on
 // loopback has no certificate. Production never reassigns it.
-var dialClient = func(host string) *Client { return New(Options{Host: host}) }
+var dialClient = func(host string) *Client {
+	// CCM_API_BASE is how the neutral verbs — info, tree, get, watch,
+	// alarm — are told a non-default base. They are protocol-neutral
+	// and have no CCM flags, so it arrives the way every other
+	// per-connector setting does. Empty means find it.
+	return New(Options{Host: host, APIBase: strings.TrimSpace(os.Getenv("CCM_API_BASE"))})
+}

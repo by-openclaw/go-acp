@@ -1261,6 +1261,8 @@ usage: dhs consumer ccm <verb> <host> [flags]
 ========== consumer/ccm/walk ==========
 $ dhs consumer ccm walk --help
 Usage of consumer ccm walk:
+  -api-base string
+    	the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.
   -json
     	emit the whole device as JSON
   -start string
@@ -1275,6 +1277,8 @@ Usage of consumer ccm walk:
 ========== consumer/ccm/export ==========
 $ dhs consumer ccm export --help
 Usage of consumer ccm export:
+  -api-base string
+    	the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.
   -out string
     	output directory root (default "ccm-export")
   -verify-tls

@@ -522,3 +522,77 @@ func TestIdentityNeedsBothHalves(t *testing.T) {
 		t.Error("a device that names no firmware has no identity")
 	}
 }
+
+// newFirmwareNeuron serves the API WITHOUT the version segment, the
+// way the firmware on the shuffler does: /api/self, /api/docs/api.yml.
+// The lab BRIDGE (7.0.3) serves /api/v1. One connector, both fleets.
+func newFirmwareNeuron(t *testing.T) *httptest.Server {
+	t.Helper()
+	routes := map[string]string{
+		"/api/self":                      `{"app":{"productName":"SHUFFLER","productVersion":"8.0.0"}}`,
+		"/api/docs/api.yml":              fakeAPIYML,
+		"/api/misc/reference":            `{"ptp":{"domain":42}}`,
+		"/api/misc/luts":                 `{"upload_status":""}`,
+		"/api/io/ip/senders/video":       `[]`,
+		"/api/io/ip/receivers/video":     `[]`,
+		"/api/processing/video/channels": `[]`,
+		"/api/misc/reference/status":     `{"media":{"refLocked":false}}`,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		body, ok := routes[r.URL.Path]
+		if !ok {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestTheConnectorFindsTheBaseTheFirmwareServes(t *testing.T) {
+	srv := newFirmwareNeuron(t)
+	hostport := strings.TrimPrefix(srv.URL, "http://")
+
+	// Built the way production builds it, except for the scheme: the
+	// candidate list is what is under test, not TLS.
+	c := &Client{host: hostport, http: testClient(srv).http, base: "http://" + hostport + APIBases[0]}
+	if err := c.Resolve(context.Background()); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got, want := c.Base(), "http://"+hostport+"/api"; got != want {
+		t.Errorf("base = %q, want %q — the version segment is gone on this firmware", got, want)
+	}
+
+	// And a device that answers neither says which ones were tried.
+	dead := &Client{host: "127.0.0.1:1", http: testClient(srv).http,
+		base: "http://127.0.0.1:1" + APIBases[0]}
+	err := dead.Resolve(context.Background())
+	if err == nil {
+		t.Fatal("a device that answers nothing must not resolve")
+	}
+	for _, want := range []string{"/api/v1", "/api", "--api-base"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %v, want it to mention %q", err, want)
+		}
+	}
+}
+
+func TestAnExplicitBaseIsNotProbed(t *testing.T) {
+	// A deployment behind a proxy prefix is one no probe would guess,
+	// so a named base is taken as given and costs no round trip.
+	c := New(Options{Host: "neuron.invalid", APIBase: "/gateway/neuron/api/"})
+	want := "https://neuron.invalid/gateway/neuron/api"
+	if got := c.Base(); got != want {
+		t.Errorf("base = %q, want %q (trailing slash trimmed)", got, want)
+	}
+	// Resolve is a no-op on it: no candidate list, no request.
+	if err := c.Resolve(context.Background()); err != nil {
+		t.Errorf("Resolve on an explicit base = %v", err)
+	}
+	if c.Base() != want {
+		t.Errorf("Resolve changed an explicit base to %q", c.Base())
+	}
+}

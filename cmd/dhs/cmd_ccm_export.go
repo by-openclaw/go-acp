@@ -32,6 +32,7 @@ func runCCMExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("consumer ccm export", flag.ContinueOnError)
 	out := fs.String("out", "ccm-export", "output directory root")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
+	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
 
 	host := ""
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
@@ -44,7 +45,10 @@ func runCCMExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm export: a host is required")
 	}
 
-	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, APIBase: *apiBase})
+	if err := c.Resolve(ctx); err != nil {
+		return err
+	}
 
 	dev, deviations, err := c.Walk(ctx)
 	if err != nil {
