@@ -114,6 +114,13 @@ func (p *Plugin) resourcePaths(ctx context.Context, client *Client, spec *codec.
 		params []string
 	)
 	for _, path := range spec.With(codec.GET) {
+		// The API root is a listing of the top-level node names, every
+		// one of which the spec declares in its own right. Reading it
+		// as a resource would put `.0`, `.1`, `.2` in the model —
+		// index-addressed copies of names that are already paths.
+		if path == "" || path == "/" {
+			continue
+		}
 		if strings.Contains(path, "{") {
 			params = append(params, path)
 			continue

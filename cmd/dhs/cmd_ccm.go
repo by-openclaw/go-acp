@@ -55,8 +55,15 @@ func runCCM(ctx context.Context, args []string) (bool, error) {
 		}
 		return true, runCCMWalk(ctx, rest)
 	case "export":
-		// CCM's export is the richer one — api.yml, the DM tree and the
-		// extract, versioned for a firmware diff — so it keeps the verb.
+		// Two shapes again. CCM's own export is the firmware-diff
+		// artefact set — api.yml, the DM tree, the extract, versioned
+		// per identity — and it keeps the bare verb. `--format` asks
+		// for the neutral one: json / yaml / CSV of the walked model,
+		// which is what an operator hands to somebody who does not run
+		// this tool.
+		if namesAFormat(rest) {
+			return false, nil
+		}
 		return true, runCCMExport(ctx, rest)
 	}
 	// info, tree, get, set, watch, alarm, ensure, validate…: the neutral
@@ -161,4 +168,17 @@ func runCCMWalkTree(ctx context.Context, c *ccmc.Client, asJSON bool, start stri
 		fmt.Fprintf(os.Stderr, "  deviation: %s\n", d)
 	}
 	return nil
+}
+
+// namesAFormat reports whether the operator asked for the neutral
+// export — a file in a named format — rather than this connector's own
+// artefact set.
+func namesAFormat(args []string) bool {
+	for _, a := range args {
+		if a == "--format" || a == "-format" ||
+			strings.HasPrefix(a, "--format=") || strings.HasPrefix(a, "-format=") {
+			return true
+		}
+	}
+	return false
 }
