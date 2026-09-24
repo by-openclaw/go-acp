@@ -42,7 +42,7 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
 | **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
 | **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
-| **ATEME Kyrion DR5000** (IRD) | `10.6.255.114` | SNMP v1 `:161` · HTTP `:80` (Flex UI) | `snmp` ✅ polled + controlled live |
+| **ATEME Kyrion DR5000** (IRD) | `10.6.255.114` | SNMP v2c + v1 `:161` · HTTP `:80` (Flex UI) | `snmp` ✅ polled + controlled live |
 | **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP v1 **and** v2c `:161` · 8 trap destinations `:162` | `snmp` ✅ polled live |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
@@ -92,9 +92,16 @@ services this one Neuron offers cannot yet be driven at a real device — see
 ### ATEME Kyrion DR5000 — the IRD that ships its own MIB
 
 `10.6.255.114`, serial 1410-00596, `sysObjectID 1.3.6.1.4.1.27338.5.2.2`
-(ATEME, IANA enterprise 27338). SNMP **v1** on 161, read community
-`public`, write community `private` (a write on `public` answers
-`noAccess`, which is the agent behaving correctly).
+(ATEME, IANA enterprise 27338). SNMP on 161, read community `public`,
+write community `private` (a write on `public` answers `noAccess`,
+which is the agent behaving correctly).
+
+**It answers v2c as well as v1** — verified 2026-09-24, unlike the
+Tandberg IRDs below, which are silent on v2c. That matters for one
+reason: GETBULK. A v1 walk of this device is one object per round trip
+and does not finish 600 objects in two minutes; the same walk over v2c
+does it in 30 s. The connector negotiates v2c first, so this is what it
+already uses — `info` reports the version it settled on.
 
 **The MIB comes from the device.** The Kyrion serves it over HTTP, so
 the copy always matches the firmware in front of you:
@@ -123,8 +130,11 @@ As found on 2026-09-23, locked to an MPTS and decoding one service:
 | SDI out | `…Configuration.Output.Mapping.Connector{1,2}` | `hdsdi` / `autosdi` (`sdsdi` also defined) |
 
 **Scale.** ~26 000 objects, most of them the 4096-row programme stream
-table under `Status.TsDescriptor` — a whole-device walk takes minutes
-over v1 GETNEXT, so scope it (`--path ateme.dr5000.Status.Input`).
+table under `Status.TsDescriptor`. Even over v2c GETBULK this box
+answers about 20 objects a second, so a whole-device walk is tens of
+minutes and a scoped one is seconds — scope it
+(`--path ateme.dr5000.Status.Input`), which reads the branch rather
+than reading everything and filtering.
 
 **Communities**: `public` read, `private` write — set on the unit's own
 web UI, and what the agent enforces (`noAccess` for a write on

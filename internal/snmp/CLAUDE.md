@@ -224,7 +224,11 @@ What the neutral face decides, and why:
 
 - **Version is not asked for.** v2c is tried, then v1, because an agent
   that speaks only v1 answers a v2c request with silence — which looks
-  exactly like a device that is down. The IRDs in this lab are v1.
+  exactly like a device that is down. The Tandberg IRDs (TT1260,
+  RX1290) are v1-only; the ATEME DR5000 answers both, and the
+  difference is GETBULK — v2c walks it several times faster. `info`
+  reports the version the session settled on, so which one is in use is
+  never a guess.
 - **One slot.** An agent is a box, so slot 0 is present and nothing
   else exists.
 - **The model is the system group plus the agent's own enterprise

@@ -187,7 +187,20 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (dhsc.DeviceInfo, error) {
 		return dhsc.DeviceInfo{}, fmt.Errorf("snmp: system group: %w", err)
 	}
 	p.RecordRx()
-	info := dhsc.DeviceInfo{IP: p.host, Port: DefaultPort, NumSlots: 1, ProtocolVersion: 1}
+	p.mu.Lock()
+	// Connect normalised the port before it stored it, so there is
+	// nothing to default here.
+	port, version := p.port, p.version
+	p.mu.Unlock()
+	info := dhsc.DeviceInfo{
+		IP: p.host, Port: port, NumSlots: 1,
+		// The version this session NEGOTIATED, not a constant. Reporting
+		// v1 for a v2c session is how a walk that takes an hour looks
+		// like the protocol's fault rather than a question worth asking
+		// — the DR5000 answers both, and only one of them has GETBULK.
+		// The neutral field is a number, so v2c reports 2.
+		ProtocolVersion: protocolVersionNumber(version),
+	}
 	for _, b := range binds {
 		if b.Name.Compare(sysObjectID) == 0 && b.Value.Type == codec.TypeOID {
 			{
@@ -200,6 +213,22 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (dhsc.DeviceInfo, error) {
 		}
 	}
 	return info, nil
+}
+
+// protocolVersionNumber maps the wire version onto the neutral
+// DeviceInfo's number. SNMP's versions are named 1, 2c and 3 while the
+// wire encodes them 0, 1 and 3, and the neutral field is a number an
+// operator reads — so v2c is reported as 2, which is what the manuals
+// and the vendors call it.
+func protocolVersionNumber(v codec.Version) int {
+	switch v {
+	case codec.Version2c:
+		return 2
+	case codec.Version3:
+		return 3
+	default:
+		return 1
+	}
 }
 
 // GetSlotInfo answers for the one slot an agent has.

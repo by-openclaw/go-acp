@@ -52,7 +52,10 @@ Shared: `--version 1|2c`, `--community`, `--timeout`, `--retries`,
 **Version is not asked for.** `Connect` tries v2c, then v1. An agent
 that speaks only v1 answers a v2c request with *silence*, which looks
 exactly like a device that is down; guessing wrong costs a diagnosis,
-so it does not guess. The IRDs in this lab are v1-only.
+so it does not guess. The Tandberg IRDs in this lab (TT1260, RX1290)
+are v1-only; the ATEME DR5000 answers both, and the difference is
+GETBULK — a v1 walk of it is one object per round trip. `info` reports
+the version the session settled on, not a constant.
 
 **One slot.** An agent is a box. Slot 0 is present; nothing else
 exists.

@@ -107,7 +107,7 @@ type snmpFlags struct {
 }
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
-	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them.")
+	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK.")
 	fs.StringVar(&f.community, "community", "public", "read community (write community for `set`)")
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
@@ -461,7 +461,7 @@ EXAMPLES
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
-  # an IRD, which is v1-only
+  # a Tandberg IRD, which is v1-only
   dhs consumer snmp get --version 1 --oid sysDescr.0 10.6.255.110
 
   # Cerebrum's agent, which answers on 1161 rather than 161

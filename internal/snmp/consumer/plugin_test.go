@@ -1028,3 +1028,43 @@ func TestTheConnectorAsksForATimeoutItCanMeet(t *testing.T) {
 	// noRecorder counts nothing and says nothing.
 	noRecorder{}.Note("anything")
 }
+
+func TestDeviceInfoReportsTheSessionItActuallyHas(t *testing.T) {
+	// Reporting a constant version is how a v2c session — the one with
+	// GETBULK — looks like a v1 session that is simply slow. And an
+	// agent on a high port (Cerebrum's answers on 1161) is not on 161
+	// just because that is the default.
+	p, host, port := pluginUnder(t, provider.Communities{Read: "public"})
+	if err := p.Connect(context.Background(), host, port); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = p.Disconnect() })
+
+	info, err := p.GetDeviceInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetDeviceInfo: %v", err)
+	}
+	if info.ProtocolVersion != 2 {
+		t.Errorf("version = %d, want 2 — this agent answered v2c", info.ProtocolVersion)
+	}
+	if info.Port != port {
+		t.Errorf("port = %d, want the port we dialled (%d)", info.Port, port)
+	}
+}
+
+func TestProtocolVersionNumberNamesItTheWayTheManualsDo(t *testing.T) {
+	cases := []struct {
+		in   codec.Version
+		want int
+	}{
+		{codec.Version1, 1},
+		{codec.Version2c, 2}, // the wire says 1; everyone calls it 2c
+		{codec.Version3, 3},
+		{codec.Version(99), 1},
+	}
+	for _, c := range cases {
+		if got := protocolVersionNumber(c.in); got != c.want {
+			t.Errorf("protocolVersionNumber(%v) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}
