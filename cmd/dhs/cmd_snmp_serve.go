@@ -159,8 +159,26 @@ func runSNMPMIB(_ context.Context, args []string) error {
 // on it: every device in docs/testbed.md currently points its traps at
 // an address that no longer exists, and the only way to tell a working
 // receiver from a working sender is to send one on purpose.
+// runSNMPTrapSend sends one notification, unacknowledged.
 func runSNMPTrapSend(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("trap", flag.ContinueOnError)
+	return runSNMPNotify(ctx, args, false)
+}
+
+// runSNMPInform sends one notification and waits to be told it arrived.
+func runSNMPInform(ctx context.Context, args []string) error {
+	return runSNMPNotify(ctx, args, true)
+}
+
+// runSNMPNotify is both: the flags, the destinations and the engine are
+// identical, and the only difference is the PDU and whether anything
+// waits for an answer. Keeping them one function is what stops `inform`
+// quietly growing a different --to grammar from `trap`.
+func runSNMPNotify(ctx context.Context, args []string, inform bool) error {
+	verb := "trap"
+	if inform {
+		verb = "inform"
+	}
+	fs := flag.NewFlagSet(verb, flag.ContinueOnError)
 	to := fs.String("to", "", "comma-separated receivers as ADDR[:PORT][/VERSION[/COMMUNITY-OR-USER]] — e.g. 10.6.250.5,10.6.255.9:162/1/public,10.6.250.7/3/operator")
 	enterprise := fs.String("enterprise", mib.DHSAgent.String(), "the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (the default with --specific 1 is dhsTestNotification in DHS-MIB)")
 	generic := fs.Int("generic", int(codec.EnterpriseSpecific), "RFC 1157 generic trap 0..6; 6 means look at --specific")
@@ -180,7 +198,7 @@ func runSNMPTrapSend(ctx context.Context, args []string) error {
 		return err
 	}
 	if *to == "" {
-		return fmt.Errorf("snmp trap: --to names at least one receiver")
+		return fmt.Errorf("snmp %s: --to names at least one receiver", verb)
 	}
 	ent, err := mib.Resolve(*enterprise)
 	if err != nil {
@@ -214,11 +232,34 @@ func runSNMPTrapSend(ctx context.Context, args []string) error {
 		Specific:   *specific,
 		Uptime:     uint32(*uptime),
 	}
-	if err := sender.Send(ctx, n); err != nil {
-		return err
+	if !inform {
+		if err := sender.Send(ctx, n); err != nil {
+			return err
+		}
+		for _, d := range sender.Destinations() {
+			fmt.Printf("sent %s to %s\n", d.Version, d.Addr)
+		}
+		return nil
 	}
-	for _, d := range sender.Destinations() {
-		fmt.Printf("sent %s to %s\n", d.Version, d.Addr)
+
+	// An inform's whole value is the answer, so the report is
+	// per-destination: which manager acknowledged, and how many
+	// datagrams it took. "Something failed" is not actionable.
+	var failed int
+	for _, r := range sender.SendInform(ctx, n) {
+		switch {
+		case r.Err != nil:
+			failed++
+			fmt.Printf("NOT acknowledged by %s (%s): %v\n", r.Dest.Addr, r.Dest.Version, r.Err)
+		case r.Attempts > 1:
+			fmt.Printf("acknowledged by %s (%s) after %d attempts\n",
+				r.Dest.Addr, r.Dest.Version, r.Attempts)
+		default:
+			fmt.Printf("acknowledged by %s (%s)\n", r.Dest.Addr, r.Dest.Version)
+		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("snmp inform: %d receiver(s) did not acknowledge", failed)
 	}
 	return nil
 }
@@ -368,6 +409,12 @@ func trapLine(t snmpcons.Trap) string {
 	}
 	if name != t.TrapOID.String() {
 		line += " " + name
+	}
+	if t.Inform {
+		// Worth saying: an inform that keeps arriving means the sender
+		// is not seeing the acknowledgements, which is a route problem
+		// and not a device one.
+		line += " [inform, acknowledged]"
 	}
 	return line
 }

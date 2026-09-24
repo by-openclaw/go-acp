@@ -90,10 +90,12 @@ func runSNMPProducer(ctx context.Context, args []string) error {
 		return runSNMPServe(ctx, rest)
 	case "trap":
 		return runSNMPTrapSend(ctx, rest)
+	case "inform":
+		return runSNMPInform(ctx, rest)
 	case "mib":
 		return runSNMPMIB(ctx, rest)
 	}
-	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap | mib)", verb)
+	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap | inform | mib)", verb)
 }
 
 // snmpFlags are what every consumer verb needs to reach an agent.
@@ -567,6 +569,8 @@ func printSNMPProducerHelp() {
 VERBS
   serve   answer polls against a served MIB
   trap    send one notification to one or more receivers
+  inform  the same notification, ACKNOWLEDGED: retried until each
+          receiver answers, and it says which one did not
   mib     write DHS-MIB, the module defining what the agent serves and sends
           under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
   status  runtime snapshot of a serving instance (--url)
@@ -584,6 +588,10 @@ EXAMPLES
   dhs producer snmp trap --to 10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # an alarm you need to KNOW arrived: retried until acknowledged
+  dhs producer snmp inform --to 10.6.250.5/2c/public
+  dhs producer snmp inform --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
 
   # the module a receiver loads to name what it gets from us
   dhs producer snmp mib --out DHS-MIB.mib
