@@ -116,6 +116,8 @@ truth):
 | OSC | osc-v10 + osc-v11; UDP + TCP-LP (v10) + TCP-SLIP (v11). |
 | TSL UMD | v3.1 + v4 + v5 with per-vendor positional tally mapping (internal/tsl/CLAUDE.md). |
 | Cerebrum NB | XML-over-WS uppercase wire form; consumer 12 verbs; provider deferred. |
+| MN SET (mnset) | **Consumer only — deliverable 2 is PARKED by the codeowner (2026-09-24), not missing.** The module is a REST endpoint we drive; serving an emSFP-shaped API back would emulate a Riedel module nobody asks us to be. Scope recorded in `internal/MNSet/docs/scope.md` since 2026-09-20. The other five deliverables apply in full. |
+| SNMP | Manager AND agent (deliverable 2 is a real agent, `internal/snmp/provider`). v1 + v2c polled; v3 notifications both ways; v3 POLLING and InformRequest are open units per `internal/snmp/CLAUDE.md`. |
 | AMWA NMOS | Every published minor version in scope — no deferrals per root CLAUDE.md "AMWA NMOS strict". |
 
 ## What this ADR does NOT change
@@ -152,3 +154,9 @@ truth):
   builds its frame from the repo alone; tests never `t.Skip` for a missing
   fixture). Reflects the committed-fixture decision already shipped for
   acp1/acp2/emberplus (#553/#556). — by-rune
+- 2026-09-24 — per-protocol scope: mnset is consumer only (deliverable 2
+  parked by the codeowner, recorded so a reader does not read it as an
+  unfinished connector), and SNMP's two roles are named with its open
+  units. A parked deliverable is a decision with a date and a reason; a
+  missing one is work. — by-rune
+
