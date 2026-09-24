@@ -609,6 +609,35 @@ func matchPathPrefix(objPath, prefix []string) bool {
 	return true
 }
 
+// matchAnyPathPrefix is matchPathPrefix over several prefixes: the
+// object matches when any one of them does. No prefixes at all matches
+// everything, the same way an empty prefix does.
+func matchAnyPathPrefix(objPath []string, prefixes [][]string) bool {
+	if len(prefixes) == 0 {
+		return true
+	}
+	for _, p := range prefixes {
+		if matchPathPrefix(objPath, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterByPaths returns only objects matching one of the given prefixes.
+func filterByPaths(objs []consumer.Object, prefixes [][]string) []consumer.Object {
+	if len(prefixes) == 0 {
+		return objs
+	}
+	var out []consumer.Object
+	for _, o := range objs {
+		if matchAnyPathPrefix(o.Path, prefixes) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
 // filterByPath returns only objects whose path matches the given prefix.
 func filterByPath(objs []consumer.Object, prefix []string) []consumer.Object {
 	if len(prefix) == 0 {

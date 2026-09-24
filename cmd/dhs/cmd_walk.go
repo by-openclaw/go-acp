@@ -23,7 +23,10 @@ func runWalk(ctx context.Context, args []string) error {
 	slot := fs.Int("slot", 0, "slot number (default 0; combine with --all to walk every present slot)")
 	all := fs.Bool("all", false, "walk every present slot on the device")
 	filter := fs.String("filter", "", "case-insensitive filter on output lines (like findstr /i or grep -i)")
-	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1)")
+	pathFlag := fs.String("path", "",
+		"read (or, on connectors that cannot scope a walk, filter to) these "+
+			"path prefixes — comma-separated, e.g. BOARD or "+
+			"ateme.dr5000.Status.Input,ateme.dr5000.Channel")
 	tree := fs.Bool("tree", false, "render as ASCII tree instead of flat list")
 	treeDepth := fs.Int("depth", 0, "max depth from focus node (0 = unlimited; use with --tree)")
 	treeFromOID := fs.String("from-oid", "", "focus tree on object by OID (numeric ID or dotted; use with --tree)")
@@ -35,11 +38,10 @@ func runWalk(ctx context.Context, args []string) error {
 	}
 	_ = parseVerbFlags(fs, rest)
 
-	// Parse --path into segments for prefix matching.
-	var pathSegs []string
-	if *pathFlag != "" {
-		pathSegs = strings.Split(*pathFlag, ".")
-	}
+	// Parse --path into prefixes. Comma separates branches, dots
+	// separate segments inside one branch.
+	pathScopes := parsePathScopes(*pathFlag)
+	pathSegs := pathScopeSegments(pathScopes)
 
 	plug, cleanup, err := connect(ctx, host, cf)
 	if err != nil {
@@ -60,7 +62,7 @@ func runWalk(ctx context.Context, args []string) error {
 			if obj.Kind == consumer.KindRaw && obj.Label == "" {
 				return // skip node containers
 			}
-			if !matchPathPrefix(obj.Path, pathSegs) {
+			if !matchAnyPathPrefix(obj.Path, pathSegs) {
 				return
 			}
 			valStr := walkValueColumn(*obj)
@@ -122,7 +124,7 @@ func runWalk(ctx context.Context, args []string) error {
 				bindings = append(bindings, slotBinding{Slot: s, Identity: identity})
 				writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
 			}
-			objs = filterByPath(objs, pathSegs)
+			objs = filterByPaths(objs, pathSegs)
 			if *tree {
 				fmt.Printf("\nslot %d — %d objects\n\n", s, len(objs))
 				if err := renderTree(os.Stdout, objs, treeRenderOpts{
@@ -151,20 +153,30 @@ func runWalk(ctx context.Context, args []string) error {
 	}
 
 	fmt.Printf("\nslot %d:\n", *slot)
-	objs, err := plug.Walk(ctx, *slot)
+	objs, scoped, err := walkScoped(ctx, plug, *slot, pathScopes)
 	if err != nil {
 		return err
 	}
 	// Persist walked tree. ACP2 -> identity-keyed MasterView at
 	// .cache/dm/<identity>.json; ACP1/Ember+ -> IP-keyed
 	// .cache/devices/<ip>/slot_<n>.json. See saveSlotCache.
-	prober, _ := plug.(identityProber)
-	identity := saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
-	// Optional audit: when the plugin tracked unknown CTX tags during
-	// the walk (Ember+ only today), drop a Markdown report alongside
-	// the DM so the operator can share it with the device vendor.
-	writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
-	objs = filterByPath(objs, pathSegs)
+	//
+	// A scoped walk read some branches, not the device — caching that
+	// as the device model would replace a 26k-object model with the
+	// handful of leaves someone asked about. So the model is written
+	// only when the whole slot was read.
+	if scoped {
+		fmt.Fprintln(os.Stderr, "note: scoped walk — no device model cached (walk without --path for that)")
+	} else {
+		prober, _ := plug.(identityProber)
+		identity := saveSlotCache(ctx, prober, host, cf.protocol, *slot, objs, canonicalTreeFromPlug(ctx, plug))
+		// Optional audit: when the plugin tracked unknown CTX tags
+		// during the walk (Ember+ only today), drop a Markdown report
+		// alongside the DM so the operator can share it with the
+		// device vendor.
+		writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
+	}
+	objs = filterByPaths(objs, pathSegs)
 	if *tree {
 		fmt.Printf("\nslot %d — %d objects\n\n", *slot, len(objs))
 		if err := renderTree(os.Stdout, objs, treeRenderOpts{
@@ -192,6 +204,68 @@ func runWalk(ctx context.Context, args []string) error {
 		}
 	}
 	return nil
+}
+
+// walkScoped reads only the branches --path names, on a connector that
+// can scope a walk itself, and reports whether it did.
+//
+// It matters on a device whose model is large and whose wire is one
+// object per round trip: an SNMP agent answers ~26 000 objects, so
+// walking all of them to print the six under Status.Input costs minutes
+// for work that takes a second. A connector without WalkUnder (ACP1,
+// ACP2, Ember+ today) walks the slot and the caller filters, exactly as
+// before — --path stays a display filter there.
+func walkScoped(ctx context.Context, plug consumer.Protocol, slot int, scopes []string) ([]consumer.Object, bool, error) {
+	w, ok := plug.(interface {
+		WalkUnder(context.Context, string) ([]consumer.Object, error)
+	})
+	if !ok || len(scopes) == 0 {
+		objs, err := plug.Walk(ctx, slot)
+		return objs, false, err
+	}
+	var (
+		out  []consumer.Object
+		seen = make(map[string]bool)
+	)
+	for _, scope := range scopes {
+		objs, err := w.WalkUnder(ctx, scope)
+		if err != nil {
+			return nil, true, fmt.Errorf("walk %s: %w", scope, err)
+		}
+		for _, o := range objs {
+			// Two scopes may overlap (Status and Status.Input); an
+			// object belongs in the tree once.
+			key := strings.Join(o.Path, "\x00")
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, o)
+		}
+	}
+	return out, true, nil
+}
+
+// parsePathScopes splits a --path flag into branch prefixes. Commas
+// separate branches; an empty flag scopes nothing.
+func parsePathScopes(flag string) []string {
+	var out []string
+	for _, s := range strings.Split(flag, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// pathScopeSegments turns those prefixes into the segment lists the
+// display filter matches against.
+func pathScopeSegments(scopes []string) [][]string {
+	var out [][]string
+	for _, s := range scopes {
+		out = append(out, strings.Split(s, "."))
+	}
+	return out
 }
 
 // writeCanonicalCapture dispatches to the right per-plugin capture
