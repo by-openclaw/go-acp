@@ -129,12 +129,21 @@ As found on 2026-09-23, locked to an MPTS and decoding one service:
 | Decoded | `…Decode.CurrentProgram.Video.MainFormat` | `sdpal720x576i25` (625) |
 | SDI out | `…Configuration.Output.Mapping.Connector{1,2}` | `hdsdi` / `autosdi` (`sdsdi` also defined) |
 
-**Scale.** ~26 000 objects, most of them the 4096-row programme stream
-table under `Status.TsDescriptor`. Even over v2c GETBULK this box
-answers about 20 objects a second, so a whole-device walk is tens of
-minutes and a scoped one is seconds — scope it
-(`--path ateme.dr5000.Status.Input`), which reads the branch rather
-than reading everything and filtering.
+**Scale.** ~26 000 objects, and one table is nearly all of them: the
+4096-row programme stream table under `Status.TsDescriptor`. The cost
+is that table, not the device — measured over v2c GETBULK on
+2026-09-24, 600 objects each:
+
+| Branch | 600 objects in |
+|---|---:|
+| `Channel` | 0.7 s |
+| `Unit` | 1.0 s (it only has 4) |
+| `Status.TsDescriptor` | **23 s** |
+
+So a whole-device walk is a quarter of an hour of reading a programme
+table nobody alarms on, and a scoped walk of what matters is under a
+second. Scope it (`--path ateme.dr5000.Status.Input`) — which reads
+the branch rather than reading everything and filtering.
 
 **Communities**: `public` read, `private` write — set on the unit's own
 web UI, and what the agent enforces (`noAccess` for a write on
