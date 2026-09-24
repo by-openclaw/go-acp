@@ -41,12 +41,12 @@ func runSNMPServe(ctx context.Context, args []string) error {
 	location := fs.String("location", "", "sysLocation.0")
 	pidfile := fs.String("pidfile", "", "write this process's PID to PATH so `dhs producer snmp stop|ensure --pidfile PATH` can manage it")
 	metricsAddr := fs.String("metrics-addr", "", "serve /snmp.json and /snapshot.json on this address")
-	v3User := fs.String("v3-user", "",
-		"USM user to accept authenticated v3 requests as. Setting it makes the agent answer v3 (as well as v1/v2c).")
-	v3Auth := fs.String("v3-auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512")
-	v3AuthPass := fs.String("v3-auth-pass", "", "v3 authentication password")
+	v3User := fs.String("v3-user", snmpprov.DefaultV3User,
+		"USM user this agent answers v3 as. v3 is ON by default — pass --v3-user=\"\" to serve v1/v2c only.")
+	v3Auth := fs.String("v3-auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512. Without it the user is noAuthNoPriv.")
+	v3AuthPass := fs.String("v3-auth-pass", "", "v3 authentication password (prefer SNMP_V3_AUTH_PASS)")
 	v3Priv := fs.String("v3-priv", "", "v3 privacy: des or aes")
-	v3PrivPass := fs.String("v3-priv-pass", "", "v3 privacy password")
+	v3PrivPass := fs.String("v3-priv-pass", "", "v3 privacy password (prefer SNMP_V3_PRIV_PASS)")
 	engineID := fs.String("engine-id", "dhs-agent", "text in this agent's RFC 3411 engine ID")
 	engineBoots := fs.Int("engine-boots", 1,
 		"this engine's restart count; persist and increment across restarts, or a peer accepts messages recorded before the last reboot")
@@ -88,6 +88,16 @@ func runSNMPServe(ctx context.Context, args []string) error {
 		Read: *read, Write: *write,
 	}, deps)
 
+	// The passwords come from the environment when the flags left them
+	// empty, the same way the manager takes them: a password on a
+	// command line is in the shell history and visible in ps.
+	if *v3AuthPass == "" {
+		*v3AuthPass = strings.TrimSpace(os.Getenv("SNMP_V3_AUTH_PASS"))
+	}
+	if *v3PrivPass == "" {
+		*v3PrivPass = strings.TrimSpace(os.Getenv("SNMP_V3_PRIV_PASS"))
+	}
+
 	if *v3User != "" {
 		engine, err := buildTrapEngine(*engineID, *engineBoots, *v3User,
 			*v3Auth, *v3AuthPass, *v3Priv, *v3PrivPass, deps)
@@ -95,7 +105,19 @@ func runSNMPServe(ctx context.Context, args []string) error {
 			return err
 		}
 		srv.SetEngine(engine)
-		logger.Info("snmp agent: v3 enabled", "user", *v3User)
+		user, _ := engine.User(*v3User)
+		logger.Info("snmp agent: v3 enabled",
+			"user", *v3User, "level", user.SecurityLevel())
+		if user.SecurityLevel() == "noAuthNoPriv" {
+			// Said once, at startup, where somebody can act on it. v3
+			// without a passphrase identifies a manager; it does not
+			// protect anything.
+			logger.Info("snmp agent: v3 user has no passphrase — " +
+				"add --v3-auth/--v3-auth-pass for authNoPriv, and --v3-priv/--v3-priv-pass for authPriv")
+		}
+	} else {
+		logger.Info("snmp agent: v3 disabled by --v3-user=\"\" — v1/v2c only, " +
+			"which means a community in clear on every datagram")
 	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

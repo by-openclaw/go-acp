@@ -165,3 +165,21 @@ func reportRequestID(req codec.Message) int32 {
 	}
 	return 0
 }
+
+// DefaultV3User is the USM user this agent answers as when nobody
+// named one.
+//
+// v3 is ON by default, and that is a deliberate change of posture: v1
+// and v2c put their password in clear in every datagram, so an agent
+// that only spoke them would oblige every manager in the plant to do
+// the same. An agent that also speaks v3 lets a manager that can
+// authenticate do so, while the devices that predate v3 keep working.
+//
+// With no --v3-auth the user is noAuthNoPriv: it identifies the
+// manager without protecting the exchange, which is no weaker than the
+// community it sits beside and is the only level that can work before
+// anybody has shared a passphrase. Adding --v3-auth makes it
+// authNoPriv and --v3-priv makes it authPriv — and the agent then
+// REFUSES anything less for that user, because a message claiming less
+// protection than the user is configured for is how a downgrade works.
+const DefaultV3User = "dhs"

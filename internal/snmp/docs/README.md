@@ -51,9 +51,20 @@ go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
     internal/snmp/mib
 ```
 
-## Known open work
+## v3 is the default
 
-- **v3 polling** — a manager is authoritative for nothing, so it must
-  discover the agent's engine first. v3 *notifications* work in both
-  directions today; v3 *polling* does not.
-- **InformRequest** — in neither direction yet.
+The agent answers v3 out of the box, as user `dhs` — `serve` needs no
+v3 flags to speak it, and `--v3-user=""` is how you turn it off. With
+no passphrase that user is noAuthNoPriv, which identifies a manager
+without protecting the exchange; `--v3-auth`/`--v3-priv` raise it, and
+the agent then refuses anything less for that user.
+
+v1 and v2c stay on beside it, because half the devices in this lab
+predate v3 and a connector that refused them would simply not monitor
+them. On the manager side the preference runs the other way: a
+configured `SNMP_V3_USER` makes the connector try v3 *first*, since v1
+and v2c put their password in clear in every datagram.
+
+Complete as of 2026-09-24: v3 polling (discovery, all three security
+levels, re-discovery when an agent reboots mid-session), v3
+notifications both ways, and InformRequest both ways.

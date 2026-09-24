@@ -1079,15 +1079,15 @@ Usage of serve:
   -read-community string
     	community that admits GET, GETNEXT and GETBULK (default "public")
   -v3-auth string
-    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512. Without it the user is noAuthNoPriv.
   -v3-auth-pass string
-    	v3 authentication password
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS)
   -v3-priv string
     	v3 privacy: des or aes
   -v3-priv-pass string
-    	v3 privacy password
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -v3-user string
-    	USM user to accept authenticated v3 requests as. Setting it makes the agent answer v3 (as well as v1/v2c).
+    	USM user this agent answers v3 as. v3 is ON by default — pass --v3-user="" to serve v1/v2c only. (default "dhs")
   -write-community string
     	community that admits SET. EMPTY REFUSES EVERY SET, including one carrying the read community — a plant where one password does both is one typo from a re-route.
 ```

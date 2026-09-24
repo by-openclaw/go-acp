@@ -7,6 +7,7 @@ their trees — a device we present, not a mock.
 ```
 dhs producer snmp serve   answer polls against a served MIB
 dhs producer snmp trap    send one notification to one or more receivers
+dhs producer snmp inform  the same notification, acknowledged
 dhs producer snmp mib     write DHS-MIB, the module that names all of it
 ```
 
@@ -99,12 +100,50 @@ host's outbound address. v2c and v3 have no such field.
 > a receiver is proven before anything depends on it — and it is why
 > the consumer's `watch` polls rather than waiting.
 
+## inform
+
+```
+dhs producer snmp inform --to 10.6.250.5/2c/public
+```
+
+Same destinations, same notification, one difference: it is
+**acknowledged**. The sender retries with the same request-id until
+each receiver answers, and reports per destination —
+
+```
+acknowledged by 10.6.250.5:162 (v2c) after 2 attempts
+NOT acknowledged by 10.6.255.9:162 (v2c): ... after 3 attempt(s)
+```
+
+— because "a notification failed" is not actionable and "this manager
+did not answer" is. A non-zero exit means at least one did not.
+
+**v1 destinations are refused.** v1 has no InformRequest-PDU, and
+sending a trap instead would let a caller believe an alarm was
+acknowledged when nothing acknowledged it.
+
+The destination's version is still named per destination and still
+defaults to v2c: it has to match what the RECEIVER accepts, which is
+their decision and not ours. That is the one place v3 is not the
+default.
+
 ---
 
 ## v3
 
 USM is ours (`internal/snmp/usm`): RFC 3414 key derivation asserted
 against the published test vectors, RFC 7860 for the SHA-2 family, RFC
-3826 for AES. Both directions of notification work. v3 *polling* is
-still open — a manager is authoritative for nothing, so it must
-discover the agent's engine first.
+3826 for AES.
+
+**The agent answers v3 by default**, as user `dhs`, with no flags at
+all — `--v3-user=""` is how you turn it off, and the startup log says
+which level the user ended up at. v1 and v2c stay on beside it for the
+devices that predate v3.
+
+It answers a discovery probe with a Report carrying its engine ID,
+boots and time (RFC 3414 §4), and answers a message it could not
+process with the counter that says WHY — usmStatsUnknownUserNames,
+usmStatsWrongDigests, usmStatsNotInTimeWindows and the rest. That last
+one is not a nicety: it is the only way a manager ever recovers from
+this agent rebooting. A message claiming less protection than its user
+is configured for is refused, because that is how a downgrade works.

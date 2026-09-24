@@ -11,12 +11,21 @@ restated here, per ADR-0015.
 ## Before anything
 
 ```
-export SNMP_COMMUNITY=public            # reads
-export SNMP_WRITE_COMMUNITY=private     # writes, only when you mean it
+export SNMP_COMMUNITY=public            # v1/v2c reads
+export SNMP_WRITE_COMMUNITY=private     # v1/v2c writes, only when you mean it
+
+export SNMP_V3_USER=operator            # v3, which has no community
+export SNMP_V3_AUTH=sha256 SNMP_V3_AUTH_PASS=…
+export SNMP_V3_PRIV=aes    SNMP_V3_PRIV_PASS=…
 ```
 
-Both come from the environment so they stay out of shell history and
-out of `ps`.
+All of them come from the environment so they stay out of shell
+history and out of `ps`.
+
+**Setting `SNMP_V3_USER` changes what gets tried first.** The neutral
+verbs then attempt v3 before v2c and v1, because those two put their
+password in clear in every datagram. Unset it and nothing v3 happens:
+there is no anonymous v3.
 
 ## Is it there?
 
@@ -45,6 +54,10 @@ Work down this list before concluding the device is down.
 | `context deadline exceeded` | the CLI's operation timeout is shorter than one retry cycle | leave `--timeout` off — the plugin raises the floor itself — or set it high enough for `retries × timeout` |
 | Answers `get`, hangs on `walk` | you are walking 26 000 objects one round trip at a time | scope it: `walk --slot 0 --path <branch>` |
 | `noAccess` on a SET | the read community was used | `SNMP_WRITE_COMMUNITY`; the agent is behaving correctly |
+| `usmStatsUnknownUserNames` | this agent has no such v3 user | check `SNMP_V3_USER` against the agent's own USM table |
+| `usmStatsWrongDigests` | wrong auth password, or wrong protocol | `SNMP_V3_AUTH` / `SNMP_V3_AUTH_PASS` |
+| `usmStatsDecryptionErrors` | wrong privacy password or cipher | `SNMP_V3_PRIV` / `SNMP_V3_PRIV_PASS` |
+| `usmStatsNotInTimeWindows` | the agent rebooted under the session | nothing — the manager re-discovers and retries by itself; frequent means something is resetting |
 | Nothing at 161 | the agent is elsewhere | `10.6.250.5:1161` — Cerebrum's own agent is one |
 
 ## Read something
@@ -137,7 +150,21 @@ the same `device` label — is
 dhs producer snmp serve --bind 0.0.0.0:1161 --location "TEC RACK 23"
 dhs producer snmp mib --out DHS-MIB.mib          # load this into the manager
 dhs producer snmp trap --to 10.6.250.5/2c/public # prove the receiver first
+dhs producer snmp inform --to 10.6.250.5/2c/public  # ...and be told it arrived
 ```
+
+That agent answers **v3 out of the box**, as user `dhs`, alongside
+v1/v2c — the startup log says which security level the user ended up
+at, and with no passphrase it is `noAuthNoPriv`:
+
+```
+dhs producer snmp serve --bind 0.0.0.0:1161 \
+    --v3-user operator --v3-auth sha256 --v3-priv aes
+    # passwords from SNMP_V3_AUTH_PASS / SNMP_V3_PRIV_PASS
+```
+
+`--v3-user=""` turns v3 off and leaves v1/v2c, which means a community
+in clear on every datagram.
 
 SET is refused until `--write-community` is set. That is deliberate.
 

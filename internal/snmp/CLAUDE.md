@@ -25,10 +25,13 @@ first for cross-cutting rules; this file holds the SNMP-specific scope.
 > menu. See the measured dependency assessment further down, which
 > stands.
 >
-> **Still open**: v3 POLLING (a manager is authoritative for nothing, so
-> it must discover the agent's engine first — its own unit); InformRequest
-> in both directions; and the offline MIB compiler under `tools/`, which
-> is what turns the 232-file Snell set into committed Go tables.
+> **v3 is complete and is the agent's default.** Polling (RFC 3414 §4
+> discovery, then sealed requests at all three security levels, with a
+> re-discovery when the agent reboots under us), notifications in both
+> directions, and InformRequest in both directions. `dhs producer snmp
+> serve` answers v3 out of the box as user `dhs`; v1/v2c stay on beside
+> it for the devices that predate v3, and a manager with a v3 credential
+> configured (`SNMP_V3_*`) tries v3 BEFORE them.
 
 ---
 

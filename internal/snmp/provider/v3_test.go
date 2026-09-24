@@ -259,3 +259,32 @@ func TestTheReportNamesWhatActuallyFailed(t *testing.T) {
 		t.Errorf("a non-USM error -> %s", got)
 	}
 }
+
+func TestTheDefaultV3UserIsServedWithoutConfiguration(t *testing.T) {
+	// v3 on by default is the point: an agent that only spoke v1/v2c
+	// would oblige every manager in the plant to put a password in
+	// clear on every datagram.
+	if DefaultV3User == "" {
+		t.Fatal("there has to be a default user for v3 to be on by default")
+	}
+	id, err := usm.NewEngineID(usm.Enterprise, "dhs-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := usm.NewEngine(id, 1, clock.System())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// What `serve` does with no v3 flags: the default user, no
+	// passphrase, which is noAuthNoPriv.
+	u := usm.User{Name: DefaultV3User}
+	if err := engine.AddUser(u); err != nil {
+		t.Fatal(err)
+	}
+	if got := u.SecurityLevel(); got != "noAuthNoPriv" {
+		t.Errorf("default level = %s", got)
+	}
+	if _, ok := engine.User(DefaultV3User); !ok {
+		t.Errorf("the engine must know %q", DefaultV3User)
+	}
+}
