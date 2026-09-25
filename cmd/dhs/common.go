@@ -85,6 +85,18 @@ type commonFlags struct {
 	logRetention     int
 	capture          string
 
+	// metricsAddr mirrors the producer's --metrics-addr on the consumer
+	// side: when set, connect() serves Prometheus /metrics +
+	// /snapshot.json for THIS instance, so a consumer is scrapeable the
+	// same way a provider is. Empty (the default) starts no listener and
+	// costs nothing — the atomic-footprint rule.
+	metricsAddr string
+
+	// walkConcurrency bounds how many object round-trips a walk keeps in
+	// flight, for protocols whose walker supports it. 0 = the plugin
+	// default; 1 = the strictly serial walk.
+	walkConcurrency int
+
 	// eventLogger + logHasSink are set by connect(): the uniform-logging
 	// contract (epic #987, Model B). The terminal always shows the human
 	// data tables; when a structured sink (--log file / --syslog-addr
@@ -165,6 +177,16 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"canonical export mode for parametersLocation (Ember+ only): "+
 			"pointer (wire-faithful), inline (absorb params subtree, populate "+
 			"targetParams/sourceParams/connectionParams), both (keep both).")
+	fs.StringVar(&cf.metricsAddr, "metrics-addr", "",
+		"if set (e.g. ':9100'), serve Prometheus /metrics + /snapshot.json "+
+			"for this consumer instance on this address — heap, CPU, RSS and "+
+			"rx/tx per instance, labelled proto/device/verb. Unset serves nothing.")
+	fs.IntVar(&cf.walkConcurrency, "walk-concurrency", 0,
+		"how many object round-trips a walk keeps in flight (acp2 today). "+
+			"0 and 1 both walk SERIALLY, which is the default: the ACP2 spec "+
+			"requires a device to handle one request at a time, and a real "+
+			"Neuron stalls mid-walk if pushed. Raise it only against a "+
+			"responder known to answer in parallel.")
 	return cf
 }
 
@@ -378,6 +400,37 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	if err := plug.Connect(dialCtx, host, port); err != nil {
 		return nil, nil, err
 	}
+
+	// --metrics-addr on the consumer side. Every plugin embeds
+	// consumer.Base, whose Metrics() is documented never-nil, so the
+	// assertion always holds — unlike the provider path there is no
+	// skip-with-warn branch to write. serveMetricsEndpoint returns
+	// immediately (listener + shutdown are its own goroutines) and
+	// stops itself on ctx.Done(), which is the verb's context.
+	if cf.metricsAddr != "" {
+		if mp, ok := plug.(metricsExposer); ok {
+			serveMetricsEndpoint(ctx, logger, cf.metricsAddr, mp.Metrics(), map[string]string{
+				"proto":  cf.protocol,
+				"role":   "consumer",
+				"device": hostOnly(host),
+				"verb":   cf.verb,
+			})
+		} else {
+			logger.Warn("--metrics-addr set but this plugin does not expose Metrics() — skipping",
+				slog.String("protocol", cf.protocol))
+		}
+	}
+
+	// --walk-concurrency, for the plugins whose walker can pipeline.
+	// Silently ignored elsewhere: a protocol that walks serially by
+	// construction has nothing to tune, and refusing the flag would make
+	// one shared command line unusable across protocols.
+	if cf.walkConcurrency > 0 {
+		if wc, ok := plug.(interface{ SetWalkConcurrency(int) }); ok {
+			wc.SetWalkConcurrency(cf.walkConcurrency)
+		}
+	}
+
 	cleanup := func() {
 		_ = plug.Disconnect()
 		if recorder != nil {

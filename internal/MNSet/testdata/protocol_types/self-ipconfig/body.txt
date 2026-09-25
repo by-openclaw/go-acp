@@ -1,0 +1,1 @@
+{"version":"1","local_mac":"40:a3:6b:a2:10:0c","ip_addr":"192.168.39.230","subnet_mask":"255.255.255.0","gateway":"192.168.39.1","hostname":"emsfp-a2-10-0c","port":"80","dhcp_enable":"1","ctl_vlan_id":"0","ctl_vlan_pcp":"0","ctl_vlan_enable":"0","data_vlan_id":"0","data_vlan_enable":"0","bootstatus1":"060","bootstatus2":"085"}

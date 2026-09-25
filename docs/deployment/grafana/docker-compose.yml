@@ -23,6 +23,13 @@
 services:
   prometheus:
     image: prom/prometheus:v3.1.0
+    # host.docker.internal is a Docker Desktop name; on Linux — where
+    # this stack actually runs — it resolves to nothing unless mapped
+    # to the host gateway. Without this the dhs targets are simply
+    # down and every panel is empty, which looks like "the metrics
+    # don't work" rather than "the container cannot see the host".
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: dhs-prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml

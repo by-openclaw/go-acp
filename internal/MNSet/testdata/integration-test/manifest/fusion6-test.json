@@ -1,0 +1,17 @@
+{
+  "device": {
+    "name": "fusion6-test",
+    "protocol": "mnset",
+    "endpoints": [
+      { "ip": "10.6.40.53", "port": 80, "transport": "tcp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "fusion6-module",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "FusioN6@0x68cd783f" }
+      ]
+    }
+  ]
+}

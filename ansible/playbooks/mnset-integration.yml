@@ -1,0 +1,132 @@
+---
+# MN SET / eMSFP integration — ADR-0025 deliverable 3, tier 2/3.
+#
+# The oracle is the module itself. This connector has no producer (the
+# scope parks it, ADR-0025 per-protocol table), so there is nothing of
+# ours to test against: every check below drives the real CLI at a real
+# Riedel module and reports what the device said.
+#
+# The module is on the MEDIA VLAN. Only the control node has a route to
+# it, and the control node has no Go toolchain — so the suite is
+# cross-compiled here and shipped as a binary, together with the CLI it
+# drives (DHS_BIN). That is why this play builds nothing on the target.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/mnset-integration.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/mnset-integration.yml   # -> changed=0
+#
+# Idempotent by construction: it copies two binaries and a template
+# (content-compared), runs a read-only suite, and the one write it does
+# make is `ensure` to the value the module already has — which the
+# suite itself asserts reports no change. Nothing on air is touched.
+#
+# Override the module with -e mnset_host=10.6.40.99.
+
+- name: MN SET integration — cross-compile the suite on the control node
+  hosts: "{{ mnset_build_host | default('control') }}"
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    stage: /root/mnset-integration
+  tasks:
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: Is there a Go toolchain here?
+      ansible.builtin.command: go version
+      register: mnset_go
+      changed_when: false
+      failed_when: false
+
+    - name: Build the CLI and the integration suite (needs Go on this host)
+      when: mnset_go.rc == 0
+      block:
+        - name: Build dhs
+          ansible.builtin.command:
+            cmd: go build -o {{ stage }}/dhs ./cmd/dhs
+            chdir: "{{ repo }}"
+          changed_when: true
+
+        - name: Build the integration test binary
+          ansible.builtin.command:
+            cmd: go test -c -tags integration -o {{ stage }}/mnset-integration.test ./internal/MNSet/integration/
+            chdir: "{{ repo }}"
+          changed_when: true
+
+    - name: Or take the binaries built elsewhere (-e mnset_bin_dir=…)
+      when: mnset_go.rc != 0
+      ansible.builtin.assert:
+        that: mnset_bin_dir is defined
+        fail_msg: >-
+          This host has no Go toolchain. Cross-compile on a machine that
+          does — GOOS=linux GOARCH=amd64 go build -o dhs ./cmd/dhs and
+          go test -c -tags integration -o mnset-integration.test
+          ./internal/MNSet/integration/ — and pass
+          -e mnset_bin_dir=<path with both>.
+
+    - name: Stage the binaries built elsewhere
+      when: mnset_go.rc != 0
+      ansible.builtin.copy:
+        src: "{{ mnset_bin_dir }}/{{ item }}"
+        dest: "{{ stage }}/{{ item }}"
+        mode: "0755"
+      loop:
+        - dhs
+        - mnset-integration.test
+
+    - name: Stage the shipped alarm template
+      ansible.builtin.copy:
+        src: "{{ repo }}/internal/MNSet/alarm/fusion6.alarm.json"
+        dest: "{{ stage }}/fusion6.alarm.json"
+        mode: "0644"
+
+- name: MN SET integration — drive the real module
+  hosts: "{{ mnset_test_host_group | default('control') }}"
+  gather_facts: false
+  vars:
+    stage: /root/mnset-integration
+    # Named apart from the -e override: a var that defaults to itself
+    # is a recursion, not a default.
+    module: "{{ mnset_host | default('10.6.40.53') }}"
+  tasks:
+    - name: The module answers at all
+      ansible.builtin.uri:
+        url: "http://{{ module }}/emsfp/node/v1/self/information"
+        return_content: true
+      register: mnset_info
+      changed_when: false
+
+    - name: What we are testing against
+      ansible.builtin.debug:
+        msg: >-
+          {{ module }} —
+          {{ (mnset_info.content | from_json).base_type }}
+          fw {{ (mnset_info.content | from_json).current_version }}
+          sn {{ (mnset_info.content | from_json).serial_number }}
+
+    # PASS / FAIL-real / FAIL-expected / TIMEOUT come from the suite
+    # itself; the play's job is to run it where the route is and to
+    # keep the whole transcript when it does not pass.
+    - name: Run the integration suite against the module
+      ansible.builtin.command:
+        cmd: "{{ stage }}/mnset-integration.test -test.v"
+        chdir: "{{ stage }}"
+      environment:
+        MNSET_TEST_HOST: "{{ module }}"
+        DHS_BIN: "{{ stage }}/dhs"
+        MNSET_ALARM_TEMPLATE: "{{ stage }}/fusion6.alarm.json"
+      register: mnset_suite
+      changed_when: false
+      failed_when: mnset_suite.rc != 0
+
+    - name: Per-test verdicts
+      ansible.builtin.debug:
+        msg: "{{ mnset_suite.stdout_lines | select('match', '^(--- |ok|FAIL|PASS)') | list }}"
+
+    - name: The whole transcript, when something did not pass
+      when: mnset_suite.rc != 0
+      ansible.builtin.debug:
+        msg: "{{ mnset_suite.stdout_lines }}"
