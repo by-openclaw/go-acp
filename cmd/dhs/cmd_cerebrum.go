@@ -360,6 +360,15 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumSetValue(ctx, rest)
 	case "obtain-datastore":
 		return cerebrumObtainDatastore(ctx, rest)
+	case "alarm":
+		// The per-model alarm template is protocol-wide and needs no
+		// device, so it is the shared command every other connector
+		// gets (internal/consumer/alarm). This dispatcher owns the
+		// whole verb space for cerebrum-nb, so a verb it does not name
+		// never reaches the shared one — which is why
+		// `dhs consumer snmp alarm list` worked while the cerebrum-nb
+		// spelling answered "unknown verb".
+		return runAlarm(ctx, "cerebrum-nb", rest)
 	}
 	return cerebrumValErr(verb, "unknown verb (run dhs consumer cerebrum-nb -h for the catalogue)")
 }
