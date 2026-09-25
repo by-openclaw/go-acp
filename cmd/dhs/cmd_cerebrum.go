@@ -21,6 +21,7 @@ import (
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/consumer/alarm"
 	"dhs/internal/transport/ws"
 )
 
@@ -360,6 +361,15 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumSetValue(ctx, rest)
 	case "obtain-datastore":
 		return cerebrumObtainDatastore(ctx, rest)
+	case "alarm":
+		// The per-model alarm template is protocol-wide and needs no
+		// device, so it is the shared command every other connector
+		// gets (internal/consumer/alarm). This dispatcher owns the
+		// whole verb space for cerebrum-nb, so a verb it does not name
+		// never reaches the shared one — which is why
+		// `dhs consumer snmp alarm list` worked while the cerebrum-nb
+		// spelling answered "unknown verb".
+		return runAlarm(ctx, "cerebrum-nb", rest)
 	}
 	return cerebrumValErr(verb, "unknown verb (run dhs consumer cerebrum-nb -h for the catalogue)")
 }
@@ -398,7 +408,7 @@ VERBS
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -1680,6 +1690,19 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Alarms: the same template and the same engine every other
+	// connector's watch runs (internal/consumer/alarm). --alarm names
+	// a template file; without it the cache for this protocol is used,
+	// and a plant that has written no rules gets the watch it always
+	// had.
+	alarmFile, rest, err := extractStringFlag(rest, "--alarm")
+	if err != nil {
+		return err
+	}
+	noAlarm, rest, err := extractBoolFlag(rest, "--no-alarm")
+	if err != nil {
+		return err
+	}
 	// --raw keeps the pre-parity per-frame rendering: every wire
 	// attribute, one block per frame. The table drops frame-level
 	// attrs (name/ip/sub repeat identically on every row of a single
@@ -1799,6 +1822,11 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		}
 		return dc
 	}
+
+	// Alarms. Built here rather than beside its flags: loading a
+	// template announces how many rules are in force, and a `watch -h`
+	// must print help, not that.
+	evaluator := loadAlarmEvaluator(ctx, nil, "cerebrum-nb", 0, alarmFile, noAlarm)
 
 	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
 	// the wire (no type/access/units), so the resolve step's descriptors are
@@ -1935,6 +1963,15 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 					// Terminal: the human table, always.
 					header.Do(cerebrumDMHeader)
 					cerebrumDMRow(now, ov)
+					// And the same change through the alarm template,
+					// so a value that means something gets said. The
+					// engine is the shared one every other connector
+					// uses; a plant with no rules sees no change here.
+					if evaluator != nil {
+						cerebrumReportAlarm(
+							evaluator.Eval(device, cerebrumAlarmEvent(device, subDev, ov, now)),
+							device, evLogger, logToSink)
+					}
 					// Sinks: the same change as a structured record (file/server),
 					// only when a sink exists (stderr is human, never the events).
 					if logToSink && evLogger != nil {
@@ -3875,4 +3912,48 @@ func categoryItemType(s string) (codec.ItemType, error) {
 		return it, nil
 	}
 	return "", cerebrumValErr("category", fmt.Sprintf("unknown --item-type %q (§3.3: BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM)", s))
+}
+
+// cerebrumAlarmEvent turns one device object change into the neutral
+// event the alarm engine reads.
+//
+// The path is the canonical one the DM and `tree` already use —
+// device.sub_device.object — so a rule written against a walked model
+// matches a watched change without being written twice.
+func cerebrumAlarmEvent(device, subDev string, ov codec.DeviceObjectValue, now time.Time) consumer.Event {
+	obj := cerebrum.CanonicalDeviceObject(device, subDev, &ov, 0)
+	return consumer.Event{
+		Path:      strings.Join(obj.Path, "."),
+		Label:     obj.Label,
+		Unit:      obj.Unit,
+		Access:    obj.Access,
+		Value:     obj.Value,
+		Timestamp: now,
+	}
+}
+
+// cerebrumReportAlarm prints one raise/clear and records it on the
+// event sink, in the same shape the generic watch uses so one plant's
+// alarms read alike whichever connector saw them.
+func cerebrumReportAlarm(tr *alarm.Transition, device string, evLogger *slog.Logger, logToSink bool) {
+	if tr == nil {
+		return
+	}
+	fmt.Printf("%s  %-18s  %s\n", tr.At.Format("15:04:05"), "[alarm]", tr.String())
+	if !logToSink || evLogger == nil {
+		return
+	}
+	evLogger.Info("alarm",
+		slog.String("proto", "cerebrum-nb"),
+		slog.String("device", device),
+		slog.String("path", tr.Path),
+		slog.String("severity", tr.Severity.String()),
+		slog.Int("syslog_severity", tr.Severity.Syslog()),
+		slog.String("prior", tr.Prior.String()),
+		slog.String("band", tr.Band),
+		slog.String("value", tr.Value),
+		slog.String("prev", tr.Prev),
+		slog.String("unit", tr.Unit),
+		slog.Bool("flapping", tr.Flapping),
+		slog.String("text", tr.Text))
 }
