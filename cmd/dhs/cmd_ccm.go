@@ -190,13 +190,15 @@ func runCCMWalkTree(ctx context.Context, c *ccmc.Client, asJSON bool, start stri
 }
 
 // namesAFormat reports whether the operator asked for the neutral
-// export — a file in a named format — rather than this connector's own
-// artefact set.
+// export — a file in a named format, or the canonical matrix file-set —
+// rather than this connector's own artefact set.
 func namesAFormat(args []string) bool {
 	for _, a := range args {
-		if a == "--format" || a == "-format" ||
-			strings.HasPrefix(a, "--format=") || strings.HasPrefix(a, "-format=") {
-			return true
+		for _, flag := range []string{"format", "out-dir"} {
+			if a == "--"+flag || a == "-"+flag ||
+				strings.HasPrefix(a, "--"+flag+"=") || strings.HasPrefix(a, "-"+flag+"=") {
+				return true
+			}
 		}
 	}
 	return false
