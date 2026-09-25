@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,6 +78,9 @@ const channelBody = `{"channel":"B2","uuid":"c-1","inputSelection":"Main","lock"
 
 func fakeNeuron(t *testing.T) *httptest.Server {
 	t.Helper()
+	mu.Lock()
+	puts = map[string]string{}
+	mu.Unlock()
 	routes := map[string]string{
 		"/self":                          `{"app":{"productName":"BRIDGE","productVersion":"7.0.3","modelVersion":17}}`,
 		"/docs/api.yml":                  fakeAPIYML,
@@ -89,7 +94,25 @@ func fakeNeuron(t *testing.T) *httptest.Server {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			// The device keeps what it was sent, so a test can read
+			// back what a write actually put on the wire — the whole
+			// document, which is what read-modify-write means here.
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			mu.Lock()
+			routes[r.URL.Path] = string(body)
+			puts[r.URL.Path] = string(body)
+			mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		mu.Lock()
 		body, ok := routes[r.URL.Path]
+		mu.Unlock()
 		if !ok {
 			// /gone is declared by the spec and not served — an option
 			// this build does not have.
@@ -103,6 +126,24 @@ func fakeNeuron(t *testing.T) *httptest.Server {
 	t.Cleanup(srv.Close)
 	return srv
 }
+
+// putsTo returns what a write sent to one resource, for the fake the
+// test is holding.
+func putsTo(path string) (string, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	b, ok := puts[path]
+	return b, ok
+}
+
+// The fake device's writes, for the fake this test is holding. The
+// tests in this package run one at a time (none calls t.Parallel), and
+// each fakeNeuron clears it, so one map is enough and a mutex covers
+// the server's own goroutines.
+var (
+	mu   sync.Mutex
+	puts = map[string]string{}
+)
 
 // connectedPlugin points a plugin at the fake device.
 func connectedPlugin(t *testing.T) *Plugin {
@@ -354,11 +395,50 @@ func TestGetValueSaysWhichHalfOfThePathIsWrong(t *testing.T) {
 	}
 }
 
+func TestSetWritesTheWholeResourceBack(t *testing.T) {
+	// No PATCH on this API: changing one field means PUTting the whole
+	// resource. What matters is that the OTHER fields go back exactly
+	// as they were read — a write that quietly dropped `priority1`
+	// would reconfigure PTP while appearing to set a domain.
+	p := connectedPlugin(t)
+	ctx := context.Background()
+
+	got, err := p.SetValue(ctx, dhsc.ValueRequest{Path: "misc.reference.ptp.domain"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
+	if err != nil {
+		t.Fatalf("SetValue: %v", err)
+	}
+	if got.Int != 1 {
+		t.Errorf("returned %+v", got)
+	}
+	body, sent := putsTo("/misc/reference")
+	if !sent {
+		t.Fatal("nothing was PUT")
+	}
+	var doc struct {
+		PTP struct {
+			Domain    int `json:"domain"`
+			Priority1 int `json:"priority1"`
+		} `json:"ptp"`
+	}
+	if err := json.Unmarshal([]byte(body), &doc); err != nil {
+		t.Fatalf("the device was sent something that is not JSON: %v", err)
+	}
+	if doc.PTP.Domain != 1 {
+		t.Errorf("domain = %d", doc.PTP.Domain)
+	}
+	if doc.PTP.Priority1 != 248 {
+		t.Errorf("priority1 = %d — the untouched field must go back as it was", doc.PTP.Priority1)
+	}
+	// And reading it back gives the new value.
+	if v, gerr := p.GetValue(ctx, dhsc.ValueRequest{Path: "misc.reference.ptp.domain"}); gerr != nil || v.Int != 1 {
+		t.Errorf("GetValue after the write = %+v (%v)", v, gerr)
+	}
+}
+
 func TestSetSaysWhetherTheDeviceWouldAcceptItAtAll(t *testing.T) {
-	// The connector does not write yet, and the two refusals are
-	// different answers: "this device will never accept that" is a
-	// fact from its own api.yml, and an operator should not have to
-	// try it to find out.
+	// The refusals are different answers, and both come from the
+	// device's own api.yml rather than from trying it and seeing.
 	p := connectedPlugin(t)
 	ctx := context.Background()
 
@@ -367,13 +447,70 @@ func TestSetSaysWhetherTheDeviceWouldAcceptItAtAll(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "read-only") {
 		t.Errorf("a status must be refused as read-only: %v", err)
 	}
-	_, err = p.SetValue(ctx, dhsc.ValueRequest{Path: "misc.reference.ptp.domain"},
-		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
-	if err == nil || !strings.Contains(err.Error(), "does not write yet") {
-		t.Errorf("a writable object must say the verb is missing, not that the object is: %v", err)
-	}
 	if _, err := p.SetValue(ctx, dhsc.ValueRequest{Path: "no.such.thing"}, dhsc.Value{}); err == nil {
 		t.Error("an unknown path must fail before anything else")
+	}
+	// A field the resource does not have is refused BEFORE the write,
+	// not sent and left for the device to reject.
+	_, err = p.SetValue(ctx, dhsc.ValueRequest{Path: "misc.reference.ptp.nosuchfield"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
+	if err == nil || !strings.Contains(err.Error(), "has no field") {
+		t.Errorf("an unknown field = %v", err)
+	}
+	// Naming a resource rather than a value inside it.
+	_, err = p.SetValue(ctx, dhsc.ValueRequest{Path: "misc.reference"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
+	if err == nil || !strings.Contains(err.Error(), "not a value") {
+		t.Errorf("a bare resource = %v", err)
+	}
+}
+
+func TestSetValuesWritesOneResourceOnce(t *testing.T) {
+	// Converging a matrix means many changes in one map. One GET and
+	// one PUT for all of them — not one round trip per crosspoint,
+	// each shipping the whole map and each able to undo the last.
+	p := connectedPlugin(t)
+	ctx := context.Background()
+
+	out, err := p.SetValues(ctx,
+		[]dhsc.ValueRequest{
+			{Path: "misc.reference.ptp.domain"},
+			{Path: "misc.reference.ptp.priority1"},
+		},
+		[]dhsc.Value{
+			{Kind: dhsc.KindInt, Int: 3},
+			{Kind: dhsc.KindInt, Int: 128},
+		})
+	if err != nil {
+		t.Fatalf("SetValues: %v", err)
+	}
+	if len(out) != 2 || out[0].Int != 3 || out[1].Int != 128 {
+		t.Errorf("returned %+v — in the order asked", out)
+	}
+	body, _ := putsTo("/misc/reference")
+	if !strings.Contains(body, `"domain":3`) || !strings.Contains(body, `"priority1":128`) {
+		t.Errorf("both changes must be in the one document: %s", body)
+	}
+
+	// Mismatched inputs, and nothing to do, are answered rather than
+	// half-applied.
+	if _, err := p.SetValues(ctx, []dhsc.ValueRequest{{Path: "a"}}, nil); err == nil {
+		t.Error("a path with no value must fail")
+	}
+	if out, err := p.SetValues(ctx, nil, nil); err != nil || out != nil {
+		t.Errorf("nothing to write = %v, %v", out, err)
+	}
+	// One bad path in the batch stops the whole batch: a half-written
+	// matrix is worse than a refused one.
+	before, _ := putsTo("/misc/reference")
+	_, err = p.SetValues(ctx,
+		[]dhsc.ValueRequest{{Path: "misc.reference.ptp.domain"}, {Path: "misc.reference.ptp.nope"}},
+		[]dhsc.Value{{Kind: dhsc.KindInt, Int: 9}, {Kind: dhsc.KindInt, Int: 9}})
+	if err == nil {
+		t.Error("an unknown field in a batch must fail the batch")
+	}
+	if after, _ := putsTo("/misc/reference"); after != before {
+		t.Errorf("a failed batch must send nothing:\n before %s\n after  %s", before, after)
 	}
 }
 

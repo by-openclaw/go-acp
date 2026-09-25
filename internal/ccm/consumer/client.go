@@ -280,3 +280,41 @@ func normalizeAPIBase(base string) string {
 	}
 	return base
 }
+
+// put writes one whole resource document back.
+//
+// A non-2xx carries the device's own message where it sent one, so a
+// refused write reads as the Neuron said it rather than as a bare
+// status code.
+func (c *Client) put(ctx context.Context, path string, doc any) error {
+	var answer any
+	status, err := c.http.PutJSON(ctx, c.base+path, doc, &answer)
+	// The status is checked BEFORE the error, because a device that
+	// refuses a write often explains itself in something that is not
+	// JSON — and "invalid character 'o'" is not what went wrong. What
+	// went wrong is that the device said no.
+	if status != 0 && status/100 != 2 {
+		if msg := deviceMessage(answer); msg != "" {
+			return fmt.Errorf("neuron PUT %s: device answered %d: %s", path, status, msg)
+		}
+		return fmt.Errorf("neuron PUT %s: device answered %d", path, status)
+	}
+	if err != nil {
+		return fmt.Errorf("neuron PUT %s: %w", path, err)
+	}
+	return nil
+}
+
+// deviceMessage pulls the device's own error text out of its answer.
+func deviceMessage(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, key := range []string{"message", "error", "detail"} {
+		if s, ok := m[key].(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
+}

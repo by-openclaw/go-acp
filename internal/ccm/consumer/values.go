@@ -148,30 +148,3 @@ func (p *Plugin) pollProfileFor(ctx context.Context, req dhsc.ValueRequest) (*mo
 	}
 	return prof, nil
 }
-
-// SetValue writes one object.
-//
-// Not yet: this API has no PATCH — every write is a whole-resource PUT
-// (36 of them on BRIDGE 7.0.3) — so setting one field is a
-// read-modify-write of its entire resource, and doing that against a
-// bridge that is passing media is its own unit of work with its own
-// live verification. The model already carries which objects would
-// accept it, so an operator can see the answer before the verb exists.
-func (p *Plugin) SetValue(ctx context.Context, req dhsc.ValueRequest, v dhsc.Value) (dhsc.Value, error) {
-	_, spec, err := p.session()
-	if err != nil {
-		return dhsc.Value{}, err
-	}
-	resource, _, serr := split(spec, req.Path)
-	if serr != nil {
-		return dhsc.Value{}, serr
-	}
-	tpl, ok := spec.TemplateFor(resource)
-	if !ok || !spec.Writable(tpl) {
-		return dhsc.Value{}, fmt.Errorf(
-			"ccm: %s is read-only — this device's api.yml declares no PUT on %s", req.Path, resource)
-	}
-	return dhsc.Value{}, fmt.Errorf(
-		"ccm: %s is writable (PUT %s), but this connector does not write yet: "+
-			"the API has no PATCH, so one field is a read-modify-write of the whole resource", req.Path, tpl)
-}
