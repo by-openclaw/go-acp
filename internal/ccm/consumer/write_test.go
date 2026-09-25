@@ -160,3 +160,67 @@ func testPluginConnected(t *testing.T, srv *httptest.Server) *Plugin {
 	}
 	return p
 }
+
+func TestAWriteStopsWhenTheResourceCannotBeReadOrWritten(t *testing.T) {
+	// Read-modify-write has two device calls and either can fail. The
+	// operator has to be told which, because "could not read it" and
+	// "it refused the write" are different problems.
+	const spec = "openapi: 3.1.1\npaths:\n  /gone:\n    get:\n      operationId: G\n    put:\n      operationId: S\n  /ro:\n    get:\n      operationId: G2\n    put:\n      operationId: S2\n"
+	var putFails bool
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/self":
+			_, _ = w.Write([]byte(`{"app":{"productName":"X","productVersion":"1"}}`))
+		case r.URL.Path == "/docs/api.yml":
+			_, _ = w.Write([]byte(spec))
+		case r.URL.Path == "/ro" && r.Method == http.MethodPut:
+			putFails = true
+			http.Error(w, "read only", http.StatusForbidden)
+		case r.URL.Path == "/ro":
+			_, _ = w.Write([]byte(`{"field":1}`))
+		default:
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPluginConnected(t, srv)
+
+	// The pre-read fails: the resource is declared but not served.
+	_, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "gone.field"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
+	if err == nil || !strings.Contains(err.Error(), "before writing it") {
+		t.Errorf("read failure = %v", err)
+	}
+
+	// The read works and the device refuses the write.
+	_, err = p.SetValue(context.Background(), dhsc.ValueRequest{Path: "ro.field"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 2})
+	if err == nil || !strings.Contains(err.Error(), "403") {
+		t.Errorf("write refusal = %v", err)
+	}
+	if !putFails {
+		t.Error("the PUT must have been attempted")
+	}
+}
+
+func TestReadingOneValueReportsADeviceThatWillNotServeIt(t *testing.T) {
+	srv, _ := countingNeuron(map[string]string{
+		"/self":         `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml": "openapi: 3.1.1\npaths:\n  /gone:\n    get:\n      operationId: G\n",
+	})
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPluginConnected(t, srv)
+	if _, err := p.GetValue(context.Background(), dhsc.ValueRequest{Path: "gone.field"}); err == nil {
+		t.Error("a declared resource this build does not serve must be an error")
+	}
+}

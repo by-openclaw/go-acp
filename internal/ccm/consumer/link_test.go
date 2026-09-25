@@ -615,3 +615,108 @@ func TestRelativeToSurvivesABaseItCannotParse(t *testing.T) {
 		t.Errorf("relativeTo = %q — an unparseable base leaves the path alone", got)
 	}
 }
+
+func TestLinkingSurvivesEveryWayAMatrixCanBeUnreadable(t *testing.T) {
+	// A matrix the device half-serves must leave the model as it was
+	// and say so in the log — never take the walk down, never annotate
+	// from a body it could not parse.
+	const spec = `openapi: 3.1.1
+paths:
+  /self:
+    get:
+      operationId: S
+  /bad/info:
+    get:
+      operationId: I1
+  /bad/main:
+    get:
+      operationId: M1
+  /nostate/info:
+    get:
+      operationId: I2
+  /nostate/main:
+    get:
+      operationId: M2
+  /badstate/info:
+    get:
+      operationId: I3
+  /badstate/main:
+    get:
+      operationId: M3
+  /orphan/info:
+    get:
+      operationId: I4
+  /orphan/main:
+    get:
+      operationId: M4
+`
+	routes := map[string]string{
+		"/self":         `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml": spec,
+		// info is not a matrix at all
+		"/bad/info": `{"nothing":"here"}`,
+		"/bad/main": `{"CH00":"IP00"}`,
+		// info fine, state not served (absent from routes)
+		"/nostate/info": `{"destinations":[{"path":"/d","template":"CH{idx}","children":[{"id":"d0"}]}],
+		                   "sources":[{"path":"/s","template":"IP{idx}","children":[{"id":"s0"}]}]}`,
+		// info fine, state is not a crosspoint map
+		"/badstate/info": `{"destinations":[{"path":"/d","template":"CH{idx}","children":[{"id":"d0"}]}],
+		                    "sources":[{"path":"/s","template":"IP{idx}","children":[{"id":"s0"}]}]}`,
+		"/badstate/main": `["not","a","map"]`,
+		// everything fine, but the crosspoint names a key the model has
+		// no object for
+		"/orphan/info": `{"destinations":[{"path":"/d","template":"CH{idx}","children":[{"id":"d0"}]}],
+		                  "sources":[{"path":"/s","template":"IP{idx}","children":[{"id":"s0"}]}]}`,
+		"/orphan/main": `{"CH00":"IP00"}`,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		body, ok := routes[r.URL.Path]
+		if !ok {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPluginConnected(t, srv)
+	objs, err := p.Walk(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("a device with four broken matrices must still walk: %v", err)
+	}
+	// The one good crosspoint is annotated; nothing else is.
+	linked := 0
+	for _, o := range objs {
+		if o.Meta[MetaTarget] != nil {
+			linked++
+		}
+	}
+	if linked != 1 {
+		t.Errorf("annotated %d crosspoints, want exactly the one that resolved", linked)
+	}
+}
+
+func TestIndexAxisReadsAMemberTheWalkNeverSaw(t *testing.T) {
+	// A provider naming a collection outside the walked model: the
+	// member is fetched, and one that is not served is skipped rather
+	// than failing the axis.
+	srv, _ := countingNeuron(map[string]string{
+		"/far":    `[{"uuid":"ok"},{"uuid":"missing"}]`,
+		"/far/ok": `{"uuid":"ok","channels":["c1"]}`,
+	})
+	defer srv.Close()
+	p := testPlugin(t, srv)
+	idx := p.indexAxis(context.Background(), testClient(srv), newWalkPlan(), nil,
+		[]codec.MatrixProvider{{Path: "/far", Slots: "channels", Type: "T"}})
+	if !idx["c1"].Resolved {
+		t.Errorf("the served member's channel must index: %+v", idx)
+	}
+	if len(idx) != 1 {
+		t.Errorf("index = %v — the unserved member contributes nothing", idx)
+	}
+}

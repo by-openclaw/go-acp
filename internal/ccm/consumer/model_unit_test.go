@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"dhs/internal/ccm/codec"
 	"dhs/internal/clock"
 	dhsc "dhs/internal/consumer"
 	"dhs/internal/plugin"
@@ -393,5 +394,290 @@ func TestSegmentsSplitsAPathTheWayAnOperatorReadsIt(t *testing.T) {
 	got := segments("/io/ip/senders/video")
 	if len(got) != 4 || got[0] != "io" || got[3] != "video" {
 		t.Errorf("segments = %v", got)
+	}
+}
+
+func TestASpecWithNoReadablePathIsRefusedBeforeAnyRead(t *testing.T) {
+	// A device whose document declares only parameterised paths gives a
+	// walk nothing to stand on: there is no collection to expand from.
+	// Saying so beats returning an empty model that looks like a device
+	// with nothing in it.
+	srv, _ := countingNeuron(map[string]string{})
+	defer srv.Close()
+	p := testPlugin(t, srv)
+
+	spec, err := codec.ParseSpec([]byte("openapi: 3.1.1\npaths:\n  /{uuid}:\n    get:\n      operationId: G\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.resourcePaths(context.Background(), testClient(srv), spec); err == nil {
+		t.Fatal("a spec with no static path must be refused")
+	} else if !strings.Contains(err.Error(), "no readable path") {
+		t.Errorf("err = %v", err)
+	}
+
+	// And the API root is skipped rather than read as a resource — it
+	// lists node names that are already paths.
+	spec2, err := codec.ParseSpec([]byte("openapi: 3.1.1\npaths:\n  /:\n    get:\n      operationId: Root\n  /self:\n    get:\n      operationId: S\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.resourcePaths(context.Background(), testClient(srv), spec2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range plan.paths {
+		if path == "/" || path == "" {
+			t.Errorf("the API root must not be a resource: %v", plan.paths)
+		}
+	}
+}
+
+func TestWalkReportsWhyItCouldNotPlanAtAll(t *testing.T) {
+	// The planning failure has to reach the caller, not be swallowed
+	// into an empty walk.
+	srv, _ := countingNeuron(map[string]string{
+		"/self":         `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml": "openapi: 3.1.1\npaths:\n  /{uuid}:\n    get:\n      operationId: G\n",
+	})
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPlugin(t, srv)
+	if err := p.Connect(context.Background(), "127.0.0.1", 0); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := p.Walk(context.Background(), 0); err == nil {
+		t.Error("Walk must report a plan it could not build")
+	}
+}
+
+func TestAMemberThatVanishesBetweenListingAndReadIsReported(t *testing.T) {
+	// The collection named it, the member 404s. read() returns the
+	// error so the walk can record a declared resource this build does
+	// not serve, rather than inventing an empty one.
+	srv, _ := countingNeuron(map[string]string{
+		"/things": `[{"uuid":"gone","name":"x"}]`,
+	})
+	defer srv.Close()
+	p := testPlugin(t, srv)
+	plan := newWalkPlan()
+	paths := p.expand(context.Background(), testClient(srv), plan, "/things/{uuid}")
+	if len(paths) != 1 {
+		t.Fatalf("expanded to %v", paths)
+	}
+	if _, err := p.read(context.Background(), testClient(srv), plan, paths[0]); err == nil {
+		t.Error("a member the device does not serve must be an error")
+	}
+}
+
+func TestAnElementWithNoIdentifierIsSkipped(t *testing.T) {
+	// A collection element carrying neither uuid nor id cannot be
+	// addressed, so it is not turned into a member path.
+	l := parseListing([]byte(`[{"name":"nameless"},{"uuid":"real"},12]`))
+	if len(l.ids) != 1 || l.ids[0] != "real" {
+		t.Errorf("ids = %v — only the addressable element counts", l.ids)
+	}
+}
+
+func TestAValueKindTheModelHasNoCaseForBecomesItsText(t *testing.T) {
+	// JSON carries objects and arrays into leaf position only when a
+	// device nests something the flattener stopped at. Recording the
+	// text beats dropping the object.
+	o := leaf([]string{"x"}, map[string]any{"a": 1}, false)
+	if o.Kind != dhsc.KindString || o.Value.Str == "" {
+		t.Errorf("leaf = %+v", o)
+	}
+}
+
+func TestTheOperatorsOwnSpecPathAndBaseAreUsedVerbatim(t *testing.T) {
+	// --api-spec names ONE document: the probe ladder is not run, so a
+	// device that would have answered a different spelling is not
+	// silently preferred over what the operator asked for.
+	srv, hits := countingNeuron(map[string]string{
+		"/self":             `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml":     "openapi: 3.1.1\npaths:\n  /a:\n    get:\n      operationId: A\n",
+		"/docs/openapi.yml": "openapi: 3.1.1\npaths:\n  /b:\n    get:\n      operationId: B\n",
+	})
+	defer srv.Close()
+	c := testClient(srv)
+	c.specPath = "/docs/openapi.yml"
+	doc, from, err := c.FetchSpec(context.Background())
+	if err != nil {
+		t.Fatalf("FetchSpec: %v", err)
+	}
+	if from != "/docs/openapi.yml" || !strings.Contains(string(doc), "/b:") {
+		t.Errorf("read %q", from)
+	}
+	if hits("/docs/api.yml") != 0 {
+		t.Error("a named spec must not fall back to the other spelling")
+	}
+}
+
+func TestABaseThatIsOnlyPunctuationIsNoBase(t *testing.T) {
+	cases := map[string]string{
+		"/":     "",
+		"  /  ": "",
+		"":      "",
+		"api":   "/api",
+		"/api/": "/api",
+	}
+	for in, want := range cases {
+		if got := normalizeAPIBase(in); got != want {
+			t.Errorf("normalizeAPIBase(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestConnectReportsADeviceThatAnswersNothing(t *testing.T) {
+	// Resolve probes the bases; a host that serves neither leaves the
+	// connector unconnected with the reason, rather than half-open.
+	srv, _ := countingNeuron(map[string]string{})
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client {
+		c := testClient(srv)
+		c.resolved = false
+		return c
+	}
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPlugin(t, srv)
+	if err := p.Connect(context.Background(), "127.0.0.1", 0); err == nil {
+		t.Error("a host that answers no API base must fail to connect")
+	}
+}
+
+func TestAPathDeeperThanTheCapIsDroppedNotSent(t *testing.T) {
+	// Four parameters against a cap of three. The device serves every
+	// level, so the walk really does run out of budget rather than out
+	// of ids — and what is left still carrying a placeholder is dropped
+	// instead of being sent to the device as a literal.
+	srv, _ := countingNeuron(map[string]string{
+		"/a":             `["x"]`,
+		"/a/x/b":         `["y"]`,
+		"/a/x/b/y/c":     `["z"]`,
+		"/a/x/b/y/c/z/d": `["w"]`,
+	})
+	defer srv.Close()
+
+	p := testPlugin(t, srv)
+	got := p.expand(context.Background(), testClient(srv), newWalkPlan(),
+		"/a/{i}/b/{j}/c/{k}/d/{l}")
+	if len(got) != 0 {
+		t.Errorf("expanded to %v — nothing may survive a cap it did not fit in", got)
+	}
+}
+
+func TestWatchingReportsAWalkItCouldNotDo(t *testing.T) {
+	// A poll profile needs the model. When the walk that would build it
+	// fails, the watch says why instead of polling nothing.
+	srv, _ := countingNeuron(map[string]string{
+		"/self":         `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml": "openapi: 3.1.1\npaths:\n  /{uuid}:\n    get:\n      operationId: G\n",
+	})
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPluginConnected(t, srv)
+	if _, err := p.pollProfileFor(context.Background(), dhsc.ValueRequest{Path: "anything"}); err == nil {
+		t.Error("a profile built on a failed walk must report the failure")
+	}
+}
+
+func TestACrosspointWhoseObjectIsNotInTheModelIsSkipped(t *testing.T) {
+	// The state map is itself a collection — the spec declares members
+	// under it — so the walk reads it for ids and puts no objects in
+	// the model. Its crosspoints then have nothing to annotate, and the
+	// link pass must step over them rather than index off the end.
+	const spec = `openapi: 3.1.1
+paths:
+  /self:
+    get:
+      operationId: S
+  /m/info:
+    get:
+      operationId: I
+  /m/main:
+    get:
+      operationId: M
+  /m/main/{id}:
+    get:
+      operationId: MM
+`
+	srv, _ := countingNeuron(map[string]string{
+		"/self":         `{"app":{"productName":"X","productVersion":"1"}}`,
+		"/docs/api.yml": spec,
+		"/m/info": `{"destinations":[{"path":"/d","template":"CH{idx}","children":[{"id":"d0"}]}],
+		             "sources":[{"path":"/s","template":"IP{idx}","children":[{"id":"s0"}]}]}`,
+		"/m/main": `{"CH00":"IP00"}`,
+	})
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+
+	p := testPluginConnected(t, srv)
+	objs, err := p.Walk(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("Walk: %v", err)
+	}
+	for _, o := range objs {
+		if o.Meta[MetaTarget] != nil {
+			t.Errorf("nothing may be annotated: %v", o.Path)
+		}
+	}
+}
+
+func TestAPathThatUsesExactlyTheCapStillExpands(t *testing.T) {
+	// Three parameters against a cap of three: the loop runs out of
+	// budget on the same pass that completes the path, so the result
+	// leaves by the cap's exit rather than the early one. It is a
+	// complete path and must survive.
+	srv, _ := countingNeuron(map[string]string{
+		"/a":         `["x"]`,
+		"/a/x/b":     `["y"]`,
+		"/a/x/b/y/c": `["z"]`,
+	})
+	defer srv.Close()
+
+	p := testPlugin(t, srv)
+	got := p.expand(context.Background(), testClient(srv), newWalkPlan(), "/a/{i}/b/{j}/c/{k}")
+	if len(got) != 1 || got[0] != "/a/x/b/y/c/z" {
+		t.Fatalf("expanded to %v, want the one complete path", got)
+	}
+}
+
+func TestTheNeutralVerbsReadTheirSettingsFromTheEnvironment(t *testing.T) {
+	// info, tree, get, watch and alarm carry no CCM flags, so the base,
+	// the spec and TLS verification reach the connector through the
+	// environment — the same channel every other per-connector setting
+	// uses. Every other test replaces dialClient, so this is the only
+	// place the real one runs.
+	t.Setenv("CCM_API_BASE", "  /api  ")
+	t.Setenv("CCM_API_SPEC", " /docs/openapi.yml ")
+	t.Setenv("CCM_VERIFY_TLS", "1")
+
+	c := dialClient("10.0.0.1")
+	if c == nil {
+		t.Fatal("dialClient must build a client")
+	}
+	if !strings.HasSuffix(c.base, "/api") {
+		t.Errorf("base = %q — the surrounding spaces are not part of it", c.base)
+	}
+	if c.specPath != "/docs/openapi.yml" {
+		t.Errorf("specPath = %q", c.specPath)
+	}
+
+	// Unset means find the base, and do not verify.
+	t.Setenv("CCM_API_BASE", "")
+	t.Setenv("CCM_API_SPEC", "")
+	t.Setenv("CCM_VERIFY_TLS", "")
+	if c := dialClient("10.0.0.1"); c.specPath != "" || c.resolved {
+		t.Errorf("an unset environment leaves the base to be probed: %+v", c)
 	}
 }

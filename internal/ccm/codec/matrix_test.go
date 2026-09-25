@@ -295,3 +295,45 @@ func TestIndexesFromTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestAUUIDKeyedProviderThatListsItsChildrenResolvesFromThem(t *testing.T) {
+	// A provider may be UUID-keyed AND list its members. Then the key is
+	// matched against the list rather than assumed to belong to the one
+	// collection on the axis — which is the only way an axis with
+	// several such providers can be told apart.
+	info, err := ParseMatrixInfo([]byte(`{
+	  "destinations": [
+	    {"path": "/a", "type": "A", "children": [{"id": "d-1"}, {"id": "d-2"}]},
+	    {"path": "/b", "type": "B", "children": [{"id": "d-9"}]}
+	  ],
+	  "sources": [{"path": "/s", "children": [{"id": "s-1"}]}]
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := info.ResolveDestination("d-9")
+	if !got.Resolved || got.Path != "/b/d-9" || got.Type != "B" {
+		t.Errorf("d-9 = %+v — it belongs to the SECOND provider", got)
+	}
+	if got.Sub != -1 {
+		t.Errorf("sub = %d, want -1: this member is routed whole", got.Sub)
+	}
+	if first := info.ResolveDestination("d-1"); first.Path != "/a/d-1" {
+		t.Errorf("d-1 = %+v", first)
+	}
+	// A key no provider lists, on an axis where every provider lists
+	// something, is not invented.
+	if none := info.ResolveDestination("d-404"); none.Resolved {
+		t.Errorf("d-404 = %+v", none)
+	}
+}
+
+func TestATemplateIndexTooBigToBeANumberIsRefused(t *testing.T) {
+	// The digits are there, so the shape matches; the value does not fit
+	// an int. Refusing beats wrapping to something that addresses a real
+	// member.
+	huge := "CH" + strings.Repeat("9", 40)
+	if _, _, ok := indexesFromTemplate("CH{idx}", huge); ok {
+		t.Errorf("%s must not resolve", huge)
+	}
+}
