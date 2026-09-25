@@ -280,8 +280,9 @@ jobs:
           check tools/gen-probel-tree 100
           check internal/auth 100
           check internal/plugin 100
-          check internal/ccm/codec 75
-          check internal/ccm/consumer 86
+          check internal/ccm/codec 100
+          check internal/ccm/consumer 100
+          check internal/ccm/provider 100
           check internal/consumer/compliance 100
           # SNMP wire format. Floor verified on the Linux tools host as well
           # as this desk: the package is stdlib-only with no build tags, so

@@ -12,7 +12,12 @@ import (
 // maxWalkNodes bounds a WalkTree run. The lab bridge has a few hundred
 // resources; this is a runaway guard (a device that keeps listing new
 // children, or a cycle the visited-set somehow misses), not a real cap.
-const maxWalkNodes = 20000
+//
+// A var rather than a const so a test can lower it: proving the guard
+// fires at 20 000 costs 20 000 round trips and half a minute, which is
+// not a price every CI run should pay to test one branch. Same reason
+// internal/snmp/consumer's walkLimit is one.
+var maxWalkNodes = 20000
 
 // WalkTree recursively captures the WHOLE CCM device model — not just the
 // io/ip streams that Walk returns. It follows the tree's own shape: a node
