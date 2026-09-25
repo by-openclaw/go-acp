@@ -155,3 +155,31 @@ func TestBaseLockIsIndependentOfTheConnectorLock(t *testing.T) {
 		t.Fatal("Base blocked on the connector's mutex — the locks are not independent")
 	}
 }
+
+// A supervised connector is re-dialled, and each incarnation would
+// otherwise start counting from zero into a set nobody is serving.
+func TestSetMetricsKeepsOneSeriesAcrossARedial(t *testing.T) {
+	shared := metrics.NewConnector()
+
+	var first Base
+	first.SetMetrics(shared)
+	if first.Metrics() != shared {
+		t.Fatal("SetMetrics must install the supplied Connector")
+	}
+
+	// The reconnect: a second Base, the same counters.
+	var second Base
+	second.SetMetrics(shared)
+	if second.Metrics() != first.Metrics() {
+		t.Error("both incarnations must report into one set")
+	}
+
+	// Nil is ignored rather than clearing what is there — a caller with
+	// nothing to inject leaves the lazy one alone.
+	var lazy Base
+	own := lazy.Metrics()
+	lazy.SetMetrics(nil)
+	if lazy.Metrics() != own {
+		t.Error("SetMetrics(nil) must not replace the existing Connector")
+	}
+}
