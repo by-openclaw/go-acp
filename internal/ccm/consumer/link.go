@@ -2,6 +2,10 @@ package consumer
 
 import (
 	"context"
+	"encoding/json"
+	"net/url"
+	"sort"
+	"strconv"
 	"strings"
 
 	"dhs/internal/ccm/codec"
@@ -51,11 +55,12 @@ const (
 // Failures are not fatal and not silent: a matrix whose info endpoint
 // this device does not serve leaves its crosspoints unannotated, which
 // is what the model looked like before, and says so in the debug log.
-func (p *Plugin) linkMatrices(ctx context.Context, client *Client, spec *codec.Spec, objs []dhsc.Object) {
+func (p *Plugin) linkMatrices(ctx context.Context, client *Client, spec *codec.Spec, plan *walkPlan, objs []dhsc.Object) {
 	byPath := make(map[string]int, len(objs))
 	for i, o := range objs {
 		byPath[strings.Join(o.Path, "/")] = i
 	}
+	channels := channelsByMember(objs)
 
 	for _, infoPath := range matrixInfoPaths(spec) {
 		body, err := client.get(ctx, infoPath)
@@ -68,6 +73,10 @@ func (p *Plugin) linkMatrices(ctx context.Context, client *Client, spec *codec.S
 			p.deps.Logger.Debug("ccm: matrix info not understood", "path", infoPath, "err", err.Error())
 			continue
 		}
+		info.SetIndex(
+			p.indexAxis(ctx, client, plan, channels, info.Sources),
+			p.indexAxis(ctx, client, plan, channels, info.Destinations),
+		)
 
 		for _, statePath := range matrixStatePaths(spec, infoPath) {
 			state, err := client.get(ctx, statePath)
@@ -119,6 +128,206 @@ func annotate(o *dhsc.Object, xp codec.Crosspoint) {
 			o.Meta[MetaSourceType] = xp.Source.Type
 		}
 	}
+}
+
+// indexAxis asks the device what the info body leaves unsaid: which of
+// an axis's providers owns each crosspoint key, and — when a provider
+// routes the channels INSIDE its members — which member each channel
+// belongs to.
+//
+// The audio shuffler needs both. Its matrix has five source providers
+// and four destination providers, every key a UUID, and each key names
+// a channel of a stream rather than the stream. Without this, not one
+// of its 17 728 crosspoints resolves to anything; with it, a crosspoint
+// carries the exact resource an operator opens to change that audio.
+//
+// It costs no extra round trips on a device the walk has already read:
+// the collections come from the walk's own listings, and the members
+// from the bodies it already fetched.
+func (p *Plugin) indexAxis(ctx context.Context, client *Client, plan *walkPlan, channels map[string][]string, providers []codec.MatrixProvider) codec.Index {
+	idx := codec.Index{}
+	for _, pr := range providers {
+		if pr.Template != "" {
+			// Positional: the info body lists the children in order,
+			// and the label says which. Nothing to look up.
+			continue
+		}
+		coll := relativeTo(client, pr.Path)
+		if coll == "" {
+			continue
+		}
+		l := p.listing(ctx, client, plan, coll)
+		for _, id := range l.ids {
+			if !pr.RoutesChannels() {
+				idx[id] = codec.Endpoint{Key: id, ID: id, Sub: -1,
+					Path: joinDeclared(pr.Path, id), Type: pr.Type, Resolved: true}
+				continue
+			}
+			member := coll + "/" + id
+			// The WALKED MODEL is what names the channels, because it
+			// is the one form that has already been normalised: a
+			// device may publish its channel list as a JSON array or as
+			// an object keyed by position, and flatten has resolved
+			// that difference before this code sees it. Re-parsing the
+			// raw body here would mean handling both again, and getting
+			// it wrong is silent — the matrix simply does not resolve.
+			//
+			// The device is only asked when the walk did not read this
+			// member at all, which is the case a provider names a
+			// collection outside the walked model.
+			chans := channels[strings.Trim(member, "/")]
+			if len(chans) == 0 {
+				chans = channelsOf(plan.bodies[member])
+			}
+			if len(chans) == 0 {
+				chans = channelsOf(l.members[id])
+			}
+			if len(chans) == 0 {
+				body, err := client.get(ctx, member)
+				if err != nil {
+					p.deps.Logger.Debug("ccm: matrix member not served",
+						"path", member, "err", err.Error())
+					continue
+				}
+				chans = channelsOf(body)
+			}
+			for n, ch := range chans {
+				idx[ch] = codec.Endpoint{Key: ch, ID: id, Sub: n,
+					Path: joinDeclared(pr.Path, id) + "/channels/" + ch,
+					Type: pr.Type, Resolved: true}
+			}
+		}
+	}
+	if len(idx) == 0 {
+		return nil
+	}
+	return idx
+}
+
+// channelsByMember reads every member's channel list out of the walked
+// model: "io/ip/senders/audio/<uuid>" -> the channel uuids, by position.
+//
+// The model is the reliable place to read them. Whatever shape the
+// device published — an array of uuids, or an object keyed by position
+// — flatten has already turned it into one object per channel whose
+// last path segment is the position and whose value is the uuid. The
+// position is taken as a NUMBER, so a device that keys its channels
+// "0".."15" as an object does not end up with channel 10 sitting
+// between 1 and 2.
+func channelsByMember(objs []dhsc.Object) map[string][]string {
+	type slot struct {
+		n  int
+		id string
+	}
+	raw := map[string][]slot{}
+	for _, o := range objs {
+		if len(o.Path) < 3 || o.Path[len(o.Path)-2] != "channels" {
+			continue
+		}
+		if o.Value.Kind != dhsc.KindString || o.Value.Str == "" {
+			continue
+		}
+		n, err := strconv.Atoi(o.Path[len(o.Path)-1])
+		if err != nil {
+			continue
+		}
+		member := strings.Join(o.Path[:len(o.Path)-2], "/")
+		raw[member] = append(raw[member], slot{n: n, id: o.Value.Str})
+	}
+	out := make(map[string][]string, len(raw))
+	for member, slots := range raw {
+		sort.Slice(slots, func(i, j int) bool { return slots[i].n < slots[j].n })
+		ids := make([]string, 0, len(slots))
+		for _, s := range slots {
+			ids = append(ids, s.id)
+		}
+		out[member] = ids
+	}
+	return out
+}
+
+// channelsOf reads a member's channel list straight from its body, for
+// a member the walk did not read. Both published shapes are accepted,
+// for the same reason the model is preferred: a device is free to use
+// either and neither is wrong.
+func channelsOf(body []byte) []string {
+	var fields struct {
+		Channels json.RawMessage `json:"channels"`
+	}
+	if json.Unmarshal(body, &fields) != nil || len(fields.Channels) == 0 {
+		return nil
+	}
+	var list []json.RawMessage
+	if json.Unmarshal(fields.Channels, &list) != nil {
+		// Not an array: an object keyed by position, which is the same
+		// list written differently. Read it in numeric key order.
+		var keyed map[string]json.RawMessage
+		if json.Unmarshal(fields.Channels, &keyed) != nil {
+			return nil
+		}
+		keys := make([]int, 0, len(keyed))
+		byN := map[int]json.RawMessage{}
+		for k, v := range keyed {
+			n, err := strconv.Atoi(k)
+			if err != nil {
+				return nil
+			}
+			keys = append(keys, n)
+			byN[n] = v
+		}
+		sort.Ints(keys)
+		for _, n := range keys {
+			list = append(list, byN[n])
+		}
+	}
+	var out []string
+	for _, e := range list {
+		var id string
+		if json.Unmarshal(e, &id) == nil {
+			out = append(out, id)
+			continue
+		}
+		var obj struct {
+			UUID string `json:"uuid"`
+		}
+		if json.Unmarshal(e, &obj) == nil && obj.UUID != "" {
+			out = append(out, obj.UUID)
+			continue
+		}
+		// Keep the position: a channel this connector cannot name is
+		// still channel n, and shifting the rest up would mislabel them.
+		out = append(out, "")
+	}
+	return out
+}
+
+// relativeTo turns a path the device wrote in its own document into one
+// this client can GET.
+//
+// The two products write it differently: the BRIDGE says
+// "/api/v1/processing/video/channels" where the client is already based
+// at /api/v1, and the shuffler says "/io/ip/senders/audio" where the
+// client is based at /api. Taking either literally would miss.
+func relativeTo(client *Client, declared string) string {
+	if declared == "" {
+		return ""
+	}
+	u, err := url.Parse(client.base)
+	if err != nil {
+		return declared
+	}
+	prefix := strings.TrimSuffix(u.Path, "/")
+	if prefix != "" && strings.HasPrefix(declared, prefix+"/") {
+		return strings.TrimPrefix(declared, prefix)
+	}
+	return declared
+}
+
+// joinDeclared puts a member under its collection, in the device's own
+// spelling — that is what an Endpoint.Path is for, and what a UI hands
+// back to the device.
+func joinDeclared(collection, id string) string {
+	return strings.TrimSuffix(collection, "/") + "/" + id
 }
 
 // matrixInfoPaths are the declared resources that describe a matrix's

@@ -1,6 +1,7 @@
 package codec
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -44,17 +45,27 @@ const audioInfo = `{
   ]
 }`
 
-// shufflerInfo is the audio shuffler's shape: no children, no
-// template — the crosspoint keys are the flow UUIDs themselves, and
-// the provider only says which collection they live in.
+// shufflerInfo is the audio shuffler's shape, exactly as SHUFFLE 2.0.0
+// at 10.44.72.27 serves /matrices/audio/info: no children, no
+// template, no type, no group — several providers per axis, and
+// `slots: "channels"` saying that a crosspoint key names a channel
+// INSIDE a member rather than the member.
+//
+// Every field here is from that device's own answer (the 17 728
+// crosspoint export of 2026-09-25); nothing is supposed.
 const shufflerInfo = `{
   "destinations": [
-    {"path": "/api/io/ip/receivers/audio", "slots": "0-63",
-     "group": {"uuid": "grp-dst", "name": "Receivers"}}
+    {"path": "/io/ip/senders/audio", "slots": "channels"},
+    {"path": "/processing/audio/analyser/channels"},
+    {"path": "/io/madi/outputs", "slots": "channels"},
+    {"path": "/processing/audio/delay", "slots": "channels"}
   ],
   "sources": [
-    {"path": "/api/io/ip/senders/audio", "slots": "0-63",
-     "group": {"uuid": "grp-src", "name": "Senders"}}
+    {"path": "/io/ip/receivers/audio", "slots": "channels"},
+    {"path": "/io/madi/inputs", "slots": "channels"},
+    {"path": "/processing/audio/generator/channels"},
+    {"path": "/processing/audio/delay", "slots": "channels"},
+    {"path": "/processing/audio/mute"}
   ]
 }`
 
@@ -129,26 +140,79 @@ func TestAnAudioMatrixResolvesAChannelWithinAMember(t *testing.T) {
 	}
 }
 
-func TestAShufflerMatrixResolvesByUUID(t *testing.T) {
-	// No children and no template: the crosspoint key IS the flow
-	// uuid, and the provider says which collection it lives in.
+func TestAShufflerMatrixCannotBeResolvedFromItsInfoAlone(t *testing.T) {
+	// Four destination providers and five source providers, all
+	// UUID-keyed, and the UUIDs are channels one level below the
+	// collections named here. Nothing in this body says which stream
+	// owns which channel, so guessing a provider would be inventing an
+	// answer: the honest result is unresolved, until the device is
+	// asked. See SetIndex and the consumer's link pass.
 	info, err := ParseMatrixInfo([]byte(shufflerInfo))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dst := info.ResolveDestination("11111111-2222-3333-4444-555555555555")
-	if !dst.Resolved {
-		t.Fatalf("a uuid-keyed destination did not resolve: %+v", dst)
+	if got := info.ResolveDestination("11111111-2222-3333-4444-555555555555"); got.Resolved {
+		t.Errorf("resolved to %+v with nothing to resolve it by", got)
 	}
-	if dst.Path != "/api/io/ip/receivers/audio/11111111-2222-3333-4444-555555555555" {
-		t.Errorf("path = %q", dst.Path)
+	if !info.Destinations[0].RoutesChannels() {
+		t.Error("slots: channels means the key is a channel, not a stream")
+	}
+	if info.Destinations[1].RoutesChannels() {
+		t.Error("a provider with no slots routes its members whole")
+	}
+}
+
+func TestAnIndexFromTheDeviceResolvesWhatTheInfoCannot(t *testing.T) {
+	// What the link pass hands back: the channel UUID, the stream that
+	// owns it, and the position within that stream. With it, a
+	// crosspoint names a resource an operator can open.
+	info, err := ParseMatrixInfo([]byte(shufflerInfo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const ch = "86940bd5-6e6c-5931-977a-c852f6e91826"
+	info.SetIndex(Index{ch: {
+		Key: ch, ID: "0001ac17-cabf-53cf-a7f6-580b6a3e91c0", Sub: 0,
+		Path:     "/io/ip/receivers/audio/0001ac17-cabf-53cf-a7f6-580b6a3e91c0/channels/" + ch,
+		Type:     "IP",
+		Resolved: true,
+	}}, nil)
+
+	src := info.ResolveSource(ch)
+	if !src.Resolved || src.Sub != 0 ||
+		src.ID != "0001ac17-cabf-53cf-a7f6-580b6a3e91c0" {
+		t.Fatalf("source = %+v", src)
+	}
+	if !strings.HasSuffix(src.Path, "/channels/"+ch) {
+		t.Errorf("path = %q — a channel crosspoint must name the channel", src.Path)
+	}
+	// The other axis was given no index and still answers honestly.
+	if got := info.ResolveDestination(ch); got.Resolved {
+		t.Errorf("destination = %+v", got)
+	}
+	// A key the index does not hold is not invented either.
+	if got := info.ResolveSource("no-such-channel"); got.Resolved {
+		t.Errorf("unknown key = %+v", got)
+	}
+}
+
+func TestASingleProviderUUIDMatrixStillResolvesFromItsInfo(t *testing.T) {
+	// One provider, no children, no slots: the key can only be a member
+	// of that one collection, and saying so beats saying nothing.
+	info, err := ParseMatrixInfo([]byte(`{
+	  "destinations": [{"path": "/api/io/ip/receivers/audio", "type": "IP"}],
+	  "sources": [{"path": "/api/io/ip/senders/audio", "type": "IP"}]
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := info.ResolveDestination("11111111-2222-3333-4444-555555555555")
+	if !dst.Resolved ||
+		dst.Path != "/api/io/ip/receivers/audio/11111111-2222-3333-4444-555555555555" {
+		t.Fatalf("destination = %+v", dst)
 	}
 	if dst.ID != dst.Key {
 		t.Errorf("on this matrix the key IS the id: %+v", dst)
-	}
-	src := info.ResolveSource("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-	if !src.Resolved || src.Path != "/api/io/ip/senders/audio/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" {
-		t.Errorf("source = %+v", src)
 	}
 }
 
@@ -206,16 +270,16 @@ func TestIndexesFromTemplate(t *testing.T) {
 		ok            bool
 	}{
 		{"CH{idx}", "CH04", 4, -1, true},
-		{"CH{idx}", "CH0004", 4, -1, true},   // padding is the device's business
+		{"CH{idx}", "CH0004", 4, -1, true}, // padding is the device's business
 		{"DB{idx}-{subIdsIdx}", "DB000-05", 0, 5, true},
 		{"IP{idx}-{subIdsIdx}", "IP015-00", 15, 0, true},
-		{"CH{idx}", "IP04", 0, 0, false},     // another provider's label
-		{"CH{idx}", "CH", 0, 0, false},       // no number at all
-		{"CH{idx}", "CHxx", 0, 0, false},     // not a number
-		{"CH{idx}", "CH04x", 0, 0, false},    // trailing rubbish
+		{"CH{idx}", "IP04", 0, 0, false},             // another provider's label
+		{"CH{idx}", "CH", 0, 0, false},               // no number at all
+		{"CH{idx}", "CHxx", 0, 0, false},             // not a number
+		{"CH{idx}", "CH04x", 0, 0, false},            // trailing rubbish
 		{"CH{idx}-{subIdsIdx}", "CH04", 0, 0, false}, // second number missing
 		{"no-markers", "no-markers", -1, -1, true},   // a literal template
-		{"CH{idx", "CH04", 0, 0, false},      // a template that never closes
+		{"CH{idx", "CH04", 0, 0, false},              // a template that never closes
 	}
 	for _, c := range cases {
 		idx, sub, ok := indexesFromTemplate(c.template, c.key)

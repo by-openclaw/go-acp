@@ -41,6 +41,11 @@ type MatrixInfo struct {
 	Description  string
 	Sources      []MatrixProvider
 	Destinations []MatrixProvider
+
+	// Filled by SetIndex when the keys need the device to explain
+	// them; nil on a matrix the info body describes completely.
+	sourceIndex Index
+	destIndex   Index
 }
 
 // MatrixProvider is one group of things on an axis: where they live,
@@ -67,7 +72,18 @@ type MatrixProvider struct {
 	// Group names a UUID-keyed provider's group, when it has one.
 	GroupUUID string
 	GroupName string
+	// Slots is what the crosspoint keys on this provider actually
+	// ARE. The audio shuffler says "channels": its keys are not the
+	// stream UUIDs under Path but the UUIDs of the channels WITHIN
+	// each stream, so the resource a crosspoint names is one level
+	// deeper — /io/ip/receivers/audio/<stream>/channels/<channel>.
+	// Empty when the keys are the members themselves.
+	Slots string
 }
+
+// RoutesChannels reports whether this provider's crosspoint keys name
+// channels inside its members rather than the members themselves.
+func (p MatrixProvider) RoutesChannels() bool { return p.Slots == "channels" }
 
 // MatrixMember is one thing on an axis: the resource, and how many
 // channels of it the matrix routes separately.
@@ -115,12 +131,14 @@ type providerOnWire struct {
 		UUID string `json:"uuid"`
 		Name string `json:"name"`
 	} `json:"group"`
+	Slots string `json:"slots"`
 }
 
 func (p providerOnWire) provider() MatrixProvider {
 	out := MatrixProvider{
 		Path: p.Path, Type: p.Type, Template: p.Template,
 		GroupUUID: p.Group.UUID, GroupName: p.Group.Name,
+		Slots: p.Slots,
 	}
 	for _, c := range p.Children {
 		out.Children = append(out.Children, MatrixMember{ID: c.ID, SubIDs: c.SubIDs})
@@ -150,22 +168,46 @@ type Endpoint struct {
 	Resolved bool
 }
 
+// Index says which resource a crosspoint key names, for an axis whose
+// keys the info body does not itself list.
+//
+// The audio shuffler needs one: its matrix has five source providers
+// and four destination providers, all keyed by UUIDs that live one
+// level below the collections the info names. Nothing in the info body
+// says which stream owns which channel — only the device does, in the
+// members it serves — so that answer is looked up from the device and
+// handed back here. See the consumer's link pass.
+type Index map[string]Endpoint
+
+// SetIndex supplies the resolved endpoints for keys the info body
+// cannot account for on its own. Both axes are optional; a nil index
+// leaves resolution exactly as it was.
+func (m *MatrixInfo) SetIndex(sources, destinations Index) {
+	m.sourceIndex, m.destIndex = sources, destinations
+}
+
 // ResolveSource resolves a key from the source axis.
 func (m *MatrixInfo) ResolveSource(key string) Endpoint {
-	return resolve(m.Sources, key)
+	return resolve(m.Sources, m.sourceIndex, key)
 }
 
 // ResolveDestination resolves a key from the destination axis.
 func (m *MatrixInfo) ResolveDestination(key string) Endpoint {
-	return resolve(m.Destinations, key)
+	return resolve(m.Destinations, m.destIndex, key)
 }
 
 // resolve turns one crosspoint key into the resource it names, by
 // whichever scheme the axis uses.
-func resolve(providers []MatrixProvider, key string) Endpoint {
+func resolve(providers []MatrixProvider, index Index, key string) Endpoint {
 	out := Endpoint{Key: key}
 	if key == "" {
 		return out
+	}
+	// An index built from the device itself is the most specific
+	// answer there is: it names the member that owns this key, which
+	// on a multi-provider axis is the only way to tell whose it is.
+	if e, ok := index[key]; ok {
+		return e
 	}
 	for _, p := range providers {
 		// Label-keyed: "CH04" against "CH{idx}", or "DB000-05" against
