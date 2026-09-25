@@ -59,7 +59,7 @@ func runGet(ctx context.Context, args []string) error {
 		if err := ensureEmberplusTree(ctx, plug, host, cf.port, *dmIdentity, *slot, false); err != nil {
 			return err
 		}
-	} else if cf.protocol != "emberplus" && (*pathFlag != "" || *label != "") {
+	} else if cf.protocol != "emberplus" && (*pathFlag != "" || *label != "") && !pathNative(plug, *pathFlag, *label) {
 		// Seed from the identity-keyed DM cache first (same hot-load as
 		// watch); only walk the card live on a cache miss. acp1/acp2 DM
 		// caches are identity-keyed (.cache/dm/<proto>/<Card>@<Ver>.json,

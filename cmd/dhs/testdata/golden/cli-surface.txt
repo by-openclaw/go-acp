@@ -79,11 +79,13 @@ acp1     port=2071  Axon Control Protocol v1.4 (UDP direct)
 acp2     port=2072  Axon Control Protocol v2 (AN2/TCP)
 cerebrum-nb port=40007 EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)
 emberplus port=9000  Ember+ (Glow/S101/TCP) consumer
+mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)
 osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core types i/f/s/b
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)
 probel-sw08p port=2008  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
 rollcall port=2050  Snell RollCall over IPShare, 16-bit and 32-bit generations
+snmp     port=161   SNMP v1 / v2c manager — the device model is the agent's own MIB tree
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
 tsl-v50  port=8901  TSL UMD v5.0 — UDP (≤2048 B) or TCP with DLE/STX wrapper; multi-DMSG; UTF-16LE
@@ -149,7 +151,10 @@ DESCRIPTION
 FLAGS
   --slot N           slot number (required)
   --all              walk every present slot
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
@@ -355,6 +360,12 @@ FLAGS
   --group G          only events in this group (default: any)
   --label L          only events for this label (requires --slot)
   --id I             only events for this object id
+  --alarm FILE       judge values with this template instead of the
+                     cached one (.cache/alarm/<proto>/<model>.json)
+  --no-alarm         do not judge values at all
+  --metrics-addr A   serve Prometheus /metrics + /snapshot.json while
+                     watching: dhs_alarm_* verdicts and dhs_connector_*
+                     traffic, labelled proto + device
 
 EXAMPLES
   acp watch 10.6.239.113                              # everything
@@ -362,6 +373,8 @@ EXAMPLES
   acp watch 10.6.239.113 --slot 1 --group control
   acp watch 10.6.239.113 --slot 1 --label GainA
   acp watch 10.6.239.113 --verbose                    # + debug lines
+  acp watch 10.6.239.113 --metrics-addr :9110          # scraped by Prometheus
+  acp watch 10.6.239.113 --log /var/log/dhs-acp1.log --log-format json
 
 ========== consumer/acp1/export ==========
 $ dhs consumer acp1 export --help
@@ -389,7 +402,10 @@ FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
   --out FILE         output file path    (default: stdout)
   --slot N           export only this slot (-1 = all present)
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
 
 EXAMPLES
   acp export 10.6.239.113 --format json --out device.json
@@ -2695,6 +2711,8 @@ Usage of connect:
     	unicast DNS resolver IP (implies unicast discovery)
   -sender string
     	IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver
+  -sender-node string
+    	the Sender's own Node (http://host:port) when it lives on another device than --node and no Registry knows it — the SDP is fetched from THAT Node's IS-05
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
   -when string

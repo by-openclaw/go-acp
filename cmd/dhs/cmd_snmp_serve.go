@@ -41,12 +41,12 @@ func runSNMPServe(ctx context.Context, args []string) error {
 	location := fs.String("location", "", "sysLocation.0")
 	pidfile := fs.String("pidfile", "", "write this process's PID to PATH so `dhs producer snmp stop|ensure --pidfile PATH` can manage it")
 	metricsAddr := fs.String("metrics-addr", "", "serve /snmp.json and /snapshot.json on this address")
-	v3User := fs.String("v3-user", "",
-		"USM user to accept authenticated v3 requests as. Setting it makes the agent answer v3 (as well as v1/v2c).")
-	v3Auth := fs.String("v3-auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512")
-	v3AuthPass := fs.String("v3-auth-pass", "", "v3 authentication password")
+	v3User := fs.String("v3-user", snmpprov.DefaultV3User,
+		"USM user this agent answers v3 as. v3 is ON by default — pass --v3-user=\"\" to serve v1/v2c only.")
+	v3Auth := fs.String("v3-auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512. Without it the user is noAuthNoPriv.")
+	v3AuthPass := fs.String("v3-auth-pass", "", "v3 authentication password (prefer SNMP_V3_AUTH_PASS)")
 	v3Priv := fs.String("v3-priv", "", "v3 privacy: des or aes")
-	v3PrivPass := fs.String("v3-priv-pass", "", "v3 privacy password")
+	v3PrivPass := fs.String("v3-priv-pass", "", "v3 privacy password (prefer SNMP_V3_PRIV_PASS)")
 	engineID := fs.String("engine-id", "dhs-agent", "text in this agent's RFC 3411 engine ID")
 	engineBoots := fs.Int("engine-boots", 1,
 		"this engine's restart count; persist and increment across restarts, or a peer accepts messages recorded before the last reboot")
@@ -88,6 +88,16 @@ func runSNMPServe(ctx context.Context, args []string) error {
 		Read: *read, Write: *write,
 	}, deps)
 
+	// The passwords come from the environment when the flags left them
+	// empty, the same way the manager takes them: a password on a
+	// command line is in the shell history and visible in ps.
+	if *v3AuthPass == "" {
+		*v3AuthPass = strings.TrimSpace(os.Getenv("SNMP_V3_AUTH_PASS"))
+	}
+	if *v3PrivPass == "" {
+		*v3PrivPass = strings.TrimSpace(os.Getenv("SNMP_V3_PRIV_PASS"))
+	}
+
 	if *v3User != "" {
 		engine, err := buildTrapEngine(*engineID, *engineBoots, *v3User,
 			*v3Auth, *v3AuthPass, *v3Priv, *v3PrivPass, deps)
@@ -95,7 +105,19 @@ func runSNMPServe(ctx context.Context, args []string) error {
 			return err
 		}
 		srv.SetEngine(engine)
-		logger.Info("snmp agent: v3 enabled", "user", *v3User)
+		user, _ := engine.User(*v3User)
+		logger.Info("snmp agent: v3 enabled",
+			"user", *v3User, "level", user.SecurityLevel())
+		if user.SecurityLevel() == "noAuthNoPriv" {
+			// Said once, at startup, where somebody can act on it. v3
+			// without a passphrase identifies a manager; it does not
+			// protect anything.
+			logger.Info("snmp agent: v3 user has no passphrase — " +
+				"add --v3-auth/--v3-auth-pass for authNoPriv, and --v3-priv/--v3-priv-pass for authPriv")
+		}
+	} else {
+		logger.Info("snmp agent: v3 disabled by --v3-user=\"\" — v1/v2c only, " +
+			"which means a community in clear on every datagram")
 	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -159,8 +181,26 @@ func runSNMPMIB(_ context.Context, args []string) error {
 // on it: every device in docs/testbed.md currently points its traps at
 // an address that no longer exists, and the only way to tell a working
 // receiver from a working sender is to send one on purpose.
+// runSNMPTrapSend sends one notification, unacknowledged.
 func runSNMPTrapSend(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("trap", flag.ContinueOnError)
+	return runSNMPNotify(ctx, args, false)
+}
+
+// runSNMPInform sends one notification and waits to be told it arrived.
+func runSNMPInform(ctx context.Context, args []string) error {
+	return runSNMPNotify(ctx, args, true)
+}
+
+// runSNMPNotify is both: the flags, the destinations and the engine are
+// identical, and the only difference is the PDU and whether anything
+// waits for an answer. Keeping them one function is what stops `inform`
+// quietly growing a different --to grammar from `trap`.
+func runSNMPNotify(ctx context.Context, args []string, inform bool) error {
+	verb := "trap"
+	if inform {
+		verb = "inform"
+	}
+	fs := flag.NewFlagSet(verb, flag.ContinueOnError)
 	to := fs.String("to", "", "comma-separated receivers as ADDR[:PORT][/VERSION[/COMMUNITY-OR-USER]] — e.g. 10.6.250.5,10.6.255.9:162/1/public,10.6.250.7/3/operator")
 	enterprise := fs.String("enterprise", mib.DHSAgent.String(), "the sending device's sysObjectID, used as the v1 enterprise and the stem of the v2c identity (the default with --specific 1 is dhsTestNotification in DHS-MIB)")
 	generic := fs.Int("generic", int(codec.EnterpriseSpecific), "RFC 1157 generic trap 0..6; 6 means look at --specific")
@@ -180,7 +220,7 @@ func runSNMPTrapSend(ctx context.Context, args []string) error {
 		return err
 	}
 	if *to == "" {
-		return fmt.Errorf("snmp trap: --to names at least one receiver")
+		return fmt.Errorf("snmp %s: --to names at least one receiver", verb)
 	}
 	ent, err := mib.Resolve(*enterprise)
 	if err != nil {
@@ -214,11 +254,34 @@ func runSNMPTrapSend(ctx context.Context, args []string) error {
 		Specific:   *specific,
 		Uptime:     uint32(*uptime),
 	}
-	if err := sender.Send(ctx, n); err != nil {
-		return err
+	if !inform {
+		if err := sender.Send(ctx, n); err != nil {
+			return err
+		}
+		for _, d := range sender.Destinations() {
+			fmt.Printf("sent %s to %s\n", d.Version, d.Addr)
+		}
+		return nil
 	}
-	for _, d := range sender.Destinations() {
-		fmt.Printf("sent %s to %s\n", d.Version, d.Addr)
+
+	// An inform's whole value is the answer, so the report is
+	// per-destination: which manager acknowledged, and how many
+	// datagrams it took. "Something failed" is not actionable.
+	var failed int
+	for _, r := range sender.SendInform(ctx, n) {
+		switch {
+		case r.Err != nil:
+			failed++
+			fmt.Printf("NOT acknowledged by %s (%s): %v\n", r.Dest.Addr, r.Dest.Version, r.Err)
+		case r.Attempts > 1:
+			fmt.Printf("acknowledged by %s (%s) after %d attempts\n",
+				r.Dest.Addr, r.Dest.Version, r.Attempts)
+		default:
+			fmt.Printf("acknowledged by %s (%s)\n", r.Dest.Addr, r.Dest.Version)
+		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("snmp inform: %d receiver(s) did not acknowledge", failed)
 	}
 	return nil
 }
@@ -368,6 +431,12 @@ func trapLine(t snmpcons.Trap) string {
 	}
 	if name != t.TrapOID.String() {
 		line += " " + name
+	}
+	if t.Inform {
+		// Worth saying: an inform that keeps arriving means the sender
+		// is not seeing the acknowledgements, which is a route problem
+		// and not a device one.
+		line += " [inform, acknowledged]"
 	}
 	return line
 }

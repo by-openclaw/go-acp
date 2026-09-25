@@ -268,9 +268,15 @@ func (e *Engine) Seal(m codec.Message, userName string) ([]byte, error) {
 // Open verifies and decrypts a v3 datagram addressed to this engine.
 //
 // It returns the message with its PDU filled in, and the user it came
-// from. Every failure is an ErrAuth: telling a peer WHICH check failed —
-// unknown user, bad digest, stale timestamp — is how a decoder becomes
-// an oracle, and a caller has the same thing to do in all three cases.
+// from. Every failure is an ErrAuth, and nothing here ever tells a PEER
+// which check failed: a decoder that answers "wrong password" rather
+// than "no" is an oracle.
+//
+// The failure is nonetheless CLASSIFIED, as an [AuthError], for the one
+// caller RFC 3414 §3.2 obliges to answer — an agent, which must send a
+// Report naming the matching usmStats counter, and whose
+// usmStatsNotInTimeWindows is the only way a manager ever recovers from
+// the agent rebooting. See failure.go.
 func (e *Engine) Open(raw []byte) (codec.Message, User, error) {
 	m, err := codec.Decode(raw)
 	if err != nil {
@@ -282,8 +288,8 @@ func (e *Engine) Open(raw []byte) (codec.Message, User, error) {
 	v3 := m.V3
 
 	if v3.SecurityModel != codec.SecurityModelUSM {
-		return codec.Message{}, User{}, fmt.Errorf("%w: security model %d is not USM",
-			ErrAuth, v3.SecurityModel)
+		return codec.Message{}, User{}, authFailure(FailureOther,
+			"security model %d is not USM", v3.SecurityModel)
 	}
 
 	params, authInSec, err := codec.DecodeUSMParameters(v3.SecurityParameters)
@@ -295,15 +301,16 @@ func (e *Engine) Open(raw []byte) (codec.Message, User, error) {
 	eu, known := e.users[params.UserName]
 	e.mu.Unlock()
 	if !known {
-		return codec.Message{}, User{}, fmt.Errorf("%w: unknown user", ErrAuth)
+		return codec.Message{}, User{}, authFailure(FailureUnknownUser, "unknown user")
 	}
 
 	// The message's own claim about protection has to match what this
 	// user is configured for, or an attacker downgrades by clearing a
 	// flag bit.
 	if v3.Flags.Auth() != (eu.user.Auth != NoAuth) || v3.Flags.Priv() != (eu.user.Priv != NoPriv) {
-		return codec.Message{}, User{}, fmt.Errorf("%w: %s does not match the user's %s",
-			ErrAuth, v3.Flags.SecurityLevel(), eu.user.SecurityLevel())
+		return codec.Message{}, User{}, authFailure(FailureUnsupportedLevel,
+			"%s does not match the user's %s",
+			v3.Flags.SecurityLevel(), eu.user.SecurityLevel())
 	}
 
 	if eu.user.Auth != NoAuth {
@@ -311,13 +318,14 @@ func (e *Engine) Open(raw []byte) (codec.Message, User, error) {
 			// The keys were localised to OUR engine, so a message
 			// naming another engine cannot verify against them however
 			// well-formed it is.
-			return codec.Message{}, User{}, fmt.Errorf("%w: addressed to another engine", ErrAuth)
+			return codec.Message{}, User{}, authFailure(FailureUnknownEngineID,
+				"addressed to another engine")
 		}
 		// The decoder reported where it read those bytes, so there is
 		// nothing to search for and nothing to be ambiguous about.
 		if err := Verify(eu.user.Auth, eu.keys.Auth, raw,
 			v3.SecurityParametersOffset+authInSec); err != nil {
-			return codec.Message{}, User{}, err
+			return codec.Message{}, User{}, authFailure(FailureWrongDigest, "%s", err)
 		}
 		if err := e.checkTimeliness(params); err != nil {
 			return codec.Message{}, User{}, err
@@ -329,13 +337,13 @@ func (e *Engine) Open(raw []byte) (codec.Message, User, error) {
 			params.AuthoritativeEngineBoots, params.AuthoritativeEngineTime,
 			params.PrivacyParameters, v3.EncryptedPDU)
 		if err != nil {
-			return codec.Message{}, User{}, err
+			return codec.Message{}, User{}, authFailure(FailureDecryption, "%s", err)
 		}
 		scoped, err := codec.DecodeScopedPDU(plain)
 		if err != nil {
 			// The plaintext is rubbish, which on this path means the key
 			// was wrong rather than that the sender is broken.
-			return codec.Message{}, User{}, fmt.Errorf("%w: %s", ErrAuth, err)
+			return codec.Message{}, User{}, authFailure(FailureDecryption, "%s", err)
 		}
 		v3.ContextEngineID, v3.ContextName = scoped.ContextEngineID, scoped.ContextName
 		m.PDU = scoped.PDU
@@ -353,16 +361,17 @@ const TimeWindow = 150
 // a re-route anybody can repeat.
 func (e *Engine) checkTimeliness(p codec.USMParameters) error {
 	if p.AuthoritativeEngineBoots != e.boots {
-		return fmt.Errorf("%w: message is from boot %d, this engine is on %d",
-			ErrAuth, p.AuthoritativeEngineBoots, e.boots)
+		return authFailure(FailureNotInTimeWindow,
+			"message is from boot %d, this engine is on %d",
+			p.AuthoritativeEngineBoots, e.boots)
 	}
 	drift := int(e.Time()) - int(p.AuthoritativeEngineTime)
 	if drift < 0 {
 		drift = -drift
 	}
 	if drift > TimeWindow {
-		return fmt.Errorf("%w: message is %ds outside the %ds window",
-			ErrAuth, drift, TimeWindow)
+		return authFailure(FailureNotInTimeWindow,
+			"message is %ds outside the %ds window", drift, TimeWindow)
 	}
 	return nil
 }

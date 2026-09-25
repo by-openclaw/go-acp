@@ -122,16 +122,17 @@ func runExport(ctx context.Context, args []string) error {
 		if si.Status != consumer.SlotPresent {
 			continue
 		}
-		objs, werr := plug.Walk(ctx, s)
+		// --path is the branches to export. On a connector that can
+		// scope a walk it is read as a scope, not applied afterwards:
+		// exporting six leaves off an SNMP agent should not cost a
+		// quarter of an hour of reading its programme table first.
+		scopes := parsePathScopes(*pathFlag)
+		objs, _, werr := walkScoped(ctx, plug, s, scopes)
 		if werr != nil {
 			fmt.Fprintf(os.Stderr, "warning: slot %d walk failed: %v\n", s, werr)
 			continue
 		}
-		// Apply --path filter if set.
-		if *pathFlag != "" {
-			pathSegs := strings.Split(*pathFlag, ".")
-			objs = filterByPath(objs, pathSegs)
-		}
+		objs = filterByPaths(objs, pathScopeSegments(scopes))
 		snap.Slots = append(snap.Slots, export.SlotDump{
 			Slot:     s,
 			Status:   si.Status.String(),

@@ -61,6 +61,12 @@ type Trap struct {
 	// above, and leaving them in the list as well would have every
 	// handler skip two entries it did not ask for.
 	VarBinds []codec.VarBind
+
+	// Inform says this arrived as an InformRequest rather than a trap,
+	// and has already been acknowledged. It is worth showing: an
+	// inform that keeps arriving means the sender is not seeing the
+	// acknowledgements, which is a route problem and not a device one.
+	Inform bool
 }
 
 // Compliance events the listener records.
@@ -113,12 +119,13 @@ type ListenerOptions struct {
 	Compliance compliance.Recorder
 }
 
-// Listener receives notifications.
+// Listener receives notifications: traps, which are unacknowledged by
+// definition, and InformRequests, which it answers.
 //
-// It answers nothing. A trap is unacknowledged by definition, and an
-// InformRequest — which is acknowledged — is a separate verb this does
-// not yet serve; a listener that half-answered informs would leave
-// senders retrying forever, which is worse than not offering it.
+// The answer is not optional. A sender retries an inform until it is
+// acknowledged, so a receiver that read them and stayed silent would
+// have every sender in the plant repeating the same alarm until it
+// gave up — once per notification, forever. See inform.go.
 type Listener struct {
 	opts   ListenerOptions
 	logger *slog.Logger
@@ -217,7 +224,13 @@ func (l *Listener) Listen(ctx context.Context, fn func(Trap)) error {
 			l.prof.Note(TrapUndecodable)
 			continue
 		}
-		if t, ok := l.decode(buf[:n], udpFrom); ok {
+		// The acknowledgement goes out from the socket the inform
+		// arrived on, BEFORE the handler runs: a handler that blocks
+		// or panics must not turn into a sender retrying forever.
+		if t, ack, ok := l.decode(buf[:n], udpFrom); ok {
+			if ack != nil {
+				l.acknowledge(conn, udpFrom, ack.msg, ack.user)
+			}
 			fn(t)
 		}
 	}
@@ -237,48 +250,68 @@ func (l *Listener) Close() error {
 	return l.conn.Close()
 }
 
-// decode turns a datagram into a Trap, or drops it.
-func (l *Listener) decode(raw []byte, from *net.UDPAddr) (Trap, bool) {
+// pendingAck is an InformRequest waiting to be acknowledged: the
+// message as it was opened, and the user it authenticated as.
+type pendingAck struct {
+	msg  codec.Message
+	user string
+}
+
+// decode turns a datagram into a Trap, or drops it. A non-nil
+// pendingAck means it was an InformRequest and owes the sender an
+// answer.
+func (l *Listener) decode(raw []byte, from *net.UDPAddr) (Trap, *pendingAck, bool) {
 	m, err := codec.Decode(raw)
 	if err != nil {
 		l.prof.Note(TrapUndecodable)
 		l.logger.Debug("snmp: undecodable datagram on the trap port",
 			slog.String("from", from.String()), slog.String("err", err.Error()))
-		return Trap{}, false
+		return Trap{}, nil, false
 	}
 
 	t := Trap{From: from, Version: m.Version, Community: m.Community}
+	var user string
 
 	if m.Version == codec.Version3 {
-		opened, user, err := l.openV3(raw)
+		opened, u, err := l.openV3(raw)
 		if err != nil {
 			l.prof.Note(TrapUnauthenticated)
 			l.logger.Warn("snmp: v3 notification refused",
 				slog.String("from", from.String()), slog.String("err", err.Error()))
-			return Trap{}, false
+			return Trap{}, nil, false
 		}
 		m = opened
-		t.User, t.SecurityLevel = user.Name, user.SecurityLevel()
+		user = u.Name
+		t.User, t.SecurityLevel = u.Name, u.SecurityLevel()
 		t.Community = ""
 	} else if !l.admits(m.Community) {
 		l.prof.Note(TrapUnauthenticated)
 		l.logger.Warn("snmp: notification with an unaccepted community",
 			slog.String("from", from.String()))
-		return Trap{}, false
+		return Trap{}, nil, false
 	}
 
 	if m.TrapV1 != nil {
 		fillFromV1(&t, m.TrapV1)
-		return t, true
+		return t, nil, true
 	}
-	if m.PDU == nil || m.PDU.Type != codec.PDUTypeTrapV2 {
+	if m.PDU == nil || (m.PDU.Type != codec.PDUTypeTrapV2 && m.PDU.Type != codec.PDUTypeInform) {
 		l.prof.Note(TrapUnexpectedPDU)
 		l.logger.Debug("snmp: not a notification",
 			slog.String("from", from.String()), slog.String("type", m.Type().String()))
-		return Trap{}, false
+		return Trap{}, nil, false
+	}
+	// An inform is a notification that is acknowledged. Everything
+	// above this line treats it exactly as a trap — same bindings, same
+	// authentication — and the only difference is the answer the
+	// caller owes the sender.
+	var ack *pendingAck
+	if m.PDU.Type == codec.PDUTypeInform {
+		t.Inform = true
+		ack = &pendingAck{msg: m, user: user}
 	}
 	l.fillFromV2(&t, m.PDU)
-	return t, true
+	return t, ack, true
 }
 
 // openV3 verifies and decrypts, or says why not.

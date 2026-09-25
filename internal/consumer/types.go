@@ -553,6 +553,14 @@ type Event struct {
 	Value     Value
 	Timestamp time.Time
 
+	// Repeat marks a sample that carries the value the object already
+	// had. A poller that reports every sample (on_change false, because
+	// a measurement is judged per sample — a counter that stopped, a
+	// link that is still down) sets it; a display shows changes and
+	// skips these, an evaluator needs them to see that a condition
+	// PERSISTS. Push protocols leave it false.
+	Repeat bool
+
 	// MatrixChange is non-nil when this event represents a matrix
 	// crosspoint update (connect / disconnect / tally change). The
 	// event's OID + Path identify the Matrix element; the fields
@@ -655,4 +663,14 @@ type ProtocolMeta struct {
 type ProtocolFactory interface {
 	Meta() ProtocolMeta
 	New(deps plugin.Deps) Protocol
+}
+
+// PathNative is implemented by plugins whose GetValue / SetValue resolve
+// ValueRequest.Path against the device itself — a REST tree addressed by
+// URL, say — and therefore never need a walked tree to answer a --path
+// request. The generic verbs skip the walk-on-miss for them (a --label
+// still needs the tree). A plugin returns true unconditionally; the
+// method exists so the capability is declared, not inferred.
+type PathNative interface {
+	PathNative() bool
 }

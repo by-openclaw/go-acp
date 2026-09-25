@@ -220,3 +220,24 @@ func TestResolveRoutesByForm(t *testing.T) {
 		t.Error("an empty OID must be refused")
 	}
 }
+
+func TestUnderListsOneBranchInOrder(t *testing.T) {
+	// A caller building its own index of a device's branch reads it
+	// from here rather than parsing a MIB at runtime.
+	tbl := Compiled()
+	sys := tbl.Under(oid("1.3.6.1.2.1.1"))
+	if len(sys) < 6 {
+		t.Fatalf("the system group has at least six objects: %d", len(sys))
+	}
+	for i, o := range sys {
+		if !o.OID.HasPrefix(oid("1.3.6.1.2.1.1")) {
+			t.Errorf("%s is not under the system group", o.OID)
+		}
+		if i > 0 && sys[i-1].OID.Compare(o.OID) >= 0 {
+			t.Errorf("out of order at %d: %s then %s", i, sys[i-1].OID, o.OID)
+		}
+	}
+	if got := tbl.Under(oid("9.9.9.9")); got != nil {
+		t.Errorf("a branch nothing is under = %v", got)
+	}
+}

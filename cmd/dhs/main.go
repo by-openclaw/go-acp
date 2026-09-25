@@ -39,6 +39,7 @@ import (
 	"dhs/internal/errcode"
 
 	// Consumer plugins — blank imports register with internal/consumer.
+	_ "dhs/internal/MNSet/consumer"
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
@@ -47,6 +48,7 @@ import (
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
 	_ "dhs/internal/snell-rollcall/consumer"
+	_ "dhs/internal/snmp/consumer"
 	_ "dhs/internal/tsl/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
@@ -186,6 +188,7 @@ var commands = []command{
 	{"validate", "decode a captured frames.jsonl through the codec offline (per ADR-0021)", helpValidate, runValidate},
 	{"health", "print 3-layer session health (reachable / connected / live)", helpHealth, runHealth},
 	{"status", "one-shot device status: session health + identity (--output json)", helpStatus, runStatus},
+	{"alarm", "read and edit the per-model alarm template (list / get / set / test / export / import)", helpAlarm, runAlarmNeedsProtocol},
 	{"bench", "Ember+ — fire N matrix crosspoint ops over one TCP session and time it", helpBench, runEmberplusBench},
 	{"router", "read a router's routing interface: matrices, levels, sizes (RollCall only)", helpRollcallRouter, runRollcallRouter},
 	{"route", "read or make one crosspoint (RollCall only)", helpRollcallRoute, runRollcallRoute},
@@ -323,7 +326,18 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runNMOSConsumer(ctx, rest)
 	}
 	if proto == "snmp" {
-		return runSNMPConsumer(ctx, rest)
+		// get / walk / set / trap-listen / validate are SNMP's own
+		// shape; every other verb is the neutral one, answered by the
+		// registered plugin (tree, export, watch, alarm, …).
+		if handled, err := runSNMPConsumer(ctx, rest); handled {
+			return err
+		}
+	}
+	if proto == "mnset" {
+		// discover / inventory are mnset-only; every other verb is generic.
+		if handled, err := runMNSet(ctx, rest); handled {
+			return err
+		}
 	}
 
 	// Catalogue help ONLY when help is asked in place of a verb — a help
@@ -336,6 +350,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	}
 	verb := rest[0]
 	rest = rest[1:]
+
+	// The alarm template is per protocol and needs no device, so the
+	// verb takes the protocol directly instead of the --protocol flag
+	// the device verbs are given below.
+	if verb == "alarm" {
+		return runAlarm(ctx, proto, rest)
+	}
 
 	c := findCommand(verb)
 	if c == nil {

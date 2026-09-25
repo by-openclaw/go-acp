@@ -28,6 +28,10 @@ Ansible templates render the same shape.
 - [NMOS parameter registers](#nmos-parameter-registers)
 - [CCM device (producer)](#ccm-device-producer)
 - [CCM controller (consumer)](#ccm-controller-consumer)
+- [MNSet (consumer)](#mnset-consumer)
+- [MNSet: discover](#mnset-discover)
+- [MNSet: inventory](#mnset-inventory)
+- [Alarm template](#alarm-template)
 - [SNMP consumer](#snmp-consumer)
 - [SNMP: get](#snmp-get)
 - [SNMP: walk](#snmp-walk)
@@ -148,11 +152,13 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -184,6 +190,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)
@@ -485,6 +492,8 @@ Usage of connect:
     	unicast DNS resolver IP (implies unicast discovery)
   -sender string
     	IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver
+  -sender-node string
+    	the Sender's own Node (http://host:port) when it lives on another device than --node and no Registry knows it — the SDP is fetched from THAT Node's IS-05
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
   -when string
@@ -679,6 +688,104 @@ usage: dhs consumer ccm <verb> <host> [flags]
          --timeout D   per-request timeout (default 8s)
 ```
 
+## MNSet (consumer)
+
+`dhs consumer mnset --help`
+
+```text
+usage: dhs consumer mnset <verb> [<host>] [flags]
+
+Riedel MuoN eMSFP / FusioN modules, direct REST (http://<module>/emsfp/node/v1).
+One module = one device, slot 0. Paths are the resource then the JSON path:
+  self.ipconfig.hostname    flows[0].network[1].dst_ip_addr    devices[7].name
+
+mnset-only verbs:
+  discover  --range R [--range R …] [--port 80] [--timeout 2s] [--concurrency 32]
+            sweep addresses for modules (R: 10.6.40.53 | 10.6.40.50-99 | 10.6.40.0/24)
+  inventory <mnset-host> --user U [--port 8080]   list the modules MN SET manages
+            password read from $MNSET_PASS (never a flag, never printed)
+
+generic verbs (see 'dhs consumer --help'):
+  info | walk | get --path P | set --path P --value V | export | import | status | health
+```
+
+## MNSet: discover
+
+`dhs consumer mnset discover --help`
+
+```text
+Usage of consumer mnset discover:
+  -concurrency int
+    	probes in flight (default 32)
+  -port int
+    	module REST port (default 80)
+  -range value
+    	address, last-octet range a.b.c.x-y or CIDR (repeatable)
+  -timeout duration
+    	per-address probe timeout (default 2s)
+```
+
+## MNSet: inventory
+
+`dhs consumer mnset inventory --help`
+
+```text
+Usage of consumer mnset inventory:
+  -port int
+    	MN SET application port (default 8080)
+  -timeout duration
+    	per-request timeout (default 8s)
+  -user string
+    	MN SET login name (password from $MNSET_PASS)
+```
+
+## Alarm template
+
+`dhs consumer mnset alarm --help`
+
+```text
+dhs consumer <proto> alarm <verb> — the per-model alarm template
+
+A template says what an object's VALUE means: which band is minor,
+major or critical, what the expected value is, how long a verdict must
+hold before it is raised. It is data (.cache/alarm/<proto>/<model>.json),
+shared by every connector, and every verb below is idempotent.
+
+  list                      show the rules in force
+  get    --path P           explain the rule that covers one object
+  set    --path PATTERN …   write or replace one rule (--remove deletes it)
+  test   --path P --value V evaluate a value against the rules, no device
+  export [--out FILE]       write the template (stdout by default)
+  import FILE               install a template, reporting changed=true/false
+  suggest HOST              READ THE DEVICE and draft the rules it can
+                            source itself (enum item lists, declared
+                            ranges, its own alarm objects)
+
+Common flags: --model <identity> (default _default, which governs every
+card of the protocol), --template FILE (bypass the cache).
+
+Rule flags on set:
+  --kind number|counter|enum|text
+  --high minor:75/72,major:80/77     high bands as severity:raise/clear
+  --low  minor:-15/-12,critical:-20  low bands
+  --normal V | ~regex                the expected value (text / enum)
+  --values 0=major,2=minor           enum value → severity
+  --severity S                       verdict for a mismatch or a stall
+  --stalled-for D                    a counter may stand still this long
+  --hold D  --clear-hold D           anti-flap: persist before adopting
+  --flap-cap N                       transitions/min before silencing
+  --text T  --source S               what an operator reads, and why
+
+Examples:
+  dhs consumer mnset alarm set --path 'port.*.sfp_ddm_info.temperature.current' \
+      --high minor:75/72,major:80/77,critical:85/82 --hold 10s \
+      --text 'SFP temperature' --source 'module DDM thresholds'
+  dhs consumer mnset alarm set --path '**.network.pkt_cnt' --kind counter \
+      --stalled-for 10s --severity major --text 'stream stopped' --source 'site rule'
+  dhs consumer mnset alarm test --path refclk.status --value 0
+  dhs consumer acp2 alarm suggest 10.6.255.102 --slot 0 --out draft.json
+```
+
 ## SNMP consumer
 
 `dhs consumer snmp --help`
@@ -694,10 +801,20 @@ VERBS
   validate      decode a captured frames.jsonl offline
 
 VERSIONS
-  --version 1 | 2c. The Tandberg IRDs in this lab answer v1 ONLY — v2c
-  gets no reply at all from them, which looks exactly like a device that
-  is down. v3 POLLING needs engine discovery and is not wired yet; v3
-  notifications are, in both directions.
+  --version 1 | 2c | 3. The Tandberg IRDs in this lab answer v1 ONLY —
+  v2c gets no reply at all from them, which looks exactly like a device
+  that is down. The ATEME DR5000 answers v2c as well, and v2c has
+  GETBULK.
+
+  v3 authenticates as a USER rather than with a community, so it needs
+  --user (or SNMP_V3_USER) and, for anything above noAuthNoPriv,
+  --auth/--auth-pass and --priv/--priv-pass. The manager discovers the
+  agent's engine first (RFC 3414 §4) and re-discovers by itself if the
+  agent reboots mid-session.
+
+  The neutral verbs — info, tree, walk, watch, alarm — take the same
+  credential from SNMP_V3_* and then prefer v3 over v2c and v1, because
+  v1 and v2c put a password in clear on every datagram.
 
 EXAMPLES
   # what a device says it is
@@ -706,7 +823,7 @@ EXAMPLES
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
-  # an IRD, which is v1-only
+  # a Tandberg IRD, which is v1-only
   dhs consumer snmp get --version 1 --oid sysDescr.0 10.6.255.110
 
   # Cerebrum's agent, which answers on 1161 rather than 161
@@ -721,6 +838,16 @@ EXAMPLES
 
   # and for v3 notifications, as the sender's engine
   dhs consumer snmp trap-listen --bind :1162 --user operator       --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # poll over v3, authenticated and encrypted. The passwords belong in
+  # the environment: a password on a command line is in the shell
+  # history and visible in ps to everyone on the host.
+  export SNMP_V3_USER=operator SNMP_V3_AUTH=sha256 SNMP_V3_PRIV=aes
+  export SNMP_V3_AUTH_PASS=... SNMP_V3_PRIV_PASS=...
+  dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.114
+
+  # the neutral verbs take the same credential and prefer v3 with it
+  dhs consumer snmp info 10.6.255.114
 ```
 
 ## SNMP: get
@@ -729,20 +856,32 @@ EXAMPLES
 
 ```text
 Usage of get:
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: walk
@@ -751,8 +890,14 @@ Usage of get:
 
 ```text
 Usage of walk:
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -limit int
     	stop after this many objects; a device whose table grows while it is walked would otherwise never end (default 20000)
   -max-repetitions walk
@@ -761,12 +906,18 @@ Usage of walk:
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: set
@@ -800,24 +951,36 @@ page instead. Either way a readOnly, notWritable or noSuchName from a
 device that reads fine is the DEVICE, not this tool.
 
 FLAGS
+  -auth string
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+  -auth-pass string
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
   -community set
     	read community (write community for set) (default "public")
+  -context string
+    	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
     	the object to write, by standard name or dotted number
+  -priv string
+    	v3 privacy: des or aes
+  -priv-pass string
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -retries int
     	how many times to repeat an unanswered request; UDP loses datagrams (default 2)
   -timeout duration
     	per-request timeout (default 2s)
   -type string
     	value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
+  -user string
+    	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -value string
     	the value to write
   -version string
-    	SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. (default "2c")
+    	SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK. (default "2c")
 ```
 
 ## SNMP: trap-listen
@@ -856,6 +1019,8 @@ dhs producer snmp — BE an agent, and emit notifications
 VERBS
   serve   answer polls against a served MIB
   trap    send one notification to one or more receivers
+  inform  the same notification, ACKNOWLEDGED: retried until each
+          receiver answers, and it says which one did not
   mib     write DHS-MIB, the module defining what the agent serves and sends
           under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
   status  runtime snapshot of a serving instance (--url)
@@ -873,6 +1038,10 @@ EXAMPLES
   dhs producer snmp trap --to 10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # an alarm you need to KNOW arrived: retried until acknowledged
+  dhs producer snmp inform --to 10.6.250.5/2c/public
+  dhs producer snmp inform --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
 
   # the module a receiver loads to name what it gets from us
   dhs producer snmp mib --out DHS-MIB.mib
@@ -910,15 +1079,15 @@ Usage of serve:
   -read-community string
     	community that admits GET, GETNEXT and GETBULK (default "public")
   -v3-auth string
-    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
+    	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512. Without it the user is noAuthNoPriv.
   -v3-auth-pass string
-    	v3 authentication password
+    	v3 authentication password (prefer SNMP_V3_AUTH_PASS)
   -v3-priv string
     	v3 privacy: des or aes
   -v3-priv-pass string
-    	v3 privacy password
+    	v3 privacy password (prefer SNMP_V3_PRIV_PASS)
   -v3-user string
-    	USM user to accept authenticated v3 requests as. Setting it makes the agent answer v3 (as well as v1/v2c).
+    	USM user this agent answers v3 as. v3 is ON by default — pass --v3-user="" to serve v1/v2c only. (default "dhs")
   -write-community string
     	community that admits SET. EMPTY REFUSES EVERY SET, including one carrying the read community — a plant where one password does both is one typo from a re-route.
 ```
@@ -1037,7 +1206,10 @@ DESCRIPTION
 FLAGS
   --slot N           slot number (required)
   --all              walk every present slot
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
@@ -1180,6 +1352,12 @@ FLAGS
   --group G          only events in this group (default: any)
   --label L          only events for this label (requires --slot)
   --id I             only events for this object id
+  --alarm FILE       judge values with this template instead of the
+                     cached one (.cache/alarm/<proto>/<model>.json)
+  --no-alarm         do not judge values at all
+  --metrics-addr A   serve Prometheus /metrics + /snapshot.json while
+                     watching: dhs_alarm_* verdicts and dhs_connector_*
+                     traffic, labelled proto + device
 
 EXAMPLES
   acp watch 10.6.239.113                              # everything
@@ -1187,6 +1365,8 @@ EXAMPLES
   acp watch 10.6.239.113 --slot 1 --group control
   acp watch 10.6.239.113 --slot 1 --label GainA
   acp watch 10.6.239.113 --verbose                    # + debug lines
+  acp watch 10.6.239.113 --metrics-addr :9110          # scraped by Prometheus
+  acp watch 10.6.239.113 --log /var/log/dhs-acp1.log --log-format json
 ```
 
 ## consumer export
@@ -1218,7 +1398,10 @@ FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
   --out FILE         output file path    (default: stdout)
   --slot N           export only this slot (-1 = all present)
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
 
 EXAMPLES
   acp export 10.6.239.113 --format json --out device.json
@@ -1565,11 +1748,13 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -1601,6 +1786,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)
@@ -1642,11 +1828,13 @@ PROTOCOLS
   acp2          Axon Control Protocol v2 (AN2/TCP)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
@@ -1678,6 +1866,7 @@ GENERIC VERBS (acp1 / acp2 / emberplus)
   validate   decode a captured frames.jsonl through the codec offline (per ADR-0021)
   health     print 3-layer session health (reachable / connected / live)
   status     one-shot device status: session health + identity (--output json)
+  alarm      read and edit the per-model alarm template (list / get / set / test / export / import)
   bench      Ember+ — fire N matrix crosspoint ops over one TCP session and time it
   router     read a router's routing interface: matrices, levels, sizes (RollCall only)
   route      read or make one crosspoint (RollCall only)

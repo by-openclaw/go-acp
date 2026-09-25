@@ -6,6 +6,14 @@ rule_files:
   - /etc/prometheus/alerts.yml
 
 scrape_configs:
+  # One target per alarm watch, written by ansible/playbooks/alarm.yml.
+  # Prometheus re-reads the file by itself: adding a device to the
+  # inventory and running the play is the whole procedure.
+  - job_name: dhs-watch
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/dhs-watch.yml"]
+        refresh_interval: 30s
+
   - job_name: dhs
     static_configs:
       # host.docker.internal works on Docker Desktop (Mac, Windows).

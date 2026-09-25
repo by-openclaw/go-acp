@@ -327,3 +327,18 @@ func TestParseNum(t *testing.T) {
 		})
 	}
 }
+
+func TestCSVValueNameFromMeta(t *testing.T) {
+	// A dictionary-named value (mnset) fills value_name without being a wire enum.
+	o := consumer.Object{Path: []string{"self", "class"}, Kind: consumer.KindString,
+		Value: consumer.Value{Kind: consumer.KindString, Str: "d"}, Meta: map[string]any{"value_name": "Class D (150 µs)"}}
+	val, name := valueAndName(o)
+	if val != "d" || name != "Class D (150 µs)" {
+		t.Errorf("valueAndName = %q, %q", val, name)
+	}
+	// A real enum keeps its own name even if Meta carries one.
+	e := consumer.Object{Kind: consumer.KindEnum, Value: consumer.Value{Kind: consumer.KindEnum, Enum: 2, Str: "wire"}, Meta: map[string]any{"value_name": "meta"}}
+	if _, name := valueAndName(e); name != "wire" {
+		t.Errorf("enum name = %q", name)
+	}
+}

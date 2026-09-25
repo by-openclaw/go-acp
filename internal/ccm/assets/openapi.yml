@@ -1,0 +1,4317 @@
+openapi: 3.1.1
+info:
+  title: Neuron Shuffle
+  version: 2.0.0
+servers:
+- url: /api
+paths:
+  /hardware/ddr:
+    get:
+      tags:
+      - Hardware
+      operationId: GetDDRMemoryBankStatus
+      summary: DDR memory bank status
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/DDRStatus'
+                - required:
+                  - memoryBank1
+                  - memoryBank2
+                  - memoryBank3
+                  - memoryBank4
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceivers
+      summary: List audio receiver identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/{uuid}:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceiver
+      summary: Get an audio receiver
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioReceiver'
+                - required:
+                  - name
+                  - enable
+                  - nmos
+                  - sdp
+                  - primaryLeg
+                  - secondaryLeg
+                  - skew
+                  - streamDelayMs
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: PutAudioReceiver
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioReceiver'
+              - required:
+                - name
+                - enable
+                - nmos
+                - sdp
+                - primaryLeg
+                - secondaryLeg
+                - skew
+                - streamDelayMs
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: PatchAudioReceiver
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioReceiver'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/{uuid}/status:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceiverStatus
+      summary: Get audio receiver status
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioReceiverStatus'
+                - required:
+                  - mediaType
+                  - info
+                  - primaryLeg
+                  - secondaryLeg
+                  - numChannels
+                  - streamDelayMs
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/{uuid}/metrics:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceiverMetrics
+      summary: Get audio receiver metrics
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioReceiverMetrics'
+                - required:
+                  - primaryLeg
+                  - secondaryLeg
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/{uuid}/channels:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceiverChannels
+      summary: List audio receiver channel uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/{uuid}/channels/{channelUuid}:
+    get:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: GetAudioReceiverChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioSourceChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/receivers/audio/metrics/reset:
+    post:
+      tags:
+      - IP
+      - IP Receiver
+      - Audio
+      operationId: ResetAudioReceiverMetrics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioReceiverResetMetrics'
+        required: true
+      responses:
+        '200':
+          description: 200 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/audio:
+    get:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: GetAudioSenders
+      summary: List audio sender identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/audio/{uuid}:
+    get:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: GetAudioSender
+      summary: Get an audio sender
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioSender'
+                - required:
+                  - name
+                  - enable
+                  - nmos
+                  - mediaType
+                  - primaryLeg
+                  - secondaryLeg
+                  - nrChannels
+                  - bitDepth
+                  - packetTime
+                  - inputSelection
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: PutAudioSender
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioSender'
+              - required:
+                - name
+                - enable
+                - nmos
+                - mediaType
+                - primaryLeg
+                - secondaryLeg
+                - nrChannels
+                - bitDepth
+                - packetTime
+                - inputSelection
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: PatchAudioSender
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioSender'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/audio/{uuid}/status:
+    get:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: GetAudioSenderStatus
+      summary: Get audio sender status
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioSenderStatus'
+                - required:
+                  - info
+                  - sdp
+                  - primaryLeg
+                  - secondaryLeg
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/audio/{uuid}/channels:
+    get:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: GetAudioSenderChannels
+      summary: List audio sender channel (slot) uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/audio/{uuid}/channels/{channelUuid}:
+    get:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: GetAudioSenderChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioDestinationChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+                  - gain
+                  - phase
+                  - inputSelectionStatus
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: PutAudioSenderChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - required:
+                - gain
+                - phase
+                - inputSelectionStatus
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - IP
+      - IP Sender
+      - Audio
+      operationId: PatchAudioSenderChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/ip/senders/rtp-payload-types:
+    get:
+      tags:
+      - IP
+      operationId: GetRTPPayloadTypes
+      summary: RTP payload type numbers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/RtpPayloadTypeNumbers'
+                - required:
+                  - s2110_30
+                  - s2110_31
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - IP
+      operationId: PutRTPPayloadTypes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/RtpPayloadTypeNumbers'
+              - required:
+                - s2110_30
+                - s2110_31
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - IP
+      operationId: PatchRTPPayloadTypes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/RtpPayloadTypeNumbers'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/inputs:
+    get:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: GetMadiInputs
+      summary: List MADI input identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/inputs/{uuid}:
+    get:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: GetMadiInput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MadiInput'
+                - required:
+                  - name
+                  - enable
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: PutMadiInput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MadiInput'
+              - required:
+                - name
+                - enable
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: PatchMadiInput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MadiInput'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/inputs/{uuid}/status:
+    get:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: GetMadiInputStatus
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MadiInputStatus'
+                - required:
+                  - status
+                  - channelMode
+                  - frameType
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/inputs/{uuid}/channels:
+    get:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: GetMadiInputChannels
+      summary: List MADI input channel (flow) uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/inputs/{uuid}/channels/{channelUuid}:
+    get:
+      tags:
+      - Madi
+      - Madi Input
+      - Audio
+      operationId: GetMadiInputChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioSourceChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/outputs:
+    get:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: GetMadiOutputs
+      summary: List MADI output identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/outputs/{uuid}:
+    get:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: GetMadiOutput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MadiOutput'
+                - required:
+                  - name
+                  - enable
+                  - channelMode
+                  - inputSelection
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: PutMadiOutput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MadiOutput'
+              - required:
+                - name
+                - enable
+                - channelMode
+                - inputSelection
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: PatchMadiOutput
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MadiOutput'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/outputs/{uuid}/channels:
+    get:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: GetMadiOutputChannels
+      summary: List MADI output channel (flow) uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /io/madi/outputs/{uuid}/channels/{channelUuid}:
+    get:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: GetMadiOutputChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioDestinationChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+                  - gain
+                  - phase
+                  - inputSelectionStatus
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: PutMadiOutputChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - required:
+                - gain
+                - phase
+                - inputSelectionStatus
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Madi
+      - Madi Output
+      - Audio
+      operationId: PatchMadiOutputChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /licensing:
+    get:
+      tags:
+      - Licensing
+      operationId: GetLicensings
+      summary: Licensed feature usage
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                  - $ref: '#/components/schemas/Feature'
+                  - required:
+                    - name
+                    - limit
+                    - used
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /matrices:
+    get:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: GetMatrixIdentifiers
+      summary: List routing matrix identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /matrices/audio/info:
+    get:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: GetAudioMatrixInfo
+      summary: Main matrix axes (sources and destinations)
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MatrixInfo'
+                - required:
+                  - sources
+                  - destinations
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /matrices/audio/state/active:
+    get:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: GetAudioMatrixActiveState
+      summary: Live crosspoints (per-channel main/backup as chosen by hardware)
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /matrices/audio/state/main:
+    get:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: GetAudioMatrixMainState
+      summary: Current main crosspoints
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: PutAudioMatrixMainState
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: PatchAudioMatrixMainState
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MatrixState'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /matrices/audio/state/backup:
+    get:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: GetAudioMatrixBackupState
+      summary: Current backup crosspoints
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixState'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: PutAudioMatrixBackupState
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatrixState'
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Matrix
+      - Matrix
+      operationId: PatchAudioMatrixBackupState
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MatrixState'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacs
+      summary: List MAC identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMac
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/EthDevice'
+                - required:
+                  - name
+                  - ipAddrMethod
+                  - manualIpV4Config
+                  - fec
+                  - igmpV3RefreshRate
+                  - inBandControl
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Network
+      - Macs
+      operationId: PutMac
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/EthDevice'
+              - required:
+                - ipAddrMethod
+                - manualIpV4Config
+                - fec
+                - igmpV3RefreshRate
+                - inBandControl
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Network
+      - Macs
+      operationId: PatchMac
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/EthDevice'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}/status:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacStatus
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/EthDeviceStatus'
+                - required:
+                  - name
+                  - macAddr
+                  - ip
+                  - netmask
+                  - dnsDomain
+                  - dnsServers
+                  - link
+                  - ipAddrMethod
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}/lldp:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacLldp
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Lldp'
+                - required:
+                  - age
+                  - chassisId
+                  - managementIp
+                  - portDesc
+                  - portId
+                  - sysDesc
+                  - sysName
+                  - ttl
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}/metrics:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacMetrics
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MacMetrics'
+                - required:
+                  - fecCorrectedPacket
+                  - fecUncorrectPacket
+                  - packetDropRate
+                  - actualRxBandWidth
+                  - expectedRxBandwidth
+                  - actualTxBandwidth
+                  - expectedTxBandwidth
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}/routes:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacRoutes
+      summary: List MAC route uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/macs/{uuid}/routes/{routeUuid}:
+    get:
+      tags:
+      - Network
+      - Macs
+      operationId: GetMacRoute
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: routeUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Route'
+                - required:
+                  - enable
+                  - destinationIp
+                  - gateway
+                  - netmask
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Network
+      - Macs
+      operationId: PutMacRoute
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: routeUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Route'
+              - required:
+                - enable
+                - destinationIp
+                - gateway
+                - netmask
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Network
+      - Macs
+      operationId: PatchMacRoute
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: routeUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Route'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/services/ftp:
+    get:
+      tags:
+      - Network
+      operationId: GetFtp
+      summary: FTP server enable state
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Ftp'
+                - required:
+                  - enable
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Network
+      operationId: PutFtp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Ftp'
+              - required:
+                - enable
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Network
+      operationId: PatchFtp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Ftp'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/services/nmos:
+    get:
+      tags:
+      - Network
+      - NMOS
+      operationId: GetNmosSettings
+      summary: NMOS settings
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Nmos'
+                - required:
+                  - enable
+                  - description
+                  - label
+                  - registry
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Network
+      - NMOS
+      operationId: PutNmosSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Nmos'
+              - required:
+                - enable
+                - description
+                - label
+                - registry
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Network
+      - NMOS
+      operationId: PatchNmosSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Nmos'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /network/services/nmos/status:
+    get:
+      tags:
+      - Network
+      - NMOS
+      operationId: GetNmosStatus
+      summary: NMOS status
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/NmosStatus'
+                - required:
+                  - system
+                  - is04HeartbeatInterval
+                  - ptp
+                  - syslog
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/analyser:
+    get:
+      tags:
+      - Audio Analyser
+      - Audio Processing
+      - Audio
+      operationId: GetAudioAnalyserSettings
+      summary: Audio analyser general settings
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioAnalyser'
+                - required:
+                  - enable
+                  - updateInterval
+                  - scale
+                  - silence
+                  - mute
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Analyser
+      - Audio Processing
+      - Audio
+      operationId: PutAudioAnalyserSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioAnalyser'
+              - required:
+                - enable
+                - updateInterval
+                - scale
+                - silence
+                - mute
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Analyser
+      - Audio Processing
+      - Audio
+      operationId: PatchAudioAnalyserSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioAnalyser'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/analyser/channels:
+    get:
+      tags:
+      - Audio Analyser
+      - Audio Processing
+      - Audio
+      operationId: GetAudioAnalyserStatuses
+      summary: List audio analyser channel identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/analyser/channels/{uuid}:
+    get:
+      tags:
+      - Audio Analyser
+      - Audio Processing
+      - Audio
+      operationId: GetAudioAnalyserStatus
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioAnalyserChannelStatus'
+                - required:
+                  - name
+                  - frequency
+                  - level
+                  - peak
+                  - format
+                  - silenceStatus
+                  - muteStatus
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/delay:
+    get:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: GetDelayBanks
+      summary: List audio bank identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/delay/{uuid}:
+    get:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: GetDelayBank
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioDelayBank'
+                - required:
+                  - name
+                  - delay
+                  - inputSelection
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: PutDelayBank
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDelayBank'
+              - required:
+                - delay
+                - inputSelection
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: PatchDelayBank
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDelayBank'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/delay/{uuid}/channels:
+    get:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: GetDelayBankChannels
+      summary: List audio bank channel (flow) uuids
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/delay/{uuid}/channels/{channelUuid}:
+    get:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: GetDelayBankChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioDestinationChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+                  - gain
+                  - phase
+                  - inputSelectionStatus
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: PutDelayBankChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - required:
+                - gain
+                - phase
+                - inputSelectionStatus
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Processing
+      - Delay Bank
+      - Audio
+      operationId: PatchDelayBankChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: channelUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioDestinationChannel'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio:
+    get:
+      tags:
+      - Audio Processing
+      - Audio
+      operationId: GetAudioProcessing
+      summary: Get audio processing settings
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioProcessing'
+                - required:
+                  - inputSelection
+                  - resetStream
+                  - cleanSwitch
+                  - guardbandSwitch
+                  - salvo
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Processing
+      - Audio
+      operationId: PutAudioProcessing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioProcessing'
+              - required:
+                - inputSelection
+                - resetStream
+                - cleanSwitch
+                - guardbandSwitch
+                - salvo
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Processing
+      - Audio
+      operationId: PatchAudioProcessing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioProcessing'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/generator/channels:
+    get:
+      tags:
+      - Audio Generator
+      - Audio Processing
+      - Audio
+      operationId: GetAudioGeneratorChannels
+      summary: List audio generator identifiers
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/generator/channels/{uuid}:
+    get:
+      tags:
+      - Audio Generator
+      - Audio Processing
+      - Audio
+      operationId: GetAudioGeneratorChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioGenerator'
+                - required:
+                  - name
+                  - frequency
+                  - level
+                  - phase
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Audio Generator
+      - Audio Processing
+      - Audio
+      operationId: PutAudioGeneratorChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioGenerator'
+              - required:
+                - frequency
+                - level
+                - phase
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Audio Generator
+      - Audio Processing
+      - Audio
+      operationId: PatchAudioGeneratorChannel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/AudioGenerator'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/mute:
+    get:
+      tags:
+      - Audio Processing
+      - Audio
+      operationId: GetMuteChannels
+      summary: List mute flow uuids
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /processing/audio/mute/{uuid}:
+    get:
+      tags:
+      - Audio Processing
+      - Audio
+      operationId: GetMuteChannel
+      summary: Get the mute flow
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/AudioSourceChannel'
+                - required:
+                  - name
+                  - number
+                  - matrixIndex
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /reference:
+    get:
+      tags:
+      - Reference
+      operationId: GetReferenceSettings
+      summary: Reference (clock) settings
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MiscReference'
+                - required:
+                  - ntp
+                  - ptp
+                  - reference1
+                  - reference2
+                  - refSelection
+                  - timeSelection
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Reference
+      operationId: PutReferenceSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MiscReference'
+              - required:
+                - ntp
+                - ptp
+                - reference1
+                - reference2
+                - refSelection
+                - timeSelection
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Reference
+      operationId: PatchReferenceSettings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/MiscReference'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /reference/status:
+    get:
+      tags:
+      - Reference
+      operationId: GetReferenceStatus
+      summary: Reference (clock) status
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MiscReferenceStatus'
+                - required:
+                  - system
+                  - ptp
+                  - ntp
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /self:
+    get:
+      tags:
+      - Self
+      operationId: GetSelf
+      summary: Device self-identification
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Self'
+                - required:
+                  - productName
+                  - productVersion
+                  - productHash
+                  - timestamp
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /self/labels:
+    get:
+      tags:
+      - Self
+      operationId: GetUserLabels
+      summary: List user label uuids
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /self/labels/{uuid}:
+    get:
+      tags:
+      - Self
+      operationId: GetUserLabel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        '200':
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UserLabel'
+                - required:
+                  - name
+                  - index
+                  - label
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - Self
+      operationId: PutUserLabel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/UserLabel'
+              - required:
+                - label
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - Self
+      operationId: PatchUserLabel
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/UserLabel'
+              - minProperties: 1
+        required: true
+      responses:
+        '202':
+          description: 202 response
+        '404':
+          description: 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: 500 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+    NmosMetaData:
+      type: object
+      properties:
+        label:
+          type: string
+        groupHint:
+          type: string
+    AudioMediaTypeEnum:
+      type: string
+      enum:
+      - s2110-30
+      - s2110-31
+    ReceiverSkewEnum:
+      type: string
+      enum:
+      - ClassA
+      - ClassB
+      - ClassC
+      - ClassD
+    BitDepthEnum:
+      type: string
+      enum:
+      - '16'
+      - '24'
+      - '32'
+    InputSelectionStatusEnum:
+      type: string
+      enum:
+      - Main
+      - Backup
+    InputSelectionEnum:
+      type: string
+      enum:
+      - Auto
+      - Main
+      - Backup
+    MadiInputChannelModeEnum:
+      type: string
+      enum:
+      - NA
+      - '14'
+      - '16'
+      - '28'
+      - '32'
+      - '56'
+      - '64'
+      - Error
+    MadiOutputChannelModeEnum:
+      type: string
+      enum:
+      - '56'
+      - '64'
+    PhaseEnum:
+      type: string
+      enum:
+      - '0'
+      - '180'
+    PacketTimeEnum:
+      type: string
+      enum:
+      - 83us
+      - 125us
+      - 250us
+      - 333us
+      - 1ms
+      - 4ms
+    NrChannelsEnum:
+      type: string
+      enum:
+      - '1'
+      - '2'
+      - '4'
+      - '8'
+      - '16'
+      - '32'
+      - '64'
+    GainPhase:
+      type: object
+      properties:
+        gain:
+          type: number
+          format: float
+          minimum: -60
+          maximum: 12
+        phase:
+          $ref: '#/components/schemas/PhaseEnum'
+    AudioChannelBase:
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          format: int32
+          readOnly: true
+        matrixIndex:
+          type: integer
+          format: int32
+          readOnly: true
+    AudioSourceChannel:
+      description: A routable audio source channel (matrix flow).
+      x-evs-resource-version: 0.1.0
+      allOf:
+      - $ref: '#/components/schemas/AudioChannelBase'
+      - type: object
+    AudioDestinationChannel:
+      description: A routable audio destination channel (matrix flow) with gain/phase.
+      x-evs-resource-version: 0.1.0
+      allOf:
+      - $ref: '#/components/schemas/AudioChannelBase'
+      - type: object
+        properties:
+          gain:
+            type: number
+            format: float
+            minimum: -60
+            maximum: 12
+          phase:
+            $ref: '#/components/schemas/PhaseEnum'
+          inputSelectionStatus:
+            $ref: '#/components/schemas/InputSelectionStatusEnum'
+    IpSenderLeg:
+      type: object
+      properties:
+        mac:
+          type: string
+        ip:
+          type: string
+        port:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 65535
+          default: 12700
+    WebSocketMessageType:
+      type: string
+      enum:
+      - Event
+      - CreateSubscription
+      - CreateSubscriptionResponse
+      - DeleteSubscription
+      - DeleteSubscriptionResponse
+    WebSocketMessage:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/WebSocketMessageType'
+        id:
+          type: integer
+          format: int64
+        payload: {}
+    CreateSubscription:
+      type: object
+      properties:
+        relativeUrl:
+          type: string
+    CreateSubscriptionResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        subscriptionId:
+          type: string
+    DeleteSubscription:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+    DeleteSubscriptionResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+    Event:
+      type: object
+      properties:
+        documentRoot:
+          type: string
+        patch: {}
+    DDRMemoryBankStatusEnum:
+      type: string
+      enum:
+      - Initialising
+      - Ok
+      - Calibrating
+      - Error
+    DDRStatus:
+      description: DDR memory bank status
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        memoryBank1:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank2:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank3:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+        memoryBank4:
+          $ref: '#/components/schemas/DDRMemoryBankStatusEnum'
+    AudioReceiverLeg:
+      type: object
+      properties:
+        mac:
+          type: string
+    AudioReceiver:
+      description: IP audio receiver resource
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+        enable:
+          type: boolean
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        sdp:
+          type: string
+        primaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLeg'
+        secondaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLeg'
+        skew:
+          $ref: '#/components/schemas/ReceiverSkewEnum'
+        streamDelayMs:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5000
+    AudioReceiverLegStatus:
+      type: object
+      properties:
+        receiving:
+          type: boolean
+    AudioReceiverStatus:
+      type: object
+      properties:
+        mediaType:
+          $ref: '#/components/schemas/AudioMediaTypeEnum'
+        info:
+          type: string
+        primaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLegStatus'
+        secondaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLegStatus'
+        numChannels:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 64
+        streamDelayMs:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5000
+    AudioReceiverLegMetrics:
+      type: object
+      properties:
+        inputDelay:
+          type: number
+          format: float
+        dataRateKbps:
+          type: number
+          format: float
+        rtpSequenceErrorCount:
+          type: integer
+          format: int32
+        thresholdAlarm:
+          type: boolean
+        packetIntervalMin:
+          type: integer
+          format: int32
+        packetIntervalMax:
+          type: integer
+          format: int32
+        packetIntervalAvg:
+          type: integer
+          format: int32
+        averageSkew:
+          type: integer
+          format: int32
+        rtpSsrc:
+          type: integer
+          format: int64
+    AudioReceiverMetrics:
+      type: object
+      properties:
+        primaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLegMetrics'
+        secondaryLeg:
+          $ref: '#/components/schemas/AudioReceiverLegMetrics'
+    AudioReceiverResetMetrics:
+      type: object
+      properties:
+        rtpSequenceErrors:
+          type: boolean
+    AudioSender:
+      description: IP audio sender
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+        enable:
+          type: boolean
+        nmos:
+          $ref: '#/components/schemas/NmosMetaData'
+        mediaType:
+          $ref: '#/components/schemas/AudioMediaTypeEnum'
+        primaryLeg:
+          $ref: '#/components/schemas/IpSenderLeg'
+        secondaryLeg:
+          $ref: '#/components/schemas/IpSenderLeg'
+        nrChannels:
+          $ref: '#/components/schemas/NrChannelsEnum'
+        bitDepth:
+          $ref: '#/components/schemas/BitDepthEnum'
+        packetTime:
+          $ref: '#/components/schemas/PacketTimeEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+    AudioSenderLegStatus:
+      type: object
+      properties:
+        active:
+          type: boolean
+    AudioSenderStatus:
+      type: object
+      properties:
+        info:
+          type: string
+        sdp:
+          type: string
+        primaryLeg:
+          $ref: '#/components/schemas/AudioSenderLegStatus'
+        secondaryLeg:
+          $ref: '#/components/schemas/AudioSenderLegStatus'
+    RtpPayloadTypeNumbers:
+      description: RTP payload type numbers
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        s2110_30:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 127
+        s2110_31:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 127
+    MadiStatusEnum:
+      type: string
+      enum:
+      - NA
+      - Present
+      - Error
+    MadiFrameTypeEnum:
+      type: string
+      enum:
+      - NA
+      - <32k
+      - 32k
+      - <44.1k
+      - 44.1k
+      - <48k
+      - 48k
+      - <64k
+      - 64k
+      - <88.2k
+      - 88.2k
+      - <96k
+      - 96k
+      - <128k
+      - 128k
+      - <176.4k
+      - 176.4k
+      - <192k
+      - 192k
+      - '>192k'
+    MadiInput:
+      description: MADI input resource
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+        enable:
+          type: boolean
+    MadiInputStatus:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/MadiStatusEnum'
+        channelMode:
+          $ref: '#/components/schemas/MadiInputChannelModeEnum'
+        frameType:
+          $ref: '#/components/schemas/MadiFrameTypeEnum'
+    MadiOutput:
+      description: MADI output resource
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+        enable:
+          type: boolean
+        channelMode:
+          $ref: '#/components/schemas/MadiOutputChannelModeEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+    Feature:
+      description: Licensed feature usage
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+        limit:
+          type: integer
+          format: int32
+        used:
+          type: integer
+          format: int32
+    MatrixFlow:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        active:
+          type: boolean
+    MatrixGroup:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slots: {}
+    MatrixProvider:
+      type: object
+      properties:
+        path:
+          type: string
+        slots:
+          type: string
+        group:
+          $ref: '#/components/schemas/MatrixGroup'
+    MatrixInfo:
+      description: Matrix axes (source and destination Group providers)
+      x-evs-resource-version: 0.2.0
+      type: object
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatrixProvider'
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatrixProvider'
+    MatrixState:
+      description: Matrix crosspoints (destinationFlowUuid -> sourceFlowUuid)
+      x-evs-resource-version: 0.2.0
+      type: object
+      additionalProperties: {}
+    ForwardErrorCorrectionEnum:
+      type: string
+      enum:
+      - Off
+      - ReedSolomon
+    IpAddrMethodEnum:
+      type: string
+      enum:
+      - Manual
+      - DHCP
+    IpAddrMethodStatusEnum:
+      type: string
+      enum:
+      - Manual
+      - DHCP Asking
+      - DHCP Leased
+    Route:
+      type: object
+      properties:
+        enable:
+          type: boolean
+        destinationIp:
+          type: string
+        gateway:
+          type: string
+        netmask:
+          type: string
+    IpV4Config:
+      type: object
+      properties:
+        address:
+          type: string
+        netmask:
+          type: string
+        defaultGateway:
+          type: string
+        dnsDomain:
+          type: string
+        dnsServerPrimary:
+          type: string
+        dnsServerSecondary:
+          type: string
+    EthDevice:
+      description: Network interface (MAC) configuration
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        ipAddrMethod:
+          $ref: '#/components/schemas/IpAddrMethodEnum'
+        manualIpV4Config:
+          $ref: '#/components/schemas/IpV4Config'
+        fec:
+          $ref: '#/components/schemas/ForwardErrorCorrectionEnum'
+        igmpV3RefreshRate:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 18000
+        inBandControl:
+          type: boolean
+    EthDeviceStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        macAddr:
+          type: string
+        ip:
+          type: string
+        netmask:
+          type: string
+        dnsDomain:
+          type: string
+        dnsServers:
+          type: array
+          items:
+            type: string
+        link:
+          type: boolean
+        ipAddrMethod:
+          $ref: '#/components/schemas/IpAddrMethodStatusEnum'
+    Lldp:
+      type: object
+      properties:
+        age:
+          type: string
+        chassisId:
+          type: string
+        managementIp:
+          type: string
+        portDesc:
+          type: string
+        portId:
+          type: string
+        sysDesc:
+          type: string
+        sysName:
+          type: string
+        ttl:
+          type: string
+    MacMetrics:
+      type: object
+      properties:
+        fecCorrectedPacket:
+          type: integer
+          format: int32
+        fecUncorrectPacket:
+          type: integer
+          format: int32
+        packetDropRate:
+          type: integer
+          format: int32
+        actualRxBandWidth:
+          type: number
+          format: float
+        expectedRxBandwidth:
+          type: number
+          format: float
+        actualTxBandwidth:
+          type: number
+          format: float
+        expectedTxBandwidth:
+          type: number
+          format: float
+    Ftp:
+      description: FTP server enable state
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        enable:
+          type: boolean
+    DiscoveryModeEnum:
+      type: string
+      enum:
+      - None
+      - Manual
+      - mDNS
+      - Unicast
+    SystemApiStatusEnum:
+      type: string
+      enum:
+      - NA
+      - Present
+    NmosSystem:
+      type: object
+      properties:
+        applyApiIs09:
+          type: boolean
+        apiIs09Discovered:
+          $ref: '#/components/schemas/SystemApiStatusEnum'
+        uri:
+          type: string
+        uuid:
+          type: string
+          format: uuid
+    NmosPtp:
+      type: object
+      properties:
+        announceRcptTimeout:
+          type: integer
+          format: int32
+        domainNumber:
+          type: integer
+          format: int32
+    NmosSyslog:
+      type: object
+      properties:
+        hostname:
+          type: string
+        port:
+          type: integer
+          format: int32
+        hostnameV2:
+          type: string
+        portV2:
+          type: integer
+          format: int32
+    NmosRegistry:
+      type: object
+      properties:
+        discoveryMode:
+          $ref: '#/components/schemas/DiscoveryModeEnum'
+        addressOverride:
+          type: string
+        portOverride:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+          default: 12700
+        discoveryStatus:
+          $ref: '#/components/schemas/DiscoveryModeEnum'
+          readOnly: true
+        urlStatus:
+          type: string
+          readOnly: true
+    Nmos:
+      description: NMOS settings
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        enable:
+          type: boolean
+        description:
+          type: string
+        label:
+          type: string
+        registry:
+          $ref: '#/components/schemas/NmosRegistry'
+    NmosStatus:
+      description: NMOS status
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        system:
+          $ref: '#/components/schemas/NmosSystem'
+        is04HeartbeatInterval:
+          type: integer
+          format: int32
+        ptp:
+          $ref: '#/components/schemas/NmosPtp'
+        syslog:
+          $ref: '#/components/schemas/NmosSyslog'
+    AnalyserScale:
+      type: string
+      enum:
+      - AES EBU
+      - BBC
+      - Nordic
+      - VU
+    AudioAnalyserThreshold:
+      type: object
+      properties:
+        timeThreshold:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 10
+        levelThreshold:
+          type: number
+          format: float
+          minimum: -144
+          maximum: 0
+          default: -144
+    AudioAnalyser:
+      description: Audio analyser settings
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        enable:
+          type: boolean
+        updateInterval:
+          type: integer
+          format: int32
+        scale:
+          $ref: '#/components/schemas/AnalyserScale'
+        silence:
+          $ref: '#/components/schemas/AudioAnalyserThreshold'
+        mute:
+          $ref: '#/components/schemas/AudioAnalyserThreshold'
+    EmbedderAudioTypesEnum:
+      type: string
+      enum:
+      - NA
+      - PCM
+      - 'Null'
+      - TimeStmp
+      - MPEG-1
+      - MPEG-2
+      - SMPTE-KLV
+      - Dolby E
+      - Caption Data
+      - UserDef
+      - Rsvd
+      - Enh AC-3
+      - Off
+      - AC-4
+      - AC-3
+      - Dolby AC-4
+      - Dolby AC-3
+      - MPEG-1 L1
+      - MPEG-1 L2/L3
+      - MPEG-2 L1
+      - MPEG-2 L2
+      - MPEG-4 AAC
+      - MPEG-4 HE-AAC
+      - DTS Type II
+      - DTS Type III
+      - ATRAC
+      - ATRAC 2/3
+      - DTS
+      - WMA Pro
+      - MPEG-2 AAC
+      - MPEG-4 ALS
+      - Pause
+      - Utilities
+      - No Input
+      - Dolby Digital
+    AudioAnalyserChannelStatus:
+      description: Audio analyser per-channel measurement
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        frequency:
+          type: integer
+          format: int32
+        level:
+          type: number
+          format: double
+        peak:
+          type: number
+          format: double
+        format:
+          $ref: '#/components/schemas/EmbedderAudioTypesEnum'
+        silenceStatus:
+          type: boolean
+        muteStatus:
+          type: boolean
+    AudioDelayBank:
+      description: Audio processing memory bank
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        delay:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 3000
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+    SwitchBackEnum:
+      type: string
+      enum:
+      - Off
+      - On
+      - BackUpFail
+    ResetStream:
+      type: object
+      properties:
+        onInputDelayOverflow:
+          type: boolean
+        onSsrcChange:
+          type: boolean
+    InputSelection:
+      type: object
+      properties:
+        globalInputSelection:
+          type: boolean
+        switchBack:
+          $ref: '#/components/schemas/SwitchBackEnum'
+        inputSelection:
+          $ref: '#/components/schemas/InputSelectionEnum'
+    AudioProcessing:
+      description: Audio processing general settings
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        inputSelection:
+          $ref: '#/components/schemas/InputSelection'
+        resetStream:
+          $ref: '#/components/schemas/ResetStream'
+        cleanSwitch:
+          type: boolean
+        guardbandSwitch:
+          type: boolean
+        salvo:
+          type: boolean
+    AudioGenerator:
+      description: Audio test-tone generator
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        frequency:
+          type: integer
+          format: int32
+          minimum: 40
+          maximum: 16000
+          default: 1000
+        level:
+          type: number
+          format: float
+          minimum: -60
+          maximum: 0
+          default: -10
+        phase:
+          $ref: '#/components/schemas/PhaseEnum'
+    RefSelectionEnum:
+      type: string
+      enum:
+      - Freerun
+      - ptp-l3-e2e
+      - Reference1
+    TimeSelectionEnum:
+      type: string
+      enum:
+      - Auto
+      - PTP
+      - NTP
+    PTPProfileEnum:
+      type: string
+      enum:
+      - Disabled
+      - smpte2059-L3-e2e
+    NTPSourceEnum:
+      type: string
+      enum:
+      - Main
+      - Backup
+      - Unlocked
+    PortStatusEnum:
+      type: string
+      enum:
+      - None
+      - Initialising
+      - Faulty
+      - Disabled
+      - Listening
+      - PreMaster
+      - Master
+      - Passive
+      - Uncalibrated
+      - Slave
+      - Grandmaster
+    TimeSourceEnum:
+      type: string
+      enum:
+      - Unlocked
+      - PTP
+      - NTP_Main
+      - NTP_Backup
+    TimeSourceStatusEnum:
+      type: string
+      enum:
+      - Offline
+      - Syncing
+      - OK
+    NTP:
+      type: object
+      properties:
+        mainServer:
+          type: string
+        backupServer:
+          type: string
+    PTP:
+      type: object
+      properties:
+        domain:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 5000
+          default: 127
+        priority1:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 255
+          default: 248
+        priority2:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 255
+          default: 248
+        slaveOnly:
+          type: boolean
+          default: false
+        profile:
+          $ref: '#/components/schemas/PTPProfileEnum'
+    Reference:
+      type: object
+      properties:
+        vertical_delay:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 624
+        horizontal_delay:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 1727
+    MiscReference:
+      description: Reference (clock) settings
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        ntp:
+          $ref: '#/components/schemas/NTP'
+        ptp:
+          $ref: '#/components/schemas/PTP'
+        reference1:
+          $ref: '#/components/schemas/Reference'
+        reference2:
+          $ref: '#/components/schemas/Reference'
+        refSelection:
+          $ref: '#/components/schemas/RefSelectionEnum'
+        timeSelection:
+          $ref: '#/components/schemas/TimeSelectionEnum'
+    TimeSpec:
+      type: object
+      properties:
+        seconds:
+          type: integer
+          format: int32
+        nanoseconds:
+          type: integer
+          format: int32
+    TimeStats:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/TimeSourceEnum'
+        status:
+          $ref: '#/components/schemas/TimeSourceStatusEnum'
+        info:
+          type: string
+        time:
+          $ref: '#/components/schemas/TimeSpec'
+    SystemStats:
+      type: object
+      properties:
+        timeLocked:
+          type: boolean
+        systemTime:
+          type: integer
+          format: int32
+          default: 0
+        timeSource:
+          $ref: '#/components/schemas/TimeSourceEnum'
+        timeSourceStatuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeStats'
+    PtpPortStatus:
+      type: object
+      properties:
+        macAddr:
+          type: string
+        macName:
+          type: string
+        macUuid:
+          type: string
+          format: uuid
+        portStatus:
+          $ref: '#/components/schemas/PortStatusEnum'
+        rxAnnounceCount:
+          type: integer
+          format: int64
+        rxDelayReqCount:
+          type: integer
+          format: int64
+        rxDelayRespCount:
+          type: integer
+          format: int64
+        rxFollowUpCount:
+          type: integer
+          format: int64
+        rxManagementCount:
+          type: integer
+          format: int64
+        rxPdelayReqCount:
+          type: integer
+          format: int64
+        rxPdelayRespCount:
+          type: integer
+          format: int64
+        rxPdelayRespFollowUpCount:
+          type: integer
+          format: int64
+        rxSignalingCount:
+          type: integer
+          format: int64
+        rxSyncCount:
+          type: integer
+          format: int64
+        txAnnounceCount:
+          type: integer
+          format: int64
+        txDelayReqCount:
+          type: integer
+          format: int64
+        txDelayRespCount:
+          type: integer
+          format: int64
+        txFollowUpCount:
+          type: integer
+          format: int64
+        txManagementCount:
+          type: integer
+          format: int64
+        txPdelayReqCount:
+          type: integer
+          format: int64
+        txPdelayRespCount:
+          type: integer
+          format: int64
+        txPdelayRespFollowUpCount:
+          type: integer
+          format: int64
+        txSignalingCount:
+          type: integer
+          format: int64
+        txSyncCount:
+          type: integer
+          format: int64
+    PtpStats:
+      type: object
+      properties:
+        locked:
+          type: boolean
+        gmid:
+          type: string
+          default: 00:00:00:ff:fe:00:00:00
+        portStats:
+          type: array
+          items:
+            $ref: '#/components/schemas/PtpPortStatus'
+        grandmasterOffsetNs:
+          type: integer
+          format: int64
+    NtpStats:
+      type: object
+      properties:
+        lockedTo:
+          $ref: '#/components/schemas/NTPSourceEnum'
+    MiscReferenceStatus:
+      type: object
+      properties:
+        system:
+          $ref: '#/components/schemas/SystemStats'
+        ptp:
+          $ref: '#/components/schemas/PtpStats'
+        ntp:
+          $ref: '#/components/schemas/NtpStats'
+    Component:
+      description: A firmware/software component of the device
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+        gitHash:
+          type: string
+    Self:
+      description: Device self-identification resource
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        productName:
+          type: string
+        productVersion:
+          type: string
+        productHash:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/Component'
+    UserLabel:
+      description: User-defined label
+      x-evs-resource-version: 0.1.0
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        index:
+          type: integer
+          format: int32
+          readOnly: true
+        label:
+          type: string
+          maxLength: 16

@@ -1,0 +1,71 @@
+{
+ "model": "DR5000@1.3.1.1",
+ "protocol": "snmp",
+ "rows": [
+  {
+   "match": "**.Status.Input.Sat.Locked",
+   "kind": "enum",
+   "normal": "true",
+   "severity": "critical",
+   "hold": "10s",
+   "text": "demodulator lock",
+   "source": "the object's own description: \"indicates if we are locked on the carrier\". Not locked is not a setting and not a degradation — there is no signal."
+  },
+  {
+   "match": "**.Status.Input.Sat.SnrMargin",
+   "kind": "number",
+   "low": [
+    {"severity": "critical", "raise": 0, "clear": 5},
+    {"severity": "major", "raise": 10, "clear": 15},
+    {"severity": "minor", "raise": 20, "clear": 25}
+   ],
+   "hold": "30s",
+   "clear_hold": "60s",
+   "text": "C/N margin (centibels; 10 = 1.0 dB)",
+   "source": "the critical point is the vendor's own: \"a noise margin <=0 means that the signal is very likely to be undecodable\" (ATEME-DR5000-MIB, dr5000StatusInputSatSnrMargin, in centibels). The 1.0 dB and 2.0 dB rungs above it are a SITE RULE — how much warning this plant wants before that happens — and are the two numbers to change per link and per dish."
+  },
+  {
+   "match": "**.Status.Input.Sat.Ber",
+   "kind": "number",
+   "high": [
+    {"severity": "major", "raise": 20000, "clear": 10000},
+    {"severity": "minor", "raise": 2000, "clear": 1000}
+   ],
+   "hold": "30s",
+   "text": "bit error rate (multiples of 1e-8; 20000 = 2e-4)",
+   "source": "ETSI TR 101 290 §5.2 quasi-error-free: BER after Viterbi at 2e-4 is the point at which the transport stream stops being QEF, which is 20000 in this object's own unit (\"multiples of 1e-8\", ATEME-DR5000-MIB). The minor rung at 2e-5 is one decade earlier — a SITE RULE for early warning."
+  },
+  {
+   "match": "**.Status.Input.Bitrate",
+   "kind": "number",
+   "low": [{"severity": "critical", "raise": 0, "clear": 1000}],
+   "hold": "15s",
+   "text": "input bitrate (kbps)",
+   "source": "the object's own unit is kbps; zero means nothing is arriving at all. Read 44350 on the live carrier (2026-09-23)."
+  },
+  {
+   "match": "**.Status.Decode.CurrentProgram.Video.HasActivity",
+   "kind": "enum",
+   "normal": "true",
+   "severity": "critical",
+   "hold": "10s",
+   "text": "video on the SDI output",
+   "source": "the object's own description: \"indicates if there is a video on the output\". This is the one an operator is actually paid to watch."
+  },
+  {
+   "match": "**.Status.Decode.CurrentProgram.Video.Decoded.Valid",
+   "kind": "enum",
+   "normal": "true",
+   "severity": "major",
+   "hold": "10s",
+   "text": "decoder reporting a valid stream",
+   "source": "the object's own description: \"defines either the following fields are valid or not\" — when it is false, the codec/format fields beside it mean nothing, so a dashboard reading them is reading noise."
+  },
+  {
+   "match": "**",
+   "kind": "info",
+   "text": "no rule - reported, never alarmed",
+   "source": "every other object the IRD defines (~26 000 of them, most in the programme tables); the model defines the view, these rules only colour it"
+  }
+ ]
+}

@@ -126,3 +126,15 @@ internal/emberplus/testdata/fixtures/[0-9]*/raw.s101.jsonl
 # assets/Protocol/Source/*.zip — keep the zips, not the expansion.
 internal/snell-rollcall/assets/Protocol/Source/RollCallV2/
 internal/snell-rollcall/assets/Protocol/Source/ManagedWrapper/
+
+# RTBF-confidential (TLP AMBER) procedure + its text extract — local only, never in the repo.
+internal/MNSet/assets/Proc*dure*ajout*Fusion*.pdf
+internal/MNSet/assets/procedure-fusion-mnset.txt
+
+# Live captures of the EVS Neuron (bm-n-nnbrg-c01, 10.6.255.102): a
+# 29 MB BRIDGE DM and the walk/wire traces behind it. The rule above
+# holds — captures stay local; a replay fixture is hand-trimmed, and
+# these are not. Regenerate with:
+#   dhs consumer acp2 walk 10.6.255.102 --slots all --capture ...
+internal/acp2/testdata/neuron-102/
+tests/fixtures/products/evs/

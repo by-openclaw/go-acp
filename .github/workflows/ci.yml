@@ -271,6 +271,9 @@ jobs:
           check internal/cerebrum-nb/codec 100
           check internal/transport/ws 100
           check internal/transport/http 100
+          check internal/MNSet/consumer 100
+          check internal/consumer/pollwatch 100
+          check internal/consumer/alarm 100
           check internal/transport/conformance 100
           check tools/mibcheck 100
           check tools/gencli 100

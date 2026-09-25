@@ -25,31 +25,52 @@ import (
 )
 
 // runSNMPConsumer dispatches `dhs consumer snmp <verb> [args]`.
-func runSNMPConsumer(ctx context.Context, args []string) error {
+// runSNMPConsumer answers the verbs that are SNMP's own shape and says
+// so; handled=false hands the rest to the neutral dispatcher, where the
+// registered plugin answers tree / export / watch / alarm like any
+// other connector.
+func runSNMPConsumer(ctx context.Context, args []string) (bool, error) {
 	var lf *logFlags
 	lf, args = stripLogFlags(args)
 	ctx = withLogFlags(ctx, lf)
 
 	if len(args) == 0 || isHelpToken(args[0]) {
 		printSNMPConsumerHelp()
-		return nil
+		return true, nil
 	}
 	verb := args[0]
 	rest := args[1:]
 	switch verb {
 	case "get":
-		return runSNMPGet(ctx, rest)
+		// get / set exist in both shapes. SNMP's own speaks OIDs and
+		// MIB names (--oid sysDescr.0); the neutral one speaks the
+		// paths a walk produced (--path ateme.dr5000.…). Whichever the
+		// operator named is the one they meant.
+		if namesAPath(rest) {
+			return false, nil
+		}
+		return true, runSNMPGet(ctx, rest)
 	case "walk":
-		return runSNMPWalk(ctx, rest)
+		// Same rule as get/set. SNMP's own walk speaks subtrees
+		// (--oid 1.3.6.1.4.1.27338, --limit); the neutral one walks a
+		// SLOT and writes the device model to the DM cache, which is
+		// what every other connector's walk does and what an alarm
+		// template and a fixture are keyed by.
+		if namesASlot(rest) {
+			return false, nil
+		}
+		return true, runSNMPWalk(ctx, rest)
 	case "set":
-		return runSNMPSet(ctx, rest)
+		if namesAPath(rest) {
+			return false, nil
+		}
+		return true, runSNMPSet(ctx, rest)
 	case "trap-listen", "listen":
-		return runSNMPTrapListen(ctx, rest)
+		return true, runSNMPTrapListen(ctx, rest)
 	case "validate":
-		return runValidate(ctx, append([]string{"--protocol", "snmp"}, rest...))
+		return true, runValidate(ctx, append([]string{"--protocol", "snmp"}, rest...))
 	}
-	return fmt.Errorf(
-		"consumer snmp: unknown verb %q (expected: get | walk | set | trap-listen | validate)", verb)
+	return false, nil
 }
 
 // runSNMPProducer dispatches `dhs producer snmp <verb> [args]`.
@@ -69,10 +90,12 @@ func runSNMPProducer(ctx context.Context, args []string) error {
 		return runSNMPServe(ctx, rest)
 	case "trap":
 		return runSNMPTrapSend(ctx, rest)
+	case "inform":
+		return runSNMPInform(ctx, rest)
 	case "mib":
 		return runSNMPMIB(ctx, rest)
 	}
-	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap | mib)", verb)
+	return fmt.Errorf("producer snmp: unknown verb %q (expected: serve | trap | inform | mib)", verb)
 }
 
 // snmpFlags are what every consumer verb needs to reach an agent.
@@ -83,15 +106,72 @@ type snmpFlags struct {
 	retries   int
 	bulk      int
 	prefer    string
+
+	// v3 credentials. A user with no passwords is noAuthNoPriv, which
+	// identifies the manager without protecting the exchange; adding
+	// --auth makes it authNoPriv and --priv authPriv.
+	user      string
+	authProto string
+	authPass  string
+	privProto string
+	privPass  string
+	context   string
 }
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
-	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them.")
+	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK.")
 	fs.StringVar(&f.community, "community", "public", "read community (write community for `set`)")
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
 	fs.IntVar(&f.bulk, "max-repetitions", snmpcons.DefaultMaxRepetitions, "GETBULK window for `walk` (v2c only)")
 	fs.StringVar(&f.prefer, "mib", "", "comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)")
+	fs.StringVar(&f.user, "user", "", "v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user")
+	fs.StringVar(&f.authProto, "auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512")
+	fs.StringVar(&f.authPass, "auth-pass", "", "v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)")
+	fs.StringVar(&f.privProto, "priv", "", "v3 privacy: des or aes")
+	fs.StringVar(&f.privPass, "priv-pass", "", "v3 privacy password (prefer SNMP_V3_PRIV_PASS)")
+	fs.StringVar(&f.context, "context", "", "v3 context name; empty is the agent's default context")
+}
+
+// v3Env fills anything the flags left empty from the environment, the
+// same way the communities are taken. A password on a command line is
+// in the shell history and visible in ps to every user on the host.
+func (f *snmpFlags) v3Env() {
+	for _, p := range []struct {
+		field *string
+		env   string
+	}{
+		{&f.user, "SNMP_V3_USER"},
+		{&f.authProto, "SNMP_V3_AUTH"},
+		{&f.authPass, "SNMP_V3_AUTH_PASS"},
+		{&f.privProto, "SNMP_V3_PRIV"},
+		{&f.privPass, "SNMP_V3_PRIV_PASS"},
+		{&f.context, "SNMP_V3_CONTEXT"},
+	} {
+		if *p.field == "" {
+			*p.field = strings.TrimSpace(os.Getenv(p.env))
+		}
+	}
+}
+
+// credentials builds the v3 user from the flags and the environment.
+func (f *snmpFlags) credentials() (*snmpcons.V3, error) {
+	f.v3Env()
+	if f.user == "" {
+		return nil, fmt.Errorf("snmp: v3 authenticates as a USER — pass --user or set SNMP_V3_USER")
+	}
+	auth, err := parseAuthProtocol(f.authProto)
+	if err != nil {
+		return nil, err
+	}
+	priv, err := parsePrivProtocol(f.privProto)
+	if err != nil {
+		return nil, err
+	}
+	return &snmpcons.V3{
+		User: f.user, Auth: auth, AuthPass: f.authPass,
+		Priv: priv, PrivPass: f.privPass, Context: f.context,
+	}, nil
 }
 
 // modules is --mib as a list.
@@ -115,17 +195,23 @@ func (f *snmpFlags) options(addr string, prof compliance.Recorder) (snmpcons.Opt
 	case "2c", "v2c", "2":
 		v = codec.Version2c
 	case "3", "v3":
-		return snmpcons.Options{}, fmt.Errorf(
-			"snmp: v3 polling needs engine discovery and is not wired yet; " +
-				"v3 NOTIFICATIONS are (see `dhs producer snmp trap`)")
+		v = codec.Version3
 	default:
-		return snmpcons.Options{}, fmt.Errorf("snmp: unknown version %q (expected 1 or 2c)", f.version)
+		return snmpcons.Options{}, fmt.Errorf("snmp: unknown version %q (expected 1, 2c or 3)", f.version)
 	}
-	return snmpcons.Options{
+	opts := snmpcons.Options{
 		Addr: addr, Version: v, Community: f.community,
 		Timeout: f.timeout, Retries: f.retries, MaxRepetitions: f.bulk,
 		Compliance: prof,
-	}, nil
+	}
+	if v == codec.Version3 {
+		cred, err := f.credentials()
+		if err != nil {
+			return snmpcons.Options{}, err
+		}
+		opts.V3 = cred
+	}
+	return opts, nil
 }
 
 // hostArg takes the one positional argument every consumer verb needs.
@@ -428,10 +514,20 @@ VERBS
   validate      decode a captured frames.jsonl offline
 
 VERSIONS
-  --version 1 | 2c. The Tandberg IRDs in this lab answer v1 ONLY — v2c
-  gets no reply at all from them, which looks exactly like a device that
-  is down. v3 POLLING needs engine discovery and is not wired yet; v3
-  notifications are, in both directions.
+  --version 1 | 2c | 3. The Tandberg IRDs in this lab answer v1 ONLY —
+  v2c gets no reply at all from them, which looks exactly like a device
+  that is down. The ATEME DR5000 answers v2c as well, and v2c has
+  GETBULK.
+
+  v3 authenticates as a USER rather than with a community, so it needs
+  --user (or SNMP_V3_USER) and, for anything above noAuthNoPriv,
+  --auth/--auth-pass and --priv/--priv-pass. The manager discovers the
+  agent's engine first (RFC 3414 §4) and re-discovers by itself if the
+  agent reboots mid-session.
+
+  The neutral verbs — info, tree, walk, watch, alarm — take the same
+  credential from SNMP_V3_* and then prefer v3 over v2c and v1, because
+  v1 and v2c put a password in clear on every datagram.
 
 EXAMPLES
   # what a device says it is
@@ -440,7 +536,7 @@ EXAMPLES
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
-  # an IRD, which is v1-only
+  # a Tandberg IRD, which is v1-only
   dhs consumer snmp get --version 1 --oid sysDescr.0 10.6.255.110
 
   # Cerebrum's agent, which answers on 1161 rather than 161
@@ -454,7 +550,17 @@ EXAMPLES
   dhs consumer snmp trap-listen --bind :1162 --community public
 
   # and for v3 notifications, as the sender's engine
-  dhs consumer snmp trap-listen --bind :1162 --user operator       --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'`)
+  dhs consumer snmp trap-listen --bind :1162 --user operator       --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
+  # poll over v3, authenticated and encrypted. The passwords belong in
+  # the environment: a password on a command line is in the shell
+  # history and visible in ps to everyone on the host.
+  export SNMP_V3_USER=operator SNMP_V3_AUTH=sha256 SNMP_V3_PRIV=aes
+  export SNMP_V3_AUTH_PASS=... SNMP_V3_PRIV_PASS=...
+  dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.114
+
+  # the neutral verbs take the same credential and prefer v3 with it
+  dhs consumer snmp info 10.6.255.114`)
 }
 
 func printSNMPProducerHelp() {
@@ -463,6 +569,8 @@ func printSNMPProducerHelp() {
 VERBS
   serve   answer polls against a served MIB
   trap    send one notification to one or more receivers
+  inform  the same notification, ACKNOWLEDGED: retried until each
+          receiver answers, and it says which one did not
   mib     write DHS-MIB, the module defining what the agent serves and sends
           under BY-SYSTEMS' IANA enterprise number 54981, for a manager to load
   status  runtime snapshot of a serving instance (--url)
@@ -481,6 +589,10 @@ EXAMPLES
   dhs producer snmp trap --to 10.6.255.9:162/1/public,10.6.250.5/2c/public
   dhs producer snmp trap --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
 
+  # an alarm you need to KNOW arrived: retried until acknowledged
+  dhs producer snmp inform --to 10.6.250.5/2c/public
+  dhs producer snmp inform --to 10.6.250.7/3/operator       --user operator --auth sha256 --auth-pass '...' --priv aes --priv-pass '...'
+
   # the module a receiver loads to name what it gets from us
   dhs producer snmp mib --out DHS-MIB.mib
 
@@ -488,4 +600,51 @@ NOTE
   Every trap destination on the devices in docs/testbed.md currently
   points at an address that no longer exists, so they emit to nobody.
   ` + "`trap`" + ` is how a receiver is proven before anything depends on it.`)
+}
+
+// namesASlot reports whether the operator asked for the neutral walk:
+// a device model for one slot, rather than an OID subtree.
+func namesASlot(args []string) bool {
+	for _, a := range args {
+		if a == "--slot" || a == "-slot" || strings.HasPrefix(a, "--slot=") || strings.HasPrefix(a, "-slot=") {
+			return true
+		}
+	}
+	return false
+}
+
+// namesAPath reports whether the operator addressed the object the
+// neutral way — by the path or the label a walk produced.
+func namesAPath(args []string) bool {
+	for _, a := range args {
+		if a == "--path" || a == "-path" || a == "--label" || a == "-label" ||
+			strings.HasPrefix(a, "--path=") || strings.HasPrefix(a, "--label=") {
+			return true
+		}
+	}
+	return false
+}
+
+// snmpV3FromEnv builds the neutral connector's v3 credential from the
+// environment. It is how `info`, `tree`, `walk`, `watch` and `alarm`
+// get one: those verbs are protocol-neutral and have no SNMP flags, so
+// the credential arrives the same way the communities do.
+//
+// Nil means "no user configured", which leaves the connector on v2c/v1
+// — there is no anonymous v3 to fall back to.
+func snmpV3FromEnv() *snmpcons.V3 {
+	f := &snmpFlags{}
+	f.v3Env()
+	if f.user == "" {
+		return nil
+	}
+	cred, err := f.credentials()
+	if err != nil {
+		// A half-configured credential is worth saying out loud: the
+		// alternative is a connector that quietly polls v2c while an
+		// operator believes it is authenticating.
+		fmt.Fprintf(os.Stderr, "warning: SNMP_V3_* ignored: %v\n", err)
+		return nil
+	}
+	return cred
 }

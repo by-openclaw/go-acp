@@ -32,6 +32,7 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 
 	receiver := fs.String("receiver", "", "IS-04 Receiver UUID to drive (required)")
 	sender := fs.String("sender", "", "IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver")
+	senderNode := fs.String("sender-node", "", "the Sender's own Node (http://host:port) when it lives on another device than --node and no Registry knows it — the SDP is fetched from THAT Node's IS-05")
 	disconnect := fs.Bool("disconnect", false, "explicitly disconnect --receiver (same as omitting --sender)")
 	mode := fs.String("mode", "activate_immediate",
 		"activate_immediate | activate_scheduled_relative | activate_scheduled_absolute")
@@ -82,6 +83,7 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	res, err := c.Connect(ctx, consumer.ConnectRequest{
 		SenderID:   *sender,
 		ReceiverID: *receiver,
+		SenderNode: *senderNode,
 		Mode:       is05.ActivationMode(*mode),
 		When:       *when,
 		DryRun:     *dryRun,

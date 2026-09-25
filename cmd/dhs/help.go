@@ -64,7 +64,10 @@ DESCRIPTION
 FLAGS
   --slot N           slot number (required)
   --all              walk every present slot
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
   --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
 
 EXAMPLES
@@ -195,13 +198,21 @@ FLAGS
   --group G          only events in this group (default: any)
   --label L          only events for this label (requires --slot)
   --id I             only events for this object id
+  --alarm FILE       judge values with this template instead of the
+                     cached one (.cache/alarm/<proto>/<model>.json)
+  --no-alarm         do not judge values at all
+  --metrics-addr A   serve Prometheus /metrics + /snapshot.json while
+                     watching: dhs_alarm_* verdicts and dhs_connector_*
+                     traffic, labelled proto + device
 
 EXAMPLES
   acp watch 10.6.239.113                              # everything
   acp watch 10.6.239.113 --slot 1                     # slot 1 only
   acp watch 10.6.239.113 --slot 1 --group control
   acp watch 10.6.239.113 --slot 1 --label GainA
-  acp watch 10.6.239.113 --verbose                    # + debug lines`)
+  acp watch 10.6.239.113 --verbose                    # + debug lines
+  acp watch 10.6.239.113 --metrics-addr :9110          # scraped by Prometheus
+  acp watch 10.6.239.113 --log /var/log/dhs-acp1.log --log-format json`)
 }
 
 func helpExport() {
@@ -229,7 +240,10 @@ FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
   --out FILE         output file path    (default: stdout)
   --slot N           export only this slot (-1 = all present)
-  --path PATH        filter by tree path prefix (e.g. BOARD, PSU.1)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
 
 EXAMPLES
   acp export 10.6.239.113 --format json --out device.json

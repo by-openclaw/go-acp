@@ -68,6 +68,13 @@ var matrix = []helpEntry{
 	// the consumer walks and exports one.
 	{"CCM device (producer)", []string{"producer", "ccm", "serve", "--help"}},
 	{"CCM controller (consumer)", []string{"consumer", "ccm", "--help"}},
+	// Riedel MuoN eMSFP / FusioN over their own REST (MN SET not in the path).
+	{"MNSet (consumer)", []string{"consumer", "mnset", "--help"}},
+	{"MNSet: discover", []string{"consumer", "mnset", "discover", "--help"}},
+	{"MNSet: inventory", []string{"consumer", "mnset", "inventory", "--help"}},
+	// The alarm template is per model and shared by every connector;
+	// mnset is shown because its thresholds are the worked example.
+	{"Alarm template", []string{"consumer", "mnset", "alarm", "--help"}},
 	// SNMP — both roles, and the notification path in both directions.
 	{"SNMP consumer", []string{"consumer", "snmp", "--help"}},
 	{"SNMP: get", []string{"consumer", "snmp", "get", "--help"}},

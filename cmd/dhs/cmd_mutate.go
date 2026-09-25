@@ -75,7 +75,7 @@ func runNoArgMutate(ctx context.Context, verb string, args []string) error {
 			}
 		}
 	}
-	if !resolved && (*pathFlag != "" || *label != "") {
+	if !resolved && (*pathFlag != "" || *label != "") && !pathNative(plug, *pathFlag, *label) {
 		if *noWalk {
 			return fmt.Errorf("--no-walk: %q not in cache for slot %d (walk first or drop --no-walk)",
 				orFirst(*pathFlag, *label), *slot)

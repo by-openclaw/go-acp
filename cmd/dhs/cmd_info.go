@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sort"
 
 	"dhs/internal/consumer"
 )
@@ -61,6 +62,16 @@ func runInfo(ctx context.Context, args []string) error {
 			continue
 		}
 		fmt.Printf("  slot %2d   status=%-10s online=%t\n", slot, si.Status, si.IsOnline)
+		// What the plugin knows about the card — identity, serial, ports —
+		// the same map the JSON shape carries, sorted so two runs diff.
+		keys := make([]string, 0, len(si.Identity))
+		for k := range si.Identity {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Printf("            %-14s %s\n", k, si.Identity[k])
+		}
 	}
 	return nil
 }

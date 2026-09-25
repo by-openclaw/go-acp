@@ -70,6 +70,16 @@ func runWatch(ctx context.Context, args []string) error {
 	group := fs.String("group", "", "group filter (empty = any)")
 	label := fs.String("label", "", "label filter (requires prior walk)")
 	id := fs.Int("id", -1, "object id filter (-1 = any)")
+	alarmFile := fs.String("alarm", "",
+		"evaluate every change against this alarm template instead of the cached one "+
+			"(.cache/alarm/<proto>/<Model@SwRev>.json, then _default.json)")
+	noAlarm := fs.Bool("no-alarm", false, "do not evaluate alarms, even when a template is cached")
+	interval := fs.Duration("interval", 0,
+		"how often a POLLED connector re-reads each object (snmp, and any "+
+			"connector with no push channel); ignored by protocols that announce")
+	metricsAddr := fs.String("metrics-addr", "",
+		"serve Prometheus /metrics + /snapshot.json on this address while watching "+
+			"(dhs_alarm_* verdicts and dhs_connector_* traffic, labelled proto + device)")
 	dmLibrary := fs.String("dm-library", "",
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
 	pathFilter := fs.String("path", "",
@@ -117,6 +127,33 @@ func runWatch(ctx context.Context, args []string) error {
 		return err
 	}
 	defer cleanup()
+
+	// Alarms: the per-model template (internal/consumer/alarm) turns a
+	// change into a verdict. It is the same engine for every protocol,
+	// it reads no device, and a plant that has written no rules simply
+	// gets none — the watch is unchanged.
+	// A poll cadence is the operator's, not the connector's: an IRD
+	// that is watched every 2 s during a fault hunt is watched every
+	// 60 s the rest of the week, and no dictionary can know which.
+	if *interval > 0 {
+		p, ok := plug.(interface{ SetPollInterval(time.Duration) })
+		if !ok {
+			return fmt.Errorf("--interval: %s announces its changes; there is no poll to pace", cf.protocol)
+		}
+		p.SetPollInterval(*interval)
+	}
+
+	evaluator := loadAlarmEvaluator(ctx, plug, cf.protocol, *slot, *alarmFile, *noAlarm)
+	meter := &alarmMeter{}
+
+	// One scrape endpoint for every protocol: the verdicts this watch
+	// produces and the traffic its connector moved, under the same
+	// labels (proto, device, role) whatever the wire underneath. A
+	// plant runs one watch per device from Ansible and points
+	// Prometheus at them.
+	if *metricsAddr != "" {
+		serveWatchMetrics(ctx, *metricsAddr, plug, evaluator, meter, cf.protocol, host)
+	}
 
 	// Load IP-keyed disk cache for instant label/unit resolution while
 	// walk runs. Key by watchCacheKey so groups that re-use the same
@@ -306,19 +343,36 @@ func runWatch(ctx context.Context, args []string) error {
 	}
 
 	fmt.Println("watching — Ctrl-C to stop")
-	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  value\n",
-		"time", "oid", "path", "label", "acc", "fr")
-	fmt.Println(strings.Repeat("-", 117))
+	fmt.Printf("%-8s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  value\n",
+		"time", "oid", "path", "label", "acc", "fr", "sev")
+	fmt.Println(strings.Repeat("-", 127))
 
 	// prevFrame remembers the last frame-status slice so we can emit
 	// per-slot deltas instead of dumping the full 31-slot strip on every
 	// announce. Kept slot-list-empty until the first frame event arrives.
 	var prevFrame []consumer.SlotStatus
 
+	// A hold and a stall are statements about time, and on a protocol
+	// that PUSHES the next sample may never come: the device announced
+	// "loss" once, or the stream simply stopped sending. The sweep asks
+	// the evaluator what time alone has made true — no device traffic,
+	// no poll — so a rule means the same thing whether its values
+	// arrive by announce or by poll.
+	var sweep <-chan time.Time
+	if evaluator != nil {
+		tk := time.NewTicker(time.Second)
+		defer tk.Stop()
+		sweep = tk.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-sweep:
+			for _, tr := range evaluator.Sweep() {
+				reportAlarm(&tr, host, cf, meter)
+			}
 		case err := <-supErr:
 			// The supervisor gave up: the initial setup failed, or the
 			// attempt budget ran out. Either way the watch is over and the
@@ -329,6 +383,17 @@ func runWatch(ctx context.Context, args []string) error {
 			// ACP1 emits group=frame, id=0 with a SlotStatus[] payload.
 			if ev.Group == "frame" && ev.ID == 0 && ev.Value.Kind == consumer.KindFrame {
 				enricher.observe(ctx, plug, ev.Timestamp, ev.Value.SlotStatus)
+			}
+
+			// A repeated sample is not news for the operator — the value
+			// did not move — but the alarm engine needs it to see that a
+			// condition persists (a counter still stopped, a link still
+			// down). Evaluate first, then skip the display.
+			if ev.Repeat {
+				if evaluator != nil {
+					reportAlarm(evaluator.Eval(host, ev), host, cf, meter)
+				}
+				continue
 			}
 
 			// Use disk cache label if plugin hasn't resolved it yet.
@@ -359,6 +424,11 @@ func runWatch(ctx context.Context, args []string) error {
 			if cf.logHasSink && cf.eventLogger != nil {
 				attrs := []any{
 					slog.String("proto", cf.protocol),
+					// The device is the address the operator typed, and
+					// it is the same label Prometheus carries — one name
+					// for one thing, so a dashboard variable moves
+					// between the two stacks without translation.
+					slog.String("device", host),
 					slog.String("oid", oid),
 					slog.Int("slot", ev.Slot),
 					slog.String("group", ev.Group),
@@ -377,6 +447,21 @@ func runWatch(ctx context.Context, args []string) error {
 					attrs = append(attrs, slog.String("value", v))
 				}
 				cf.eventLogger.Info("value_change", attrs...)
+			}
+
+			// One verdict per change, printed under the value line and
+			// mirrored to the structured sink with its RFC 5424 severity.
+			if evaluator != nil {
+				reportAlarm(evaluator.Eval(host, ev), host, cf, meter)
+			}
+
+			// Every object carries a verdict, and an object no rule
+			// names carries "info": the device's model defines the
+			// view, a plant's rules only colour it. With no evaluator
+			// there is nothing to say, and the column says that.
+			sev := "-"
+			if evaluator != nil {
+				sev = evaluator.Severity(host, ev.Slot, ev.Path).String()
 			}
 
 			// Matrix crosspoint events render differently —
@@ -423,24 +508,26 @@ func runWatch(ctx context.Context, args []string) error {
 					fr = src
 				}
 				if prevFrame == nil {
-					fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+					fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s\n",
 						ts,
 						truncate(oid, 18),
 						truncate(ev.Path, 30),
 						truncate(label, 20),
 						accessStr(ev.Access),
 						fr,
+						sev,
 						"baseline "+formatFrameStatus(cur),
 					)
 				} else {
 					for _, c := range frameStatusDelta(prevFrame, cur) {
-						fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s\n",
+						fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s\n",
 							ts,
 							truncate(oid, 18),
 							truncate(ev.Path, 30),
 							truncate(label, 20),
 							accessStr(ev.Access),
 							fr,
+							sev,
 							c,
 						)
 					}
@@ -476,13 +563,14 @@ func runWatch(ctx context.Context, args []string) error {
 			if fr == "" {
 				fr = src
 			}
-			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %s%s%s\n",
+			fmt.Printf("%s  %-18s  %-30s  %-20s  %-3s  %-7s  %-8s  %s%s%s\n",
 				ev.Timestamp.Format("15:04:05"),
 				oid,
 				ev.Path,
 				truncate(label, 20),
 				accessStr(ev.Access),
 				fr,
+				sev,
 				valStr,
 				descTag,
 				changesTag,

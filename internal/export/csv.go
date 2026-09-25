@@ -143,6 +143,18 @@ func joinPath(o consumer.Object) string {
 // form for enums; empty otherwise.
 func valueAndName(o consumer.Object) (string, string) {
 	v := o.Value
+	// A plugin whose enums are not wire-coded (a REST tree: strings and
+	// numbers whose names live in a dictionary) names the current value
+	// through Meta["value_name"]; the enum path below keeps its own.
+	if name, ok := o.Meta["value_name"].(string); ok && v.Kind != consumer.KindEnum {
+		val, _ := valueAndNameRaw(o)
+		return val, name
+	}
+	return valueAndNameRaw(o)
+}
+
+func valueAndNameRaw(o consumer.Object) (string, string) {
+	v := o.Value
 	switch v.Kind {
 	case consumer.KindInt:
 		return strconv.FormatInt(v.Int, 10), ""

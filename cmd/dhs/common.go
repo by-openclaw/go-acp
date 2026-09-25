@@ -20,6 +20,7 @@ import (
 	"dhs/internal/logging"
 	"dhs/internal/plugin"
 	rccodec "dhs/internal/snell-rollcall/codec"
+	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/transport"
 )
 
@@ -64,7 +65,10 @@ func init() {
 type commonFlags struct {
 	// verb is the FlagSet name ("export", "walk", …) — labels the
 	// ADR-0028 default capture folder; never user-visible otherwise.
-	verb             string
+	verb string
+	// fs is the FlagSet these flags were parsed from, kept so a
+	// default can be told apart from a value the operator typed.
+	fs               *flag.FlagSet
 	protocol         string
 	transport        string
 	port             int
@@ -124,7 +128,7 @@ type commonFlags struct {
 }
 
 func addCommonFlags(fs *flag.FlagSet) *commonFlags {
-	cf := &commonFlags{verb: fs.Name()}
+	cf := &commonFlags{verb: fs.Name(), fs: fs}
 	fs.StringVar(&cf.protocol, "protocol", "acp1", "protocol plugin name")
 	fs.StringVar(&cf.transport, "transport", "auto",
 		"transport: auto (default, TCP-first with UDP fallback like real "+
@@ -315,6 +319,34 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 
+	// MN SET (mnset frame mode) login, only used when its device list
+	// is token-gated. From the environment, never a flag, never printed.
+	if p, ok := plug.(interface{ SetCredentials(user, pass string) }); ok {
+		if u := os.Getenv("MNSET_USER"); u != "" {
+			p.SetCredentials(u, os.Getenv("MNSET_PASS"))
+		}
+	}
+
+	// SNMP communities are passwords: from the environment, like every
+	// other secret here, so they stay out of shell history and ps.
+	// SNMP_COMMUNITY reads, SNMP_WRITE_COMMUNITY writes (an agent's
+	// write community is rarely its read one).
+	if p, ok := plug.(interface{ SetCommunity(read, write string) }); ok {
+		if r, w := os.Getenv("SNMP_COMMUNITY"), os.Getenv("SNMP_WRITE_COMMUNITY"); r != "" || w != "" {
+			p.SetCommunity(r, w)
+		}
+	}
+
+	// And the v3 credential, from the same place for the same reason.
+	// A user configured here makes every session v3-FIRST: v1 and v2c
+	// put a password in clear on every datagram, so a device that
+	// offers v3 should never be polled the weaker way by accident.
+	if p, ok := plug.(interface{ SetV3(*snmpcons.V3) }); ok {
+		if cred := snmpV3FromEnv(); cred != nil {
+			p.SetV3(cred)
+		}
+	}
+
 	// Transport selection is plugin-specific; cast when possible and
 	// apply. Protocols that don't expose SetTransport just ignore it.
 	if tcfg, ok := plug.(interface{ SetTransport(acp1.TransportKind) }); ok {
@@ -408,6 +440,9 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 			cf.logCleanup()
 		}
 	}
+	// A connector whose transport retries needs longer than one
+	// attempt; raised only when the operator did not say otherwise.
+	raiseTimeoutFloor(cf, plug)
 	return plug, cleanup, nil
 }
 
@@ -597,6 +632,37 @@ func withTimeout(ctx context.Context, d time.Duration) (context.Context, context
 	return context.WithTimeout(ctx, d)
 }
 
+// raiseTimeoutFloor lets a connector say that the default per-operation
+// timeout is shorter than one exchange on its transport.
+//
+// SNMP is the case that forced it: UDP loses datagrams, so the manager
+// retries, and a read that retries twice cannot finish inside the 1 s
+// default — a healthy IRD on a normal fabric answered "context
+// deadline exceeded" while the bespoke verbs, which carry their own
+// retry budget, worked. An operator who passed --timeout keeps what
+// they asked for; one who did not gets a floor the protocol can
+// actually meet.
+func raiseTimeoutFloor(cf *commonFlags, plug consumer.Protocol) {
+	explicit := false
+	if cf.fs != nil {
+		cf.fs.Visit(func(f *flag.Flag) {
+			if f.Name == "timeout" {
+				explicit = true
+			}
+		})
+	}
+	if explicit {
+		return
+	}
+	floor, ok := plug.(interface{ MinOpTimeout() time.Duration })
+	if !ok {
+		return
+	}
+	if d := floor.MinOpTimeout(); d > cf.timeout {
+		cf.timeout = d
+	}
+}
+
 // popHost extracts the first non-flag argument as the host and returns
 // the remainder for flag.Parse. Go's stdlib flag package stops parsing at
 // the first non-flag token, so we separate the positional host argument
@@ -637,4 +703,13 @@ func popHost(args []string) (string, []string, error) {
 		return a, rest, nil
 	}
 	return "", nil, fmt.Errorf("host argument missing")
+}
+
+// pathNative reports whether plug answers a --path straight from the
+// device (consumer.PathNative — a REST tree addressed by URL), so the
+// walk-for-resolution before get / set / ensure / inc is skipped. A
+// --label still needs the walked tree.
+func pathNative(plug consumer.Protocol, path, label string) bool {
+	pn, ok := plug.(consumer.PathNative)
+	return ok && pn.PathNative() && path != "" && label == ""
 }

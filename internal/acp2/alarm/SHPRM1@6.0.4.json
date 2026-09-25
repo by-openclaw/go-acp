@@ -1,0 +1,82 @@
+{
+ "model": "SHPRM1@6.0.4",
+ "protocol": "acp2",
+ "rows": [
+  {
+   "match": "**.PSU.*.Status",
+   "kind": "enum",
+   "normal": "OK",
+   "values": {"Error": "critical", "Warning": "minor", "NA": "minor"},
+   "hold": "5s",
+   "text": "power supply",
+   "source": "the object's own enum items: NA|OK|Warning|Error (EVS Neuron shelf, read 2026-09-23). The device grades itself; this row only maps its words onto the ladder."
+  },
+  {
+   "match": "**.PSU.*.Power",
+   "kind": "enum",
+   "normal": "OK",
+   "values": {"Error": "critical", "NA": "minor"},
+   "hold": "5s",
+   "text": "power supply input",
+   "source": "the object's own enum items: NA|OK|Error"
+  },
+  {
+   "match": "**.PSU.*.Present",
+   "kind": "enum",
+   "normal": "OK",
+   "values": {"NA": "major"},
+   "hold": "10s",
+   "text": "power supply present",
+   "source": "the object's own enum items: NA|OK. A shelf built with two supplies runs on one when this goes NA."
+  },
+  {
+   "match": "**.PSU.*.Fan Health *",
+   "kind": "enum",
+   "normal": "OK",
+   "values": {"Error": "major", "Warning": "minor", "NA": "minor"},
+   "hold": "10s",
+   "text": "power supply fan",
+   "source": "the object's own enum items: NA|OK|Error|Warning, one per fan in the supply"
+  },
+  {
+   "match": "**.PSU.BOARD.Temperature",
+   "kind": "number",
+   "high": [{"severity": "critical", "raise": 140, "clear": 135}],
+   "low": [{"severity": "critical", "raise": -40, "clear": -35}],
+   "hold": "30s",
+   "text": "shelf board temperature",
+   "source": "the object declares its own range: -40..140 C"
+  },
+  {
+   "match": "**.PSU.*.Temperature",
+   "kind": "number",
+   "high": [{"severity": "critical", "raise": 140, "clear": 135}],
+   "low": [{"severity": "critical", "raise": -40, "clear": -35}],
+   "hold": "30s",
+   "text": "power supply temperature",
+   "source": "the object declares its own range: -40..140 C. Outside it the reading is not valid. The plant's own warning points are a site decision — add them with `alarm set --path '**.PSU.*.Temperature' --high minor:R/C,major:R/C`."
+  },
+  {
+   "match": "**.PSU.*.Fan Speed",
+   "kind": "number",
+   "high": [{"severity": "minor", "raise": 100, "clear": 95}],
+   "hold": "60s",
+   "text": "power supply fan speed",
+   "source": "the object declares 0..100 %: at 100 the fan has no headroom left, whatever the cause"
+  },
+  {
+   "match": "**.PSU.BOARD.Power Consumption",
+   "kind": "number",
+   "high": [{"severity": "major", "raise": 250, "clear": 240}],
+   "hold": "30s",
+   "text": "shelf power draw",
+   "source": "the object declares 0..250 W as its range"
+  },
+  {
+   "match": "**",
+   "kind": "info",
+   "text": "no rule - reported, never alarmed",
+   "source": "every other object the shelf defines; the model defines the view, these rules only colour it"
+  }
+ ]
+}
