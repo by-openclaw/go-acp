@@ -72,7 +72,7 @@ per-verb specification lives in [`docs/protocols/verb-tests.md`](../protocols/ve
 |---|---|---|
 | **Unit** | codec + per-verb logic | the spec (expected bytes) + injected mock transport/clock (DI); no real sockets |
 | **Smoke** | verb is wired; flags parse; output + exit code correct | built binary, loopback / trivial target |
-| **Integration** | wire behaviour | **vendor emulator + real device — never our own provider**. **Every Ansible play — deploy, test, verify, converge — is idempotent (run-twice = 0 changes)**, not just the `ensure` verb. |
+| **Integration** | wire behaviour | **vendor emulator + real device — never our own provider**; what counts as one, and in which direction, is [ADR-0034](0034-oracle-testing.md). **Every Ansible play — deploy, test, verify, converge — is idempotent (run-twice = 0 changes)**, not just the `ensure` verb. |
 
 ### Connector compliance principles (cross-cutting)
 
