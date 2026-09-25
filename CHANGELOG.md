@@ -7,6 +7,79 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.24.0](https://github.com/by-openclaw/go-acp/compare/v0.23.1...v0.24.0) (2026-09-25)
+
+
+### Features
+
+* **alarm:** a device drafts its own rules — alarm suggest ([2099256](https://github.com/by-openclaw/go-acp/commit/2099256b8bef7275aaa971275492a7f3fed6c1e3))
+* **alarm:** every object the model defines is in the view — info is a verdict ([bde9142](https://github.com/by-openclaw/go-acp/commit/bde91423284691ffcc36195553969db67421c122))
+* **alarm:** the plant on Prometheus, Loki and Grafana — one label, one play ([af2b244](https://github.com/by-openclaw/go-acp/commit/af2b244d285bb0c4a1a17126de75bbec6c4a42a2))
+* **alarm:** time is the other half of a verdict — Sweep, and ACP2 rules ([5aaaef5](https://github.com/by-openclaw/go-acp/commit/5aaaef5a93ee0df91a6027773e87558232126beb))
+* **ansible:** the DR5000 is watched, like every other device (ADR-0033) ([b86c8fd](https://github.com/by-openclaw/go-acp/commit/b86c8fd37afade8fad4fe22507df10232f2f1840))
+* **cli:** --path scopes the walk instead of filtering it afterwards ([46c9de9](https://github.com/by-openclaw/go-acp/commit/46c9de97f795b6c450492aff0662fd5cb38e5881))
+* **cli:** alarm verb + watch verdicts — the template every connector shares (ADR-0033) ([6924831](https://github.com/by-openclaw/go-acp/commit/6924831094cb89d068c614fa372dbb502f784904))
+* **cli:** export --path scopes its walk too ([40453a4](https://github.com/by-openclaw/go-acp/commit/40453a4df8a15d634867a805e21da7e9ffd2575c))
+* **consumer:** a condition that persists needs every sample — Event.Repeat ([bc6ef86](https://github.com/by-openclaw/go-acp/commit/bc6ef8600067671a9aeffc8247ac0345e4e461fe))
+* **consumer:** alarm engine — per-model template, severity ladder, hysteresis and hold ([3e26761](https://github.com/by-openclaw/go-acp/commit/3e2676198129ccc0582a3e00c2c69ec5d1050c99))
+* **consumer:** PathNative capability — generic verbs skip walk-for-resolution ([4c2d481](https://github.com/by-openclaw/go-acp/commit/4c2d4810b5a0e812067813be877cff8c9572e476))
+* **consumer:** pollwatch — "poll if no push" Subscribe for any connector; mnset watch + frame hot-plug ([d90b9c8](https://github.com/by-openclaw/go-acp/commit/d90b9c8589c4078f2173f905ebf2c5c5c28a34c6))
+* **metrics:** drill the dashboard down per device, not just per protocol ([4e10646](https://github.com/by-openclaw/go-acp/commit/4e106465ede15762b46220ec315b9cd46ebe516b)), closes [#1108](https://github.com/by-openclaw/go-acp/issues/1108)
+* **mnset:** dictionary marks measured leaves read-only — access per field, not per resource ([4c9cc6a](https://github.com/by-openclaw/go-acp/commit/4c9cc6a13b03ba9d3263c62becfe6670ed8b0f26))
+* **mnset:** frame mode — MN SET is the frame, every managed module a slot (ADR-0022) ([b21f4a9](https://github.com/by-openclaw/go-acp/commit/b21f4a970e9bc5ad7c5b1fd0164dbe22715bcc1f))
+* **mnset:** info lists a module's SFP cages like a frame's cards; info prints slot identity ([35380d8](https://github.com/by-openclaw/go-acp/commit/35380d8055e3039db0c446c1e73eb7f9882ea054))
+* **mnset:** label every leaf by channel — "CH8 · rx ch8 flow 0 pri · network.dst_ip_addr" ([df87dea](https://github.com/by-openclaw/go-acp/commit/df87deadea421726d9fe611384797f90b734ae42))
+* **mnset:** per-model dictionary fills unit / min / max / enum / value_name in the DM export ([e53460d](https://github.com/by-openclaw/go-acp/commit/e53460d264b89a72e3e420b8a6b675a2f788a9db))
+* **mnset:** Riedel MuoN eMSFP / FusioN consumer connector — direct REST ([#1110](https://github.com/by-openclaw/go-acp/issues/1110)) ([350312f](https://github.com/by-openclaw/go-acp/commit/350312fdfbebf467a0e7523c0c5fe9918fc32cfb))
+* **mnset:** Riedel MuoN eMSFP / FusioN consumer connector — direct REST, no MN SET in the path ([8edc30b](https://github.com/by-openclaw/go-acp/commit/8edc30bdb8115edb8795e230a74230fb03d8bc04))
+* **mnset:** scrape MN SET's web bundle for the DM dictionary seed (labels, units, enums, field ids) ([bdd4520](https://github.com/by-openclaw/go-acp/commit/bdd4520851b18d466b521a05ae78deb464afb35c))
+* **mnset:** set a node with a JSON object — one merged PUT for validated tuples; MN SET video-format table ([fd80faf](https://github.com/by-openclaw/go-acp/commit/fd80faf3a84614de96213f13ac6bfda82a93304b))
+* **mnset:** the dissector decodes the wire itself (ADR-0025 [#5](https://github.com/by-openclaw/go-acp/issues/5)) ([b5f02d9](https://github.com/by-openclaw/go-acp/commit/b5f02d9647acac6777fbc2fb9fd08c9cb1325c4f))
+* **mnset:** the FusioN6 alarm template, from the module's own thresholds ([04a42ee](https://github.com/by-openclaw/go-acp/commit/04a42eeb4a1a59480ec5ed8fec1b397b2d937e37))
+* **monitor,snmp:** device monitor (ADR-0030) + SNMP watch CLI ([aa350b3](https://github.com/by-openclaw/go-acp/commit/aa350b3d63f5240cd8bc0e647b873b5b657be851))
+* **monitor,snmp:** SNMP adapter + `dhs monitor watch` CLI ([48c33ff](https://github.com/by-openclaw/go-acp/commit/48c33ff394377b3a4c2dcfc1cba302e116a48e7c))
+* **monitor:** neutral per-device monitor — ADR-0030 core ([bcfdb6b](https://github.com/by-openclaw/go-acp/commit/bcfdb6b01e880ceee7cd0fffa411bd0a1b00e0cc))
+* **snell-rollcall:** probe — read a plant over ONE connection ([#1100](https://github.com/by-openclaw/go-acp/issues/1100)) ([ab7f046](https://github.com/by-openclaw/go-acp/commit/ab7f04676ddfe87a406bc1cad99b2abce244810c)), closes [#1051](https://github.com/by-openclaw/go-acp/issues/1051)
+* **snell-rollcall:** release — free one node's sessions without leaving the frame ([#1102](https://github.com/by-openclaw/go-acp/issues/1102)) ([9a0047b](https://github.com/by-openclaw/go-acp/commit/9a0047b0e12735700321a2073510a4fa12f19dee)), closes [#1059](https://github.com/by-openclaw/go-acp/issues/1059)
+* **snell-rollcall:** session — hold ONE connection for churn-free monitoring ([#1101](https://github.com/by-openclaw/go-acp/issues/1101)) ([78a88d7](https://github.com/by-openclaw/go-acp/commit/78a88d7ac2132c64db4a3d63adf172cca31d869f)), closes [#1051](https://github.com/by-openclaw/go-acp/issues/1051)
+* **snmp/usm:** NewRemoteEngine — model a peer's authoritative engine ([b33c052](https://github.com/by-openclaw/go-acp/commit/b33c052c0079aa0cedb46cc498a7dc5dcec382b8))
+* **snmp:** `producer snmp serve --v3-user` — run the agent as v3 ([f8149b3](https://github.com/by-openclaw/go-acp/commit/f8149b352b0c4e87ed5319994d7677bf5bf7b2e7))
+* **snmp:** an agent is a device — the neutral connector, and the DR5000 ([ddb7920](https://github.com/by-openclaw/go-acp/commit/ddb7920ae96aa151497c5419dc55aaba87aca147))
+* **snmp:** InformRequest, both directions ([cfe3cb8](https://github.com/by-openclaw/go-acp/commit/cfe3cb81648d9704dd6c8f6aa2f489e1a5b774c4))
+* **snmp:** name ETV alarm traps sent as v1 enterprise-specific ([b778f87](https://github.com/by-openclaw/go-acp/commit/b778f87e1443708afcf4a604f292c2402c890b05))
+* **snmp:** the agent serves v3 by default ([684f4fc](https://github.com/by-openclaw/go-acp/commit/684f4fc93492dad22c0be725b4b802fa5771bec2))
+* **snmp:** the DR5000 knows its own name, and the rules a generator cannot write ([2aa73d0](https://github.com/by-openclaw/go-acp/commit/2aa73d06487b1cb9494b73e23dbdc20a240b009c))
+* **snmp:** the manager speaks v3 — discovery, then authenticated polling ([146f014](https://github.com/by-openclaw/go-acp/commit/146f014ad89ae6c4541392060de5f38f0420185d))
+* **snmp:** the SNMP connector, complete — v1/v2c/v3, informs, and the ATEME Kyrion DR5000 ([#1116](https://github.com/by-openclaw/go-acp/issues/1116)) ([bba7e7d](https://github.com/by-openclaw/go-acp/commit/bba7e7d82834de9f9620399256af989b4dca1338))
+* **snmp:** v3 agent — answer authenticated USM requests ([2ef89ac](https://github.com/by-openclaw/go-acp/commit/2ef89acfb86f31d0d610c8e546465cc6bc6a4e84))
+* **snmp:** v3 agent + GETBULK hardening ([e65a039](https://github.com/by-openclaw/go-acp/commit/e65a039b6f279565ff9cc5268db65db0081d0a67))
+* **snmp:** Wireshark dissector — v1/v2c/v3, every PDU, full BER ([#1097](https://github.com/by-openclaw/go-acp/issues/1097)) ([0dc3cd1](https://github.com/by-openclaw/go-acp/commit/0dc3cd1d9538491f519f1e7dfc284e9bbf8f6851)), closes [#1096](https://github.com/by-openclaw/go-acp/issues/1096)
+* **transport/http:** capture the exchange, so a REST wire can be replayed ([2217552](https://github.com/by-openclaw/go-acp/commit/22175528136fb24d879d78afd1870c55946813eb))
+* **transport/http:** PutJSON, routed through do() so writes are metered ([a3738b4](https://github.com/by-openclaw/go-acp/commit/a3738b45522fee10082a61a533c4110ec27f2d31))
+* **tsl,osc:** listen --duration; re-enable Windows push verb tests ([#1104](https://github.com/by-openclaw/go-acp/issues/1104)) ([7e326f4](https://github.com/by-openclaw/go-acp/commit/7e326f44bf4e9b106b432574b1868b7508e92d61))
+
+
+### Bug Fixes
+
+* **acp2:** default the walk back to serial — the real device rejects pipelining ([e40f73c](https://github.com/by-openclaw/go-acp/commit/e40f73ce06dda5cdedc02fcc9d2a0dcab5827fcb)), closes [#1108](https://github.com/by-openclaw/go-acp/issues/1108)
+* **deployment:** make the metrics stack reachable on Linux ([0c1ed63](https://github.com/by-openclaw/go-acp/commit/0c1ed636f6185e93ce4b5e0a3df19dcf4ab884b7)), closes [#1108](https://github.com/by-openclaw/go-acp/issues/1108)
+* **docs:** remove conflict markers left in the ADR index ([8e215ea](https://github.com/by-openclaw/go-acp/commit/8e215eaffc197afb4c51d0b8d43c9a607d3f72bd))
+* **mnset:** the sdp-text fixture lost its CRLF, so the replay test called the folder a liar ([da3a3df](https://github.com/by-openclaw/go-acp/commit/da3a3df9d86b839ff5cfbcdfab772d748bc2b156))
+* **nmos:** connect fetches the Sender's SDP from the Sender's own Node (--sender-node); never stages "{}" ([7df6b0f](https://github.com/by-openclaw/go-acp/commit/7df6b0f31f1f25923317a36020d4d5f3cdc523b8))
+* **snell-rollcall:** salvo list degrades to numbers when a controller ships no names file ([#1099](https://github.com/by-openclaw/go-acp/issues/1099)) ([4c30c75](https://github.com/by-openclaw/go-acp/commit/4c30c75fbdc2dcb99da58157b1402a4cd9ecb120))
+* **snell-rollcall:** walk a menuless node to an empty tree, not a NACK ([#1103](https://github.com/by-openclaw/go-acp/issues/1103)) ([901c81b](https://github.com/by-openclaw/go-acp/commit/901c81b227e6f1ec8c7b55989c65c5c26792b776)), closes [#1095](https://github.com/by-openclaw/go-acp/issues/1095)
+* **snmp:** "a nil Compliance is fine" has to be true, not asserted ([3181df7](https://github.com/by-openclaw/go-acp/commit/3181df7bc453004d86774c59c714fadbc54148e6))
+* **snmp:** a manager that does not retry reports a live device as down ([eab4075](https://github.com/by-openclaw/go-acp/commit/eab40757b5229f739f81e27dc49b2e750e44667f))
+* **snmp:** bound GETBULK work and drop v1 GETBULK (hardening) ([6cb8584](https://github.com/by-openclaw/go-acp/commit/6cb858487b658ce2bc295c5609b3b1dcf97d745c))
+* **snmp:** report the version the session negotiated, not the number 1 ([c9bc847](https://github.com/by-openclaw/go-acp/commit/c9bc84755e06086e881741c1bfab5b1101ce28cb))
+
+
+### Performance Improvements
+
+* **acp2:** pipeline the walk's round-trips, keeping object order exact ([5694709](https://github.com/by-openclaw/go-acp/commit/56947097ea68c3659b7a9acfe4ddf179c9f30435)), closes [#1108](https://github.com/by-openclaw/go-acp/issues/1108)
+* **consumer:** expose per-instance metrics and fix mem=0B ([31ee7ff](https://github.com/by-openclaw/go-acp/commit/31ee7ff86c3e7a15b971b55326c18ce79043f825)), closes [#1108](https://github.com/by-openclaw/go-acp/issues/1108)
+* **consumer:** per-instance metrics endpoint + pipelined ACP2 walk ([e1db713](https://github.com/by-openclaw/go-acp/commit/e1db7133c40de672b52d1d8941db7c110e600ba5))
+
 ## [0.23.1](https://github.com/by-openclaw/go-acp/compare/v0.23.0...v0.23.1) (2026-09-17)
 
 

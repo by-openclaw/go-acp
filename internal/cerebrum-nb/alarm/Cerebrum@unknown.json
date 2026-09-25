@@ -1,0 +1,119 @@
+{
+ "model": "Cerebrum@unknown",
+ "protocol": "cerebrum-nb",
+ "rows": [
+  {
+   "match": "**.ALL_RESPONSIVE",
+   "kind": "enum",
+   "normal": "OK",
+   "hold": "30s",
+   "severity": "major",
+   "text": "Cerebrum services all responsive",
+   "source": "02:Services object ALL_RESPONSIVE, read live on vm-cerebrum-stg-01 (10.6.250.5:40009) 2026-09-25: available=1, type=ENUM enum=Error|OK, value OK. The device declares both states and names the good one."
+  },
+  {
+   "match": "**.Redundancy_Status.Overall",
+   "kind": "enum",
+   "normal": "OK",
+   "hold": "30s",
+   "severity": "major",
+   "text": "server overall health",
+   "source": "00:System Redundancy_Status.Overall, read live 2026-09-25: available=1, type=ENUM enum=Error|OK, value OK. Served on this standalone server despite the folder name — the siblings that need a partner are not (see the note at the end of this file)."
+  },
+  {
+   "match": "**.Redundancy_Status.SQL_Log_Maintenance",
+   "kind": "enum",
+   "normal": "OK",
+   "hold": "1m",
+   "severity": "minor",
+   "text": "SQL log maintenance",
+   "source": "00:System Redundancy_Status.SQL_Log_Maintenance, read live 2026-09-25: available=1, type=ENUM enum=Error|OK, value OK. Minor rather than major: log maintenance failing degrades housekeeping, it does not stop routing."
+  },
+  {
+   "match": "**.Redundancy_Status.Watchdog_Health",
+   "kind": "number",
+   "low": [
+    {"severity": "minor", "raise": 90, "clear": 95},
+    {"severity": "major", "raise": 50, "clear": 60}
+   ],
+   "hold": "30s",
+   "text": "server watchdog health",
+   "source": "00:System Redundancy_Status.Watchdog_Health, read live 2026-09-25: available=1, type=INTEGER range=0.000000..100.000000, value 100. The device publishes the scale and 100 is full health; the two steps within it are the only numbers in this file not taken from the device."
+  },
+  {
+   "match": "**.Supported_Options.Northbound_API_Licenses_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 8, "clear": 7},
+    {"severity": "major", "raise": 10, "clear": 9}
+   ],
+   "hold": "1m",
+   "text": "northbound API licences in use (limit 10)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: Northbound_API_Licenses=10, In_Use=0. The limit is the device's own number; major fires at it because one NB licence per session means the next connector is refused."
+  },
+  {
+   "match": "**.Supported_Options.Assignment_Engine_Licenses_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 4, "clear": 3},
+    {"severity": "major", "raise": 5, "clear": 4}
+   ],
+   "hold": "1m",
+   "text": "assignment engine licences in use (limit 5)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: Assignment_Engine_Licenses=5, In_Use=2."
+  },
+  {
+   "match": "**.Supported_Options.Resource_Manager_Licenses_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 450, "clear": 430},
+    {"severity": "major", "raise": 500, "clear": 480}
+   ],
+   "hold": "1m",
+   "text": "resource manager licences in use (limit 500)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: Resource_Manager_Licenses=500, In_Use=0. Minor at 90 % of the device's own limit."
+  },
+  {
+   "match": "**.Supported_Options.Generic_Device_Points_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 450, "clear": 430},
+    {"severity": "major", "raise": 500, "clear": 480}
+   ],
+   "hold": "1m",
+   "text": "generic device points in use (limit 500)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: Generic_Device_Points=500, In_Use=0."
+  },
+  {
+   "match": "**.Supported_Options.IP_Destinations_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 3686, "clear": 3500},
+    {"severity": "major", "raise": 4096, "clear": 3900}
+   ],
+   "hold": "1m",
+   "text": "IP destinations in use (limit 4096)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: IP_Destination_Limit=4096, In_Use=0. Minor at 90 % of the device's own limit."
+  },
+  {
+   "match": "**.Supported_Options.IP_Shuffle_In_Use",
+   "kind": "number",
+   "high": [
+    {"severity": "minor", "raise": 115, "clear": 109},
+    {"severity": "major", "raise": 128, "clear": 122}
+   ],
+   "hold": "1m",
+   "text": "IP shuffle instances in use (limit 128)",
+   "source": "00:System License.Supported_Options, read live 2026-09-25: IP_Shuffle_Limit=128, In_Use=0."
+  },
+  {
+   "match": "**.License.Demo_License_Enabled",
+   "kind": "enum",
+   "normal": "Disabled",
+   "hold": "5m",
+   "severity": "minor",
+   "text": "running on a demo licence",
+   "source": "00:System License, read live 2026-09-25: Demo_License_Enabled=Enabled, License_Type=Demo, Demo_License_Remaining=10000, Sentinel_Key_Serial_Number=Missing. A demo licence expires; on a licensed server the normal state is Disabled. This staging server raises this row today, which is correct — it is on a demo licence."
+  }
+ ]
+}
