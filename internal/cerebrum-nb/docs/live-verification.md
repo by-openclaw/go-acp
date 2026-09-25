@@ -46,9 +46,13 @@ byte-identical**.
 
 ## Known gaps on this connector
 
-- **No metrics endpoint.** No verb accepts `--metrics-addr`, so nothing
-  serves `/metrics` or `/snapshot.json` and `dhs metrics show` cannot
-  scrape it. The session counters exist but only reach the log sink.
+- **Metrics reach only `watch`.** `watch --metrics-addr :9100` serves
+  Prometheus `/metrics` + `/snapshot.json` with `proto` / `device` /
+  `role` labels, and one counter set survives a reconnect —
+  `dhs metrics show` scrapes it (verified 2026-09-26:
+  `dhs_connector_rx_bytes_total{device="Cerebrum",proto="cerebrum-nb",role="consumer"} 1432`).
+  **No other verb serves one**, so a plain `export` or `listen` still
+  reports its counters to the log sink and nowhere else.
 - **`alarm suggest` cannot reach this connector.** It connects without
   LOGIN and then fails `no slot answered a walk`, because `Plugin.Walk`
   and `Plugin.GetSlotInfo` are deliberate "not applicable" stubs. Every

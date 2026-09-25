@@ -184,10 +184,10 @@ protocols rather than only within one.
   northbound API we consume; there is no "serve Cerebrum" role.
 - TLS root-CA pinning not yet wired; only `--insecure-skip-verify`
   toggles validation.
-- **No metrics endpoint.** The session counters exist and are written to
-  the log sink on every verb (`uptime`, `rx`/`tx` frames and bytes,
-  errors, latency p50/p95/p99), but no cerebrum-nb verb accepts
-  `--metrics-addr`, so nothing serves `/metrics` or `/snapshot.json`
-  and `dhs metrics show` cannot scrape this connector. Verified
-  2026-09-25: `watch --metrics-addr :9100` is refused as an undefined
-  flag.
+- **Metrics: the watch serves them, other verbs do not.**
+  `watch --metrics-addr :9100` serves Prometheus `/metrics` +
+  `/snapshot.json` labelled `proto` / `device` / `role`, and one counter
+  set survives a reconnect, so `dhs metrics show` scrapes a Cerebrum
+  like any other connector. Every verb writes its session counters to
+  the log sink (`uptime`, `rx`/`tx` frames and bytes, errors, latency
+  p50/p95/p99), but only the watch exposes an endpoint.
