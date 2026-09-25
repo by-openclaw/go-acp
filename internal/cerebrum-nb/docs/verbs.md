@@ -5,14 +5,25 @@ Per-connector verb reference. Same section order as every other connector
 so the docs don't drift.
 
 **Wire samples in this doc are codec-generated fixtures, not live
-captures.** There is no live Cerebrum peer (the NB northbound licence is
-currently missing) and no emulator, so the codec is the only authority for
-real 0v16 wire bytes. Every XML sample below is one of the committed
-fixtures under [`../testdata/fixtures/`](../testdata/fixtures/README.md),
-each produced by a codec encoder (TX) or by `codec.Decode` of the page-cited
-0v16 worked example (RX) and pinned byte-for-byte by a drift-guard. **A live
-capture is pending the NB licence** and will be diffed against these
-fixtures when available.
+captures.** They are produced by a codec encoder (TX) or by
+`codec.Decode` of the page-cited 0v16 worked example (RX), committed
+under [`../testdata/fixtures/`](../testdata/fixtures/README.md) and
+pinned byte-for-byte by a drift-guard. There has never been an
+emulator, so for the samples themselves the codec remains the
+authority.
+
+**There IS a live peer, and it is licensed:** `10.6.250.5:40009`
+(`vm-cerebrum-stg-01`, see [`docs/testbed.md`](../../../docs/testbed.md)).
+Verified 2026-09-25 by logging in and running the read-only verbs —
+devices, sources, dests, levels, categories, salvo groups, the full
+`export --out-dir` file set, device object walks, `listen` and `watch`.
+Its `License.Supported_Options` reports `Northbound_API_Licenses = 10`
+with `In_Use = 0`. Credentials come from `.secrets/staging-cerebrum.json`
+through `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`; note the port is
+**40009**, not the 40007 default.
+
+Diffing these fixtures against a live capture is still outstanding —
+that is a task nobody has done, not a peer nobody has.
 
 Authoritative spec: **EVS Cerebrum Northbound API 0v16**
 ([`../assets/Cerebrum Northbound API 0v16.pdf`](../assets/Cerebrum%20Northbound%20API%200v16.pdf)).

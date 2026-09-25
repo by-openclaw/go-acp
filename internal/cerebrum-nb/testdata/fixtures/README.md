@@ -9,11 +9,31 @@ the codec / docs / dissector be cross-checked without a live matrix.
 ## Provenance — read this first
 
 Every `.xml` file here is **produced by the 0v16 codec**, never hand-typed
-and never lifted from a live capture. There is **no live Cerebrum peer**
-(the Northbound API licence is currently missing on the lab Cerebrum) and
-**no emulator**, so the codec is the only authority for real 0v16 wire
-bytes. A live capture against a licensed Cerebrum is pending and will be
-diffed against these fixtures when available.
+and never lifted from a live capture. There has never been an emulator, so
+for these bytes the codec is the authority.
+
+**The codec has now been read against a live licensed Cerebrum.** On
+2026-09-25 a session against `10.6.250.5:40009` (`vm-cerebrum-stg-01`) was
+captured with `--capture` and replayed offline:
+
+```text
+dhs consumer cerebrum-nb export 10.6.250.5 --port 40009 --out-dir … --capture live.jsonl
+dhs consumer cerebrum-nb validate live.jsonl
+  validate: 64 frames decoded
+    rx: 54
+    tx: 10
+```
+
+**64 of 64 frames decoded — no NACK, no decode error, no case deviation.**
+A codec written from the specification read every byte a real Cerebrum
+sent. That is the check this file used to say was pending.
+
+The capture itself is not committed: it is a happy-path trace, it
+exercises no error path a unit test needs to replay, and it carries MTIDs
+and live mnemonics so it is not byte-stable — two of the three promotion
+criteria in [`captures/README.md`](../../../../captures/README.md) are
+unmet. A capture that *does* exercise an error path belongs here; this
+one only proves the decoder.
 
 - **TX frames** (`tx_*.xml`) are the raw output of a `codec.Encode*` call.
   The encoder uses an ordered `AttrsBuilder`, so the bytes are
