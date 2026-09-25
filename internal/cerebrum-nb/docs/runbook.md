@@ -19,10 +19,12 @@ Authoritative spec: **EVS Cerebrum Northbound API 0v16**
 | WebSocket (plain) | `ws://host:port` | 40007 | One XML document per WS text message (UTF-8). No URL path. |
 | WebSocket (TLS) | `wss://host:port` | 40007 | `--tls`; `--insecure-skip-verify` to skip cert validation. |
 
-- **One northbound licence per active WebSocket session.** If the licence
-  is exhausted (or missing entirely, as on the current lab Cerebrum) the
-  server refuses or drops the session — this is the single most common
-  field failure.
+- **One northbound licence per active WebSocket session.** If the pool is
+  exhausted the server refuses or drops the session — the single most
+  common field failure. The pool size is readable:
+  `License.Supported_Options.Northbound_API_Licenses` with its
+  `_In_Use` counter (the lab Cerebrum at 10.6.250.5 reports 10 and 0,
+  read 2026-09-25), and the shipped alarm template raises on it.
 - Port is configurable in the Cerebrum app; `--port` overrides the 40007
   default.
 

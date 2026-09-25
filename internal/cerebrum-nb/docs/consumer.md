@@ -180,8 +180,14 @@ protocols rather than only within one.
 
 ## Limitations
 
-- Provider plugin not yet implemented — there is no `dhs producer cerebrum-nb` today.
+- No provider, by design — see [provider.md](provider.md). Cerebrum is a
+  northbound API we consume; there is no "serve Cerebrum" role.
 - TLS root-CA pinning not yet wired; only `--insecure-skip-verify`
   toggles validation.
-- `dhs metrics` does not yet surface cerebrum-nb session counters
-  (planned).
+- **No metrics endpoint.** The session counters exist and are written to
+  the log sink on every verb (`uptime`, `rx`/`tx` frames and bytes,
+  errors, latency p50/p95/p99), but no cerebrum-nb verb accepts
+  `--metrics-addr`, so nothing serves `/metrics` or `/snapshot.json`
+  and `dhs metrics show` cannot scrape this connector. Verified
+  2026-09-25: `watch --metrics-addr :9100` is refused as an undefined
+  flag.
