@@ -91,7 +91,7 @@ func Discover(ctx context.Context, cfg DiscoverConfig) ([]Discovered, error) {
 // probe asks one address for its identity and, when it is a module,
 // its active program.
 func probe(ctx context.Context, ip string, port int, timeout time.Duration) (Discovered, bool) {
-	c := newClient(ip, port, timeout, nil, nil)
+	c := newClient(ip, port, timeout, nil, nil, nil)
 	v, err := c.get(ctx, "self/information")
 	if err != nil {
 		return Discovered{}, false

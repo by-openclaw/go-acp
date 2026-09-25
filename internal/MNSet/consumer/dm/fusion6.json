@@ -48,21 +48,21 @@
    "source": "mnset-ui label 'Packet count:'"
   },
   {
-   "match": "**.rtp_stream_info.*.pkt_rate",
+   "match": "**.rtp_stream_info.*.status.pkt_rate",
    "access": "R",
    "unit": "pkt/s",
    "description": "RTP packet rate on this leg",
    "source": "field name"
   },
   {
-   "match": "**.rtp_stream_info.*.sequence_error",
+   "match": "**.rtp_stream_info.*.status.sequence_error",
    "access": "R",
    "unit": "packets",
    "description": "Packet Sync Errors on this leg",
    "source": "mnset-ui label 'Packet Sync Errors:'"
   },
   {
-   "match": "**.rtp_stream_info.*.pkt_cnt",
+   "match": "**.rtp_stream_info.*.status.pkt_cnt",
    "access": "R",
    "unit": "packets",
    "description": "Packet count on this leg",
@@ -264,12 +264,12 @@
     "on_change": false
    },
    {
-    "match": "**.rtp_stream_info.*.pkt_rate",
+    "match": "**.rtp_stream_info.*.status.pkt_rate",
     "interval": "15s",
     "on_change": false
    },
    {
-    "match": "**.rtp_stream_info.*.sequence_error",
+    "match": "**.rtp_stream_info.*.status.sequence_error",
     "interval": "15s",
     "on_change": false
    },

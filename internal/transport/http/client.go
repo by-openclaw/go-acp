@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	stdhttp "net/http"
+	"net/http/httputil"
 	"strings"
 	"time"
 
 	"dhs/internal/metrics"
+	"dhs/internal/transport"
 )
 
 // DefaultMaxBody caps a single response body. NMOS payloads are
@@ -29,6 +31,14 @@ type Client struct {
 	// the footprint) and response (rx bytes read) — the same connector
 	// contract the raw-socket consumers report through.
 	Metrics *metrics.Connector
+
+	// Recorder, when non-nil, writes every exchange to the ADR-0028
+	// capture file: the request as tx, the response as rx, both as the
+	// bytes that went on the wire. A REST connector has no frames to
+	// capture otherwise, and a connector whose wire cannot be replayed
+	// cannot meet ADR-0025 #6. Proto names the connector in the file.
+	Recorder *transport.Recorder
+	Proto    string
 
 	// TokenSource, when non-nil, supplies a BCP-003-02 Bearer token
 	// attached to every request (Authorization header). Errors abort
@@ -68,8 +78,13 @@ func NewClient() *Client {
 // been read and closed. Every GET path funnels through here so an HTTP
 // consumer (NMOS controller, CCM) reports like a raw-socket one.
 func (c *Client) do(req *stdhttp.Request) (*stdhttp.Response, error) {
+	c.record(req)
 	if c.Metrics == nil {
-		return c.HTTP.Do(req)
+		resp, err := c.HTTP.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		return c.recordResponse(resp), nil
 	}
 	start := time.Now()
 	resp, err := c.HTTP.Do(req)
@@ -77,8 +92,39 @@ func (c *Client) do(req *stdhttp.Request) (*stdhttp.Response, error) {
 		return nil, err
 	}
 	c.Metrics.ObserveTx(int(max(req.ContentLength, 0)), time.Since(start))
+	resp = c.recordResponse(resp)
 	resp.Body = &countingBody{ReadCloser: resp.Body, met: c.Metrics}
 	return resp, nil
+}
+
+// record writes the request as it goes out. A dump that fails is not
+// worth failing a request over — the capture is an aid, not the work.
+func (c *Client) record(req *stdhttp.Request) {
+	if c.Recorder == nil {
+		return
+	}
+	if dump, err := httputil.DumpRequestOut(req, true); err == nil {
+		c.Recorder.Record(c.protoName(), "tx", dump)
+	}
+}
+
+// recordResponse writes the reply, body included, and hands the
+// response back with its body still readable.
+func (c *Client) recordResponse(resp *stdhttp.Response) *stdhttp.Response {
+	if c.Recorder == nil {
+		return resp
+	}
+	if dump, err := httputil.DumpResponse(resp, true); err == nil {
+		c.Recorder.Record(c.protoName(), "rx", dump)
+	}
+	return resp
+}
+
+func (c *Client) protoName() string {
+	if c.Proto == "" {
+		return "http"
+	}
+	return c.Proto
 }
 
 // countingBody counts the response bytes actually read and reports them as

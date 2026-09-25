@@ -1,0 +1,1 @@
+{"api_info":{"api_version_number":"1"},"mode":"0","server_mode":"0","status":"3","locked_interface":"e1","sync_mode_two_step":true,"manual_ctrl":"0","delay_req":-3,"announceReceiptTimeout":3,"ttl":1,"selected_uuid":"f2807dac-985d-11e5-8994-feff819cdc9f","uuid":["f2807dac-985d-11e5-8994-feff819cdc9f","f3807dac-985d-11e5-8994-feff819cdc9f"]}

@@ -174,7 +174,7 @@ func TestClientPutSurfacesTransportError(t *testing.T) {
 	m := newModule(t)
 	url := m.ts.URL
 	m.ts.Close()
-	c := newClient("127.0.0.1", 1, 0, nil, nil)
+	c := newClient("127.0.0.1", 1, 0, nil, nil, nil)
 	c.base = url + apiPrefix
 	if err := c.put(context.Background(), "flows", map[string]any{}); err == nil || !strings.Contains(err.Error(), "mnset PUT flows") {
 		t.Errorf("err = %v", err)

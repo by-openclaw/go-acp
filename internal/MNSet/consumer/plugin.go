@@ -176,7 +176,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 
 // connectModule opens one module as a one-slot frame.
 func (p *Plugin) connectModule(ctx context.Context, ip string, port int) ([]slotModule, error) {
-	c := newClient(ip, port, p.timeout, p.Transport, p.Metrics())
+	c := newClient(ip, port, p.timeout, p.Transport, p.Metrics(), p.Recorder())
 	info, err := c.get(ctx, "self/information")
 	if err != nil {
 		return nil, fmt.Errorf("mnset connect %s:%d: %w", ip, port, err)
