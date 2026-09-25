@@ -19,6 +19,9 @@ scrape_configs:
       # host.docker.internal works on Docker Desktop (Mac, Windows).
       # On Linux docker, replace with the host's LAN IP or use
       # network_mode: host.
-      - targets: ["host.docker.internal:9100"]
+      - targets:
+          - "host.docker.internal:9100"   # producer / emulator
+          - "host.docker.internal:9101"   # consumer -> REAL Neuron 10.6.255.102
+          - "host.docker.internal:9102"   # consumer -> emulated Neuron 127.0.0.1:2072
         labels:
           service: dhs

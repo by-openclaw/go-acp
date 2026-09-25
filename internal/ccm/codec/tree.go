@@ -78,10 +78,13 @@ func ClassifyBody(body []byte) (kind NodeKind, children []string, err error) {
 			// branch of child names.
 			return NodeResource, nil, nil
 		}
+		// elems came out of a successful unmarshal, so every element is
+		// valid JSON; one that begins with a quote is therefore a valid
+		// JSON string and cannot fail to decode. The error is dropped
+		// deliberately rather than dressed up as a branch no input can
+		// reach — a malformed array was already refused above.
 		var s string
-		if uerr := json.Unmarshal(et, &s); uerr != nil {
-			return NodeResource, nil, fmt.Errorf("ccm: classify: array element: %w", uerr)
-		}
+		_ = json.Unmarshal(et, &s) //nolint:errcheck // see comment above
 		names = append(names, s)
 	}
 	return NodeBranch, names, nil

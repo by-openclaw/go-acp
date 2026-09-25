@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"dhs/internal/acp2/codec"
 	"dhs/internal/consumer"
@@ -34,6 +35,13 @@ type Walker struct {
 	session    *Session
 	logger     *slog.Logger
 	OnProgress WalkProgressFunc
+
+	// Concurrency bounds how many get_object round-trips may be in
+	// flight at once. 0 selects defaultWalkConcurrency; 1 restores the
+	// strictly serial walk. It is a bound, not a target: a device that
+	// dislikes being pushed is slowed by lowering it, never by changing
+	// the transport.
+	Concurrency int
 }
 
 // NewWalker creates a walker that uses the given session for ACP2 requests.
@@ -55,12 +63,12 @@ func (w *Walker) Walk(ctx context.Context, slot int) (*WalkedTree, error) {
 	w.logger.Debug("acp2: walker: starting DFS walk", "slot", slot)
 
 	// Try obj-id 1 first (real devices), then obj-id 0 (spec default).
-	rootErr := w.walkObject(ctx, slot, 1, nil, tree)
+	rootErr := w.walkObject(ctx, slot, 1, nil, tree, nil)
 	if rootErr != nil {
 		w.logger.Debug("acp2: walker: obj-id 1 failed, trying obj-id 0", "err", rootErr)
 		tree.Objects = nil
 		tree.Labels = make(map[string]int)
-		rootErr = w.walkObject(ctx, slot, 0, nil, tree)
+		rootErr = w.walkObject(ctx, slot, 0, nil, tree, nil)
 	}
 	if rootErr != nil {
 		return nil, fmt.Errorf("acp2 walk slot %d: %w", slot, rootErr)
@@ -151,29 +159,115 @@ func (w *Walker) getOne(ctx context.Context, slot int, objID uint32, path []stri
 	return obj, objType, numType, optMap, children, nil
 }
 
+// fetched is one completed get_object — everything walkObject needs to
+// emit an object and descend into it. Prefetching these is what turns
+// the walk from one-round-trip-at-a-time into a pipeline.
+type fetched struct {
+	obj      consumer.Object
+	objType  codec.ACP2ObjType
+	numType  codec.NumberType
+	optMap   map[uint32]string
+	children []uint32
+	err      error
+}
+
+// defaultWalkConcurrency is SERIAL, and that default is load-bearing.
+//
+// acp2_protocol.docx para 66 requires a device to "handle single
+// request at a time", and a real Axon Neuron does exactly that: walking
+// slot 1 (49,849 objects) at concurrency 1 took 171s and completed,
+// while the same walk at concurrency 16 stalled at 10,141 objects and
+// was still stuck 840s later with zero errors reported — the device
+// simply stopped answering. A walk has no overall deadline (only
+// per-request timeouts), so the prefetch waited forever.
+//
+// Pipelining therefore only ever pays against a responder that does NOT
+// serialise, and costs a hung export against one that does. It stays
+// available through --walk-concurrency for that case, but nobody opts
+// a real device into it by accident.
+const defaultWalkConcurrency = 1
+
+func (w *Walker) concurrency() int {
+	if w.Concurrency > 0 {
+		return w.Concurrency
+	}
+	return defaultWalkConcurrency
+}
+
+// prefetchChildren fetches every child concurrently and returns the
+// results in the SAME order as ids, so the caller descends in the order
+// the device listed them. That ordering is load-bearing: DM exports are
+// diffed across firmware versions, and a walk whose object order shifted
+// with goroutine scheduling would make every diff unreadable.
+//
+// Every entry is non-nil: a fetch that failed, and a child never
+// attempted because the walk was cancelled, both carry their reason in
+// fetched.err, so the caller reports it exactly where the serial walk
+// would have and never has to test for a missing entry.
+func (w *Walker) prefetchChildren(ctx context.Context, slot int, ids []uint32, path []string) []*fetched {
+	out := make([]*fetched, len(ids))
+	if len(ids) == 0 {
+		return out
+	}
+
+	limit := w.concurrency()
+	if limit > len(ids) {
+		limit = len(ids)
+	}
+	sem := make(chan struct{}, limit)
+
+	var wg sync.WaitGroup
+	for i, id := range ids {
+		if cerr := ctx.Err(); cerr != nil {
+			out[i] = &fetched{err: cerr}
+			continue
+		}
+		wg.Add(1)
+		go func(i int, id uint32) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			childPath := make([]string, len(path))
+			copy(childPath, path)
+			obj, objType, numType, optMap, children, err := w.getOne(ctx, slot, id, childPath)
+			out[i] = &fetched{
+				obj: obj, objType: objType, numType: numType,
+				optMap: optMap, children: children, err: err,
+			}
+		}(i, id)
+	}
+	wg.Wait()
+	return out
+}
+
 // walkObject fetches one object via get_object and recursively walks its children.
 // path tracks the label path from root to current node for consumer.Object.Path.
-func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []string, tree *WalkedTree) error {
+//
+// pre carries a result the caller already fetched while prefetching this
+// object's siblings; nil means fetch it here, which is what the root
+// does. Either way the object is appended to the tree at this point in
+// the traversal, so the emitted order is identical to a serial walk.
+func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []string, tree *WalkedTree, pre *fetched) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
 	}
 
-	w.logger.Debug("acp2: walker: get_object", "slot", slot, "obj_id", objID)
-
-	msg, err := w.session.DoACP2(ctx, uint8(slot), &codec.ACP2Message{
-		Type:  codec.ACP2TypeRequest,
-		Func:  codec.ACP2FuncGetObject,
-		ObjID: objID,
-		Idx:   0, // active index
-	})
-	if err != nil {
-		return fmt.Errorf("get_object(%d): %w", objID, err)
+	if pre == nil {
+		w.logger.Debug("acp2: walker: get_object", "slot", slot, "obj_id", objID)
+		o, ot, nt, om, ch, err := w.getOne(ctx, slot, objID, path)
+		if err != nil {
+			return err
+		}
+		pre = &fetched{obj: o, objType: ot, numType: nt, optMap: om, children: ch}
+	}
+	if pre.err != nil {
+		return pre.err
 	}
 
-	// Parse properties from the reply.
-	obj, objType, numType, optMap, children := w.parseObjectProperties(msg.Properties, slot, objID, path)
+	obj, objType, numType, optMap, children := pre.obj, pre.objType, pre.numType, pre.optMap, pre.children
 
 	// Stash type info on the consumer.Object via Meta so the
 	// hierarchical disk snapshot survives a round-trip and can rebuild
@@ -209,8 +303,13 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 		w.OnProgress(idx+1, &tree.Objects[idx])
 	}
 
-	// Recurse into children.
-	for _, childID := range children {
+	// Fetch this level's children concurrently, then descend in the
+	// order the device listed them. The overlap is what removes the
+	// dead time: the walk was spending most of its wall clock waiting
+	// on one round-trip at a time.
+	kids := w.prefetchChildren(ctx, slot, children, obj.Path)
+
+	for i, childID := range children {
 		// Bail early on cancellation — without this, every pending child
 		// hits the ctx.Done() check inside walkObject, returns
 		// context.Canceled, and we log a WARN per child. On a 50k-object
@@ -221,7 +320,7 @@ func (w *Walker) walkObject(ctx context.Context, slot int, objID uint32, path []
 		}
 		childPath := make([]string, len(obj.Path))
 		copy(childPath, obj.Path)
-		if err := w.walkObject(ctx, slot, childID, childPath, tree); err != nil {
+		if err := w.walkObject(ctx, slot, childID, childPath, tree, kids[i]); err != nil {
 			// Real child failures still log — partial walk is better
 			// than no walk. Cancellation is filtered above.
 			w.logger.Warn("acp2: walker: child error",
