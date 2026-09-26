@@ -192,6 +192,10 @@ func TestCLISurfaceGolden(t *testing.T) {
 		}
 	}
 
+	// 6. Host — facts about the machine dhs runs on.
+	add("host/<dispatcher-help>", "host", "--help")
+	add("host/info", "host", "info", "--help")
+
 	var out bytes.Buffer
 	for _, in := range invs {
 		out.WriteString("========== " + in.label + " ==========\n")

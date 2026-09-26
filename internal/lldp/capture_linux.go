@@ -25,6 +25,9 @@ type Capture struct {
 	// link legitimately returns nothing; the neighbour is not gone, it just
 	// has not spoken yet. Zero means 2s.
 	Window time.Duration
+	// Until, when set, ends the wait as soon as it reports true for the
+	// neighbours heard so far. Nil waits out the whole window.
+	Until func(map[string]Neighbor) bool
 
 	// sys is the operating-system surface Neighbors sits on. Nil means
 	// the real calls, which is what production always leaves it as.
@@ -79,7 +82,6 @@ func (c Capture) os() osCalls {
 }
 
 const (
-	defaultWindow = 2 * time.Second
 	// readTick bounds one blocking read so ctx cancellation lands within a
 	// tick rather than at the end of the whole window.
 	readTick = 250 * time.Millisecond
@@ -172,9 +174,12 @@ func (c Capture) Neighbors(ctx context.Context) (map[string]Neighbor, error) {
 		// would publish a switch port that is no longer attached.
 		if nb.Shutdown() {
 			delete(out, name)
-			continue
+		} else {
+			out[name] = nb
 		}
-		out[name] = nb
+		if c.Until != nil && c.Until(copyNeighbors(out)) {
+			return out, nil
+		}
 	}
 }
 

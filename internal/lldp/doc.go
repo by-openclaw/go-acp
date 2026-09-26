@@ -8,7 +8,8 @@
 //     which IS-04 v1.3 defines as "the Chassis ID … as signalled in LLDP
 //     received by this Node";
 //   - an operator asking which switch port a device is on wants the same
-//     four fields, whoever supplies them.
+//     four fields, whoever supplies them — including `dhs host info`, which
+//     asks it about the machine dhs runs on (#1147).
 //
 // So this package is neutral infrastructure, a sibling of transport and
 // auth. It is not owned by any protocol, and no protocol package reaches
@@ -29,21 +30,20 @@
 // capture, needs no privileges, and is the common case in a plant. Local
 // capture is the special case, not the default.
 //
-// # Why local capture is not portable
+// # Local capture, per OS
 //
-// Reading Ethertype 0x88CC means a raw link-layer socket:
+// Reading Ethertype 0x88CC means a raw link-layer socket, which every OS
+// offers differently:
 //
 //	Linux    AF_PACKET, stdlib syscall, needs CAP_NET_RAW
-//	macOS    /dev/bpf*, stdlib syscall, needs root
-//	Windows  impossible from stdlib — Windows raw sockets are IP-level and
-//	         never see a non-IP Ethertype. It needs the Npcap driver, whose
-//	         free licence permits five systems and no redistribution, and
-//	         whose silent installer is OEM-only.
+//	macOS    /dev/bpf*, stdlib syscall, needs root or access to /dev/bpf*
+//	Windows  Npcap — Windows raw sockets are IP-level and never see a
+//	         non-IP Ethertype. wpcap.dll is loaded at run time with the
+//	         standard library: no CGo, nothing linked into the binary. The
+//	         operator installs Npcap (its licence forbids us shipping it).
 //
-// Windows therefore returns [ErrCaptureUnsupported] rather than pretending.
-// Nothing here adds a dependency on any OS: the two platforms that can
-// capture do it from syscall, and the one that cannot says so in a typed
-// error the caller can branch on. The host-side posture is recorded in
-// docs/adr/0005-deps.json under host_deps and applied by the dhs_capture
-// Ansible role.
+// A host that cannot capture — Windows without Npcap, any other OS — returns
+// [ErrCaptureUnsupported] rather than pretending there are no neighbours.
+// The host-side posture is recorded in docs/adr/0005-deps.json under
+// host_deps and applied by the dhs_capture Ansible role.
 package lldp
