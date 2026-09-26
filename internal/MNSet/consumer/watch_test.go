@@ -128,6 +128,14 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	silent := func(list string) string { return strings.Replace(list, "10.6.40.99/24", "127.0.0.2/24", 1) }
 	mn.devices = silent(deviceList(modHost))
 	p := frameConnected(t, mod, mn, 0)
+	// The silent module's probe must fail INSIDE this test's budget on
+	// every platform. Linux routes the whole 127.0.0.0/8, so a connect
+	// to 127.0.0.2 is refused at once; macOS has only 127.0.0.1 unless
+	// an alias is added, so the same connect hangs until the client
+	// timeout — 8s by default, against the 3s waits below. That is a
+	// property of the host's loopback, not of this connector, so the
+	// test bounds the probe instead of assuming the network refuses it.
+	p.SetTimeout(300 * time.Millisecond)
 	fn, got := collect()
 	req := consumer.ValueRequest{Slot: -1}
 	if err := p.Subscribe(req, fn); err != nil {
