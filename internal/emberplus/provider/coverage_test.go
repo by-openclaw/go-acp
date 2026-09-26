@@ -338,11 +338,75 @@ func TestRunStreamer_NoStreams(t *testing.T) {
 func TestRunStreamerAndSweeper_CtxCancel(t *testing.T) {
 	srv := newServer(plugin.Deps{}, buildRichExport())
 	ctx, cancel := context.WithCancel(context.Background())
-	go srv.runStreamer(ctx, time.Millisecond)
-	go srv.runIdleSweeper(ctx, time.Millisecond, time.Hour)
+
+	// Both loops select on ctx.Done() and on Stopped(). Nothing stops
+	// this server, and Stopped() is an open channel until the accept
+	// loop returns, so a cancelled context is the ONLY way either
+	// function can return — waiting for the return therefore proves
+	// the ctx arm ran.
+	//
+	// This used to cancel and sleep 10ms. A sleep does not prove a
+	// goroutine reached anything: on a loaded runner neither had, and
+	// the two ctx-cancel statements went uncovered against a 100 %
+	// floor while passing on a quiet machine.
+	done := make(chan string, 2)
+	go func() { srv.runStreamer(ctx, time.Millisecond); done <- "streamer" }()
+	go func() { srv.runIdleSweeper(ctx, time.Millisecond, time.Hour); done <- "sweeper" }()
+	// A window for the 1ms tickers to fire at least once, so the work
+	// each loop exists to do is exercised as well as its exits. The
+	// cancel below is what the wait after it proves.
 	time.Sleep(10 * time.Millisecond)
 	cancel()
-	time.Sleep(10 * time.Millisecond)
+	for i := 0; i < 2; i++ {
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Fatal("a ticker loop did not return on a cancelled context")
+		}
+	}
+}
+
+// TestRunStreamerAndSweeper_ServerStopped covers the OTHER exit those
+// loops have: the server stopping under them while their context is
+// still live.
+//
+// A connector's background goroutines must not outlive the server they
+// belong to. The context is one way to end them and is usually the one
+// a test reaches for — which is why this arm was the uncovered one,
+// against a 100 % floor, on whichever platform lost the select race.
+// Here the context stays open, so returning can only mean Stopped()
+// closed.
+func TestRunStreamerAndSweeper_ServerStopped(t *testing.T) {
+	srv := newServer(plugin.Deps{}, buildRichExport())
+
+	// Stopped() is closed when the accept loop returns, and nothing
+	// else closes it. So run one: a cancelled context makes it return
+	// at once, with the listener still valid.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acceptCtx, cancelAccept := context.WithCancel(context.Background())
+	cancelAccept()
+	_ = srv.ServeListener(acceptCtx, ln)
+
+	select {
+	case <-srv.Stopped():
+	case <-time.After(10 * time.Second):
+		t.Fatal("the accept loop returned without closing Stopped")
+	}
+
+	// Live context, stopped server.
+	done := make(chan struct{}, 2)
+	go func() { srv.runStreamer(context.Background(), time.Millisecond); done <- struct{}{} }()
+	go func() { srv.runIdleSweeper(context.Background(), time.Millisecond, time.Hour); done <- struct{}{} }()
+	for i := 0; i < 2; i++ {
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Fatal("a ticker loop outlived the server it belongs to")
+		}
+	}
 }
 
 // TestFactory_New covers the plugin Factory.New constructor.
