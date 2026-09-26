@@ -20,7 +20,15 @@ import (
 	ccmc "dhs/internal/ccm/consumer"
 )
 
-func runCCM(ctx context.Context, args []string) error {
+// runCCM dispatches `dhs consumer ccm <verb>`.
+//
+// It answers CCM's own verbs — walk (streams by UUID) and export (the
+// versioned firmware artefacts) — and hands everything else to the
+// neutral dispatcher, which now has this connector in its registry.
+// `handled` is false for those, exactly as the SNMP dispatcher does
+// it: two faces, one session, and whichever shape the operator typed
+// is the one they meant.
+func runCCM(ctx context.Context, args []string) (handled bool, remaining []string, err error) {
 	if len(args) == 0 || isHelpToken(args[0]) {
 		fmt.Println("usage: dhs consumer ccm <verb> <host> [flags]")
 		fmt.Println("  walk <host>            list io/ip streams by UUID")
@@ -30,17 +38,50 @@ func runCCM(ctx context.Context, args []string) error {
 		fmt.Println("  flags: --json  emit the whole device as JSON")
 		fmt.Println("         --verify-tls  verify the device certificate (default: skip, lab self-signed)")
 		fmt.Println("         --timeout D   per-request timeout (default 8s)")
-		return nil
+		fmt.Println("  every neutral verb also works here: info, tree, get, watch, alarm, …")
+		return true, nil, nil
 	}
 	verb := args[0]
 	rest := args[1:]
+
+	// This connector's own settings — where the API hangs off, whether
+	// to verify the certificate — apply to BOTH shapes, but the neutral
+	// verbs are protocol-agnostic and have no flags for them. So they
+	// are taken here, before the split, and passed on the way every
+	// other per-connector setting reaches a neutral verb.
+	//
+	// Without this, `export --api-base /api --format csv` fails with
+	// "flag provided but not defined: -api-base" and prints ACP1's
+	// help — the two flags an operator needs at a customer site, in
+	// the one combination that did not work.
+	rest = takeCCMSettings(rest)
+
 	switch verb {
 	case "walk":
-		return runCCMWalk(ctx, rest)
+		// Both shapes exist. CCM's own walk lists streams by UUID; the
+		// neutral one walks a SLOT and writes the device model to the
+		// DM cache, which is what every other connector's walk does and
+		// what an alarm template and a fixture are keyed by. Whichever
+		// the operator named is the one they meant.
+		if namesASlot(rest) {
+			return false, append([]string{verb}, rest...), nil
+		}
+		return true, nil, runCCMWalk(ctx, rest)
 	case "export":
-		return runCCMExport(ctx, rest)
+		// Two shapes again. CCM's own export is the firmware-diff
+		// artefact set — api.yml, the DM tree, the extract, versioned
+		// per identity — and it keeps the bare verb. `--format` asks
+		// for the neutral one: json / yaml / CSV of the walked model,
+		// which is what an operator hands to somebody who does not run
+		// this tool.
+		if namesAFormat(rest) {
+			return false, append([]string{verb}, rest...), nil
+		}
+		return true, nil, runCCMExport(ctx, rest)
 	}
-	return fmt.Errorf("consumer ccm: unknown verb %q (expected: walk, export)", verb)
+	// info, tree, get, set, watch, alarm, ensure, validate…: the neutral
+	// dispatcher owns them now.
+	return false, append([]string{verb}, rest...), nil
 }
 
 func runCCMWalk(ctx context.Context, args []string) error {
@@ -48,6 +89,8 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	asJSON := fs.Bool("json", false, "emit the whole device as JSON")
 	tree := fs.Bool("tree", false, "walk the FULL recursive DM (every node/resource), not just io/ip streams")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
+	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
+	apiSpec := fs.String("api-spec", "", "the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.")
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
 	start := fs.String("start", "", "with --tree: comma-separated node paths to seed the walk (default: discover from the API root)")
 
@@ -62,7 +105,11 @@ func runCCMWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm walk: a host is required (e.g. 10.6.255.102)")
 	}
 
-	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS, Timeout: *timeout})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: ccmVerifyTLS(*verifyTLS),
+		Timeout: *timeout, APIBase: ccmAPIBase(*apiBase), APISpec: ccmAPISpec(*apiSpec)})
+	if err := c.Resolve(ctx); err != nil {
+		return err
+	}
 
 	if *tree {
 		return runCCMWalkTree(ctx, c, *asJSON, *start)
@@ -140,4 +187,104 @@ func runCCMWalkTree(ctx context.Context, c *ccmc.Client, asJSON bool, start stri
 		fmt.Fprintf(os.Stderr, "  deviation: %s\n", d)
 	}
 	return nil
+}
+
+// namesAFormat reports whether the operator asked for the neutral
+// export — a file in a named format, or the canonical matrix file-set —
+// rather than this connector's own artefact set.
+func namesAFormat(args []string) bool {
+	for _, a := range args {
+		for _, flag := range []string{"format", "out-dir"} {
+			if a == "--"+flag || a == "-"+flag ||
+				strings.HasPrefix(a, "--"+flag+"=") || strings.HasPrefix(a, "-"+flag+"=") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// takeCCMSettings pulls this connector's own settings out of the
+// argument list and applies them, returning what is left.
+//
+// They are applied through the environment because that is the channel
+// a registered connector already reads (the plugin's dialClient), and
+// because it is the same mechanism every other per-connector secret
+// and setting uses here. Flags still win over an environment the
+// operator exported earlier — they are the more specific statement.
+//
+// CCM's own verbs read the same settings back out of the environment
+// when their flag was not given, so removing them here takes nothing
+// away from those either — see ccmAPIBase.
+func takeCCMSettings(args []string) []string {
+	settings := []struct {
+		flag string
+		env  string
+		// bare is true for a flag with no value ("--verify-tls").
+		bare bool
+	}{
+		{"api-base", "CCM_API_BASE", false},
+		{"api-spec", "CCM_API_SPEC", false},
+		{"verify-tls", "CCM_VERIFY_TLS", true},
+	}
+
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		matched := false
+		for _, s := range settings {
+			long, short := "--"+s.flag, "-"+s.flag
+			switch {
+			case strings.HasPrefix(a, long+"="), strings.HasPrefix(a, short+"="):
+				_, v, _ := strings.Cut(a, "=")
+				_ = os.Setenv(s.env, v)
+				matched = true
+			case a == long || a == short:
+				if s.bare {
+					_ = os.Setenv(s.env, "1")
+					matched = true
+					break
+				}
+				if i+1 < len(args) {
+					_ = os.Setenv(s.env, args[i+1])
+					i++
+				}
+				matched = true
+			}
+			if matched {
+				break
+			}
+		}
+		if !matched {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// ccmAPIBase is the base a CCM verb should use: its own flag when
+// given, otherwise whatever the dispatcher took off the command line
+// or the operator exported. Empty means ask the device.
+func ccmAPIBase(flagValue string) string {
+	if v := strings.TrimSpace(flagValue); v != "" {
+		return v
+	}
+	return strings.TrimSpace(os.Getenv("CCM_API_BASE"))
+}
+
+// ccmVerifyTLS is the same for certificate verification. These devices
+// are self-signed by design, so verification is off unless somebody
+// asks for it — and asking once, anywhere, is enough.
+func ccmVerifyTLS(flagValue bool) bool {
+	return flagValue || strings.TrimSpace(os.Getenv("CCM_VERIFY_TLS")) != ""
+}
+
+// ccmAPISpec is the OpenAPI document a CCM verb should fetch: its own
+// flag when given, otherwise what the dispatcher took off the command
+// line or the operator exported. Empty tries the known names.
+func ccmAPISpec(flagValue string) string {
+	if v := strings.TrimSpace(flagValue); v != "" {
+		return v
+	}
+	return strings.TrimSpace(os.Getenv("CCM_API_SPEC"))
 }

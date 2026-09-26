@@ -150,6 +150,7 @@ USAGE
 PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
+  ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN
@@ -686,6 +687,7 @@ usage: dhs consumer ccm <verb> <host> [flags]
   flags: --json  emit the whole device as JSON
          --verify-tls  verify the device certificate (default: skip, lab self-signed)
          --timeout D   per-request timeout (default 8s)
+  every neutral verb also works here: info, tree, get, watch, alarm, …
 ```
 
 ## MNSet (consumer)
@@ -1746,6 +1748,7 @@ USAGE
 PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
+  ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN
@@ -1826,6 +1829,7 @@ USAGE
 PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
+  ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN

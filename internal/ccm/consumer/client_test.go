@@ -199,9 +199,12 @@ func TestFetchSpec(t *testing.T) {
 	n := newNeuron(t)
 	n.paths["/api/v1/docs/api.yml"] = "openapi: 3.1.0\n"
 
-	got, err := clientFor(t, n).FetchSpec(context.Background())
+	got, from, err := clientFor(t, n).FetchSpec(context.Background())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if from != "/docs/api.yml" {
+		t.Errorf("fetched from %q — a firmware diff wants to know which name this device serves", from)
 	}
 	if !strings.HasPrefix(string(got), "openapi:") {
 		t.Errorf("= %q", got)
@@ -210,7 +213,7 @@ func TestFetchSpec(t *testing.T) {
 	// A device that does not publish one says so rather than handing
 	// back an empty contract.
 	delete(n.paths, "/api/v1/docs/api.yml")
-	if _, err := clientFor(t, n).FetchSpec(context.Background()); err == nil {
+	if _, _, err := clientFor(t, n).FetchSpec(context.Background()); err == nil {
 		t.Error("a device with no spec must be reported")
 	}
 }

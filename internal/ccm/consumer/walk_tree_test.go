@@ -41,7 +41,14 @@ func fakeTree() *httptest.Server {
 }
 
 func testClient(srv *httptest.Server) *Client {
-	return &Client{base: srv.URL, http: &transporthttp.Client{HTTP: srv.Client(), MaxBody: MaxBody}}
+	// An explicit base is a resolved one: there is nothing to probe
+	// for, exactly as when an operator passes --api-base.
+	return &Client{
+		base:     srv.URL,
+		host:     strings.TrimPrefix(srv.URL, "http://"),
+		resolved: true,
+		http:     &transporthttp.Client{HTTP: srv.Client(), MaxBody: MaxBody},
+	}
 }
 
 func TestWalkTreeFull(t *testing.T) {
