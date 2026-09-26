@@ -142,8 +142,8 @@
       "needed_for": [
         "internal/amwa/session/dnssd"
       ],
-      "talks_via": "dnssd.dll loaded at run time with the standard library (syscall.LoadDLL) — no CGo, nothing linked into the binary. The ADR-0016 path is recorded per connector in its implementation PR.",
-      "cgo": false,
+      "talks_via": "dnssd.dll",
+      "cgo": true,
       "fallback": "internal/amwa/session/dnssd stdlib mDNS on 224.0.0.251:5353",
       "without_it": "Works, degraded: same cascade-timing jitter as a Linux host with no Avahi.",
       "install": {
@@ -154,11 +154,9 @@
       "adr_refs": [
         "0016"
       ],
-      "status": "approved",
+      "status": "planned",
       "tracking": "#195",
-      "approved_by": "yboujraf",
-      "approved_at": "2026-09-27",
-      "install_by": "Ansible on Windows hosts; operator-installed from Apple's package, never redistributed by us."
+      "blocked_on": "ADR-0016 CGo wrapper conflict (Path A vs Path B) is unresolved; CGo also breaks CGO_ENABLED=0 cross-compile."
     },
     {
       "id": "bonjour-macos",
