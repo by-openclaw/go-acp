@@ -64,7 +64,19 @@ jobs:
         # (fixed in the commit beside this one). Cross-compile proves a
         # binary BUILDS for each OS; only these runners prove it works
         # there.
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        #
+        # Linux is PINNED. GitHub migrates the ubuntu-latest label to
+        # Ubuntu 26 from 2026-10-19, and an OS that changes under a
+        # green main on a date nobody chose is the same failure mode
+        # this matrix exists to prevent — the difference being that
+        # nobody would be looking. Raising this to ubuntu-26.04 is then
+        # a PR, verified on a branch like anything else.
+        #
+        # The `if: matrix.os == …` guards below name this exact string:
+        # the coverage-floor steps run on Linux only, and a guard that
+        # names an OS no longer in the matrix would switch them off
+        # without failing anything. Change both or neither.
+        os: [ubuntu-24.04, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -112,11 +124,11 @@ jobs:
       # two flags compose, and statement coverage does not depend on the
       # scheduler.
       - name: Unit tests
-        if: matrix.os != 'ubuntu-latest'
+        if: matrix.os != 'ubuntu-24.04'
         run: go test -count=1 -race ./...
 
       - name: Unit tests (coverage)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: go test -count=1 -race -coverprofile=coverage.out ./...
 
       # Per-package coverage floor for the gold-template connectors. Fails
@@ -129,7 +141,7 @@ jobs:
       # package with no rows at all is a hard failure (renamed package
       # guard). On a miss the exact uncovered blocks are printed.
       - name: Coverage floor (acp1 + acp2 + emberplus)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           set -e
           pkg_pct() {   # pkg_pct <pkg-path>  ->  "<pct> <rows>"
@@ -314,7 +326,7 @@ jobs:
           exit $fail
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
         with:
           name: coverage
