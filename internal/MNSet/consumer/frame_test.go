@@ -96,7 +96,15 @@ func deviceList(moduleIP string) string {
 
 func frameConnected(t *testing.T, mod *module, mn *mnsetServer, port int) *Plugin {
 	t.Helper()
+	return frameConnectedVia(t, mod, mn, port, nil)
+}
+
+// frameConnectedVia is frameConnected with the plugin's HTTP transport set
+// before it connects (nil = the net/http default).
+func frameConnectedVia(t *testing.T, mod *module, mn *mnsetServer, port int, rt stdhttp.RoundTripper) *Plugin {
+	t.Helper()
 	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*Plugin)
+	p.Transport = rt
 	_, modPort := mod.hostPort(t)
 	p.SetModulePort(modPort)
 	host, mnPort := mn.hostPort(t)

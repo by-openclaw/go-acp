@@ -3,9 +3,11 @@ package mnset
 import (
 	"context"
 	"errors"
-	"runtime"
+	"net"
+	stdhttp "net/http"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -116,28 +118,13 @@ func TestWatchErrors(t *testing.T) {
 }
 
 func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
-	// The scenario needs a module that is ADVERTISED and unreachable,
-	// so the frame reports it in error while its neighbours stay
-	// present. Every fake module here answers on one shared port, so
-	// the only thing that can distinguish the unreachable one is its
-	// IP — and there is no IP that fails FAST on macOS: 127.0.0.2 is
-	// not routed there (Linux routes all of 127.0.0.0/8), and any
-	// address that is routed answers on that shared port.
-	//
-	// Bounding the client timeout was tried and is not enough: the
-	// bound applies to every request the plugin makes, so tightening
-	// it starves the healthy modules and the frame reports no present
-	// slot at all. Three attempts at 300ms, 1s and a readiness retry
-	// each failed on macOS for a different reason.
-	//
-	// The honest scope is therefore this one test, not the platform:
-	// every other test in this package runs on macOS, and this one
-	// runs on Linux and Windows, where the premise holds. Giving the
-	// fake per-module ports would fix it properly and is a change to
-	// the plugin's addressing, not to a test.
-	if runtime.GOOS == "darwin" {
-		t.Skip("needs an advertised-but-unreachable module; macOS routes no second loopback address to make one")
-	}
+	// The scenario needs a module that is ADVERTISED and unreachable, so
+	// the frame reports it in error while its neighbours stay present.
+	// The address alone cannot make one on every OS: Linux refuses a
+	// connect to 127.0.0.2 at once, but macOS has no 127.0.0.2 and the
+	// same connect hangs until the client timeout. So the unreachable
+	// module is made in the plugin's injected transport instead, which
+	// refuses that host at once on every platform (ADR-0016).
 	withPlan(t, fastPlan)
 	frameRefresh = 30 * time.Millisecond
 	t.Cleanup(func() { frameRefresh = 10 * time.Second }) // after Disconnect joined the loop
@@ -145,27 +132,12 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	modHost, _ := mod.hostPort(t)
 	mn := newMNSet(t)
 	// OFFLINE 00:1b…, ONLINE 40:a3:6b:a2…, ONLINE 40:a3:6b:ff…; the offline
-	// one sits on 127.0.0.2, where nothing listens on the module port, so
-	// when it comes ONLINE its probe is refused at once — no timeout to
-	// tune, no stall under -race.
+	// one sits on 127.0.0.2, which the transport refuses, so when it comes
+	// ONLINE its probe fails at once — no timeout to tune, no stall under
+	// -race, the same on every OS.
 	silent := func(list string) string { return strings.Replace(list, "10.6.40.99/24", "127.0.0.2/24", 1) }
 	mn.devices = silent(deviceList(modHost))
-	p := frameConnected(t, mod, mn, 0)
-	// The silent module's probe must fail INSIDE this test's budget on
-	// every platform. Linux routes the whole 127.0.0.0/8, so a connect
-	// to 127.0.0.2 is refused at once; macOS has only 127.0.0.1 unless
-	// an alias is added, so the same connect hangs until the client
-	// timeout — 8s by default, against the waits below. That is a
-	// property of the host's loopback, not of this connector, so the
-	// test bounds the probe instead of assuming the network refuses it.
-	//
-	// One second, not less: this timeout applies to EVERY request the
-	// plugin makes, the MN SET device list and the healthy modules
-	// included. At 300ms a loaded macOS runner missed those too and
-	// the watch had no present slot to build a profile from — the
-	// bound has to be short against the waits and long against a
-	// local HTTP round trip, and 1s against 6s is both.
-	p.SetTimeout(time.Second)
+	p := frameConnectedVia(t, mod, mn, 0, refuseHost{host: "127.0.0.2"})
 	fn, got := collect()
 	req := consumer.ValueRequest{Slot: -1}
 	if err := p.Subscribe(req, fn); err != nil {
@@ -400,4 +372,17 @@ func TestShippedPlanPublishesEverySampleOfAHealthLeaf(t *testing.T) {
 			t.Errorf("shipped plan: %q must carry on_change:false", pat)
 		}
 	}
+}
+
+// refuseHost is a transport on which one host is unreachable: every request
+// to it fails at once with connection refused, the way Linux answers a
+// loopback address nothing listens on. Every other request goes to the
+// net/http default transport.
+type refuseHost struct{ host string }
+
+func (r refuseHost) RoundTrip(req *stdhttp.Request) (*stdhttp.Response, error) {
+	if req.URL.Hostname() == r.host {
+		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}
+	}
+	return stdhttp.DefaultTransport.RoundTrip(req)
 }
