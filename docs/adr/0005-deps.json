@@ -142,8 +142,8 @@
       "needed_for": [
         "internal/amwa/session/dnssd"
       ],
-      "talks_via": "dnssd.dll",
-      "cgo": true,
+      "talks_via": "dnssd.dll loaded at run time with the standard library (syscall.LoadDLL) — no CGo, nothing linked into the binary. The ADR-0016 path is recorded per connector in its implementation PR.",
+      "cgo": false,
       "fallback": "internal/amwa/session/dnssd stdlib mDNS on 224.0.0.251:5353",
       "without_it": "Works, degraded: same cascade-timing jitter as a Linux host with no Avahi.",
       "install": {
@@ -154,9 +154,11 @@
       "adr_refs": [
         "0016"
       ],
-      "status": "planned",
+      "status": "approved",
       "tracking": "#195",
-      "blocked_on": "ADR-0016 CGo wrapper conflict (Path A vs Path B) is unresolved; CGo also breaks CGO_ENABLED=0 cross-compile."
+      "approved_by": "yboujraf",
+      "approved_at": "2026-09-27",
+      "install_by": "Ansible on Windows hosts; operator-installed from Apple's package, never redistributed by us."
     },
     {
       "id": "bonjour-macos",
@@ -211,8 +213,8 @@
       "needed_for": [
         "internal/lldp (planned)"
       ],
-      "talks_via": "Npcap driver + wpcap.dll",
-      "cgo": true,
+      "talks_via": "wpcap.dll loaded at run time with the standard library (syscall.LoadDLL) — no CGo, nothing linked into the binary",
+      "cgo": false,
       "fallback": "Device-reported LLDP over the device's own API; no local capture.",
       "without_it": "Windows cannot capture LLDP locally at all: Windows raw sockets are IP-level and cannot see non-IP Ethertypes. IS-04 attached_network_device stays unset unless another source supplies it.",
       "install": {
@@ -223,8 +225,11 @@
       "adr_refs": [
         "0016"
       ],
-      "status": "not-adopted",
-      "decision_pending": "Licence terms conflict with fleet-wide deployment. Preferred answer is to avoid it entirely: take LLDP from the device's own API rather than capturing on the host."
+      "status": "approved",
+      "approved_by": "yboujraf",
+      "approved_at": "2026-09-27",
+      "install_by": "Operator, once per Windows host (the free edition has no silent install — that is OEM-only). Ansible checks it is present and stops with a clear message if not. Hosts with Wireshark already have it.",
+      "licence_limit": "Free edition: at most 5 systems unless deployed alongside Wireshark/Nmap. Stay within it or buy OEM."
     },
     {
       "id": "raw-capture-privilege",
