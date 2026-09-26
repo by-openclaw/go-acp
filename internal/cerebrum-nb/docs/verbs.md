@@ -219,12 +219,36 @@ verbs, never as reported LOCK_STATE values (see `codec/actions.go`).
 in the Cerebrum device tree. `--device-type` selects the body shape
 (`generic` / `panel` / `router` / `snmp`).
 
-```
+> **This server does not implement it.** Sent to
+> `vm-cerebrum-stg-01` (10.6.250.5:40009) on 2026-09-26, the whole
+> command is refused:
+>
+> ```text
+> tx  <DEVICE_CONFIGURATION TYPE="ADD" …>
+> rx  <NACK …>   2:UNKNOWN_COMMAND — an unknown command has been specified
+> ```
+>
+> Not a malformed body and not one rejected field: the command itself
+> is unknown to the server. So a device — a router, or a Neuron as a
+> virtual device — **cannot be created over NB on this Cerebrum**.
+> Whether another build or licence level accepts it is unknown; no
+> server that accepts it has been seen. The encoder below is still
+> spec-correct and fixture-pinned.
+
+```text
 dhs consumer cerebrum-nb device-config add 10.6.239.50 \
   --device-type generic --ip 10.10.10.1 \
   --device "Shotoku STAR Protocol" --version Latest --name "Shotoku STAR Protocol" \
-  --connection-type TCP --port-number 8000 --timeout-ms 5000 --poll-period 3000
+  --conn-type TCP --port-number 8000 --timeout-ms 5000 --poll 3000
 ```
+
+The flags are `--conn-type` and `--poll`. This example carried
+`--connection-type` and `--poll-period`, which the binary rejects as
+undefined — it had never been run.
+
+`VIRTUALISE` is in the codec's `PROTOCOL_CONFIGURATION` but has no CLI
+flag, so a virtualised device cannot be requested from the command
+line today.
 
 Codec-generated fixture
 ([`tx_device_config_add_generic.xml`](../testdata/fixtures/tx_device_config_add_generic.xml),

@@ -22,6 +22,7 @@ import (
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/alarm"
+	"dhs/internal/metrics"
 	"dhs/internal/transport/ws"
 )
 
@@ -76,6 +77,12 @@ type cerebrumFlags struct {
 	logRetention int
 	capture      string
 	timeout      time.Duration
+
+	// metrics, when set, is handed to every plugin this verb dials, so
+	// a supervised session that reconnects keeps reporting into ONE
+	// counter set — the one something is already serving on
+	// --metrics-addr. Nil leaves each plugin its own.
+	metrics *metrics.Connector
 
 	// logger + logCleanup are built once by newLogger and cached so a verb
 	// (e.g. watch) can route its own event stream through the SAME logger
@@ -408,7 +415,7 @@ VERBS
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
-  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off
+  watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off. --metrics-addr :9100 serves Prometheus /metrics + /snapshot.json for this watch (labels proto/device/role), surviving reconnects
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
@@ -497,6 +504,7 @@ func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebr
 	}
 
 	p := cerebrum.NewPlugin(logger)
+	p.SetMetrics(cf.metrics)
 	p.Username = cf.user
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
@@ -1703,6 +1711,13 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// --metrics-addr is what every other connector's consumer offers;
+	// this one served nothing, so `dhs metrics show` could not scrape a
+	// Cerebrum at all.
+	metricsAddr, rest, err := extractStringFlag(rest, "--metrics-addr")
+	if err != nil {
+		return err
+	}
 	// --raw keeps the pre-parity per-frame rendering: every wire
 	// attribute, one block per frame. The table drops frame-level
 	// attrs (name/ip/sub repeat identically on every row of a single
@@ -1764,6 +1779,19 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		plugMu sync.Mutex
 		plug   *cerebrum.Plugin
 	)
+	evaluator := loadAlarmEvaluator(ctx, nil, "cerebrum-nb", 0, alarmFile, noAlarm)
+	meter := &alarmMeter{}
+
+	// Metrics. One counter set for the whole watch, handed to every
+	// plugin the supervisor dials, so /metrics survives a reconnect.
+	watchMetrics := metrics.NewConnector()
+	cf.metrics = watchMetrics
+	if metricsAddr != "" {
+		labels := map[string]string{"proto": "cerebrum-nb", "device": device, "role": "consumer"}
+		serveMetricsEndpoint(ctx, slog.Default(), metricsAddr, watchMetrics, labels,
+			func() metrics.AlarmSnapshot { return alarmSnapshot(evaluator, meter) })
+	}
+
 	swapPlugin := func(p *cerebrum.Plugin) {
 		plugMu.Lock()
 		old := plug
@@ -1794,6 +1822,9 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 		if derr != nil {
 			return nil, derr
 		}
+		// Every re-dial reports into the SAME counters, so a reconnect
+		// is a step in one series rather than the end of one and the
+		// start of another nobody is serving.
 		swapPlugin(p)
 		return sess, nil
 	}
@@ -1826,8 +1857,6 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	// Alarms. Built here rather than beside its flags: loading a
 	// template announces how many rules are in force, and a `watch -h`
 	// must print help, not that.
-	evaluator := loadAlarmEvaluator(ctx, nil, "cerebrum-nb", 0, alarmFile, noAlarm)
-
 	// Descriptor cache. A DEVICE_CHANGE notification arrives value-only over
 	// the wire (no type/access/units), so the resolve step's descriptors are
 	// remembered here and merged into every rendered row — giving the watch
@@ -1970,7 +1999,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 					if evaluator != nil {
 						cerebrumReportAlarm(
 							evaluator.Eval(device, cerebrumAlarmEvent(device, subDev, ov, now)),
-							device, evLogger, logToSink)
+							device, evLogger, logToSink, meter)
 					}
 					// Sinks: the same change as a structured record (file/server),
 					// only when a sink exists (stderr is human, never the events).
@@ -3935,10 +3964,11 @@ func cerebrumAlarmEvent(device, subDev string, ov codec.DeviceObjectValue, now t
 // cerebrumReportAlarm prints one raise/clear and records it on the
 // event sink, in the same shape the generic watch uses so one plant's
 // alarms read alike whichever connector saw them.
-func cerebrumReportAlarm(tr *alarm.Transition, device string, evLogger *slog.Logger, logToSink bool) {
+func cerebrumReportAlarm(tr *alarm.Transition, device string, evLogger *slog.Logger, logToSink bool, meter *alarmMeter) {
 	if tr == nil {
 		return
 	}
+	meter.observe(tr.Severity.String())
 	fmt.Printf("%s  %-18s  %s\n", tr.At.Format("15:04:05"), "[alarm]", tr.String())
 	if !logToSink || evLogger == nil {
 		return

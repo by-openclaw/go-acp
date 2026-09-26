@@ -101,6 +101,26 @@ func (b *Base) Metrics() *metrics.Connector {
 	return b.metrics
 }
 
+// SetMetrics gives this connector a counter set built outside it.
+//
+// A connector that is re-dialled — a supervised watch replaces its
+// plugin on every reconnect — would otherwise start a fresh set each
+// time, and whatever is serving /metrics would go on publishing the
+// counters of a session that ended. Handing every incarnation the same
+// set keeps one series across a reconnect, which is what an operator
+// watching a graph expects a reconnect to look like.
+//
+// Nil is ignored: a caller with nothing to inject leaves the lazy one
+// in place.
+func (b *Base) SetMetrics(m *metrics.Connector) {
+	if m == nil {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.metrics = m
+}
+
 // SetRecorder attaches a traffic recorder, or clears it with nil. Safe at
 // any time; a session reads it through Recorder when it writes a frame.
 func (b *Base) SetRecorder(rec *transport.Recorder) {
