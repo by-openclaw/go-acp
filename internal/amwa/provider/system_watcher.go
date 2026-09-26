@@ -40,9 +40,14 @@ type SystemWatcher struct {
 	onGlobal func(g any, url string)
 
 	browser dnssdsession.Browser
-	cancel  context.CancelFunc
 
 	mu sync.Mutex
+	// cancel stops the browse loop. It is written by Run, on whichever
+	// goroutine started the node, and read by Close, on whichever
+	// goroutine shuts it down — a different one, always, since Run
+	// returns immediately and the caller closes later. It lives under
+	// the same lock as the maps below for that reason.
+	cancel context.CancelFunc
 	// seen is every currently-advertised instance, keyed by its full
 	// DNS-SD name. Kept whole rather than reduced to "the best so far"
 	// because an instance going away can promote a different one, and
@@ -87,7 +92,9 @@ func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, u
 // Run starts the browse loop and returns immediately.
 func (w *SystemWatcher) Run(ctx context.Context) error {
 	loopCtx, cancel := context.WithCancel(ctx)
+	w.mu.Lock()
 	w.cancel = cancel
+	w.mu.Unlock()
 	out, err := w.browser.Browse(loopCtx, dnssdcodec.ServiceSystem)
 	if err != nil {
 		cancel()
@@ -99,8 +106,11 @@ func (w *SystemWatcher) Run(ctx context.Context) error {
 
 // Close stops the browse loop.
 func (w *SystemWatcher) Close() error {
-	if w.cancel != nil {
-		w.cancel()
+	w.mu.Lock()
+	cancel := w.cancel
+	w.mu.Unlock()
+	if cancel != nil {
+		cancel()
 	}
 	return w.browser.Close()
 }
