@@ -13,10 +13,11 @@ on:
     # No base-branch filter, so a PR in a stack — based on the PR below it
     # rather than on main — is verified too. Stacked PRs used to report no
     # checks at all: CI only fired when the base was main, so 23 of a 24-PR
-    # rollcall stack got nothing until each was retargeted. The cost of
-    # widening this is held down by the same file: a run on any ref but main
-    # is Linux-only and supersedes the previous run on that ref, so a stacked
-    # PR run is three jobs and an amended push cancels the run it replaced.
+    # rollcall stack got nothing until each was retargeted. What holds the
+    # cost of widening this down is the concurrency rule below: a run on
+    # any ref but main supersedes the previous run on that ref, so an
+    # amended push cancels the run it replaced rather than queueing
+    # beside it.
     #
     # The release-please PR touches ONLY these two bot-owned files and is
     # re-force-pushed on every merge to main; each force-push spawned a CI
@@ -50,13 +51,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Every OS on main, where each merge commit is verified in full.
-        # Everywhere else, Linux only: an iteration on a branch asks whether
-        # the change works, and the Cross-compile job below still builds it
-        # for every OS at Linux cost. Windows and macOS runners are what made
-        # a branch run expensive, and each one repeated what Linux had just
-        # proved.
-        os: ${{ fromJSON(github.ref == 'refs/heads/main' && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest"]') }}
+        # Every OS, on every ref. A branch run that skipped Windows and
+        # macOS made "the PR is green" mean "Linux is green", and the
+        # difference is not theoretical: a test that assumed the whole
+        # of 127.0.0.0/8 is routed — true on Linux, false on macOS —
+        # passed every check its PR was given and broke main on merge
+        # (fixed in the commit beside this one). Cross-compile proves a
+        # binary BUILDS for each OS; only these runners prove it works
+        # there.
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -314,10 +317,9 @@ jobs:
 
   test-rhel:
     name: Test (${{ matrix.distro }})
-    # The RHEL-family containers run on main only, with the full OS matrix:
-    # they re-run the Linux suite in another userland, which a branch
-    # iteration does not need to know before merge.
-    if: github.ref == 'refs/heads/main'
+    # The RHEL-family containers run on every ref too: they re-run the
+    # suite in another userland, and a userland difference is exactly
+    # the kind of thing a branch must not discover after merging.
     runs-on: ubuntu-latest
     strategy:
       matrix:
