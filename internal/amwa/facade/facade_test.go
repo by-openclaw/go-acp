@@ -8,7 +8,7 @@ package facade
 
 import (
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"errors"
 	"net"

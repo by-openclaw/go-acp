@@ -8,7 +8,7 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"errors"
 	"os"
 	"path/filepath"

@@ -2,7 +2,7 @@ package acp1
 
 import (
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"net"
 	"testing"
 	"time"

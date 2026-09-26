@@ -10,7 +10,7 @@ package provider
 import (
 	"bytes"
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	"log/slog"

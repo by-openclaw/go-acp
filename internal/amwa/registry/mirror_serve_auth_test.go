@@ -13,7 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/base64"
 	"encoding/json"
 	"io"

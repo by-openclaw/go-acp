@@ -7,7 +7,7 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	stdhttp "net/http"
 	"strings"

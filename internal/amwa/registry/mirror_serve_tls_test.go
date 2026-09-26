@@ -18,7 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"encoding/pem"
 	"io"

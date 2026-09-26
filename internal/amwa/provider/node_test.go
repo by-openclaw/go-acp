@@ -2,7 +2,7 @@ package provider
 
 import (
 	"context"
-	"dhs/internal/testnet"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	stdhttp "net/http"
