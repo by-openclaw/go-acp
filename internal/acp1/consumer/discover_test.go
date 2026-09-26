@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"net"
 	"testing"
 	"time"
@@ -9,22 +10,8 @@ import (
 	"dhs/internal/acp1/codec"
 )
 
-// freeUDPPort grabs an ephemeral UDP port and releases it so Discover can
-// re-bind it (Discover sets SO_REUSEADDR, and on loopback the brief gap is
-// race-free enough for a unit test).
-func freeUDPPort(t *testing.T) int {
-	t.Helper()
-	c, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
-	if err != nil {
-		t.Fatalf("free port: %v", err)
-	}
-	p := c.LocalAddr().(*net.UDPAddr).Port
-	_ = c.Close()
-	return p
-}
-
 func TestDiscover_PassiveAndActive(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 
 	// Sender: once the listener is up, push an announcement (MTID=0), a
 	// frame-status reply that fills NumSlots, and a malformed datagram.
@@ -64,7 +51,7 @@ func TestDiscover_PassiveAndActive(t *testing.T) {
 }
 
 func TestDiscover_PassiveNoDevices(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	res, err := Discover(context.Background(), DiscoverConfig{
 		Port: port, Duration: 100 * time.Millisecond, Active: false,
 	})
@@ -79,5 +66,5 @@ func TestDiscover_PassiveNoDevices(t *testing.T) {
 func TestProbeActive(t *testing.T) {
 	// Best-effort: on hosts with no broadcast route this returns an error,
 	// on others it succeeds. Either way the send path is exercised.
-	_ = probeActive(freeUDPPort(t))
+	_ = probeActive(testnet.FreeUDPPort(t))
 }

@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"encoding/json"
 	stdhttp "net/http"
 	"net/http/httptest"
@@ -218,7 +219,7 @@ func TestServeStatusReportsTheMirror(t *testing.T) {
 	m.cache["nodes"][fxNode] = mustJSONBytes(t, validNode(fxNode))
 	m.mu.Unlock()
 
-	ln := freePort(t)
+	ln := testnet.FreeAddr(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go m.serveStatus(ctx, ln)
@@ -253,15 +254,6 @@ func TestServeStatusReportsTheMirror(t *testing.T) {
 	if status.ServeAddr != "" {
 		t.Errorf("serve_addr = %q, want it absent while serving is off", status.ServeAddr)
 	}
-}
-
-// freePort returns a host:port nothing is listening on.
-func freePort(t *testing.T) string {
-	t.Helper()
-	srv := httptest.NewServer(stdhttp.NotFoundHandler())
-	addr := srv.Listener.Addr().String()
-	srv.Close()
-	return addr
 }
 
 // A target holding none of our nodes is probed back to health with a

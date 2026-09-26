@@ -13,10 +13,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
+	"dhs/internal/testnet"
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"net"
 	stdhttp "net/http"
 	"net/http/httptest"
 	"strings"
@@ -92,20 +92,6 @@ func serveQueryClaims(iss string) map[string]any {
 	}
 }
 
-// freeLoopbackAddr reserves an ephemeral 127.0.0.1 port and returns
-// it — for the status endpoint, whose bound address is not surfaced
-// the way ServeAddr is.
-func freeLoopbackAddr(t *testing.T) string {
-	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	addr := ln.Addr().String()
-	_ = ln.Close()
-	return addr
-}
-
 // startAuthedServedMirror is startServedMirror with the served face
 // armed against the mock Authorization Server, plus a status endpoint.
 func startAuthedServedMirror(t *testing.T, asURL, statusAddr string) (*Mirror, *pushSource) {
@@ -158,7 +144,7 @@ func getWithToken(t *testing.T, url, token string) (int, stdhttp.Header, []byte)
 // registration block, and reports serve_auth=true on /status.json.
 func TestMirrorServeAuthGate(t *testing.T) {
 	as := mockServeAS(t)
-	statusAddr := freeLoopbackAddr(t)
+	statusAddr := testnet.FreeAddr(t)
 	m, push := startAuthedServedMirror(t, as.URL, statusAddr)
 	base := "http://" + m.ServeAddr()
 
@@ -217,7 +203,7 @@ func TestMirrorServeDisarmedStatus(t *testing.T) {
 	src.Config.Handler = push.handler(t, func() string { return src.URL })
 	t.Cleanup(src.Close)
 
-	statusAddr := freeLoopbackAddr(t)
+	statusAddr := testnet.FreeAddr(t)
 	m, err := NewMirror(MirrorOptions{
 		Source: src.URL, Target: target.URL, APIVer: "v1.3",
 		ServeAddr: "127.0.0.1:0", StatusAddr: statusAddr,

@@ -9,11 +9,11 @@ package main
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	stdhttp "net/http"
 	"os"
 	"testing"
@@ -25,18 +25,6 @@ import (
 
 	_ "dhs/internal/amwa/registry" // registry plugin registration
 )
-
-// freeTCPPort asks the OS for a free port and releases it for reuse.
-func freeTCPPort(t *testing.T) int {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("reserve port: %v", err)
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	_ = l.Close()
-	return port
-}
 
 // queryNodeCount reads the Query API's /nodes listing.
 func queryNodeCount(t *testing.T, base string) (int, error) {
@@ -66,7 +54,7 @@ func TestHeartbeatCadenceVsRegistryGC(t *testing.T) {
 
 	run := func(t *testing.T, cadence time.Duration, wantEvicted bool) {
 		t.Helper()
-		port := freeTCPPort(t)
+		port := testnet.FreePort(t)
 		base := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 		f, ok := registryslot.Lookup("nmos")

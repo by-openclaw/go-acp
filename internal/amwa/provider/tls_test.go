@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"dhs/internal/testnet"
 	"encoding/json"
 	"encoding/pem"
 	"io"
@@ -66,7 +67,7 @@ func writeTLSPair(t *testing.T, dir string) (string, string, *x509.CertPool) {
 
 func TestNodeServesTLS(t *testing.T) {
 	certFile, keyFile, pool := writeTLSPair(t, t.TempDir())
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static",
 		TLSCertFile: certFile, TLSKeyFile: keyFile,

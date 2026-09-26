@@ -8,6 +8,7 @@ package facade
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"encoding/json"
 	"errors"
 	"net"
@@ -245,21 +246,9 @@ func TestAnswerDeliveryFailuresAreLogged(t *testing.T) {
 	}
 }
 
-// freeAddr returns a loopback address nothing is listening on right now.
-func freeAddr(t *testing.T) string {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	addr := l.Addr().String()
-	_ = l.Close()
-	return addr
-}
-
 func TestListenAndServe(t *testing.T) {
 	t.Run("serves questions until the context ends", func(t *testing.T) {
-		s, err := New(Options{Controller: failingFactory, Bind: freeAddr(t), Logger: quietLogger()})
+		s, err := New(Options{Controller: failingFactory, Bind: testnet.FreeAddr(t), Logger: quietLogger()})
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}

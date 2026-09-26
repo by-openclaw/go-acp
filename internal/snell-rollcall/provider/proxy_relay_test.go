@@ -728,3 +728,49 @@ func TestACallAlreadyInFlightIsNotDoubled(t *testing.T) {
 		t.Error("a second call was started while the first was still in flight")
 	}
 }
+
+// A connection accepted as a proxy begins to stop is ended on the spot, and
+// the relays set up for it are closed with it rather than left dialled. The
+// branch runs only when Stop and an accept meet, so it is driven here in that
+// order on purpose instead of being covered when a run happens to race.
+func TestAProxyStoppingEndsTheRelaysOfALateConnection(t *testing.T) {
+	_, addr := serveFrame(t, 0x0C)
+	p := New(testDeps(clock.NewFake(time.Time{})), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: addr}); err != nil {
+		t.Fatalf("SetProxy: %v", err)
+	}
+	_ = p.Stop()
+
+	ours, theirs := net.Pipe()
+	defer func() { _ = ours.Close() }()
+	p.serveConn(theirs)
+	_ = ours.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if _, err := ours.Read(make([]byte, 1)); err == nil {
+		t.Error("a connection accepted after Stop began was kept open")
+	}
+	if n := linkCount(p); n != 0 {
+		t.Errorf("%d links tracked after Stop, want none", n)
+	}
+}
+
+// A refusal that cannot be written is dropped, and the write failure ends the
+// client's link — there is nobody left to refuse.
+func TestARefusalThatCannotBeWrittenIsDropped(t *testing.T) {
+	p := New(testDeps(clock.NewFake(time.Time{})), nil)
+	r := &relayLink{p: p}
+
+	ours, theirs := net.Pipe()
+	t.Cleanup(func() { _ = ours.Close(); _ = theirs.Close() })
+	down := session.NewLink(deadWriteConn{ours}, session.Config{KeepaliveInterval: -1}, p.deps)
+	t.Cleanup(func() { _ = down.Close() })
+
+	r.refuse(down, codec.Frame{Type: codec.MsgGetID}, "gone")
+
+	select {
+	case <-down.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("the link survived a failed write")
+	}
+}

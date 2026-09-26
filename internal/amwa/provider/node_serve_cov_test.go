@@ -8,6 +8,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"errors"
 	"os"
 	"path/filepath"
@@ -74,7 +75,7 @@ func isAddrInUse(err error) bool {
 // caller can decide whether another port is worth trying.
 func tryStartNode(t *testing.T, bundle *NodeConfig, tweak func(*IS04NodeConfig)) (*servedNode, error) {
 	t.Helper()
-	cfg := IS04NodeConfig{Bind: freeAddr(t), DiscoveryMode: "static"}
+	cfg := IS04NodeConfig{Bind: testnet.FreeAddr(t), DiscoveryMode: "static"}
 	if tweak != nil {
 		tweak(&cfg)
 	}
@@ -113,7 +114,7 @@ func tryStartNode(t *testing.T, bundle *NodeConfig, tweak func(*IS04NodeConfig))
 // all.
 func serveRefusal(t *testing.T, tweak func(*IS04NodeConfig)) error {
 	t.Helper()
-	cfg := IS04NodeConfig{Bind: freeAddr(t), DiscoveryMode: "static"}
+	cfg := IS04NodeConfig{Bind: testnet.FreeAddr(t), DiscoveryMode: "static"}
 	if tweak != nil {
 		tweak(&cfg)
 	}
@@ -253,7 +254,7 @@ func TestNodeReportsAnESTServerItCannotReach(t *testing.T) {
 func TestNodeStartsWithoutItsJWKSAndSaysSo(t *testing.T) {
 	tap := newLogTap()
 	cfg := IS04NodeConfig{
-		Bind: freeAddr(t), DiscoveryMode: "static",
+		Bind: testnet.FreeAddr(t), DiscoveryMode: "static",
 		AuthURL: "http://127.0.0.1:1", AuthClientID: "node", AuthClientSecret: "s",
 	}
 	s, err := NewIS04NodeServer(tap.logger(), validBundle(), cfg)
@@ -336,7 +337,7 @@ func TestNodeAnnouncesEveryMinorItSupports(t *testing.T) {
 // an operator who reaches for it wants to know it took.
 func TestNodeStaysPeerToPeerWhenToldTo(t *testing.T) {
 	tap := newLogTap()
-	cfg := IS04NodeConfig{Bind: freeAddr(t), DiscoveryMode: "static", NoRegistry: true}
+	cfg := IS04NodeConfig{Bind: testnet.FreeAddr(t), DiscoveryMode: "static", NoRegistry: true}
 	s, err := NewIS04NodeServer(tap.logger(), validBundle(), cfg)
 	if err != nil {
 		t.Fatal(err)

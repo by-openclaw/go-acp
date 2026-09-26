@@ -7,6 +7,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/testnet"
 	"encoding/json"
 	stdhttp "net/http"
 	"strings"
@@ -24,7 +25,7 @@ func serveNCPNode(t *testing.T) string {
 
 func serveNCPBundleNode(t *testing.T, bundle *NodeConfig) string {
 	t.Helper()
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, bundle, IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static", ConnectionAPIVer: "v1.2", APIVer: "v1.3",
 	})
