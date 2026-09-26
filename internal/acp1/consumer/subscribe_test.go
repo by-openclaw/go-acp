@@ -42,6 +42,42 @@ func sendAnnounce(t *testing.T, port int, group codec.ObjGroup, id byte, val []b
 	_, _ = conn.Write(buildReply(t, 0, codec.MTypeAnnounce, 0, group, id, val))
 }
 
+// awaitAnnounce sends an announcement and keeps sending it until the
+// subscription reports one, or the deadline passes.
+//
+// One datagram is not a delivery. CI failed exactly that way on run
+// 34073533688 -- "typed control announcement not delivered" -- on a
+// docs-only change that touched nothing here. The single datagram the
+// test sent never reached the listener: UDP drops a datagram whose
+// receive buffer is momentarily full, and a runner building every
+// package at once under -race is when that happens. Nothing was wrong
+// with the subscription. Nothing had arrived at it.
+//
+// Re-sending is not a softened assertion. It is what the protocol
+// leaves to the sender: an ACP1 announcement is unacknowledged, so a
+// device that needs to be heard says it again, and a test that needs to
+// hear one does the same. The handler treats a repeat as the same
+// announcement, so the event delivered is the same event either way --
+// what is under test is that it is decoded and routed, not that the
+// loopback kept the first copy.
+func awaitAnnounce(t *testing.T, port int, group codec.ObjGroup, id byte, val []byte, events <-chan consumer.Event) consumer.Event {
+	t.Helper()
+	deadline := time.After(10 * time.Second)
+	resend := time.NewTicker(100 * time.Millisecond)
+	defer resend.Stop()
+	sendAnnounce(t, port, group, id, val)
+	for {
+		select {
+		case ev := <-events:
+			return ev
+		case <-resend.C:
+			sendAnnounce(t, port, group, id, val)
+		case <-deadline:
+			t.Fatalf("announcement group %v id %d never delivered, resent every 100ms for 10s", group, id)
+		}
+	}
+}
+
 func TestSubscribe_NotConnected(t *testing.T) {
 	p := &Plugin{}
 	if err := p.Subscribe(consumer.ValueRequest{Slot: 0, Group: "control", ID: 0}, func(consumer.Event) {}); err != consumer.ErrNotConnected {
@@ -57,15 +93,8 @@ func TestSubscribe_TypedEvent(t *testing.T) {
 		t.Fatalf("Subscribe: %v", err)
 	}
 
-	sendAnnounce(t, port, codec.GroupControl, 0, []byte{0x00, 0x07})
-
-	select {
-	case ev := <-events:
-		if ev.Label != "Level" || ev.Value.Int != 7 {
-			t.Errorf("event = %+v, want Level=7", ev)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("typed control announcement not delivered")
+	if ev := awaitAnnounce(t, port, codec.GroupControl, 0, []byte{0x00, 0x07}, events); ev.Label != "Level" || ev.Value.Int != 7 {
+		t.Errorf("event = %+v, want Level=7", ev)
 	}
 
 	if err := p.Unsubscribe(consumer.ValueRequest{Slot: 0, Group: "control", ID: 0}); err != nil {
@@ -85,14 +114,8 @@ func TestSubscribe_LabelResolution(t *testing.T) {
 		func(ev consumer.Event) { events <- ev }); err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	sendAnnounce(t, port, codec.GroupControl, 0, []byte{0x00, 0x09})
-	select {
-	case ev := <-events:
-		if ev.Value.Int != 9 {
-			t.Errorf("label-resolved event value = %d, want 9", ev.Value.Int)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("label-resolved announcement not delivered")
+	if ev := awaitAnnounce(t, port, codec.GroupControl, 0, []byte{0x00, 0x09}, events); ev.Value.Int != 9 {
+		t.Errorf("label-resolved event value = %d, want 9", ev.Value.Int)
 	}
 }
 
@@ -105,14 +128,8 @@ func TestSubscribe_FrameFallback(t *testing.T) {
 		func(ev consumer.Event) { events <- ev }); err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	sendAnnounce(t, port, codec.GroupFrame, 0, []byte{2, 2, 0})
-	select {
-	case ev := <-events:
-		if ev.Value.Kind != consumer.KindFrame {
-			t.Errorf("frame event kind = %v, want KindFrame", ev.Value.Kind)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("frame announcement not delivered")
+	if ev := awaitAnnounce(t, port, codec.GroupFrame, 0, []byte{2, 2, 0}, events); ev.Value.Kind != consumer.KindFrame {
+		t.Errorf("frame event kind = %v, want KindFrame", ev.Value.Kind)
 	}
 }
 
