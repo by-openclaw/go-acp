@@ -7,9 +7,8 @@ import (
 	"time"
 )
 
-// ErrCaptureUnsupported reports that this OS cannot capture LLDP frames from
-// stdlib. Windows returns it always: its raw sockets are IP-level and never
-// see a non-IP Ethertype, so capture needs the Npcap driver.
+// ErrCaptureUnsupported reports that this host cannot capture LLDP frames:
+// an OS with no capture path, or Windows without Npcap installed.
 //
 // Typed so a caller can tell "this host cannot" from "this host may not"
 // (a permission error) and from "nothing arrived" (no error, no neighbour).

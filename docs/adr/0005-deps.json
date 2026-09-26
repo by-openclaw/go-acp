@@ -209,7 +209,8 @@
       "redistribution_note": "Hard blocker for bundling. We never ship it; the operator installs it, and on any host that already has Wireshark it is present under the unlimited exception.",
       "capability": "Capture raw LLDP frames (Ethertype 0x88CC) on a local interface",
       "needed_for": [
-        "internal/lldp (planned)"
+        "internal/lldp/capture_windows.go",
+        "dhs host info"
       ],
       "talks_via": "wpcap.dll loaded at run time with the standard library (syscall.LoadDLL) — no CGo, nothing linked into the binary",
       "cgo": false,
@@ -246,7 +247,9 @@
       "redistribution_note": "N/A.",
       "capability": "Capture raw LLDP frames (Ethertype 0x88CC) via AF_PACKET (Linux) or BPF (macOS)",
       "needed_for": [
-        "internal/lldp (planned)"
+        "internal/lldp/capture_linux.go",
+        "internal/lldp/capture_darwin.go",
+        "dhs host info"
       ],
       "talks_via": "syscall (stdlib) — AF_PACKET socket on Linux, /dev/bpf* on macOS",
       "cgo": false,
@@ -261,7 +264,7 @@
       "adr_refs": [
         "0016"
       ],
-      "status": "planned"
+      "status": "shipped"
     }
   ]
 }

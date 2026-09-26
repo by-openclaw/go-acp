@@ -413,3 +413,23 @@ func TestTheRealAdaptersTalkToTheKernel(t *testing.T) {
 		t.Error("realOS must carry the kernel's own calls")
 	}
 }
+
+// Until ends the listen as soon as it is satisfied: the second frame is
+// never read, and the window is not waited out.
+func TestUntilEndsTheListenEarly(t *testing.T) {
+	f := &fakeOS{ifaces: twoPorts(), reads: []read{
+		{ifindex: 1, pdu: frame(t, mandatory(t)...)},
+		{ifindex: 2, pdu: frame(t, mandatory(t)...)},
+	}}
+	c := capture(f, "")
+	c.Window = time.Hour
+	c.Until = func(m map[string]Neighbor) bool { _, ok := m["eth0"]; return ok }
+
+	out, err := c.Neighbors(context.Background())
+	if err != nil {
+		t.Fatalf("Neighbors: %v", err)
+	}
+	if len(out) != 1 || len(f.reads) != 1 {
+		t.Errorf("heard %v with %d reads left, want eth0 only and eth1's frame unread", out, len(f.reads))
+	}
+}

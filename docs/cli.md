@@ -41,6 +41,7 @@ Ansible templates render the same shape.
 - [SNMP agent: serve](#snmp-agent-serve)
 - [SNMP agent: trap](#snmp-agent-trap)
 - [SNMP agent: mib](#snmp-agent-mib)
+- [Host: info](#host-info)
 - [consumer info](#consumer-info)
 - [consumer walk](#consumer-walk)
 - [consumer get](#consumer-get)
@@ -68,6 +69,7 @@ dhs — Device Hub Systems CLI
 USAGE
   dhs consumer <protocol> <verb> <target> [flags]
   dhs producer <protocol> <verb> [flags]
+  dhs host info [--iface NAME] [--json]
   dhs list-protocols
   dhs version
   dhs -h | --help                            this page
@@ -125,6 +127,15 @@ MONITOR (poll a device on a per-OID schedule, print only what changes)
   Examples:
     dhs monitor validate --profile rx1290.json
     dhs monitor watch 10.6.255.111 --version 1 --community private --profile rx1290.json
+
+HOST (the machine dhs runs on)
+  Verbs:     info     interfaces, and the switch + port each is plugged
+                      into, heard over LLDP (waits up to 35s; switches
+                      announce every 30s)
+
+  Examples:
+    dhs host info
+    dhs host info --iface Ethernet --json
 
 EXIT CODES
   0  success
@@ -1138,6 +1149,33 @@ Usage of mib:
     	the module's CONTACT-INFO (default: BY-SYSTEMS SPRL)
   -out string
     	file to write (default: standard output)
+```
+
+## Host: info
+
+`dhs host info --help`
+
+```text
+dhs host — the machine dhs runs on
+
+USAGE
+  dhs host info [--iface NAME] [--window 35s] [--json]
+
+  Lists this machine's network interfaces and, for each, the switch and
+  port it is plugged into, as the switch announces it over LLDP.
+
+  Capture needs, per OS:
+    Linux    CAP_NET_RAW on the binary (setcap cap_net_raw+ep), or root
+    macOS    root, or read access to /dev/bpf* (the access_bpf group)
+    Windows  Npcap installed (https://npcap.com/) — not shipped with dhs
+
+FLAGS
+  -iface string
+    	one interface only (default: every interface that is up, not loopback, with an Ethernet address)
+  -json
+    	print JSON instead of a table
+  -window duration
+    	how long to listen for LLDP; switches announce every 30s by default, so less can miss one. Stops early once every interface has been heard (default 35s)
 ```
 
 ## consumer info

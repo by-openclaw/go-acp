@@ -85,6 +85,8 @@ var matrix = []helpEntry{
 	{"SNMP agent: serve", []string{"producer", "snmp", "serve", "--help"}},
 	{"SNMP agent: trap", []string{"producer", "snmp", "trap", "--help"}},
 	{"SNMP agent: mib", []string{"producer", "snmp", "mib", "--help"}},
+	// The machine dhs runs on, not a device.
+	{"Host: info", []string{"host", "info", "--help"}},
 
 	// The generic consumer verb set (shape shared by acp1/acp2/emberplus).
 	{"consumer info", []string{"consumer", "acp1", "info", "--help"}},
