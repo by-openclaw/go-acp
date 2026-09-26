@@ -41,6 +41,26 @@ func TestSendMatchedReply(t *testing.T) {
 	defer func() { _ = clientA.Close() }()
 	defer func() { _ = clientB.Close() }()
 
+	// B's subscription is registered BEFORE A sends, not after. The
+	// request travels a net.Pipe, which delivers as soon as the writer
+	// writes; a subscription registered after the sending goroutine
+	// has started is a race with it, and the loser is a Send that
+	// waits for an ack nobody was listening to ask for. It failed that
+	// way on CI — "Send returned error: context deadline exceeded" —
+	// while winning the race on quieter machines.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	clientB.Subscribe(func(req codec.Frame) {
+		defer wg.Done()
+		if req.ID != codec.RxConnectOnGo {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		ack := codec.EncodeConnectOnGoAck(codec.ConnectOnGoAckParams{Destination: 1, Source: 2})
+		_, _ = clientB.Send(ctx, ack, nil)
+	})
+
 	// A sends a request and waits for a codec.TxConnectOnGoAck reply.
 	replyCh := make(chan codec.Frame, 1)
 	errCh := make(chan error, 1)
@@ -56,20 +76,6 @@ func TestSendMatchedReply(t *testing.T) {
 		}
 		replyCh <- f
 	}()
-
-	// B reads A's request, then sends the matching ack back.
-	var wg sync.WaitGroup
-	wg.Add(1)
-	clientB.Subscribe(func(req codec.Frame) {
-		defer wg.Done()
-		if req.ID != codec.RxConnectOnGo {
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		ack := codec.EncodeConnectOnGoAck(codec.ConnectOnGoAckParams{Destination: 1, Source: 2})
-		_, _ = clientB.Send(ctx, ack, nil)
-	})
 
 	select {
 	case f := <-replyCh:
