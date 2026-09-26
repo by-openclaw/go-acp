@@ -421,15 +421,13 @@ jobs:
       # rule 1 — "go.mod direct deps must match exactly" — was never checked
       # and the two drifted.
       #
-      # NON-BLOCKING on purpose, and temporarily. It currently reports one
-      # real, pre-existing violation (prometheus/client_golang is a direct
-      # dependency that is in no manifest), and that is an owner decision
-      # under ADR-0014's exception process, not something a new gate should
-      # decide by turning main red. Flip continue-on-error off the moment
-      # that dependency is either recorded as an exception or removed —
-      # a gate nobody can fail is not a gate.
+      # BLOCKING since 2026-09-26. It was non-blocking while one real
+      # violation stood — prometheus/client_golang, a direct dependency in
+      # no manifest since #84 — and in that state it printed the error on
+      # every run for months without ever failing a job. The dependency is
+      # recorded now, so the gate can do what it is for: a gate nobody can
+      # fail is a notice.
       - name: deps match the ADR-0005 manifest
-        continue-on-error: true
         run: bash tools/check-deps.sh
 
       # docs/cli.md is GENERATED from the binary's own -h output

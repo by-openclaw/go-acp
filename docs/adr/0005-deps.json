@@ -210,6 +210,44 @@
       ],
       "approved_at": "2026-05-03",
       "approved_by": "yboujraf"
+    },
+    {
+      "id": "prometheus-client-golang",
+      "name": "Prometheus instrumentation library for Go",
+      "module": "github.com/prometheus/client_golang",
+      "url": "https://github.com/prometheus/client_golang",
+      "owner": {
+        "name": "Prometheus (CNCF)",
+        "type": "foundation",
+        "url": "https://github.com/prometheus"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "file_url": "https://github.com/prometheus/client_golang/blob/main/LICENSE"
+      },
+      "version": "v1.23.2",
+      "commit": null,
+      "release_date": null,
+      "go_module": true,
+      "pure_go": true,
+      "cgo": false,
+      "transitive_deps": null,
+      "cve_last_check": null,
+      "cve_status": null,
+      "tooling": [
+        "govulncheck",
+        "osv-scanner",
+        "go-licenses"
+      ],
+      "scope": [
+        "all"
+      ],
+      "reason": "Prometheus exposition for the connector metrics endpoint (internal/metrics): the registry, the gatherer and the standard process/Go collectors behind /metrics. The text exposition format is a specification with a reference implementation; hand-rolling it would be a second, divergent one.",
+      "adr_refs": [
+        "0005"
+      ],
+      "approved_at": "2026-09-26",
+      "approved_by": "yboujraf"
     }
   ],
   "host_deps": [
