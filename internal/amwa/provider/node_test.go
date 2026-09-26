@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	stdhttp "net/http"
@@ -128,7 +129,7 @@ func TestNodeInstanceName(t *testing.T) {
 }
 
 func TestNodeServerEndToEnd(t *testing.T) {
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
 		Bind:          addr,
 		DiscoveryMode: "static",

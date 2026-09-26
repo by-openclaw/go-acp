@@ -10,6 +10,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -587,7 +588,7 @@ func TestEvDeviceAdvertisesEventsControl(t *testing.T) {
 	}
 
 	off, err := NewIS04NodeServer(nil, tallyBundle(), IS04NodeConfig{
-		Bind: freeAddr(t), DiscoveryMode: "static", NoEventsAPI: true,
+		Bind: testnet.FreeAddr(t), DiscoveryMode: "static", NoEventsAPI: true,
 	})
 	if err != nil {
 		t.Fatalf("NewIS04NodeServer: %v", err)

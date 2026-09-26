@@ -8,6 +8,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	stdhttp "net/http"
 	"net/http/httptest"
@@ -70,7 +71,7 @@ func TestEndpointRoutesAnswer404WhenTheEndpointIsGone(t *testing.T) {
 // returns its address.
 func newTestServer(t *testing.T, s *IS05ConnectionServer) string {
 	t.Helper()
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	node, err := NewIS04NodeServer(newLogTap().logger(), routableBundle(t), IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static", ConnectionAPIVer: "v1.2",
 	})

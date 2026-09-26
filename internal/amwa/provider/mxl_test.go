@@ -7,6 +7,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	stdhttp "net/http"
@@ -53,7 +54,7 @@ func mxlBundle(t *testing.T) *NodeConfig {
 
 func serveMXLNode(t *testing.T) string {
 	t.Helper()
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, mxlBundle(t), IS04NodeConfig{
 		Bind: addr, DiscoveryMode: "static", ConnectionAPIVer: "v1.2", APIVer: "v1.3",
 	})

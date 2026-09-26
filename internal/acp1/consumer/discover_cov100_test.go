@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"net"
 	"testing"
 	"time"
@@ -26,7 +27,7 @@ func TestDiscover_DefaultsAndCancelledCtx(t *testing.T) {
 // TestDiscover_TwoSourcesSorted produces results from two distinct loopback
 // source IPs so the final sort.Slice comparator is exercised.
 func TestDiscover_TwoSourcesSorted(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	send := func(srcIP net.IP) bool {
 		la := &net.UDPAddr{IP: srcIP, Port: 0}
 		ra := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port}
@@ -59,7 +60,7 @@ func TestDiscover_TwoSourcesSorted(t *testing.T) {
 // TestDiscover_BroadcastReplySource: the first datagram from an IP is a
 // non-zero-MTID reply, so the Source is recorded as "broadcast-reply".
 func TestDiscover_BroadcastReplySource(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	go func() {
 		time.Sleep(60 * time.Millisecond)
 		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port})
@@ -94,7 +95,7 @@ func TestDiscover_BroadcastReplySource(t *testing.T) {
 // quiet window means the single Receive blocks to the deadline and returns
 // DeadlineExceeded, exiting the goroutine.
 func TestDiscover_WindowExit_ReceiveTimeout(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	if _, err := Discover(context.Background(), DiscoverConfig{Port: port, Duration: 60 * time.Millisecond}); err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -105,7 +106,7 @@ func TestDiscover_WindowExit_ReceiveTimeout(t *testing.T) {
 // path (never blocking in Receive past the deadline) so the deadline is
 // observed at the loop top rather than via a Receive timeout.
 func TestDiscover_WindowExit_DeadlineCheck(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	stop := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
@@ -137,7 +138,7 @@ func TestDiscover_WindowExit_DeadlineCheck(t *testing.T) {
 // goroutine is blocked in Receive drives its error-exit return (the Receive
 // returns ctx.Err with remaining still > 0).
 func TestDiscover_CtxCancelMidWindow(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(80 * time.Millisecond)
@@ -156,7 +157,7 @@ func TestDiscover_CtxCancelMidWindow(t *testing.T) {
 // TestDiscover_ActiveProbeError drives the probe-failed log branch via an
 // injected probe that always errors.
 func TestDiscover_ActiveProbeError(t *testing.T) {
-	port := freeUDPPort(t)
+	port := testnet.FreeUDPPort(t)
 	_, err := Discover(context.Background(), DiscoverConfig{
 		Port:     port,
 		Duration: 50 * time.Millisecond,

@@ -2,6 +2,7 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"net"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func TestServeTCP_AcceptWarn(t *testing.T) {
 		}
 		return nil, net.ErrClosed // → return nil
 	}
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	_ = s.ServeTCP(contextBg(), addr)
 	if calls < 2 {
 		t.Fatalf("accept hook calls = %d, want >= 2", calls)
@@ -38,22 +39,11 @@ func TestServeAN2_AcceptWarn(t *testing.T) {
 		}
 		return nil, net.ErrClosed
 	}
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	_ = s.ServeAN2(contextBg(), addr)
 	if calls < 2 {
 		t.Fatalf("accept hook calls = %d, want >= 2", calls)
 	}
-}
-
-func freeAddr(t *testing.T) string {
-	t.Helper()
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	a := ln.Addr().String()
-	_ = ln.Close()
-	return a
 }
 
 func contextBg() context.Context { return context.Background() }

@@ -53,13 +53,14 @@ func sendAnnounce(t *testing.T, port int, group codec.ObjGroup, id byte, val []b
 // package at once under -race is when that happens. Nothing was wrong
 // with the subscription. Nothing had arrived at it.
 //
-// Re-sending is not a softened assertion. It is what the protocol
-// leaves to the sender: an ACP1 announcement is unacknowledged, so a
-// device that needs to be heard says it again, and a test that needs to
-// hear one does the same. The handler treats a repeat as the same
-// announcement, so the event delivered is the same event either way --
-// what is under test is that it is decoded and routed, not that the
-// loopback kept the first copy.
+// The resend is a TEST device's behaviour, not a real one's. A real ACP1
+// device sends each announcement once -- unacknowledged, never repeated
+// (the spec's retries cover GET/SET only) -- and a consumer that loses it
+// learns the value at the next get or walk. What these tests check is that
+// an announcement which DOES arrive is decoded and routed to the right
+// subscriber; delivery over a busy loopback is not under test, so the test
+// device repeats itself until one copy lands. The handler treats a repeat
+// as the same announcement, so the event checked is the same either way.
 func awaitAnnounce(t *testing.T, port int, group codec.ObjGroup, id byte, val []byte, events <-chan consumer.Event) consumer.Event {
 	t.Helper()
 	deadline := time.After(10 * time.Second)

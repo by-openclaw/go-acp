@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"io"
 	stdhttp "net/http"
@@ -26,7 +27,7 @@ import (
 // and returns its address.
 func serveNodeWithConnection(t *testing.T) string {
 	t.Helper()
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, routableBundle(t), IS04NodeConfig{
 		Bind:          addr,
 		DiscoveryMode: "static",
@@ -330,7 +331,7 @@ func TestBulkReportsPerEndpointCodes(t *testing.T) {
 // must each find a tree they can speak — that is what "support every
 // published minor" means on the wire.
 func TestConnectionMountsEveryMinor(t *testing.T) {
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, routableBundle(t), IS04NodeConfig{
 		Bind:          addr,
 		DiscoveryMode: "static",

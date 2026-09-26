@@ -8,6 +8,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,7 @@ import (
 // returns its base address.
 func serveConfigNode(t *testing.T) string {
 	t.Helper()
-	addr := freeAddr(t)
+	addr := testnet.FreeAddr(t)
 	s, err := NewIS04NodeServer(nil, validBundle(), IS04NodeConfig{
 		Bind:          addr,
 		DiscoveryMode: "static",

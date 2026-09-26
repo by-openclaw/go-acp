@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"dhs/internal/transport/testnet"
 	"encoding/json"
 	"encoding/pem"
 	"io"
@@ -142,7 +143,7 @@ func TestMirrorServeTLS(t *testing.T) {
 	src.Config.Handler = push.handler(t, func() string { return src.URL })
 	t.Cleanup(src.Close)
 
-	statusAddr := freeLoopbackAddr(t)
+	statusAddr := testnet.FreeAddr(t)
 	m, err := NewMirror(MirrorOptions{
 		Source: src.URL, Target: target.URL, APIVer: "v1.3",
 		ServeAddr: "127.0.0.1:0", ServeAdvertiseHost: "mirror-tls.test",
