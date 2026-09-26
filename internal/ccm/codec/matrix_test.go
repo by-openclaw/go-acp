@@ -1,6 +1,7 @@
 package codec
 
 import (
+	"sort"
 	"strings"
 	"testing"
 )
@@ -335,5 +336,35 @@ func TestATemplateIndexTooBigToBeANumberIsRefused(t *testing.T) {
 	huge := "CH" + strings.Repeat("9", 40)
 	if _, _, ok := indexesFromTemplate("CH{idx}", huge); ok {
 		t.Errorf("%s must not resolve", huge)
+	}
+}
+
+func TestSortStringsOrdersWhateverItIsGiven(t *testing.T) {
+	// sortStrings is normally fed map keys, and Go randomises map
+	// iteration order — so whether its swap ever runs is luck. On a run
+	// where the keys arrived already ordered the swap went unexecuted
+	// and the package missed its coverage floor. Given an input that
+	// MUST be swapped, it cannot.
+	cases := [][]string{
+		{"b", "a"},
+		{"c", "b", "a"},
+		{"CH02", "CH00", "CH01"},
+		{"a"},
+		{},
+	}
+	for _, in := range cases {
+		got := append([]string(nil), in...)
+		sortStrings(got)
+		want := append([]string(nil), in...)
+		sort.Strings(want)
+		if len(got) != len(want) {
+			t.Fatalf("sortStrings(%v) = %v", in, got)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("sortStrings(%v) = %v, want %v", in, got, want)
+				break
+			}
+		}
 	}
 }
