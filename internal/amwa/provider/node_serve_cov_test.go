@@ -36,7 +36,43 @@ func startNode(t *testing.T, tweak func(*IS04NodeConfig)) *servedNode {
 }
 
 // startNodeWith is startNode over a caller-supplied bundle.
+//
+// It retries on a port that turned out not to be free. A Node cannot be
+// served on :0 -- it stamps its own port into the endpoints it
+// advertises, so it has to know the port before it binds -- which leaves
+// a gap between picking a port and binding it, and construction spends
+// that gap provisioning a certificate. CI landed in that gap
+// (TestNodeDefaultsItsTLSDataDir, "bind: address already in use"). The
+// only honest answer to a port that was taken from under us is to take
+// another one.
 func startNodeWith(t *testing.T, bundle *NodeConfig, tweak func(*IS04NodeConfig)) *servedNode {
+	t.Helper()
+	const attempts = 4
+	for attempt := 1; ; attempt++ {
+		n, err := tryStartNode(t, bundle, tweak)
+		if err == nil {
+			return n
+		}
+		if attempt == attempts || !isAddrInUse(err) {
+			t.Fatalf("the Node never came up: %v", err)
+		}
+		t.Logf("port taken between picking it and binding it (attempt %d/%d): %v",
+			attempt, attempts, err)
+	}
+}
+
+// isAddrInUse reports whether err is the kernel refusing a bind because
+// something else holds the port. It matches on the errno, not the
+// message: the message is per-OS prose ("Only one usage of each socket
+// address ... is normally permitted" on Windows) and the errno is not.
+func isAddrInUse(err error) bool {
+	return errors.Is(err, addrInUse)
+}
+
+// tryStartNode is one attempt: pick a port, build, serve, wait for an
+// answer. It returns the bind error rather than failing the test so the
+// caller can decide whether another port is worth trying.
+func tryStartNode(t *testing.T, bundle *NodeConfig, tweak func(*IS04NodeConfig)) (*servedNode, error) {
 	t.Helper()
 	cfg := IS04NodeConfig{Bind: freeAddr(t), DiscoveryMode: "static"}
 	if tweak != nil {
@@ -51,20 +87,25 @@ func startNodeWith(t *testing.T, bundle *NodeConfig, tweak func(*IS04NodeConfig)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() { defer wg.Done(); errc <- s.Serve(ctx) }()
-	t.Cleanup(func() {
+	stop := func() {
 		cancel()
 		_ = s.Stop()
 		wg.Wait()
-	})
+	}
 	if !waitReachable(t, "http://"+cfg.Bind+"/__ready__", 5*time.Second) {
+		stop()
 		select {
 		case err := <-errc:
-			t.Fatalf("the Node never came up: %v", err)
+			if err == nil {
+				err = errors.New("Serve returned without an error")
+			}
+			return nil, err
 		default:
-			t.Fatal("the Node never came up")
+			return nil, errors.New("it never answered and Serve is still running")
 		}
 	}
-	return &servedNode{s: s, addr: cfg.Bind, errc: errc}
+	t.Cleanup(stop)
+	return &servedNode{s: s, addr: cfg.Bind, errc: errc}, nil
 }
 
 // serveRefusal runs Serve to completion and returns the error it

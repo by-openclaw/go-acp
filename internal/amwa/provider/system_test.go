@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	mathrand "math/rand"
+	"net"
 	stdhttp "net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -192,12 +194,63 @@ func TestServeRejectsUnknownPath(t *testing.T) {
 	}
 }
 
-// freeAddr returns an unused port via httptest.NewServer/Close trick.
+// freePortLow and freePortHigh bracket the band freeAddr picks from.
+//
+// It sits BELOW every platform's ephemeral range on purpose -- Linux
+// auto-assigns from 32768 upwards, macOS and Windows from 49152 -- so a
+// port handed out here is one the kernel will not also hand to something
+// else while we are still getting ready to bind it.
+const (
+	freePortLow  = 20000
+	freePortHigh = 32700
+)
+
+var (
+	freePortMu   sync.Mutex
+	freePortSeen = map[int]bool{}
+)
+
+// freeAddr returns a loopback address this process will bind shortly.
+//
+// The obvious version of this -- listen on :0, read the port, close, hand
+// the address back -- is a lie with a deadline on it, and CI called it in:
+// "bind: address already in use" on TestNodeDefaultsItsTLSDataDir. A Node
+// is constructed between the reservation and the bind, and construction
+// provisions a certificate over HTTP, so the gap is hundreds of
+// milliseconds wide. :0 draws from the kernel's ephemeral range, which is
+// exactly where every other process on the runner is also being served
+// from, and one of them took the port while we were busy.
+//
+// So the port is drawn from below the ephemeral range instead, where the
+// kernel hands out nothing by itself, and remembered so this process
+// never issues the same one twice. What is left is another test process
+// on the same runner drawing the same number from the same band, which
+// startNodeWith retries through.
 func freeAddr(t *testing.T) string {
 	t.Helper()
-	ln := httptest.NewServer(stdhttp.NewServeMux())
-	ln.Close()
-	return strings.TrimPrefix(ln.URL, "http://")
+	for attempt := 0; attempt < 200; attempt++ {
+		port := freePortLow + mathrand.Intn(freePortHigh-freePortLow)
+		freePortMu.Lock()
+		taken := freePortSeen[port]
+		if !taken {
+			freePortSeen[port] = true
+		}
+		freePortMu.Unlock()
+		if taken {
+			continue
+		}
+		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+		// Bindable now is the best that can be known; the point of the
+		// band is that it stays bindable.
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			continue
+		}
+		_ = ln.Close()
+		return addr
+	}
+	t.Fatalf("no free port in %d-%d after 200 attempts", freePortLow, freePortHigh)
+	return ""
 }
 
 func waitReachable(t *testing.T, url string, timeout time.Duration) bool {
