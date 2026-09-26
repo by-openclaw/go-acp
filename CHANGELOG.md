@@ -7,6 +7,18 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.25.0](https://github.com/by-openclaw/go-acp/compare/v0.24.0...v0.25.0) (2026-09-26)
+
+
+### Features
+
+* **ccm:** the whole model, what every crosspoint addresses, and a matrix file-set that goes back in ([5a7db67](https://github.com/by-openclaw/go-acp/commit/5a7db674db3e1f97c88ee7124f829bb05c1b19b6))
+
+
+### Bug Fixes
+
+* **amwa:** put SystemWatcher.cancel under the lock its maps already use ([416cef2](https://github.com/by-openclaw/go-acp/commit/416cef26bb261091fb6382563591e28625a819ed))
+
 ## [0.24.0](https://github.com/by-openclaw/go-acp/compare/v0.23.1...v0.24.0) (2026-09-25)
 
 
