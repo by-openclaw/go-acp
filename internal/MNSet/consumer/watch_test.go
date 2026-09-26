@@ -132,10 +132,17 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	// every platform. Linux routes the whole 127.0.0.0/8, so a connect
 	// to 127.0.0.2 is refused at once; macOS has only 127.0.0.1 unless
 	// an alias is added, so the same connect hangs until the client
-	// timeout — 8s by default, against the 3s waits below. That is a
+	// timeout — 8s by default, against the waits below. That is a
 	// property of the host's loopback, not of this connector, so the
 	// test bounds the probe instead of assuming the network refuses it.
-	p.SetTimeout(300 * time.Millisecond)
+	//
+	// One second, not less: this timeout applies to EVERY request the
+	// plugin makes, the MN SET device list and the healthy modules
+	// included. At 300ms a loaded macOS runner missed those too and
+	// the watch had no present slot to build a profile from — the
+	// bound has to be short against the waits and long against a
+	// local HTTP round trip, and 1s against 6s is both.
+	p.SetTimeout(time.Second)
 	fn, got := collect()
 	req := consumer.ValueRequest{Slot: -1}
 	if err := p.Subscribe(req, fn); err != nil {
@@ -150,7 +157,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = p.Unsubscribe(consumer.ValueRequest{Slot: 1}) })
 	// values from both present slots
-	if !waitFor(t, 3*time.Second, func() bool {
+	if !waitFor(t, 6*time.Second, func() bool {
 		s := map[int]bool{}
 		for _, ev := range got() {
 			if ev.Path != "slot" {
@@ -166,7 +173,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	next := strings.Replace(silent(deviceList(modHost)), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
 	next = strings.Replace(next, `"id":"40:a3:6b:ff:ff:ff"`, `"id":"40:a3:6b:ff:ff:fe"`, 1)
 	mn.set(next, 0)
-	if !waitFor(t, 3*time.Second, func() bool {
+	if !waitFor(t, 6*time.Second, func() bool {
 		states := map[string]string{}
 		for _, ev := range got() {
 			if ev.Path == "slot" {
