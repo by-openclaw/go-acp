@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	stdhttp "net/http"
+	"strings"
 	"time"
 
 	"dhs/internal/ccm/codec"
@@ -23,7 +24,51 @@ import (
 // Client talks to one Neuron REST API.
 type Client struct {
 	base string
-	http *transporthttp.Client
+	// host and resolved support [Client.Resolve]: which device to
+	// re-base against, and whether the base is already settled.
+	host     string
+	resolved bool
+	// specPath is the OpenAPI document's path relative to the base,
+	// when the operator named one. Empty means try [SpecPaths].
+	specPath string
+	http     *transporthttp.Client
+}
+
+// Base is the API root every path is relative to, for provenance and
+// for an operator who needs to know which one was chosen.
+func (c *Client) Base() string { return c.base }
+
+// Resolve finds the base this device's API hangs off, when none was
+// given.
+//
+// It asks for /self under each candidate and keeps the first that
+// answers. That is one extra round trip on a device whose firmware
+// moved, none on the one it did not, and it is the difference between
+// a connector that works on this fleet and one that works on the half
+// of it that has not been upgraded.
+func (c *Client) Resolve(ctx context.Context) error {
+	if c.resolved {
+		return nil
+	}
+	// Keep whatever scheme this client was built with. Production is
+	// always https; a test server on loopback has no certificate.
+	scheme := "https://"
+	if i := strings.Index(c.base, "://"); i >= 0 {
+		scheme = c.base[:i+3]
+	}
+
+	var tried []string
+	for _, candidate := range APIBases {
+		base := scheme + c.host + candidate
+		tried = append(tried, base)
+		if _, err := c.http.GetBytes(ctx, base+"/self"); err != nil {
+			continue
+		}
+		c.base, c.resolved = base, true
+		return nil
+	}
+	return fmt.Errorf("ccm: %s answered none of %s — name the right one with --api-base",
+		c.host, strings.Join(tried, ", "))
 }
 
 // Options configures the client.
@@ -36,7 +81,24 @@ type Options struct {
 	Insecure bool
 	// VerifyTLS, when set, forces verification on (overrides Insecure).
 	VerifyTLS bool
+	// APIBase is the path the API hangs off, "/api/v1" or "/api".
+	// Empty means find it — see [Client.Resolve].
+	APIBase string
+	// APISpec is the OpenAPI document, relative to the base
+	// ("/docs/openapi.yml"). Empty tries [SpecPaths] in order.
+	APISpec string
 }
+
+// APIBases are the bases tried, in order, when none was given.
+//
+// EVS moved it. BRIDGE 7.0.3 serves /api/v1 and its documents at
+// /api/v1/docs/; the firmware on the shuffler dropped the version
+// segment and serves /api with its documents at /api/docs/. A
+// connector that hardcoded either one is a connector that works on
+// half the fleet, so it asks the device instead — and an operator can
+// still name a base outright, for a deployment behind a proxy prefix
+// that no probe would guess.
+var APIBases = []string{"/api/v1", "/api"}
 
 // MaxBody caps a single Neuron response. The api.yml OpenAPI document is
 // the largest thing this client fetches — a few hundred KiB on BRIDGE
@@ -72,8 +134,23 @@ func New(opts Options) *Client {
 		// own defaults, which verify.
 		cfg = nil
 	}
+	// Normalise FIRST, then decide whether anything was given: an
+	// environment variable set to whitespace is not a base, and
+	// treating it as one would skip the probe and then ask the device
+	// for "/self" at its web root.
+	apiBase := normalizeAPIBase(opts.APIBase)
+	base := "https://" + opts.Host + apiBase
+	if apiBase == "" {
+		// Unresolved until Resolve runs; APIBases[0] is what a caller
+		// that never resolves falls back to, which is the firmware
+		// this connector was written against.
+		base = "https://" + opts.Host + APIBases[0]
+	}
 	return &Client{
-		base: "https://" + opts.Host + "/api/v1",
+		base:     base,
+		resolved: apiBase != "",
+		host:     opts.Host,
+		specPath: normalizeAPIBase(opts.APISpec),
 		http: &transporthttp.Client{
 			HTTP: &stdhttp.Client{
 				Timeout:   opts.Timeout,
@@ -98,11 +175,43 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	return body, nil
 }
 
-// FetchSpec downloads the device's own OpenAPI schema (the CCM DM
-// contract) from /api/v1/docs/api.yml. It is served unauthenticated and
-// is the artifact to diff across firmware upgrades.
-func (c *Client) FetchSpec(ctx context.Context) ([]byte, error) {
-	return c.get(ctx, "/docs/api.yml")
+// SpecPaths are the document names tried, in order, relative to the
+// API base.
+//
+// EVS renamed it along with the base: BRIDGE 7.0.3 serves
+// /api/v1/docs/api.yml, and the firmware on the shuffler serves
+// /api/docs/openapi.yml. Both are the same document — the device's own
+// OpenAPI schema, served unauthenticated, and the artefact to diff
+// across a firmware upgrade — so the connector asks for each in turn
+// rather than knowing which fleet it is on.
+var SpecPaths = []string{"/docs/api.yml", "/docs/openapi.yml"}
+
+// FetchSpec downloads the device's own OpenAPI schema.
+//
+// It returns the document and the path it came from, so a caller can
+// say which one this device serves — a firmware diff wants to know
+// that the name moved, not just that the content did.
+func (c *Client) FetchSpec(ctx context.Context) ([]byte, string, error) {
+	paths := SpecPaths
+	if c.specPath != "" {
+		paths = []string{c.specPath}
+	}
+	var (
+		tried []string
+		first error
+	)
+	for _, p := range paths {
+		body, err := c.get(ctx, p)
+		if err == nil {
+			return body, p, nil
+		}
+		tried = append(tried, c.base+p)
+		if first == nil {
+			first = err
+		}
+	}
+	return nil, "", fmt.Errorf("ccm: no OpenAPI document at %s — name it with --api-spec: %w",
+		strings.Join(tried, ", "), first)
 }
 
 // Walk reads /self plus every io/ip sender and receiver, returning the
@@ -148,4 +257,64 @@ func (c *Client) Walk(ctx context.Context) (*codec.Device, []string, error) {
 		}
 	}
 	return &dev, deviations, nil
+}
+
+// normalizeAPIBase makes a caller-supplied base a usable path prefix:
+// leading slash, no trailing slash, empty stays empty.
+//
+// "api/v1" is what somebody types when they are reading the URL off a
+// browser, and turning it into "https://host" + "api/v1" would produce
+// a host that does not exist and an error about DNS. The leading slash
+// is added rather than demanded.
+func normalizeAPIBase(base string) string {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return ""
+	}
+	base = strings.TrimSuffix(base, "/")
+	if base == "" {
+		return ""
+	}
+	if !strings.HasPrefix(base, "/") {
+		base = "/" + base
+	}
+	return base
+}
+
+// put writes one whole resource document back.
+//
+// A non-2xx carries the device's own message where it sent one, so a
+// refused write reads as the Neuron said it rather than as a bare
+// status code.
+func (c *Client) put(ctx context.Context, path string, doc any) error {
+	var answer any
+	status, err := c.http.PutJSON(ctx, c.base+path, doc, &answer)
+	// The status is checked BEFORE the error, because a device that
+	// refuses a write often explains itself in something that is not
+	// JSON — and "invalid character 'o'" is not what went wrong. What
+	// went wrong is that the device said no.
+	if status != 0 && status/100 != 2 {
+		if msg := deviceMessage(answer); msg != "" {
+			return fmt.Errorf("neuron PUT %s: device answered %d: %s", path, status, msg)
+		}
+		return fmt.Errorf("neuron PUT %s: device answered %d", path, status)
+	}
+	if err != nil {
+		return fmt.Errorf("neuron PUT %s: %w", path, err)
+	}
+	return nil
+}
+
+// deviceMessage pulls the device's own error text out of its answer.
+func deviceMessage(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, key := range []string{"message", "error", "detail"} {
+		if s, ok := m[key].(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
 }

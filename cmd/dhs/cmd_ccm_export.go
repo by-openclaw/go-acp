@@ -32,6 +32,8 @@ func runCCMExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("consumer ccm export", flag.ContinueOnError)
 	out := fs.String("out", "ccm-export", "output directory root")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
+	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
+	apiSpec := fs.String("api-spec", "", "the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.")
 
 	host := ""
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
@@ -44,7 +46,10 @@ func runCCMExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm export: a host is required")
 	}
 
-	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: *verifyTLS})
+	c := ccmc.New(ccmc.Options{Host: host, VerifyTLS: ccmVerifyTLS(*verifyTLS), APIBase: ccmAPIBase(*apiBase), APISpec: ccmAPISpec(*apiSpec)})
+	if err := c.Resolve(ctx); err != nil {
+		return err
+	}
 
 	dev, deviations, err := c.Walk(ctx)
 	if err != nil {
@@ -57,11 +62,11 @@ func runCCMExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer ccm export: walk-tree: %w", treeErr)
 	}
 	deviations = append(deviations, treeDevs...)
-	spec, specErr := c.FetchSpec(ctx)
+	spec, specFrom, specErr := c.FetchSpec(ctx)
 	if specErr != nil {
 		// The schema is the point of the diff, but a firmware that does
 		// not serve it must still yield the walked tree — record and go.
-		deviations = append(deviations, "api.yml: "+specErr.Error())
+		deviations = append(deviations, specErr.Error())
 	}
 
 	// Identity key: productName@productVersion (ADR-0022 Model@SwRev).
@@ -94,9 +99,9 @@ func runCCMExport(ctx context.Context, args []string) error {
 	}
 
 	fmt.Printf("ccm export %s (%s) -> %s\n", key, host, dir)
-	specNote := "api.yml stored"
+	specNote := "api.yml stored (from " + specFrom + ")"
 	if spec == nil {
-		specNote = "api.yml NOT served by this firmware"
+		specNote = "no OpenAPI document served by this firmware"
 	}
 	fmt.Printf("  %d stream(s), %d DM resource(s) across %d node(s), %s\n",
 		len(dev.Streams), fullTree.Len(), len(fullTree.Branches), specNote)

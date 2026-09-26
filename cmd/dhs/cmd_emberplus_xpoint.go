@@ -280,7 +280,11 @@ func formatMatrixLabelCSV(keyCol string, groups []string, byGroup map[string]map
 func runMatrixSetExport(plug consumer.Protocol, objs []consumer.Object, addr, outDir, prefix, proto, target string) error {
 	mc, ok := plug.(matrixXpointConn)
 	if !ok {
-		return fmt.Errorf("%w: this protocol has no matrix surface — --out-dir matrix export unsupported", consumer.ErrValidationFailed)
+		// No live matrix surface. A connector can still have said what
+		// its crosspoints address, during the walk — a REST device has
+		// no matrix element to interrogate, only objects — and that is
+		// enough for the same file set. See cmd_matrix_linked.go.
+		return runLinkedMatrixSetExport(objs, addr, outDir, prefix, proto, target)
 	}
 	obj, dotted, found := findMatrixObject(objs, addr)
 	if !found {
@@ -467,7 +471,11 @@ func equalInt32Sets(a, b []int32) bool {
 func runMatrixXpointImport(ctx context.Context, plug consumer.Protocol, objs []consumer.Object, xpointPath, matrixPath string, check, jsonOut bool) error {
 	mc, ok := plug.(matrixXpointConn)
 	if !ok {
-		return fmt.Errorf("%w: this protocol has no matrix surface — --xpoint import unsupported", consumer.ErrValidationFailed)
+		// No live matrix surface, but the crosspoints may be ordinary
+		// writable objects whose two sides the walk resolved — which is
+		// what this connector's own export wrote. See
+		// cmd_matrix_linked.go.
+		return runLinkedXpointImport(ctx, plug, objs, xpointPath, matrixPath, check, jsonOut)
 	}
 
 	data, err := os.ReadFile(xpointPath)
