@@ -239,9 +239,7 @@ func TestRelayCarriesASessionToTheFrame(t *testing.T) {
 	}
 
 	// The frame saw one client for this one, on a connection of its own.
-	if n := linkCount(frame); n != 1 {
-		t.Errorf("the frame holds %d connections, want the relay's one", n)
-	}
+	waitLinkCount(t, frame, 1, "the frame holds the relay's one connection")
 }
 
 func TestRelayCarriesABlindRequest(t *testing.T) {
@@ -323,20 +321,12 @@ func TestRelayClosesWithItsClient(t *testing.T) {
 	if _, err := s.openAddr(codec.Address{Net: 0x2100, Unit: 0x0C, Index: codec.IndexUnknown}, codec.SvcPorts); err != nil {
 		t.Fatalf("open gateway session through the relay: %v", err)
 	}
-	if n := linkCount(frame); n != 1 {
-		t.Fatalf("the frame holds %d connections, want 1", n)
-	}
+	waitLinkCount(t, frame, 1, "the frame holds the relay's one connection")
 
 	// The client goes: the relay's connection to the frame goes with it, which
 	// is what gives the frame its slot back.
 	_ = s.cl.Close()
-	deadline := time.Now().Add(5 * time.Second)
-	for linkCount(frame) != 0 {
-		if time.Now().After(deadline) {
-			t.Fatalf("the frame still holds %d connections after the client left", linkCount(frame))
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitLinkCount(t, frame, 0, "the frame got its slot back after the client left")
 }
 
 func TestAFrameThatIsNotThereYetIsCalledAgainWhenAskedFor(t *testing.T) {
@@ -510,9 +500,7 @@ func TestTwoFramesBehindOneProxy(t *testing.T) {
 	if _, _, _, _, ok := p.proxy.resolve(codec.Address{Net: 0x1100, Unit: 0x11}); ok {
 		t.Error("another unit on the served tree's segment resolved to something")
 	}
-	if n := linkCount(real); n != 1 {
-		t.Errorf("the real frame holds %d connections, want the relay's one", n)
-	}
+	waitLinkCount(t, real, 1, "the real frame holds the relay's one connection")
 }
 
 // linkCount is how many client connections a provider holds.
@@ -520,6 +508,31 @@ func linkCount(p *Provider) int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return len(p.links)
+}
+
+// waitLinkCount waits for a provider to hold exactly want connections.
+//
+// Sampling the count once is wrong, and it failed that way on macOS CI with
+// "the frame holds 2 connections, want the relay's one". A frame behind the
+// proxy is probed on a connection of its own (probeFrame), and that connection
+// is closed as soon as the probe is done -- but the frame drops a link from its
+// set on the goroutine that waits for the link to finish, not in Close. So for
+// a moment after a correct teardown the frame holds both: the probe's dead
+// connection and the relay's live one. The count is right; it is simply still
+// settling, and the only sound assertion is that it settles.
+func waitLinkCount(t *testing.T, p *Provider, want int, what string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		got := linkCount(p)
+		if got == want {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s: it holds %d connections, want %d", what, got, want)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // The relay's edges: what it does when the frame, the client or the connection
