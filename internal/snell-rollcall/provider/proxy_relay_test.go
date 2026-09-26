@@ -149,16 +149,24 @@ func newRelayServed(t *testing.T) (*served, *Provider) {
 	deps := testDeps(clk)
 	// No tree of its own: what it fronts is the frame.
 	p := New(deps, nil)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := p.SetProxy(ctx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: addr}); err != nil {
+	// One deadline per operation, not one shared by both. SetProxy
+	// dials the upstream frame and probes it; on a loaded runner that
+	// can spend most of a shared budget, and the handshake then
+	// inherits whatever is left — which is how this test failed with
+	// "handshake: context deadline exceeded" on CI while passing
+	// everywhere quiet. Each call gets its own five seconds.
+	proxyCtx, cancelProxy := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelProxy()
+	if err := p.SetProxy(proxyCtx, ProxyConfig{Unit: 0xFF, Subnet: 0x2100, Upstream: addr}); err != nil {
 		t.Fatalf("SetProxy: %v", err)
 	}
 
 	ours, theirs := net.Pipe()
 	p.serveConn(theirs)
 	cl := session.NewLink(ours, session.Config{}, deps)
-	info, err := cl.Handshake(ctx)
+	shakeCtx, cancelShake := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelShake()
+	info, err := cl.Handshake(shakeCtx)
 	if err != nil {
 		t.Fatalf("handshake: %v", err)
 	}

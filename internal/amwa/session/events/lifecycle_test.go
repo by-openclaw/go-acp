@@ -98,6 +98,20 @@ func TestIdleConnectionIsClosed(t *testing.T) {
 	defer func() { _ = sub.Close() }()
 	go func() { _ = sub.Run(ctx, func(is07.Message) {}) }()
 
+	// Wait for the connection to be REGISTERED before watching for it
+	// to go. Without this the poll below can see the zero it was going
+	// to see anyway — the count before the client is registered at all
+	// — and pass without the reaper ever running. That is how this test
+	// passed on one platform while the timeout branch it exists for
+	// went uncovered on another.
+	registered := time.Now().Add(3 * time.Second)
+	for pub.SubscriberCount() == 0 {
+		if time.Now().After(registered) {
+			t.Fatal("the subscriber never registered, so nothing was reaped")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		if pub.SubscriberCount() == 0 {
