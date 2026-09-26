@@ -210,8 +210,20 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 		t.Error("frame refresh must stop with the last subscription")
 	}
 	// Disconnect with an active frame refresh stops it too.
-	if err := p.Subscribe(req, fn); err != nil {
-		t.Fatal(err)
+	//
+	// Subscribing needs a present slot to build a poll profile from,
+	// and at this point in the test a refresh may still be in flight —
+	// the silent module at an unroutable address holds one up for the
+	// client timeout on a host that does not refuse the connect. That
+	// is a race with the test, not a property of Disconnect, which is
+	// what this part actually checks. So wait for the subscription to
+	// become possible rather than requiring it to be possible already.
+	var serr error
+	if !waitFor(t, 6*time.Second, func() bool {
+		serr = p.Subscribe(req, fn)
+		return serr == nil
+	}) {
+		t.Fatalf("no slot became watchable: %v", serr)
 	}
 	_ = p.Disconnect()
 	p.mu.Lock()
