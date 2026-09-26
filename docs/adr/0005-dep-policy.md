@@ -43,11 +43,8 @@ table below is regenerated from that file by
 
 | ID | Module | Owner | License | Pure Go | CGo | Scope | Reason |
 |---|---|---|---|---|---|---|---|
-| coder-websocket | `github.com/coder/websocket` | Coder Technologies, Inc. | ISC | yes | no | all | no stdlib WebSocket; ws+wss native via stdlib TLS |
 | godbus-dbus | `github.com/godbus/dbus/v5` | godbus org (community) | BSD-2-Clause | yes | no | linux | Linux Avahi via DBus; no stdlib DBus |
-| hashicorp-vault-api | `github.com/hashicorp/vault/api` | HashiCorp, Inc. | MPL-2.0 | yes | no | all | secrets manager client SDK (ADR-0010) |
-| hashicorp-go-plugin | `github.com/hashicorp/go-plugin` | HashiCorp, Inc. | MPL-2.0 | yes | no | all | plugin supervisor (ADR-0009) |
-| golang-jwt-v5 | `github.com/golang-jwt/jwt/v5` | golang-jwt org (community) | MIT | yes | no | all | license format JWT-EdDSA (ADR-0003) |
+| prometheus-client-golang | `github.com/prometheus/client_golang` | Prometheus (CNCF) | Apache-2.0 | yes | no | all | Prometheus exposition behind /metrics (internal/metrics) |
 
 ### Rules attached to this manifest
 
