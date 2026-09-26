@@ -285,7 +285,6 @@ func TestSendInformStopsOnACancelledContext(t *testing.T) {
 	}
 }
 
-
 // The paths a good night never takes.
 
 func TestAnInformForAVersionNobodyCanSendIsRefused(t *testing.T) {
@@ -470,5 +469,50 @@ func TestAnInformAttemptReportsAReadThatIsNotATimeout(t *testing.T) {
 		&informConn{}, []byte{0x30, 0x00}, 1, d)
 	if acked || err == nil || errors.Is(err, errInformTimeout) {
 		t.Errorf("acked=%v err=%v, want a real read failure", acked, err)
+	}
+}
+
+func TestAnInformStopsRetryingWhenTheCallerGivesUp(t *testing.T) {
+	// Retrying costs a second per attempt, so a cancelled context has
+	// to be noticed BETWEEN attempts — not only when the last one has
+	// been spent. The attempt count is what proves it stopped early:
+	// three were allowed, one was made.
+	//
+	// Deterministic: the cancel is triggered by the first datagram
+	// arriving, not by a sleep. That attempt then runs to its own
+	// socket deadline (informAttempt is bounded by the deadline, not
+	// by ctx), and the retry that would follow is the one that sees
+	// the cancellation.
+	r := newInformReceiver(t, 99) // answers nothing
+	s := NewTrapSender([]TrapDestination{
+		{Addr: r.addr, Version: codec.Version2c, Community: "public"},
+	}, plugin.Deps{Logger: quiet(), Clock: clock.System()})
+	defer func() { _ = s.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		for {
+			r.mu.Lock()
+			got := len(r.seen)
+			r.mu.Unlock()
+			if got > 0 {
+				cancel()
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}()
+
+	results := s.SendInform(ctx, testNotification())
+	if len(results) != 1 {
+		t.Fatalf("results = %d", len(results))
+	}
+	if !errors.Is(results[0].Err, context.Canceled) {
+		t.Errorf("err = %v, want it to carry context.Canceled", results[0].Err)
+	}
+	if results[0].Attempts != 1 {
+		t.Errorf("attempts = %d, want 1 of the %d allowed — the rest were abandoned",
+			results[0].Attempts, DefaultInformRetries+1)
 	}
 }
