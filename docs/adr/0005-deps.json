@@ -246,8 +246,9 @@
       "adr_refs": [
         "0005"
       ],
-      "approved_at": "2026-09-26",
-      "approved_by": "yboujraf"
+      "approved_at": null,
+      "approved_by": null,
+      "status": "RECORDED, NOT APPROVED — present in go.mod since #84 and undeclared until 2026-09-26. Listed so the ADR-0005 gate reflects reality; the stdlib-only default in policy.default has NOT been waived for it. Owner decision outstanding: approve it, or drop it and hand-roll the exposition as internal/transport/ws hand-rolls RFC 6455."
     }
   ],
   "host_deps": [
