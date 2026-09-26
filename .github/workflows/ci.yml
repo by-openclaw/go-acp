@@ -50,6 +50,11 @@ jobs:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      # Every OS reports its OWN result. With the default fail-fast the
+      # first failing job cancels the rest, so a run shows one failure and
+      # says nothing about the other platforms — which is how a queue of
+      # independent failures arrived one merge at a time.
+      fail-fast: false
       matrix:
         # Every OS, on every ref. A branch run that skipped Windows and
         # macOS made "the PR is green" mean "Linux is green", and the
@@ -322,6 +327,7 @@ jobs:
     # the kind of thing a branch must not discover after merging.
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - distro: rocky9
