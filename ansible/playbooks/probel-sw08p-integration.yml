@@ -152,8 +152,8 @@
           ansible.builtin.assert:
             that:
               - "'tally-dump' in sw08p_dump.stdout"
-              - "'dst=3 → src=7' in sw08p_dump.stdout"
-            fail_msg: "SW-P-08 tally-dump did not include the dst=3 → src=7 route"
+              - "'dst=3 <- src=7' in sw08p_dump.stdout"
+            fail_msg: "SW-P-08 tally-dump did not include the dst=3 <- src=7 route"
             quiet: true
 
         - name: "all-source-names — fetch every source label on matrix 0 level 0 (read-only)"
