@@ -139,19 +139,24 @@ func formatCerebrumCatCSV(defs []cerebrumCatDef) string {
 // cerebrumCatChange is one converging category write.
 type cerebrumCatChange struct {
 	Cat   string
-	Op    string // CREATE | MODIFY_ITEM | (BLANK clear via MODIFY_ITEM)
-	Index int    // 1-based slot for MODIFY_ITEM
+	Op    string // CREATE | MODIFY_ITEM | DELETE_ITEM
+	Index int    // 1-based slot for MODIFY_ITEM / DELETE_ITEM
 	Type  string
 	Value string
 	From  string
 }
 
 // diffCerebrumCategory computes the per-slot converge for one category
-// (ADR-0007): desired row i owns slot i (1-based); a live slot beyond the
-// desired grid is cleared by writing ITEM_TYPE=BLANK (never DELETE_ITEM —
-// the spec does not define whether deletion shifts later indices, so
-// ensure must not assume). live == nil means the category does not exist:
-// a CREATE precedes the slot writes. Run-twice = 0.
+// (ADR-0007): desired row i owns slot i (1-based). live == nil means the
+// category does not exist: a CREATE precedes the slot writes. Run-twice = 0.
+//
+// A live slot beyond the desired grid is removed with DELETE_ITEM, from
+// the LAST slot backwards. Measured on the staging Cerebrum (2026-09-27,
+// #714 part B): clearing a slot by writing ITEM_TYPE=BLANK through
+// MODIFY_ITEM is refused (nack 8 ONE_OR_MORE_ACTIONS_INVALID), and
+// DELETE_ITEM shifts every later item down one. Deleting from the end
+// never moves a slot the desired grid still owns, whatever the shift
+// semantics, which the spec leaves undefined.
 func diffCerebrumCategory(cat string, live *codec.CategoryDetailsInfo, desired []cerebrumCatItem) []cerebrumCatChange {
 	var out []cerebrumCatChange
 	liveByIdx := map[int]codec.CategoryItem{}
@@ -186,14 +191,13 @@ func diffCerebrumCategory(cat string, live *codec.CategoryDetailsInfo, desired [
 			Type: want.Type, Value: want.Value, From: from,
 		})
 	}
-	for slot := len(desired) + 1; slot <= maxLive; slot++ {
+	for slot := maxLive; slot > len(desired); slot-- {
 		cur, ok := liveByIdx[slot]
 		if !ok || strings.EqualFold(cur.Type, "BLANK") {
 			continue
 		}
 		out = append(out, cerebrumCatChange{
-			Cat: cat, Op: "MODIFY_ITEM", Index: slot,
-			Type: "BLANK", Value: "",
+			Cat: cat, Op: "DELETE_ITEM", Index: slot,
 			From: fmt.Sprintf("%s %s", cur.Type, cur.Value),
 		})
 	}
@@ -334,4 +338,21 @@ func cerebrumCatDefsFromLive(names []string, pick map[string]bool, details map[s
 		defs = append(defs, def)
 	}
 	return defs
+}
+
+// catChangeTo renders what a converge change leaves in the slot.
+func catChangeTo(c cerebrumCatChange) string {
+	if c.Op == "DELETE_ITEM" {
+		return "(deleted)"
+	}
+	return strings.TrimSpace(c.Type + " " + c.Value)
+}
+
+// categoryTarget is the category an action is about: the new one's --name
+// for CREATE, the named --category otherwise.
+func categoryTarget(op, category, name string) string {
+	if op == "CREATE" {
+		return name
+	}
+	return category
 }

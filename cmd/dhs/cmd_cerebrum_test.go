@@ -62,7 +62,8 @@ func TestCerebrumWriteVerbsValidateFlags(t *testing.T) {
 		// (§4.2 table), bad §3.3 item-type.
 		{"cat-no-op", []string{"category", "h", "--category", "C"}, "--op is required"},
 		{"cat-bad-op", []string{"category", "h", "--op", "frob", "--category", "C"}, "unknown --op"},
-		{"cat-no-category", []string{"category", "h", "--op", "create"}, "--category is required"},
+		{"cat-no-category", []string{"category", "h", "--op", "delete"}, "--category is required"},
+		{"cat-create-no-name", []string{"category", "h", "--op", "create"}, "--name is required"},
 		{"cat-create-no-name", []string{"category", "h", "--op", "create", "--category", "C"}, "--name is required"},
 		{"cat-modify-missing", []string{"category", "h", "--op", "modify", "--category", "C", "--index", "1"}, "--index, --item-type and --value are required"},
 		{"cat-modify-all-missing", []string{"category", "h", "--op", "modify-all", "--category", "C"}, "--item-type and --value are required"},

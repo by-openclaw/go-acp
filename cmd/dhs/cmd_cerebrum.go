@@ -3411,7 +3411,10 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if *category == "" {
+	// Every op names an existing category except CREATE, which names the
+	// new one with --name (§4.2: CREATE carries name / label / inherits /
+	// description, no category attribute).
+	if *category == "" && catType != "CREATE" {
 		return cerebrumValErr("category", "--category is required")
 	}
 	// Required attrs per the §4.2 table.
@@ -3458,7 +3461,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	if err := sess.Category(ctx, act); err != nil {
 		return fmt.Errorf("cerebrum-nb category: %w", err)
 	}
-	fmt.Printf("[category] OK %s category=%s\n", catType, *category)
+	fmt.Printf("[category] OK %s category=%s\n", catType, categoryTarget(catType, *category, *name))
 	return nil
 }
 
