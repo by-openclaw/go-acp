@@ -2,7 +2,9 @@ package acp1
 
 import (
 	"context"
+	"dhs/internal/transport"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -445,5 +447,20 @@ func TestHandleAdminRequest_NilResponse(t *testing.T) {
 	resp := s.handleAdminRequest(context.Background(), &AdminRequest{Verb: verb})
 	if resp == nil || resp.Status != "ok" {
 		t.Fatalf("nil handler response → %+v, want ok", resp)
+	}
+}
+
+// TestServeAdmin_DefaultListenerBindFails drives the default listener's
+// bind-failure arm on purpose. It was only ever reached when a test's
+// timing happened to make the real bind fail, so the 100 % floor held on
+// some CI runs and not others.
+func TestServeAdmin_DefaultListenerBindFails(t *testing.T) {
+	s := newTestServer(t)
+	boom := errors.New("no port for you")
+	s.adminListenTCPHook = func(context.Context, string, string, transport.SocketOptions) (*transport.Listener, error) {
+		return nil, boom
+	}
+	if err := s.ServeAdmin(context.Background(), "bind-fails"); !errors.Is(err, boom) {
+		t.Fatalf("err = %v; want the bind failure", err)
 	}
 }

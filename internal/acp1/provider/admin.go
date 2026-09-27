@@ -64,8 +64,12 @@ func (s *server) ServeAdmin(ctx context.Context, name string) error {
 	// never a network surface. The bind goes through transport; the shared
 	// socket policy is applied to each accepted connection below, which is
 	// also what covers a listener injected by adminListenHook.
+	listenTCP := transport.ListenTCP
+	if s.adminListenTCPHook != nil {
+		listenTCP = s.adminListenTCPHook
+	}
 	listen := func() (net.Listener, error) {
-		ln, lerr := transport.ListenTCP(ctx, "tcp4", "127.0.0.1:0", transport.SocketOptions{})
+		ln, lerr := listenTCP(ctx, "tcp4", "127.0.0.1:0", transport.SocketOptions{})
 		if lerr != nil {
 			return nil, lerr
 		}

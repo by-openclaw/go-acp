@@ -76,7 +76,11 @@ type server struct {
 	// seams for ServeAdmin so its listen-failure, discovery-write-failure,
 	// and accept-failure arms (all OS-syscall failures unreachable on a
 	// healthy loopback) are deterministically testable. Nil in production.
-	adminListenHook         func() (net.Listener, error)
+	adminListenHook func() (net.Listener, error)
+	// adminListenTCPHook replaces the transport.ListenTCP call inside the
+	// DEFAULT admin listener, so its bind-failure arm is reached on purpose
+	// rather than when a test's timing happens to make the bind fail.
+	adminListenTCPHook      func(ctx context.Context, network, addr string, opts transport.SocketOptions) (*transport.Listener, error)
 	adminWriteDiscoveryHook func(path string, d *AdminDiscovery) error
 
 	// preReadHook runs just before Serve enters readLoop. Test-only: a test
