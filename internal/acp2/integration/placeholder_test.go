@@ -156,14 +156,20 @@ func startProvider(t *testing.T, host string, port int) func() {
 	return stop
 }
 
-// runConsumer executes `dhs consumer acp2 <verb> <host> <args...>` with a
-// short per-call timeout and returns combined stdout (the assertion surface),
-// the error, and the exit code. Operational logs go to stderr and are
-// captured separately so they don't pollute stdout assertions.
+// runConsumer executes `dhs consumer acp2 <verb> <host> <args...>` and
+// returns combined stdout (the assertion surface), the error, and the exit
+// code. Operational logs go to stderr and are captured separately so they
+// don't pollute stdout assertions.
+//
+// No total deadline on the CLI. Its --timeout is per request: a walk that
+// keeps getting answers runs to the end, and a device that stops answering
+// fails the request that stalled. A total cap here killed a healthy walk —
+// the real Neuron's slot 1 is ~50 000 objects, 55 s from the fleet and
+// 2 m 33 s from a workstation — while every request was answering. A CLI
+// that never ends is still caught by go test's own -timeout.
 func runConsumer(t *testing.T, host string, verb string, args ...string) (string, int, error) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	full := append([]string{"consumer", "acp2", verb, host}, args...)
 	cmd := exec.CommandContext(ctx, dhsBin, full...)
