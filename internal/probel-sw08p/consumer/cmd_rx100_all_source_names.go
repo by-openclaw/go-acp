@@ -61,5 +61,8 @@ func (p *Plugin) AllSourceNames(
 		}
 		merged.Names = append(merged.Names, r.Names...)
 	}
+	if len(merged.Names) > 0 {
+		p.noteSourceCount(int(merged.FirstSourceID) + len(merged.Names))
+	}
 	return merged, nil
 }

@@ -115,6 +115,36 @@ type Plugin struct {
 	// matrixCfg holds caller-supplied matrix shape. Set via
 	// SetMatrixConfig before Connect; defaults applied at use sites.
 	matrixCfg MatrixConfig
+
+	// srcsReported is the source count the matrix itself reported this
+	// session — the length of its all-source-names table. Only that: a
+	// tally dump is not used, because a router may fill unrouted entries
+	// with a placeholder value, and learning a size from one would switch
+	// a small router to the extended form it never needed.
+	srcsReported int
+}
+
+// generalFormSources is how many sources the general (10-bit) form can
+// name: ids 0-1023, a 3-bit DIV-128 multiplier over a 7-bit remainder.
+const generalFormSources = 1024
+
+// noteSourceCount records a source count the matrix reported.
+func (p *Plugin) noteSourceCount(n int) {
+	p.mu.Lock()
+	if n > p.srcsReported {
+		p.srcsReported = n
+	}
+	p.mu.Unlock()
+}
+
+// sourcesExceedGeneralForm reports whether this matrix is KNOWN to have
+// more than 1024 sources — from --srcs, or from its own source-name table
+// this session. Unknown means no: a router nobody has sized is addressed
+// exactly as before.
+func (p *Plugin) sourcesExceedGeneralForm() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return max(int(p.matrixCfg.Srcs), p.srcsReported) > generalFormSources
 }
 
 // SetMatrixConfig records the caller-supplied matrix shape. Call
