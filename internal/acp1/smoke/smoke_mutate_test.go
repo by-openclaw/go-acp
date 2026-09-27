@@ -18,6 +18,7 @@ import (
 
 	"dhs/internal/acp1/consumer"
 	cons "dhs/internal/consumer"
+	"dhs/internal/plugin"
 )
 
 // acp1Mutator is the ACP1-specific no-arg mutating surface the plugin exposes
@@ -99,7 +100,7 @@ func TestIntegration_IncDecReset(t *testing.T) {
 func TestIntegration_AN2Connect(t *testing.T) {
 	skipIfNoHost(t)
 	f := &acp1.Factory{}
-	plug := f.New(slog.Default())
+	plug := f.New(plugin.Deps{Logger: slog.Default()})
 	tp, ok := plug.(interface{ SetTransport(acp1.TransportKind) })
 	if !ok {
 		t.Fatal("plugin missing SetTransport")

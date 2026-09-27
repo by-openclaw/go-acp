@@ -40,6 +40,7 @@ import (
 	"time"
 
 	"dhs/internal/export/canonical"
+	"dhs/internal/plugin"
 	"dhs/internal/probel-sw08p/codec"
 	consumer "dhs/internal/probel-sw08p/consumer"
 	provider "dhs/internal/probel-sw08p/provider"
@@ -116,7 +117,7 @@ func startLoopbackProvider(t *testing.T, logger *slog.Logger) testEnv {
 	t.Helper()
 
 	f := &provider.Factory{}
-	prov := f.New(logger, servedExport())
+	prov := f.New(plugin.Deps{Logger: logger}, servedExport())
 
 	// Probe an ephemeral port, then hand the address to Serve. Mirrors
 	// the close-then-rebind pattern used by the sw02p integration test;
@@ -185,7 +186,7 @@ func dialEnv(t *testing.T) (*consumer.Plugin, func()) {
 	}
 
 	f := &consumer.Factory{}
-	pl, ok := f.New(logger).(*consumer.Plugin)
+	pl, ok := f.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
 	if !ok {
 		t.Fatal("consumer Factory.New did not return *Plugin")
 	}
@@ -269,12 +270,12 @@ func TestConnectFanOutToSecondSession(t *testing.T) {
 
 	// Controller A: the active driver.
 	fa := &consumer.Factory{}
-	plA := fa.New(logger).(*consumer.Plugin)
+	plA := fa.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
 	plA.SetMatrixConfig(cfg)
 
 	// Controller B: a passive observer subscribed to every frame.
 	fb := &consumer.Factory{}
-	plB := fb.New(logger).(*consumer.Plugin)
+	plB := fb.New(plugin.Deps{Logger: logger}).(*consumer.Plugin)
 	plB.SetMatrixConfig(cfg)
 
 	connCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

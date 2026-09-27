@@ -35,3 +35,9 @@ internal/neuron/codec/testdata/*.json text eol=lf
 # normalisation silently breaks the fixture (it did: 11 CRs lost from sdp-text/body.txt).
 internal/**/testdata/**/body.txt -text
 internal/**/testdata/**/wire.jsonl -text
+
+# Byte-compared by the probel integration tests (fixture_test.go): no EOL
+# conversion, or a Windows checkout turns LF into CRLF and the compare fails.
+internal/probel-sw02p/testdata/exports/matrix_tree.json -text
+internal/probel-sw08p/testdata/exports/matrix_tree.json -text
+internal/tsl/testdata/fixtures/golden_frames.jsonl -text

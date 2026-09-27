@@ -17,6 +17,7 @@ import (
 	"dhs/internal/acp1/codec"
 	"dhs/internal/acp1/consumer"
 	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 )
 
 func testHost() string {
@@ -34,7 +35,7 @@ func connectPlugin(t *testing.T) consumer.Protocol {
 	t.Helper()
 	skipIfNoHost(t)
 	f := &acp1.Factory{}
-	plug := f.New(slog.Default())
+	plug := f.New(plugin.Deps{Logger: slog.Default()})
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := plug.Connect(ctx, testHost(), codec.DefaultPort); err != nil {
