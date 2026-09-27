@@ -1,0 +1,290 @@
+Frame 1: Packet, 789 bytes on wire (6312 bits), 789 bytes captured (6312 bits) on interface Fake IF, text2pcap, id 0
+    Section number: 1
+    Interface id: 0 (Fake IF, text2pcap)
+        Interface name: Fake IF, text2pcap
+    Encapsulation type: Ethernet (1)
+    Arrival Time: [frozen]
+    UTC Arrival Time: [frozen]
+    Epoch Arrival Time: [frozen]
+    [Time shift for this packet: [frozen]
+    [Time since reference or first frame: 0.000000000 seconds]
+    Frame Number: 1
+    Frame Length: 789 bytes (6312 bits)
+    Capture Length: 789 bytes (6312 bits)
+    [Frame is marked: False]
+    [Frame is ignored: False]
+    [Protocols in frame: eth:ethertype:ip:tcp:dhs_emberplus]
+    Character encoding: ASCII (0)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+    Destination: Receive_00 (20:52:45:43:56:00)
+        .... ..0. .... .... .... .... = LG bit: Globally unique address (factory default)
+        .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
+    Source: Send_00 (20:53:45:4e:44:00)
+        .... ..0. .... .... .... .... = LG bit: Globally unique address (factory default)
+        .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
+    Type: IPv4 (0x0800)
+    [Stream index: 0]
+Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    0100 .... = Version: 4
+    .... 0101 = Header Length: 20 bytes (5)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+        0000 00.. = Differentiated Services Codepoint: Default (0)
+        .... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)
+    Total Length: 775
+    Identification: 0x1234 (4660)
+    000. .... = Flags: 0x0
+        0... .... = Reserved bit: Not set
+        .0.. .... = Don't fragment: Not set
+        ..0. .... = More fragments: Not set
+    ...0 0000 0000 0000 = Fragment Offset: 0
+    Time to Live: 255
+    Protocol: TCP (6)
+    Header Checksum: 0xa8ba [validation disabled]
+    [Header checksum status: Unverified]
+    Source Address: 127.0.0.1
+    Destination Address: 127.0.0.1
+    [Stream index: 0]
+Transmission Control Protocol, Src Port: 9000, Dst Port: 51000, Seq: 1, Len: 735
+    Source Port: 9000
+    Destination Port: 51000
+    [Stream index: 0]
+    [Stream Packet Number: 1]
+    [Conversation completeness: Incomplete (0)]
+        ..0. .... = RST: Absent
+        ...0 .... = FIN: Absent
+        .... 0... = Data: Absent
+        .... .0.. = ACK: Absent
+        .... ..0. = SYN-ACK: Absent
+        .... ...0 = SYN: Absent
+        [Completeness Flags: [ Null ]]
+    [TCP Segment Len: 735]
+    Sequence Number: 1    (relative sequence number)
+    Sequence Number (raw): 0
+    [Next Sequence Number: 736    (relative sequence number)]
+    Acknowledgment Number: 0
+    Acknowledgment number (raw): 0
+    0101 .... = Header Length: 20 bytes (5)
+    Flags: 0x000 (<None>)
+        000. .... .... = Reserved: Not set
+        ...0 .... .... = Accurate ECN: Not set
+        .... 0... .... = Congestion Window Reduced: Not set
+        .... .0.. .... = ECN-Echo: Not set
+        .... ..0. .... = Urgent: Not set
+        .... ...0 .... = Acknowledgment: Not set
+        .... .... 0... = Push: Not set
+        .... .... .0.. = Reset: Not set
+        .... .... ..0. = Syn: Not set
+        .... .... ...0 = Fin: Not set
+        [TCP Flags: ············]
+    Window: 8192
+    [Calculated window size: 8192]
+    [Window size scaling factor: -1 (unknown)]
+    Checksum: 0x2354 [unverified]
+    [Checksum Status: Unverified]
+    Urgent Pointer: 0
+    [Timestamps]
+        [Time since first frame in this TCP stream: 0.000000000 seconds]
+        [Time since previous frame in this TCP stream: 0.000000000 seconds]
+    [Client Contiguous Streams: 0]
+    [Server Contiguous Streams: 1]
+    TCP payload (735 bytes)
+Ember+ (S101)
+    BoF: 0xfe
+    EoF: 0xff
+    Unescaped Content […]: 000e0001c00102140260806b80a0806a80a0040d020105a2806480a0807380a003020101a1803180a00f0c0d506172616d4c6f6f704261636ba2803080a0807580a003020104a10e0c0c426f6f6c65616e205061722e00000000a0807580a003020101a10e0c0c496e7465
+    Slot: 0
+    Msg Type: EmBER / KeepAlive (0x0e)
+    Command: EmBER (Glow data) (0x00)
+    Version: 1
+    CRC: 0x5415
+    [CRC Status: OK]
+    Flags: Single packet (0xc0)
+    DTD Type: Glow (0x01)
+    App Bytes Length: 2
+    App Bytes: 1402
+    Glow Payload (722 bytes reassembled) — Root { RootElementCollection [QNode] } → QNode 1.5
+        [APPLICATION 0] Root {}
+            Class: Application (1)
+            Constructed: True
+            Tag Number: 0
+            Tag Name: Root
+            Indefinite Length: True
+            [APPLICATION 11] RootElementCollection {}
+                Class: Application (1)
+                Constructed: True
+                Tag Number: 11
+                Tag Name: RootElementCollection
+                Indefinite Length: True
+                [CONTEXT 0] {}
+                    Class: Context (2)
+                    Constructed: True
+                    Tag Number: 0
+                    Indefinite Length: True
+                    [APPLICATION 10] QualifiedNode {}
+                        Class: Application (1)
+                        Constructed: True
+                        Tag Number: 10
+                        Tag Name: QualifiedNode
+                        Indefinite Length: True
+                        [0] path {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 0
+                            Tag Name: path
+                            Length: 4
+                            RELATIVE-OID = 1.5
+                                Class: Universal (0)
+                                Constructed: False
+                                Tag Number: 13
+                                Tag Name: RELATIVE-OID
+                                Length: 2
+                                Value (RELATIVE-OID): 1.5
+                        [2] children {}
+                            Class: Context (2)
+                            Constructed: True
+                            Tag Number: 2
+                            Tag Name: children
+                            Indefinite Length: True
+                            [APPLICATION 4] ElementCollection {}
+                                Class: Application (1)
+                                Constructed: True
+                                Tag Number: 4
+                                Tag Name: ElementCollection
+                                Indefinite Length: True
+                                [CONTEXT 0] {}
+                                    Class: Context (2)
+                                    Constructed: True
+                                    Tag Number: 0
+                                    Indefinite Length: True
+                                    [APPLICATION 19] Function {}
+                                        Class: Application (1)
+                                        Constructed: True
+                                        Tag Number: 19
+                                        Tag Name: Function
+                                        Indefinite Length: True
+                                        [0] number {}
+                                            Class: Context (2)
+                                            Constructed: True
+                                            Tag Number: 0
+                                            Tag Name: number
+                                            Length: 3
+                                            INTEGER = 1
+                                                Class: Universal (0)
+                                                Constructed: False
+                                                Tag Number: 2
+                                                Tag Name: INTEGER
+                                                Length: 1
+                                                Value (int): 1
+                                        [1] contents {}
+                                            Class: Context (2)
+                                            Constructed: True
+                                            Tag Number: 1
+                                            Tag Name: contents
+                                            Indefinite Length: True
+                                            SET {}
+                                                Class: Universal (0)
+                                                Constructed: True
+                                                Tag Number: 17
+                                                Tag Name: SET
+                                                Indefinite Length: True
+                                                [0] identifier {}
+                                                    Class: Context (2)
+                                                    Constructed: True
+                                                    Tag Number: 0
+                                                    Tag Name: identifier
+                                                    Length: 15
+                                                    UTF8String = "ParamLoopBack"
+                                                        Class: Universal (0)
+                                                        Constructed: False
+                                                        Tag Number: 12
+                                                        Tag Name: UTF8String
+                                                        Length: 13
+                                                        Value (UTF-8): ParamLoopBack
+                                                [2] arguments {}
+                                                    Class: Context (2)
+                                                    Constructed: True
+                                                    Tag Number: 2
+                                                    Tag Name: arguments
+                                                    Indefinite Length: True
+                                                    SEQUENCE {}
+                                                        Class: Universal (0)
+                                                        Constructed: True
+                                                        Tag Number: 16
+                                                        Tag Name: SEQUENCE
+                                                        Indefinite Length: True
+                                                        [0] identifier {}
+                                                            Class: Context (2)
+                                                            Constructed: True
+                                                            Tag Number: 0
+                                                            Tag Name: identifier
+                                                            Indefinite Length: True
+                                                            [APPLICATION 21] TupleItemDescription {}
+                                                                Class: Application (1)
+                                                                Constructed: True
+                                                                Tag Number: 21
+                                                                Tag Name: TupleItemDescription
+                                                                Indefinite Length: True
+                                                                [0] type {}
+                                                                    Class: Context (2)
+                                                                    Constructed: True
+                                                                    Tag Number: 0
+                                                                    Tag Name: type
+                                                                    Length: 3
+                                                                    INTEGER = 4
+                                                                        Class: Universal (0)
+                                                                        Constructed: False
+                                                                        Tag Number: 2
+                                                                        Tag Name: INTEGER
+                                                                        Length: 1
+                                                                        Value (int): 4
+                                                                [1] name {}
+                                                                    Class: Context (2)
+                                                                    Constructed: True
+                                                                    Tag Number: 1
+                                                                    Tag Name: name
+                                                                    Length: 14
+                                                                    UTF8String = "Boolean Par."
+                                                                        Class: Universal (0)
+                                                                        Constructed: False
+                                                                        Tag Number: 12
+                                                                        Tag Name: UTF8String
+                                                                        Length: 12
+                                                                        Value (UTF-8): Boolean Par.
+                                    [CONTEXT 0] {}
+                                        Class: Context (2)
+                                        Constructed: True
+                                        Tag Number: 0
+                                        Indefinite Length: True
+                                        [APPLICATION 21] TupleItemDescription {}
+                                            Class: Application (1)
+                                            Constructed: True
+                                            Tag Number: 21
+                                            Tag Name: TupleItemDescription
+                                            Indefinite Length: True
+                                            [0] type {}
+                                                Class: Context (2)
+                                                Constructed: True
+                                                Tag Number: 0
+                                                Tag Name: type
+                                                Length: 3
+                                                INTEGER = 1
+                                                    Class: Universal (0)
+                                                    Constructed: False
+                                                    Tag Number: 2
+                                                    Tag Name: INTEGER
+                                                    Length: 1
+                                                    Value (int): 1
+                                            [1] name {}
+                                                Class: Context (2)
+                                                Constructed: True
+                                                Tag Number: 1
+                                                Tag Name: name
+                                                Length: 14
+                                                UTF8String = "Integer Par."
+                                                    Class: Universal (0)
+                                                    Constructed: False
+                                                    Tag Number: 12
+                                                    Tag Name: UTF8String
+                                                    Length: 12
+                                                    Value (UTF-8): Integer Par.
+
