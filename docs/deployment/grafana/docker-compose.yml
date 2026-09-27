@@ -19,6 +19,7 @@
 #   3100 — Loki
 #   9090 — Prometheus
 #   9080 — Promtail (push endpoint)
+#   1514 — Promtail syslog: TCP RFC 5424 (Arista), UDP RFC 3164 (FusioN…)
 
 services:
   prometheus:
@@ -63,6 +64,8 @@ services:
     command: -config.file=/etc/promtail/config.yml
     ports:
       - "9080:9080"
+      - "1514:1514/tcp"
+      - "1514:1514/udp"
     volumes:
       - ./promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/log:/var/log:ro

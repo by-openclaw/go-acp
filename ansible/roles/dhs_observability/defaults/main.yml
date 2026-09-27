@@ -1,0 +1,7 @@
+---
+# dhs_observability — the Prometheus / Loki / Promtail / Grafana stack on the
+# control node, deployed from docs/deployment/grafana/ (the source of truth).
+# Before #1176 it was copied by hand to /root/dhs-grafana and had drifted.
+dhs_observability_dir: /root/dhs-grafana
+dhs_observability_src: "{{ playbook_dir }}/../../docs/deployment/grafana/"
+dhs_observability_promtail_image: grafana/promtail:3.4.1
