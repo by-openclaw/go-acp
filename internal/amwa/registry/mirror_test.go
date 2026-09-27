@@ -207,17 +207,17 @@ func TestMirrorForwardsAndDeletes(t *testing.T) {
 	defer cancel()
 	go func() { _ = m.Run(ctx) }()
 
+	// Wait for everything asserted below, not a subset of it: nodes,
+	// devices and senders arrive on three independent subscriptions, in
+	// any order. Waiting for the node and the delete alone let the device
+	// POST still be in flight — macOS CI saw posts=[sender:s1 node:n1].
 	waitFor(t, 5*time.Second, func() bool {
 		plant.mu.Lock()
 		defer plant.mu.Unlock()
-		hasNode, hasDel := false, len(plant.deletes) > 0
-		for _, p := range plant.posts {
-			if p == "node:n1" {
-				hasNode = true
-			}
-		}
-		return hasNode && hasDel
-	}, "node POST + sender DELETE at target")
+		joined := strings.Join(plant.posts, ",")
+		return strings.Contains(joined, "node:n1") && strings.Contains(joined, "device:d1") &&
+			strings.Contains(joined, "sender:s1") && len(plant.deletes) > 0
+	}, "node, device and sender POSTs + sender DELETE at target")
 
 	plant.mu.Lock()
 	defer plant.mu.Unlock()

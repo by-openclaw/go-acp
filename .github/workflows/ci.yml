@@ -131,6 +131,15 @@ jobs:
         if: matrix.os == 'ubuntu-24.04'
         run: go test -count=1 -race -coverprofile=coverage.out ./...
 
+      # ADR-0025 point 5: CI runs the Go -tags integration suite. Tests
+      # that need a device skip without their *_TEST_HOST; the loopback
+      # ones drive the real CLI against our own provider. Nothing built
+      # these packages before this step, and three stopped compiling
+      # unnoticed after #1004.
+      - name: Integration tests
+        shell: bash
+        run: go test -count=1 -tags integration $(go list -tags integration ./... | grep -E '/(integration|smoke)$')
+
       # Per-package coverage floor for the gold-template connectors. Fails
       # the build if a package drops below its locked-in level (no-regression).
       # Computed from the single whole-repo profile above — no per-package
@@ -396,6 +405,15 @@ jobs:
       # waiter-death protocol in internal/acp2/consumer.
       - name: Unit tests
         run: go test -count=1 ./...
+
+      # ADR-0025 point 5: CI runs the Go -tags integration suite. Tests
+      # that need a device skip without their *_TEST_HOST; the loopback
+      # ones drive the real CLI against our own provider. Nothing built
+      # these packages before this step, and three stopped compiling
+      # unnoticed after #1004.
+      - name: Integration tests
+        shell: bash
+        run: go test -count=1 -tags integration $(go list -tags integration ./... | grep -E '/(integration|smoke)$')
 
   lint:
     name: Lint

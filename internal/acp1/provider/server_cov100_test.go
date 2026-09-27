@@ -260,3 +260,35 @@ func TestSetValue_BadPathAndMissing(t *testing.T) {
 		t.Error("missing object: want error")
 	}
 }
+
+// TestBroadcastAnnounce_WriteReachesThePeer drives the successful broadcast
+// on purpose: bcast is dialled to a UDP peer this test owns, so the write
+// succeeds on any runner. Leaving it to a real broadcast address made the
+// success arm depend on the runner having a broadcast route.
+func TestBroadcastAnnounce_WriteReachesThePeer(t *testing.T) {
+	s := newTestServer(t)
+	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() { _ = peer.Close() }()
+	bc, err := net.DialUDP("udp4", nil, peer.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = bc.Close() }()
+	s.mu.Lock()
+	s.bcast = bc
+	s.mu.Unlock()
+
+	s.broadcastAnnounce(&codec.Message{
+		MType: codec.MTypeReply, MCode: byte(codec.MethodSetValue),
+		ObjGroup: codec.GroupControl, ObjID: 0, Value: []byte{0x00, 0x01},
+	})
+
+	_ = peer.SetReadDeadline(time.Now().Add(5 * time.Second))
+	buf := make([]byte, 1500)
+	if n, _, err := peer.ReadFromUDP(buf); err != nil || n == 0 {
+		t.Fatalf("the announce never reached the peer: n=%d err=%v", n, err)
+	}
+}
