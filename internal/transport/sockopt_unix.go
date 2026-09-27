@@ -28,12 +28,12 @@ func setReuseAddr(fd uintptr) error {
 	if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
 		return err
 	}
-	// Best-effort SO_REUSEPORT. Constant is platform-specific, so we
-	// try the commonly used value 15 on Linux and just ignore errors on
-	// platforms where it isn't defined. When the build can reach
-	// golang.org/x/sys this should be swapped for unix.SO_REUSEPORT.
-	const soReusePort = 15
-	_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, soReusePort, 1)
+	// Best-effort SO_REUSEPORT. Its number differs per platform — 15 on
+	// Linux, 0x200 on macOS and the BSDs — so soReusePort comes from a
+	// per-OS file (sockopt_reuseport_*.go); 0 means the platform has none.
+	if soReusePort != 0 {
+		_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, soReusePort, 1)
+	}
 	return nil
 }
 
