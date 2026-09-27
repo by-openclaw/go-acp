@@ -19,7 +19,24 @@
     a2p_root: /etc/dhs/acp2
     a2p_port: 2072
     a2p_metrics: ":9102"
+    # Which Neuron the emulator reproduces. The default is the committed
+    # integration-test fixture: SHPRM1 5.3.5 + CONVERT Hybrid 6.7.4, the
+    # Neuron as captured 2026-08-20. The Neuron as it is now carries a
+    # BRIDGE card whose DM is 29 MB, which the .gitignore rule keeps out of
+    # the repo, so that fixture is passed in from the control node:
+    #
+    #   -e a2p_fixtures=/root/neuron-current -e a2p_manifest=neuron-102.json
+    #   -e '{"a2p_dms": ["SHPRM1@6.0.4.json", "BRIDGE@7.0.3.json"]}'
+    #
+    # The folder holds dm/acp2/<DM>.json and manifest/<manifest> from
+    # `dhs consumer acp2 walk <neuron> --all` (the manifest hand-curated
+    # with the slot protos), and announces/neuron-announces.jsonl — the
+    # real card's announces extracted from a `watch --no-walk --capture`.
     a2p_fixtures: "{{ playbook_dir }}/../../internal/acp2/testdata/integration-test"
+    a2p_manifest: neuron-test.json
+    a2p_dms:
+      - "SHPRM1@5.3.5.json"
+      - "CONVERT Hybrid@6.7.4.json"
   tasks:
     - name: Fixture directories
       ansible.builtin.file:
@@ -35,14 +52,12 @@
         src: "{{ a2p_fixtures }}/dm/acp2/{{ item }}"
         dest: "{{ a2p_root }}/cache/dm/acp2/{{ item }}"
         mode: "0644"
-      loop:
-        - "SHPRM1@5.3.5.json"
-        - "CONVERT Hybrid@6.7.4.json"
+      loop: "{{ a2p_dms }}"
       notify: restart dhs-acp2
 
     - name: Neuron manifest (slot protos - the #723 fix's food)
       ansible.builtin.copy:
-        src: "{{ a2p_fixtures }}/manifest/neuron-test.json"
+        src: "{{ a2p_fixtures }}/manifest/{{ a2p_manifest }}"
         dest: "{{ a2p_root }}/manifest.json"
         mode: "0644"
       notify: restart dhs-acp2
