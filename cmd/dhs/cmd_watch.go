@@ -77,9 +77,6 @@ func runWatch(ctx context.Context, args []string) error {
 	interval := fs.Duration("interval", 0,
 		"how often a POLLED connector re-reads each object (snmp, and any "+
 			"connector with no push channel); ignored by protocols that announce")
-	metricsAddr := fs.String("metrics-addr", "",
-		"serve Prometheus /metrics + /snapshot.json on this address while watching "+
-			"(dhs_alarm_* verdicts and dhs_connector_* traffic, labelled proto + device)")
 	dmLibrary := fs.String("dm-library", "",
 		"DM library root for hot-plug enrichment (#254). Empty disables identity probe + seed.")
 	pathFilter := fs.String("path", "",
@@ -96,6 +93,15 @@ func runWatch(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: dhs consumer <proto> watch <host> [--slot N | --slots 1,3,7 | --slots all] [--no-walk] [--auto-walk-on-plug] [--dm-library <path>] [--group G] [--label L] [--path P1,P2] [--no-streams | --streams-only]")
 	}
 	_ = parseVerbFlags(fs, rest)
+
+	// --metrics-addr is the shared consumer flag (addCommonFlags). Watch
+	// defining its own copy panicked every watch at start-up ("flag
+	// redefined: metrics-addr") from 2026-09-23. Watch serves the richer
+	// endpoint — connector traffic plus alarm verdicts — so it takes the
+	// address and clears the shared one, or the generic endpoint that
+	// connect starts would bind the same port first.
+	metricsAddr := cf.metricsAddr
+	cf.metricsAddr = ""
 
 	if *noStreams && *streamsOnly {
 		return fmt.Errorf("--no-streams and --streams-only are mutually exclusive")
@@ -151,8 +157,8 @@ func runWatch(ctx context.Context, args []string) error {
 	// labels (proto, device, role) whatever the wire underneath. A
 	// plant runs one watch per device from Ansible and points
 	// Prometheus at them.
-	if *metricsAddr != "" {
-		serveWatchMetrics(ctx, *metricsAddr, plug, evaluator, meter, cf.protocol, host)
+	if metricsAddr != "" {
+		serveWatchMetrics(ctx, metricsAddr, plug, evaluator, meter, cf.protocol, host)
 	}
 
 	// Load IP-keyed disk cache for instant label/unit resolution while
