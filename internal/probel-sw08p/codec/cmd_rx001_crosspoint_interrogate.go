@@ -9,16 +9,27 @@ type CrosspointInterrogateParams struct {
 	MatrixID      uint8  // 0-15 for general, 0-255 for extended
 	LevelID       uint8  // 0-15 for general, 0-255 for extended
 	DestinationID uint16 // 0-895 for general, 0-65535 for extended
+
+	// Extended forces the extended form whatever the fields above hold.
+	//
+	// The spec lets a router answer a general interrogate with the
+	// extended tally (tx 0x83) when the routed source is above 1023, and
+	// the consumer accepts either reply. The EVS Neuron does not: asked in
+	// the general form about a destination routed to a source above 1023,
+	// it ACKs and sends no tally at all; asked in the extended form, it
+	// answers. The caller sets Extended when it knows the matrix has more
+	// than 1024 sources.
+	Extended bool
 }
 
 // needsExtended returns true when any param exceeds the ranges encodable
-// in the general (3-byte) form, forcing the extended (4-byte) encoding
-// with CommandID 0x81.
+// in the general (3-byte) form, or the caller forced it, selecting the
+// extended (4-byte) encoding with CommandID 0x81.
 //
 // Mirror of TS CrossPointInterrogateMessageCommand.isExtended — 895 DIV 128 < 7
 // means the 3-bit multiplier slot still fits.
 func (p CrosspointInterrogateParams) needsExtended() bool {
-	return p.DestinationID > 895 || p.MatrixID > 15 || p.LevelID > 15
+	return p.Extended || p.DestinationID > 895 || p.MatrixID > 15 || p.LevelID > 15
 }
 
 // EncodeCrosspointInterrogate builds a Frame for the CROSSPOINT INTERROGATE

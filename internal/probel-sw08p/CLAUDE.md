@@ -205,6 +205,16 @@ UI change.
 
 ## Known deviations from spec
 
+- **EVS Neuron: no tally to a general interrogate when the source is above
+  1023** (measured 2026-09-27, 10.6.255.102:7800, 4352 sources). Asked
+  `rx 001` for dst 0 (routed to src 3072) it sends the DLE ACK and nothing
+  else; the spec lets it answer with the extended tally `tx 0x83`, which the
+  consumer accepts. Asked `rx 0x81` it answers at once. The consumer asks in
+  the extended form whenever the matrix is known to have more than 1024
+  sources (`--srcs`, or its source-name table read in the same session); an
+  unsized router is asked exactly as before, and a timeout says to pass
+  `--srcs`.
+
 - Viewer on user device sometimes returns short frames for tally dumps —
   absorbed via `compliance.Profile`, event fired, no silent workaround.
 

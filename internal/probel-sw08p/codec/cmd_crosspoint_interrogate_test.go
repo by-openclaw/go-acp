@@ -147,3 +147,29 @@ func TestCrosspointTally_FramerRoundTrip(t *testing.T) {
 		t.Errorf("round-trip via framer: got %+v err %v want %+v", got, err, p)
 	}
 }
+
+// A small destination still goes extended when the caller forces it: the
+// reply must be able to name a source above 1023, which only the extended
+// tally can. Layout per §3.4 extended interrogate: matrix, level,
+// dest DIV 256, dest MOD 256.
+func TestCrosspointInterrogate_ExtendedForced(t *testing.T) {
+	p := CrosspointInterrogateParams{MatrixID: 0, LevelID: 0, DestinationID: 5, Extended: true}
+	f := EncodeCrosspointInterrogate(p)
+	if f.ID != RxCrosspointInterrogateExt {
+		t.Errorf("ID got %#x want %#x", f.ID, RxCrosspointInterrogateExt)
+	}
+	want := []byte{0x00, 0x00, 0x00, 0x05}
+	if !bytes.Equal(f.Payload, want) {
+		t.Errorf("Payload got %X want %X", f.Payload, want)
+	}
+	got, err := DecodeCrosspointInterrogate(f)
+	if err != nil || got.MatrixID != 0 || got.LevelID != 0 || got.DestinationID != 5 {
+		t.Errorf("round-trip: got %+v err %v", got, err)
+	}
+
+	// Not forced, the same destination stays general: nothing changes for
+	// a router the caller knows nothing about.
+	if g := EncodeCrosspointInterrogate(CrosspointInterrogateParams{DestinationID: 5}); g.ID != RxCrosspointInterrogate {
+		t.Errorf("unforced ID got %#x want general %#x", g.ID, RxCrosspointInterrogate)
+	}
+}
