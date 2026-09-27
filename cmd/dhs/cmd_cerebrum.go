@@ -349,7 +349,11 @@ func runCerebrum(ctx context.Context, args []string) error {
 	case "import":
 		return cerebrumImportXpoint(ctx, rest)
 	case "lock":
-		return cerebrumLock(ctx, rest, codec.LockProtect)
+		// Default = PROTECTED, the 0v16 §3.2 value. It used to be the worked
+		// examples' PROTECT, which the codec already records a live NOC
+		// Cerebrum NACKs — and the staging one does too (2026-09-27, #714
+		// part C) — so `lock` without --mode could never succeed.
+		return cerebrumLock(ctx, rest, codec.LockProtected)
 	case "unlock":
 		// Default = RELEASED, the wire-actual clearing value (live
 		// 2026-08-16: the spec's RELEASE / UNLOCKED both NACK 8).
@@ -419,7 +423,7 @@ VERBS
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
   -----------------------  -----------------------------------------------
-  lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released]
+  lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]

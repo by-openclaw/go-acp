@@ -44,6 +44,23 @@ byte-identical**.
 | `import` | `--check` reports nothing on an unchanged plant and exactly the edited rows after one row is changed; applying reports `changed=3`, and a second run changes nothing |
 | `device-config` | **refused by the server**: `<DEVICE_CONFIGURATION TYPE="ADD" …>` → `NACK 2:UNKNOWN_COMMAND`. The command itself is unknown to this Cerebrum, so no device — router or virtual — can be created over NB here |
 
+## Write verbs, what 2026-09-26 did not cover — 2026-09-27
+
+Same peer, same change-then-restore rule; the plant was byte-identical
+to the pre-test export afterwards.
+
+| Case | Result |
+|---|---|
+| `category --op modify-all` / `modify` / `modify-desc` / `delete-item` | all applied. **`delete-item` renumbers**: deleting item 1 of 2 leaves the other as `ITEM_1` |
+| `import` growing a category (1 → 3 items) | `changed=3`, then 0 |
+| `import` **shrinking** a category | **was refused**: extra slots were cleared with `MODIFY_ITEM ITEM_TYPE=BLANK` → `NACK 8`. Now removed with `DELETE_ITEM`, last slot first: `changed=2`, then 0 |
+| `import` creating a category from CSV | `CREATE` + items, `changed=3`, then 0 |
+| `category --op create` | needs `--name` only (it wrongly required `--category`) |
+| `lock` **without `--mode`** | **was refused**: it sent `LOCK="PROTECT"` → `NACK 8`. Default is now `PROTECTED` |
+| `lock --mode locked` / `protected` | applied; the readback reports the new state (`was RELEASED` → `LOCKED` → `PROTECTED`) |
+| `lock --mode locked_path` / `protected_path` | **refused by this server** on a routemaster destination (`NACK 8`) |
+
+
 ## Known gaps on this connector
 
 - **Metrics reach only `watch`.** `watch --metrics-addr :9100` serves
