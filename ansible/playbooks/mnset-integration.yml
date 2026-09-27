@@ -90,7 +90,7 @@
     stage: /root/mnset-integration
     # Named apart from the -e override: a var that defaults to itself
     # is a recursion, not a default.
-    module: "{{ mnset_host | default('10.6.40.53') }}"
+    module: "{{ mnset_host | default('10.6.40.54') }}"
   tasks:
     - name: The module answers at all
       ansible.builtin.uri:
