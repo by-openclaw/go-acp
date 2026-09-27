@@ -81,3 +81,19 @@
       register: dhs_host_new
       changed_when: false
       failed_when: (dhs_host_new.stdout_lines[0] | split(' '))[1] != dhs_version
+
+    # A running service keeps the binary it was started with. Replacing the
+    # file leaves every dhs-* service on the OLD version — /proc/<pid>/exe
+    # reads "(deleted)" — until it is restarted, so the fleet reports a
+    # version it is not running. Found rolling v0.23.1 -> v0.26.0: dhs-acp2
+    # and dhs-emberplus kept serving v0.23.1. Only reached when a new version
+    # was installed, so a converge with nothing to do stays at changed=0.
+    - name: Restart the running dhs services onto the new binary
+      ansible.builtin.shell: |
+        set -eu
+        for u in $(systemctl list-units --type=service --state=active --no-legend 'dhs-*.service' | awk '{print $1}'); do
+          systemctl restart "$u"
+          echo "$u"
+        done
+      register: dhs_host_restarted
+      changed_when: dhs_host_restarted.stdout | length > 0
