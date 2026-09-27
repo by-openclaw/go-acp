@@ -58,15 +58,16 @@ func TestParseCerebrumCatCSV(t *testing.T) {
 
 // TestDiffCerebrumCategory pins the per-slot ensure: identical grid = no
 // changes; differing/missing slots = MODIFY_ITEM; live slots beyond the
-// desired grid clear via ITEM_TYPE=BLANK (never DELETE_ITEM — index-shift
-// semantics undefined in the spec); absent category = CREATE + slots;
-// run-twice = 0.
+// desired grid are DELETE_ITEM'd from the last backwards (a BLANK write is
+// refused live, and a delete shifts later items down); absent category =
+// CREATE + slots; run-twice = 0.
 func TestDiffCerebrumCategory(t *testing.T) {
 	live := &codec.CategoryDetailsInfo{Items: []codec.CategoryItem{
 		{Index: 1, Type: "TEXT", Value: "Cameras"},
 		{Index: 2, Type: "SOURCE", Value: "10001"},
 		{Index: 3, Type: "SOURCE", Value: "10099"},
 	}}
+	live.Items = append(live.Items, codec.CategoryItem{Index: 4, Type: "SOURCE", Value: "10100"})
 	desired := []cerebrumCatItem{
 		{Type: "TEXT", Value: "Cameras"}, // identical -> none
 		{Type: "SOURCE", Value: "10002"}, // differs -> modify slot 2
@@ -74,7 +75,9 @@ func TestDiffCerebrumCategory(t *testing.T) {
 	got := diffCerebrumCategory("C", live, desired)
 	want := []cerebrumCatChange{
 		{Cat: "C", Op: "MODIFY_ITEM", Index: 2, Type: "SOURCE", Value: "10002", From: "SOURCE 10001"},
-		{Cat: "C", Op: "MODIFY_ITEM", Index: 3, Type: "BLANK", Value: "", From: "SOURCE 10099"},
+		// Slots 3 and 4 go, the last first: deleting slot 4 cannot move 3.
+		{Cat: "C", Op: "DELETE_ITEM", Index: 4, From: "SOURCE 10100"},
+		{Cat: "C", Op: "DELETE_ITEM", Index: 3, From: "SOURCE 10099"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("diff:\ngot  %+v\nwant %+v", got, want)
@@ -160,5 +163,23 @@ func TestClassifyCerebrumCategories(t *testing.T) {
 	}
 	if len(both) != 1 || both[0] != "MIX" || src["MIX"] || dst["MIX"] {
 		t.Errorf("both = %v (src[MIX]=%v dst[MIX]=%v)", both, src["MIX"], dst["MIX"])
+	}
+}
+
+func TestCatChangeTo(t *testing.T) {
+	if got := catChangeTo(cerebrumCatChange{Op: "DELETE_ITEM"}); got != "(deleted)" {
+		t.Errorf("delete renders %q", got)
+	}
+	if got := catChangeTo(cerebrumCatChange{Op: "MODIFY_ITEM", Type: "SOURCE", Value: "5"}); got != "SOURCE 5" {
+		t.Errorf("modify renders %q", got)
+	}
+}
+
+func TestCategoryTarget(t *testing.T) {
+	if got := categoryTarget("CREATE", "", "NEW"); got != "NEW" {
+		t.Errorf("create = %q", got)
+	}
+	if got := categoryTarget("DELETE", "OLD", ""); got != "OLD" {
+		t.Errorf("delete = %q", got)
 	}
 }

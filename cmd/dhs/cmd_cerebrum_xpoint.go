@@ -484,7 +484,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			diffs = append(diffs, ensureDiff{Field: "category." + c.Cat, From: "", To: "CREATE"})
 			continue
 		}
-		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("category.%s.%d", c.Cat, c.Index), From: c.From, To: strings.TrimSpace(c.Type + " " + c.Value)})
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("category.%s.%d", c.Cat, c.Index), From: c.From, To: catChangeTo(c)})
 	}
 
 	if *check {
@@ -502,7 +502,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 				_, _ = fmt.Fprintf(logw, "[would-category] create %s\n", c.Cat)
 				continue
 			}
-			_, _ = fmt.Fprintf(logw, "[would-category] %s slot %d: %q -> %q\n", c.Cat, c.Index, c.From, strings.TrimSpace(c.Type+" "+c.Value))
+			_, _ = fmt.Fprintf(logw, "[would-category] %s slot %d: %q -> %q\n", c.Cat, c.Index, c.From, catChangeTo(c))
 		}
 		_, _ = fmt.Fprintf(logw, "cerebrum-nb import --check: would_change=%d (%d route(s), %d label(s), %d lock(s), %d category change(s)) of %d crosspoint(s)/%d label row(s)/%d lock row(s)/%d categor(ies) desired — nothing sent\n",
 			total, len(routeChanges), len(mneChanges), len(lockChanges), len(catChanges), len(routes), xpRows+len(srcRows)+len(dstRows)+len(lvlRows), len(lockRows), len(catDefs))
@@ -573,7 +573,11 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		switch c.Op {
 		case "CREATE":
 			aerr = sess.Category(actx, &codec.CategoryAction{Type: "CREATE", Name: c.Cat})
-		default: // MODIFY_ITEM (incl. BLANK clears)
+		case "DELETE_ITEM":
+			aerr = sess.Category(actx, &codec.CategoryAction{
+				Type: "DELETE_ITEM", Category: c.Cat, Index: strconv.Itoa(c.Index),
+			})
+		default: // MODIFY_ITEM
 			aerr = sess.Category(actx, &codec.CategoryAction{
 				Type: "MODIFY_ITEM", Category: c.Cat,
 				Index: strconv.Itoa(c.Index), ItemType: codec.ItemType(c.Type), Value: c.Value,
@@ -588,7 +592,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		if c.Op == "CREATE" {
 			_, _ = fmt.Fprintf(logw, "[category] OK   CREATE %s\n", c.Cat)
 		} else {
-			_, _ = fmt.Fprintf(logw, "[category] OK   %s slot %d: %q -> %q\n", c.Cat, c.Index, c.From, strings.TrimSpace(c.Type+" "+c.Value))
+			_, _ = fmt.Fprintf(logw, "[category] OK   %s slot %d: %q -> %q\n", c.Cat, c.Index, c.From, catChangeTo(c))
 		}
 	}
 	if fails > 0 {
