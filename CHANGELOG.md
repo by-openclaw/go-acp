@@ -7,6 +7,22 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.27.0](https://github.com/by-openclaw/go-acp/compare/v0.26.0...v0.27.0) (2026-09-27)
+
+
+### Features
+
+* **ansible:** a TSL v5.0 receiver service for controllers, and the firewall for it ([#1167](https://github.com/by-openclaw/go-acp/issues/1167)) ([e9f3be2](https://github.com/by-openclaw/go-acp/commit/e9f3be20a1f7d99109b9815b36bc52def78fc315)), closes [#714](https://github.com/by-openclaw/go-acp/issues/714)
+* **ansible:** an Ember+ provider service for controllers, on its own host ([#1166](https://github.com/by-openclaw/go-acp/issues/1166)) ([6a5569d](https://github.com/by-openclaw/go-acp/commit/6a5569d96a283adf8623416aa922947cd2ce67b9)), closes [#714](https://github.com/by-openclaw/go-acp/issues/714)
+* **ansible:** arista_* roles — FABRIC-1/2 config as code, per concern ([#1175](https://github.com/by-openclaw/go-acp/issues/1175)) ([28b8a74](https://github.com/by-openclaw/go-acp/commit/28b8a74b83cff1657f4bbf83c4d140162eda0903)), closes [#1174](https://github.com/by-openclaw/go-acp/issues/1174)
+
+
+### Bug Fixes
+
+* **ansible:** FusioN6 is at 10.6.40.54, and alarm.yml restarts before it waits ([#1173](https://github.com/by-openclaw/go-acp/issues/1173)) ([910e2ad](https://github.com/by-openclaw/go-acp/commit/910e2ade05b63eec76146cccbe1f274f2edcec2a))
+* **cerebrum-nb:** lock defaults to PROTECTED — PROTECT is refused live ([#1170](https://github.com/by-openclaw/go-acp/issues/1170)) ([28049f5](https://github.com/by-openclaw/go-acp/commit/28049f526ae95fffe07e2745d82dc7c5cb5e18f8)), closes [#714](https://github.com/by-openclaw/go-acp/issues/714)
+* **cerebrum-nb:** shrink a category with DELETE_ITEM, last slot first ([#1169](https://github.com/by-openclaw/go-acp/issues/1169)) ([e6935db](https://github.com/by-openclaw/go-acp/commit/e6935dbd1f258ced3ad4fe038dba1081c16732fe)), closes [#1168](https://github.com/by-openclaw/go-acp/issues/1168)
+
 ## [0.26.0](https://github.com/by-openclaw/go-acp/compare/v0.25.0...v0.26.0) (2026-09-27)
 
 
