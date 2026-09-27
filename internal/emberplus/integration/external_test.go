@@ -85,9 +85,11 @@ func TestExternalEmberWalk(t *testing.T) {
 	host, port := emberTarget(t)
 	bin := buildDHS(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, bin,
+	// No total deadline: --timeout is per request, so a walk that keeps
+	// getting answers runs to the end however large the device, and a
+	// stalled one fails the request that stalled. go test's -timeout is
+	// the net for a CLI that never ends.
+	out, err := exec.CommandContext(context.Background(), bin,
 		"consumer", "emberplus", "walk", host,
 		"--port", port,
 		"--timeout", "45s",
