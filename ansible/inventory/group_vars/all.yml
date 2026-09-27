@@ -35,7 +35,7 @@ dhs_alarm_devices:
     port: 9110
     what: EVS Neuron shelf — PSU health, fans, temperature, power draw
   - name: fusion6
-    host: 10.6.40.53
+    host: 10.6.40.54
     proto: mnset
     template: internal/MNSet/alarm/fusion6.alarm.json
     port: 9111

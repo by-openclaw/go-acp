@@ -175,6 +175,13 @@
         dest: "{{ alarm_file_sd }}"
         mode: "0644"
 
+    # Restart what changed BEFORE waiting on it. Without this the wait ran
+    # against the old unit, failed, and a failed play skips its handlers —
+    # so a changed unit (a device's new address) never took effect: the
+    # FusioN6 unit was rewritten to 10.6.40.54 and kept dialling .53.
+    - name: Flush handlers (restart changed units before waiting)
+      ansible.builtin.meta: flush_handlers
+
     - name: Wait for each endpoint
       ansible.builtin.wait_for:
         port: "{{ item.port }}"
