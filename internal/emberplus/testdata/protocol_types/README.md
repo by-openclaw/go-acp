@@ -2,8 +2,10 @@
 
 One slimmed capture + frozen tshark tree per Glow element type, as defined by
 the Glow BER DTD (Ember+ Documentation v2.50, section 5 "The DTD"). The
-dissector is expected to render every type exactly as frozen — the CI parity
-test under `tests/unit/fixture_parity/` asserts that.
+dissector is expected to render every type exactly as frozen.
+`internal/emberplus/consumer/fixture_parity_test.go` checks each folder ships
+its three files and that the tree shows the type's APPLICATION tag; byte-exact
+parity against a live tshark run is checked by hand when the dissector changes.
 
 ## Coverage
 
@@ -23,19 +25,23 @@ test under `tests/unit/fixture_parity/` asserts that.
 | 12| 2 (cmd=31) | Command — Unsubscribe  | [`command_unsubscribe/`](command_unsubscribe/)    | 86     |
 | 13| 19 / 22 | Function + Invocation   | [`function_invoke/`](function_invoke/)             | 91     |
 | 14| 23      | InvocationResult        | [`invocation_result/`](invocation_result/)         | 92     |
+| 15| 20      | QualifiedFunction       | [`qualified_function/`](qualified_function/)       | 91     |
+| 16| 21      | TupleItemDescription    | [`tuple_item_description/`](tuple_item_description/) | 91   |
 
-## Not covered (TinyEmber+ / TinyEmberPlusRouter gap)
+Rows 1–15 come from Lawo's TinyEmber+ / TinyEmberPlusRouter; row 16 from a
+real Lawo Power Core.
 
-| APP tag | Type                   | Reason                                       |
-|---------|------------------------|----------------------------------------------|
-| 12      | StreamDescription      | TinyEmber+ does not publish streamDescriptor |
-| 20      | QualifiedFunction      | Only Function + QualifiedNode-wrapped Func   |
-| 21      | TupleItemDescription   | Function has no `arguments` metadata         |
-| 24      | Template               | TinyEmber+ does not expose templates         |
-| 25      | QualifiedTemplate      | As above                                     |
+## Not covered — no independent source yet (#62)
 
-Re-capture required against a Lawo / DHD / Riedel provider that ships these
-elements. Tracked in a follow-up issue — see root `agents.md`.
+| APP tag | Type                   | Reason                                                     |
+|---------|------------------------|------------------------------------------------------------|
+| 12      | StreamDescription      | no device captured so far sends a streamDescriptor         |
+| 24      | Template               | no device captured so far exposes templates                |
+| 25      | QualifiedTemplate      | as above                                                   |
+
+Checked against every capture in `../fixtures/` (TinyEmber+ router, DHD,
+DHD streams, Power Core). A provider that ships these — a Lawo mc² is the
+usual one — closes the gap.
 
 ## Using a fixture
 

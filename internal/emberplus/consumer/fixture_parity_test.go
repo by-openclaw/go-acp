@@ -38,6 +38,8 @@ func TestEmberPlusPerTypeFixtures(t *testing.T) {
 		{"command_unsubscribe", []string{"APPLICATION 2] Command"}, "Value (int): 31"},
 		{"function_invoke", []string{"APPLICATION 19] Function", "APPLICATION 22] Invocation"}, "Value (int): 33"},
 		{"invocation_result", []string{"APPLICATION 23] InvocationResult"}, ""},
+		{"qualified_function", []string{"APPLICATION 20] QualifiedFunction"}, `UTF8String = "add"`},
+		{"tuple_item_description", []string{"APPLICATION 21] TupleItemDescription"}, `UTF8String = "Boolean Par."`},
 	}
 
 	for _, tc := range cases {
