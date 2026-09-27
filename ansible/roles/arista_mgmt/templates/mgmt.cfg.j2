@@ -1,0 +1,55 @@
+{#- arista_mgmt — management plane. Owns: management VLAN + its VLAN interface
+    (switches are the gateway: VRRP), management loopback, NTP, SNMPv3,
+    eAPI / gNMI, default routes. -#}
+{%- set sw = switches[inventory_hostname] -%}
+vlan {{ mgmt.vlan }}
+   name {{ mgmt.vlan_name }}
+!
+interface Loopback{{ mgmt.loopback.id }}
+   !! Management VRF loopback ({{ mgmt.vrf }}). Role arista_mgmt.
+   vrf {{ mgmt.vrf }}
+   ip address {{ mgmt.loopback.prefix }}.{{ sw.id }}/32
+!
+interface Vlan{{ mgmt.vlan }}
+   !! Management / in-band control gateway. The switches are the gateway (VRRP {{ mgmt.vip }}), OPNsense is upstream only: losing the firewall must not cut management from the media planes. Role arista_mgmt.
+   description {{ mgmt.vlan_name }}
+   no autostate
+   vrf {{ mgmt.vrf }}
+   ip address {{ sw.mgmt_ip }}/{{ mgmt.prefix_len }}
+{% if sw.vrrp_priority is defined %}
+   vrrp {{ mgmt.vrrp.id }} priority-level {{ sw.vrrp_priority }}
+{% endif %}
+   vrrp {{ mgmt.vrrp.id }} preempt {{ mgmt.vrrp.preempt }}
+   vrrp {{ mgmt.vrrp.id }} ipv4 {{ mgmt.vip }}
+   vrrp {{ mgmt.vrrp.id }} session description {{ mgmt.vrrp.description }}
+!
+ip route 0.0.0.0/0 {{ mgmt.oob_gw }}
+ip route vrf {{ mgmt.vrf }} 0.0.0.0/0 {{ mgmt.upstream_gw }}
+!
+{% for n in mgmt.ntp %}
+ntp server {{ n }}
+{% endfor %}
+!
+ip access-list standard {{ mgmt.snmp.acl }}
+   10 permit {{ mgmt.subnet }}
+!
+snmp-server ipv4 access-list {{ mgmt.snmp.acl }}
+snmp-server view {{ mgmt.snmp.view }} iso included
+snmp-server group {{ mgmt.snmp.group }} v3 priv read {{ mgmt.snmp.view }}
+snmp-server user {{ mgmt.snmp.user }} {{ mgmt.snmp.group }} v3 auth {{ mgmt.snmp.auth }} {{ arista_secrets.snmp_auth_pass }} priv {{ mgmt.snmp.priv }} {{ arista_secrets.snmp_priv_pass }}
+!
+{% if mgmt.eapi %}
+management api http-commands
+   !! eAPI (HTTPS 443) for Ansible and the dhs Arista connector. Role arista_mgmt.
+   no shutdown
+   !
+   vrf default
+      no shutdown
+!
+{% endif %}
+{% if mgmt.gnmi %}
+management api gnmi
+   !! gNMI (grpc 6030) for streaming telemetry / dhs connector. Role arista_mgmt.
+   transport grpc default
+   provider eos-native
+{% endif %}

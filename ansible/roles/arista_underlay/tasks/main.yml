@@ -1,0 +1,13 @@
+---
+- name: underlay | apply loopback, link and OSPF blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: underlay
+    arista_want: "{{ lookup('ansible.builtin.template', 'underlay.cfg.j2') }}"
+    arista_owns: >-
+      {{ (underlay.loopbacks | map(attribute='id') | map('regex_replace', '^(.*)$', '^interface Loopback\1$') | list)
+         + (underlay.links | map(attribute='vlan') | map('regex_replace', '^(.*)$', '^vlan \1$') | list)
+         + (underlay.links | map(attribute='vlan') | map('regex_replace', '^(.*)$', '^interface Vlan\1$') | list)
+         + ['^router ospf '] }}

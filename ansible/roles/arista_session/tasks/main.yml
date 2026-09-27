@@ -1,0 +1,5 @@
+---
+# Listed first in the play: loads the engine's filters for every arista_*
+# role and reads the live running-config once.
+- name: Read the live configuration
+  ansible.builtin.include_tasks: gather.yml

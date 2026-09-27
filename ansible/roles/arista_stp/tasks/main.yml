@@ -1,0 +1,10 @@
+---
+- name: stp | apply spanning-tree blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: stp
+    arista_want: "{{ lookup('ansible.builtin.template', 'stp.cfg.j2') }}"
+    arista_owns:
+      - '^spanning-tree '

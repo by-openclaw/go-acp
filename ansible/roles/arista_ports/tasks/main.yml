@@ -1,0 +1,23 @@
+---
+# Owns every interface profile, the parking VLAN, and ONLY the ports named in
+# the port map (ports, parked, lags + members). An unlisted port is never
+# read as intended nor touched.
+- name: ports | list the interfaces this role owns
+  ansible.builtin.set_fact:
+    ports_owned: >-
+      {{ (ports.keys() | list)
+         + (parked | select('string') | list)
+         + (parked | reject('string') | map(attribute='port') | list)
+         + (lags | map(attribute='members') | flatten)
+         + (lags | map(attribute='id') | map('regex_replace', '^(.*)$', 'Port-Channel\1') | list) }}
+
+- name: ports | apply profile, port and LAG blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: ports
+    arista_want: "{{ lookup('ansible.builtin.template', 'ports.cfg.j2') }}"
+    arista_owns: >-
+      {{ ['^interface profile ', '^vlan ' ~ profiles.parking_vlan ~ '$']
+         + (ports_owned | map('regex_escape') | map('regex_replace', '^(.*)$', '^interface \1$') | list) }}

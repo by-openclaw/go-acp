@@ -1,0 +1,53 @@
+---
+# FABRIC-1 (DCS-7060CX-32S) port map — which port uses which profile.
+# Profiles are defined by the arista_ports role from site.yml; `extra` holds
+# per-port physical settings (speed / FEC). Unlisted ports are not managed.
+ports:
+  # Management edge (VLAN 600)
+  Ethernet1/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet2/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet3/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet4/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet5/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet6/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet7/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet8/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  # 2110 endpoints
+  Ethernet10/1: { profile: client_red,  desc: RED-CLIENT }                    # Neuron red (100G)
+  Ethernet20/1: { profile: client_red,  desc: RED-CLIENT,  extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e1
+  Ethernet22/1: { profile: client_blue, desc: BLUE-CLIENT }                   # Neuron blue (100G)
+  Ethernet32/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e2
+  # Uplinks to FABRIC-2 (profile, description and MST costs from site.yml `uplinks`)
+  Ethernet33: { uplink: red }
+  Ethernet34: { uplink: blue }
+
+# Unused ports: parking VLAN (link + LLDP events, no reachability).
+parked:
+  - Ethernet9/1
+  - Ethernet11/1
+  - Ethernet12/1
+  - Ethernet13/1
+  - Ethernet14/1
+  - { port: Ethernet15/1, extra: [no error-correction encoding] }
+  - Ethernet16/1
+  - Ethernet17/1
+  - Ethernet18/1
+  - Ethernet19/1
+  - { port: Ethernet20/2, extra: [no error-correction encoding] }
+  - { port: Ethernet20/3, extra: [no error-correction encoding] }
+  - { port: Ethernet20/4, extra: [no error-correction encoding] }
+  - Ethernet21/1
+  - Ethernet23/1
+  - Ethernet24/1
+  - Ethernet25/1
+  - Ethernet26/1
+  - Ethernet27/1
+  - Ethernet28/1
+  - Ethernet29/1
+  - Ethernet30/1
+  - Ethernet31/1
+  - { port: Ethernet32/2, extra: [no error-correction encoding] }
+  - { port: Ethernet32/3, extra: [no error-correction encoding] }
+  - { port: Ethernet32/4, extra: [no error-correction encoding] }
+
+lags: []

@@ -1,0 +1,17 @@
+---
+- name: mgmt | apply management-plane blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: mgmt
+    arista_want: "{{ lookup('ansible.builtin.template', 'mgmt.cfg.j2') }}"
+    arista_owns:
+      - "^vlan {{ mgmt.vlan }}$"
+      - "^interface Vlan{{ mgmt.vlan }}$"
+      - "^interface Loopback{{ mgmt.loopback.id }}$"
+      - '^ip route '
+      - '^ntp server '
+      - "^ip access-list standard {{ mgmt.snmp.acl }}$"
+      - '^snmp-server (view|group|user|ipv4 access-list) '
+      - '^management api (http-commands|gnmi)$'

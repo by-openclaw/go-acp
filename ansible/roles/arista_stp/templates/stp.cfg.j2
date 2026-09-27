@@ -1,0 +1,15 @@
+{#- arista_stp — MST. The region (name, revision, instance -> VLAN map) must be
+    identical on every switch or the region splits. Root/backup is set with
+    one priority for every instance (lower wins). Per-port MST costs are on
+    the uplink ports (arista_ports).
+    No `!!` comment here: EOS does not keep comments in MST region mode. -#}
+{%- set sw = switches[inventory_hostname] -%}
+spanning-tree mode mstp
+spanning-tree mst {{ ([0] + (stp.instances.keys() | list)) | eos_ranges }} priority {{ sw.stp_priority }}
+!
+spanning-tree mst configuration
+   name {{ stp.region }}
+   revision {{ stp.revision }}
+{% for inst, vlans in stp.instances | dictsort %}
+   instance {{ inst }} vlan  {{ vlans | eos_ranges }}
+{% endfor %}

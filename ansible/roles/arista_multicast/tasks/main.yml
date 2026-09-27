@@ -1,0 +1,13 @@
+---
+- name: multicast | apply IGMP snooping, PIM and RP blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: multicast
+    arista_want: "{{ lookup('ansible.builtin.template', 'multicast.cfg.j2') }}"
+    arista_owns:
+      - '^ip igmp snooping'
+      - '^ip access-list standard RP-'
+      - '^router multicast$'
+      - '^router pim sparse-mode$'

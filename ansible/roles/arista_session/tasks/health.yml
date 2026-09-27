@@ -1,0 +1,27 @@
+---
+# Checks between `commit timer` and the confirmation. A failure stops the
+# play; the session is then rolled back automatically when the timer expires.
+- name: Health | read OSPF, PIM and PTP state
+  ansible.builtin.include_tasks: eapi.yml
+  vars:
+    eapi_label: health
+    eapi_cmds: >-
+      {{ ['show ip ospf neighbor vrf all', 'show ptp']
+         + (arista_health_pim_vrfs | map('regex_replace', '^(.*)$', 'show ip pim vrf \1 neighbor') | list) }}
+
+- name: Health | evaluate
+  ansible.builtin.set_fact:
+    health_ospf_full: "{{ eapi_result[0].output | regex_findall(' FULL ') | length }}"
+    health_ptp_gm: "{{ eapi_result[1].output | regex_search('Grandmaster Clock Identity: (\\S+)', '\\1') | default([''], true) | first }}"
+    health_pim: "{{ eapi_result[2:] | map(attribute='output') | map('regex_findall', ' sparse ') | map('length') | list }}"
+
+- name: Health | assert (otherwise the session rolls back at the timer)
+  ansible.builtin.assert:
+    that:
+      - (health_ospf_full | int) >= (arista_health_ospf_full_min | int)
+      - (not arista_health_ptp_gm) or (health_ptp_gm | length > 0 and not health_ptp_gm.startswith('00:00:00'))
+      - health_pim | select('equalto', 0) | list | length == 0
+    fail_msg: >-
+      Health failed: OSPF FULL={{ health_ospf_full }} (min {{ arista_health_ospf_full_min }}),
+      PTP GM={{ health_ptp_gm }}, PIM neighbours per VRF={{ health_pim }}.
+      Not confirming: the session rolls back at the commit timer.

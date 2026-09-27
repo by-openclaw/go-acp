@@ -138,3 +138,4 @@ internal/MNSet/assets/procedure-fusion-mnset.txt
 #   dhs consumer acp2 walk 10.6.255.102 --slots all --capture ...
 internal/acp2/testdata/neuron-102/
 tests/fixtures/products/evs/
+__pycache__/

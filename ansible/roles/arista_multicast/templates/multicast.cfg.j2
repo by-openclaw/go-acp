@@ -1,0 +1,53 @@
+{#- arista_multicast — IGMP snooping, PIM-SM per plane, RP and its group range.
+    RP = the plane loopback of multicast.rp_switch (next to the senders).
+    A reserved range inside a plane range is excluded from the RP with an
+    access list RP-<PLANE> (remark + deny + permit); otherwise the plane range
+    is given directly. -#}
+{%- set sw = switches[inventory_hostname] -%}
+{%- set rp_id = switches[multicast.rp_switch].id -%}
+ip igmp snooping querier
+ip igmp snooping vlan {{ mgmt.vlan }} querier
+ip igmp snooping vlan {{ mgmt.vlan }} querier address {{ sw.mgmt_ip }}
+ip igmp snooping vlan {{ mgmt.vlan }} fast-leave
+{% for key in planes %}
+ip igmp snooping vlan {{ sw.media[key].vlan }} fast-leave
+{% endfor %}
+!
+{% for key, p in planes.items() %}
+{%   set excl = multicast.reserved | ip_within(multicast.planes[key].range) %}
+{%   if excl %}
+ip access-list standard RP-{{ p.name }}
+   5 remark {{ multicast.reserved_remark }}
+{%     for r in excl %}
+   {{ loop.index * 10 }} deny {{ r }}
+{%     endfor %}
+   {{ (excl | length + 1) * 10 }} permit {{ multicast.planes[key].range }}
+!
+{%   endif %}
+{% endfor %}
+router multicast
+   !! Multicast routing per plane VRF. Role arista_multicast.
+   ipv4
+      software-forwarding {{ multicast.software_forwarding }}
+   !
+   ipv6
+      software-forwarding {{ multicast.software_forwarding }}
+   !
+{% for p in planes.values() | sort(attribute='vrf') %}
+   vrf {{ p.vrf }}
+      ipv4
+         routing
+   !
+{% endfor %}
+!
+router pim sparse-mode
+   !! PIM-SM per plane. RP next to the senders ({{ switches[multicast.rp_switch].hostname }}); RP range = the plane's multicast plan, reserved ranges excluded. Arista ST 2110 guide. Role arista_multicast.
+{% for key, p in planes.items() | sort(attribute='1.vrf') %}
+{%   set lo = underlay.loopbacks | selectattr('vrf', 'equalto', p.vrf) | first %}
+{%   set excl = multicast.reserved | ip_within(multicast.planes[key].range) %}
+   vrf {{ p.vrf }}
+      ipv4
+         sg-expiry-timer {{ multicast.sg_expiry }}
+         rp address {{ lo.prefix }}.{{ rp_id }} {{ ('access-list RP-' ~ p.name) if excl else multicast.planes[key].range }}
+   !
+{% endfor %}

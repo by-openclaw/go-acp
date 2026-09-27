@@ -1,0 +1,25 @@
+---
+# arista_session — the engine every arista_* role applies its blocks through.
+# It owns no configuration. See roles/arista_session/README.md.
+
+# eAPI (HTTPS). Certificates are self-signed until smart-ca issues them.
+arista_eapi_port: 443
+arista_eapi_validate_certs: false
+arista_eapi_timeout: 60
+
+# A committed session is rolled back automatically unless confirmed within
+# this time; confirmation only happens after the health checks pass.
+arista_commit_timer: "00:10:00"
+
+# Real changes need an explicit -e arista_apply=true. Without it every role
+# only shows its diff and aborts the session (even without --check).
+arista_apply: false
+
+# Exact block headers to leave alone on this switch (both sides of the diff),
+# e.g. breakout lanes that exist in config but not in hardware.
+arista_ignore_blocks: []
+
+# Health checks run after `commit timer`, before confirming.
+arista_health_ospf_full_min: 0
+arista_health_pim_vrfs: []
+arista_health_ptp_gm: true

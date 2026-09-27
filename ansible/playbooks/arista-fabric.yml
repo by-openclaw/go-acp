@@ -1,0 +1,52 @@
+---
+# Arista ST 2110 fabrics — configuration as code (issue #1174).
+#
+#   Diff only (default, safe):   ansible-playbook playbooks/arista-fabric.yml -e site=lab
+#   One concern:                 ... --tags ptp
+#   One switch:                  ... --limit fabric-2
+#   Apply:                       ... -e arista_apply=true
+#
+# Each role owns its own blocks; arista_session stages them in an EOS config
+# session. Without -e arista_apply=true (or with --check) every session is
+# only diffed and aborted. With it: flash backup, `commit timer`, health
+# checks (OSPF / PIM / PTP), then confirm + write memory — a failed check
+# leaves the session to roll back by itself when the timer expires.
+# Run from the control node (dhs-debian), in ansible/.
+
+- name: Arista 2110 fabrics
+  hosts: arista
+  gather_facts: false
+  vars_files:
+    - "../sites/{{ site | default('lab') }}/site.yml"
+    - "../secrets/arista.json"
+  vars:
+    arista_ignore_blocks: "{{ switches[inventory_hostname].ignore_blocks | default([]) }}"
+    arista_health_ospf_full_min: "{{ (underlay.links | length) }}"
+    arista_health_pim_vrfs: "{{ planes.values() | map(attribute='vrf') | list }}"
+
+  pre_tasks:
+    - name: Load this switch's port map
+      ansible.builtin.include_vars: "../sites/{{ site | default('lab') }}/ports/{{ inventory_hostname }}.yml"
+      tags: always
+
+    - name: Validate the site data before touching a switch
+      ansible.builtin.assert:
+        that:
+          - switches[inventory_hostname] is defined
+          - planes | length >= 1
+          - switches[inventory_hostname].media.keys() | sort == planes.keys() | sort
+          - multicast.rp_switch in switches
+          - (switches.values() | map(attribute='id') | unique | list | length) == (switches | length)
+        fail_msg: "sites/{{ site | default('lab') }}: inconsistent data for {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - { role: arista_session,   tags: always }      # engine: filters + read live config
+    - { role: arista_mgmt,      tags: mgmt }
+    - { role: arista_vrf,       tags: vrf }
+    - { role: arista_underlay,  tags: underlay }
+    - { role: arista_media,     tags: media }
+    - { role: arista_multicast, tags: multicast }
+    - { role: arista_ptp,       tags: ptp }
+    - { role: arista_stp,       tags: stp }
+    - { role: arista_ports,     tags: ports }

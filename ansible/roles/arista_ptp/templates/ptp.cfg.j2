@@ -1,0 +1,24 @@
+{#- arista_ptp — boundary clock globals. Source IP = the switch's Loopback0
+    (Arista ME PTP white paper: a loopback unique per switch). priority1 sets
+    which switch holds time if every grandmaster is lost. Switches with
+    `gm_feed: true` also carry the grandmaster feed VLAN. Per-port PTP (client
+    master ports, uplink `ptp vlan`) lives in the port profiles (arista_ports). -#}
+{%- set sw = switches[inventory_hostname] -%}
+{%- set lo0 = underlay.loopbacks | selectattr('id', 'equalto', 0) | first -%}
+ptp domain {{ ptp.domain }}
+ptp message-type event dscp {{ ptp.dscp }} default
+ptp message-type general dscp {{ ptp.dscp }} default
+ptp mode {{ ptp.mode }}
+ptp priority1 {{ sw.ptp_priority1 }}
+ptp source ip {{ lo0.prefix }}.{{ sw.id }}
+ptp ttl {{ ptp.ttl }}
+ptp management all
+!
+{% if sw.gm_feed | default(false) %}
+vlan {{ ptp.gm_feed.vlan }}
+   name {{ ptp.gm_feed.name }}
+!
+interface Vlan{{ ptp.gm_feed.vlan }}
+   vrf {{ ptp.gm_feed.vrf }}
+   ip address {{ ptp.gm_feed.prefix }}.{{ ptp.gm_feed.host }}/{{ ptp.gm_feed.mask }}
+{% endif %}
