@@ -50,6 +50,17 @@ dhs_firewall_catalogue:
     - { port: 2008,  proto: tcp, program: true }
   probel-sw02p:
     - { port: 2002,  proto: tcp, program: true }
+  # TSL UMD receiver (dhs consumer tsl-v* listen): the CLI defaults.
+  tsl:
+    - { port: 4000,  proto: udp, program: true }   # v3.1 / v4.0
+    - { port: 8901,  proto: udp, program: true }   # v5.0 (Kaleido default)
+    - { port: 8901,  proto: tcp, program: true }   # v5.0 over TCP (DLE/STX)
+  # The port the staging Cerebrum's TSL-UMD-V5 device sends to (owner,
+  # 2026-09-27) — not a default, so a group of its own, on the receiving
+  # host only.
+  tsl-staging:
+    - { port: 2000,  proto: udp, program: true }
+    - { port: 2000,  proto: tcp, program: true }
   nmos:
     - { port: 8080,  proto: tcp, program: true }   # Node API (CLI default bind)
     - { port: 18080, proto: tcp, program: true }   # Node API (fleet port plan)
