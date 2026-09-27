@@ -16,4 +16,5 @@ ember_tree_src: "{{ playbook_dir }}/../files/trees/powercore.tree.json"
 
 # Connectors this host serves -> dhs_firewall opens exactly these rule groups
 # (nmos also needs the dhs_mdns daemon). Add/remove with the producer deploy.
-dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos]
+# tsl + tsl-staging: the TSL receiver the staging Cerebrum sends to (#714).
+dhs_connectors: [acp1, acp2, emberplus, probel-sw08p, probel-sw02p, nmos, tsl, tsl-staging]

@@ -1,0 +1,65 @@
+---
+# TSL UMD v5.0 receiver as a long-running service — the UMD a real
+# controller (the staging Cerebrum, #714 part A) drives. Cerebrum's
+# TSL-UMD-V5 device is the SENDER: it pushes tallies to this host's
+# address, so dhs is the receiver (`consumer tsl-v50 listen`).
+#
+# Its own host, dhs-rocky (10.6.250.103) by default: Cerebrum keys a device
+# by IP, and dhs-debian / dhs-ubuntu are the acp2 and Ember+ devices. The
+# port must be open in the host firewall: dhs-rocky carries the `tsl` and
+# `tsl-staging` groups (dhs_firewall).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/tsl-receiver-service.yml
+#   ... -e tsl_transport=udp     # Cerebrum's Connection Type UDP
+#
+# Idempotent: run-twice = 0 changes.
+
+- name: TSL v5.0 — receiver service for controllers (#714)
+  hosts: "{{ tsl_hosts | default('dhs-rocky') }}"
+  gather_facts: false
+  vars:
+    # Where Cerebrum sends (owner, 2026-09-27): port 2000; Connection Type
+    # TCP today (UDP also verified). v5.0 over TCP uses the DLE/STX wrapper.
+    tsl_port: 2000
+    tsl_transport: tcp
+  tasks:
+    - name: dhs-tsl.service
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/tsl-receiver-service.yml (#714).
+          [Unit]
+          Description=dhs TSL v5.0 receiver (UMD driven by a controller)
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/dhs consumer tsl-v50 listen \
+            --bind 0.0.0.0:{{ tsl_port }}{% if tsl_transport == 'tcp' %} --tcp{% endif %}
+
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-tsl.service
+        mode: "0644"
+      notify: restart dhs-tsl
+
+    - name: Service enabled + running
+      ansible.builtin.systemd:
+        name: dhs-tsl
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Flush handlers (restart before verifying)
+      ansible.builtin.meta: flush_handlers
+
+    - name: Listening on {{ tsl_transport }}/{{ tsl_port }}
+      ansible.builtin.shell: >-
+        ss -ln{{ 't' if tsl_transport == 'tcp' else 'u' }}p | grep -q ":{{ tsl_port }} .*dhs"
+      changed_when: false
+
+  handlers:
+    - name: restart dhs-tsl
+      ansible.builtin.systemd:
+        name: dhs-tsl
+        state: restarted
+        daemon_reload: true
