@@ -1,0 +1,16 @@
+---
+- name: vrf | apply VRF and in-band control blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: vrf
+    arista_want: "{{ lookup('ansible.builtin.template', 'vrf.cfg.j2') }}"
+    arista_owns:
+      - '^vrf instance '
+      - '^ip routing'
+      - '^ip prefix-list '
+      - '^route-map '
+      - '^router general$'
+      - "^vlan {{ mgmt.transit.vlan }}$"
+      - "^interface Vlan{{ mgmt.transit.vlan }}$"

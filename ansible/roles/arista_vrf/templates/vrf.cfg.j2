@@ -1,0 +1,53 @@
+{#- arista_vrf — VRFs, routing, and IN-BAND CONTROL: the route leaks between
+    the management VRF and each media plane. The leak lists are derived from
+    the media subnets of every switch in the site, so a new switch or media
+    subnet is reachable from management without touching this role. -#}
+{%- set sw = switches[inventory_hostname] -%}
+{%- set ordered = switches | dict2items | sort(attribute='value.id') -%}
+{% for v in ([mgmt.vrf] + (planes | dict2items | map(attribute='value.vrf') | list)) | sort %}
+vrf instance {{ v }}
+!
+{% endfor %}
+ip routing
+{% for v in ([mgmt.vrf] + (planes | dict2items | map(attribute='value.vrf') | list)) | sort %}
+ip routing vrf {{ v }}
+{% endfor %}
+!
+{% for key, p in planes.items() %}
+{%   set up = p.name %}
+ip prefix-list MGMT-TO-{{ up }} seq 10 permit {{ mgmt.subnet }}
+{%   for s in ordered %}
+ip prefix-list {{ up }}-TO-MGMT seq {{ loop.index * 10 }} permit {{ p.prefix }}.{{ s.value.media[key].octet }}.0/24
+{%   endfor %}
+{% endfor %}
+!
+{% for key, p in planes.items() %}
+route-map RM-MGMT-TO-{{ p.name }} permit 10
+   match ip address prefix-list MGMT-TO-{{ p.name }}
+!
+route-map RM-{{ p.name }}-TO-MGMT permit 10
+   match ip address prefix-list {{ p.name }}-TO-MGMT
+!
+{% endfor %}
+router general
+   !! IN-BAND CONTROL: {{ mgmt.vrf }} <-> media planes, filtered by the RM-* route-maps (management subnet one way, media subnets the other). Backup control path when OOB is down. Role arista_vrf.
+{% for v in ([mgmt.vrf] + (planes | dict2items | map(attribute='value.vrf') | list)) | sort %}
+   vrf {{ v }}
+{%   if v == mgmt.vrf %}
+{%     for p in planes.values() | sort(attribute='vrf') %}
+      leak routes source-vrf {{ p.vrf }} subscribe-policy RM-{{ p.name }}-TO-MGMT
+{%     endfor %}
+{%   else %}
+{%     set p = planes.values() | selectattr('vrf', 'equalto', v) | first %}
+      leak routes source-vrf {{ mgmt.vrf }} subscribe-policy RM-MGMT-TO-{{ p.name }}
+{%   endif %}
+   !
+{% endfor %}
+!
+vlan {{ mgmt.transit.vlan }}
+   name {{ mgmt.transit.name }}
+!
+interface Vlan{{ mgmt.transit.vlan }}
+   description {{ mgmt.transit.name }}
+   no autostate
+   ip address {{ mgmt.transit.prefix }}.{{ sw.id }}/{{ mgmt.transit.mask }}

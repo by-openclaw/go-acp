@@ -1,0 +1,62 @@
+---
+# FABRIC-2 (DCS-7020TR-48) port map.
+ports:
+  # PTP grandmaster feed (VLAN 605): pve01 I210 on Et1, second GM reserved on Et2
+  Ethernet1: { profile: gm_feed, desc: PTP-GM }
+  Ethernet2: { profile: gm_feed, desc: PTP-GM }
+  # Management edge (VLAN 600)
+  Ethernet5:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet6:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet7:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet8:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet9:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet10: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet11: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet12: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet21: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet22: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet23: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet24: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  # Uplinks to FABRIC-1
+  Ethernet49: { uplink: red }
+  Ethernet50: { uplink: blue }
+  # Proxmox hosts: VLAN 600 trunk
+  Ethernet51: { desc: PROXMOX-00,  lines: [switchport trunk allowed vlan 600, switchport mode trunk, switchport] }
+  Ethernet52: { desc: PROXMOX-01,  lines: [switchport trunk allowed vlan 600, switchport mode trunk, switchport] }
+  Ethernet53: { desc: PROXMOX-K3S, lines: [switchport trunk allowed vlan 600, switchport mode trunk, switchport] }
+  Ethernet54: { lines: [no switchport] }
+
+parked:
+  - Ethernet25
+  - Ethernet26
+  - Ethernet27
+  - Ethernet28
+  - Ethernet29
+  - Ethernet30
+  - Ethernet31
+  - Ethernet32
+  - Ethernet33
+  - Ethernet34
+  - Ethernet35
+  - Ethernet36
+  - Ethernet37
+  - Ethernet38
+  - Ethernet39
+  - Ethernet40
+  - Ethernet41
+  - Ethernet42
+  - Ethernet43
+  - Ethernet44
+  - Ethernet45
+  - Ethernet46
+  - Ethernet47
+  - Ethernet48
+
+# Management LAGs (LACP active). Members never bundle without an LACP
+# partner, so an unconfigured device gets no traffic on them.
+lags:
+  - { id: 3,  profile: mgmt_access, desc: MGMT-NAS,         members: [Ethernet3, Ethernet4] }
+  - { id: 13, profile: mgmt_access, desc: MGMT-LAG Et13-14, members: [Ethernet13, Ethernet14] }
+  - { id: 15, profile: mgmt_access, desc: MGMT-LAG Et15-16, members: [Ethernet15, Ethernet16] }
+  - { id: 17, profile: mgmt_access, desc: MGMT-LAG Et17-18, members: [Ethernet17, Ethernet18] }
+  - { id: 19, profile: mgmt_access, desc: MGMT-LAG Et19-20, members: [Ethernet19, Ethernet20] }

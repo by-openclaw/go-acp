@@ -1,0 +1,12 @@
+---
+# Read the live running-config once; every role compares against it and the
+# engine refreshes it after each confirmed commit.
+- name: Read the live running-config
+  ansible.builtin.include_tasks: eapi.yml
+  vars:
+    eapi_label: running-config
+    eapi_cmds: ["show running-config"]
+
+- name: Keep the live running-config for the roles
+  ansible.builtin.set_fact:
+    arista_live: "{{ eapi_result[0].output }}"

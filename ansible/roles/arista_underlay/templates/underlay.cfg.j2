@@ -1,0 +1,58 @@
+{#- arista_underlay — loopbacks, point-to-point VLANs between the switches,
+    OSPF (BFD, MD5). Host address on a link = network + switch id. PIM on the
+    plane links is written here because this role owns those interfaces. -#}
+{%- set sw = switches[inventory_hostname] -%}
+{%- macro host(net, id) -%}{{ net.rsplit('.', 1)[0] }}.{{ (net.rsplit('.', 1)[1] | int) + id }}{%- endmacro -%}
+{% for lo in underlay.loopbacks %}
+interface Loopback{{ lo.id }}
+   !! {{ 'Router-id / PTP source' if lo.vrf == 'default' else lo.vrf ~ ' router-id / RP address' }}. Role arista_underlay.
+{%   if lo.vrf != 'default' %}
+   vrf {{ lo.vrf }}
+{%   endif %}
+   ip address {{ lo.prefix }}.{{ sw.id }}/32
+{%   if lo.ospf %}
+   ip ospf area 0.0.0.0
+{%   endif %}
+!
+{% endfor %}
+{% for l in underlay.links %}
+{%   set up = sw.uplinks[l.trunk] %}
+vlan {{ l.vlan }}
+   name {{ l.name }}
+!
+interface Vlan{{ l.vlan }}
+   !! Point-to-point {{ l.tag }} link to {{ switches[up.peer].hostname }}: OSPF + BFD + MD5{{ ', PIM' if l.vrf != 'default' else '' }}. Role arista_underlay.
+   description P2P-{{ l.tag }}-to-{{ switches[up.peer].hostname }}({{ up.peer_port }})
+   mtu {{ mtu }}
+{%   if l.vrf != 'default' %}
+   vrf {{ l.vrf }}
+{%   endif %}
+   ip address {{ host(l.net, sw.id) }}/30
+   ip ospf neighbor bfd
+   ip ospf dead-interval {{ underlay.ospf_timers.dead }}
+   ip ospf hello-interval {{ underlay.ospf_timers.hello }}
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 0 {{ arista_secrets.ospf_md5_key }}
+{%   if l.vrf != 'default' %}
+   pim ipv4 sparse-mode
+{%   endif %}
+!
+{% endfor %}
+{% for o in underlay.ospf %}
+{%   set lo = underlay.loopbacks | selectattr('id', 'equalto', o.loopback) | first %}
+router ospf {{ o.process }}{% if o.vrf != 'default' %} vrf {{ o.vrf }}{% endif %}
+
+   !! OSPF {{ o.vrf }}: only the switch-to-switch links are active, everything else passive. Role arista_underlay.
+   router-id {{ lo.prefix }}.{{ sw.id }}
+   auto-cost reference-bandwidth {{ o.ref_bw }}
+   passive-interface default
+{%   for l in underlay.links | selectattr('vrf', 'equalto', o.vrf) | sort(attribute='vlan') %}
+   no passive-interface Vlan{{ l.vlan }}
+{%   endfor %}
+{%   for t in underlay.ospf_tail %}
+   {{ t }}
+{%   endfor %}
+!
+{% endfor %}

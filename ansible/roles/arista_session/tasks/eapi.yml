@@ -1,0 +1,34 @@
+---
+# One eAPI call. In: eapi_cmds (list), eapi_format (text|json). Out: eapi_result.
+- name: "eAPI | {{ eapi_label | default('call') }}"
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:{{ arista_eapi_port }}/command-api"
+    method: POST
+    user: "{{ arista_secrets.eapi_user }}"
+    password: "{{ arista_secrets.eapi_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ arista_eapi_validate_certs }}"
+    timeout: "{{ arista_eapi_timeout }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: runCmds
+      id: "{{ eapi_label | default('dhs') }}"
+      params:
+        version: 1
+        format: "{{ eapi_format | default('text') }}"
+        cmds: "{{ ['enable'] + eapi_cmds }}"
+    return_content: true
+  register: eapi_raw
+  no_log: "{{ eapi_no_log | default(false) }}"
+  check_mode: false
+  changed_when: false
+
+- name: "eAPI | fail on a device-side error ({{ eapi_label | default('call') }})"
+  ansible.builtin.fail:
+    msg: "eAPI error: {{ eapi_raw.json.error.message | default('') }} {{ eapi_raw.json.error.data | default('') | string | truncate(600) }}"
+  when: eapi_raw.json.error is defined
+
+- name: "eAPI | result ({{ eapi_label | default('call') }})"
+  ansible.builtin.set_fact:
+    eapi_result: "{{ eapi_raw.json.result[1:] }}"

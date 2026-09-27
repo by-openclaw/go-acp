@@ -1,0 +1,30 @@
+{#- arista_media — per plane on this switch: media VLAN, its gateway interface
+    (IGMP querier + PIM designated router) and the DHCP scope.
+    Subnet = <plane prefix>.<octet>.0/24, gateway = .<media.gateway_host>. -#}
+{%- set sw = switches[inventory_hostname] -%}
+{% for key, p in planes.items() %}
+{%   set m = sw.media[key] %}
+{%   set net = p.prefix ~ '.' ~ m.octet %}
+vlan {{ m.vlan }}
+   name SMPTE_2110_{{ p.name }}
+!
+interface Vlan{{ m.vlan }}
+   !! {{ p.name }} ST 2110 media gateway: IGMP querier + PIM DR for this switch. Role arista_media.
+   description {{ p.name }}-2110-{{ sw.hostname }}
+   mtu {{ mtu }}
+   no autostate
+   vrf {{ p.vrf }}
+   ip address {{ net }}.{{ media.gateway_host }}/24
+   dhcp server ipv4
+   ip igmp
+   ip ospf area 0.0.0.0
+   pim ipv4 sparse-mode
+!
+dhcp server vrf {{ p.vrf }}
+   !! {{ p.name }} media DHCP for {{ sw.hostname }}. Role arista_media.
+   subnet {{ net }}.0/24
+      range {{ net }}.{{ media.dhcp_range[0] }} {{ net }}.{{ media.dhcp_range[1] }}
+      name {{ m.dhcp_name }}
+      default-gateway {{ net }}.{{ media.gateway_host }}
+!
+{% endfor %}

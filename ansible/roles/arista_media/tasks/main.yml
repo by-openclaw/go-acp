@@ -1,0 +1,12 @@
+---
+- name: media | apply media VLAN, gateway and DHCP blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: media
+    arista_want: "{{ lookup('ansible.builtin.template', 'media.cfg.j2') }}"
+    arista_owns: >-
+      {{ (switches[inventory_hostname].media.values() | map(attribute='vlan') | map('regex_replace', '^(.*)$', '^vlan \1$') | list)
+         + (switches[inventory_hostname].media.values() | map(attribute='vlan') | map('regex_replace', '^(.*)$', '^interface Vlan\1$') | list)
+         + ['^dhcp server'] }}

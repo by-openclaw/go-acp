@@ -1,0 +1,12 @@
+---
+- name: ptp | apply PTP global and grandmaster-feed blocks
+  ansible.builtin.include_role:
+    name: arista_session
+    tasks_from: apply
+  vars:
+    arista_role: ptp
+    arista_want: "{{ lookup('ansible.builtin.template', 'ptp.cfg.j2') }}"
+    arista_owns:
+      - '^ptp '
+      - "^vlan {{ ptp.gm_feed.vlan }}$"
+      - "^interface Vlan{{ ptp.gm_feed.vlan }}$"

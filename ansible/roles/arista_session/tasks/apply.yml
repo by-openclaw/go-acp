@@ -1,0 +1,85 @@
+---
+# Apply one role's blocks.
+#   In: arista_role   (name, used in the session name and the report)
+#       arista_owns   (regex list: block headers this role owns)
+#       arista_want   (rendered intended text for those blocks)
+# Flow: plan -> nothing to do | session -> diff -> (check: abort)
+#       | (apply: backup, commit timer, health, confirm, write memory).
+
+- name: "{{ arista_role }} | read live config if not yet read"
+  ansible.builtin.include_tasks: gather.yml
+  when: arista_live is not defined
+
+- name: "{{ arista_role }} | plan"
+  ansible.builtin.set_fact:
+    arista_plan: "{{ arista_live | eos_plan(arista_want, arista_owns, arista_ignore_blocks) }}"
+
+- name: "{{ arista_role }} | blocks that differ"
+  ansible.builtin.debug:
+    msg: "{{ arista_plan.report if arista_plan.changed else 'in sync (0 diff)' }}"
+
+- name: "{{ arista_role }} | stage in a config session"
+  when: arista_plan.changed
+  block:
+    - name: "{{ arista_role }} | session name"
+      ansible.builtin.set_fact:
+        arista_session_name: "dhs-{{ arista_role }}-{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+
+    - name: "{{ arista_role }} | stage the commands and read the session diff"
+      ansible.builtin.include_tasks: eapi.yml
+      vars:
+        eapi_label: "stage {{ arista_role }}"
+        eapi_no_log: true   # commands may carry the OSPF key / SNMP passwords
+        # `end` closes every open mode (EOS records sub-mode edits such as
+        # `!!` comments when the mode is left); the session stays pending and
+        # is re-entered to read its diff.
+        eapi_cmds: >-
+          {{ ['configure session ' ~ arista_session_name]
+             + arista_plan.commands
+             + ['end', 'configure session ' ~ arista_session_name, 'show session-config diffs'] }}
+
+    - name: "{{ arista_role }} | session diff"
+      ansible.builtin.set_fact:
+        arista_diff: "{{ (eapi_result | last).output | regex_replace('(md5 \\d+|auth \\S+|priv \\S+) \\S+', '\\1 <hidden>') }}"
+
+    - name: "{{ arista_role }} | show the diff"
+      ansible.builtin.debug:
+        msg: "{{ arista_diff.split('\n') }}"
+
+    - name: "{{ arista_role }} | abort (check mode, apply not requested, or empty diff)"
+      ansible.builtin.include_tasks: eapi.yml
+      vars:
+        eapi_label: "abort {{ arista_role }}"
+        eapi_cmds: ["configure session {{ arista_session_name }} abort"]
+      when: ansible_check_mode or not (arista_apply | bool) or (arista_diff | trim | length == 0)
+
+    - name: "{{ arista_role }} | commit with automatic rollback"
+      when: not ansible_check_mode and (arista_apply | bool) and (arista_diff | trim | length > 0)
+      block:
+        - name: "{{ arista_role }} | backup to flash, commit timer {{ arista_commit_timer }}"
+          ansible.builtin.include_tasks: eapi.yml
+          vars:
+            eapi_label: "commit {{ arista_role }}"
+            eapi_cmds:
+              - "copy running-config flash:{{ arista_session_name }}-before.cfg"
+              - "configure session {{ arista_session_name }} commit timer {{ arista_commit_timer }}"
+
+        - name: "{{ arista_role }} | health checks before confirming"
+          ansible.builtin.include_tasks: health.yml
+
+        - name: "{{ arista_role }} | confirm, save, keep an after-copy"
+          ansible.builtin.include_tasks: eapi.yml
+          vars:
+            eapi_label: "confirm {{ arista_role }}"
+            eapi_cmds:
+              - "configure session {{ arista_session_name }} commit"
+              - "write memory"
+              - "copy running-config flash:{{ arista_session_name }}-after.cfg"
+
+        - name: "{{ arista_role }} | re-read live config for the next role"
+          ansible.builtin.include_tasks: gather.yml
+
+        - name: "{{ arista_role }} | report change"
+          ansible.builtin.debug:
+            msg: "applied {{ arista_plan.report | length }} block(s)"
+          changed_when: true

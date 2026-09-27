@@ -1,0 +1,121 @@
+{#- arista_ports — port profiles, the port map (sites/<site>/ports/<switch>.yml),
+    LAGs and the parking VLAN. Profiles are derived from site data:
+      client_<plane>  media access port, PTP master (a device can never become GM)
+      uplink_<plane>  trunk to the peer switch: its links + management VLAN;
+                      `ptp vlan` = the plane link + management (standby path)
+      mgmt_access     management VLAN access port
+      parked          unused port: parking VLAN, no gateway/DHCP/PTP, admin up
+                      so a plug-in still raises link + LLDP events
+      gm_feed         PTP grandmaster feed (switches with gm_feed only) -#}
+{%- set sw = switches[inventory_hostname] -%}
+{%- set r = ptp.rates -%}
+vlan {{ profiles.parking_vlan }}
+   name {{ profiles.parking_vlan_name }}
+!
+interface profile {{ profiles.mgmt_access }}
+   !! Management access port (VLAN {{ mgmt.vlan }}). Role arista_ports.
+   command switchport
+   command switchport access vlan {{ mgmt.vlan }}
+   command spanning-tree portfast
+   command mtu {{ mtu }}
+   command qos trust dscp
+   command spanning-tree bpduguard enable
+!
+interface profile {{ profiles.parked }}
+   !! Unused port: parking VLAN {{ profiles.parking_vlan }}, no gateway/DHCP/PTP. Admin up so a plug-in still raises link + LLDP events. Role arista_ports.
+   command switchport
+   command switchport access vlan {{ profiles.parking_vlan }}
+   command spanning-tree portfast
+   command spanning-tree bpduguard enable
+   command mtu {{ mtu }}
+!
+{% for key, p in planes.items() %}
+interface profile {{ sw.client_profile[key] }}
+   !! {{ p.name }} ST 2110 endpoint port. ptp role master: a device can never become grandmaster. Role arista_ports.
+   command switchport
+   command switchport access vlan {{ sw.media[key].vlan }}
+   command spanning-tree portfast
+   command ptp enable
+   command ptp role master
+   command qos trust dscp
+   command mtu {{ mtu }}
+   command ptp sync-message interval {{ r.sync }}
+   command ptp announce interval {{ r.announce }}
+   command ptp delay-req interval {{ r.delay_req }}
+   command spanning-tree bpduguard enable
+!
+{%   set links = underlay.links | selectattr('trunk', 'equalto', key) | list %}
+{%   set plane_links = links | rejectattr('vrf', 'equalto', 'default') | map(attribute='vlan') | list %}
+interface profile {{ profiles.uplink[key] }}
+   !! {{ p.name }} uplink to the peer switch. ptp vlan = plane link + management: PTP standby path that spanning tree cannot block. Role arista_ports.
+   command switchport mode trunk
+   command ptp enable
+   command mtu {{ mtu }}
+   command qos trust dscp
+   command ptp sync-message interval {{ r.sync }}
+   command ptp announce interval {{ r.announce }}
+   command ptp delay-req interval {{ r.delay_req }}
+   command switchport trunk allowed vlan {{ ((links | map(attribute='vlan') | list) + [mgmt.vlan]) | eos_ranges }}
+   command ptp vlan {{ (plane_links + [mgmt.vlan]) | eos_ranges }}
+!
+{% endfor %}
+{% if sw.gm_feed | default(false) %}
+interface profile {{ profiles.gm_feed }}
+   !! PTP grandmaster feed. Role arista_ports.
+   command switchport
+   command switchport access vlan {{ ptp.gm_feed.vlan }}
+   command spanning-tree portfast
+   command spanning-tree bpduguard enable
+   command ptp enable
+   command mtu {{ mtu }}
+   command qos trust dscp
+   command ptp delay-req interval {{ r.delay_req }}
+!
+{% endif %}
+{% for lag in lags %}
+interface Port-Channel{{ lag.id }}
+   profile {{ profiles[lag.profile] }}
+   description {{ lag.desc }}
+!
+{%   for m in lag.members %}
+interface {{ m }}
+   description MGMT-LAG member of Po{{ lag.id }}
+   mtu {{ mtu }}
+   switchport
+   channel-group {{ lag.id }} mode active
+!
+{%   endfor %}
+{% endfor %}
+{% for port, s in ports.items() %}
+interface {{ port }}
+{%   if s.uplink is defined %}
+{%     set up = sw.uplinks[s.uplink] %}
+   profile {{ profiles.uplink[s.uplink] }}
+   description UPLINK-{{ planes[s.uplink].name }}-to-{{ switches[up.peer].hostname }}:{{ up.peer_port }}
+{%     for insts, cost in up.mst_cost.items() %}
+   spanning-tree mst {{ insts }} cost {{ cost }}
+{%     endfor %}
+{%   else %}
+{%     if s.profile is defined %}
+{%       set pname = sw.client_profile[s.profile[7:]] if s.profile.startswith('client_') else profiles[s.profile] %}
+   profile {{ pname }}
+{%     endif %}
+{%     if s.desc is defined %}
+   description {{ s.desc }}
+{%     endif %}
+{%     for l in s.lines | default([]) + s.extra | default([]) %}
+   {{ l }}
+{%     endfor %}
+{%   endif %}
+!
+{% endfor %}
+{% for item in parked %}
+{%   set port = item if item is string else item.port %}
+interface {{ port }}
+   profile {{ profiles.parked }}
+   description PARKED
+{%   for l in ([] if item is string else item.extra | default([])) %}
+   {{ l }}
+{%   endfor %}
+!
+{% endfor %}

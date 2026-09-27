@@ -1,0 +1,146 @@
+---
+# Site data for the arista_* roles — lab (BY-SYSTEMS datacenter).
+# One file per deployment: lab, PoC, customer, bench staging before shipping.
+# Select with -e site=<name>. Addressing is derived from these values in the
+# templates; any derived value can be overridden explicitly per switch.
+# Issue #1174.
+
+site: lab
+
+# --- Planes (ST 2022-7 red / blue). red = 10.6.x, blue = 10.7.x -----------
+planes:
+  red:  { name: RED,  vrf: RED,  prefix: "10.6" }
+  blue: { name: BLUE, vrf: BLUE, prefix: "10.7" }
+
+# --- Management / in-band control ------------------------------------------
+# mode shared   = one management network leaked to both planes (lab today)
+# mode per_plane = one per plane (target: red 10.6.240.0/20, blue 10.7.240.0/20)
+mgmt:
+  mode: shared
+  vrf: MGMT_CTRL
+  vlan: 600
+  vlan_name: MGMT_CTRL
+  subnet: 10.6.240.0/20
+  prefix_len: 20
+  vip: 10.6.255.254                  # VRRP gateway for VLAN 600: the switches
+  vrrp: { id: 1, preempt: "delay minimum 5 reload 30", description: CTRL_MGMT_VIP }
+  upstream_gw: 10.6.240.1            # OPNsense: upstream only, never the gateway
+  loopback: { id: 600, prefix: "10.99.255" }   # 10.99.255.<switch id>
+  oob_gw: 10.6.224.1                 # OOB network (Management1), via OPNsense
+  ntp: ["10.6.240.1 prefer"]
+  snmp: { user: dhs-ro, group: DHS-RO, view: DHS-RO, acl: SNMP-MGMT, auth: sha256, priv: aes }
+  eapi: true
+  gnmi: true
+  # Transit VLAN kept from the original design (default VRF, not used by the
+  # in-band control leaks, which are done with router general).
+  transit: { vlan: 606, name: FOR_VRF_LEAKING, prefix: "10.6.6", mask: 30 }
+
+# --- Underlay: loopbacks, switch-to-switch links, OSPF ---------------------
+underlay:
+  loopbacks:
+    - { id: 0,  vrf: default, prefix: "10.6.112", ospf: true }   # router-id, PTP source
+    - { id: 10, vrf: RED,     prefix: "10.6.110", ospf: true }   # red RP / router-id
+    - { id: 20, vrf: BLUE,    prefix: "10.7.110", ospf: true }   # blue RP / router-id
+  ospf:
+    - { process: 1,  vrf: default, loopback: 0,  ref_bw: 40000 }
+    - { process: 10, vrf: RED,     loopback: 10, ref_bw: 100000 }
+    - { process: 20, vrf: BLUE,    loopback: 20, ref_bw: 100000 }
+  ospf_timers: { dead: 3, hello: 1 }
+  ospf_tail:
+    - max-lsa 12000
+    - timers spf delay initial 150 150 5000
+    - timers lsa rx min interval 20
+    - timers lsa tx delay initial 50 50 5000
+    - maximum-paths 2
+    - timers pacing flood 15
+  # Point-to-point VLANs between the two switches; `trunk` = which physical
+  # uplink (red or blue) carries it. Host addresses: first/second of the /30.
+  links:
+    - { vlan: 110, name: P2P_DEF_RED,  tag: DEF,  vrf: default, net: "10.6.100.20", trunk: red }
+    - { vlan: 111, name: P2P_DEF_BLUE, tag: DEF,  vrf: default, net: "10.6.100.40", trunk: blue }
+    - { vlan: 120, name: P2P_RED,      tag: RED,  vrf: RED,     net: "10.6.101.20", trunk: red }
+    - { vlan: 121, name: P2P_BLUE,     tag: BLUE, vrf: BLUE,    net: "10.7.101.40", trunk: blue }
+
+# --- Media (per switch in `switches`) --------------------------------------
+media:
+  gateway_host: 254
+  dhcp_range: [50, 99]
+
+# --- Multicast plan (NetBox later) ------------------------------------------
+multicast:
+  reserved: [239.0.0.0/16]    # MAC-aliases 224.0.0.x / 224.0.1.x — never used
+  reserved_remark: "239.0.0.0/16 RESERVED - never use: MAC-aliases 224.0.0.x/224.0.1.x (IGMP OSPF PIM PTP). Plan: red 239.1-63, blue 239.65-127"
+  rp_switch: fabric-1         # RP next to the senders
+  sg_expiry: 150
+  software_forwarding: kernel
+  planes:
+    red:
+      range: 239.0.0.0/10
+      essences: { video: 239.1.0.0/16, audio: 239.4.0.0/14, anc: 239.8.0.0/16 }
+    blue:
+      range: 239.64.0.0/10
+      essences: { video: 239.65.0.0/16, audio: 239.68.0.0/14, anc: 239.72.0.0/16 }
+
+# --- PTP (customer standard; Arista ME PTP white paper) --------------------
+ptp:
+  domain: 77
+  mode: boundary
+  dscp: 56
+  ttl: 48
+  rates: { sync: -3, announce: 0, delay_req: -3 }
+  gm_feed: { vlan: 605, name: PTP_GM_FEED, vrf: MGMT_CTRL, prefix: "10.99.105", mask: 29, host: 2 }
+
+# --- Spanning tree: MST region, identical on every switch ------------------
+stp:
+  region: FAB
+  revision: 2
+  instances:
+    10: [110, 120, 640]
+    11: [111, 121, 740]
+    20: [600]
+
+# --- Port profiles common to every switch (per-plane client profiles and
+# uplinks are derived in the arista_ports role) -------------------------------
+mtu: 9214
+profiles:
+  mgmt_access: MGMT-CTRL-ACCESS-PORT
+  parked: PARKED-PORT
+  parking_vlan: 999
+  parking_vlan_name: PARKING
+  uplink: { red: UPLINK-TRUNK-RED, blue: UPLINK-TRUNK-BLUE }
+  gm_feed: PTP-GM-FEED-ACCESS
+
+# --- Switches ---------------------------------------------------------------
+switches:
+  fabric-1:
+    hostname: FABRIC-1
+    id: 1
+    model: DCS-7060CX-32S
+    mgmt_ip: 10.6.255.252
+    vrrp_priority: 120
+    ptp_priority1: 248
+    stp_priority: 8192
+    media:
+      red:  { vlan: 640, octet: 40, dhcp_name: RED-MEDIA }
+      blue: { vlan: 740, octet: 40, dhcp_name: BLUE-MEDIA }
+    client_profile: { red: RED-CLIENT-PORT, blue: BLUE-CLIENT-PORT }
+    uplinks:
+      red:  { port: Ethernet33, peer: fabric-2, peer_port: Et49, mst_cost: { "10,20": 2000, "11": 4000 } }
+      blue: { port: Ethernet34, peer: fabric-2, peer_port: Et50, mst_cost: { "10,20": 4000, "11": 2000 } }
+    ignore_blocks: [interface Ethernet15/2, interface Ethernet15/3, interface Ethernet15/4]  # dormant breakout lanes
+  fabric-2:
+    hostname: FABRIC-2
+    id: 2
+    model: DCS-7020TR-48
+    mgmt_ip: 10.6.255.253
+    ptp_priority1: 200
+    stp_priority: 4096
+    gm_feed: true
+    media:
+      red:  { vlan: 620, octet: 20, dhcp_name: RED-MEDIA-F2 }
+      blue: { vlan: 720, octet: 20, dhcp_name: BLUE-MEDIA-F2 }
+    client_profile: { red: RED-CLIENT-1G, blue: BLUE-CLIENT-1G }
+    uplinks:
+      red:  { port: Ethernet49, peer: fabric-1, peer_port: Et33, mst_cost: { "10,20": 2000, "11": 4000 } }
+      blue: { port: Ethernet50, peer: fabric-1, peer_port: Et34, mst_cost: { "10,20": 4000, "11": 2000 } }
+    ignore_blocks: []
