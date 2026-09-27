@@ -7,6 +7,23 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.26.0](https://github.com/by-openclaw/go-acp/compare/v0.25.0...v0.26.0) (2026-09-27)
+
+
+### Features
+
+* **ansible:** the acp2 emulator can reproduce the Neuron as it is now ([#1161](https://github.com/by-openclaw/go-acp/issues/1161)) ([ffb2ccb](https://github.com/by-openclaw/go-acp/commit/ffb2ccb37aee451290062ddb3991adb161edca09)), closes [#714](https://github.com/by-openclaw/go-acp/issues/714)
+* **host:** dhs host info — which switch and port each interface is on ([#1148](https://github.com/by-openclaw/go-acp/issues/1148)) ([22980e3](https://github.com/by-openclaw/go-acp/commit/22980e300e5a4aefc09d32ff0e588ba1c9d2be64)), closes [#1147](https://github.com/by-openclaw/go-acp/issues/1147)
+
+
+### Bug Fixes
+
+* **ansible:** probel-sw08p play checks the tally the way the CLI prints it ([#1154](https://github.com/by-openclaw/go-acp/issues/1154)) ([1cbff13](https://github.com/by-openclaw/go-acp/commit/1cbff13c94278f3220319c24f30d2910436725e2)), closes [#1153](https://github.com/by-openclaw/go-acp/issues/1153)
+* **cli:** consumer watch panicked at start-up — metrics-addr defined twice ([#1160](https://github.com/by-openclaw/go-acp/issues/1160)) ([d953fbc](https://github.com/by-openclaw/go-acp/commit/d953fbc1a108ca85b276c3254147f355a5defa07)), closes [#1159](https://github.com/by-openclaw/go-acp/issues/1159)
+* **deps:** record prometheus/client_golang without claiming it was approved ([#1133](https://github.com/by-openclaw/go-acp/issues/1133)) ([85b0c13](https://github.com/by-openclaw/go-acp/commit/85b0c13b44f6984f86254b2c0baeff413f0c679b))
+* **probel-sw08p:** ask a router with more than 1024 sources in the extended form ([#1156](https://github.com/by-openclaw/go-acp/issues/1156)) ([2d7f737](https://github.com/by-openclaw/go-acp/commit/2d7f7375ee62c1b50061162d05a7709b10c4e66b)), closes [#1155](https://github.com/by-openclaw/go-acp/issues/1155)
+* **transport:** SO_REUSEPORT per OS — UDP port sharing was broken on macOS ([#1163](https://github.com/by-openclaw/go-acp/issues/1163)) ([f2a5591](https://github.com/by-openclaw/go-acp/commit/f2a5591354864eeb1bd50ef1e55da95e95968811)), closes [#1162](https://github.com/by-openclaw/go-acp/issues/1162)
+
 ## [0.25.0](https://github.com/by-openclaw/go-acp/compare/v0.24.0...v0.25.0) (2026-09-26)
 
 
