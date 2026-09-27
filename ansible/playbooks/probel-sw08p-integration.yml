@@ -44,6 +44,11 @@
     sw08p_tree: "{{ playbook_dir }}/../../internal/probel-sw08p/testdata/exports/matrix_tree.json"
     sw08p_host: "{{ lookup('ansible.builtin.env', 'PROBEL_SW08P_TEST_HOST') | default('', true) }}"
     sw08p_port: "{{ lookup('ansible.builtin.env', 'PROBEL_SW08P_TEST_PORT') | default('2008', true) }}"
+    # The live matrix's source count, when it has more than 1024: the EVS
+    # Neuron (4352) answers interrogate only in the extended form, which
+    # dhs uses once it knows the size (--srcs). Unset = unsized, as before.
+    #   PROBEL_SW08P_TEST_HOST=10.6.255.102 PROBEL_SW08P_TEST_PORT=7800 PROBEL_SW08P_TEST_SRCS=4352
+    sw08p_srcs: "{{ lookup('ansible.builtin.env', 'PROBEL_SW08P_TEST_SRCS') | default('', true) }}"
     sw08p_loop_port: 12908
     sw08p_log: /tmp/dhs-sw08p-integration.log
   tasks:
@@ -195,18 +200,10 @@
     # Read-only verbs only — never mutate a real device.
     - name: "external — interrogate matrix 0 level 0 dst 0 on the live SW-P-08 matrix"
       ansible.builtin.command:
-        argv:
-          - "{{ dhs_bin }}"
-          - consumer
-          - probel-sw08p
-          - interrogate
-          - "{{ sw08p_host }}:{{ sw08p_port }}"
-          - --matrix
-          - "0"
-          - --level
-          - "0"
-          - --dst
-          - "0"
+        argv: >-
+          {{ [dhs_bin, 'consumer', 'probel-sw08p', 'interrogate', sw08p_host ~ ':' ~ sw08p_port,
+              '--matrix', '0', '--level', '0', '--dst', '0']
+             + (['--srcs', sw08p_srcs] if (sw08p_srcs | length) > 0 else []) }}
       register: sw08p_ext_interrogate
       changed_when: false
       failed_when: sw08p_ext_interrogate.rc != 0
