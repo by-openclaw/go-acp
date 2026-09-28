@@ -1,5 +1,9 @@
 # CCM docs
 
+- [`provisioning.md`](provisioning.md) — **provision a Neuron with dhs
+  only**: media FEC after a firmware load, senders from the plant plan,
+  routing, deinterlace, verify
+
 Written during the spec review (see ../CLAUDE.md checklist):
 
 - `keys.md` — endpoint/field catalogue extracted from the OpenAPI
