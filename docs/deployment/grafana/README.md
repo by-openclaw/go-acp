@@ -38,7 +38,7 @@ Loki direct: <http://localhost:3100>.
 | `prometheus.yml` | scrape config — points at `host.docker.internal:9100/metrics` |
 | `alerts.yml` | PromQL alert rules: memory leak, goroutine leak, latency, NAK surge, stalled session, reconnect storm |
 | `loki-config.yml` | minimal single-node Loki |
-| `promtail-config.yml` | tails `/var/log/dhs*.log` (slog JSON) and receives **device syslog on :1514** — TCP RFC 5424 (Arista), UDP RFC 3164 (FusioN, legacy devices) |
+| `promtail-config.yml` | tails `/var/log/dhs*.log` (slog JSON) and receives **device syslog on :1514**, RFC 5424 — TCP (Arista), UDP (FusioN, dhs) |
 | `grafana-provisioning/` | auto-wires Prom + Loki data sources and the dashboards folder |
 | `dashboards/dhs-overview.json` | one dashboard with process + connector + per-cmd + logs panels |
 | `dashboards/dhs-alarms.json` | device alarms: pick a device by its address, see what is wrong, when, and the same device's log lines |
@@ -62,8 +62,9 @@ Every line lands in Loki under `{job="syslog"}` with these labels:
 |---|---|
 | `device` | sender address — the same label Prometheus uses, so one dashboard variable covers both |
 | `host`, `app` | hostname and process from the message (e.g. `FABRIC-1`, `ConfigAgent`) |
+| `msg_id` | RFC 5424 MSGID — the FusioN's event class (`decap`, `encap`, `common`) |
 | `syslog_severity`, `facility` | from the message |
-| `transport` | `rfc5424-tcp` or `rfc3164-udp` |
+| `transport` | `rfc5424-tcp` or `rfc5424-udp` |
 
 ```logql
 {job="syslog", host="FABRIC-1"}                         # one switch

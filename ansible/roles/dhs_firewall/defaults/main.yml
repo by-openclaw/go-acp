@@ -61,7 +61,7 @@ dhs_firewall_catalogue:
   tsl-staging:
     - { port: 2000,  proto: udp, program: true }
     - { port: 2000,  proto: tcp, program: true }
-  # Device syslog into Promtail (#1176): TCP RFC 5424, UDP RFC 3164.
+  # Device syslog into Promtail (#1176): RFC 5424 over TCP and UDP.
   syslog:
     - { port: 1514,  proto: tcp }
     - { port: 1514,  proto: udp }

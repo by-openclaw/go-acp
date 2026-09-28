@@ -7,7 +7,7 @@ PR → CI → codeowner) and ADR-0025 (six deliverables).
 ## 0. Reality the scope is built on
 
 - Fleet in the MN SET discovery range (10.6.40.50-99 / 10.7.40.50-99):
-  **one** module today — `10.6.40.53`, FusioN6, sn 125061600012, fw
+  **one** module today — `10.6.40.54`, FusioN6, sn 125061600012, fw
   0x68cd783f, app `2110-SDI-2R6T`. The "4 modules" are its 4 HDMI SFPs
   (cages 1/2/4/6); cage 3 = media fiber, cage 5 empty. The connector must
   still be generic: N modules × 6 cages × any SFP type.

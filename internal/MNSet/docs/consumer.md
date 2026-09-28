@@ -4,7 +4,7 @@ Two shapes, same verbs (ADR-0022 frame / slot / card):
 
 | host | shape |
 |---|---|
-| a module (`10.6.40.53`, port 80) | one slot, **0** |
+| a module (`10.6.40.54`, port 80) | one slot, **0** |
 | MN SET (`10.6.250.105 --port 8080`) | the **frame**: one slot per managed module, ordered by module MAC; `info` prints the map (slot → id / ip / serial / lldp / MN SET status) |
 
 Port 0 (the default) tries the module on 80, then MN SET on 8080. In
@@ -121,14 +121,14 @@ dhs consumer mnset export 10.6.250.105 --port 8080 --format csv --out fleet.csv 
 
 dhs consumer mnset discover --range 10.6.40.0/24
 IP               PORT  BASE       SERIAL         FW           TYPE                           APP
-10.6.40.53       80    FusioN6    125061600012   0x68cd783f   22 - ST2110 UHD Transceiver    MN-FusioN-6-B-APP-25-2110-SDI-2R6T-N
+10.6.40.54       80    FusioN6    125061600012   0x68cd783f   22 - ST2110 UHD Transceiver    MN-FusioN-6-B-APP-25-2110-SDI-2R6T-N
 
-dhs consumer mnset export 10.6.40.53 --format csv --out .cache/exports/fusion-53.csv
+dhs consumer mnset export 10.6.40.54 --format csv --out .cache/exports/fusion-54.csv
 
-dhs consumer mnset get 10.6.40.53 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr
+dhs consumer mnset get 10.6.40.54 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr
 239.0.1.2
 
-dhs consumer mnset set 10.6.40.53 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr --value 239.131.3.134
+dhs consumer mnset set 10.6.40.54 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr --value 239.131.3.134
 239.131.3.134            ← the value the module holds AFTER the write, read back
 ```
 
@@ -171,7 +171,7 @@ mixed state. Give the node a JSON object instead; the keys you give are
 merged over the module's, and the module gets ONE PUT:
 
 ```
-dhs consumer mnset set 10.6.40.53 --path flows.<uuid>.format   --value '{"format_code_t_scan":0,"format_code_p_scan":0,"format_code_mode":0,"format_code_format":0,"format_code_rate":5120,"format_code_sampling":0}'   # 1080i50
+dhs consumer mnset set 10.6.40.54 --path flows.<uuid>.format   --value '{"format_code_t_scan":0,"format_code_p_scan":0,"format_code_mode":0,"format_code_format":0,"format_code_rate":5120,"format_code_sampling":0}'   # 1080i50
 ```
 
 The code tables are MN SET's own, extracted to

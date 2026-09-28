@@ -26,7 +26,7 @@ on it drives both.
 
 | Label | Where it comes from | Values |
 |---|---|---|
-| `device` | the host argument | `10.6.255.102`, `10.6.40.53` |
+| `device` | the host argument | `10.6.255.102`, `10.6.40.54` |
 | `proto` | the connector | `acp1`, `acp2`, `mnset`, `emberplus`, … |
 | `role` | the verb | `consumer` (watch) / `provider` (serve) |
 | `severity` | the alarm verdict | `normal`, `minor`, `major`, `critical`, `error` |

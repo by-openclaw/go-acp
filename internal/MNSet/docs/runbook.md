@@ -1,7 +1,7 @@
 # Runbook — put a Neuron output on a FusioN HDMI monitor
 
 Lab: Neuron 10.6.255.102 (VTX-01 = 239.131.3.134:20000 RED /
-239.132.3.134 BLUE), FusioN6 10.6.40.53, Arista FABRIC-1 10.6.224.21.
+239.132.3.134 BLUE), FusioN6 10.6.40.54, Arista FABRIC-1 10.6.224.21.
 
 ## 1. Find the module
 
@@ -33,8 +33,8 @@ receiver (`VidRx`), two audio receivers and an anc receiver; their flow
 indices are read from the export:
 
 ```
-dhs consumer mnset export 10.6.40.53 --format csv --out .cache/exports/fusion-53.csv
-grep -n 'devices\.[0-9]*\.label\|devices\.[0-9]*\.receivers\|receivers\.[0-9]*\.flow_id\|receivers\.[0-9]*\.format' .cache/exports/fusion-53.csv
+dhs consumer mnset export 10.6.40.54 --format csv --out .cache/exports/fusion-54.csv
+grep -n 'devices\.[0-9]*\.label\|devices\.[0-9]*\.receivers\|receivers\.[0-9]*\.flow_id\|receivers\.[0-9]*\.format' .cache/exports/fusion-54.csv
 ```
 
 ## 3. Point the receiver at the Neuron sender
@@ -42,14 +42,14 @@ grep -n 'devices\.[0-9]*\.label\|devices\.[0-9]*\.receivers\|receivers\.[0-9]*\.
 A receiver has two flows: `receivers.N.flow_id.0` = primary (RED) and `receivers.N.flow_id.1` = secondary (BLUE); each flow has one `network` record. Set both, always (ST 2022-7):
 
 ```
-RED=$(dhs consumer mnset get 10.6.40.53 --path receivers.N.flow_id.0 | sed 's/.*= "\(.*\)"//')
-BLUE=$(dhs consumer mnset get 10.6.40.53 --path receivers.N.flow_id.1 | sed 's/.*= "\(.*\)"//')
-dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.dst_ip_addr   --value 239.131.3.134
-dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.dst_udp_port  --value 20000
-dhs consumer mnset set 10.6.40.53 --path flows.$RED.network.enable        --value 1
-dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.dst_ip_addr  --value 239.132.3.134
-dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.dst_udp_port --value 20000
-dhs consumer mnset set 10.6.40.53 --path flows.$BLUE.network.enable       --value 1
+RED=$(dhs consumer mnset get 10.6.40.54 --path receivers.N.flow_id.0 | sed 's/.*= "\(.*\)"//')
+BLUE=$(dhs consumer mnset get 10.6.40.54 --path receivers.N.flow_id.1 | sed 's/.*= "\(.*\)"//')
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_ip_addr   --value 239.131.3.134
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_udp_port  --value 20000
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.enable        --value 1
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_ip_addr  --value 239.132.3.134
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_udp_port --value 20000
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.enable       --value 1
 ```
 
 Alternative, when the plant has an NMOS registry: IS-05 PATCH through
@@ -61,8 +61,8 @@ Alternative, when the plant has an NMOS registry: IS-05 PATCH through
 On the module:
 
 ```
-dhs consumer mnset get 10.6.40.53 --path flows.$RED.network.pkt_cnt   # must climb
-dhs consumer mnset walk 10.6.40.53 | grep self.diag.flow                    # per-flow diagnostics
+dhs consumer mnset get 10.6.40.54 --path flows.$RED.network.pkt_cnt   # must climb
+dhs consumer mnset walk 10.6.40.54 | grep self.diag.flow                    # per-flow diagnostics
 ```
 
 On the fabric (read-only, key on `admin`):
@@ -72,7 +72,7 @@ ssh -i ~/.ssh/fabric_arista admin@10.6.224.21 'enable
 show ip igmp snooping groups vlan 640 | include 239.131.3.134'
 ```
 
-The module's port (Et20/1 for 10.6.40.53) must appear under the group; the
+The module's port (Et20/1 for 10.6.40.54) must appear under the group; the
 interface counters rise by the stream's rate (a 1080p50 VTX ≈ 2.1 Gbps).
 
 ## 5. Take it down
@@ -86,7 +86,7 @@ the querier interval; `pkt_cnt` stops climbing. That transition is the
 
 | Symptom | Check |
 |---|---|
-| `mnset connect 10.6.40.53:80: … connection refused` | wrong VLAN / module off; `discover` the range |
+| `mnset connect 10.6.40.54:80: … connection refused` | wrong VLAN / module off; `discover` the range |
 | `module answered 400 key 'x' not found` | the field name is not what the firmware expects: `walk` and copy the path |
 | `set` succeeds, `get` shows the old value | the module reverted it (licence / program type); read `self.license`, `diag.flow` |
 | picture on HDMI but no audio | audio receivers (2 per channel) not pointed: ports 30000 on the Neuron |
@@ -97,16 +97,28 @@ the querier interval; `pkt_cnt` stops climbing. That transition is the
 The module reports events itself; nothing goes through MN SET.
 
 ```
-dhs consumer mnset set 10.6.40.53 --path self.syslog.config.server --value 10.6.250.101
-dhs consumer mnset set 10.6.40.53 --path self.syslog.config.port   --value 1514        # promtail syslog receiver (UDP)
-dhs consumer mnset set 10.6.40.53 --path self.syslog.config.enable --value true
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.server --value 10.6.250.101
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.port   --value 1514        # promtail syslog receiver (UDP, RFC 5424 — what the module sends)
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.enable --value true
 for e in common.ptp_event common.temp_event common.fan_speed decap.flow_impairment decap.frame_skipped decap.frame_repeat encap.no_signal; do
-  dhs consumer mnset set 10.6.40.53 --path self.syslog.monitoring.$e --value true
+  dhs consumer mnset set 10.6.40.54 --path self.syslog.monitoring.$e --value true
 done
 ```
 
 Then in Grafana / Loki: `{host="emsfp-a2-10-0c"}`. Verified 2026-09-20 with a
 15 s flow loss on CH2 (`flows.<uuid>.network.0.enable` 0 → 1): "Video frame
 repeated error on device 2 {Rate: 28802 …}", "Flywheel sdi_load event
-occurred on device 2". The module has **no SNMP agent** (UDP 161 unreachable);
+occurred on device 2".
+
+The module sends **RFC 5424 over UDP** (`<132>1 2026-…Z emsfp-a2-10-0c - -
+decap - …`): APP-NAME is `-`, and the event class (`decap` / `encap` /
+`common`) is the MSGID, so query `{job="syslog", msg_id="decap"}` (#1181).
+
+Observed 2026-09-28: toggling **one** 2022-7 leg (`network.0.enable` of
+the primary only, 10 s) is not hitless on this module. On re-enable it
+reported "No packets are received on device 2 flow 0 primary" **and
+secondary**, a frame repeat on device 2 and a flywheel `sdi_load`. Treat a
+leg toggle as an on-air hit.
+
+The module has **no SNMP agent** (UDP 161 unreachable);
 SNMP for these modules exists only in MN SET and is not used.

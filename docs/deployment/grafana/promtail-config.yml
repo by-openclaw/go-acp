@@ -47,9 +47,12 @@ scrape_configs:
           source: time
           format: RFC3339Nano
 
-  # Device syslog (#1176). Two listeners on the same port:
-  #   TCP RFC 5424 — Arista EOS (`logging format rfc5424`, protocol tcp)
-  #   UDP RFC 3164 — FusioN and other devices that only speak BSD syslog
+  # Device syslog (#1176, #1181). RFC 5424 on :1514, both transports:
+  #   TCP — Arista EOS (`logging format rfc5424`, protocol tcp)
+  #   UDP — FusioN / emSFP modules, and dhs itself (`--syslog-addr`)
+  # No RFC 3164 listener: no device in the plant sends it. Captured live,
+  # the FusioN sends RFC 5424 ("<132>1 2026-…Z emsfp-a2-10-0c - - decap -")
+  # which an RFC 3164 parser drops with "expecting a Stamp timestamp".
   # `device` is the sender's address: the same label Prometheus uses
   # (dhs_alarm_*{device=...}), so one dashboard variable drives both.
   - job_name: syslog-rfc5424-tcp
@@ -70,17 +73,22 @@ scrape_configs:
       - source_labels: [__syslog_message_app_name]
         regex: '(.+?):?'           # EOS sends "ConfigAgent:" — drop the colon
         target_label: app
+      # FusioN leaves APP-NAME "-" and puts its event class in MSGID
+      # (decap / encap / common): the one field that sorts its events.
+      - source_labels: [__syslog_message_msg_id]
+        target_label: msg_id
       - source_labels: [__syslog_message_severity]
         target_label: syslog_severity
       - source_labels: [__syslog_message_facility]
         target_label: facility
 
-  - job_name: syslog-rfc3164-udp
+  - job_name: syslog-rfc5424-udp
     syslog:
       listen_address: 0.0.0.0:1514
       listen_protocol: udp
-      syslog_format: rfc3164
+      syslog_format: rfc5424
+      label_structured_data: true
       labels:
         job: syslog
-        transport: rfc3164-udp
+        transport: rfc5424-udp
     relabel_configs: *syslog_labels
