@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/ccm/codec"
 	dhsc "dhs/internal/consumer"
 )
 
@@ -99,14 +100,41 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 			if serr := setField(doc, c.field, c.val); serr != nil {
 				return nil, fmt.Errorf("ccm: %s: %w", resource, serr)
 			}
-			out[c.at] = c.val
 		}
 		if perr := client.put(ctx, resource, doc); perr != nil {
 			return nil, perr
 		}
 		p.RecordTx()
+
+		// The answer is what the device holds now, not what was asked
+		// for: a device that accepts a write and keeps something else
+		// must be seen doing it.
+		after, gerr := client.get(ctx, resource)
+		if gerr != nil {
+			return nil, fmt.Errorf("ccm: %s written, but read-back failed: %w", resource, gerr)
+		}
+		p.RecordRx()
+		held := map[string]dhsc.Value{}
+		for _, o := range flatten(resource, after, spec.Writable(mustTemplate(spec, resource))) {
+			held[strings.ToLower(strings.Join(o.Path, "."))] = o.Value
+		}
+		for _, c := range byResource[resource] {
+			key := strings.ToLower(strings.Join(append(segments(resource), c.field...), "."))
+			v, ok := held[key]
+			if !ok {
+				return nil, fmt.Errorf("ccm: %s written, but %s is gone on read-back", resource, strings.Join(c.field, "."))
+			}
+			out[c.at] = v
+		}
 	}
 	return out, nil
+}
+
+// mustTemplate is the spec template of a resource SetValues already
+// proved writable, so it is always found.
+func mustTemplate(spec *codec.Spec, resource string) string {
+	tpl, _ := spec.TemplateFor(resource)
+	return tpl
 }
 
 // setField changes one field inside a decoded document, in place.
@@ -131,17 +159,26 @@ func setField(doc any, field []string, v dhsc.Value) error {
 	last := field[len(field)-1]
 	switch t := parent.(type) {
 	case map[string]any:
-		if _, has := t[last]; !has {
+		cur, has := t[last]
+		if !has {
 			return fmt.Errorf("has no field %q", strings.Join(field, "."))
 		}
-		t[last] = nativeValue(v)
+		next, err := coerceTo(cur, v)
+		if err != nil {
+			return fmt.Errorf("%s: %w", strings.Join(field, "."), err)
+		}
+		t[last] = next
 		return nil
 	case []any:
 		i, err := strconv.Atoi(last)
 		if err != nil || i < 0 || i >= len(t) {
 			return fmt.Errorf("has no element %q", strings.Join(field, "."))
 		}
-		t[i] = nativeValue(v)
+		next, err := coerceTo(t[i], v)
+		if err != nil {
+			return fmt.Errorf("%s: %w", strings.Join(field, "."), err)
+		}
+		t[i] = next
 		return nil
 	default:
 		return fmt.Errorf("%q is not something with fields", strings.Join(field, "."))
@@ -177,16 +214,50 @@ func child(parent any, seg string) (any, error) {
 	}
 }
 
-// nativeValue turns a neutral Value into what JSON should carry.
-func nativeValue(v dhsc.Value) any {
-	switch v.Kind {
-	case dhsc.KindBool:
-		return v.Bool
-	case dhsc.KindInt:
-		return v.Int
-	case dhsc.KindFloat:
-		return v.Float
-	default:
-		return v.Str
+// coerceTo gives the new value the JSON type the field has now. The
+// device types its fields strictly — a port sent as "20000" is refused
+// with "type must be number, but is string" — and the CLI hands over a
+// Value that carries only its text, so the field on the device decides
+// the type, never the spelling of the request.
+func coerceTo(existing any, v dhsc.Value) (any, error) {
+	text := strings.TrimSpace(v.Str)
+	switch existing.(type) {
+	case float64: // encoding/json decodes every number as float64
+		switch v.Kind {
+		case dhsc.KindInt:
+			return v.Int, nil
+		case dhsc.KindFloat:
+			return v.Float, nil
+		}
+		if i, err := strconv.ParseInt(text, 10, 64); err == nil {
+			return i, nil
+		}
+		f, err := strconv.ParseFloat(text, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a number", v.Str)
+		}
+		return f, nil
+	case bool:
+		if v.Kind == dhsc.KindBool {
+			return v.Bool, nil
+		}
+		switch strings.ToLower(text) {
+		case "true", "1", "on", "yes":
+			return true, nil
+		case "false", "0", "off", "no":
+			return false, nil
+		}
+		return nil, fmt.Errorf("%q is not a boolean", v.Str)
+	case string, nil:
+		switch v.Kind {
+		case dhsc.KindInt:
+			return strconv.FormatInt(v.Int, 10), nil
+		case dhsc.KindFloat:
+			return strconv.FormatFloat(v.Float, 'f', -1, 64), nil
+		case dhsc.KindBool:
+			return strconv.FormatBool(v.Bool), nil
+		}
+		return v.Str, nil
 	}
+	return nil, fmt.Errorf("is a %T, not a value — name a field inside it", existing)
 }
