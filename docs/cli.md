@@ -714,7 +714,7 @@ One module = one device, slot 0. Paths are the resource then the JSON path:
 
 mnset-only verbs:
   discover  --range R [--range R …] [--port 80] [--timeout 2s] [--concurrency 32]
-            sweep addresses for modules (R: 10.6.40.54 | 10.6.40.50-99 | 10.6.40.0/24)
+            sweep addresses for modules (R: 10.6.40.53 | 10.6.40.50-99 | 10.6.40.0/24)
   inventory <mnset-host> --user U [--port 8080]   list the modules MN SET manages
             password read from $MNSET_PASS (never a flag, never printed)
 
