@@ -1,6 +1,6 @@
 # MNSet connector — DM, watch, metrics, SNMP/NBAPI plan
 
-Grounded in what the live device (10.6.40.53) and MN SET (10.6.250.105)
+Grounded in what the live device (10.6.40.54) and MN SET (10.6.250.105)
 actually expose, surveyed 2026-09-20. This is the build plan; full Go
 implementation follows the normal issue→PR workflow (ADR-0014) and the
 metrics work stays aligned with the deferred metrics refactor.
@@ -35,7 +35,7 @@ Where the real metadata lives:
 
 `dhs consumer mnset export <mnset-host> [--device <ip>] --format csv`
 
-1. `GET /api/device` (MN SET) → device list, or `--device 10.6.40.53` direct.
+1. `GET /api/device` (MN SET) → device list, or `--device 10.6.40.54` direct.
 2. For each device, walk the 19 working node endpoints:
    `self port flows sources receivers senders route devices sdi sdi_output
    sdi_input sdi_audio sdp receivers_sdp senders_sdp clean_switch refclk

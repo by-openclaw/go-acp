@@ -1,8 +1,8 @@
 ---
 # Prometheus / Loki / Promtail / Grafana on the control node (#1176).
 #   ansible-playbook playbooks/observability.yml
-# Source of truth: docs/deployment/grafana/. Syslog: :1514 TCP RFC 5424
-# (Arista) + UDP RFC 3164 (FusioN, legacy devices) into Loki {job="syslog"}.
+# Source of truth: docs/deployment/grafana/. Syslog: :1514 RFC 5424 over
+# TCP (Arista) and UDP (FusioN, dhs) into Loki {job="syslog"}.
 - name: Observability stack
   hosts: control
   gather_facts: false

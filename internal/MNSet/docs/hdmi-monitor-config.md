@@ -39,7 +39,7 @@ HDMI monitor
 **A. NMOS IS-05 (standard, preferred).** The Fusion exposes its own NMOS
 node **on port 80**: IS-04 **v1.2** at `http://<device-ip>/x-nmos/node/v1.2`
 and IS-05 **v1.0** at `http://<device-ip>/x-nmos/connection/v1.0`. Node
-`emsfp-a2-10-0c st2110 node`, `href http://10.6.40.53:80/`, 8 devices (=
+`emsfp-a2-10-0c st2110 node`, `href http://10.6.40.54:80/`, 8 devices (=
 CH1..CH8), 36 receivers per channel: `VidRx 000 / AudRx 010,020,030,040 /
 AncRx 050` (CH1), `VidRx 100…` (CH2)…
 
@@ -65,7 +65,7 @@ The NMOS **registry mDNS is ON** and Registry Mode = **Auto**, Control
 Network = **Media** (VLAN 640). Status sits at **DISCOVERING** because no
 registry advertises `_nmos-registration._tcp` on the media network
 (Registry Address 0.0.0.0, uptime 0). This does **not** block monitoring —
-IS-05 peer-to-peer at `10.6.40.53:80` works without a registry. To make the
+IS-05 peer-to-peer at `10.6.40.54:80` works without a registry. To make the
 device register (for controller auto-discovery): either run a registry on
 VLAN 640, or set Registry Mode = Manual + registry IP. NB: the REST
 `protocols.mdns_enable` is the device SAP/mDNS (essence announce), a
@@ -121,7 +121,7 @@ PUT the modified device object back through MN SET (or the NBAPI
 ## Notes / gaps
 
 - MN SET is the only reachable control plane from mgmt; the module's own
-  IPs (10.6.40.53 media, 172.16.16.2, 192.168.40.230 oob) are not routed
+  IPs (10.6.40.54 media, 172.16.16.2, 192.168.40.230 oob) are not routed
   off their segments.
 - `PUT` shape and exact receiver→output binding field are not in a vendor
   OpenAPI; capture a working change from the MN SET UI (Rest page GET/PUT,

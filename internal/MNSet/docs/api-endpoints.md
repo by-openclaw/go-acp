@@ -20,7 +20,7 @@ the app bundle. No vendor OpenAPI exists. Base: `http://<host>:8080`.
 ## Device emSFP node REST (the "Rest" page — GET/PUT per Device IP)
 
 The MN SET **Rest** tab (screenshot `localhost:8080/#/raw`) targets a
-**Device IP** (e.g. 10.6.40.53) and exposes the emSFP node API as tabs.
+**Device IP** (e.g. 10.6.40.54) and exposes the emSFP node API as tabs.
 These are the per-device resources — this is the "more endpoints" set:
 
 **Page 1 (streaming/IO):** `self · port · flows · sources · receivers ·
@@ -35,7 +35,7 @@ GET reads a resource, PUT writes it, "PUT Preset" applies a stored JSON.
 `self/information` gives type (`22 - ST2110 UHD Transceiver`), base_type
 FusioN6, sw/asic versions, 25G links. Reachable directly at
 `http://<device-ip>/…` only from a host on the device's segment (the LXC
-`dhs-debian` can reach 10.6.40.53; the desk cannot). MN SET proxies them
+`dhs-debian` can reach 10.6.40.54; the desk cannot). MN SET proxies them
 for everyone else via the backend endpoints below.
 
 ## MN SET backend operations (port 8080) — full set
@@ -77,7 +77,7 @@ http://<host>:9080/rest/<array-name>/<device-index|0>/emSFP/node/v1
 - `info`: type `2110 Encap/Decap - F6`, base_type FusioN6, sn 125061600012,
   media in/out st2110+sdi, skuType `2R + 6T`, processingMode Embox 6
 - `devices[8]`: channels `Device CH1..CH8`
-- `interfaces`: e1 media (static 192.168.39.230 / current 10.6.40.53),
+- `interfaces`: e1 media (static 192.168.39.230 / current 10.6.40.54),
   e2 172.16.16.2, oob 192.168.40.230; each SFP module also has its own web (:80)
 - `sfps[6]`: HDMI = `MN-Z-SFP-1T-HDMI-1.4` in slots 0,1,3,5 (the 4 HDMI modules)
 - `senders[12]` / `receivers[36]`: thin `{id, device_id, flow_id}` pointers
@@ -87,7 +87,7 @@ http://<host>:9080/rest/<array-name>/<device-index|0>/emSFP/node/v1
 
 ## Access note
 
-The Fusion/SFP module web pages (192.168.39.230, 10.6.40.53, 192.168.40.230)
+The Fusion/SFP module web pages (192.168.39.230, 10.6.40.54, 192.168.40.230)
 sit on media/OOB VLANs that are not routed to the mgmt/desk network, so from
 here only MN SET (10.6.250.105:8080) reaches them. On-site, browsing a
 module IP gives its own web UI.

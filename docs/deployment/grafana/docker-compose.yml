@@ -19,7 +19,7 @@
 #   3100 — Loki
 #   9090 — Prometheus
 #   9080 — Promtail (push endpoint)
-#   1514 — Promtail syslog: TCP RFC 5424 (Arista), UDP RFC 3164 (FusioN…)
+#   1514 — Promtail syslog, RFC 5424: TCP (Arista), UDP (FusioN, dhs)
 
 services:
   prometheus:
