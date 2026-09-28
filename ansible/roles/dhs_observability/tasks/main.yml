@@ -1,0 +1,38 @@
+---
+# Converge the stack: copy the repo files, validate Promtail's config with
+# Promtail itself, and restart the stack only when something changed.
+# Run twice = 0 changes.
+
+- name: Stack directory exists
+  ansible.builtin.file:
+    path: "{{ dhs_observability_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Stack files from docs/deployment/grafana
+  ansible.builtin.copy:
+    src: "{{ dhs_observability_src }}"
+    dest: "{{ dhs_observability_dir }}/"
+    mode: preserve
+  register: dhs_observability_files
+
+- name: Promtail accepts its configuration
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm -v {{ dhs_observability_dir }}/promtail-config.yml:/etc/promtail/config.yml:ro
+      {{ dhs_observability_promtail_image }} -config.file=/etc/promtail/config.yml -check-syntax
+  changed_when: false
+
+- name: Stack up (recreates only what changed)
+  ansible.builtin.command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: "{{ dhs_observability_dir }}"
+  when: dhs_observability_files.changed
+  register: dhs_observability_up
+  changed_when: true
+
+- name: Promtail re-reads its configuration
+  ansible.builtin.command:
+    cmd: docker restart dhs-promtail
+  when: dhs_observability_files.changed
+  changed_when: true

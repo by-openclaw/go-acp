@@ -28,6 +28,12 @@ mgmt:
   loopback: { id: 600, prefix: "10.99.255" }   # 10.99.255.<switch id>
   oob_gw: 10.6.224.1                 # OOB network (Management1), via OPNsense
   ntp: ["10.6.240.1 prefer"]
+  # Syslog to Loki (Promtail on the control node, #1176). Sent from the
+  # management VRF (source = the management VLAN interface): no firewall in
+  # the path.
+  syslog:
+    - { host: 10.6.250.101, port: 1514, protocol: tcp }
+  syslog_format: rfc5424
   snmp: { user: dhs-ro, group: DHS-RO, view: DHS-RO, acl: SNMP-MGMT, auth: sha256, priv: aes }
   eapi: true
   gnmi: true

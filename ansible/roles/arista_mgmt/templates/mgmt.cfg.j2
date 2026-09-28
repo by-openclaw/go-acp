@@ -30,6 +30,14 @@ ip route vrf {{ mgmt.vrf }} 0.0.0.0/0 {{ mgmt.upstream_gw }}
 ntp server {{ n }}
 {% endfor %}
 !
+{% for s in mgmt.syslog | default([]) %}
+logging vrf {{ mgmt.vrf }} host {{ s.host }} {{ s.port }} protocol {{ s.protocol }}
+{% endfor %}
+{% if mgmt.syslog | default([]) %}
+logging vrf {{ mgmt.vrf }} source-interface Vlan{{ mgmt.vlan }}
+logging format {{ mgmt.syslog_format }}
+{% endif %}
+!
 ip access-list standard {{ mgmt.snmp.acl }}
    10 permit {{ mgmt.subnet }}
 !

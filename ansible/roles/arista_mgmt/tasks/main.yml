@@ -12,6 +12,8 @@
       - "^interface Loopback{{ mgmt.loopback.id }}$"
       - '^ip route '
       - '^ntp server '
+      - '^logging (vrf \S+ )?(host|source-interface) '
+      - '^logging format '
       - "^ip access-list standard {{ mgmt.snmp.acl }}$"
       - '^snmp-server (view|group|user|ipv4 access-list) '
       - '^management api (http-commands|gnmi)$'

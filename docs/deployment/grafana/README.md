@@ -38,11 +38,42 @@ Loki direct: <http://localhost:3100>.
 | `prometheus.yml` | scrape config — points at `host.docker.internal:9100/metrics` |
 | `alerts.yml` | PromQL alert rules: memory leak, goroutine leak, latency, NAK surge, stalled session, reconnect storm |
 | `loki-config.yml` | minimal single-node Loki |
-| `promtail-config.yml` | tails `/var/log/dhs*.log`, parses slog JSON |
+| `promtail-config.yml` | tails `/var/log/dhs*.log` (slog JSON) and receives **device syslog on :1514** — TCP RFC 5424 (Arista), UDP RFC 3164 (FusioN, legacy devices) |
 | `grafana-provisioning/` | auto-wires Prom + Loki data sources and the dashboards folder |
 | `dashboards/dhs-overview.json` | one dashboard with process + connector + per-cmd + logs panels |
 | `dashboards/dhs-alarms.json` | device alarms: pick a device by its address, see what is wrong, when, and the same device's log lines |
 | `navigation.md` | **how to find a device in all three tools** — the `device` label, the type-ahead, and the query for each question an operator asks |
+
+## Deployment
+
+The stack on the control node is deployed by Ansible from this directory —
+never copied by hand (#1176):
+
+```bash
+cd ansible && ansible-playbook playbooks/observability.yml   # second run: changed=0
+```
+
+## Device syslog (#1176)
+
+Devices send to the control node on **:1514** (firewall group `syslog`).
+Every line lands in Loki under `{job="syslog"}` with these labels:
+
+| Label | Value |
+|---|---|
+| `device` | sender address — the same label Prometheus uses, so one dashboard variable covers both |
+| `host`, `app` | hostname and process from the message (e.g. `FABRIC-1`, `ConfigAgent`) |
+| `syslog_severity`, `facility` | from the message |
+| `transport` | `rfc5424-tcp` or `rfc3164-udp` |
+
+```logql
+{job="syslog", host="FABRIC-1"}                         # one switch
+{job="syslog"} |= "CONFIG_SESSION_COMMIT"               # every config change, who and from where
+{job="syslog", syslog_severity=~"err|crit|alert|emerg"} # anything serious
+```
+
+The Arista fabrics send through the management VRF (source = VLAN 600
+interface), so logging does not depend on the firewall; set in
+`ansible/sites/<site>/site.yml` (`mgmt.syslog`) and applied by `arista_mgmt`.
 
 ## Alerts (seed set)
 
