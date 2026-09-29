@@ -55,6 +55,13 @@ dhs consumer mnset export <ip> --format csv --out <serial>.csv      # per module
 python provisioning/objects.py ../consumer/dm/fusion6.json *.csv    # both CSVs
 ```
 
+**NMOS names.** A receiver's or sender's IS-04 label is built by the
+module — `<hostname> VidRx 000` / `<hostname> VidTx 400`, fixed per
+channel; `receivers.*` / `senders.*` refuse any write (400). What an
+operator names: `self.ipconfig.hostname` (prefix of every label) and, on
+a transmit flow, `flows.<id>.label` — published as the IS-04 flow
+`<hostname> <label>` ✅ (set/restore on an idle flow, IS-04 version bumped).
+
 NMOS registration (`self.diag.nmos.*`: `registry_mode`, `registry_address`,
 `control_network`, `mdns_mode`, DNS) is writable with `dhs … set` ✅
 (same-value write confirmed, malformed address refused, 2026-09-29).

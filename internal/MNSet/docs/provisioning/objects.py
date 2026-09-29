@@ -48,7 +48,7 @@ SECTIONS = [
         "refclk.delay_req", "refclk.announceReceiptTimeout", "refclk.locked_interface", "refclk.status",
     ]),
     ("3 CHANNELS", [
-        "flows.*.name", "flows.*.label", "flows.*.format.format_type", "flows.*.cdis",
+        "flows.*.name", "flows.*.format.format_type", "flows.*.cdis",
         "flows.*.network.enable", "flows.*.network.*.enable",
         "flows.*.network.dst_ip_addr", "flows.*.network.*.dst_ip_addr",
         "flows.*.network.dst_udp_port", "flows.*.network.*.dst_udp_port",
@@ -66,6 +66,7 @@ SECTIONS = [
         "clean_switch.*.clean_switch.mode", "clean_switch.*.clean_switch.type", "clean_switch.*.clean_switch.timeout_option",
     ]),
     ("4 NMOS", [
+        "flows.*.label",
         "self.diag.nmos.registry_mode", "self.diag.nmos.registry_address", "self.diag.nmos.registry_address_2",
         "self.diag.nmos.mdns_mode", "self.diag.nmos.control_network",
         "self.diag.nmos.manual_dns_server_address", "self.diag.nmos.manual_dns_server_address_2",

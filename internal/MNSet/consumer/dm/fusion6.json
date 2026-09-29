@@ -1131,6 +1131,28 @@
       "kind": "ip",
       "access": "R",
       "source": "NMOS status reported by the module"
+    },
+    {
+      "match": "receivers.*.label",
+      "access": "R",
+      "note": "not the NMOS label: IS-04 publishes '<hostname> VidRx|AudRx|AncRx <n>' (fixed); the module refuses writes to receivers",
+      "source": "probe 2026-09-29, FusioN6 fw 0x68cd783f: unchanged PUT on receivers -> 400; IS-04 label compared"
+    },
+    {
+      "match": "senders.*.label",
+      "access": "R",
+      "note": "not the NMOS label: IS-04 publishes '<hostname> VidTx|AudTx|AncTx <n>' (fixed); the module refuses writes to senders",
+      "source": "probe 2026-09-29, FusioN6 fw 0x68cd783f: unchanged PUT on senders -> 400; IS-04 label compared"
+    },
+    {
+      "match": "flows.*.label",
+      "note": "on a transmit flow this IS the NMOS flow name: IS-04 flow label '<hostname> <label>', description '<label>'",
+      "source": "probe 2026-09-29, FusioN6 fw 0x68cd783f: set CAM1-VIDEO on an idle tx flow -> IS-04 flow label and version changed; restored"
+    },
+    {
+      "match": "self.ipconfig.hostname",
+      "note": "prefix of every IS-04 label (receivers, senders, flows)",
+      "source": "probe 2026-09-29, FusioN6 fw 0x68cd783f: IS-04 labels read"
     }
   ],
   "sibling_thresholds": [

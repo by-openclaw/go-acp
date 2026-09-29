@@ -4,6 +4,8 @@ package mnset_integration
 
 import (
 	"encoding/csv"
+	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -218,5 +220,36 @@ func TestWritesTheModuleWouldMangleAreRefusedBeforeTheWire(t *testing.T) {
 		if after := current(t, h, c.path); after != before {
 			t.Errorf("FAIL-real: %s changed to %s after a refused write (was %s)", c.path, after, before)
 		}
+	}
+}
+
+// The NMOS name of what the module sends is the transmit flow's label:
+// IS-04 publishes "<hostname> <label>". receivers/senders labels are
+// not it — the module refuses any write to those records.
+func TestATransmitFlowLabelIsItsNMOSName(t *testing.T) {
+	h := host(t)
+	_, tx, _ := idle(t, exportRows(t, h))
+	path := "flows." + tx + ".label"
+	before := current(t, h, path)
+	defer func() {
+		if got, err := run(t, time.Minute, "consumer", "mnset", "set", h, "--path", path, "--value", before); err != nil {
+			t.Errorf("FAIL-real: restoring %s: %v\n%s", path, err, got)
+		}
+	}()
+	mustRun(t, time.Minute, "consumer", "mnset", "set", h, "--path", path, "--value", "DHS-NMOS-CHECK")
+	resp, err := http.Get("http://" + h + "/x-nmos/node/v1.2/flows/" + tx)
+	if err != nil {
+		t.Fatalf("FAIL-real: IS-04 flow: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var flow struct{ Label, Description string }
+	if err := json.NewDecoder(resp.Body).Decode(&flow); err != nil {
+		t.Fatalf("FAIL-real: IS-04 flow body: %v", err)
+	}
+	if flow.Description != "DHS-NMOS-CHECK" || !strings.HasSuffix(flow.Label, " DHS-NMOS-CHECK") {
+		t.Errorf("FAIL-real: IS-04 flow = %+v, want the label as its name", flow)
+	}
+	if out, err := run(t, time.Minute, "consumer", "mnset", "set", h, "--path", "receivers.0.label", "--value", "x"); err == nil {
+		t.Errorf("FAIL-real: receivers.0.label must be read-only:\n%s", out)
 	}
 }
