@@ -156,6 +156,8 @@ func valueAndName(o consumer.Object) (string, string) {
 func valueAndNameRaw(o consumer.Object) (string, string) {
 	v := o.Value
 	switch v.Kind {
+	case consumer.KindBool:
+		return strconv.FormatBool(v.Bool), ""
 	case consumer.KindInt:
 		return strconv.FormatInt(v.Int, 10), ""
 	case consumer.KindUint:

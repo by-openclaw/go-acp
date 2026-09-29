@@ -232,6 +232,8 @@ func groupByPath(objs []consumer.Object) orderedGroups {
 func writeValue(sb *strings.Builder, pad string, o consumer.Object) {
 	v := o.Value
 	switch v.Kind {
+	case consumer.KindBool:
+		writeKVPad(sb, pad, "value", v.Bool)
 	case consumer.KindInt:
 		writeKVPad(sb, pad, "value", v.Int)
 	case consumer.KindUint:

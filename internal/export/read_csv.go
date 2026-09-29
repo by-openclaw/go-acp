@@ -230,6 +230,12 @@ func parseNum(s string, kind consumer.ValueKind) any {
 func parseCSVValue(kind consumer.ValueKind, val, name string, items []string) consumer.Value {
 	v := consumer.Value{Kind: kind}
 	switch kind {
+	case consumer.KindBool:
+		b, err := strconv.ParseBool(val)
+		if err != nil && val != "" {
+			return consumer.Value{Kind: consumer.KindUnknown}
+		}
+		v.Bool = b
 	case consumer.KindInt:
 		n, err := strconv.ParseInt(val, 10, 64)
 		if err != nil && val != "" {

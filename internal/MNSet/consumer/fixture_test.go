@@ -13,7 +13,7 @@ import (
 )
 
 // ADR-0025 deliverable 4: the committed DM + manifest, captured once
-// from the live FusioN6 (10.6.40.53) so everything below runs from the
+// from the live FusioN6 (10.6.40.54 since 2026-09-29) so everything below runs from the
 // repo alone. The producer is parked for this connector (ADR-0025
 // per-protocol scope), so the fixture's job is not to feed an emulator
 // — it is to keep the three things that claim to describe this module
@@ -22,7 +22,7 @@ import (
 //
 // Re-capture with:
 //
-//	dhs consumer mnset walk 10.6.40.53 --slot 0
+//	dhs consumer mnset walk 10.6.40.54 --slot 0
 //	cp .cache/dm/mnset/FusioN6@0x68cd783f.json \
 //	   internal/MNSet/testdata/integration-test/dm/mnset/
 

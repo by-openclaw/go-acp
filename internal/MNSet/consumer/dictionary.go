@@ -43,7 +43,81 @@ type dictEntry struct {
 	// RESOURCE (what accepts a PUT), so a counter or a measurement inside
 	// a writable record would otherwise read RW-.
 	Access string `json:"access,omitempty"`
+	// Kind is what the leaf MEANS; the module spells almost every value
+	// as a JSON string ("1", "20000", "239.1.0.1"), and that spelling is
+	// kept on the wire. bool | int | uint | enum | ip | string | action.
+	Kind string `json:"kind,omitempty"`
+	// Format narrows a string: mac | uuid | cidr | hex32 | audio_map | hostname.
+	Format string `json:"format,omitempty"`
+	// Values is an enum's accepted wire values, in the module's spelling;
+	// Labels names them where a source does.
+	Values []string          `json:"values,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
+	// Note is a fact an operator needs about the field that is not a
+	// type: a module that accepts bad input, a licence it needs.
+	Note   string `json:"note,omitempty"`
 	Source string `json:"source"`
+}
+
+// fieldType is every dictionary entry matching one path, merged in file
+// order (a later entry refines an earlier one). It is what SetValue
+// checks a value against before anything reaches the module.
+type fieldType struct {
+	kind, format, note string
+	min, max           *float64
+	values             []string
+	labels             map[string]string
+	readOnly           bool
+}
+
+// typeOf merges the entries that match path.
+func (d dictionary) typeOf(path []string) fieldType {
+	var t fieldType
+	for _, e := range d.Entries {
+		if !matchPath(e.Match, path) {
+			continue
+		}
+		if e.Kind != "" {
+			t.kind = e.Kind
+		}
+		if e.Format != "" {
+			t.format = e.Format
+		}
+		if e.Note != "" {
+			t.note = e.Note
+		}
+		if e.Min != nil {
+			t.min = e.Min
+		}
+		if e.Max != nil {
+			t.max = e.Max
+		}
+		if e.Access == "R" {
+			t.readOnly = true
+		}
+		if len(e.Values) > 0 {
+			t.values = e.Values
+		}
+		if len(e.Labels) > 0 {
+			t.labels = e.Labels
+		}
+		// The older code→name tables are enums too.
+		if len(e.Enum) > 0 {
+			t.kind = "enum"
+			t.values = sortedKeys(e.Enum)
+			t.labels = e.Enum
+		}
+	}
+	return t
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // siblingRule takes min/max from fields the module publishes beside
@@ -201,6 +275,7 @@ func annotate(objs []consumer.Object) {
 				}
 			}
 		}
+		applyKind(o, d.typeOf(o.Path))
 		for _, r := range d.Siblings {
 			if !matchPath(r.Match, o.Path) || !isNumber(o.Value) {
 				continue

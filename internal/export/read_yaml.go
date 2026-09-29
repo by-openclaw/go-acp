@@ -261,6 +261,8 @@ func applyValue(o *consumer.Object, val string) {
 	o.Value.Kind = o.Kind
 	s := unquote(val)
 	switch o.Kind {
+	case consumer.KindBool:
+		o.Value.Bool, _ = strconv.ParseBool(s)
 	case consumer.KindInt:
 		o.Value.Int, _ = strconv.ParseInt(s, 10, 64)
 	case consumer.KindUint:

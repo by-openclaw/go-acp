@@ -463,7 +463,7 @@ func (p *Plugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consu
 	case []any:
 		return consumer.Value{}, fmt.Errorf("mnset: %q is a list, not a value", req.Path)
 	}
-	return leafValue(cur), nil
+	return typedValue(req.Path, cur), nil
 }
 
 // SetValue is read-modify-write on req.Slot's module: resolve the
@@ -486,6 +486,16 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	if _, isText := r.doc.(string); isText {
 		return consumer.Value{}, fmt.Errorf("mnset: %s is a text document, not a settable field", r.url)
 	}
+	// Check and spell the value by what the field means before anything
+	// is sent: the module wraps a bad IPv4 octet and takes an
+	// out-of-range DSCP as given, so its own answer cannot be the check.
+	if _, ok := lookup(r.doc, r.leaf); !ok {
+		return consumer.Value{}, fmt.Errorf("mnset: %q: %w", req.Path, consumer.ErrObjectNotFound)
+	}
+	val, err = normalize(req.Path, dict().typeOf(strings.Split(req.Path, ".")), val)
+	if err != nil {
+		return consumer.Value{}, fmt.Errorf("mnset: %w", err)
+	}
 	if _, err := assign(r.doc, r.leaf, val); err != nil {
 		return consumer.Value{}, fmt.Errorf("mnset: %w", err)
 	}
@@ -500,8 +510,16 @@ func (p *Plugin) SetValue(ctx context.Context, req consumer.ValueRequest, val co
 	if !ok {
 		return consumer.Value{}, fmt.Errorf("mnset: %q written, but gone on read-back: %w", req.Path, consumer.ErrObjectNotFound)
 	}
-	return leafValue(got), nil
+	return typedValue(req.Path, got), nil
 }
+
+// MinOpTimeout is the least time one get/set can take on a module. The
+// CLI default is 1 s; a set here is a connect (self/information and
+// port/1..6: 8 GETs, ~1.5 s measured on a FusioN6), a resolve, the PUT
+// and the read-back. Under 1 s the operation was cut after the PUT had
+// gone out: the module applied the value and dhs reported a failure
+// (2026-09-29). 30 s is three per-request timeouts plus the connect.
+func (p *Plugin) MinOpTimeout() time.Duration { return 30 * time.Second }
 
 // PathNative declares that GetValue / SetValue resolve a path against
 // the module's own listings (see resolve): the CLI must not walk the

@@ -198,6 +198,8 @@ func jsonLeaf(o consumer.Object) map[string]any {
 	// Value
 	v := o.Value
 	switch v.Kind {
+	case consumer.KindBool:
+		m["value"] = v.Bool
 	case consumer.KindInt:
 		m["value"] = v.Int
 	case consumer.KindUint:
