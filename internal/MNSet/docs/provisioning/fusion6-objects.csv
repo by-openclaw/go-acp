@@ -1,0 +1,96 @@
+section,object,kind,access,values_or_range,unit,example_value,note,source
+1 MGMT,self.information.base_type,string,R,,,FusioN6,,
+1 MGMT,self.information.type,string,R,,,22 - ST2110 UHD Transceiver,,
+1 MGMT,self.information.serial_number,string,R,,,125061600012,,
+1 MGMT,self.information.current_version,string,R,,,0x68cd783f,,
+1 MGMT,self.information.encap_count,int,R,,,2,,
+1 MGMT,self.information.decap_count,int,R,,,6,,
+1 MGMT,self.information.input_media.*,string,R,,,st2110,,
+1 MGMT,self.information.output_media.*,string,R,,,st2110,,
+1 MGMT,self.ipconfig.hostname,string,RW,hostname,,emsfp-a2-10-0c,,value shape on the module; not probed (management field)
+1 MGMT,self.ipconfig.local_mac,string,R,mac,,40:a3:6b:a2:10:0c,,value shape on the module; not probed (management field)
+1 MGMT,self.ipconfig.dhcp_enable,bool,RW,,,true,,value shape on the module; not probed (management field)
+1 MGMT,self.system.flex_port_mode,string,RW,RT=management over the media ports | OOB=management port,,RT,do not change remotely: it can remove the only path to the module,"MN SET web bundle (read as documentation, never as a control path)"
+1 MGMT,self.system.access_control.media.device_management,bool,RW,,,true,,
+1 MGMT,self.interfaces.oob.dhcp,bool,RW,,,true,,
+1 MGMT,self.interfaces.oob.static_ip,string,RW,cidr,,192.168.40.230/24,,value shape on the module; not probed (management field)
+1 MGMT,self.interfaces.oob.static_gateway,ipaddr,RW,,,192.168.40.1,,value shape on the module; not probed (management field)
+1 MGMT,self.syslog.config.server,ipaddr,RW,,,10.6.250.101,,2026-09-28 live: set to the collector and delivering
+1 MGMT,self.syslog.config.port,int,RW,1..65535,,1514,,IANA port range
+1 MGMT,self.syslog.config.enable,bool,RW,,,true,,
+1 MGMT,self.syslog.monitoring.*.*,bool,RW,,,true,,
+1 MGMT,self.protocols.mdns_enable,bool,RW,,,true,,value shape on the module; not probed (management field)
+1 MGMT,self.protocols.sap_announcement_enable,bool,RW,,,true,,value shape on the module; not probed (management field)
+1 MGMT,self.license.feature.*,string,R,,,unlicensed,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e1.dhcp,bool,RW,,,true,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e1.static_ip,string,RW,cidr,,192.168.39.230/24,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e1.static_gateway,ipaddr,RW,,,192.168.39.1,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e1.current_ip,string,R,,,10.6.40.54/24,,current_* vs static_* naming
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e1.vlan,int,RW,,,0,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e2.dhcp,bool,RW,,,true,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e2.static_ip,string,RW,cidr,,172.16.16.2/24,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e2.static_gateway,ipaddr,RW,,,172.16.16.1,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e2.current_ip,string,R,,,10.7.40.52/24,,current_* vs static_* naming
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.interfaces.e2.vlan,int,RW,,,0,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.phy.*.fec.scheme,string,RW,none=off | rs=RS-FEC,,none,,"MN SET web bundle (read as documentation, never as a control path)"
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.information.current_link_speed.*,string,R,,,25G,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.system.smpte_network.2022-7.class,string,RW,a=Class A (10 ms) | b=Class B (50 ms) | d=Class D (150 µs),,d,,mnset-ui enum list + label '2022-7 Class:'
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.system.igmp.version,int,RW,,,3,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.static_route.*.destination,string,RW,cidr,,0.0.0.0/0,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",self.static_route.*.gateway,ipaddr,RW,,,0.0.0.0,,value shape on the module; not probed (management field)
+"2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.delay_req,int,RW,,,-3,,mnset-ui label 'Delay Request:'; IEEE 1588
+"2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.announceReceiptTimeout,int,RW,,,3,,
+"2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.locked_interface,string,R,,,e1,,status field
+"2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.status,string,R,,,3,,status field
+3 CHANNELS,flows.*.name,string,RW,,,tx ch1 flow 0 pri,,
+3 CHANNELS,flows.*.label,string,RW,,,F:  0- 0- 0,,
+3 CHANNELS,flows.*.format.format_type,string,R,video | audio | ancillary,,video,set by the program: writes are ignored,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.cdis,string,RW,single | 2si | sqdiv,,single,,"MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,flows.*.network.enable,bool,RW,,,false,the module stores any value other than 1 as 0,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,flows.*.network.*.enable,bool,RW,,,true,the module stores any value other than 1 as 0,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,flows.*.network.dst_ip_addr,ipaddr,RW,,,0.0.0.0,"the module wraps a bad octet modulo 256 (999.1.1.1 -> 231.1.1.1): validated here; a new address re-derives dst_mac, and setting the address back does not restore the MAC","probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.*.dst_ip_addr,ipaddr,RW,,,0.0.0.0,"the module wraps a bad octet modulo 256 (999.1.1.1 -> 231.1.1.1): validated here; a new address re-derives dst_mac, and setting the address back does not restore the MAC","probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.dst_udp_port,int,RW,0..65535,,0,0 = unassigned,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.*.dst_udp_port,int,RW,0..65535,,0,0 = unassigned,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.src_ip_addr,ipaddr,RW,,,0.0.0.0,the module wraps a bad octet modulo 256: validated here,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.*.src_ip_addr,ipaddr,RW,,,0.0.0.0,the module wraps a bad octet modulo 256: validated here,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.src_udp_port,int,RW,0..65535,,0,0 = unassigned,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.rtp_pt,int,RW,0..127,,97,the module accepts 128: range enforced here,"RFC 3550 5.1: 7-bit payload type; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.*.rtp_pt,int,RW,0..127,,96,the module accepts 128: range enforced here,"RFC 3550 5.1: 7-bit payload type; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.ttl,int,RW,0..255,,64,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.dscp,int,RW,0..63,,0,the module accepts 64: range enforced here,"RFC 2474: 6-bit DSCP; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.network.ssrc,uint,RW,0..4294967295,,0,,"RFC 3550: 32-bit; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.range,string,RW,NARROW | FULL | FULLPROTECT,,NARROW,,"SMPTE ST 2110-20 RANGE; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.format_tcs,string,RW,SDR | PQ | HLG,,SDR,"LINEAR, BT2100LIN*, ST2065-1, ST428-1, DENSITY, UNSPECIFIED are refused","SMPTE ST 2110-20 TCS subset; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.format_colorimetry,string,RW,BT709 | BT2020 | BT2100,,BT709,"BT601, ST2065-1/-3, UNSPECIFIED, XYZ are refused","SMPTE ST 2110-20 colorimetry subset; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.aud_format,string,RW,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31),,dash-30,,"MN SET web bundle (read as documentation, never as a control path); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.aud_chan_cnt,int,RW,1..16,,2,the module accepts 0 and 17: range enforced here,"16 channels per SDI (sdi_aud_chans_cfg ch0-ch15); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.aud_ptime_idx,string,RW,0=1 ms | 1=125 us | 2=250 us | 3=333 us,,0,,"MN SET web bundle (read as documentation, never as a control path) (get2110AudioPackageTime); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,flows.*.format.anc_flow_profile,int,RW,1..2,,2,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.label,string,R,,,SDI 1,writes are ignored,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.input_signal_output_mode.loss_of_input,string,RW,black=Black | freeze=Freeze | blue=Blue | no_signal=No Signal,,blue,no freeze on UDC models,"MN SET web bundle (read as documentation, never as a control path) (lossInputValues); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.vpid.source,string,RW,regenerated | override,,regenerated,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.vpid.override_value,string,RW,hex32,,0x85062001,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.line_offset.offset_mode,string,RW,0=MicroSeconds units | 1=Video lines,,1,the module also accepts 2 and 3: restricted to the documented values,"MN SET web bundle (read as documentation, never as a control path) (0 = microseconds, 1 = video lines); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.line_offset.audio_delay,int,RW,0..,,0,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_output.*.sdi_aud_chans_cfg.*,string,RW,audio_map,,33bd4ce3-6fbb-4468-9cbb-40a36ba2100c:0:1,,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+3 CHANNELS,sdi_input.*.label,string,RW,,,SDI 5,,
+3 CHANNELS,sdi_input.*.frame_sync_audio.sdi_in_genlock,string,RW,freerun=Free running source | locked=Genlocked source,,freerun,,"MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,sdi_input.*.line_offset.frame_sync,bool,RW,,,false,licensed feature frame_sync: HTTP 402 when unlicensed,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,clean_switch.*.clean_switch.mode,string,RW,disabled | enabled | video_only,,disabled,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,clean_switch.*.clean_switch.type,string,RW,bbm=break before make | mbb=make before break,,bbm,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
+3 CHANNELS,clean_switch.*.clean_switch.timeout_option,string,RW,switch | revert,,switch,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
+4 NMOS,self.diag.nmos.registry_mode,string,RW,auto=Auto (DNS-SD) | manual=Manual,,manual,,"MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.registry_address,string,RW,hostport,,10.6.250.5:8080,the IS-04 registry the module registers with when registry_mode is manual,"MN SET web bundle (read as documentation, never as a control path) (IPv4:port validator); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.registry_address_2,string,RW,hostport,,0.0.0.0:0,backup registry; 0.0.0.0:0 = none,"MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.mdns_mode,bool,RW,,,false,,"MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.control_network,string,RW,media=Media | OOB=Management,,media,OOB needs self.system.flex_port_mode OOB and a cabled management port,"MN SET web bundle (read as documentation, never as a control path) (options Media / Management); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.manual_dns_server_address,ipaddr,RW,,,0.0.0.0,,"self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.manual_dns_server_address_2,ipaddr,RW,,,0.0.0.0,,"self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.device_visible.*,bool,RW,,,true,one per NMOS device (channel) the module exposes,"self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+4 NMOS,self.diag.nmos.status,string,R,,,connected,,NMOS status reported by the module
+4 NMOS,self.diag.nmos.current_registry,string,R,,,10.6.250.5:8080,,NMOS status reported by the module
+4 NMOS,receivers.*.label,string,RW,,, ,,
+4 NMOS,receivers.*.format,string,RW,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)
+4 NMOS,senders.*.label,string,RW,,, ,,
+4 NMOS,senders.*.format,string,RW,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)

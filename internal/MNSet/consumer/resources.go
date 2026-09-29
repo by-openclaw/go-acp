@@ -30,12 +30,19 @@ var writable = map[string]bool{
 	"self/ipconfig": true, "self/syslog": true, "self/protocols": true,
 	"self/static_route": true, "self/system": true, "self/phy": true,
 	"self/interfaces": true,
+	// The NMOS registration settings live under the read-only diag tree,
+	// and the module takes a PUT on that one document (verified: an
+	// unchanged write-back answers 200, 2026-09-29).
+	"self/diag/nmos": true,
 }
 
 // isWritable reports whether a resource URL ("flows/<id>",
 // "self/ipconfig") is under a writable root.
 func isWritable(url string) bool {
 	segs := strings.SplitN(url, "/", 3)
+	if segs[0] == "self" && len(segs) > 2 && writable["self/"+segs[1]+"/"+strings.SplitN(segs[2], "/", 2)[0]] {
+		return true
+	}
 	if segs[0] == "self" && len(segs) > 1 {
 		return writable["self/"+segs[1]]
 	}

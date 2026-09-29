@@ -107,6 +107,7 @@ var (
 	reHex32    = regexp.MustCompile(`^0x[0-9a-fA-F]{8}$`)
 	reAudioMap = regexp.MustCompile(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?:\d+:\d+$`)
 	reHostname = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$`)
+	reHostPort = regexp.MustCompile(`^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$`)
 )
 
 // requestText is the operator's value as text, whatever kind it came as.
@@ -206,6 +207,14 @@ func normalize(field string, t fieldType, v consumer.Value) (consumer.Value, err
 	case "audio_map":
 		if !reAudioMap.MatchString(s) {
 			return bad(fmt.Sprintf("%q is not <audio flow uuid>:<channel>:<n>", s))
+		}
+	case "hostport":
+		m := reHostPort.FindStringSubmatch(s)
+		if m == nil || net.ParseIP(m[1]).To4() == nil {
+			return bad(fmt.Sprintf("%q is not <IPv4>:<port>", s))
+		}
+		if p, _ := strconv.Atoi(m[2]); p > 65535 {
+			return bad(fmt.Sprintf("%q: port above 65535", s))
 		}
 	case "hostname":
 		if !reHostname.MatchString(s) {
