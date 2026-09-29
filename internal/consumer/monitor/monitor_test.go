@@ -27,6 +27,22 @@ func recvEvent(t *testing.T, ch <-chan consumer.Event) consumer.Event {
 
 // recvEventWhere reads events until one satisfies pred, tolerating
 // interleaved scheduled reads.
+// advanceArmed moves the fake clock only once the monitor has armed a
+// timer on it. m.Add starts the poll goroutine and returns; an Advance
+// that lands before that goroutine reaches the clock fires nothing and
+// the tick is lost, which a busy CI runner shows as a 2 s event timeout.
+func advanceArmed(t *testing.T, fk *clock.Fake, d time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for fk.Waiters() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the monitor never armed a timer")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	fk.Advance(d)
+}
+
 func recvEventWhere(t *testing.T, ch <-chan consumer.Event, pred func(consumer.Event) bool) consumer.Event {
 	t.Helper()
 	deadline := time.After(2 * time.Second)
@@ -104,7 +120,7 @@ func TestMonitorPollsAndEmits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fk.Advance(time.Second)
+	advanceArmed(t, fk, time.Second)
 	ev := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Value.Int == 5 })
 	if ev.Path != req.Path {
 		t.Errorf("event path = %q, want %q", ev.Path, req.Path)
@@ -129,7 +145,7 @@ func TestMonitorOnChangeStaysSilentWithoutMovement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fk.Advance(3 * time.Second) // several polls, value never moves
+	advanceArmed(t, fk, 3*time.Second) // several polls, value never moves
 	recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Value.Int == 7 })
 	assertNoEvent(t, evc) // no duplicate for an unchanged value
 }
@@ -255,13 +271,13 @@ func TestMonitorRepeatsAreMarkedWhenOnChangeIsOff(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fk.Advance(time.Second)
+	advanceArmed(t, fk, time.Second)
 	first := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Path == req.Path })
 	if first.Repeat {
 		t.Errorf("the first sample of an object is news, not a repeat: %+v", first)
 	}
 
-	fk.Advance(time.Second)
+	advanceArmed(t, fk, time.Second)
 	again := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Path == req.Path })
 	if !again.Repeat {
 		t.Errorf("an unchanged sample must be marked Repeat: %+v", again)
@@ -272,7 +288,7 @@ func TestMonitorRepeatsAreMarkedWhenOnChangeIsOff(t *testing.T) {
 
 	// When the value does move, the sample is a change again.
 	fp.set(addrKey(req), intVal(1))
-	fk.Advance(time.Second)
+	advanceArmed(t, fk, time.Second)
 	moved := recvEventWhere(t, evc, func(e consumer.Event) bool { return e.Value.Int == 1 })
 	if moved.Repeat || len(moved.Changes) != 1 {
 		t.Errorf("movement = %+v, changes %+v", moved, moved.Changes)
