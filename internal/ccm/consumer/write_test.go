@@ -22,7 +22,9 @@ func TestSetFieldChangesOnlyWhatItNames(t *testing.T) {
 		  "ptp":{"domain":77,"priority1":248},
 		  "legs":[{"uuid":"a","port":1},{"uuid":"b","port":2}],
 		  "names":["x","y"],
-		  "flat":1
+		  "flat":1,
+		  "on":false,
+		  "name":"n"
 		}`), &v)
 		return v
 	}
@@ -41,12 +43,28 @@ func TestSetFieldChangesOnlyWhatItNames(t *testing.T) {
 			dhsc.Value{Kind: dhsc.KindInt, Int: 8}, `"port":8`},
 		{"an array element itself", []string{"names", "1"},
 			dhsc.Value{Kind: dhsc.KindString, Str: "z"}, `["x","z"]`},
-		{"a bool", []string{"flat"},
-			dhsc.Value{Kind: dhsc.KindBool, Bool: true}, `"flat":true`},
+		{"a bool", []string{"on"},
+			dhsc.Value{Kind: dhsc.KindBool, Bool: true}, `"on":true`},
+		{"a bool from its text", []string{"on"},
+			dhsc.Value{Kind: dhsc.KindString, Str: "1"}, `"on":true`},
+		{"a bool off from its text", []string{"on"},
+			dhsc.Value{Kind: dhsc.KindString, Str: "off"}, `"on":false`},
 		{"a float", []string{"flat"},
 			dhsc.Value{Kind: dhsc.KindFloat, Float: 1.5}, `"flat":1.5`},
-		{"a string", []string{"flat"},
-			dhsc.Value{Kind: dhsc.KindString, Str: "s"}, `"flat":"s"`},
+		// The CLI hands over text; a number field still gets a number —
+		// the Neuron refuses "20000" with "type must be number".
+		{"a number from its text", []string{"flat"},
+			dhsc.Value{Kind: dhsc.KindString, Str: "20000"}, `"flat":20000`},
+		{"a fraction from its text", []string{"flat"},
+			dhsc.Value{Kind: dhsc.KindString, Str: " 2.5 "}, `"flat":2.5`},
+		{"a string", []string{"name"},
+			dhsc.Value{Kind: dhsc.KindString, Str: "s"}, `"name":"s"`},
+		{"an int into a string field", []string{"name"},
+			dhsc.Value{Kind: dhsc.KindInt, Int: 7}, `"name":"7"`},
+		{"a float into a string field", []string{"name"},
+			dhsc.Value{Kind: dhsc.KindFloat, Float: 1.5}, `"name":"1.5"`},
+		{"a bool into a string field", []string{"name"},
+			dhsc.Value{Kind: dhsc.KindBool, Bool: true}, `"name":"true"`},
 	}
 	for _, c := range cases {
 		d := doc()
@@ -77,6 +95,23 @@ func TestSetFieldChangesOnlyWhatItNames(t *testing.T) {
 	}
 	for _, c := range bad {
 		if err := setField(doc(), c.field, dhsc.Value{Kind: dhsc.KindInt, Int: 1}); err == nil {
+			t.Errorf("%s: must be refused", c.name)
+		}
+	}
+
+	// A value that is not what the field is, refused before the wire.
+	wrong := []struct {
+		name  string
+		field []string
+		val   dhsc.Value
+	}{
+		{"text that is no number", []string{"flat"}, dhsc.Value{Kind: dhsc.KindString, Str: "abc"}},
+		{"text that is no boolean", []string{"on"}, dhsc.Value{Kind: dhsc.KindString, Str: "maybe"}},
+		{"a whole object", []string{"ptp"}, dhsc.Value{Kind: dhsc.KindString, Str: "{}"}},
+		{"a whole array element object", []string{"legs", "0"}, dhsc.Value{Kind: dhsc.KindString, Str: "{}"}},
+	}
+	for _, c := range wrong {
+		if err := setField(doc(), c.field, c.val); err == nil {
 			t.Errorf("%s: must be refused", c.name)
 		}
 	}
@@ -222,5 +257,87 @@ func TestReadingOneValueReportsADeviceThatWillNotServeIt(t *testing.T) {
 	p := testPluginConnected(t, srv)
 	if _, err := p.GetValue(context.Background(), dhsc.ValueRequest{Path: "gone.field"}); err == nil {
 		t.Error("a declared resource this build does not serve must be an error")
+	}
+}
+
+func TestAWriteAnswersWithWhatTheDeviceHoldsAfterward(t *testing.T) {
+	// The answer to a write is the device's read-back, not the request:
+	// a device that clamps, rounds or ignores a value has to be seen
+	// doing it. Three resources: one that clamps the port, one whose
+	// read-back fails, one that drops the field it was just given.
+	const spec = "openapi: 3.1.1\npaths:\n" +
+		"  /clamp:\n    get:\n      operationId: G1\n    put:\n      operationId: S1\n" +
+		"  /flaky:\n    get:\n      operationId: G2\n    put:\n      operationId: S2\n" +
+		"  /drop:\n    get:\n      operationId: G3\n    put:\n      operationId: S3\n"
+	var gotBody string
+	flakyReads := 0
+	dropped := false
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/self":
+			_, _ = w.Write([]byte(`{"app":{"productName":"X","productVersion":"1"}}`))
+		case r.URL.Path == "/docs/api.yml":
+			_, _ = w.Write([]byte(spec))
+		case r.URL.Path == "/clamp" && r.Method == http.MethodPut:
+			b := make([]byte, 256)
+			n, _ := r.Body.Read(b)
+			gotBody = string(b[:n])
+		case r.URL.Path == "/clamp":
+			_, _ = w.Write([]byte(`{"port":65535}`))
+		case r.URL.Path == "/flaky" && r.Method == http.MethodGet:
+			flakyReads++
+			if flakyReads > 1 {
+				http.Error(w, "gone", http.StatusInternalServerError)
+				return
+			}
+			_, _ = w.Write([]byte(`{"port":1}`))
+		case r.URL.Path == "/drop" && r.Method == http.MethodPut:
+			dropped = true
+		case r.URL.Path == "/drop":
+			if dropped {
+				_, _ = w.Write([]byte(`{"other":1}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"port":1}`))
+		}
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	restore := dialClient
+	dialClient = func(string) *Client { return testClient(srv) }
+	t.Cleanup(func() { dialClient = restore })
+	p := testPluginConnected(t, srv)
+
+	// Text from the CLI goes out as a number, and the answer is the
+	// device's clamped value, not the 70000 that was asked for.
+	got, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "clamp.port"},
+		dhsc.Value{Kind: dhsc.KindString, Str: "70000"})
+	if err != nil {
+		t.Fatalf("clamp: %v", err)
+	}
+	if !strings.Contains(gotBody, `"port":70000`) {
+		t.Errorf("PUT body %s must carry the port as a number", gotBody)
+	}
+	if got.Kind != dhsc.KindInt || got.Int != 65535 {
+		t.Errorf("answer = %+v, want the device's 65535", got)
+	}
+
+	// A write whose read-back fails says so.
+	if _, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "flaky.port"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 2}); err == nil || !strings.Contains(err.Error(), "read-back failed") {
+		t.Errorf("flaky read-back = %v", err)
+	}
+
+	// A field that vanished after the write is not reported as written.
+	if _, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "drop.port"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 2}); err == nil || !strings.Contains(err.Error(), "gone on read-back") {
+		t.Errorf("dropped field = %v", err)
+	}
+
+	// A value of the wrong type never reaches the device.
+	if _, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "clamp.port"},
+		dhsc.Value{Kind: dhsc.KindString, Str: "abc"}); err == nil || !strings.Contains(err.Error(), "not a number") {
+		t.Errorf("wrong type = %v", err)
 	}
 }
