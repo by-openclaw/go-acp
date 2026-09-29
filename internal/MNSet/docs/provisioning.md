@@ -188,10 +188,25 @@ dhs consumer mnset get <ip> --path self.diag.flow.<rx flow uuid>.rtp_stream_info
 Loki: `{job="syslog", device="<ip>"}` — "Packets are now received on
 device N flow 0 primary/secondary" confirms both legs.
 
-## 11. Factory reset (to learn the factory state) ⚠
+## 11. Factory reset — manual only
 
-`self.system.config_reset` resets the module. What it comes back with
-(DHCP on or off, `flex_port_mode`, media management) has **not been
-observed yet**. If it comes back with DHCP off or media management off,
-the module is unreachable in-band and needs the OOB port. Run it only with
-someone at the rack, and record the result in §2.
+There is **no factory reset over the API**. ✅ (2026-09-29)
+
+- `self.system.config_reset = "1"` is refused with **HTTP 400**, both in
+  the full `self/system` document and alone; an unchanged write-back of
+  the same document is accepted, so it is the value that is refused.
+- The node API lists no reset resource (`self/factory`, `self/reset`,
+  `factory_reset` → 404); the module's `:80/config/` page manages
+  firmware images only.
+- MN SET's only "factory" action is **Flows Reset to Factory**, run by
+  the MN SET server (`/api/flow/reset…`) — flows only, not the module.
+
+A module that must go back to factory state is reset **by hand at the
+rack**. What it comes back with (DHCP, `flex_port_mode`, media
+management) is still ⚠ unobserved: have the OOB port reachable when you
+do it, then record the result in §2. Take a backup first:
+
+```bash
+dhs consumer mnset walk   <ip> --slot 0 --capture <dir>/cap   # every document, as the wire carried it
+dhs consumer mnset export <ip> --format json --out <dir>/export.json
+```
