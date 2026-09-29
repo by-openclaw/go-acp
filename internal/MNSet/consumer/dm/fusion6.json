@@ -1032,6 +1032,105 @@
       },
       "note": "do not change remotely: it can remove the only path to the module",
       "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "self.diag.nmos.registry_mode",
+      "kind": "enum",
+      "values": [
+        "auto",
+        "manual"
+      ],
+      "labels": {
+        "auto": "Auto (DNS-SD)",
+        "manual": "Manual"
+      },
+      "source": "MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.registry_address",
+      "format": "hostport",
+      "note": "the IS-04 registry the module registers with when registry_mode is manual",
+      "source": "MN SET web bundle (read as documentation, never as a control path) (IPv4:port validator); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.registry_address_2",
+      "format": "hostport",
+      "note": "backup registry; 0.0.0.0:0 = none",
+      "source": "MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.mdns_mode",
+      "kind": "bool",
+      "source": "MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.control_network",
+      "kind": "enum",
+      "values": [
+        "media",
+        "OOB"
+      ],
+      "labels": {
+        "media": "Media",
+        "OOB": "Management"
+      },
+      "note": "OOB needs self.system.flex_port_mode OOB and a cabled management port",
+      "source": "MN SET web bundle (read as documentation, never as a control path) (options Media / Management); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.manual_dns_server_address",
+      "kind": "ip",
+      "source": "self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.manual_dns_server_address_2",
+      "kind": "ip",
+      "source": "self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.manual_dns_server_address_3",
+      "kind": "ip",
+      "source": "self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.manual_dns_server_address_4",
+      "kind": "ip",
+      "source": "self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.device_visible.*",
+      "kind": "bool",
+      "note": "one per NMOS device (channel) the module exposes",
+      "source": "self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
+    },
+    {
+      "match": "self.diag.nmos.status",
+      "access": "R",
+      "source": "NMOS status reported by the module"
+    },
+    {
+      "match": "self.diag.nmos.current_registry",
+      "access": "R",
+      "source": "NMOS status reported by the module"
+    },
+    {
+      "match": "self.diag.nmos.uptime",
+      "kind": "int",
+      "access": "R",
+      "note": "seconds",
+      "source": "NMOS status reported by the module"
+    },
+    {
+      "match": "self.diag.nmos.connection_count",
+      "kind": "int",
+      "access": "R",
+      "source": "NMOS status reported by the module"
+    },
+    {
+      "match": "self.diag.nmos.dns_server_address",
+      "kind": "ip",
+      "access": "R",
+      "source": "NMOS status reported by the module"
     }
   ],
   "sibling_thresholds": [

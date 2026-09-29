@@ -39,6 +39,26 @@ addresses. **Do not change `flex_port_mode`, `access_control`,
 `self.ipconfig` or `self.interfaces` remotely**: a wrong value removes the
 only path to the module, and the OOB port is not cabled.
 
+## 2b. The objects to provision (CSV)
+
+[`provisioning/fusion6-objects.csv`](provisioning/fusion6-objects.csv) —
+the FusioN6 DM cut to what stands a module up (MGMT · RED/BLUE network +
+PTP · channels · NMOS): one row per object pattern with kind, access,
+values/range, an example, note and source.
+[`provisioning/fusion6-modules.csv`](provisioning/fusion6-modules.csv) —
+one row per module × concrete object (channel, rx/tx, essence, RED/BLUE
+leg decoded), the current value and an empty `target_value`. Every
+FusioN6 shares the same DM; regenerate for any set of modules:
+
+```bash
+dhs consumer mnset export <ip> --format csv --out <serial>.csv      # per module
+python provisioning/objects.py ../consumer/dm/fusion6.json *.csv    # both CSVs
+```
+
+NMOS registration (`self.diag.nmos.*`: `registry_mode`, `registry_address`,
+`control_network`, `mdns_mode`, DNS) is writable with `dhs … set` ✅
+(same-value write confirmed, malformed address refused, 2026-09-29).
+
 ## 3. Find the modules
 
 ```bash

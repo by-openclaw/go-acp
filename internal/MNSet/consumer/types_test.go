@@ -191,3 +191,31 @@ func TestMinOpTimeoutCoversAWholeSet(t *testing.T) {
 		t.Errorf("MinOpTimeout = %s: a FusioN6 set needs ~2 s even when healthy", d)
 	}
 }
+
+// The NMOS registration settings are one writable document under the
+// read-only diag tree; nothing else under diag becomes writable.
+func TestOnlyTheNMOSDocumentUnderDiagIsWritable(t *testing.T) {
+	for url, want := range map[string]bool{
+		"self/diag/nmos":   true,
+		"self/diag/refclk": false,
+		"self/diag/common": false,
+		"self/diag":        false,
+		"self/ipconfig":    true,
+		"self/license":     false,
+		"flows/fee338d3":   true,
+		"telemetry/node":   false,
+	} {
+		if got := isWritable(url); got != want {
+			t.Errorf("isWritable(%q) = %v, want %v", url, got, want)
+		}
+	}
+	for s, ok := range map[string]bool{
+		"10.6.250.5:8080": true, "0.0.0.0:0": true,
+		"10.6.250.5": false, "999.1.1.1:80": false, "10.6.250.5:70000": false, "host:80": false,
+	} {
+		_, err := normalize("r", fieldType{format: "hostport"}, consumer.Value{Str: s})
+		if (err == nil) != ok {
+			t.Errorf("hostport %q: err = %v, want ok=%v", s, err, ok)
+		}
+	}
+}
