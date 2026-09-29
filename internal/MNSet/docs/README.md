@@ -7,6 +7,7 @@ is **not** in the control path — it is only asked for its device list
 
 | Doc | Purpose |
 |---|---|
+| [`provisioning.md`](provisioning.md) | **provision a FusioN6 in-band with dhs only**: reachability, capabilities + licences, receivers over IS-05, outputs, senders, proven value ranges |
 | [`consumer.md`](consumer.md) | CLI walkthrough: discover, walk, export, get, set, the path grammar |
 | [`runbook.md`](runbook.md) | operate it: put a Neuron output on an HDMI monitor, verify on the fabric, undo |
 | [`scope.md`](scope.md) | the accepted scope (REST now; SNMP / NBAPI / syslog later) |
