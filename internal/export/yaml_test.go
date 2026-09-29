@@ -123,6 +123,7 @@ slots:
         id: 11
         kind: bool
         access: ---
+        value: true
 `
 	var buf bytes.Buffer
 	if err := WriteYAML(&buf, snap); err != nil {

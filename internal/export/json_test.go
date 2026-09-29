@@ -251,3 +251,28 @@ func TestParseTime(t *testing.T) {
 		}
 	}
 }
+
+// A bool carries its value through a JSON export and back: before
+// 2026-09-29 the value was dropped, so a device's flags (1 456 of them
+// on a FusioN6) exported as blanks and could not be put back.
+func TestJSONBoolRoundTrips(t *testing.T) {
+	snap := &Snapshot{Slots: []SlotDump{{Slot: 0, Objects: []consumer.Object{
+		{Path: []string{"network", "enable"}, Label: "enable", Kind: consumer.KindBool, Access: 3,
+			Value: consumer.Value{Kind: consumer.KindBool, Bool: true}},
+	}}}}
+	var buf bytes.Buffer
+	if err := WriteJSON(&buf, snap); err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+	if !strings.Contains(buf.String(), `"value": true`) {
+		t.Fatalf("bool value missing from %s", buf.String())
+	}
+	back, err := ReadJSON(&buf)
+	if err != nil {
+		t.Fatalf("ReadJSON: %v", err)
+	}
+	o := back.Slots[0].Objects[0]
+	if o.Kind != consumer.KindBool || !o.Value.Bool {
+		t.Errorf("round trip = %+v", o)
+	}
+}

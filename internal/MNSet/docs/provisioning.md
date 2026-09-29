@@ -123,7 +123,7 @@ Senders are the `tx` flows (on this model CH5 and CH7, fed by SDI inputs
 
 | Field | Range | Status |
 |---|---|---|
-| `dst_ip_addr` | IPv4 — **the module wraps bad octets** (`999.1.1.1` → `231.1.1.1`): always pass a valid address | ✅ |
+| `dst_ip_addr` | IPv4 — **the module wraps bad octets** (`999.1.1.1` → `231.1.1.1`); dhs refuses them. A multicast address **re-derives `dst_mac`**, and setting the address back does not restore the MAC | ✅ |
 | `dst_udp_port`, `src_udp_port` | 0–65535 | ✅ |
 | `ttl` | 0–255 | ✅ |
 | `dscp` | 0–63 (the module accepts 64: stay in range) | ✅ |

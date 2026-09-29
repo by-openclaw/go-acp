@@ -89,6 +89,7 @@ its device list (`Inventory`, login = raw-text password body, `X-AUTH-TOKEN`).
 |---|---|---|
 | tree rules + writability | `resources.go` | the module's own LISTINGS (`["name/",…]`) drive the walk and path resolution — no catalogue in code; `writable` (by root) gates `set` and `Object.Access` |
 | document → objects | `flatten.go` | keys sorted, arrays by index, `json.Number` kept so ints PUT back as ints; `null` → `KindRaw` |
+| types | `types.go` + `dm/fusion6.json` (`kind` / `format` / `values` / `labels` / `note`, every entry with its source) | a leaf shows what it MEANS (bool, int, uint, ip, enum, mac/uuid/cidr…) while `Value.Str` keeps the module's spelling; `set` checks + spells the value before the PUT (the module wraps bad IPv4 octets, takes DSCP 64 / payload type 128). Proven live by `integration/types_test.go` (#1185) |
 | frame | `frame.go` | host = MN SET (:8080) → one slot per managed module, ordered by module MAC; `/api/device` gives the list + ONLINE/OFFLINE + media IP, the data still comes from each module; slot status: present (answers) / error (MN SET says ONLINE, module silent) / no_card (OFFLINE); login only if `/api/device` is token-gated (`MNSET_USER`/`MNSET_PASS` env, via `SetCredentials`) |
 | plugin | `plugin.go` | host = module → one slot (0); port 0 tries the module on 80 then MN SET on 8080; `Walk` descends listings from the root (depth ≤ 6), unserved resources are deviations; `resolve` follows listings token by token; `SetValue` = resolve → replace field → PUT whole doc to the item URL → GET read-back (the read-back is the answer) |
 | sweep + inventory | `discover.go` | `Discover` probes `self/information` per address (worker pool, sorted by IP); `Inventory` = MN SET `/api/device` |
@@ -111,6 +112,10 @@ documents are cached 2 s so polled leaves of one record cost one GET
 Coverage floor 100 % in CI (mnset and pollwatch).
 
 ## What NOT to do
+
+- Never trust the module to validate: it stores `999.1.1.1` as `231.1.1.1`, accepts DSCP 64, payload type 128, `aud_chan_cnt` 17 — `set` validates from the dictionary first.
+- Never restore `dst_mac` before `dst_ip_addr`: a multicast address re-derives the MAC and overrides a hand-set one; setting the address back does NOT restore the MAC.
+- Never run `get`/`set` under the CLI's 1 s default: a set is ~2 s (connect = 8 GETs); `MinOpTimeout` (30 s) is the floor — below it the PUT lands and dhs reports a failure.
 
 - Never poll SNMP on 1620 (inbound port); use 1610 after enabling.
 - Never expect NBAPI `/rest/...` to work with zero arrays — create one first.

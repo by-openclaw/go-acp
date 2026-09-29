@@ -99,7 +99,7 @@ func TestWriteCSV_Cells(t *testing.T) {
 		"Mode":      {"kind": "enum", "value": "1", "value_name": "On", "enum_items": "Off|On", "default": "1"},
 		"Card name": {"path": "identity", "kind": "string", "value": "RRS18", "max_len": "8"},
 		"IP":        {"kind": "ipaddr", "value": "10.6.250.101"},
-		"Flag":      {"kind": "bool", "value": "", "value_name": ""},
+		"Flag":      {"kind": "bool", "value": "true", "value_name": ""},
 		"Fan":       {"kind": "alarm", "value": "", "alarm_priority": "2", "alarm_tag": "0x1F", "alarm_on": "Fan failed", "alarm_off": "Fan ok"},
 		"Slots":     {"kind": "frame", "value": "", "slot_status": "present|error"},
 		"Odd":       {"path": "misc", "kind": "unknown", "access": "---", "min": "3", "alarm_priority": ""},
@@ -262,7 +262,9 @@ func TestParseCSVValue(t *testing.T) {
 		{"ipaddr dotted quad", consumer.KindIPAddr, "10.6.250.101", consumer.Value{Kind: consumer.KindIPAddr, IPAddr: [4]byte{10, 6, 250, 101}}},
 		{"ipaddr short is unknown", consumer.KindIPAddr, "10.6", consumer.Value{Kind: consumer.KindUnknown}},
 		{"ipaddr empty keeps kind", consumer.KindIPAddr, "", consumer.Value{Kind: consumer.KindIPAddr}},
-		{"bool has no cell form", consumer.KindBool, "true", consumer.Value{Kind: consumer.KindBool}},
+		{"bool true", consumer.KindBool, "true", consumer.Value{Kind: consumer.KindBool, Bool: true}},
+		{"bool false", consumer.KindBool, "false", consumer.Value{Kind: consumer.KindBool}},
+		{"bool nonsense is unknown", consumer.KindBool, "maybe", consumer.Value{Kind: consumer.KindUnknown}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

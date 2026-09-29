@@ -1,351 +1,1146 @@
 {
- "model": "FusioN6",
- "note": "Per-model dictionary: what the module does not publish. Every entry names its source; nothing is guessed. Patterns: '*' matches one path segment (a uuid, an index, a name); a leading '**' matches any number of leading segments. Poll plan: on_change false on the health rows: a measurement is judged per sample (a counter that stopped, a link that is still down), a setting only when it changes.",
- "entries": [
-  {
-   "match": "**.dst_udp_port",
-   "min": 1,
-   "max": 65534,
-   "description": "UDP destination port",
-   "source": "mnset-ui validator Validators.min(1)/max(65534)"
-  },
-  {
-   "match": "**.src_udp_port",
-   "min": 1,
-   "max": 65534,
-   "description": "UDP source port",
-   "source": "mnset-ui validator Validators.min(1)/max(65534)"
-  },
-  {
-   "match": "self.syslog.config.port",
-   "min": 1,
-   "max": 65535,
-   "description": "syslog collector UDP port",
-   "source": "IANA port range"
-  },
-  {
-   "match": "self.system.smpte_network.2022-7.class",
-   "enum": {
-    "a": "Class A (10 ms)",
-    "b": "Class B (50 ms)",
-    "d": "Class D (150 µs)"
-   },
-   "description": "2022-7 Class (path differential tolerance)",
-   "source": "mnset-ui enum list + label '2022-7 Class:'"
-  },
-  {
-   "match": "**.network.pkt_cnt",
-   "access": "R",
-   "unit": "packets",
-   "description": "Packet count on this leg since reset",
-   "source": "mnset-ui label 'Packet count:'"
-  },
-  {
-   "match": "**.network.*.pkt_cnt",
-   "access": "R",
-   "unit": "packets",
-   "description": "Packet count on this leg since reset",
-   "source": "mnset-ui label 'Packet count:'"
-  },
-  {
-   "match": "**.rtp_stream_info.*.status.pkt_rate",
-   "access": "R",
-   "unit": "pkt/s",
-   "description": "RTP packet rate on this leg",
-   "source": "field name"
-  },
-  {
-   "match": "**.rtp_stream_info.*.status.sequence_error",
-   "access": "R",
-   "unit": "packets",
-   "description": "Packet Sync Errors on this leg",
-   "source": "mnset-ui label 'Packet Sync Errors:'"
-  },
-  {
-   "match": "**.rtp_stream_info.*.status.pkt_cnt",
-   "access": "R",
-   "unit": "packets",
-   "description": "Packet count on this leg",
-   "source": "mnset-ui label 'Packet count:'"
-  },
-  {
-   "match": "port.*.sfp_ddm_info.temperature.*",
-   "unit": "°C",
-   "description": "SFP module temperature (DDM)",
-   "source": "SFF-8472 DDM; mnset-ui label 'Temperature:'"
-  },
-  {
-   "match": "port.*.sfp_ddm_info.vcc.*",
-   "unit": "V",
-   "description": "SFP supply voltage (DDM)",
-   "source": "SFF-8472 DDM"
-  },
-  {
-   "match": "self.system.core_temp",
-   "access": "R",
-   "unit": "°C",
-   "description": "Core Temperature",
-   "source": "mnset-ui label 'Core Temperature:'; same scale as the DDM temperatures"
-  },
-  {
-   "match": "self.system.core_voltage",
-   "access": "R",
-   "description": "Core Voltage",
-   "source": "mnset-ui label 'Core Voltage:' (unit not published)"
-  },
-  {
-   "match": "telemetry.node.refclk.offset_from_master",
-   "description": "PTP Offset from Master",
-   "source": "mnset-ui label 'Offset from Master:' (unit not published)"
-  },
-  {
-   "match": "telemetry.node.refclk.mean_delay",
-   "description": "PTP Mean delay",
-   "source": "mnset-ui label 'Mean delay:' (unit not published)"
-  },
-  {
-   "match": "refclk.delay_req",
-   "description": "PTP Delay Request interval (log2 seconds, IEEE 1588 logMinDelayReqInterval)",
-   "source": "mnset-ui label 'Delay Request:'; IEEE 1588"
-  },
-  {
-   "match": "telemetry.node.interfaces.e1.rx_bw",
-   "description": "Primary RX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "telemetry.node.interfaces.e1.tx_bw",
-   "description": "Primary TX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "telemetry.node.interfaces.e2.rx_bw",
-   "description": "Secondary RX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "telemetry.node.interfaces.e2.tx_bw",
-   "description": "Secondary TX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "telemetry.node.interfaces.oob.rx_bw",
-   "description": "Management RX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "telemetry.node.interfaces.oob.tx_bw",
-   "description": "Management TX Bandwidth",
-   "source": "mnset-ui label (unit not published)"
-  },
-  {
-   "match": "clean_switch.*.clean_switch.igmp_setup_delay",
-   "unit": "ms",
-   "description": "Switching Defer Time",
-   "source": "mnset-ui label 'Switching Defer Time (ms):'"
-  },
-  {
-   "match": "sdi_output.*.line_offset.usec_offset",
-   "unit": "µs",
-   "description": "output timing offset",
-   "source": "field name"
-  },
-  {
-   "match": "sdi_output.*.line_offset.audio_delay",
-   "description": "Audio delay",
-   "source": "mnset-ui label 'Audio delay:' (unit not published)"
-  },
-  {
-   "match": "sdi_output.*.line_offset.applied_audio_delay",
-   "access": "R",
-   "description": "Applied Audio delay",
-   "source": "mnset-ui label 'Applied Audio delay:' (unit not published)"
-  },
-  {
-   "match": "lldp.neighbor.*.ttl",
-   "unit": "s",
-   "description": "LLDP Neighbor TTL",
-   "source": "mnset-ui label 'LLDP Neighbor TTL:'; IEEE 802.1AB TTL is seconds"
-  },
-  {
-   "match": "flows.*.format.format_code_rate",
-   "description": "video format code (rate part) — value_name is the format the six format_code_* select together; the enum lists every format this program accepts",
-   "source": "mnset-ui VIDEO_FORMATS table"
-  },
-  {
-   "match": "self.system.fan_speed",
-   "access": "R",
-   "description": "fan speed (measured)",
-   "source": "measured value; MN SET shows it read-only"
-  },
-  {
-   "match": "self.system.uptime",
-   "access": "R",
-   "description": "uptime since boot",
-   "source": "measured value"
-  },
-  {
-   "match": "self.system.current_time",
-   "access": "R",
-   "description": "module clock",
-   "source": "measured value"
-  },
-  {
-   "match": "sdi_output.*.line_offset.status",
-   "access": "R",
-   "description": "line offset status",
-   "source": "status field"
-  },
-  {
-   "match": "clean_switch.*.clean_switch.status",
-   "access": "R",
-   "description": "clean switch status",
-   "source": "status field"
-  },
-  {
-   "match": "clean_switch.*.clean_switch.switch_time",
-   "access": "R",
-   "description": "clean switch: last switch time",
-   "source": "status field"
-  },
-  {
-   "match": "refclk.status",
-   "access": "R",
-   "description": "PTP lock status",
-   "source": "status field"
-  },
-  {
-   "match": "refclk.locked_interface",
-   "access": "R",
-   "description": "interface the PTP lock came from",
-   "source": "status field"
-  },
-  {
-   "match": "self.interfaces.*.current_ip",
-   "access": "R",
-   "description": "address in use (static_ip is the setting)",
-   "source": "current_* vs static_* naming"
-  },
-  {
-   "match": "self.interfaces.*.current_gateway",
-   "access": "R",
-   "description": "gateway in use (static_gateway is the setting)",
-   "source": "current_* vs static_* naming"
-  },
-  {
-   "match": "self.interfaces.*.mac_address",
-   "access": "R",
-   "description": "interface MAC",
-   "source": "hardware identity"
+  "model": "FusioN6",
+  "note": "Per-model dictionary: what the module does not publish. Every entry names its source; nothing is guessed. Patterns: '*' matches one path segment (a uuid, an index, a name); a leading '**' matches any number of leading segments. Poll plan: on_change false on the health rows: a measurement is judged per sample (a counter that stopped, a link that is still down), a setting only when it changes.",
+  "entries": [
+    {
+      "match": "self.syslog.config.port",
+      "min": 1,
+      "max": 65535,
+      "description": "syslog collector UDP port",
+      "source": "IANA port range"
+    },
+    {
+      "match": "self.system.smpte_network.2022-7.class",
+      "enum": {
+        "a": "Class A (10 ms)",
+        "b": "Class B (50 ms)",
+        "d": "Class D (150 µs)"
+      },
+      "description": "2022-7 Class (path differential tolerance)",
+      "source": "mnset-ui enum list + label '2022-7 Class:'"
+    },
+    {
+      "match": "**.network.pkt_cnt",
+      "access": "R",
+      "unit": "packets",
+      "description": "Packet count on this leg since reset",
+      "source": "mnset-ui label 'Packet count:'"
+    },
+    {
+      "match": "**.network.*.pkt_cnt",
+      "access": "R",
+      "unit": "packets",
+      "description": "Packet count on this leg since reset",
+      "source": "mnset-ui label 'Packet count:'"
+    },
+    {
+      "match": "**.rtp_stream_info.*.status.pkt_rate",
+      "access": "R",
+      "unit": "pkt/s",
+      "description": "RTP packet rate on this leg",
+      "source": "field name"
+    },
+    {
+      "match": "**.rtp_stream_info.*.status.sequence_error",
+      "access": "R",
+      "unit": "packets",
+      "description": "Packet Sync Errors on this leg",
+      "source": "mnset-ui label 'Packet Sync Errors:'"
+    },
+    {
+      "match": "**.rtp_stream_info.*.status.pkt_cnt",
+      "access": "R",
+      "unit": "packets",
+      "description": "Packet count on this leg",
+      "source": "mnset-ui label 'Packet count:'"
+    },
+    {
+      "match": "port.*.sfp_ddm_info.temperature.*",
+      "unit": "°C",
+      "description": "SFP module temperature (DDM)",
+      "source": "SFF-8472 DDM; mnset-ui label 'Temperature:'"
+    },
+    {
+      "match": "port.*.sfp_ddm_info.vcc.*",
+      "unit": "V",
+      "description": "SFP supply voltage (DDM)",
+      "source": "SFF-8472 DDM"
+    },
+    {
+      "match": "self.system.core_temp",
+      "access": "R",
+      "unit": "°C",
+      "description": "Core Temperature",
+      "source": "mnset-ui label 'Core Temperature:'; same scale as the DDM temperatures"
+    },
+    {
+      "match": "self.system.core_voltage",
+      "access": "R",
+      "description": "Core Voltage",
+      "source": "mnset-ui label 'Core Voltage:' (unit not published)"
+    },
+    {
+      "match": "telemetry.node.refclk.offset_from_master",
+      "description": "PTP Offset from Master",
+      "source": "mnset-ui label 'Offset from Master:' (unit not published)"
+    },
+    {
+      "match": "telemetry.node.refclk.mean_delay",
+      "description": "PTP Mean delay",
+      "source": "mnset-ui label 'Mean delay:' (unit not published)"
+    },
+    {
+      "match": "refclk.delay_req",
+      "description": "PTP Delay Request interval (log2 seconds, IEEE 1588 logMinDelayReqInterval)",
+      "source": "mnset-ui label 'Delay Request:'; IEEE 1588"
+    },
+    {
+      "match": "telemetry.node.interfaces.e1.rx_bw",
+      "description": "Primary RX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "telemetry.node.interfaces.e1.tx_bw",
+      "description": "Primary TX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "telemetry.node.interfaces.e2.rx_bw",
+      "description": "Secondary RX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "telemetry.node.interfaces.e2.tx_bw",
+      "description": "Secondary TX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "telemetry.node.interfaces.oob.rx_bw",
+      "description": "Management RX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "telemetry.node.interfaces.oob.tx_bw",
+      "description": "Management TX Bandwidth",
+      "source": "mnset-ui label (unit not published)"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.igmp_setup_delay",
+      "unit": "ms",
+      "description": "Switching Defer Time",
+      "source": "mnset-ui label 'Switching Defer Time (ms):'"
+    },
+    {
+      "match": "sdi_output.*.line_offset.usec_offset",
+      "unit": "µs",
+      "description": "output timing offset",
+      "source": "field name"
+    },
+    {
+      "match": "sdi_output.*.line_offset.audio_delay",
+      "description": "Audio delay",
+      "source": "mnset-ui label 'Audio delay:' (unit not published)"
+    },
+    {
+      "match": "sdi_output.*.line_offset.applied_audio_delay",
+      "access": "R",
+      "description": "Applied Audio delay",
+      "source": "mnset-ui label 'Applied Audio delay:' (unit not published)"
+    },
+    {
+      "match": "lldp.neighbor.*.ttl",
+      "unit": "s",
+      "description": "LLDP Neighbor TTL",
+      "source": "mnset-ui label 'LLDP Neighbor TTL:'; IEEE 802.1AB TTL is seconds"
+    },
+    {
+      "match": "flows.*.format.format_code_rate",
+      "description": "video format code (rate part) — value_name is the format the six format_code_* select together; the enum lists every format this program accepts",
+      "source": "mnset-ui VIDEO_FORMATS table"
+    },
+    {
+      "match": "self.system.fan_speed",
+      "access": "R",
+      "description": "fan speed (measured)",
+      "source": "measured value; MN SET shows it read-only"
+    },
+    {
+      "match": "self.system.uptime",
+      "access": "R",
+      "description": "uptime since boot",
+      "source": "measured value"
+    },
+    {
+      "match": "self.system.current_time",
+      "access": "R",
+      "description": "module clock",
+      "source": "measured value"
+    },
+    {
+      "match": "sdi_output.*.line_offset.status",
+      "access": "R",
+      "description": "line offset status",
+      "source": "status field"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.status",
+      "access": "R",
+      "description": "clean switch status",
+      "source": "status field"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.switch_time",
+      "access": "R",
+      "description": "clean switch: last switch time",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.status",
+      "access": "R",
+      "description": "PTP lock status",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.locked_interface",
+      "access": "R",
+      "description": "interface the PTP lock came from",
+      "source": "status field"
+    },
+    {
+      "match": "self.interfaces.*.current_ip",
+      "access": "R",
+      "description": "address in use (static_ip is the setting)",
+      "source": "current_* vs static_* naming"
+    },
+    {
+      "match": "self.interfaces.*.current_gateway",
+      "access": "R",
+      "description": "gateway in use (static_gateway is the setting)",
+      "source": "current_* vs static_* naming"
+    },
+    {
+      "match": "self.interfaces.*.mac_address",
+      "access": "R",
+      "description": "interface MAC",
+      "source": "hardware identity"
+    },
+    {
+      "match": "**.dst_udp_port",
+      "kind": "int",
+      "min": 0,
+      "max": 65535,
+      "note": "0 = unassigned",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.src_udp_port",
+      "kind": "int",
+      "min": 0,
+      "max": 65535,
+      "note": "0 = unassigned",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.dst_ip_addr",
+      "kind": "ip",
+      "note": "the module wraps a bad octet modulo 256 (999.1.1.1 -> 231.1.1.1): validated here; a new address re-derives dst_mac, and setting the address back does not restore the MAC",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.src_ip_addr",
+      "kind": "ip",
+      "note": "the module wraps a bad octet modulo 256: validated here",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.igmp_src_ip",
+      "kind": "ip",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.dst_mac",
+      "format": "mac",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.rtp_pt",
+      "kind": "int",
+      "min": 0,
+      "max": 127,
+      "note": "the module accepts 128: range enforced here",
+      "source": "RFC 3550 5.1: 7-bit payload type; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.ssrc",
+      "kind": "uint",
+      "min": 0,
+      "max": 4294967295,
+      "source": "RFC 3550: 32-bit; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.ttl",
+      "kind": "int",
+      "min": 0,
+      "max": 255,
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.dscp",
+      "kind": "int",
+      "min": 0,
+      "max": 63,
+      "note": "the module accepts 64: range enforced here",
+      "source": "RFC 2474: 6-bit DSCP; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.vlan_tag",
+      "kind": "int",
+      "min": 0,
+      "max": 4095,
+      "source": "IEEE 802.1Q 12-bit VID; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.network.enable",
+      "kind": "bool",
+      "note": "the module stores any value other than 1 as 0",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "**.network.*.enable",
+      "kind": "bool",
+      "note": "the module stores any value other than 1 as 0",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "**.sender_type",
+      "kind": "int",
+      "min": 0,
+      "max": 1,
+      "note": "the module also accepts 2: range enforced here",
+      "source": "MN SET web bundle (read as documentation, never as a control path) (validator [0,1]); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_src_ip",
+      "kind": "bool",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_src_udp",
+      "kind": "bool",
+      "source": "same family as pkt_filter_src_ip; not probed"
+    },
+    {
+      "match": "**.pkt_filter_dst_udp",
+      "kind": "bool",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_dst_mac",
+      "kind": "bool",
+      "source": "same family as pkt_filter_src_ip; not probed"
+    },
+    {
+      "match": "**.pkt_filter_vlan",
+      "kind": "bool",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_dst_ip",
+      "kind": "bool",
+      "access": "R",
+      "note": "fixed at 1 on a receiver: 0 is refused",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_src_mac",
+      "kind": "bool",
+      "access": "R",
+      "note": "accepted but not applied on a receiver",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.pkt_filter_ssrc",
+      "kind": "bool",
+      "access": "R",
+      "note": "accepted but not applied on a receiver",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.switch_state",
+      "access": "R",
+      "note": "status: writes are ignored",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.network.pkt_cnt",
+      "kind": "uint",
+      "source": "counter"
+    },
+    {
+      "match": "**.network.*.pkt_cnt",
+      "kind": "uint",
+      "source": "counter"
+    },
+    {
+      "match": "flows.*.id",
+      "format": "uuid",
+      "access": "R",
+      "note": "writes are ignored",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.source_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "flows.*.version",
+      "kind": "int",
+      "access": "R",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.type",
+      "kind": "int",
+      "access": "R",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.cdis",
+      "kind": "enum",
+      "values": [
+        "single",
+        "2si",
+        "sqdiv"
+      ],
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "flows.*.format.format_type",
+      "kind": "enum",
+      "values": [
+        "video",
+        "audio",
+        "ancillary"
+      ],
+      "access": "R",
+      "note": "set by the program: writes are ignored",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.range",
+      "kind": "enum",
+      "values": [
+        "NARROW",
+        "FULL",
+        "FULLPROTECT"
+      ],
+      "source": "SMPTE ST 2110-20 RANGE; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.format_tcs",
+      "kind": "enum",
+      "values": [
+        "SDR",
+        "PQ",
+        "HLG"
+      ],
+      "note": "LINEAR, BT2100LIN*, ST2065-1, ST428-1, DENSITY, UNSPECIFIED are refused",
+      "source": "SMPTE ST 2110-20 TCS subset; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.format_colorimetry",
+      "kind": "enum",
+      "values": [
+        "BT709",
+        "BT2020",
+        "BT2100"
+      ],
+      "note": "BT601, ST2065-1/-3, UNSPECIFIED, XYZ are refused",
+      "source": "SMPTE ST 2110-20 colorimetry subset; probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.aud_format",
+      "kind": "enum",
+      "values": [
+        "dash-30",
+        "dash-31"
+      ],
+      "labels": {
+        "dash-30": "Uncompressed (ST 2110-30)",
+        "dash-31": "Compressed (ST 2110-31)"
+      },
+      "source": "MN SET web bundle (read as documentation, never as a control path); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.aud_ptime_idx",
+      "kind": "enum",
+      "values": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "labels": {
+        "0": "1 ms",
+        "1": "125 us",
+        "2": "250 us",
+        "3": "333 us"
+      },
+      "source": "MN SET web bundle (read as documentation, never as a control path) (get2110AudioPackageTime); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.aud_chan_cnt",
+      "kind": "int",
+      "min": 1,
+      "max": 16,
+      "note": "the module accepts 0 and 17: range enforced here",
+      "source": "16 channels per SDI (sdi_aud_chans_cfg ch0-ch15); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.anc_flow_profile",
+      "kind": "int",
+      "min": 1,
+      "max": 2,
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.format_code_valid",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "flows.*.format.format_code_format",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.format_code_mode",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.format_code_p_scan",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.format_code_t_scan",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.format_code_rate",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object; an audio flow keeps 48000",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.format_code_sampling",
+      "kind": "int",
+      "note": "one of six codes validated together: write the format node as one JSON object",
+      "source": "MN SET VIDEO_FORMATS table"
+    },
+    {
+      "match": "flows.*.format.sampling_format",
+      "kind": "int",
+      "access": "R",
+      "note": "follows the format codes: a direct write is refused",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.format_bit_depth",
+      "kind": "int",
+      "access": "R",
+      "note": "follows the format codes: a direct write is refused",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "flows.*.format.vpid_code",
+      "kind": "int",
+      "min": 0,
+      "max": 255,
+      "source": "SMPTE ST 352 payload byte; not probed"
+    },
+    {
+      "match": "flows.*.format.sdp_file_url",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "flows.*.format.mapping.*",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "receivers.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "receivers.*.device_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "receivers.*.flow_id.*",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "receivers.*.format",
+      "kind": "enum",
+      "values": [
+        "video",
+        "audio",
+        "ancillary"
+      ],
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "receivers.*.version",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "senders.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "senders.*.device_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "senders.*.flow_id.*",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "senders.*.format",
+      "kind": "enum",
+      "values": [
+        "video",
+        "audio",
+        "ancillary"
+      ],
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "senders.*.version",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_output.*.input_signal_output_mode.loss_of_input",
+      "kind": "enum",
+      "values": [
+        "black",
+        "freeze",
+        "blue",
+        "no_signal"
+      ],
+      "labels": {
+        "black": "Black",
+        "freeze": "Freeze",
+        "blue": "Blue",
+        "no_signal": "No Signal"
+      },
+      "note": "no freeze on UDC models",
+      "source": "MN SET web bundle (read as documentation, never as a control path) (lossInputValues); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "sdi_output.*.vpid.source",
+      "kind": "enum",
+      "values": [
+        "regenerated",
+        "override"
+      ],
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "sdi_output.*.vpid.override_value",
+      "format": "hex32",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.offset_mode",
+      "kind": "enum",
+      "values": [
+        "0",
+        "1"
+      ],
+      "labels": {
+        "0": "MicroSeconds units",
+        "1": "Video lines"
+      },
+      "note": "the module also accepts 2 and 3: restricted to the documented values",
+      "source": "MN SET web bundle (read as documentation, never as a control path) (0 = microseconds, 1 = video lines); probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.frame_buffer",
+      "kind": "bool",
+      "note": "the module stores 2 as 0",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.usec_offset",
+      "kind": "int",
+      "note": "applies with offset_mode 0",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.v_offset",
+      "kind": "int",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.h_offset",
+      "kind": "int",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.line_offset.audio_delay",
+      "kind": "int",
+      "min": 0,
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "**.sdi_aud_chans_cfg.*",
+      "format": "audio_map",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "sdi_output.*.label",
+      "access": "R",
+      "note": "writes are ignored",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "sdi_output.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_output.*.device_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_output.*.version",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_input.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_input.*.device_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_input.*.version",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_input.*.line_offset.frame_sync",
+      "kind": "bool",
+      "note": "licensed feature frame_sync: HTTP 402 when unlicensed",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "sdi_input.*.line_offset.video_rate_convert",
+      "note": "values unsourced: only 'auto' seen; off/on refused",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "sdi_input.*.frame_sync_audio.sdi_in_genlock",
+      "kind": "enum",
+      "values": [
+        "freerun",
+        "locked"
+      ],
+      "labels": {
+        "freerun": "Free running source",
+        "locked": "Genlocked source"
+      },
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "sdi_audio.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_audio.*.device_id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "sdi_audio.*.version",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.mode",
+      "kind": "enum",
+      "values": [
+        "disabled",
+        "enabled",
+        "video_only"
+      ],
+      "note": "licensed feature clean_switch",
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.type",
+      "kind": "enum",
+      "values": [
+        "bbm",
+        "mbb"
+      ],
+      "labels": {
+        "bbm": "break before make",
+        "mbb": "make before break"
+      },
+      "note": "licensed feature clean_switch",
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.timeout_option",
+      "kind": "enum",
+      "values": [
+        "switch",
+        "revert"
+      ],
+      "note": "licensed feature clean_switch",
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "clean_switch.*.clean_switch.igmp_setup_delay",
+      "kind": "int",
+      "min": 0,
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.api_info.api_version_number",
+      "kind": "int",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.manual_ctrl",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.server_mode",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.mode",
+      "kind": "int",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.selected_uuid",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.uuid.*",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "route.bulk.sender.*.*.id",
+      "format": "uuid",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.ip_addr",
+      "kind": "ip",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.gateway",
+      "kind": "ip",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.subnet_mask",
+      "kind": "ip",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.hostname",
+      "format": "hostname",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.local_mac",
+      "format": "mac",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.port",
+      "kind": "int",
+      "min": 1,
+      "max": 65535,
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.dhcp_enable",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.ctl_vlan_enable",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.data_vlan_enable",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.ctl_vlan_id",
+      "kind": "int",
+      "min": 0,
+      "max": 4095,
+      "source": "IEEE 802.1Q; value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.data_vlan_id",
+      "kind": "int",
+      "min": 0,
+      "max": 4095,
+      "source": "IEEE 802.1Q; value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.ctl_vlan_pcp",
+      "kind": "int",
+      "min": 0,
+      "max": 7,
+      "source": "IEEE 802.1Q PCP; value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.version",
+      "kind": "int",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.bootstatus1",
+      "kind": "int",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.ipconfig.bootstatus2",
+      "kind": "int",
+      "access": "R",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.interfaces.*.static_ip",
+      "format": "cidr",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.interfaces.*.static_gateway",
+      "kind": "ip",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.static_route.*.destination",
+      "format": "cidr",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.static_route.*.gateway",
+      "kind": "ip",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.phy.*.fec.scheme",
+      "kind": "enum",
+      "values": [
+        "none",
+        "rs"
+      ],
+      "labels": {
+        "none": "off",
+        "rs": "RS-FEC"
+      },
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    },
+    {
+      "match": "self.protocols.mdns_enable",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.protocols.sap_announcement_enable",
+      "kind": "bool",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.syslog.config.server",
+      "kind": "ip",
+      "source": "2026-09-28 live: set to the collector and delivering"
+    },
+    {
+      "match": "self.system.reboot",
+      "kind": "action",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.system.counters_reset",
+      "kind": "action",
+      "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "self.system.config_reset",
+      "kind": "action",
+      "access": "R",
+      "note": "1 is refused (400): a factory reset is done by hand at the rack",
+      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+    },
+    {
+      "match": "self.system.flex_port_mode",
+      "kind": "enum",
+      "values": [
+        "RT",
+        "OOB"
+      ],
+      "labels": {
+        "RT": "management over the media ports",
+        "OOB": "management port"
+      },
+      "note": "do not change remotely: it can remove the only path to the module",
+      "source": "MN SET web bundle (read as documentation, never as a control path)"
+    }
+  ],
+  "sibling_thresholds": [
+    {
+      "match": "port.*.sfp_ddm_info.*.current",
+      "min_from": "low_alarm",
+      "max_from": "high_alarm",
+      "source": "module: the DDM alarm thresholds published next to the value"
+    }
+  ],
+  "poll": {
+    "defaults": {
+      "interval": "60s"
+    },
+    "oids": [
+      {
+        "match": "**.network.pkt_cnt",
+        "interval": "15s",
+        "source": "stream presence: the counter must climb",
+        "on_change": false
+      },
+      {
+        "match": "**.network.*.pkt_cnt",
+        "interval": "15s",
+        "on_change": false
+      },
+      {
+        "match": "**.rtp_stream_info.*.status.pkt_rate",
+        "interval": "15s",
+        "on_change": false
+      },
+      {
+        "match": "**.rtp_stream_info.*.status.sequence_error",
+        "interval": "15s",
+        "on_change": false
+      },
+      {
+        "match": "telemetry.node.**",
+        "interval": "10s",
+        "source": "health, links, PTP as the module summarises them",
+        "on_change": false
+      },
+      {
+        "match": "refclk.status",
+        "interval": "10s",
+        "on_change": false
+      },
+      {
+        "match": "refclk.locked_interface",
+        "interval": "10s",
+        "on_change": false
+      },
+      {
+        "match": "port.*.link",
+        "interval": "10s",
+        "on_change": false
+      },
+      {
+        "match": "port.*.sfp_ddm_info.*.current",
+        "interval": "30s",
+        "on_change": false
+      },
+      {
+        "match": "self.system.core_temp",
+        "interval": "30s",
+        "on_change": false
+      },
+      {
+        "match": "self.system.fan_speed",
+        "interval": "30s",
+        "on_change": false
+      },
+      {
+        "match": "flows.*.network.**",
+        "interval": "60s",
+        "source": "configuration drift"
+      },
+      {
+        "match": "flows.*.format.**",
+        "interval": "60s"
+      },
+      {
+        "match": "self.ipconfig.**",
+        "interval": "60s"
+      },
+      {
+        "match": "self.interfaces.**",
+        "interval": "60s"
+      },
+      {
+        "match": "self.syslog.**",
+        "interval": "60s"
+      },
+      {
+        "match": "self.protocols.**",
+        "interval": "60s"
+      },
+      {
+        "match": "refclk.**",
+        "interval": "60s"
+      },
+      {
+        "match": "sdi_output.**",
+        "interval": "60s"
+      },
+      {
+        "match": "clean_switch.**",
+        "interval": "60s"
+      }
+    ]
   }
- ],
- "sibling_thresholds": [
-  {
-   "match": "port.*.sfp_ddm_info.*.current",
-   "min_from": "low_alarm",
-   "max_from": "high_alarm",
-   "source": "module: the DDM alarm thresholds published next to the value"
-  }
- ],
- "poll": {
-  "defaults": {
-   "interval": "60s"
-  },
-  "oids": [
-   {
-    "match": "**.network.pkt_cnt",
-    "interval": "15s",
-    "source": "stream presence: the counter must climb",
-    "on_change": false
-   },
-   {
-    "match": "**.network.*.pkt_cnt",
-    "interval": "15s",
-    "on_change": false
-   },
-   {
-    "match": "**.rtp_stream_info.*.status.pkt_rate",
-    "interval": "15s",
-    "on_change": false
-   },
-   {
-    "match": "**.rtp_stream_info.*.status.sequence_error",
-    "interval": "15s",
-    "on_change": false
-   },
-   {
-    "match": "telemetry.node.**",
-    "interval": "10s",
-    "source": "health, links, PTP as the module summarises them",
-    "on_change": false
-   },
-   {
-    "match": "refclk.status",
-    "interval": "10s",
-    "on_change": false
-   },
-   {
-    "match": "refclk.locked_interface",
-    "interval": "10s",
-    "on_change": false
-   },
-   {
-    "match": "port.*.link",
-    "interval": "10s",
-    "on_change": false
-   },
-   {
-    "match": "port.*.sfp_ddm_info.*.current",
-    "interval": "30s",
-    "on_change": false
-   },
-   {
-    "match": "self.system.core_temp",
-    "interval": "30s",
-    "on_change": false
-   },
-   {
-    "match": "self.system.fan_speed",
-    "interval": "30s",
-    "on_change": false
-   },
-   {
-    "match": "flows.*.network.**",
-    "interval": "60s",
-    "source": "configuration drift"
-   },
-   {
-    "match": "flows.*.format.**",
-    "interval": "60s"
-   },
-   {
-    "match": "self.ipconfig.**",
-    "interval": "60s"
-   },
-   {
-    "match": "self.interfaces.**",
-    "interval": "60s"
-   },
-   {
-    "match": "self.syslog.**",
-    "interval": "60s"
-   },
-   {
-    "match": "self.protocols.**",
-    "interval": "60s"
-   },
-   {
-    "match": "refclk.**",
-    "interval": "60s"
-   },
-   {
-    "match": "sdi_output.**",
-    "interval": "60s"
-   },
-   {
-    "match": "clean_switch.**",
-    "interval": "60s"
-   }
-  ]
- }
 }

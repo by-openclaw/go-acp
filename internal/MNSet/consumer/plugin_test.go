@@ -251,7 +251,7 @@ func TestWalkDescendsListingsAndRecordsTheRest(t *testing.T) {
 	}
 	// An item under a collection, with the right kind and the write bit.
 	o, ok := byPath["flows.fee338d3.network.1.dst_ip_addr"]
-	if !ok || o.Kind != consumer.KindString || o.Value.Str != "239.0.1.3" || o.Access&accessWrite == 0 || o.Label != "CH8 · rx ch8 flow 0 pri · network.1.dst_ip_addr" {
+	if !ok || o.Kind != consumer.KindIPAddr || o.Value.IPAddr != [4]byte{239, 0, 1, 3} || o.Value.Str != "239.0.1.3" || o.Access&accessWrite == 0 || o.Label != "CH8 · rx ch8 flow 0 pri · network.1.dst_ip_addr" {
 		t.Errorf("flows leaf = %+v (found %v)", o, ok)
 	}
 	// Integer stays integer; float stays float; null is raw; bool is bool.
@@ -437,7 +437,7 @@ func TestSetValueErrors(t *testing.T) {
 		{"self.information.serial_number", "read-only", consumer.Value{Str: "x"}},
 		{"flows.fee338d3.network.9.dst_ip_addr", "not-found", consumer.Value{Str: "x"}},
 		{"self.syslog.config.enable", "not a boolean", consumer.Value{Str: "maybe"}},
-		{"flows.fee338d3.network.0.dst_udp_port", "not a number", consumer.Value{Str: "high"}},
+		{"flows.fee338d3.network.0.dst_udp_port", "not a whole number", consumer.Value{Str: "high"}},
 		{"self.syslog.config", "node takes a JSON object", consumer.Value{Str: "x"}},
 		{"nosuch.field", "not listed under /", consumer.Value{Str: "x"}},
 		{"sdp.fee338d3", "text document", consumer.Value{Str: "x"}},

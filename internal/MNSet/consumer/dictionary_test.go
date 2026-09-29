@@ -99,8 +99,8 @@ func TestWalkAnnotatesUnitsRangesEnumsAndFormatNames(t *testing.T) {
 	if o := byPath["port.3.sfp_ddm_info.rx_power.current"]; o.Min != nil || o.Max != nil {
 		t.Errorf("a non-numeric current must not take thresholds: %v %v", o.Min, o.Max)
 	}
-	// validator range from MN SET
-	if o := byPath["flows.fee338d3.network.dst_udp_port"]; o.Min != float64(1) || o.Max != float64(65534) {
+	// the range the module itself accepts (0 = unassigned on an idle flow)
+	if o := byPath["flows.fee338d3.network.dst_udp_port"]; o.Min != float64(0) || o.Max != float64(65535) {
 		t.Errorf("port range = %v..%v", o.Min, o.Max)
 	}
 	// enum with value name
