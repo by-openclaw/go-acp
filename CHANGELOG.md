@@ -7,6 +7,19 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.28.0](https://github.com/by-openclaw/go-acp/compare/v0.27.0...v0.28.0) (2026-09-29)
+
+
+### Features
+
+* **observability:** device syslog into Loki, stack deployed by Ansible ([#1177](https://github.com/by-openclaw/go-acp/issues/1177)) ([ae73e15](https://github.com/by-openclaw/go-acp/commit/ae73e1515f181939c13789992dfef4fe3335e6cf)), closes [#1176](https://github.com/by-openclaw/go-acp/issues/1176)
+
+
+### Bug Fixes
+
+* **ccm:** write fields in the device's own type, answer with the read-back ([#1187](https://github.com/by-openclaw/go-acp/issues/1187)) ([3eeaa52](https://github.com/by-openclaw/go-acp/commit/3eeaa529992861f5b6748bf5b7aef872812c4e49)), closes [#1186](https://github.com/by-openclaw/go-acp/issues/1186)
+* **observability:** FusioN syslog is RFC 5424 over UDP — parse it as such ([#1182](https://github.com/by-openclaw/go-acp/issues/1182)) ([b7786e6](https://github.com/by-openclaw/go-acp/commit/b7786e6ecb9a887c91f7c731410a107196d3dd3a)), closes [#1181](https://github.com/by-openclaw/go-acp/issues/1181)
+
 ## [0.27.0](https://github.com/by-openclaw/go-acp/compare/v0.26.0...v0.27.0) (2026-09-27)
 
 
