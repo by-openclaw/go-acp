@@ -204,6 +204,8 @@ func TestOnlyTheNMOSDocumentUnderDiagIsWritable(t *testing.T) {
 		"self/license":     false,
 		"flows/fee338d3":   true,
 		"telemetry/node":   false,
+		"receivers":        false,
+		"senders":          false,
 	} {
 		if got := isWritable(url); got != want {
 			t.Errorf("isWritable(%q) = %v, want %v", url, got, want)

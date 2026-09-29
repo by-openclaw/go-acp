@@ -24,7 +24,10 @@ const maxListingDepth = 6
 // status. Sourced from the MN SET Rest page (GET/PUT enabled) and the
 // site procedure.
 var writable = map[string]bool{
-	"flows": true, "receivers": true, "senders": true, "route": true,
+	// receivers and senders are the module's NMOS pointer records: it
+	// refuses any PUT on them, even an unchanged write-back (400,
+	// 2026-09-29), so they are read-only here too.
+	"flows": true, "route": true,
 	"sdi": true, "sdi_output": true, "sdi_input": true, "sdi_audio": true,
 	"clean_switch": true, "refclk": true,
 	"self/ipconfig": true, "self/syslog": true, "self/protocols": true,

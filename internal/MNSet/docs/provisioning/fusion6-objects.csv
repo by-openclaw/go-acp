@@ -7,7 +7,7 @@ section,object,kind,access,values_or_range,unit,example_value,note,source
 1 MGMT,self.information.decap_count,int,R,,,6,,
 1 MGMT,self.information.input_media.*,string,R,,,st2110,,
 1 MGMT,self.information.output_media.*,string,R,,,st2110,,
-1 MGMT,self.ipconfig.hostname,string,RW,hostname,,emsfp-a2-10-0c,,value shape on the module; not probed (management field)
+1 MGMT,self.ipconfig.hostname,string,RW,hostname,,emsfp-a2-10-0c,"prefix of every IS-04 label (receivers, senders, flows)","probe 2026-09-29, FusioN6 fw 0x68cd783f: IS-04 labels read"
 1 MGMT,self.ipconfig.local_mac,string,R,mac,,40:a3:6b:a2:10:0c,,value shape on the module; not probed (management field)
 1 MGMT,self.ipconfig.dhcp_enable,bool,RW,,,true,,value shape on the module; not probed (management field)
 1 MGMT,self.system.flex_port_mode,string,RW,RT=management over the media ports | OOB=management port,,RT,do not change remotely: it can remove the only path to the module,"MN SET web bundle (read as documentation, never as a control path)"
@@ -43,7 +43,6 @@ section,object,kind,access,values_or_range,unit,example_value,note,source
 "2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.locked_interface,string,R,,,e1,,status field
 "2 NETWORK (RED e1 / BLUE e2, PTP)",refclk.status,string,R,,,3,,status field
 3 CHANNELS,flows.*.name,string,RW,,,tx ch1 flow 0 pri,,
-3 CHANNELS,flows.*.label,string,RW,,,F:  0- 0- 0,,
 3 CHANNELS,flows.*.format.format_type,string,R,video | audio | ancillary,,video,set by the program: writes are ignored,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
 3 CHANNELS,flows.*.cdis,string,RW,single | 2si | sqdiv,,single,,"MN SET web bundle (read as documentation, never as a control path)"
 3 CHANNELS,flows.*.network.enable,bool,RW,,,false,the module stores any value other than 1 as 0,"probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance; MN SET web bundle (read as documentation, never as a control path)"
@@ -80,6 +79,7 @@ section,object,kind,access,values_or_range,unit,example_value,note,source
 3 CHANNELS,clean_switch.*.clean_switch.mode,string,RW,disabled | enabled | video_only,,disabled,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
 3 CHANNELS,clean_switch.*.clean_switch.type,string,RW,bbm=break before make | mbb=make before break,,bbm,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
 3 CHANNELS,clean_switch.*.clean_switch.timeout_option,string,RW,switch | revert,,switch,licensed feature clean_switch,"MN SET web bundle (read as documentation, never as a control path)"
+4 NMOS,flows.*.label,string,RW,,,F:  0- 0- 0,"on a transmit flow this IS the NMOS flow name: IS-04 flow label '<hostname> <label>', description '<label>'","probe 2026-09-29, FusioN6 fw 0x68cd783f: set CAM1-VIDEO on an idle tx flow -> IS-04 flow label and version changed; restored"
 4 NMOS,self.diag.nmos.registry_mode,string,RW,auto=Auto (DNS-SD) | manual=Manual,,manual,,"MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
 4 NMOS,self.diag.nmos.registry_address,string,RW,hostport,,10.6.250.5:8080,the IS-04 registry the module registers with when registry_mode is manual,"MN SET web bundle (read as documentation, never as a control path) (IPv4:port validator); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
 4 NMOS,self.diag.nmos.registry_address_2,string,RW,hostport,,0.0.0.0:0,backup registry; 0.0.0.0:0 = none,"MN SET web bundle (read as documentation, never as a control path); self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
@@ -90,7 +90,7 @@ section,object,kind,access,values_or_range,unit,example_value,note,source
 4 NMOS,self.diag.nmos.device_visible.*,bool,RW,,,true,one per NMOS device (channel) the module exposes,"self/diag/nmos takes a PUT (unchanged write-back 200, 2026-09-29)"
 4 NMOS,self.diag.nmos.status,string,R,,,connected,,NMOS status reported by the module
 4 NMOS,self.diag.nmos.current_registry,string,R,,,10.6.250.5:8080,,NMOS status reported by the module
-4 NMOS,receivers.*.label,string,RW,,, ,,
-4 NMOS,receivers.*.format,string,RW,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)
-4 NMOS,senders.*.label,string,RW,,, ,,
-4 NMOS,senders.*.format,string,RW,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)
+4 NMOS,receivers.*.label,string,R,,, ,not the NMOS label: IS-04 publishes '<hostname> VidRx|AudRx|AncRx <n>' (fixed); the module refuses writes to receivers,"probe 2026-09-29, FusioN6 fw 0x68cd783f: unchanged PUT on receivers -> 400; IS-04 label compared"
+4 NMOS,receivers.*.format,string,R,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)
+4 NMOS,senders.*.label,string,R,,, ,not the NMOS label: IS-04 publishes '<hostname> VidTx|AudTx|AncTx <n>' (fixed); the module refuses writes to senders,"probe 2026-09-29, FusioN6 fw 0x68cd783f: unchanged PUT on senders -> 400; IS-04 label compared"
+4 NMOS,senders.*.format,string,R,video | audio | ancillary,,audio,,value shape on the module; not probed (management field)

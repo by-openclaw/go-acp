@@ -95,7 +95,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,,,,sdi_output.b0d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,,,,sdi_output.b0d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.label,string,RW,F:  0- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.name,string,RW,rx ch1 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -105,7 +104,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.network.ssrc,uint,RW,0,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.label,string,RW,F:  0- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.name,string,RW,rx ch1 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -118,7 +116,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.label,string,RW,F:  0- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.name,string,RW,rx ch1 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -131,7 +128,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.label,string,RW,F:  0- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.name,string,RW,rx ch1 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -144,7 +140,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.label,string,RW,F:  0- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.name,string,RW,rx ch1 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -157,7 +152,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.label,string,RW,F:  0- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.name,string,RW,rx ch1 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -170,7 +164,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.label,string,RW,F:  0- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.name,string,RW,rx ch1 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -183,7 +176,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.label,string,RW,F:  0- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.name,string,RW,rx ch1 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -196,7 +188,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.label,string,RW,F:  0- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.name,string,RW,rx ch1 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -209,7 +200,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.label,string,RW,F:  0- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.name,string,RW,rx ch1 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -223,7 +213,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.label,string,RW,F:  0- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.name,string,RW,rx ch1 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.network.0.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.network.0.dst_udp_port,int,RW,0,,0..65535
@@ -250,7 +239,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.label,string,RW,F:  0- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.name,string,RW,tx ch1 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.network.0.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.network.0.dst_udp_port,int,RW,0,,0..65535
@@ -298,7 +286,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,,,,sdi_output.b1d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,,,,sdi_output.b1d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.label,string,RW,F:  1- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.name,string,RW,rx ch2 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -308,7 +295,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.network.ssrc,uint,RW,0,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.label,string,RW,F:  1- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.name,string,RW,rx ch2 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -321,7 +307,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.label,string,RW,F:  1- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.name,string,RW,rx ch2 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -334,7 +319,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.label,string,RW,F:  1- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.name,string,RW,rx ch2 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -347,7 +331,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.label,string,RW,F:  1- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.name,string,RW,rx ch2 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -360,7 +343,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.label,string,RW,F:  1- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.name,string,RW,rx ch2 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -373,7 +355,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.label,string,RW,F:  1- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.name,string,RW,rx ch2 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -386,7 +367,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.label,string,RW,F:  1- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.name,string,RW,rx ch2 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -399,7 +379,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.label,string,RW,F:  1- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.name,string,RW,rx ch2 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -412,7 +391,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.label,string,RW,F:  1- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.name,string,RW,rx ch2 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -426,7 +404,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.label,string,RW,F:  1- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.name,string,RW,rx ch2 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.network.0.dst_ip_addr,ipaddr,RW,239.65.0.4,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.network.0.dst_udp_port,int,RW,20000,,0..65535
@@ -453,7 +430,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.label,string,RW,F:  1- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.name,string,RW,rx ch2 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.network.0.dst_ip_addr,ipaddr,RW,239.1.0.4,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.network.0.dst_udp_port,int,RW,20000,,0..65535
@@ -501,7 +477,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,,,,sdi_output.b2d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,,,,sdi_output.b2d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.label,string,RW,F:  2- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.name,string,RW,rx ch3 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -511,7 +486,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.network.ssrc,uint,RW,0,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.label,string,RW,F:  2- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.name,string,RW,rx ch3 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -524,7 +498,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.label,string,RW,F:  2- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.name,string,RW,rx ch3 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -537,7 +510,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.label,string,RW,F:  2- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.name,string,RW,rx ch3 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -550,7 +522,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.label,string,RW,F:  2- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.name,string,RW,rx ch3 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -563,7 +534,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.label,string,RW,F:  2- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.name,string,RW,rx ch3 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -576,7 +546,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.label,string,RW,F:  2- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.name,string,RW,rx ch3 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -589,7 +558,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.label,string,RW,F:  2- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.name,string,RW,rx ch3 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -602,7 +570,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.label,string,RW,F:  2- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.name,string,RW,rx ch3 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -615,7 +582,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.label,string,RW,F:  2- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.name,string,RW,rx ch3 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -628,7 +594,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.label,string,RW,F:  2- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.name,string,RW,rx ch3 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -641,7 +606,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.label,string,RW,F:  2- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.name,string,RW,tx ch3 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -676,7 +640,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,,,,sdi_output.b3d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,,,,sdi_output.b3d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.label,string,RW,F:  3- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.name,string,RW,rx ch4 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -686,7 +649,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.network.ssrc,uint,RW,0,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.label,string,RW,F:  3- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.name,string,RW,rx ch4 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -699,7 +661,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.label,string,RW,F:  3- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.name,string,RW,rx ch4 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -712,7 +673,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.label,string,RW,F:  3- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.name,string,RW,rx ch4 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -725,7 +685,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.label,string,RW,F:  3- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.name,string,RW,rx ch4 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -738,7 +697,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.label,string,RW,F:  3- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.name,string,RW,rx ch4 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -751,7 +709,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.label,string,RW,F:  3- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.name,string,RW,rx ch4 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -764,7 +721,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.label,string,RW,F:  3- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.name,string,RW,rx ch4 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -777,7 +733,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.label,string,RW,F:  3- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.name,string,RW,rx ch4 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -790,7 +745,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.label,string,RW,F:  3- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.name,string,RW,rx ch4 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -803,7 +757,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.label,string,RW,F:  3- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.name,string,RW,rx ch4 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.65.0.3,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -816,7 +769,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.label,string,RW,F:  3- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.name,string,RW,rx ch4 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.1.0.3,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -830,7 +782,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,,,,sdi_input.b4d2da17-360a-4396-80a9-f620c4bb3885.line_offset.frame_sync,bool,RW,false,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.format.anc_flow_profile,int,RW,2,,1..2
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.label,string,RW,F:  4- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.name,string,RW,tx ch5 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -843,7 +794,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.network.ttl,int,RW,64,,0..255
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.format.anc_flow_profile,int,RW,2,,1..2
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.label,string,RW,F:  4- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.name,string,RW,tx ch5 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -858,7 +808,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.label,string,RW,F:  4- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.name,string,RW,tx ch5 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -873,7 +822,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.label,string,RW,F:  4- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.name,string,RW,tx ch5 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -888,7 +836,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.label,string,RW,F:  4- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.name,string,RW,tx ch5 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -903,7 +850,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.label,string,RW,F:  4- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.name,string,RW,tx ch5 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -918,7 +864,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.label,string,RW,F:  4- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.name,string,RW,tx ch5 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -933,7 +878,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.label,string,RW,F:  4- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.name,string,RW,tx ch5 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -948,7 +892,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.label,string,RW,F:  4- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.name,string,RW,tx ch5 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -963,7 +906,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.label,string,RW,F:  4- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.name,string,RW,tx ch5 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -978,7 +920,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.label,string,RW,F:  4- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.name,string,RW,tx ch5 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -993,7 +934,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.label,string,RW,F:  4- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.name,string,RW,tx ch5 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1030,7 +970,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,,,,sdi_output.b5d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,,,,sdi_output.b5d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.label,string,RW,F:  5- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.name,string,RW,rx ch6 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1040,7 +979,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.network.ssrc,uint,RW,0,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.label,string,RW,F:  5- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.name,string,RW,rx ch6 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1053,7 +991,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.label,string,RW,F:  5- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.name,string,RW,rx ch6 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1066,7 +1003,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.label,string,RW,F:  5- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.name,string,RW,rx ch6 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1079,7 +1015,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.label,string,RW,F:  5- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.name,string,RW,rx ch6 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1092,7 +1027,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.label,string,RW,F:  5- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.name,string,RW,rx ch6 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1105,7 +1039,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.label,string,RW,F:  5- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.name,string,RW,rx ch6 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1118,7 +1051,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.label,string,RW,F:  5- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.name,string,RW,rx ch6 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1131,7 +1063,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.label,string,RW,F:  5- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.name,string,RW,rx ch6 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1144,7 +1075,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.label,string,RW,F:  5- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.name,string,RW,rx ch6 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1157,7 +1087,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.label,string,RW,F:  5- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.name,string,RW,rx ch6 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.65.0.2,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -1170,7 +1099,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.label,string,RW,F:  5- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.name,string,RW,rx ch6 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.1.0.2,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -1184,7 +1112,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,,,,sdi_input.b6d2da17-360a-4396-80a9-f620c4bb3885.line_offset.frame_sync,bool,RW,false,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.format.anc_flow_profile,int,RW,2,,1..2
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.label,string,RW,F:  6- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.name,string,RW,tx ch7 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1197,7 +1124,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.network.ttl,int,RW,64,,0..255
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.format.anc_flow_profile,int,RW,2,,1..2
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.label,string,RW,F:  6- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.name,string,RW,tx ch7 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1212,7 +1138,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.label,string,RW,F:  6- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.name,string,RW,tx ch7 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1227,7 +1152,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.label,string,RW,F:  6- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.name,string,RW,tx ch7 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1242,7 +1166,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.label,string,RW,F:  6- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.name,string,RW,tx ch7 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1257,7 +1180,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.label,string,RW,F:  6- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.name,string,RW,tx ch7 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1272,7 +1194,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.label,string,RW,F:  6- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.name,string,RW,tx ch7 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1287,7 +1208,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.label,string,RW,F:  6- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.name,string,RW,tx ch7 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1302,7 +1222,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.label,string,RW,F:  6- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.name,string,RW,tx ch7 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1317,7 +1236,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.label,string,RW,F:  6- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.name,string,RW,tx ch7 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1332,7 +1250,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.label,string,RW,F:  6- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.name,string,RW,tx ch7 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1347,7 +1264,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.label,string,RW,F:  6- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.name,string,RW,tx ch7 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.network.dscp,int,RW,0,,0..63
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
@@ -1384,7 +1300,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,,,,sdi_output.b7d2da17-360a-4396-80a9-f620c4bb3885.vpid.override_value,string,RW,0x85062001,,hex32
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,,,,sdi_output.b7d2da17-360a-4396-80a9-f620c4bb3885.vpid.source,string,RW,regenerated,,regenerated | override
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.label,string,RW,F:  7- 5- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.name,string,RW,rx ch8 flow 5 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.72.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.network.dst_udp_port,int,RW,40000,,0..65535
@@ -1394,7 +1309,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.network.src_udp_port,int,RW,0,,0..65535
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.network.ssrc,uint,RW,1275204106,,0..4294967295
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.format.format_type,string,R,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.label,string,RW,F:  7- 5- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.name,string,RW,rx ch8 flow 5 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.8.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.network.dst_udp_port,int,RW,40000,,0..65535
@@ -1407,7 +1321,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.format.aud_ptime_idx,string,RW,1,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.label,string,RW,F:  7- 1- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.name,string,RW,rx ch8 flow 1 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.68.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.network.dst_udp_port,int,RW,30000,,0..65535
@@ -1420,7 +1333,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.format.aud_ptime_idx,string,RW,1,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.label,string,RW,F:  7- 1- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.name,string,RW,rx ch8 flow 1 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.4.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.network.dst_udp_port,int,RW,30000,,0..65535
@@ -1433,7 +1345,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.format.aud_ptime_idx,string,RW,1,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.label,string,RW,F:  7- 2- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.name,string,RW,rx ch8 flow 2 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1446,7 +1357,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.format.aud_ptime_idx,string,RW,1,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.label,string,RW,F:  7- 2- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.name,string,RW,rx ch8 flow 2 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1459,7 +1369,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.label,string,RW,F:  7- 3- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.name,string,RW,rx ch8 flow 3 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1472,7 +1381,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.label,string,RW,F:  7- 3- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.name,string,RW,rx ch8 flow 3 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1485,7 +1393,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.label,string,RW,F:  7- 4- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.name,string,RW,rx ch8 flow 4 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1498,7 +1405,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.format.aud_format,string,RW,dash-30,,dash-30=Uncompressed (ST 2110-30) | dash-31=Compressed (ST 2110-31)
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.format.aud_ptime_idx,string,RW,0,,0=1 ms | 1=125 us | 2=250 us | 3=333 us
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.format.format_type,string,R,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.label,string,RW,F:  7- 4- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.name,string,RW,rx ch8 flow 4 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,0.0.0.0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.network.dst_udp_port,int,RW,0,,0..65535
@@ -1511,7 +1417,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.label,string,RW,F:  7- 0- 1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.name,string,RW,rx ch8 flow 0 sec,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.65.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -1524,7 +1429,6 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.format.format_tcs,string,RW,SDR,,SDR | PQ | HLG
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.format.format_type,string,R,video,,video | audio | ancillary
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.format.range,string,RW,NARROW,,NARROW | FULL | FULLPROTECT
-125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.label,string,RW,F:  7- 0- 0,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.name,string,RW,rx ch8 flow 0 pri,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.network.dst_ip_addr,ipaddr,RW,239.1.0.1,,
 125061600012,emsfp-a2-10-0c,10.6.40.54,3 CHANNELS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.network.dst_udp_port,int,RW,20000,,0..65535
@@ -1550,99 +1454,195 @@ serial,hostname,control_ip,section,channel,direction,essence,leg,object,kind,acc
 125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,,,,,self.diag.nmos.registry_address_2,string,RW,0.0.0.0:0,,hostport
 125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,,,,,self.diag.nmos.registry_mode,string,RW,manual,,auto=Auto (DNS-SD) | manual=Manual
 125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,,,,,self.diag.nmos.status,string,R,connected,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.0.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.0.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.1.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.1.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.2.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.2.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.3.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.3.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.4.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.4.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.5.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.5.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.10.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.10.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.11.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.11.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.6.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.6.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.7.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.7.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.8.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.8.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.9.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.9.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.12.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.12.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.13.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.13.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.14.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.14.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.15.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.15.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.16.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.16.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.17.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.17.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.18.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.18.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.19.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.19.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.20.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.20.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.21.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.21.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.22.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.22.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.23.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.23.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.0.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.0.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.1.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.1.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.2.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.2.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.3.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.3.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.4.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.4.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.5.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.5.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.24.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.24.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.25.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.25.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.26.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.26.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.27.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.27.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.28.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.28.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.29.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.29.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.10.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.10.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.11.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.11.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.6.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.6.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.7.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.7.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.8.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.8.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.9.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.9.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.30.format,string,RW,video,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.30.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.31.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.31.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.32.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.32.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.33.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.33.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.34.format,string,RW,audio,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.34.label,string,RW, ,,
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.35.format,string,RW,ancillary,,video | audio | ancillary
-125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.35.label,string,RW, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.0.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.0.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.1.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.1.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.2.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.2.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.3.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.3.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.4.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.4.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.5.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,,,,receivers.5.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,anc,BLUE,flows.6ffe4c45-3efd-3e5e-920d-40a36ba2100c.label,string,RW,F:  0- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,anc,RED,flows.dfbe9dee-efbb-1ed0-9d68-40a36ba2100c.label,string,RW,F:  0- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 1,BLUE,flows.f5ef3e4c-7f73-289c-a70b-40a36ba2100c.label,string,RW,F:  0- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 1,RED,flows.33bd4ce3-6fbb-4468-9cbb-40a36ba2100c.label,string,RW,F:  0- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 2,BLUE,flows.3d7edc6d-7cd9-4162-8d00-40a36ba2100c.label,string,RW,F:  0- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 2,RED,flows.7377b687-fefb-2feb-83e0-40a36ba2100c.label,string,RW,F:  0- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 3,BLUE,flows.9f7ffb8e-eeff-498d-8d73-40a36ba2100c.label,string,RW,F:  0- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 3,RED,flows.7f7c14ae-5fe7-4b09-9cb1-40a36ba2100c.label,string,RW,F:  0- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 4,BLUE,flows.7bafe527-75fb-3cb8-8682-40a36ba2100c.label,string,RW,F:  0- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,audio 4,RED,flows.f999d2d9-fffd-4fb5-a2c5-40a36ba2100c.label,string,RW,F:  0- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,rx,video,BLUE,flows.cd7b33b3-bfba-1ff0-9e37-40a36ba2100c.label,string,RW,F:  0- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH1,tx,video,RED,flows.fee338d3-edfe-30ba-812c-40a36ba2100c.label,string,RW,F:  0- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.10.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.10.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.11.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.11.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.6.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.6.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.7.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.7.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.8.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.8.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.9.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,,,,receivers.9.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,anc,BLUE,flows.6b1f8cab-fdf3-3de7-8e2a-40a36ba2100c.label,string,RW,F:  1- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,anc,RED,flows.3cae4de0-0fd6-1a4e-8f16-40a36ba2100c.label,string,RW,F:  1- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 1,BLUE,flows.bfff0575-6bfe-32e6-a4b7-40a36ba2100c.label,string,RW,F:  1- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 1,RED,flows.6fbf058c-fbdf-344f-996a-40a36ba2100c.label,string,RW,F:  1- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 2,BLUE,flows.ee57ce49-ffcf-4ac1-a3ea-40a36ba2100c.label,string,RW,F:  1- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 2,RED,flows.5fddd212-1ffd-28a1-a069-40a36ba2100c.label,string,RW,F:  1- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 3,BLUE,flows.39ed9908-a7de-3c37-9d23-40a36ba2100c.label,string,RW,F:  1- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 3,RED,flows.3bf570cd-35ff-4f57-8af5-40a36ba2100c.label,string,RW,F:  1- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 4,BLUE,flows.1ada16cd-ffbb-283f-9a35-40a36ba2100c.label,string,RW,F:  1- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,audio 4,RED,flows.ffafc976-fdde-2108-9b06-40a36ba2100c.label,string,RW,F:  1- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,video,BLUE,flows.ff9ff10f-57eb-4581-9536-40a36ba2100c.label,string,RW,F:  1- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH2,rx,video,RED,flows.59d52e04-fbff-1040-938b-40a36ba2100c.label,string,RW,F:  1- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.12.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.12.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.13.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.13.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.14.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.14.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.15.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.15.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.16.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.16.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.17.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,,,,receivers.17.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,anc,BLUE,flows.b7bb9127-f91f-4472-9efc-40a36ba2100c.label,string,RW,F:  2- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,anc,RED,flows.dff73729-d74c-1422-926a-40a36ba2100c.label,string,RW,F:  2- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 1,BLUE,flows.27ffd126-efd9-38d4-a5e0-40a36ba2100c.label,string,RW,F:  2- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 2,BLUE,flows.3fffa216-3797-2225-9a2f-40a36ba2100c.label,string,RW,F:  2- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 2,RED,flows.ffeda7e0-f3fd-384c-8bbd-40a36ba2100c.label,string,RW,F:  2- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 3,BLUE,flows.7bbfebfa-6aef-2145-862b-40a36ba2100c.label,string,RW,F:  2- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 3,RED,flows.7b7e03c2-f77f-2a88-8dbf-40a36ba2100c.label,string,RW,F:  2- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 4,BLUE,flows.ffdd96d3-d69e-4113-abd1-40a36ba2100c.label,string,RW,F:  2- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,audio 4,RED,flows.6dfdea3a-67ff-14af-85e4-40a36ba2100c.label,string,RW,F:  2- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,video,BLUE,flows.8dafec9e-7736-3d76-88b1-40a36ba2100c.label,string,RW,F:  2- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,rx,video,RED,flows.702e36e5-fefc-3184-91de-40a36ba2100c.label,string,RW,F:  2- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH3,tx,audio 1,RED,flows.ed9f5fad-7a26-4f5a-a41d-40a36ba2100c.label,string,RW,F:  2- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.18.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.18.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.19.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.19.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.20.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.20.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.21.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.21.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.22.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.22.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.23.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,,,,receivers.23.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,anc,BLUE,flows.fbf77394-6ff7-2910-a02f-40a36ba2100c.label,string,RW,F:  3- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,anc,RED,flows.6ede0bce-3bda-1419-9fd9-40a36ba2100c.label,string,RW,F:  3- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 1,BLUE,flows.5bef3530-7bfe-4990-a75f-40a36ba2100c.label,string,RW,F:  3- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 1,RED,flows.7c71d66c-6fff-449a-8e52-40a36ba2100c.label,string,RW,F:  3- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 2,BLUE,flows.8e9fc891-7eb1-3ff6-9e58-40a36ba2100c.label,string,RW,F:  3- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 2,RED,flows.7feb2cef-07f3-4699-99d2-40a36ba2100c.label,string,RW,F:  3- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 3,BLUE,flows.1d77af81-bef7-26a8-9001-40a36ba2100c.label,string,RW,F:  3- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 3,RED,flows.6bb4c505-fb9b-3d69-8735-40a36ba2100c.label,string,RW,F:  3- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 4,BLUE,flows.7fedd710-ffb3-47c5-989f-40a36ba2100c.label,string,RW,F:  3- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,audio 4,RED,flows.37bf4d25-83ea-4067-839f-40a36ba2100c.label,string,RW,F:  3- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,video,BLUE,flows.46add1c4-e94f-1f35-8b58-40a36ba2100c.label,string,RW,F:  3- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH4,rx,video,RED,flows.dab60e02-fcff-4638-a8c2-40a36ba2100c.label,string,RW,F:  3- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.0.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.0.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.1.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.1.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.2.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.2.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.3.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.3.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.4.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.4.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.5.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,,,,senders.5.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,anc,BLUE,flows.1bda7dd6-fbfd-3d93-aeba-40a36ba2100c.label,string,RW,F:  4- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,anc,RED,flows.5edfa839-fffd-4a61-8ee5-40a36ba2100c.label,string,RW,F:  4- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 1,BLUE,flows.637b79c3-7fff-353e-adeb-40a36ba2100c.label,string,RW,F:  4- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 1,RED,flows.7d775931-bcdd-1cf5-96df-40a36ba2100c.label,string,RW,F:  4- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 2,BLUE,flows.f777c9b8-ffc5-262a-8958-40a36ba2100c.label,string,RW,F:  4- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 2,RED,flows.38c22604-5ffb-2356-8397-40a36ba2100c.label,string,RW,F:  4- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 3,BLUE,flows.fceda28a-7ffe-475a-aded-40a36ba2100c.label,string,RW,F:  4- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 3,RED,flows.df778fb6-7fbe-39c8-8da7-40a36ba2100c.label,string,RW,F:  4- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 4,BLUE,flows.4fff80ef-fee7-11d5-9f84-40a36ba2100c.label,string,RW,F:  4- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,audio 4,RED,flows.ffdd4795-cbb1-37da-84d6-40a36ba2100c.label,string,RW,F:  4- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,video,BLUE,flows.c9ce2999-bfbe-1bf8-8e9a-40a36ba2100c.label,string,RW,F:  4- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH5,tx,video,RED,flows.17ce716b-7fdd-2c9b-ac83-40a36ba2100c.label,string,RW,F:  4- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.24.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.24.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.25.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.25.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.26.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.26.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.27.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.27.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.28.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.28.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.29.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,,,,receivers.29.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,anc,BLUE,flows.9b6f8cb9-77ff-3ed1-91c1-40a36ba2100c.label,string,RW,F:  5- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,anc,RED,flows.ff6d0252-fdd9-4d1e-9a1a-40a36ba2100c.label,string,RW,F:  5- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 1,BLUE,flows.7da317a2-a7df-2c96-839d-40a36ba2100c.label,string,RW,F:  5- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 1,RED,flows.3f7afc73-eb7d-3777-a0ec-40a36ba2100c.label,string,RW,F:  5- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 2,BLUE,flows.f2fa0515-ffd7-4ff6-ac4f-40a36ba2100c.label,string,RW,F:  5- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 2,RED,flows.7efd3487-5fdf-3d10-84ad-40a36ba2100c.label,string,RW,F:  5- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 3,BLUE,flows.3c963a9c-fdee-308d-a176-40a36ba2100c.label,string,RW,F:  5- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 3,RED,flows.3d730dd7-fef4-3cac-a851-40a36ba2100c.label,string,RW,F:  5- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 4,BLUE,flows.bbfc7914-7b77-49bc-8c7a-40a36ba2100c.label,string,RW,F:  5- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,audio 4,RED,flows.335e683d-df3f-33d2-9eac-40a36ba2100c.label,string,RW,F:  5- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,video,BLUE,flows.2f1f9167-6f7b-43b3-a43b-40a36ba2100c.label,string,RW,F:  5- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH6,rx,video,RED,flows.76ff49e4-653b-2ae9-81cb-40a36ba2100c.label,string,RW,F:  5- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.10.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.10.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.11.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.11.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.6.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.6.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.7.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.7.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.8.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.8.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.9.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,,,,senders.9.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,anc,BLUE,flows.f26e9450-d7f5-2731-a46e-40a36ba2100c.label,string,RW,F:  6- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,anc,RED,flows.75ff759f-be7f-1adf-a434-40a36ba2100c.label,string,RW,F:  6- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 1,BLUE,flows.b535487d-faf9-267c-9316-40a36ba2100c.label,string,RW,F:  6- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 1,RED,flows.f67f0627-e9df-1a25-84c2-40a36ba2100c.label,string,RW,F:  6- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 2,BLUE,flows.4fa39788-fc17-2893-92d4-40a36ba2100c.label,string,RW,F:  6- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 2,RED,flows.6ecf8d4d-3fbf-3239-86b3-40a36ba2100c.label,string,RW,F:  6- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 3,BLUE,flows.6baf596c-1f5c-2af8-a428-40a36ba2100c.label,string,RW,F:  6- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 3,RED,flows.3b7be7d4-5b79-453a-998e-40a36ba2100c.label,string,RW,F:  6- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 4,BLUE,flows.fee88f23-ff4b-1c26-8a2f-40a36ba2100c.label,string,RW,F:  6- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,audio 4,RED,flows.786c9dcb-7763-143b-984f-40a36ba2100c.label,string,RW,F:  6- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,video,BLUE,flows.ff67bfec-930f-3acf-82c0-40a36ba2100c.label,string,RW,F:  6- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH7,tx,video,RED,flows.6fbf2b5d-fffb-3539-a848-40a36ba2100c.label,string,RW,F:  6- 0- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.30.format,string,R,video,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.30.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.31.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.31.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.32.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.32.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.33.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.33.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.34.format,string,R,audio,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.34.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.35.format,string,R,ancillary,,video | audio | ancillary
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,,,,receivers.35.label,string,R, ,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,anc,BLUE,flows.6f3f8517-1fbe-3837-a880-40a36ba2100c.label,string,RW,F:  7- 5- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,anc,RED,flows.ff6cacf3-f7bd-39f4-9b57-40a36ba2100c.label,string,RW,F:  7- 5- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 1,BLUE,flows.dfde3ea5-beda-141b-abe9-40a36ba2100c.label,string,RW,F:  7- 1- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 1,RED,flows.27ff6a70-ef5f-2350-ab48-40a36ba2100c.label,string,RW,F:  7- 1- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 2,BLUE,flows.fabfe4c6-5efd-34a6-804e-40a36ba2100c.label,string,RW,F:  7- 2- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 2,RED,flows.7fbdf8ec-f3fe-4be8-a625-40a36ba2100c.label,string,RW,F:  7- 2- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 3,BLUE,flows.7fffee94-716f-36f1-8a47-40a36ba2100c.label,string,RW,F:  7- 3- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 3,RED,flows.ffe5e2ed-f9f7-4a44-ad78-40a36ba2100c.label,string,RW,F:  7- 3- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 4,BLUE,flows.1eceadfb-dddf-241a-9676-40a36ba2100c.label,string,RW,F:  7- 4- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,audio 4,RED,flows.7ff7bdc5-77fd-11df-a3ad-40a36ba2100c.label,string,RW,F:  7- 4- 0,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,video,BLUE,flows.7de7819e-1fef-3668-ad3c-40a36ba2100c.label,string,RW,F:  7- 0- 1,,
+125061600012,emsfp-a2-10-0c,10.6.40.54,4 NMOS,CH8,rx,video,RED,flows.79bf3844-7ff7-26ba-ad2b-40a36ba2100c.label,string,RW,F:  7- 0- 0,,
