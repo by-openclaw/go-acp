@@ -38,6 +38,14 @@ const DefaultACKTimeout = 1 * time.Second
 // matrices treat 5 as the total attempt ceiling.
 const DefaultMaxAttempts = 5
 
+// DefaultReplyTimeout bounds the wait for the FIRST reply frame once the peer
+// has ACKed a request. SW-P-08 defines no reply deadline. Without one, a peer
+// that ACKs a request it does not serve (a Neuron Shuffle ACKs an rx 100
+// 4-char name request and never answers) holds the caller until its whole
+// context expires. Streamed tables (tx 106/107/022/023) only start inside this
+// window; their continuation is bounded by SendCollect's idle gap, not by it.
+const DefaultReplyTimeout = 5 * time.Second
+
 // DataCapSoft is the guaranteed-portable DATA-field size per SW-P-08 §2:
 // "The maximum size of the DATA field (before codec.DLE padding) that is
 // guaranteed to work with all systems is 128 bytes". Frames with a
@@ -65,6 +73,10 @@ var (
 	// client. SW-P-08 is half-duplex per logical transaction — serialise
 	// or use a second Client instance.
 	ErrSendInFlight = errors.New("probel: another Send already in flight")
+
+	// ErrNoReply means the peer ACKed the request but sent no matching reply
+	// within the reply timeout: it accepted the frame but does not serve it.
+	ErrNoReply = errors.New("probel: request ACKed but no reply")
 )
 
 // Client is the TCP transport around the Probel SW-P-08 codec. It owns
@@ -104,8 +116,10 @@ type Client struct {
 	wireHexLog bool
 
 	// Retry + timeout knobs — read under Client.mu at Send time.
-	ackTimeout  time.Duration
-	maxAttempts int
+	ackTimeout   time.Duration
+	maxAttempts  int
+	replyTimeout time.Duration
+	onNoReply    func()
 
 	// idleTimeout, when > 0, bounds how long the matrix may be silent
 	// before a read fails. SW-P-08 keep-alive is PASSIVE on our side — we
@@ -217,6 +231,10 @@ type ClientConfig struct {
 	ACKTimeout time.Duration
 	// MaxAttempts overrides DefaultMaxAttempts (send + retries).
 	MaxAttempts int
+	// ReplyTimeout overrides DefaultReplyTimeout (first reply after ACK).
+	ReplyTimeout time.Duration
+	// OnNoReply fires when an ACKed request gets no reply in ReplyTimeout.
+	OnNoReply func()
 
 	// TCPKeepalivePeriod sets SO_KEEPALIVE + the keep-alive period on
 	// the dialed TCP connection. Zero = use DefaultTCPKeepalivePeriod;
@@ -320,13 +338,19 @@ func newClient(conn net.Conn, logger *slog.Logger, cfg ClientConfig) *Client {
 	if max <= 0 {
 		max = DefaultMaxAttempts
 	}
+	reply := cfg.ReplyTimeout
+	if reply <= 0 {
+		reply = DefaultReplyTimeout
+	}
 	c := &Client{
-		logger:      logger,
-		conn:        conn,
-		readerDone:  make(chan struct{}),
-		wireHexLog:  hex,
-		ackTimeout:  ack,
-		maxAttempts: max,
+		logger:       logger,
+		conn:         conn,
+		readerDone:   make(chan struct{}),
+		wireHexLog:   hex,
+		ackTimeout:   ack,
+		maxAttempts:  max,
+		replyTimeout: reply,
+		onNoReply:    cfg.OnNoReply,
 		onTx:        cfg.OnTx,
 		onRx:        cfg.OnRx,
 		onCapSoft:   cfg.OnCapSoft,
@@ -444,6 +468,7 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 	hex := c.wireHexLog
 	ackTimeout := c.ackTimeout
 	maxAttempts := c.maxAttempts
+	replyTimeout := c.replyTimeout
 	c.mu.Unlock()
 
 	defer func() {
@@ -519,10 +544,18 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 		if match == nil {
 			return codec.Frame{}, nil
 		}
+		replyTimer := time.NewTimer(replyTimeout)
 		select {
 		case r := <-waiter.reply:
+			replyTimer.Stop()
 			return r.frame, r.err
+		case <-replyTimer.C:
+			if c.onNoReply != nil {
+				c.onNoReply()
+			}
+			return codec.Frame{}, fmt.Errorf("probel cmd %d: %w (%s)", f.ID, ErrNoReply, replyTimeout)
 		case <-ctx.Done():
+			replyTimer.Stop()
 			return codec.Frame{}, ctx.Err()
 		}
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -78,16 +79,25 @@ func runProbelExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("mkdir %s: %w", *outDir, err)
 	}
 
-	// Sources — read at each width.
+	// Sources — read at each width. A width the matrix ACKs but does not
+	// answer (ErrNoReply, compliance event probel_reply_missing) leaves that
+	// label column empty; the export goes on with the widths it does serve.
 	srcLabels := map[codec.NameLength][]string{}
 	srcFirst := 0
 	for _, nl := range probelReadNameSizes {
 		r, rerr := p.AllSourceNames(cctx, mtx, level, nl)
+		if errors.Is(rerr, probelproto.ErrNoReply) {
+			fmt.Fprintf(os.Stderr, "probel-sw08p export: source names size %d not served by the matrix (no reply) - label_%d left empty\n", nl.Bytes(), nl.Bytes())
+			continue
+		}
 		if rerr != nil {
 			return fmt.Errorf("all-source-names size %d: %w", nl.Bytes(), rerr)
 		}
 		srcLabels[nl] = r.Names
 		srcFirst = int(r.FirstSourceID)
+	}
+	if len(srcLabels) == 0 {
+		return fmt.Errorf("all-source-names: the matrix answered no name size (4/8/12)")
 	}
 	srcPath := facetFile(*outDir, *prefix, "src")
 	if err := writeProbelNameCSV(srcPath, "src_id", mtx, level, srcFirst, srcLabels); err != nil {
@@ -99,11 +109,18 @@ func runProbelExport(ctx context.Context, args []string) error {
 	dstFirst := 0
 	for _, nl := range probelReadNameSizes {
 		r, rerr := p.AllDestAssocNames(cctx, mtx, nl)
+		if errors.Is(rerr, probelproto.ErrNoReply) {
+			fmt.Fprintf(os.Stderr, "probel-sw08p export: destination names size %d not served by the matrix (no reply) - label_%d left empty\n", nl.Bytes(), nl.Bytes())
+			continue
+		}
 		if rerr != nil {
 			return fmt.Errorf("all-dest-names size %d: %w", nl.Bytes(), rerr)
 		}
 		dstLabels[nl] = r.Names
 		dstFirst = int(r.FirstDestAssociationID)
+	}
+	if len(dstLabels) == 0 {
+		return fmt.Errorf("all-dest-names: the matrix answered no name size (4/8/12)")
 	}
 	dstPath := facetFile(*outDir, *prefix, "dst")
 	if err := writeProbelNameCSV(dstPath, "dst_id", mtx, level, dstFirst, dstLabels); err != nil {
@@ -137,18 +154,27 @@ func runProbelExport(ctx context.Context, args []string) error {
 
 	// -protect.csv — per-dst protect state (rx 019 / tx 020), in the
 	// exact shape `import --protect` consumes.
+	// A matrix that ACKs rx 019 but never answers (no protect support) gets no
+	// -protect.csv; the rest of the export stands.
+	var protNote string
 	pres, perr := p.ProtectTallyDump(cctx, mtx, level, 0)
-	if perr != nil {
+	switch {
+	case errors.Is(perr, probelproto.ErrNoReply):
+		protNote = "  (no -protect.csv: the matrix does not answer the protect dump)\n"
+		fmt.Fprintf(os.Stderr, "probel-sw08p export: protect dump not served by the matrix (no reply) - no protect file\n")
+	case perr != nil:
 		return fmt.Errorf("protect-dump: %w", perr)
-	}
-	protPath := facetFile(*outDir, *prefix, "protect")
-	nProt, err := writeProbelProtectCSV(protPath, mtx, level, pres)
-	if err != nil {
-		return err
+	default:
+		protPath := facetFile(*outDir, *prefix, "protect")
+		nProt, err := writeProbelProtectCSV(protPath, mtx, level, pres)
+		if err != nil {
+			return err
+		}
+		protNote = fmt.Sprintf("  %s  (%d protect row(s))\n", protPath, nProt)
 	}
 
-	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor)\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n  %s  (%d protect row(s))\n  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
-		mtx, level, descPath, srcPath, len(srcLabels[codec.NameLen12]), dstPath, len(dstLabels[codec.NameLen12]), xpPath, nXP, protPath, nProt)
+	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor)\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n%s  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
+		mtx, level, descPath, srcPath, probelNameCount(srcLabels), dstPath, probelNameCount(dstLabels), xpPath, nXP, protNote)
 	return writePackMeta(*outDir, "probel-sw08p", hostOnly(addr))
 }
 
@@ -191,6 +217,17 @@ func trimProbelName(s string) string { return strings.TrimRight(s, "\x00 ") }
 
 // writeProbelNameCSV emits a src/dst label CSV: id + default_label + one column
 // per width. Row count is the max across widths (widths should agree).
+// probelNameCount is the number of names read at the widest width served.
+func probelNameCount(sizeLabels map[codec.NameLength][]string) int {
+	n := 0
+	for _, l := range sizeLabels {
+		if len(l) > n {
+			n = len(l)
+		}
+	}
+	return n
+}
+
 func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLabels map[codec.NameLength][]string) error {
 	f, err := os.Create(path)
 	if err != nil {

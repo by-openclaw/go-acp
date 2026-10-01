@@ -43,6 +43,12 @@ const (
 	// identify lax peers. Informational.
 	ReplyWithoutACK = "probel_reply_without_ack"
 
+	// The peer ACKed a request but sent no reply within the reply timeout:
+	// it accepts a command it does not serve (a Neuron Shuffle ACKs an rx 100
+	// 4-char name request and never answers). The request fails with
+	// ErrNoReply instead of holding the caller to its deadline. Informational.
+	ReplyMissing = "probel_reply_missing"
+
 	// Spec §3.4 (framing): inbound frame with bad checksum, bad byte
 	// count, or malformed DLE stuffing. The reader emits DLE NAK to
 	// the peer and drops the bytes. Informational — frequent desync
