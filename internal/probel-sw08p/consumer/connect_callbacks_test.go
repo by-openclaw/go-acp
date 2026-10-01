@@ -214,3 +214,54 @@ func itoa(n int) string {
 	}
 	return string(b[i:])
 }
+
+// TestConnectOnNoReply covers the OnNoReply callback: a peer that ACKs a
+// request and never answers it (a Neuron Shuffle on an rx 100 4-char
+// name request) fires the ReplyMissing compliance event, and the call
+// fails with ErrNoReply inside the reply timeout, not the caller's.
+func TestConnectOnNoReply(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	go func() {
+		c, aerr := ln.Accept()
+		if aerr != nil {
+			return
+		}
+		defer func() { _ = c.Close() }()
+		buf := make([]byte, 256)
+		for {
+			n, rerr := c.Read(buf)
+			if rerr != nil {
+				return
+			}
+			if n > 0 {
+				_, _ = c.Write(codec.PackACK()) // ACK, then silence
+			}
+		}
+	}()
+	port := portOf(t, ln)
+
+	restore := replyTimeout
+	replyTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { replyTimeout = restore })
+
+	p := dialPlugin(t, port)
+	defer func() { _ = p.Disconnect() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	start := time.Now()
+	_, err = p.CrosspointInterrogate(ctx, 0, 0, 1)
+	if !errors.Is(err, ErrNoReply) {
+		t.Fatalf("CrosspointInterrogate err = %v, want ErrNoReply", err)
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("took %v; the reply timeout, not the caller's context, must end it", d)
+	}
+	if p.ComplianceProfile().Snapshot()[ReplyMissing] == 0 {
+		t.Error("ReplyMissing not recorded; OnNoReply callback never fired")
+	}
+}
