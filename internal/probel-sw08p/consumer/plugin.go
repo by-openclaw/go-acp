@@ -188,6 +188,10 @@ func (p *Plugin) IsOnlineWithin(stale time.Duration) bool {
 // ComplianceProfile returns the session-scoped compliance profile.
 // Connect opens a TCP session to the matrix. Idempotent when called
 // twice with the same endpoint. Port 0 resolves to DefaultPort.
+// replyTimeout bounds the wait for the first reply after an ACK (see
+// sw08session.DefaultReplyTimeout). A variable so a test can shorten it.
+var replyTimeout = sw08session.DefaultReplyTimeout
+
 func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -217,6 +221,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnRetry:   func(int) { prof.Note(RetryAttempted); met.ObserveRetry() },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
 		OnNoReply: func() { prof.Note(ReplyMissing) },
+		ReplyTimeout: replyTimeout,
 		OnTx: func(b []byte, elapsed time.Duration) {
 			if id, ok := probelCmdFromBytes(b); ok {
 				met.ObserveCmdTx(id, len(b), elapsed)
