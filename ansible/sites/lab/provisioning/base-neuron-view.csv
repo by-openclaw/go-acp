@@ -1,0 +1,15 @@
+order,group,resource,select,field,value,note
+1,PTP,misc/reference,,ptp.domain,77,plant PTP domain
+2,PTP,misc/reference,,ptp.slaveOnly,true,
+3,PTP,misc/reference,,refSelection,ptp-l3-e2e,value as read from the device (no spec served yet)
+4,PTP,misc/reference,,timeSelection,ptp,lower-case on this firmware (as read)
+5,NTP,misc/reference,,ntp.mainServer,10.6.240.1,
+6,NMOS,misc/nmos,,enabled,true,NMOS on. discoveryMode left as is (multicast = mDNS): enum not published until the CCM spec ships
+7,NMOS,misc/nmos,,selfLabel,{nmos_label},from devices.csv
+8,Network RED,misc/macs,name=QSFP 1,ipAddrMethod,dhcp,lower-case on this firmware (as read)
+9,Network RED,misc/macs,name=QSFP 1,fec,{fec_red},from devices.csv (match the switch optic)
+10,Network BLUE,misc/macs,name=QSFP 2,ipAddrMethod,dhcp,
+11,Network BLUE,misc/macs,name=QSFP 2,fec,{fec_blue},from devices.csv (match the switch optic)
+12,TSL,misc/tsl,,enabled,true,TSL UMD in (oracle)
+13,TSL,misc/tsl,,port,2000,
+14,TSL,misc/tsl,,version,v5.0,

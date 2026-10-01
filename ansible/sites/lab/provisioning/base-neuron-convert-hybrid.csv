@@ -1,0 +1,18 @@
+order,group,resource,select,field,value,note
+1,PTP,misc/reference,,ptp.domain,77,plant PTP domain
+2,PTP,misc/reference,,ptp.profile,smpte2059-L3-e2e,Disabled | smpte2059-L3-e2e
+3,PTP,misc/reference,,ptp.slaveOnly,true,
+4,PTP,misc/reference,,refSelection,ptp-l3-e2e,Freerun | ptp-l3-e2e | Reference1 | SDI01
+5,PTP,misc/reference,,timeSelection,PTP,Auto | PTP | NTP
+6,NTP,misc/reference,,ntp.mainServer,10.6.240.1,
+7,NMOS,misc/nmos,,mode,true,NMOS on
+8,NMOS,misc/nmos,,registry.discoveryMode,Manual,None | Manual | mDNS | Unicast
+9,NMOS,misc/nmos,,registry.addressOverride,10.6.250.101,dhs registry (mirrored to Cerebrum)
+10,NMOS,misc/nmos,,registry.portOverride,8235,
+11,NMOS,misc/nmos,,label,{nmos_label},from devices.csv
+12,Network RED,misc/macs,name=Control Port Mac 1,ipAddrMethod,DHCP,Manual | DHCP
+13,Network RED,misc/macs,name=Control Port Mac 1,fec,{fec_red},from devices.csv (match the switch optic)
+14,Network RED,misc/macs,name=Control Port Mac 1,inBandControl,true,
+15,Network BLUE,misc/macs,name=Control Port Mac 2,ipAddrMethod,DHCP,Manual | DHCP
+16,Network BLUE,misc/macs,name=Control Port Mac 2,fec,{fec_blue},from devices.csv (match the switch optic)
+17,Network BLUE,misc/macs,name=Control Port Mac 2,inBandControl,true,

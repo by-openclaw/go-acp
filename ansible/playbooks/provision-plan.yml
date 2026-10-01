@@ -1,0 +1,30 @@
+---
+# Discover every sender on every device in sites/<site>/provisioning/devices.csv
+# and give each one its RED/BLUE multicast group from mcast-ranges.csv.
+# Writes mcast-plan.csv (one row per sender) and the per-device blocks back
+# into devices.csv. Stable: a sender keeps its group across runs, and a new
+# device gets the next free block.
+#
+#   cd ~/acp/ansible
+#   ansible-playbook playbooks/provision-plan.yml            # lab site
+#   ansible-playbook playbooks/provision-plan.yml -e site=lab
+#
+# Then review mcast-plan.csv and run provision-apply.yml.
+
+- name: Provisioning — multicast plan from the devices themselves
+  hosts: control
+  gather_facts: false
+  vars:
+    site: lab
+    prov_dir: "{{ playbook_dir }}/../sites/{{ site }}/provisioning"
+  tasks:
+    - name: Discover senders and allocate groups
+      ansible.builtin.command:
+        argv: [python3, "{{ playbook_dir }}/files/provision.py", plan, --site-dir, "{{ prov_dir }}"]
+      register: plan
+      check_mode: false
+      changed_when: (plan.stdout_lines | last | from_json).changed
+
+    - name: Senders per device
+      ansible.builtin.debug:
+        msg: "{{ plan.stdout_lines }}"

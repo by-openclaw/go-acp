@@ -1,0 +1,48 @@
+---
+# Bring every device in sites/<site>/provisioning/devices.csv to its base
+# setup (base-<type>.csv: PTP, NTP, NMOS, network, FEC, labels) and its
+# sender multicast groups (mcast-plan.csv, from provision-plan.yml).
+# Read -> compare -> write only what differs -> read back; run twice = 0
+# changes. Every row of the run lands in apply-report.csv.
+#
+#   ansible-playbook playbooks/provision-apply.yml --check          # dry run, sends nothing
+#   ansible-playbook playbooks/provision-apply.yml                  # apply
+#   ansible-playbook playbooks/provision-apply.yml -e what=base     # base only (or what=mcast)
+#   ansible-playbook playbooks/provision-apply.yml -e device=lab-fusion-01
+#   ansible-playbook playbooks/provision-apply.yml -e limit=4       # mcast: first 4 per essence
+#
+# Device types: neuron-convert-hybrid, neuron-bridge, neuron-shuffle,
+# neuron-view (addresses over NMOS IS-05), fusion6.
+
+- name: Provisioning — base setup and multicast per device
+  hosts: control
+  gather_facts: false
+  vars:
+    site: lab
+    what: all
+    device: ""
+    limit: 0
+    prov_dir: "{{ playbook_dir }}/../sites/{{ site }}/provisioning"
+  tasks:
+    - name: Apply (dry run under --check)
+      ansible.builtin.command:
+        argv: >-
+          {{ [ 'python3', playbook_dir ~ '/files/provision.py', 'apply',
+               '--site-dir', prov_dir, '--what', what, '--limit', limit | string ]
+             + (['--check'] if ansible_check_mode else [])
+             + (device.split(',') | reject('equalto', '') | map('regex_replace', '^', '--device=') | list) }}
+      register: run
+      check_mode: false
+      failed_when: run.rc not in [0, 1]
+      changed_when: >-
+        (run.stdout_lines | last | from_json).changed
+        or (run.stdout_lines | last | from_json).would_change
+
+    - name: What changed (or would change)
+      ansible.builtin.debug:
+        msg: "{{ run.stdout_lines }}"
+
+    - name: Fail on device errors (see apply-report.csv)
+      ansible.builtin.fail:
+        msg: "{{ (run.stdout_lines | last | from_json).counts.failed }} item(s) failed — see {{ prov_dir }}/apply-report.csv"
+      when: run.rc == 1

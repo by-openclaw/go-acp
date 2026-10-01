@@ -1,0 +1,5 @@
+name,type,mgmt_ip,nmos_label,hostname,fec_red,fec_blue,mcast_apply,block_video,block_audio,block_anc,note
+lab-convert-01,neuron-convert-hybrid,10.6.255.102,lab-convert-01,,ReedSolomon,ReedSolomon,yes,0,0,0,FABRIC-1 Et10/1 RED + Et22/1 BLUE (SR4)
+lab-shuffle-01,neuron-shuffle,10.6.255.103,lab-shuffle-01,,Off,Off,no,,1,,DR optics (FEC off). Licence due 2026-10-02 (until then every write answers 400 'licenses not loaded yet'): then set mcast_apply=yes; 1544 enabled senders (~13 Mb/s each per leg)
+lab-view-01,neuron-view,10.6.255.104,lab-view-01,,reed-solomon,reed-solomon,yes,1,,,RED only (Et14/1); no CCM spec yet: addresses go over NMOS IS-05
+lab-fusion-01,fusion6,10.6.40.54,,emsfp-a2-10-0c,none,none,yes,2,8,1,REST via in-band RED; FEC none (lab Arista 25G has no RS)

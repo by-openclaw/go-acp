@@ -1,0 +1,7 @@
+essence,plane,prefix,port,note
+video,RED,239.20.0.0/16,20000,ST 2110-20
+video,BLUE,239.84.0.0/16,20000,RED + 64 (2026-09-27 rule)
+audio,RED,239.30.0.0/16,30000,ST 2110-30
+audio,BLUE,239.94.0.0/16,30000,RED + 64 (2026-09-27 rule)
+anc,RED,239.40.0.0/16,40000,ST 2110-40
+anc,BLUE,239.104.0.0/16,40000,RED + 64 (2026-09-27 rule)
