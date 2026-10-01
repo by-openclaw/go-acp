@@ -143,3 +143,34 @@ func TestPutJSON_ErrorBranches(t *testing.T) {
 		}
 	})
 }
+
+func TestPatchJSON_IsAPartialWriteOnTheSamePath(t *testing.T) {
+	// CCM 0v1 §11.2: a PATCH carries only the fields named. The
+	// transport sends it like a PUT — same headers, same counting, same
+	// status contract — with the method the device declared.
+	var gotMethod, gotCT, gotBody string
+	ts := putServer(t, func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		gotMethod = r.Method
+		gotCT = r.Header.Get("Content-Type")
+		b := make([]byte, 64)
+		n, _ := r.Body.Read(b)
+		gotBody = string(b[:n])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"level":5}`))
+	})
+	met := metrics.NewConnector()
+	c := &Client{HTTP: ts.Client(), MaxBody: DefaultMaxBody, Metrics: met}
+	var dst struct {
+		Level int `json:"level"`
+	}
+	status, err := c.PatchJSON(context.Background(), ts.URL+"/x", map[string]int{"level": 5}, &dst)
+	if err != nil || status != 200 || dst.Level != 5 {
+		t.Fatalf("PatchJSON = %d, %v, %+v", status, err, dst)
+	}
+	if gotMethod != stdhttp.MethodPatch || gotCT != "application/json" || gotBody != `{"level":5}` {
+		t.Errorf("request: method=%s ct=%s body=%s", gotMethod, gotCT, gotBody)
+	}
+	if s := met.Snapshot(); s.TxFrames != 1 || s.RxFrames != 1 {
+		t.Errorf("metrics tx=%d rx=%d — a PATCH is counted like a PUT", s.TxFrames, s.RxFrames)
+	}
+}
