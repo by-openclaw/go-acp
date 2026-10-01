@@ -49,6 +49,7 @@ var probelReadNameSizes = []codec.NameLength{codec.NameLen4, codec.NameLen8, cod
 func runProbelExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-export", flag.ContinueOnError)
 	matrix := fs.Int("matrix", 0, "matrix id (0-255)")
+	levelsFlag := fs.String("levels", "", "levels to export, e.g. 0,1,2 (empty = every level the matrix answers, from 0 up)")
 	outDir := fs.String("out", "", "output directory for the three CSV files (omitted = snapshots/probel-sw08p/<host>/ with plain facet names, ADR-0028)")
 	prefix := fs.String("prefix", "sw08p", "CSV filename prefix (ignored in the default snapshot folder — plain facet names there)")
 	timeout := fs.Duration("timeout", 120*time.Second, "overall timeout")
@@ -73,34 +74,72 @@ func runProbelExport(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closer()
-	mtx, level := probelTarget(p, *matrix)
+	mtx, _ := probelTarget(p, *matrix)
 
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", *outDir, err)
 	}
 
-	// Sources — read at each width. A width the matrix ACKs but does not
-	// answer (ErrNoReply, compliance event probel_reply_missing) leaves that
-	// label column empty; the export goes on with the widths it does serve.
-	srcLabels := map[codec.NameLength][]string{}
-	srcFirst := 0
-	for _, nl := range probelReadNameSizes {
-		r, rerr := p.AllSourceNames(cctx, mtx, level, nl)
-		if errors.Is(rerr, probelproto.ErrNoReply) {
-			fmt.Fprintf(os.Stderr, "probel-sw08p export: source names size %d not served by the matrix (no reply) - label_%d left empty\n", nl.Bytes(), nl.Bytes())
-			continue
+	// Levels — from --levels, or from the matrix itself: SW-P-08 has no
+	// level-count primitive, so read the tally of level 0, 1, 2, … and stop at
+	// the first level the matrix does not answer (ErrNoReply). A Neuron serves
+	// levels 0-2 on matrix 0.
+	var tallies []levelTally
+	if *levelsFlag != "" {
+		for _, s := range strings.Split(*levelsFlag, ",") {
+			l, perr := strconv.Atoi(strings.TrimSpace(s))
+			if perr != nil || l < 0 || l > 255 {
+				return fmt.Errorf("--levels: bad level %q", s)
+			}
+			res, rerr := p.CrosspointTallyDump(cctx, mtx, uint8(l))
+			if rerr != nil {
+				return fmt.Errorf("tally-dump level %d: %w", l, rerr)
+			}
+			tallies = append(tallies, levelTally{level: uint8(l), res: res})
 		}
-		if rerr != nil {
-			return fmt.Errorf("all-source-names size %d: %w", nl.Bytes(), rerr)
+	} else {
+		for l := 0; l < 256; l++ {
+			res, rerr := p.CrosspointTallyDump(cctx, mtx, uint8(l))
+			if errors.Is(rerr, probelproto.ErrNoReply) && l > 0 {
+				break // first level the matrix does not serve
+			}
+			if rerr != nil {
+				return fmt.Errorf("tally-dump level %d: %w", l, rerr)
+			}
+			tallies = append(tallies, levelTally{level: uint8(l), res: res})
 		}
-		srcLabels[nl] = r.Names
-		srcFirst = int(r.FirstSourceID)
 	}
-	if len(srcLabels) == 0 {
-		return fmt.Errorf("all-source-names: the matrix answered no name size (4/8/12)")
+	levels := make([]uint8, len(tallies))
+	for i, t := range tallies {
+		levels[i] = t.level
+	}
+
+	// Sources — (matrix, level)-scoped, read per level at each width. A width
+	// the matrix ACKs but does not answer (ErrNoReply, compliance event
+	// probel_reply_missing) leaves that label column empty; the export goes on
+	// with the widths it does serve.
+	var srcBlocks []nameBlock
+	for _, level := range levels {
+		b := nameBlock{level: level, labels: map[codec.NameLength][]string{}}
+		for _, nl := range probelReadNameSizes {
+			r, rerr := p.AllSourceNames(cctx, mtx, level, nl)
+			if errors.Is(rerr, probelproto.ErrNoReply) {
+				fmt.Fprintf(os.Stderr, "probel-sw08p export: level %d source names size %d not served by the matrix (no reply) - label_%d left empty\n", level, nl.Bytes(), nl.Bytes())
+				continue
+			}
+			if rerr != nil {
+				return fmt.Errorf("all-source-names level %d size %d: %w", level, nl.Bytes(), rerr)
+			}
+			b.labels[nl] = r.Names
+			b.first = int(r.FirstSourceID)
+		}
+		if len(b.labels) == 0 {
+			return fmt.Errorf("all-source-names level %d: the matrix answered no name size (4/8/12)", level)
+		}
+		srcBlocks = append(srcBlocks, b)
 	}
 	srcPath := facetFile(*outDir, *prefix, "src")
-	if err := writeProbelNameCSV(srcPath, "src_id", mtx, level, srcFirst, srcLabels); err != nil {
+	if err := writeProbelNameCSV(srcPath, "src_id", mtx, srcBlocks); err != nil {
 		return err
 	}
 
@@ -122,30 +161,28 @@ func runProbelExport(ctx context.Context, args []string) error {
 	if len(dstLabels) == 0 {
 		return fmt.Errorf("all-dest-names: the matrix answered no name size (4/8/12)")
 	}
+	// Destination names are matrix-scoped: one block, under the first level.
 	dstPath := facetFile(*outDir, *prefix, "dst")
-	if err := writeProbelNameCSV(dstPath, "dst_id", mtx, level, dstFirst, dstLabels); err != nil {
+	if err := writeProbelNameCSV(dstPath, "dst_id", mtx, []nameBlock{{level: levels[0], first: dstFirst, labels: dstLabels}}); err != nil {
 		return err
 	}
 
-	// Crosspoints — the tally (dst <- src).
-	res, rerr := p.CrosspointTallyDump(cctx, mtx, level)
-	if rerr != nil {
-		return fmt.Errorf("tally-dump: %w", rerr)
-	}
+	// Crosspoints — the tally (dst <- src) of every level, one file: the
+	// levels column carries the level, the shape import --xpoint reads.
 	xpPath := facetFile(*outDir, *prefix, "xpoint")
-	nXP, err := writeProbelXpointCSV(xpPath, mtx, level, res)
+	nXP, err := writeProbelXpointCSV(xpPath, mtx, tallies)
 	if err != nil {
 		return err
 	}
 
 	// -matrix.csv — ADR-0023 descriptor (#738 unit 2). SW-P-08 routes
 	// one source per destination: behavior 1toN. Sizes come from what
-	// the wire just answered: crosspoint count + source-name count.
+	// the wire just answered, per level: destinations + source names.
 	desc := matrixDesc{
 		Matrix:   strconv.Itoa(int(mtx)),
 		Behavior: "1toN",
-		Targets:  nXP,
-		Sources:  len(srcLabels[codec.NameLen12]),
+		Targets:  nXP / len(tallies),
+		Sources:  probelNameCount(srcBlocks[0].labels),
 	}
 	descPath := facetFile(*outDir, *prefix, "matrix")
 	if err := os.WriteFile(descPath, []byte(formatMatrixDescCSV([]matrixDesc{desc})), 0o644); err != nil {
@@ -157,24 +194,31 @@ func runProbelExport(ctx context.Context, args []string) error {
 	// A matrix that ACKs rx 019 but never answers (no protect support) gets no
 	// -protect.csv; the rest of the export stands.
 	var protNote string
-	pres, perr := p.ProtectTallyDump(cctx, mtx, level, 0)
-	switch {
-	case errors.Is(perr, probelproto.ErrNoReply):
+	var prots []levelProtect
+	for _, level := range levels {
+		pres, perr := p.ProtectTallyDump(cctx, mtx, level, 0)
+		if errors.Is(perr, probelproto.ErrNoReply) {
+			fmt.Fprintf(os.Stderr, "probel-sw08p export: level %d protect dump not served by the matrix (no reply)\n", level)
+			continue
+		}
+		if perr != nil {
+			return fmt.Errorf("protect-dump level %d: %w", level, perr)
+		}
+		prots = append(prots, levelProtect{level: level, res: pres})
+	}
+	if len(prots) == 0 {
 		protNote = "  (no -protect.csv: the matrix does not answer the protect dump)\n"
-		fmt.Fprintf(os.Stderr, "probel-sw08p export: protect dump not served by the matrix (no reply) - no protect file\n")
-	case perr != nil:
-		return fmt.Errorf("protect-dump: %w", perr)
-	default:
+	} else {
 		protPath := facetFile(*outDir, *prefix, "protect")
-		nProt, err := writeProbelProtectCSV(protPath, mtx, level, pres)
+		nProt, err := writeProbelProtectCSV(protPath, mtx, prots)
 		if err != nil {
 			return err
 		}
 		protNote = fmt.Sprintf("  %s  (%d protect row(s))\n", protPath, nProt)
 	}
 
-	fmt.Printf("exported matrix=%d level=%d:\n  %s  (descriptor)\n  %s  (%d sources)\n  %s  (%d dests)\n  %s  (%d crosspoints)\n%s  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
-		mtx, level, descPath, srcPath, probelNameCount(srcLabels), dstPath, probelNameCount(dstLabels), xpPath, nXP, protNote)
+	fmt.Printf("exported matrix=%d levels=%v:\n  %s  (descriptor)\n  %s  (%d sources per level)\n  %s  (%d dests)\n  %s  (%d crosspoints, all levels)\n%s  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
+		mtx, levels, descPath, srcPath, probelNameCount(srcBlocks[0].labels), dstPath, probelNameCount(dstLabels), xpPath, nXP, protNote)
 	return writePackMeta(*outDir, "probel-sw08p", hostOnly(addr))
 }
 
@@ -182,7 +226,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 // matrix_id,level_id,dst_id,state,device — the shape applyProbelProtectCSV
 // reads back. States outside the none/probel pair are written numerically
 // (import skips them — honest, never coerced).
-func writeProbelProtectCSV(path string, mtx, level uint8, res codec.ProtectTallyDumpParams) (int, error) {
+func writeProbelProtectCSV(path string, mtx uint8, prots []levelProtect) (int, error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return 0, fmt.Errorf("create %s: %w", path, err)
@@ -194,23 +238,43 @@ func writeProbelProtectCSV(path string, mtx, level uint8, res codec.ProtectTally
 		return 0, err
 	}
 	n := 0
-	for i, it := range res.Items {
-		state := strconv.Itoa(int(it.State))
-		switch it.State {
-		case codec.ProtectNone:
-			state = "none"
-		case codec.ProtectProbel:
-			state = "probel"
+	for _, lp := range prots {
+		for i, it := range lp.res.Items {
+			state := strconv.Itoa(int(it.State))
+			switch it.State {
+			case codec.ProtectNone:
+				state = "none"
+			case codec.ProtectProbel:
+				state = "probel"
+			}
+			if err := w.Write([]string{
+				strconv.Itoa(int(mtx)), strconv.Itoa(int(lp.level)),
+				strconv.Itoa(int(lp.res.FirstDestinationID) + i), state, strconv.Itoa(int(it.DeviceID)),
+			}); err != nil {
+				return n, err
+			}
+			n++
 		}
-		if err := w.Write([]string{
-			strconv.Itoa(int(mtx)), strconv.Itoa(int(level)),
-			strconv.Itoa(int(res.FirstDestinationID) + i), state, strconv.Itoa(int(it.DeviceID)),
-		}); err != nil {
-			return n, err
-		}
-		n++
 	}
 	return n, w.Error()
+}
+
+// levelTally / levelProtect / nameBlock carry one level's read so the
+// writers emit every level of the matrix into a single file each.
+type levelTally struct {
+	level uint8
+	res   probelproto.TallyDumpResult
+}
+
+type levelProtect struct {
+	level uint8
+	res   codec.ProtectTallyDumpParams
+}
+
+type nameBlock struct {
+	level  uint8
+	first  int
+	labels map[codec.NameLength][]string
 }
 
 func trimProbelName(s string) string { return strings.TrimRight(s, "\x00 ") }
@@ -228,7 +292,7 @@ func probelNameCount(sizeLabels map[codec.NameLength][]string) int {
 	return n
 }
 
-func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLabels map[codec.NameLength][]string) error {
+func writeProbelNameCSV(path, idCol string, mtx uint8, blocks []nameBlock) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create %s: %w", path, err)
@@ -239,27 +303,24 @@ func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLab
 	if err := w.Write([]string{"matrix_id", "level_id", idCol, "default_label", "label_4", "label_8", "label_12", "label_16"}); err != nil {
 		return err
 	}
-	n := 0
-	for _, s := range probelCSVSizes {
-		if len(sizeLabels[s.nl]) > n {
-			n = len(sizeLabels[s.nl])
-		}
-	}
-	for i := 0; i < n; i++ {
-		def := ""
-		if l := sizeLabels[codec.NameLen12]; i < len(l) { // widest READABLE width
-			def = trimProbelName(l[i])
-		}
-		row := []string{strconv.Itoa(int(mtx)), strconv.Itoa(int(level)), strconv.Itoa(first + i), def}
-		for _, s := range probelCSVSizes {
-			v := ""
-			if l := sizeLabels[s.nl]; i < len(l) {
-				v = trimProbelName(l[i])
+	for _, b := range blocks {
+		n := probelNameCount(b.labels)
+		for i := 0; i < n; i++ {
+			def := ""
+			if l := b.labels[codec.NameLen12]; i < len(l) { // widest READABLE width
+				def = trimProbelName(l[i])
 			}
-			row = append(row, v)
-		}
-		if err := w.Write(row); err != nil {
-			return err
+			row := []string{strconv.Itoa(int(mtx)), strconv.Itoa(int(b.level)), strconv.Itoa(b.first + i), def}
+			for _, s := range probelCSVSizes {
+				v := ""
+				if l := b.labels[s.nl]; i < len(l) {
+					v = trimProbelName(l[i])
+				}
+				row = append(row, v)
+			}
+			if err := w.Write(row); err != nil {
+				return err
+			}
 		}
 	}
 	return w.Error()
@@ -272,7 +333,7 @@ func writeProbelNameCSV(path, idCol string, mtx, level uint8, first int, sizeLab
 // index by header name and ignore extras). Import accepts this shape
 // AND the legacy matrix_id,level_id,dst_id,src_id files. Returns the
 // number of crosspoints written.
-func writeProbelXpointCSV(path string, mtx, level uint8, res probelproto.TallyDumpResult) (int, error) {
+func writeProbelXpointCSV(path string, mtx uint8, tallies []levelTally) (int, error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return 0, fmt.Errorf("create %s: %w", path, err)
@@ -283,23 +344,25 @@ func writeProbelXpointCSV(path string, mtx, level uint8, res probelproto.TallyDu
 	if err := w.Write([]string{"dest", "srce", "levels", "matrix_id"}); err != nil {
 		return 0, err
 	}
-	row := func(dst, src int) error {
-		return w.Write([]string{strconv.Itoa(dst), strconv.Itoa(src), strconv.Itoa(int(level)), strconv.Itoa(int(mtx))})
-	}
 	n := 0
-	if res.IsWord {
-		for i, s := range res.Word.SourceIDs {
-			if err := row(int(res.Word.FirstDestinationID)+i, int(s)); err != nil {
-				return n, err
-			}
-			n++
+	for _, t := range tallies {
+		row := func(dst, src int) error {
+			return w.Write([]string{strconv.Itoa(dst), strconv.Itoa(src), strconv.Itoa(int(t.level)), strconv.Itoa(int(mtx))})
 		}
-	} else {
-		for i, s := range res.Byte.SourceIDs {
-			if err := row(int(res.Byte.FirstDestinationID)+i, int(s)); err != nil {
-				return n, err
+		if t.res.IsWord {
+			for i, s := range t.res.Word.SourceIDs {
+				if err := row(int(t.res.Word.FirstDestinationID)+i, int(s)); err != nil {
+					return n, err
+				}
+				n++
 			}
-			n++
+		} else {
+			for i, s := range t.res.Byte.SourceIDs {
+				if err := row(int(t.res.Byte.FirstDestinationID)+i, int(s)); err != nil {
+					return n, err
+				}
+				n++
+			}
 		}
 	}
 	return n, w.Error()
