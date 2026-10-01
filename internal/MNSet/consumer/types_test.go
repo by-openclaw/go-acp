@@ -221,3 +221,56 @@ func TestOnlyTheNMOSDocumentUnderDiagIsWritable(t *testing.T) {
 		}
 	}
 }
+
+// TestTheDictionaryTypesTheProvisioningLeaves pins the entries the
+// provisioning set relies on (2026-10-01 review): the PTP clock inputs
+// under refclk/<uuid>, the three VPID sources, the SDI bit-rate family,
+// the syslog switches, and the two leaves that stay read-only because a
+// write over in-band would cut the access path.
+func TestTheDictionaryTypesTheProvisioningLeaves(t *testing.T) {
+	d := dict()
+	uuid := "f2807dac-985d-11e5-8994-feff819cdc9f"
+	typ := func(p string) fieldType { return d.typeOf(strings.Split(p, ".")) }
+
+	if ft := typ("refclk." + uuid + ".domain_num"); ft.kind != "int" || ft.min == nil || *ft.min != 0 || ft.max == nil || *ft.max != 127 || ft.readOnly {
+		t.Errorf("refclk.<uuid>.domain_num = %+v", ft)
+	}
+	if ft := typ("refclk." + uuid + ".dscp"); ft.kind != "int" || ft.max == nil || *ft.max != 63 {
+		t.Errorf("refclk.<uuid>.dscp = %+v", ft)
+	}
+	if ft := typ("refclk." + uuid + ".vlan_id"); ft.kind != "int" || ft.max == nil || *ft.max != 4095 {
+		t.Errorf("refclk.<uuid>.vlan_id = %+v", ft)
+	}
+	if ft := typ("refclk." + uuid + ".grandmaster_id"); !ft.readOnly {
+		t.Errorf("refclk.<uuid>.grandmaster_id must be read-only: %+v", ft)
+	}
+	// The parent's own leaves keep their own entries.
+	if ft := typ("refclk.delay_req"); ft.readOnly {
+		t.Errorf("refclk.delay_req = %+v", ft)
+	}
+
+	if ft := typ("sdi_output.x.vpid.source"); ft.kind != "enum" || strings.Join(ft.values, ",") != "regenerated,source,override" {
+		t.Errorf("vpid.source = %+v", ft)
+	}
+	if v, err := normalize("sdi_output.x.vpid.source", typ("sdi_output.x.vpid.source"), consumer.Value{Str: "Source"}); err != nil || requestText(v) != "source" {
+		t.Errorf("vpid.source by label = %+v, %v", v, err)
+	}
+	if ft := typ("sdi.configuration.operating_bit_rate"); ft.kind != "enum" || strings.Join(ft.values, ",") != "fractional,integer,auto" {
+		t.Errorf("operating_bit_rate = %+v", ft)
+	}
+	if ft := typ("self.syslog.monitoring.decap.frame_repeat"); ft.kind != "bool" || ft.readOnly {
+		t.Errorf("syslog monitoring switch = %+v", ft)
+	}
+	if ft := typ("self.interfaces.e1.vlan"); ft.kind != "int" || ft.max == nil || *ft.max != 4095 {
+		t.Errorf("interfaces vlan = %+v", ft)
+	}
+	if ft := typ("self.interfaces.e2.dhcp"); ft.kind != "bool" {
+		t.Errorf("interfaces dhcp = %+v", ft)
+	}
+	if ft := typ("self.system.access_control.media.device_management"); !ft.readOnly {
+		t.Errorf("REST over media must be read-only over in-band: %+v", ft)
+	}
+	if ft := typ("self.diag.dns.lookup.host"); !ft.readOnly {
+		t.Errorf("self.diag.dns is status: %+v", ft)
+	}
+}

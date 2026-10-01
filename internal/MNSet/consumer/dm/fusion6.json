@@ -659,9 +659,16 @@
       "kind": "enum",
       "values": [
         "regenerated",
+        "source",
         "override"
       ],
-      "source": "probe: FusioN6 fw 0x68cd783f, 2026-09-28 - accepted/refused on an unused instance"
+      "labels": {
+        "regenerated": "Regenerated",
+        "source": "Source",
+        "override": "Override"
+      },
+      "description": "where the SDI payload identifier comes from: rebuilt by the module, copied from the source, or override_value",
+      "source": "MN SET 'VPID source' offers the three; probe: FusioN6 fw 0x68cd783f, 2026-09-30 - all three accepted (200, read back) on an unused output"
     },
     {
       "match": "sdi_output.*.vpid.override_value",
@@ -836,6 +843,165 @@
       "kind": "int",
       "access": "R",
       "source": "value shape on the module; not probed (management field)"
+    },
+    {
+      "match": "refclk.*.domain_num",
+      "kind": "int",
+      "min": 0,
+      "max": 127,
+      "description": "PTP domain of this clock input (input 1 = RED live, input 2 = BLUE live)",
+      "source": "IEEE 1588 domainNumber 0..127; probe: FusioN6 fw 0x68cd783f, 2026-10-01 - unchanged write-back 200 on refclk/<uuid>"
+    },
+    {
+      "match": "refclk.*.dscp",
+      "kind": "int",
+      "min": 0,
+      "max": 63,
+      "description": "DSCP of the PTP packets on this clock input",
+      "source": "RFC 2474 6-bit field; probe 2026-10-01 - unchanged write-back 200 on refclk/<uuid>"
+    },
+    {
+      "match": "refclk.*.vlan_id",
+      "kind": "int",
+      "min": 0,
+      "max": 4095,
+      "description": "VLAN tag of the PTP packets on this clock input (0 = untagged; never used in production)",
+      "source": "IEEE 802.1Q; probe 2026-10-01 - unchanged write-back 200 on refclk/<uuid>"
+    },
+    {
+      "match": "refclk.*.grandmaster_id",
+      "access": "R",
+      "description": "grandmaster clock identity seen on this clock input",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.*.clock_id",
+      "access": "R",
+      "description": "the module's own clock identity on this input",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.*.present",
+      "kind": "bool",
+      "access": "R",
+      "description": "PTP seen on this clock input",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.*.master_version",
+      "access": "R",
+      "source": "status field"
+    },
+    {
+      "match": "refclk.*.id",
+      "access": "R",
+      "source": "identity of the clock input"
+    },
+    {
+      "match": "refclk.*.api_info.api_version_number",
+      "kind": "int",
+      "access": "R",
+      "source": "value shape on the module"
+    },
+    {
+      "match": "refclk.*.server_mode",
+      "kind": "bool",
+      "source": "value shape on the module; not probed"
+    },
+    {
+      "match": "flows.*.name",
+      "kind": "string",
+      "description": "the module's own flow name (tx ch5 flow 0 pri); the NMOS name is label",
+      "source": "MN SET 'Name'; probe 2026-09-30 - unchanged write-back 200; change not tested"
+    },
+    {
+      "match": "lldp.configuration.enable_rx",
+      "kind": "bool",
+      "description": "receive LLDP from the switch",
+      "source": "MN SET 'LLDP Rx'; probe 2026-09-30 - unchanged write-back 200"
+    },
+    {
+      "match": "lldp.configuration.rate",
+      "kind": "int",
+      "description": "LLDP transmit interval (45 on the module as shipped; unit not documented)",
+      "source": "MN SET 'LLDP Tx rate'; probe 2026-09-30 - unchanged write-back 200"
+    },
+    {
+      "match": "lldp.configuration.untag",
+      "kind": "bool",
+      "source": "value shape on the module; not probed"
+    },
+    {
+      "match": "port.*.host_pinout",
+      "access": "R",
+      "description": "pinout of the module in this cage: 2T | 2R | RT",
+      "source": "identity"
+    },
+    {
+      "match": "sdi.configuration.operating_bit_rate",
+      "kind": "enum",
+      "values": [
+        "fractional",
+        "integer",
+        "auto"
+      ],
+      "labels": {
+        "fractional": "Fractional",
+        "integer": "Integer",
+        "auto": "Auto"
+      },
+      "description": "frame-rate family of every SDI output (integer = a 50/60 Hz plant)",
+      "source": "MN SET 'Bit Rate'; probe 2026-09-30 - all three accepted (200, read back) on the live module"
+    },
+    {
+      "match": "sdi_input.*.frame_sync_audio.audio_delay",
+      "access": "R",
+      "description": "audio delay the frame sync applies",
+      "source": "MN SET shows it read-only"
+    },
+    {
+      "match": "self.diag.dns.**",
+      "access": "R",
+      "description": "DNS diagnostic: lookup.host takes a PUT as an action (200 'Request pending'), the rest is status",
+      "source": "probe 2026-10-01"
+    },
+    {
+      "match": "self.diag.nmos.dns_registry_service",
+      "kind": "string",
+      "description": "DNS-SD service name used when registry_mode is auto",
+      "source": "probe 2026-10-01 - write accepted (200, read back); MN SET shows it read-only"
+    },
+    {
+      "match": "self.interfaces.*.dhcp",
+      "kind": "bool",
+      "description": "address by DHCP (false = static_ip / static_gateway apply)",
+      "source": "probe 2026-09-30 on e1 and e2: DHCP off + static answered after 13 s, back to DHCP re-leased"
+    },
+    {
+      "match": "self.interfaces.*.vlan",
+      "kind": "int",
+      "min": 0,
+      "max": 4095,
+      "description": "VLAN tag of the live (0 = untagged; never used in production). A wrong value cuts in-band access",
+      "source": "IEEE 802.1Q; unchanged write-back 200; change not tested"
+    },
+    {
+      "match": "self.syslog.config.enable",
+      "kind": "bool",
+      "source": "probe 2026-09-30 - unchanged write-back 200; delivery to the collector proven 2026-09-28"
+    },
+    {
+      "match": "self.syslog.monitoring.**",
+      "kind": "bool",
+      "description": "per-event syslog switch",
+      "source": "MN SET Syslog tab; probe 2026-09-30 - unchanged write-back 200 on every one"
+    },
+    {
+      "match": "self.system.access_control.media.device_management",
+      "kind": "bool",
+      "access": "R",
+      "description": "REST over the media lives (in-band). Read-only here: turning it off over in-band cuts the access path; set it from OOB",
+      "source": "MN SET 'REST over Media' (read-only there)"
     },
     {
       "match": "refclk.manual_ctrl",

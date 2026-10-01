@@ -75,7 +75,11 @@ func newModule(t *testing.T) *module {
 	m.docs["self/system"] = `{"core_temp":63,"fan_speed":4724,"uptime":"0 days, 07:36:32","igmp":{"version":3}}`
 	m.docs["flows"] = `["fee338d3/"]`
 	m.docs["flows/fee338d3"] = `{"id":"fee338d3","network":[{"dst_ip_addr":"239.0.1.2","dst_udp_port":20000,"enable":1,"pkt_cnt":"0"},{"dst_ip_addr":"239.0.1.3","dst_udp_port":20000,"enable":1}]}`
-	m.docs["refclk"] = `{"mode":"0","status":"3","locked_interface":"e1","delay_req":-3,"ratio":1.5,"nothing":null}`
+	// The PTP document is an object whose "uuid" array names the two
+	// clock inputs served as refclk/<uuid> (the real shape, 2026-10-01).
+	m.docs["refclk"] = `{"mode":"0","status":"3","locked_interface":"e1","delay_req":-3,"ratio":1.5,"nothing":null,"selected_uuid":"f2807dac","uuid":["f2807dac","f3807dac"]}`
+	m.docs["refclk/f2807dac"] = `{"id":"f2807dac","domain_num":"77","dscp":"46","vlan_id":"0","grandmaster_id":"e8-ea-6a-ff-fe-09-bb-9e","present":"1"}`
+	m.docs["refclk/f3807dac"] = `{"id":"f3807dac","domain_num":"77","dscp":"46","vlan_id":"0","grandmaster_id":"94-8e-d3-ff-ff-06-18-b1","present":"1"}`
 	m.docs["telemetry"] = `["node/","warnings/"]`
 	m.docs["telemetry/node"] = `{"health":"ok","interfaces":["e1","e2"]}`
 	m.docs["telemetry/warnings"] = `[]`
@@ -436,7 +440,7 @@ func TestSetValueErrors(t *testing.T) {
 		{"", "not-found", consumer.Value{Str: "x"}},
 		{"self.information.serial_number", "read-only", consumer.Value{Str: "x"}},
 		{"flows.fee338d3.network.9.dst_ip_addr", "not-found", consumer.Value{Str: "x"}},
-		{"self.syslog.config.enable", "not a boolean", consumer.Value{Str: "maybe"}},
+		{"self.syslog.config.enable", "not 0/1", consumer.Value{Str: "maybe"}}, // refused by the dictionary, before the wire
 		{"flows.fee338d3.network.0.dst_udp_port", "not a whole number", consumer.Value{Str: "high"}},
 		{"self.syslog.config", "node takes a JSON object", consumer.Value{Str: "x"}},
 		{"nosuch.field", "not listed under /", consumer.Value{Str: "x"}},
@@ -454,4 +458,59 @@ func TestSetValueErrors(t *testing.T) {
 		t.Errorf("PUT refusal err = %v", err)
 	}
 	delete(m.fail, "refclk")
+}
+
+// TestAClockInputIsReachedThroughItsParentDocument: refclk is a document,
+// not a listing, yet its "uuid" array names the clock inputs served as
+// refclk/<uuid>. The walk descends them, a path resolves into them, and a
+// set PUTs the child document — with the module's own spelling (strings)
+// and the dictionary's range — while the parent's own leaves stay
+// addressable.
+func TestAClockInputIsReachedThroughItsParentDocument(t *testing.T) {
+	m := newModule(t)
+	p := connected(t, m)
+	objs, err := p.Walk(context.Background(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]consumer.Object{}
+	for _, o := range objs {
+		byPath[strings.Join(o.Path, ".")] = o
+	}
+	if o, ok := byPath["refclk.f2807dac.domain_num"]; !ok || o.Kind != consumer.KindInt || o.Value.Int != 77 || o.Access&accessWrite == 0 {
+		t.Errorf("clock input leaf = %+v (found %v)", o, ok)
+	}
+	if o := byPath["refclk.f3807dac.grandmaster_id"]; o.Access&accessWrite != 0 {
+		t.Errorf("grandmaster_id must be read-only: %+v", o)
+	}
+	if _, ok := byPath["refclk.selected_uuid"]; !ok {
+		t.Error("the parent document's own leaves must still be exported")
+	}
+
+	ctx := context.Background()
+	got, err := p.GetValue(ctx, consumer.ValueRequest{Path: "refclk.f3807dac.dscp"})
+	if err != nil || got.Int != 46 {
+		t.Errorf("get clock input leaf = %+v, %v", got, err)
+	}
+	got, err = p.GetValue(ctx, consumer.ValueRequest{Path: "refclk.selected_uuid"})
+	if err != nil || got.Str != "f2807dac" {
+		t.Errorf("get parent leaf = %+v, %v", got, err)
+	}
+
+	got, err = p.SetValue(ctx, consumer.ValueRequest{Path: "refclk.f2807dac.domain_num"}, consumer.Value{Kind: consumer.KindInt, Int: 80})
+	if err != nil || got.Int != 80 {
+		t.Fatalf("set clock input leaf = %+v, %v", got, err)
+	}
+	if body := m.puts["refclk/f2807dac"]; !strings.Contains(body, `"domain_num":"80"`) || !strings.Contains(body, `"grandmaster_id"`) {
+		t.Errorf("the child document must be PUT whole, in the module's spelling: %s", body)
+	}
+	if _, ok := m.puts["refclk"]; ok {
+		t.Error("the parent document must not be PUT for a child's field")
+	}
+	if _, err := p.SetValue(ctx, consumer.ValueRequest{Path: "refclk.f2807dac.domain_num"}, consumer.Value{Kind: consumer.KindInt, Int: 128}); !errors.Is(err, consumer.ErrOutOfRangeHigh) {
+		t.Errorf("domain 128 must be refused before the wire: %v", err)
+	}
+	if _, err := p.SetValue(ctx, consumer.ValueRequest{Path: "refclk.f2807dac.grandmaster_id"}, consumer.Value{Kind: consumer.KindString, Str: "x"}); err == nil {
+		t.Error("grandmaster_id is read-only")
+	}
 }

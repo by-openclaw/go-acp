@@ -253,3 +253,30 @@ func TestATransmitFlowLabelIsItsNMOSName(t *testing.T) {
 		t.Errorf("FAIL-real: receivers.0.label must be read-only:\n%s", out)
 	}
 }
+
+// TestAClockInputTakesAWriteOnItsOwnDocument: the PTP clock inputs live
+// under refclk/<uuid>, a document the parent names rather than lists.
+// A set on one resolves to that document, PUTs it whole and reads it
+// back. The value written is the current one, so the lock is untouched.
+func TestAClockInputTakesAWriteOnItsOwnDocument(t *testing.T) {
+	h := host(t)
+	re := regexp.MustCompile(`^refclk\.([0-9a-f-]{36})\.domain_num$`)
+	var path string
+	for _, r := range exportRows(t, h) {
+		if re.MatchString(r["path"]) {
+			path = r["path"]
+			break
+		}
+	}
+	if path == "" {
+		t.Fatal("FAIL-real: the export lists no refclk/<uuid> clock input")
+	}
+	want := current(t, h, path)
+	got, err := run(t, time.Minute, "consumer", "mnset", "set", h, "--path", path, "--value", want)
+	if err != nil || !strings.Contains(got, "confirmed value = "+want) {
+		t.Errorf("FAIL-real: set %s=%s: %v\n%s", path, want, err, got)
+	}
+	if after := current(t, h, path); after != want {
+		t.Errorf("FAIL-real: %s = %s after an unchanged write, was %s", path, after, want)
+	}
+}
