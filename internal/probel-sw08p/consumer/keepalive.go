@@ -5,6 +5,10 @@ import (
 	sw08session "dhs/internal/probel-sw08p/session"
 )
 
+// ErrNoReply is the session error for a request the peer ACKed but never
+// answered (see ReplyMissing). Callers test it with errors.Is.
+var ErrNoReply = sw08session.ErrNoReply
+
 // keepaliveAutoResponder returns a sw08session.ClientConfig.OnEvent listener
 // that auto-replies to any TxAppKeepaliveRequest (0x11) with an
 // RxAppKeepaliveResponse (0x22). Wired through ClientConfig.OnEvent so

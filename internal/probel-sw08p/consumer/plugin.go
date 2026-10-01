@@ -216,6 +216,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		OnTimeout: func() { prof.Note(ACKTimeoutElapsed); met.ObserveTimeout() },
 		OnRetry:   func(int) { prof.Note(RetryAttempted); met.ObserveRetry() },
 		OnNoACK:   func() { prof.Note(ReplyWithoutACK) },
+		OnNoReply: func() { prof.Note(ReplyMissing) },
 		OnTx: func(b []byte, elapsed time.Duration) {
 			if id, ok := probelCmdFromBytes(b); ok {
 				met.ObserveCmdTx(id, len(b), elapsed)
