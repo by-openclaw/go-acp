@@ -514,3 +514,73 @@ func TestAClockInputIsReachedThroughItsParentDocument(t *testing.T) {
 		t.Error("grandmaster_id is read-only")
 	}
 }
+
+// TestChildIDsNamesOnlyAUUIDArrayOfNames: a document's children are the
+// strings of its "uuid" array, and nothing else is read as a child.
+func TestChildIDsNamesOnlyAUUIDArrayOfNames(t *testing.T) {
+	cases := []struct {
+		name string
+		doc  any
+		want []string
+	}{
+		{"a listing is not a parent document", []any{"a/", "b/"}, nil},
+		{"no uuid key", map[string]any{"mode": "0"}, nil},
+		{"uuid is a scalar", map[string]any{"uuid": "f2807dac"}, nil},
+		{"uuid is an empty array", map[string]any{"uuid": []any{}}, nil},
+		{"uuid holds a non-string", map[string]any{"uuid": []any{"f2807dac", 7}}, nil},
+		{"uuid holds an empty name", map[string]any{"uuid": []any{""}}, nil},
+		{"two clock inputs", map[string]any{"uuid": []any{"f2807dac", "f3807dac"}}, []string{"f2807dac", "f3807dac"}},
+	}
+	for _, c := range cases {
+		if got := childIDs(c.doc); strings.Join(got, ",") != strings.Join(c.want, ",") {
+			t.Errorf("%s: childIDs = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// TestWalkBoundsChildDescentDepth: a parent document met at the depth
+// bound is exported, but its children are not descended; the walk says so.
+func TestWalkBoundsChildDescentDepth(t *testing.T) {
+	m := newModule(t)
+	m.docs[""] = `["l1/"]`
+	url := ""
+	for i := 1; i < maxListingDepth; i++ {
+		url = strings.TrimPrefix(url+"/l"+strconv.Itoa(i), "/")
+		m.docs[url] = `["l` + strconv.Itoa(i+1) + `/"]`
+	}
+	deep := url + "/l" + strconv.Itoa(maxListingDepth)
+	m.docs[deep] = `{"mode":"0","uuid":["kid"]}`
+	m.docs[deep+"/kid"] = `{"domain_num":"77"}`
+	p := connected(t, m)
+	objs, err := p.Walk(context.Background(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range objs {
+		if strings.Contains(strings.Join(o.Path, "."), ".kid.") {
+			t.Errorf("child descended past the depth bound: %v", o.Path)
+		}
+	}
+	devs := p.Deviations()
+	if len(devs) != 1 || !strings.Contains(devs[0], "children nested deeper than") {
+		t.Errorf("deviations = %v", devs)
+	}
+}
+
+// TestWalkStopsOnCancelInsideAChildDescent: a cancellation while the
+// clock inputs are being read surfaces from the child loop too.
+func TestWalkStopsOnCancelInsideAChildDescent(t *testing.T) {
+	m := newModule(t)
+	p := connected(t, m)
+	ctx, cancel := context.WithCancel(context.Background())
+	inner := m.ts.Config.Handler
+	m.ts.Config.Handler = stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if strings.HasSuffix(r.URL.Path, "/refclk/f2807dac") {
+			cancel()
+		}
+		inner.ServeHTTP(w, r)
+	})
+	if _, err := p.Walk(ctx, 0); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+}
