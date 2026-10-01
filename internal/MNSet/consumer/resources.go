@@ -30,6 +30,9 @@ var writable = map[string]bool{
 	"flows": true, "route": true,
 	"sdi": true, "sdi_output": true, "sdi_input": true, "sdi_audio": true,
 	"clean_switch": true, "refclk": true,
+	// lldp: MN SET edits enable_rx / rate, and the module took the PUT
+	// (unchanged write-back 200, 2026-09-30).
+	"lldp": true,
 	"self/ipconfig": true, "self/syslog": true, "self/protocols": true,
 	"self/static_route": true, "self/system": true, "self/phy": true,
 	"self/interfaces": true,
@@ -69,6 +72,33 @@ func listing(v any) ([]string, bool) {
 		names = append(names, strings.TrimSuffix(s, "/"))
 	}
 	return names, true
+}
+
+// childIDs names the sub-resources a DOCUMENT carries. The PTP document
+// (refclk) is an object, not a listing, yet its "uuid" array names the
+// clock inputs the module serves as refclk/<uuid> — domain, DSCP, VLAN
+// and grandmaster per live (input 1 = RED, input 2 = BLUE). The walk
+// descends them and resolve follows a path into them. Nothing else on a
+// FusioN6 (fw 0x68cd783f) has the shape, so a document without a
+// "uuid" array of names has no children.
+func childIDs(doc any) []string {
+	m, ok := doc.(map[string]any)
+	if !ok {
+		return nil
+	}
+	arr, ok := m["uuid"].([]any)
+	if !ok || len(arr) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(arr))
+	for _, e := range arr {
+		s, ok := e.(string)
+		if !ok || s == "" {
+			return nil
+		}
+		ids = append(ids, s)
+	}
+	return ids
 }
 
 // pathElems returns the Object.Path prefix for a resource URL:

@@ -351,6 +351,16 @@ func (p *Plugin) walkResource(ctx context.Context, c *client, url string, depth 
 		access |= accessWrite
 	}
 	flatten(0, pathElems(url), doc, access, objs)
+	// A document that names children (refclk/<uuid>) is descended too.
+	for _, id := range childIDs(doc) {
+		if depth >= maxListingDepth {
+			*dev = append(*dev, fmt.Sprintf("%s: children nested deeper than %d, not descended", url, maxListingDepth))
+			return nil
+		}
+		if err := p.walkResource(ctx, c, url+"/"+id, depth+1, objs, dev); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -391,7 +401,17 @@ func (p *Plugin) resolve(ctx context.Context, c *client, path string, cached boo
 	for {
 		names, ok := listing(doc)
 		if !ok {
-			break
+			// A document that names children (refclk/<uuid>): follow it
+			// when the next token is one of them; otherwise the rest of
+			// the path addresses a leaf of this document.
+			if i < len(toks) {
+				if ids := childIDs(doc); contains(ids, toks[i]) {
+					names, ok = ids, true
+				}
+			}
+			if !ok {
+				break
+			}
 		}
 		if i == len(toks) {
 			return resolved{}, fmt.Errorf("mnset: %q is a list, not a value", path)
