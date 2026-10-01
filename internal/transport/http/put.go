@@ -28,13 +28,24 @@ import (
 // connector metrics (tx bytes + round-trip, rx bytes) exactly like a GET:
 // a consumer that only ever writes still reports.
 func (c *Client) PutJSON(ctx context.Context, url string, src, dst any) (int, error) {
+	return c.writeJSON(ctx, stdhttp.MethodPut, url, src, dst)
+}
+
+// PatchJSON issues a PATCH with a JSON body: the partial write CCM
+// 0v1 §11.2 makes mandatory, carrying only the fields named so two
+// clients never overwrite each other's. Same contract as PutJSON.
+func (c *Client) PatchJSON(ctx context.Context, url string, src, dst any) (int, error) {
+	return c.writeJSON(ctx, stdhttp.MethodPatch, url, src, dst)
+}
+
+func (c *Client) writeJSON(ctx context.Context, method, url string, src, dst any) (int, error) {
 	body, err := json.Marshal(src)
 	if err != nil {
 		return 0, fmt.Errorf("http: marshal body: %w", err)
 	}
-	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPut, url, bytes.NewReader(body))
+	req, err := stdhttp.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
-		return 0, fmt.Errorf("http: build PUT: %w", err)
+		return 0, fmt.Errorf("http: build %s: %w", method, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -44,7 +55,7 @@ func (c *Client) PutJSON(ctx context.Context, url string, src, dst any) (int, er
 
 	resp, err := c.do(req)
 	if err != nil {
-		return 0, fmt.Errorf("http: PUT %s: %w", url, err)
+		return 0, fmt.Errorf("http: %s %s: %w", method, url, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -54,10 +65,10 @@ func (c *Client) PutJSON(ctx context.Context, url string, src, dst any) (int, er
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, max+1))
 	if err != nil {
-		return resp.StatusCode, fmt.Errorf("http: read PUT body: %w", err)
+		return resp.StatusCode, fmt.Errorf("http: read %s body: %w", method, err)
 	}
 	if int64(len(raw)) > max {
-		return resp.StatusCode, fmt.Errorf("http: PUT response exceeds %d bytes", max)
+		return resp.StatusCode, fmt.Errorf("http: %s response exceeds %d bytes", method, max)
 	}
 
 	if dst == nil || len(bytes.TrimSpace(raw)) == 0 {
@@ -66,7 +77,7 @@ func (c *Client) PutJSON(ctx context.Context, url string, src, dst any) (int, er
 	d := json.NewDecoder(strings.NewReader(string(raw)))
 	d.DisallowUnknownFields()
 	if err := d.Decode(dst); err != nil {
-		return resp.StatusCode, fmt.Errorf("http: decode PUT response: %w", err)
+		return resp.StatusCode, fmt.Errorf("http: decode %s response: %w", method, err)
 	}
 	return resp.StatusCode, nil
 }

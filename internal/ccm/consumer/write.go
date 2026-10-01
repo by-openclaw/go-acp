@@ -76,7 +76,13 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 		tpl, ok := spec.TemplateFor(resource)
 		if !ok || !spec.Writable(tpl) {
 			return nil, fmt.Errorf(
-				"ccm: %s is read-only — this device's api.yml declares no PUT on %s", req.Path, resource)
+				"ccm: %s is read-only — this device's api.yml declares no PUT or PATCH on %s", req.Path, resource)
+		}
+		// What the schema says about the field, before any device call:
+		// a read-only field, a word outside its enumeration, a number
+		// outside its bounds never reach the wire.
+		if cerr := checkWrite(spec, resource, field, vals[i]); cerr != nil {
+			return nil, fmt.Errorf("ccm: %w", cerr)
 		}
 		if _, seen := byResource[resource]; !seen {
 			order = append(order, resource)
@@ -101,10 +107,28 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 				return nil, fmt.Errorf("ccm: %s: %w", resource, serr)
 			}
 		}
+		// PATCH where the device declares it (CCM §11.2): only the fields
+		// changed go out, with the JSON types the document gave them. A
+		// field inside an array has no partial form (§11.2 says mutable
+		// endpoints use maps, not arrays), so that falls back to the PUT.
+		var fields [][]string
+		for _, c := range byResource[resource] {
+			fields = append(fields, c.field)
+		}
+		if m, _ := spec.WriteMethod(mustTemplate(spec, resource)); m == codec.PATCH {
+			if part, ok := partial(doc, fields); ok {
+				if perr := client.patch(ctx, resource, part); perr != nil {
+					return nil, perr
+				}
+				p.RecordTx()
+				goto readBack
+			}
+		}
 		if perr := client.put(ctx, resource, doc); perr != nil {
 			return nil, perr
 		}
 		p.RecordTx()
+	readBack:
 
 		// The answer is what the device holds now, not what was asked
 		// for: a device that accepts a write and keeps something else
@@ -115,7 +139,9 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 		}
 		p.RecordRx()
 		held := map[string]dhsc.Value{}
-		for _, o := range flatten(resource, after, spec.Writable(mustTemplate(spec, resource))) {
+		leaves := flatten(resource, after, spec.Writable(mustTemplate(spec, resource)))
+		typeObjects(spec, resource, leaves)
+		for _, o := range leaves {
 			held[strings.ToLower(strings.Join(o.Path, "."))] = o.Value
 		}
 		for _, c := range byResource[resource] {
@@ -132,6 +158,39 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 
 // mustTemplate is the spec template of a resource SetValues already
 // proved writable, so it is always found.
+// partial is the PATCH body: the named fields, with the values the
+// document holds after setField, nested as the document nests them.
+// false when a field crosses an array — there is no partial form for
+// that, and the caller PUTs the whole document instead.
+func partial(doc any, fields [][]string) (map[string]any, bool) {
+	out := map[string]any{}
+	for _, field := range fields {
+		cur := doc
+		var node = out
+		for i, seg := range field {
+			m, ok := cur.(map[string]any)
+			if !ok {
+				return nil, false
+			}
+			cur, ok = m[seg]
+			if !ok {
+				return nil, false
+			}
+			if i == len(field)-1 {
+				node[seg] = cur
+				break
+			}
+			next, ok := node[seg].(map[string]any)
+			if !ok {
+				next = map[string]any{}
+				node[seg] = next
+			}
+			node = next
+		}
+	}
+	return out, true
+}
+
 func mustTemplate(spec *codec.Spec, resource string) string {
 	tpl, _ := spec.TemplateFor(resource)
 	return tpl

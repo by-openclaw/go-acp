@@ -41,7 +41,9 @@ func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Valu
 	if tpl, ok := spec.TemplateFor(resource); ok {
 		writable = spec.Writable(tpl)
 	}
-	for _, o := range flatten(resource, body, writable) {
+	objs := flatten(resource, body, writable)
+	typeObjects(spec, resource, objs)
+	for _, o := range objs {
 		if strings.EqualFold(strings.Join(o.Path, "."), strings.Join(append(segments(resource), field...), ".")) {
 			return o.Value, nil
 		}
