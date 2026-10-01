@@ -1,15 +1,34 @@
-order,group,resource,select,field,value,note
-1,PTP,misc/reference,,ptp.domain,77,plant PTP domain
-2,PTP,misc/reference,,ptp.slaveOnly,true,
-3,PTP,misc/reference,,refSelection,ptp-l3-e2e,value as read from the device (no spec served yet)
-4,PTP,misc/reference,,timeSelection,ptp,lower-case on this firmware (as read)
-5,NTP,misc/reference,,ntp.mainServer,10.6.240.1,
-6,NMOS,misc/nmos,,enabled,true,NMOS on. discoveryMode left as is (multicast = mDNS): enum not published until the CCM spec ships
-7,NMOS,misc/nmos,,selfLabel,{nmos_label},from devices.csv
-8,Network RED,misc/macs,name=QSFP 1,ipAddrMethod,dhcp,lower-case on this firmware (as read)
-9,Network RED,misc/macs,name=QSFP 1,fec,{fec_red},from devices.csv (match the switch optic)
-10,Network BLUE,misc/macs,name=QSFP 2,ipAddrMethod,dhcp,
-11,Network BLUE,misc/macs,name=QSFP 2,fec,{fec_blue},from devices.csv (match the switch optic)
-12,TSL,misc/tsl,,enabled,true,TSL UMD in (oracle)
-13,TSL,misc/tsl,,port,2000,
-14,TSL,misc/tsl,,version,v5.0,
+order,group,plane,resource,select,field,value,type,format,enum,min,max,source,note
+1,PTP,,misc/reference,,ptp.domain,{ptp_domain},integer,,,,,device read (no spec served yet),bounds unknown until the CCM spec ships
+2,PTP,,misc/reference,,ptp.slaveOnly,true,boolean,,,,,device read,never grandmaster
+3,PTP,,misc/reference,,ptp.priority1,,integer,,,,,device read,empty = keep
+4,PTP,,misc/reference,,ptp.priority2,,integer,,,,,device read,empty = keep
+5,PTP,,misc/reference,,refSelection,ptp-l3-e2e,string,,ptp-l3-e2e (as read),,,device read,full enum unknown until the spec ships
+6,PTP,,misc/reference,,timeSelection,ptp,string,,ptp (as read; lower-case),,,device read,
+7,NTP,,misc/reference,,ntp.mainServer,{ntp_main},string,ipv4,,,,device read,proven 2026-10-01 (locks to main)
+8,NTP,,misc/reference,,ntp.backupServer,{ntp_backup},string,ipv4,,,,device read,
+9,NMOS,,misc/nmos,,enabled,true,boolean,,,,,device read,NMOS on
+10,NMOS,,misc/nmos,,selfLabel,{nmos_label},string,,,,,device read,IS-04 node label
+11,NMOS,,misc/nmos,,selfDescription,,string,,,,,device read,empty = keep
+12,NMOS,,misc/nmos,,discoveryMode,,string,,multicast (as read),,,device read,"empty = keep: the static spelling is unknown until the spec ships (mDNS finds the dhs registry today)"
+13,NMOS,,misc/nmos,,addressOverride,,string,ipv4,,,,device read,used with static discovery; empty = keep
+14,NMOS,,misc/nmos,,portOverride,,integer,,,,,device read,used with static discovery; empty = keep
+15,Network RED,RED,misc/macs,name=QSFP 1,ipAddrMethod,dhcp,string,,dhcp (as read; lower-case),,,device read,"static spelling unknown until the spec ships"
+16,Network RED,RED,misc/macs,name=QSFP 1,ip,{red_ip},string,ipv4,,,,device read,static address (used when static)
+17,Network RED,RED,misc/macs,name=QSFP 1,netmask,{red_netmask},string,ipv4 netmask,,,,device read,
+18,Network RED,RED,misc/macs,name=QSFP 1,gateway,{red_gw},string,ipv4,,,,device read,
+19,Network RED,RED,misc/macs,name=QSFP 1,dnsServerPrimary,{dns_primary},string,ipv4,,,,device read,empty = keep
+20,Network RED,RED,misc/macs,name=QSFP 1,dnsDomain,{dns_domain},string,,,,,device read,empty = keep
+21,Network RED,RED,misc/macs,name=QSFP 1,fec,{fec_red},string,,off|reed-solomon (as read),,,device read,match the switch optic
+22,Network BLUE,BLUE,misc/macs,name=QSFP 2,ipAddrMethod,dhcp,string,,dhcp (as read),,,device read,skipped: this device is RED only
+23,Network BLUE,BLUE,misc/macs,name=QSFP 2,ip,{blue_ip},string,ipv4,,,,device read,
+24,Network BLUE,BLUE,misc/macs,name=QSFP 2,netmask,{blue_netmask},string,ipv4 netmask,,,,device read,
+25,Network BLUE,BLUE,misc/macs,name=QSFP 2,gateway,{blue_gw},string,ipv4,,,,device read,
+26,Network BLUE,BLUE,misc/macs,name=QSFP 2,fec,{fec_blue},string,,off|reed-solomon (as read),,,device read,
+27,Network MGMT,,misc/macs,name=Management,ipAddrMethod,,string,,dhcp (as read),,,device read,"management port: empty = keep (a write can drop the access path; set only in a maintenance window)"
+28,Network MGMT,,misc/macs,name=Management,ip,,string,ipv4,,,,device read,production static: the mgmt IP
+29,Network MGMT,,misc/macs,name=Management,netmask,,string,ipv4 netmask,,,,device read,255.255.240.0 on VLAN 600
+30,Network MGMT,,misc/macs,name=Management,gateway,,string,ipv4,,,,device read,10.6.255.254 (fabric VRRP)
+31,TSL,,misc/tsl,,enabled,true,boolean,,,,,device read,TSL UMD in (oracle)
+32,TSL,,misc/tsl,,port,2000,integer,,,1,65535,device read,UDP (TCP refused on 2000 today; no transport field in the API)
+33,TSL,,misc/tsl,,version,v5.0,string,,v5.0 (as read),,,device read,

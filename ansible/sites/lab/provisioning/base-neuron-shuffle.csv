@@ -1,18 +1,30 @@
-order,group,resource,select,field,value,note
-1,PTP,reference,,ptp.domain,77,plant PTP domain
-2,PTP,reference,,ptp.profile,smpte2059-L3-e2e,Disabled | smpte2059-L3-e2e
-3,PTP,reference,,ptp.slaveOnly,true,
-4,PTP,reference,,refSelection,ptp-l3-e2e,Freerun | ptp-l3-e2e | Reference1
-5,PTP,reference,,timeSelection,PTP,Auto | PTP | NTP
-6,NTP,reference,,ntp.mainServer,10.6.240.1,
-7,NMOS,network/services/nmos,,enable,true,NMOS on
-8,NMOS,network/services/nmos,,registry.discoveryMode,Manual,None | Manual | mDNS | Unicast
-9,NMOS,network/services/nmos,,registry.addressOverride,10.6.250.101,dhs registry (mirrored to Cerebrum)
-10,NMOS,network/services/nmos,,registry.portOverride,8235,
-11,NMOS,network/services/nmos,,label,{nmos_label},from devices.csv
-12,Network RED,network/macs,name=Control Port Mac 1,ipAddrMethod,DHCP,Manual | DHCP
-13,Network RED,network/macs,name=Control Port Mac 1,fec,{fec_red},from devices.csv (match the switch optic)
-14,Network RED,network/macs,name=Control Port Mac 1,inBandControl,true,
-15,Network BLUE,network/macs,name=Control Port Mac 2,ipAddrMethod,DHCP,Manual | DHCP
-16,Network BLUE,network/macs,name=Control Port Mac 2,fec,{fec_blue},from devices.csv (match the switch optic)
-17,Network BLUE,network/macs,name=Control Port Mac 2,inBandControl,true,
+order,group,plane,resource,select,field,value,type,format,enum,min,max,source,note
+1,PTP,,reference,,ptp.domain,{ptp_domain},integer,int32,,0,5000,openapi.yml (Neuron Shuffle 2.0.0),
+2,PTP,,reference,,ptp.profile,{ptp_profile},string,,Disabled|smpte2059-L3-e2e,,,openapi.yml,
+3,PTP,,reference,,ptp.slaveOnly,true,boolean,,,,,openapi.yml,never grandmaster
+4,PTP,,reference,,ptp.priority1,,integer,int32,,0,255,openapi.yml,empty = keep (slave only)
+5,PTP,,reference,,ptp.priority2,,integer,int32,,0,255,openapi.yml,empty = keep (slave only)
+6,PTP,,reference,,refSelection,ptp-l3-e2e,string,,Freerun|ptp-l3-e2e|Reference1,,,openapi.yml,
+7,PTP,,reference,,timeSelection,PTP,string,,Auto|PTP|NTP,,,openapi.yml,system time from PTP
+8,NTP,,reference,,ntp.mainServer,{ntp_main},string,ipv4,,,,openapi.yml,
+9,NTP,,reference,,ntp.backupServer,{ntp_backup},string,ipv4,,,,openapi.yml,
+10,NMOS,,network/services/nmos,,enable,true,boolean,,,,,openapi.yml,NMOS on
+11,NMOS,,network/services/nmos,,label,{nmos_label},string,,,,,openapi.yml,IS-04 node label
+12,NMOS,,network/services/nmos,,description,,string,,,,,openapi.yml,empty = keep
+13,NMOS,,network/services/nmos,,registry.discoveryMode,Manual,string,,None|Manual|mDNS|Unicast,,,openapi.yml,production = Manual (static)
+14,NMOS,,network/services/nmos,,registry.addressOverride,{registry_host},string,ipv4,,,,openapi.yml,
+15,NMOS,,network/services/nmos,,registry.portOverride,{registry_port},integer,int32,,1,65535,openapi.yml,
+16,Network RED,RED,network/macs,name=Control Port Mac 1,ipAddrMethod,{ip_mode},string,,Manual|DHCP,,,openapi.yml,DHCP today; Manual in production
+17,Network RED,RED,network/macs,name=Control Port Mac 1,manualIpV4Config.address,{red_ip},string,ipv4,,,,openapi.yml,static address (used when Manual)
+18,Network RED,RED,network/macs,name=Control Port Mac 1,manualIpV4Config.netmask,{red_netmask},string,ipv4 netmask,,,,openapi.yml,
+19,Network RED,RED,network/macs,name=Control Port Mac 1,manualIpV4Config.defaultGateway,{red_gw},string,ipv4,,,,openapi.yml,
+20,Network RED,RED,network/macs,name=Control Port Mac 1,manualIpV4Config.dnsServerPrimary,{dns_primary},string,ipv4,,,,openapi.yml,empty = keep
+21,Network RED,RED,network/macs,name=Control Port Mac 1,manualIpV4Config.dnsDomain,{dns_domain},string,,,,,openapi.yml,empty = keep
+22,Network RED,RED,network/macs,name=Control Port Mac 1,fec,{fec_red},string,,Off|ReedSolomon,,,openapi.yml,"spec enum is the text Off | ReedSolomon (a YAML 1.1 reader turns Off into false). Match the switch: DR optic = Off"
+23,Network RED,RED,network/macs,name=Control Port Mac 1,inBandControl,true,boolean,,,,,openapi.yml,NMOS / control in-band
+24,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,ipAddrMethod,{ip_mode},string,,Manual|DHCP,,,openapi.yml,skipped: this device is RED only
+25,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,manualIpV4Config.address,{blue_ip},string,ipv4,,,,openapi.yml,
+26,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,manualIpV4Config.netmask,{blue_netmask},string,ipv4 netmask,,,,openapi.yml,
+27,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,manualIpV4Config.defaultGateway,{blue_gw},string,ipv4,,,,openapi.yml,
+28,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,fec,{fec_blue},string,,Off|ReedSolomon,,,openapi.yml,
+29,Network BLUE,BLUE,network/macs,name=Control Port Mac 2,inBandControl,true,boolean,,,,,openapi.yml,

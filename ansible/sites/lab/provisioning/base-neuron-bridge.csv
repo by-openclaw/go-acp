@@ -1,18 +1,32 @@
-order,group,resource,select,field,value,note
-1,PTP,misc/reference,,ptp.domain,77,plant PTP domain (Bridge 7.0.3 API = CONVERT Hybrid 7.0.3)
-2,PTP,misc/reference,,ptp.profile,smpte2059-L3-e2e,Disabled | smpte2059-L3-e2e
-3,PTP,misc/reference,,ptp.slaveOnly,true,
-4,PTP,misc/reference,,refSelection,ptp-l3-e2e,Freerun | ptp-l3-e2e | Reference1 | SDI01
-5,PTP,misc/reference,,timeSelection,PTP,Auto | PTP | NTP
-6,NTP,misc/reference,,ntp.mainServer,10.6.240.1,
-7,NMOS,misc/nmos,,mode,true,NMOS on
-8,NMOS,misc/nmos,,registry.discoveryMode,Manual,None | Manual | mDNS | Unicast
-9,NMOS,misc/nmos,,registry.addressOverride,10.6.250.101,dhs registry (mirrored to Cerebrum)
-10,NMOS,misc/nmos,,registry.portOverride,8235,
-11,NMOS,misc/nmos,,label,{nmos_label},from devices.csv
-12,Network RED,misc/macs,name=Control Port Mac 1,ipAddrMethod,DHCP,Manual | DHCP
-13,Network RED,misc/macs,name=Control Port Mac 1,fec,{fec_red},from devices.csv (match the switch optic)
-14,Network RED,misc/macs,name=Control Port Mac 1,inBandControl,true,
-15,Network BLUE,misc/macs,name=Control Port Mac 2,ipAddrMethod,DHCP,Manual | DHCP
-16,Network BLUE,misc/macs,name=Control Port Mac 2,fec,{fec_blue},from devices.csv (match the switch optic)
-17,Network BLUE,misc/macs,name=Control Port Mac 2,inBandControl,true,
+order,group,plane,resource,select,field,value,type,format,enum,min,max,source,note
+1,PTP,,misc/reference,,ptp.domain,{ptp_domain},integer,int32,,0,5000,api.yml (BRIDGE 7.0.3 = CONVERT Hybrid 7.0.3),
+2,PTP,,misc/reference,,ptp.profile,{ptp_profile},string,,Disabled|smpte2059-L3-e2e,,,api.yml,
+3,PTP,,misc/reference,,ptp.slaveOnly,true,boolean,,,,,api.yml,never grandmaster
+4,PTP,,misc/reference,,ptp.priority1,,integer,int32,,0,255,api.yml,empty = keep (slave only)
+5,PTP,,misc/reference,,ptp.priority2,,integer,int32,,0,255,api.yml,empty = keep (slave only)
+6,PTP,,misc/reference,,refSelection,ptp-l3-e2e,string,,Freerun|ptp-l3-e2e|Reference1|SDI01,,,api.yml,
+7,PTP,,misc/reference,,timeSelection,PTP,string,,Auto|PTP|NTP,,,api.yml,system time from PTP
+8,NTP,,misc/reference,,ntp.mainServer,{ntp_main},string,ipv4,,,,api.yml,
+9,NTP,,misc/reference,,ntp.backupServer,{ntp_backup},string,ipv4,,,,api.yml,
+10,NMOS,,misc/nmos,,mode,true,boolean,,,,,api.yml,NMOS on
+11,NMOS,,misc/nmos,,label,{nmos_label},string,,,,,api.yml,IS-04 node label
+12,NMOS,,misc/nmos,,description,,string,,,,,api.yml,empty = keep
+13,NMOS,,misc/nmos,,registry.discoveryMode,Manual,string,,None|Manual|mDNS|Unicast,,,api.yml,production = Manual (static)
+14,NMOS,,misc/nmos,,registry.addressOverride,{registry_host},string,maxLength 23,,,,api.yml,
+15,NMOS,,misc/nmos,,registry.portOverride,{registry_port},integer,int32,,1,65535,api.yml,
+16,Network RED,RED,misc/macs,name=Control Port Mac 1,ipAddrMethod,{ip_mode},string,,Manual|DHCP,,,api.yml,DHCP today; Manual in production
+17,Network RED,RED,misc/macs,name=Control Port Mac 1,ip,{red_ip},string,ipv4,,,,api.yml,static address (used when Manual)
+18,Network RED,RED,misc/macs,name=Control Port Mac 1,netmask,{red_netmask},string,ipv4 netmask,,,,api.yml,
+19,Network RED,RED,misc/macs,name=Control Port Mac 1,gateway,{red_gw},string,ipv4,,,,api.yml,
+20,Network RED,RED,misc/macs,name=Control Port Mac 1,dns.dnsDomain,{dns_domain},string,,,,,api.yml,empty = keep
+21,Network RED,RED,misc/macs,name=Control Port Mac 1,fec,{fec_red},string,,Off|ReedSolomon,,,api.yml,match the switch optic
+22,Network RED,RED,misc/macs,name=Control Port Mac 1,inBandControl,true,boolean,,,,,api.yml,NMOS / control in-band
+23,Network RED,RED,misc/macs,name=Control Port Mac 1,igmpV3RefreshRate,,integer,int32,,100,18000,api.yml,empty = keep
+24,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,ipAddrMethod,{ip_mode},string,,Manual|DHCP,,,api.yml,DHCP today; Manual in production
+25,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,ip,{blue_ip},string,ipv4,,,,api.yml,static address (used when Manual)
+26,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,netmask,{blue_netmask},string,ipv4 netmask,,,,api.yml,
+27,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,gateway,{blue_gw},string,ipv4,,,,api.yml,
+28,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,dns.dnsDomain,{dns_domain},string,,,,,api.yml,empty = keep
+29,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,fec,{fec_blue},string,,Off|ReedSolomon,,,api.yml,match the switch optic
+30,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,inBandControl,true,boolean,,,,,api.yml,
+31,Network BLUE,BLUE,misc/macs,name=Control Port Mac 2,igmpV3RefreshRate,,integer,int32,,100,18000,api.yml,empty = keep

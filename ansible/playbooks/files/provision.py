@@ -4,10 +4,16 @@
 Driven by Ansible (provision-plan.yml, provision-apply.yml); runnable by hand.
 All data lives in one site directory (ansible/sites/<site>/provisioning):
 
-  devices.csv        one row per device: type, mgmt IP, label, FEC per plane,
-                     multicast blocks (filled by `plan`), mcast_apply yes/no
+  site.csv           plant-wide values: NTP main/backup, PTP, registry, syslog
+  devices.csv        one row per device: type, mgmt IP, planes (RED or
+                     RED+BLUE), channels, label, static addressing, FEC per
+                     plane, multicast blocks (filled by `plan`), mcast_apply
   mcast-ranges.csv   essence x plane -> /16 prefix + UDP port
-  base-<type>.csv    the base setup of a device type: resource, field, value
+  base-<type>.csv    the base setup of a device type, as a DM: resource,
+                     field, value, type, format, enum, min, max, source.
+                     {key} takes site.csv / devices.csv; {ch} repeats a row
+                     per channel; a value outside enum/min/max is refused
+                     before anything is sent
   mcast-plan.csv     written by `plan`: every sender with its RED/BLUE group
 
   plan   discover every sender on every device, give each a group in its
@@ -131,8 +137,62 @@ def api_base(dev):
     return TYPES[dev["type"]]["base"].format(ip=dev["mgmt_ip"])
 
 
-def subst(value, dev):
-    return re.sub(r"\{(\w+)\}", lambda m: dev.get(m.group(1), ""), value)
+def planes(dev):
+    return set((dev.get("planes") or "RED+BLUE").upper().split("+"))
+
+
+def channels(dev):
+    return [c for c in (dev.get("channels") or "").replace(",", ";").split(";") if c.strip()]
+
+
+def device_vars(site, dev):
+    """site.csv values, overridden by the device row, plus derived values."""
+    v = dict(site)
+    v.update({k: x for k, x in dev.items() if x is not None})
+    for p in ("red", "blue"):
+        ip, mask = v.get(f"{p}_ip"), v.get(f"{p}_netmask")
+        if ip and mask:
+            v[f"{p}_cidr"] = f"{ip}/{ipaddress.IPv4Network('0.0.0.0/' + mask).prefixlen}"
+    v["dhcp_bool"] = "true" if (v.get("ip_mode") or "").upper() == "DHCP" else "false"
+    return v
+
+
+def subst(value, var):
+    """{key} -> value; empty when any key is unset, so the row is skipped."""
+    missing = [k for k in re.findall(r"\{(\w+)\}", value) if not var.get(k)]
+    if missing:
+        return ""
+    return re.sub(r"\{(\w+)\}", lambda m: var[m.group(1)], value)
+
+
+def validate(row, value):
+    """Check a value against the DM columns of its base row (enum, min, max, format)."""
+    enum = row.get("enum") or ""
+    if enum and "(as read" not in enum and value not in enum.split("|"):
+        return f"{value!r} not in {enum}"
+    for bound, op in (("min", lambda x, b: x < b), ("max", lambda x, b: x > b)):
+        if row.get(bound):
+            try:
+                if op(float(value), float(row[bound])):
+                    return f"{value} outside {row.get('min')}..{row.get('max')}"
+            except ValueError:
+                return f"{value!r} is not a number"
+    fmt = row.get("format") or ""
+    try:
+        if fmt in ("ipv4", "ipv4 netmask"):
+            ipaddress.IPv4Address(value)
+        elif fmt == "cidr":
+            ipaddress.IPv4Interface(value)
+        elif fmt == "hostport":
+            host, _, port = value.rpartition(":")
+            ipaddress.IPv4Address(host)
+            if not 0 <= int(port) <= 65535:
+                raise ValueError(port)
+    except ValueError:
+        return f"{value!r} is not a valid {fmt}"
+    if fmt.startswith("maxLength") and len(value) > int(fmt.split()[1]):
+        return f"{value!r} longer than {fmt.split()[1]}"
+    return None
 
 
 # ------------------------------------------------------ sender discovery ----
@@ -183,6 +243,8 @@ def disc_fusion(dev):
     for s in get(f"{base}/senders"):
         ess = {"video": "video", "audio": "audio", "ancillary": "anc"}.get(s["format"], s["format"])
         chan = labels.get(s["device_id"], s["device_id"][:8]).replace("Device ", "")
+        if channels(dev) and chan.replace("CH", "") not in channels(dev):
+            continue  # a channel our hardware does not use
         count[(chan, ess)] = count.get((chan, ess), 0) + 1
         name = f"{chan} {ess} {count[(chan, ess)]}"
         out.append({"essence": ess, "sender_id": s["id"], "sender_name": name,
@@ -194,7 +256,7 @@ DISCOVER = {"neuron_legs": disc_neuron_legs, "neuron_shuffle": disc_neuron_shuff
             "is05": disc_is05, "fusion": disc_fusion}
 
 PLAN_COLS = ["device", "type", "essence", "index", "sender_name", "sender_id",
-             "red_group", "blue_group", "port", "api"]
+             "red_group", "red_port", "blue_group", "blue_port", "api"]
 
 
 def cmd_plan(a):
@@ -234,6 +296,9 @@ def cmd_plan(a):
             senders = sorted((s for s in found if s["essence"] == ess),
                              key=lambda s: (natural(s["sender_name"]), s["sender_id"]))
             if not senders:
+                if d.get(f"block_{ess}"):  # no sender any more: give the block back
+                    d[f"block_{ess}"] = ""
+                    changed = True
                 continue
             need = -(-len(senders) // PER_BLOCK)
             if not d.get(f"block_{ess}"):
@@ -256,16 +321,19 @@ def cmd_plan(a):
                 third, fourth = block + idx // PER_BLOCK, idx % PER_BLOCK + 1
                 if third > 255:
                     raise SystemExit(f"{d['name']} {ess}: range exhausted (block {block}, index {idx})")
-                red = ipaddress.IPv4Network(ranges[(ess, "RED")]["prefix"]).network_address.packed
-                blue = ipaddress.IPv4Network(ranges[(ess, "BLUE")]["prefix"]).network_address.packed
-                rows.append({"device": d["name"], "type": d["type"], "essence": ess, "index": idx,
-                             "sender_name": s["sender_name"], "sender_id": s["sender_id"],
-                             "red_group": f"{red[0]}.{red[1]}.{third}.{fourth}",
-                             "blue_group": f"{blue[0]}.{blue[1]}.{third}.{fourth}",
-                             "port": ranges[(ess, "RED")]["port"], "api": s["api"]})
+                row = {"device": d["name"], "type": d["type"], "essence": ess, "index": idx,
+                       "sender_name": s["sender_name"], "sender_id": s["sender_id"], "api": s["api"]}
+                for plane in ("RED", "BLUE"):
+                    if plane in planes(d):
+                        net = ipaddress.IPv4Network(ranges[(ess, plane)]["prefix"]).network_address.packed
+                        row[f"{plane.lower()}_group"] = f"{net[0]}.{net[1]}.{third}.{fourth}"
+                        row[f"{plane.lower()}_port"] = ranges[(ess, plane)]["port"]
+                rows.append(row)
     order = {d["name"]: i for i, d in enumerate(devices)}
     rows.sort(key=lambda r: (order[r["device"]], ESSENCES.index(r["essence"]), int(r["index"])))
+    before = open(plan_path, encoding="utf-8").read() if os.path.exists(plan_path) else ""
     write_csv(plan_path, rows, PLAN_COLS)
+    changed = changed or open(plan_path, encoding="utf-8").read() != before
     write_csv(os.path.join(site, "devices.csv"), devices, dev_cols)
     counts = {}
     for r in rows:
@@ -330,29 +398,50 @@ def apply_fields(res, dev, item, url, fields):
 
 
 def resolve(base, resource, select):
-    """'name=Control Port Mac 1' on a collection -> that member's URL."""
+    """'name=Control Port Mac 1' on a collection -> that member's URL.
+    'channel=2' (FusioN) -> the member whose device is labelled 'Device CH2'."""
     if not select:
         return f"{base}/{resource}"
     key, _, want = select.partition("=")
-    coll = get(f"{base}/{resource}")
-    for m in coll:
-        if isinstance(m, str):  # collection lists ids only: read each member
-            body = get(f"{base}/{resource}/{m}")
-            if str(body.get(key)) == want:
-                return f"{base}/{resource}/{m}"
-        elif str(m.get(key)) == want:
-            return f"{base}/{resource}/{m.get('uuid') or m.get('id')}"
+    devices = None
+    if key == "channel":
+        devices = {d["id"]: (d.get("label") or "").strip() for d in get(f"{base}/devices")}
+    for m in get(f"{base}/{resource}"):
+        mid = m.strip("/") if isinstance(m, str) else (m.get("uuid") or m.get("id"))
+        body = get(f"{base}/{resource}/{mid}") if isinstance(m, str) else m
+        if key == "channel":
+            if devices.get(body.get("device_id")) == f"Device CH{want}":
+                return f"{base}/{resource}/{mid}"
+        elif str(body.get(key)) == want:
+            return f"{base}/{resource}/{mid}"
     raise RuntimeError(f"{resource}: no member with {select}")
 
 
-def apply_base(res, site, dev):
-    path = os.path.join(site, f"base-{dev['type']}.csv")
-    rows = sorted(read_csv(path), key=lambda r: int(r["order"]))
-    base, groups = api_base(dev), {}
-    for r in rows:
-        value = subst(r["value"], dev)
+def base_rows(site, dev):
+    """base-<type>.csv for one device: planes it has, {ch} expanded per channel."""
+    rows = []
+    for r in sorted(read_csv(os.path.join(site, f"base-{dev['type']}.csv")), key=lambda r: int(r["order"])):
+        if r.get("plane") and r["plane"].upper() not in planes(dev):
+            continue
+        if "{ch}" in r["select"] + r["group"]:
+            for ch in channels(dev):
+                rows.append({k: v.replace("{ch}", ch) for k, v in r.items()})
+        else:
+            rows.append(r)
+    return rows
+
+
+def apply_base(res, site_dir, site, dev):
+    var, base, groups = device_vars(site, dev), api_base(dev), {}
+    for r in base_rows(site_dir, dev):
+        value = subst(r["value"], var)
         if value == "":
-            continue  # nothing set in devices.csv for this device: leave as is
+            continue  # nothing set for this device: leave the device value
+        item = f"{r['resource']}[{r['select']}]" if r["select"] else r["resource"]
+        err = validate(r, value)
+        if err:
+            res.add(dev["name"], item, r["field"], "", f"invalid: {err}", "failed")
+            continue
         groups.setdefault((r["resource"], r["select"]), []).append((r["field"], value))
     for (resource, select), fields in groups.items():
         item = f"{resource}[{select}]" if select else resource
@@ -364,33 +453,33 @@ def apply_base(res, site, dev):
 
 def apply_mcast_one(res, dev, row):
     kind = TYPES[dev["type"]]["senders"]
-    base, sid, port = api_base(dev), row["sender_id"], row["port"]
-    red, blue = row["red_group"], row["blue_group"]
+    base, sid = api_base(dev), row["sender_id"]
+    # leg 0 = RED, leg 1 = BLUE; a plane the device does not have stays untouched
+    legs = [(i, row.get(f"{p}_group"), row.get(f"{p}_port"))
+            for i, p in enumerate(("red", "blue")) if row.get(f"{p}_group")]
     item = f"{row['essence']} {row['sender_name']}"
     try:
         if kind == "neuron_legs":
             path = {"video": "video", "audio": "audio", "anc": "data"}[row["essence"]]
             apply_fields(res, dev["name"], item, f"{base}/io/ip/senders/{path}/{sid}",
-                         [("legs.0.ip", red), ("legs.0.port", port), ("legs.1.ip", blue), ("legs.1.port", port)])
+                         [f for i, g, p in legs for f in ((f"legs.{i}.ip", g), (f"legs.{i}.port", p))])
         elif kind == "neuron_shuffle":
+            name = {0: "primaryLeg", 1: "secondaryLeg"}
             apply_fields(res, dev["name"], item, f"{base}/io/ip/senders/audio/{sid}",
-                         [("primaryLeg.ip", red), ("primaryLeg.port", port),
-                          ("secondaryLeg.ip", blue), ("secondaryLeg.port", port)])
+                         [f for i, g, p in legs for f in ((f"{name[i]}.ip", g), (f"{name[i]}.port", p))])
         elif kind == "fusion":
             s = get(f"{base}/senders/{sid}")
-            for leg, group in zip(s["flow_id"], (red, blue)):
-                apply_fields(res, dev["name"], f"{item} {'RED' if group == red else 'BLUE'}", f"{base}/flows/{leg}",
-                             [("network.dst_ip_addr", group), ("network.dst_udp_port", port),
-                              ("network.dst_mac", mcast_mac(group))])
+            for i, g, p in legs:
+                apply_fields(res, dev["name"], f"{item} {('RED', 'BLUE')[i]}", f"{base}/flows/{s['flow_id'][i]}",
+                             [("network.dst_ip_addr", g), ("network.dst_udp_port", p),
+                              ("network.dst_mac", mcast_mac(g))])
         elif kind == "is05":
             host, _, conn = is05_root(dev)
             url = f"{host}/x-nmos/connection/{conn}/single/senders/{sid}/staged"
-            staged = get(url)
-            tp = staged["transport_params"]
-            want = [(red, int(port)), (blue, int(port))]
-            diffs = [(i, (tp[i]["destination_ip"], tp[i]["destination_port"]), w)
-                     for i, w in enumerate(want[:len(tp)])
-                     if (tp[i]["destination_ip"], tp[i]["destination_port"]) != w]
+            tp = get(url)["transport_params"]
+            diffs = [(i, (tp[i]["destination_ip"], tp[i]["destination_port"]), (g, int(p)))
+                     for i, g, p in legs if i < len(tp)
+                     and (tp[i]["destination_ip"], tp[i]["destination_port"]) != (g, int(p))]
             if not diffs:
                 res.add(dev["name"], item, "transport_params", tp[0]["destination_ip"], tp[0]["destination_ip"], "ok")
                 return
@@ -398,8 +487,12 @@ def apply_mcast_one(res, dev, row):
                 for i, cur, w in diffs:
                     res.add(dev["name"], item, f"transport_params.{i}", cur, w, "would_change")
                 return
-            body = {"transport_params": [{"destination_ip": ip, "destination_port": p} for ip, p in want[:len(tp)]],
-                    "activation": {"mode": "activate_immediate"}}
+            # IS-05: an empty object leaves that leg as it is
+            params = [{} for _ in tp]
+            for i, g, p in legs:
+                if i < len(tp):
+                    params[i] = {"destination_ip": g, "destination_port": int(p)}
+            body = {"transport_params": params, "activation": {"mode": "activate_immediate"}}
             st, out = http("PATCH", url, body)
             if st not in (200, 202):
                 raise RuntimeError(f"PATCH staged -> {st} {out}")
@@ -413,6 +506,7 @@ def apply_mcast_one(res, dev, row):
 
 def cmd_apply(a):
     site = a.site_dir
+    site_vars = {r["key"]: r["value"] for r in read_csv(os.path.join(site, "site.csv"))}
     devices = [d for d in read_csv(os.path.join(site, "devices.csv"))
                if not a.device or d["name"] in a.device]
     res = Result(a.check)
@@ -420,8 +514,8 @@ def cmd_apply(a):
     plan = read_csv(plan_path) if os.path.exists(plan_path) else []
     for dev in devices:
         if a.what in ("all", "base"):
-            print(f"== {dev['name']} ({dev['type']}): base", flush=True)
-            apply_base(res, site, dev)
+            print(f"== {dev['name']} ({dev['type']}, {dev.get('planes')}): base", flush=True)
+            apply_base(res, site, site_vars, dev)
         if a.what in ("all", "mcast"):
             rows = [r for r in plan if r["device"] == dev["name"]]
             if dev.get("mcast_apply", "yes").lower() != "yes":
