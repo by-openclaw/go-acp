@@ -121,7 +121,9 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		if tpl, ok := spec.TemplateFor(path); ok {
 			writable = spec.Writable(tpl)
 		}
-		objs = append(objs, flatten(path, bodies[i], writable)...)
+		leaves := flatten(path, bodies[i], writable)
+		typeObjects(spec, path, leaves)
+		objs = append(objs, leaves...)
 	}
 	p.RecordRx()
 

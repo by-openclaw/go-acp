@@ -305,6 +305,23 @@ func (c *Client) put(ctx context.Context, path string, doc any) error {
 	return nil
 }
 
+// patch sends only the fields named (CCM §11.2) to a resource whose
+// spec declares PATCH. Same refusal reporting as put.
+func (c *Client) patch(ctx context.Context, path string, doc any) error {
+	var answer any
+	status, err := c.http.PatchJSON(ctx, c.base+path, doc, &answer)
+	if status != 0 && status/100 != 2 {
+		if msg := deviceMessage(answer); msg != "" {
+			return fmt.Errorf("neuron PATCH %s: device answered %d: %s", path, status, msg)
+		}
+		return fmt.Errorf("neuron PATCH %s: device answered %d", path, status)
+	}
+	if err != nil {
+		return fmt.Errorf("neuron PATCH %s: %w", path, err)
+	}
+	return nil
+}
+
 // deviceMessage pulls the device's own error text out of its answer.
 func deviceMessage(v any) string {
 	m, ok := v.(map[string]any)
