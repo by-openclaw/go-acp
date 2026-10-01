@@ -274,3 +274,15 @@ func TestTheDictionaryTypesTheProvisioningLeaves(t *testing.T) {
 		t.Errorf("self.diag.dns is status: %+v", ft)
 	}
 }
+
+// TestCoerceKeepsATypedBool: a Value that arrives already typed as a bool
+// (an importer, not the CLI's string) is written as the bool it is,
+// whatever the leaf currently holds.
+func TestCoerceKeepsATypedBool(t *testing.T) {
+	for _, existing := range []any{true, "1", 1.0} {
+		got, err := coerce(existing, consumer.Value{Kind: consumer.KindBool, Bool: false})
+		if err != nil || got != false {
+			t.Errorf("coerce(%v, typed false) = %v, %v", existing, got, err)
+		}
+	}
+}
