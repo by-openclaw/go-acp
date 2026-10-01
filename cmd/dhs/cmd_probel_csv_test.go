@@ -172,3 +172,57 @@ func TestParseXpointRows_CanonicalGrammar(t *testing.T) {
 		t.Fatalf("no-matrix parse = %+v", got)
 	}
 }
+
+// TestWriteProbelXpointCSVAllLevels pins the multi-level export: every level's
+// tally lands in one file, the level in the levels column, and parseXpointRows
+// (what import --xpoint reads) gets every row back with its level.
+func TestWriteProbelXpointCSVAllLevels(t *testing.T) {
+	path := t.TempDir() + "/xp.csv"
+	tallies := []levelTally{
+		{level: 0, res: probelproto.TallyDumpResult{IsWord: true, Word: codec.CrosspointTallyDumpWordParams{FirstDestinationID: 0, SourceIDs: []uint16{10, 11}}}},
+		{level: 1, res: probelproto.TallyDumpResult{IsWord: true, Word: codec.CrosspointTallyDumpWordParams{FirstDestinationID: 0, SourceIDs: []uint16{20, 21}}}},
+		{level: 2, res: probelproto.TallyDumpResult{Byte: codec.CrosspointTallyDumpByteParams{FirstDestinationID: 0, SourceIDs: []uint8{30, 31}}}},
+	}
+	n, err := writeProbelXpointCSV(path, 0, tallies)
+	if err != nil || n != 6 {
+		t.Fatalf("writeProbelXpointCSV = (%d, %v), want (6, nil)", n, err)
+	}
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		t.Fatalf("readProbelCSV: %v", err)
+	}
+	got := parseXpointRows(rows)
+	if len(got) != 6 {
+		t.Fatalf("parseXpointRows: %d rows, want 6", len(got))
+	}
+	want := map[[2]int]int{{0, 0}: 10, {0, 1}: 11, {1, 0}: 20, {1, 1}: 21, {2, 0}: 30, {2, 1}: 31}
+	for _, r := range got {
+		if src, ok := want[[2]int{int(r.lvl), int(r.dst)}]; !ok || int(r.src) != src {
+			t.Errorf("row level=%d dst=%d src=%d not expected", r.lvl, r.dst, r.src)
+		}
+	}
+}
+
+// TestWriteProbelNameCSVPerLevel pins one row per (level, id), and that a width
+// the matrix did not serve leaves its column empty.
+func TestWriteProbelNameCSVPerLevel(t *testing.T) {
+	path := t.TempDir() + "/src.csv"
+	blocks := []nameBlock{
+		{level: 0, labels: map[codec.NameLength][]string{codec.NameLen8: {"A0", "A1"}, codec.NameLen12: {"Alpha 0", "Alpha 1"}}},
+		{level: 1, labels: map[codec.NameLength][]string{codec.NameLen8: {"B0", "B1"}, codec.NameLen12: {"Beta 0", "Beta 1"}}},
+	}
+	if err := writeProbelNameCSV(path, "src_id", 0, blocks); err != nil {
+		t.Fatalf("writeProbelNameCSV: %v", err)
+	}
+	rows, err := readProbelCSV(path)
+	if err != nil {
+		t.Fatalf("readProbelCSV: %v", err)
+	}
+	if len(rows) != 5 { // header + 2 levels x 2 ids
+		t.Fatalf("%d rows, want 5", len(rows))
+	}
+	// matrix_id,level_id,src_id,default_label,label_4,label_8,label_12,label_16
+	if r := rows[3]; r[1] != "1" || r[2] != "0" || r[3] != "Beta 0" || r[4] != "" || r[5] != "B0" {
+		t.Errorf("level 1 row = %v", r)
+	}
+}
