@@ -41,6 +41,12 @@ paths:
   /things/{uuid}/parts/{partUuid}:
     get:
       operationId: GetPart
+  /things/{uuid}/parts/{partUuid}/pins/{pinUuid}:
+    get:
+      operationId: GetPin
+  /orphans/{uuid}/bits/{bitUuid}:
+    get:
+      operationId: GetBit
   /matrix/state:
     get:
       operationId: GetState
@@ -361,45 +367,188 @@ func TestTheScopeDecidesWhatIsSubscribedTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	parts := []string{"things", "{uuid}", "parts", "{partUuid}"}
+	pins := []string{"things", "{uuid}", "parts", "{partUuid}", "pins", "{pinUuid}"}
+	orphans := []string{"/orphans/{uuid}/bits/{bitUuid}"}
 	cases := []struct {
 		scope   string
 		urls    []string
+		nested  [][]string
 		skipped []string
 	}{
-		// Everything: one `*` at most, so the parts of every thing are
-		// named as left out; a collection is never subscribed to.
-		{"", []string{"/matrix/state", "/self", "/things/*", "/things/*/status"}, []string{"/things/{uuid}/parts/{partUuid}"}},
-		{"things", []string{"/things/*", "/things/*/status"}, []string{"/things/{uuid}/parts/{partUuid}"}},
-		{"things/u1", []string{"/things/u1", "/things/u1/parts/*", "/things/u1/status"}, nil},
-		{"things/u1/parts/p1", []string{"/things/u1/parts/p1"}, nil},
+		// Everything: one `*` at most, so what lies two parameters deep
+		// is left to be subscribed parent by parent — unless its parent
+		// is not a GET, and then it is named as left out. A collection
+		// is never subscribed to.
+		{"", []string{"/matrix/state", "/self", "/things/*", "/things/*/status"}, [][]string{parts, pins}, orphans},
+		{"things", []string{"/things/*", "/things/*/status"}, [][]string{parts, pins}, nil},
+		{"things/u1", []string{"/things/u1", "/things/u1/parts/*", "/things/u1/status"},
+			[][]string{{"things", "u1", "parts", "{partUuid}", "pins", "{pinUuid}"}}, nil},
+		{"things/u1/parts/p1", []string{"/things/u1/parts/p1", "/things/u1/parts/p1/pins/*"}, nil, nil},
+		{"orphans", nil, nil, orphans},
+		{"orphans/o1", []string{"/orphans/o1/bits/*"}, nil, nil},
 		// A field: the resource that carries it.
-		{"things/u1/name", []string{"/things/u1"}, nil},
-		{"matrix/state/d1", []string{"/matrix/state"}, nil},
-		{"nothing/here", nil, nil},
+		{"things/u1/name", []string{"/things/u1"}, nil, nil},
+		{"matrix/state/d1", []string{"/matrix/state"}, nil, nil},
+		{"nothing/here", nil, nil, nil},
 	}
 	for _, c := range cases {
-		urls, skipped := subscriptionURLs(spec, c.scope)
-		if !reflect.DeepEqual(urls, c.urls) || !reflect.DeepEqual(skipped, c.skipped) {
-			t.Errorf("scope %q:\n got %q skipped %q\nwant %q skipped %q", c.scope, urls, skipped, c.urls, c.skipped)
+		urls, nested, skipped := subscriptionURLs(spec, c.scope)
+		if !reflect.DeepEqual(urls, c.urls) || !reflect.DeepEqual(nested, c.nested) || !reflect.DeepEqual(skipped, c.skipped) {
+			t.Errorf("scope %q:\n got %q nested %q skipped %q\nwant %q nested %q skipped %q",
+				c.scope, urls, nested, skipped, c.urls, c.nested, c.skipped)
 		}
 	}
 }
 
-func TestAWatchOfEverythingSaysWhatItLeavesOut(t *testing.T) {
+// wideDevice answers a watch of everything: three things, pushed as the
+// state of `/things/*`. The first member subscription is answered only
+// when hold is closed; the parts of u2 are refused.
+func wideDevice(t *testing.T, hold chan struct{}) *eventDevice {
 	d := newEventDevice(t)
+	var once sync.Once
+	d.answer = func(d *eventDevice, a asked) {
+		url := a.Payload.RelativeURL
+		switch {
+		case url == "/things/*":
+			d.send(`{"type":"Events","id":1,"payload":[
+				{"documentRoot":"/things/u1","patch":[{"op":"replace","path":"","value":{"name":"one"}}]},
+				{"documentRoot":"/things/u2","patch":[{"op":"replace","path":"","value":{"name":"two"}}]},
+				{"documentRoot":"/things/u3","patch":[{"op":"replace","path":"","value":{"name":"three"}}]}]}`)
+			accept(d, a)
+		case strings.Contains(url, "/parts/"):
+			held := false
+			once.Do(func() { held = true })
+			switch {
+			case held:
+				// Off the device's read loop: it keeps serving.
+				go func() { <-hold; accept(d, a) }()
+			case url == "/things/u2/parts/*":
+				refuse(d, a)
+			default:
+				accept(d, a)
+			}
+		default:
+			accept(d, a)
+		}
+	}
+	return d
+}
+
+func memberRequests(d *eventDevice) []string {
+	var out []string
+	for _, a := range d.requests(codec.MsgCreateSubscription) {
+		if strings.Contains(a.Payload.RelativeURL, "/parts/") {
+			out = append(out, a.Payload.RelativeURL)
+		}
+	}
+	return out
+}
+
+func TestAWideWatchReachesTheMembersParentByParent(t *testing.T) {
+	hold := make(chan struct{})
+	d := wideDevice(t, hold)
 	p := testPluginConnected(t, d.srv)
 	var got collector
-	if err := p.Subscribe(dhsc.ValueRequest{}, got.fn); err != nil {
+	req := dhsc.ValueRequest{}
+	if err := p.Subscribe(req, got.fn); err != nil {
 		t.Fatalf("subscribe: %v", err)
 	}
-	if n := len(d.requests(codec.MsgCreateSubscription)); n != 4 {
-		t.Errorf("%d subscription(s), want 4", n)
+	// One request at a time: the first parent's members are asked for
+	// and nothing else is until the device has answered.
+	eventually(t, "the first member subscription", func() bool { return len(memberRequests(d)) == 1 })
+	time.Sleep(20 * time.Millisecond)
+	if n := len(memberRequests(d)); n != 1 {
+		t.Fatalf("%d member subscription(s) sent ahead of the first answer", n)
 	}
+	close(hold)
+	eventually(t, "the three member subscriptions", func() bool { return len(memberRequests(d)) == 3 })
+	if got := memberRequests(d); !sameSet(got, []string{"/things/u1/parts/*", "/things/u2/parts/*", "/things/u3/parts/*"}) {
+		t.Errorf("member subscriptions = %q", got)
+	}
+	// Never two `*` in one request.
+	for _, a := range d.requests(codec.MsgCreateSubscription) {
+		if strings.Count(a.Payload.RelativeURL, "*") > 1 {
+			t.Errorf("subscribed with two wildcards: %s", a.Payload.RelativeURL)
+		}
+	}
+	eventually(t, "the refusal of u2's parts", func() bool {
+		return p.ComplianceProfile().Snapshot()[SubscriptionRefused] == 1
+	})
+
+	// A member's state arrives, and what lies below it is asked for in
+	// turn — three parameters deep, still one `*`.
+	d.events(codec.MsgEvents, "/things/u1/parts/p1", `[{"op":"replace","path":"","value":{"gain":-3}}]`)
+	eventually(t, "the part", func() bool { return got.last().Path == "things.u1.parts.p1.gain" })
+	eventually(t, "the pins of the part", func() bool {
+		for _, a := range d.requests(codec.MsgCreateSubscription) {
+			if a.Payload.RelativeURL == "/things/u1/parts/p1/pins/*" {
+				return true
+			}
+		}
+		return false
+	})
+	// What is not a member calls for nothing, and a parent seen again
+	// is not asked for twice.
+	d.events(codec.MsgEvents, "/things/u1/status", `[{"op":"replace","path":"","value":{"ok":true}}]`)
 	d.events(codec.MsgEvents, "/matrix/state", `[{"op":"replace","path":"","value":{"d1":"s1"}}]`)
-	eventually(t, "the crosspoint", func() bool { return got.last().Path == "matrix.state.d1" })
-	if ev := got.last(); ev.Value.Str != "s1" || ev.Access&accessWrite != 0 {
-		t.Errorf("crosspoint = %+v", ev)
+	d.events(codec.MsgEvents, "/things/u1", `[{"op":"replace","path":"","value":{"name":"uno"}}]`)
+	eventually(t, "the rename", func() bool { return got.last().Value.Str == "uno" })
+	if n := len(d.requests(codec.MsgCreateSubscription)); n != 4+3+1 {
+		t.Errorf("%d subscription(s) in all, want 8", n)
 	}
+	if ev := got.last(); ev.Access&accessWrite == 0 {
+		t.Errorf("a thing has a PATCH: %+v", ev)
+	}
+
+	// Everything the device granted is handed back: four at the scope
+	// (one of them the wildcard), two parents' members, one part's pins.
+	if err := p.Unsubscribe(req); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the seven deletes", func() bool { return len(d.requests(codec.MsgDeleteSubscription)) == 7 })
+	_ = p.Disconnect()
+}
+
+func TestAMemberGrantedAfterTheWatchEndedIsHandedBack(t *testing.T) {
+	hold := make(chan struct{})
+	d := wideDevice(t, hold)
+	p := testPluginConnected(t, d.srv)
+	req := dhsc.ValueRequest{}
+	if err := p.Subscribe(req, func(dhsc.Event) {}); err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	eventually(t, "the first member subscription", func() bool { return len(memberRequests(d)) == 1 })
+	if err := p.Unsubscribe(req); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the four deletes", func() bool { return len(d.requests(codec.MsgDeleteSubscription)) == 4 })
+	// The device grants the member it was holding: nobody watches it
+	// any more, so it goes straight back, and the parents still queued
+	// are not asked for.
+	close(hold)
+	eventually(t, "the late grant handed back", func() bool { return len(d.requests(codec.MsgDeleteSubscription)) == 5 })
+	time.Sleep(20 * time.Millisecond)
+	if n := len(memberRequests(d)); n != 1 {
+		t.Errorf("%d member subscription(s) for a watch that ended", n)
+	}
+	_ = p.Disconnect()
+}
+
+func TestAMemberNeverAnsweredEndsTheSession(t *testing.T) {
+	restore := subscribeTimeout
+	subscribeTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { subscribeTimeout = restore })
+
+	d := wideDevice(t, make(chan struct{})) // never released
+	p := testPluginConnected(t, d.srv)
+	done := p.SessionDone()
+	if err := p.Subscribe(dhsc.ValueRequest{}, func(dhsc.Event) {}); err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	// A channel that stops answering is a lost one: the watch starts
+	// again from a new session rather than staying half subscribed.
+	eventually(t, "the session ending", func() bool { return closed(done) })
 	_ = p.Disconnect()
 }
 

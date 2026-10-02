@@ -168,10 +168,12 @@ event channel scope=… subscriptions=N`, the scope's current state once,
 then one line per change as it happens. A crosspoint is
 `matrices.audio.state.main.<destination-channel-uuid> = <source-channel-uuid>`.
 
-Scope matters. A sender's channels (gain, phase) are resources of their
-own, below the sender, and are watched only when `--path` names that
-sender: a wider scope is answered with a warning listing what it leaves
-out. This is deliberate — one subscription across every channel of every
+A sender's channels (gain, phase) are resources of their own, below the
+sender. A scope that names the sender watches them at once; a wider one
+(`--path io.ip.senders.audio`, or no `--path`) subscribes to them one
+sender at a time and logs `ccm: members watched subscriptions=N` when
+it has them all — about 41 s for 1544 senders on SHUFFLE 6.0.0. It is
+done that way because one subscription across every channel of every
 sender stalls the device's REST API for about a minute.
 
 If the channel is lost, or the device sends a change that does not fit

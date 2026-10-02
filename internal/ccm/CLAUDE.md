@@ -68,9 +68,14 @@ What SHUFFLE 6.0.0 does, against the 0v1 document:
 - **One `*` per subscription, never two.** §13.3.5 allows several and
   the device accepts `/io/ip/senders/audio/*/channels/*` — then stops
   answering its REST API for about a minute while it assembles every
-  channel of 1544 senders (measured 2026-10-02 20:32). The connector
-  subscribes to nested members only when `--path` names their parent,
-  and says which resources a wider scope leaves out.
+  channel of 1544 senders (measured 2026-10-02 20:32). Members two
+  parameters deep are subscribed to parent by parent instead: each
+  parent is learnt from the state the device pushes for it, and its
+  members are asked for one request at a time (`members` in
+  `consumer/events.go`). Measured: 1544 senders, 16 896 channel
+  documents, 44 s at 41 ms per answer, REST answering in 50 ms (348 ms
+  at worst) throughout. A duplicate subscription resends the initial
+  state; a change covered by several subscriptions is announced once.
 
 A patch that does not fit the state before it ends the session
 (`ccm_ws_patch_unapplied`); `watch` reconnects and the new session
