@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -278,5 +279,38 @@ func TestTLSOptionsServerHalfIdentityIsAnError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "both CertFile and KeyFile") {
 		t.Errorf("err = %v, want it to name the missing half", err)
+	}
+}
+
+func TestTLSOptionsKeyLogIsOptInAndAppends(t *testing.T) {
+	// Not asked for: no writer, so no secret ever leaves the process.
+	cfg, err := TLSOptions{Enable: true}.Client()
+	if err != nil || cfg.KeyLogWriter != nil {
+		t.Fatalf("key log without asking: %v, %v", cfg.KeyLogWriter, err)
+	}
+	// Asked for: the file is created, private, and appended to.
+	path := filepath.Join(t.TempDir(), "keys.log")
+	if err := os.WriteFile(path, []byte("CLIENT_RANDOM earlier\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = TLSOptions{Enable: true, KeyLogFile: path}.Client()
+	if err != nil || cfg.KeyLogWriter == nil {
+		t.Fatalf("key log asked for: %v, %v", cfg.KeyLogWriter, err)
+	}
+	if _, err := cfg.KeyLogWriter.Write([]byte("CLIENT_RANDOM now\n")); err != nil {
+		t.Fatal(err)
+	}
+	// The config owns the file for the life of the process; here the
+	// process is this test.
+	if c, ok := cfg.KeyLogWriter.(io.Closer); ok {
+		_ = c.Close()
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "CLIENT_RANDOM earlier\nCLIENT_RANDOM now\n" {
+		t.Errorf("key log = %q, want the earlier line kept", got)
+	}
+	// A path that cannot be opened is an error, not a silent no-log.
+	if _, err := (TLSOptions{Enable: true, KeyLogFile: filepath.Join(t.TempDir(), "no", "such", "dir", "k")}).Client(); err == nil {
+		t.Error("an unwritable key log path was accepted")
 	}
 }
