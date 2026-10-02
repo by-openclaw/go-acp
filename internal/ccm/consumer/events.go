@@ -100,7 +100,9 @@ func (p *Plugin) openEvents(ctx context.Context, client *Client, spec *codec.Spe
 		p.deps.Logger.Info("ccm: no event channel on this device, watch polls", "url", url, "err", err)
 		return nil
 	}
-	conn.SetIdleTimeout(3 * pingEvery)
+	// Read once, here: the keepalive goroutine is handed the value.
+	every := pingEvery
+	conn.SetIdleTimeout(3 * every)
 	s := &pusher{
 		p: p, conn: conn, spec: spec, log: p.deps.Logger,
 		subs:    map[string]*pushSub{},
@@ -109,7 +111,7 @@ func (p *Plugin) openEvents(ctx context.Context, client *Client, spec *codec.Spe
 		done:    make(chan struct{}),
 	}
 	go s.read()
-	go s.keepalive()
+	go s.keepalive(every)
 	p.deps.Logger.Debug("ccm: event channel open", "url", url)
 	return s
 }
@@ -161,8 +163,8 @@ func (s *pusher) read() {
 
 // keepalive pings so that a dead link is noticed while nothing changes
 // on the device.
-func (s *pusher) keepalive() {
-	t := s.p.Clock().NewTicker(pingEvery)
+func (s *pusher) keepalive(every time.Duration) {
+	t := s.p.Clock().NewTicker(every)
 	defer t.Stop()
 	for {
 		select {
