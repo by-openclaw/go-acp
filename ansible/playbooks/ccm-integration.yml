@@ -1,0 +1,144 @@
+---
+# CCM integration — ADR-0025 deliverable 3, tier 2/3.
+#
+# The oracle is the device. The CCM producer waits for the final EVS
+# release (#1214), so there is nothing of ours to test against: every
+# check drives the real CLI at a real Neuron and compares what it
+# printed with what the device's own REST API says.
+#
+# Two devices, because CCM has two ways of delivering state:
+#   - ccm_host         serves the §13 event channel (Neuron Shuffle):
+#                      watch is fed by subscriptions, nothing is polled;
+#   - ccm_polled_host  does not (CONVERT Hybrid 7.0.3): watch polls.
+#
+# The control node reaches the devices and has no Go toolchain, so the
+# suite is cross-compiled where there is one and shipped as a binary,
+# together with the CLI it drives (DHS_BIN).
+#
+#   GOOS=linux GOARCH=amd64 go build -o <dir>/dhs ./cmd/dhs
+#   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+#       -o <dir>/ccm-integration.test ./internal/ccm/integration/
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/ccm-integration.yml -e ccm_bin_dir=<dir>
+#   ansible-playbook -i inventory/hosts.ini playbooks/ccm-integration.yml -e ccm_bin_dir=<dir>   # -> changed=0
+#
+# Idempotent by construction: it copies two binaries (content-compared)
+# and runs a suite that restores every value it writes — a delay, a
+# gain and a crosspoint are each changed and put back, and the suite
+# fails if a restore does. The full run takes about 15 minutes: one
+# test reads the whole device twice (the DM, then the export).
+#
+# Override the devices with -e ccm_host=… -e ccm_polled_host=… ;
+# -e ccm_polled_host= skips the polled device.
+
+- name: CCM integration — stage the suite on the control node
+  hosts: "{{ ccm_build_host | default('control') }}"
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    stage: /root/ccm-integration
+  tasks:
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: Is there a Go toolchain here?
+      ansible.builtin.command: go version
+      register: ccm_go
+      changed_when: false
+      failed_when: false
+
+    - name: Build the CLI and the integration suite (needs Go on this host)
+      when: ccm_go.rc == 0
+      block:
+        - name: Build dhs
+          ansible.builtin.command:
+            cmd: go build -o {{ stage }}/dhs ./cmd/dhs
+            chdir: "{{ repo }}"
+          changed_when: true
+
+        - name: Build the integration test binary
+          ansible.builtin.command:
+            cmd: go test -c -tags integration -o {{ stage }}/ccm-integration.test ./internal/ccm/integration/
+            chdir: "{{ repo }}"
+          changed_when: true
+
+    - name: Or take the binaries built elsewhere (-e ccm_bin_dir=…)
+      when: ccm_go.rc != 0
+      ansible.builtin.assert:
+        that: ccm_bin_dir is defined
+        fail_msg: >-
+          This host has no Go toolchain. Cross-compile on a machine that
+          does — GOOS=linux GOARCH=amd64 go build -o dhs ./cmd/dhs and
+          go test -c -tags integration -o ccm-integration.test
+          ./internal/ccm/integration/ — and pass
+          -e ccm_bin_dir=<path with both>.
+
+    - name: Stage the binaries built elsewhere
+      when: ccm_go.rc != 0
+      ansible.builtin.copy:
+        src: "{{ ccm_bin_dir }}/{{ item }}"
+        dest: "{{ stage }}/{{ item }}"
+        mode: "0755"
+      loop:
+        - dhs
+        - ccm-integration.test
+
+- name: CCM integration — drive the real devices
+  hosts: "{{ ccm_test_host_group | default('control') }}"
+  gather_facts: false
+  vars:
+    stage: /root/ccm-integration
+    # Named apart from the -e overrides: a var that defaults to itself
+    # is a recursion, not a default.
+    pushed: "{{ ccm_host | default('10.6.255.103') }}"
+    polled: "{{ ccm_polled_host | default('10.6.255.102') }}"
+  tasks:
+    - name: The device that serves the event channel answers at all
+      ansible.builtin.uri:
+        url: "https://{{ pushed }}/api/self"
+        validate_certs: false
+        return_content: true
+      register: ccm_self
+      changed_when: false
+
+    - name: What we are testing against
+      ansible.builtin.debug:
+        msg: >-
+          {{ pushed }} —
+          {{ (ccm_self.content | from_json).productName }}
+          fw {{ (ccm_self.content | from_json).productVersion }}
+          {{ '; polled device ' ~ polled if polled else '; no polled device' }}
+
+    # PASS / FAIL-real / FAIL-expected / TIMEOUT come from the suite
+    # itself; the play's job is to run it where the route is and to
+    # keep the whole transcript when it does not pass.
+    - name: Run the integration suite against the devices
+      ansible.builtin.command:
+        cmd: "{{ stage }}/ccm-integration.test -test.v -test.timeout 45m"
+        chdir: "{{ stage }}"
+      environment:
+        CCM_TEST_HOST: "{{ pushed }}"
+        CCM_TEST_POLLED_HOST: "{{ polled }}"
+        DHS_BIN: "{{ stage }}/dhs"
+      register: ccm_suite
+      changed_when: false
+      # Judged below, after the transcript has been shown.
+      failed_when: false
+
+    - name: Per-test verdicts
+      ansible.builtin.debug:
+        msg: "{{ ccm_suite.stdout_lines | select('match', '^(--- |ok|FAIL|PASS|\\s+\\S+_test.go:\\d+: FAIL-expected)') | list }}"
+
+    - name: The whole transcript, when something did not pass
+      when: ccm_suite.rc != 0
+      ansible.builtin.debug:
+        msg: "{{ ccm_suite.stdout_lines }}"
+
+    - name: Every check passed
+      ansible.builtin.assert:
+        that: ccm_suite.rc == 0
+        fail_msg: "the CCM integration suite did not pass (rc={{ ccm_suite.rc }}) — the transcript is above"
+        quiet: true
