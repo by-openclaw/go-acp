@@ -11,6 +11,7 @@ package consumer
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	stdhttp "net/http"
 	"strings"
@@ -32,6 +33,9 @@ type Client struct {
 	// when the operator named one. Empty means try [SpecPaths].
 	specPath string
 	http     *transporthttp.Client
+	// tls is the posture the REST client was built with, kept so the
+	// event channel (events.go) dials the same device the same way.
+	tls *tls.Config
 }
 
 // Base is the API root every path is relative to, for provenance and
@@ -151,6 +155,7 @@ func New(opts Options) *Client {
 		resolved: apiBase != "",
 		host:     opts.Host,
 		specPath: normalizeAPIBase(opts.APISpec),
+		tls:      cfg,
 		http: &transporthttp.Client{
 			HTTP: &stdhttp.Client{
 				Timeout:   opts.Timeout,

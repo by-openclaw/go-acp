@@ -502,13 +502,7 @@ func walkJSON(path []string, v any, writable bool, out *[]dhsc.Object) {
 		}
 	case []any:
 		for i, e := range t {
-			seg := strconv.Itoa(i)
-			if m, ok := e.(map[string]any); ok {
-				if id, ok := m["uuid"].(string); ok && id != "" {
-					seg = id
-				}
-			}
-			walkJSON(append(path[:len(path):len(path)], seg), e, writable, out)
+			walkJSON(append(path[:len(path):len(path)], elementName(i, e)), e, writable, out)
 		}
 	default:
 		*out = append(*out, leaf(path, v, writable))
@@ -606,4 +600,15 @@ func (p *Plugin) session() (*Client, *codec.Spec, error) {
 		return nil, nil, errNotConnected
 	}
 	return p.client, p.spec, nil
+}
+
+// elementName is the path segment of one array element: its uuid when
+// it carries one, its index otherwise.
+func elementName(i int, e any) string {
+	if m, ok := e.(map[string]any); ok {
+		if id, ok := m["uuid"].(string); ok && id != "" {
+			return id
+		}
+	}
+	return strconv.Itoa(i)
 }

@@ -32,7 +32,8 @@ import (
 //   - so every object carries real access bits, and an operator (or
 //     `alarm suggest`) can tell a setting from a reading.
 //
-// REST only, by decision — see ../CLAUDE.md. `watch` polls.
+// State comes over the CCM §13 event channel where the device serves
+// one, and by polling where it does not — see events.go and ../CLAUDE.md.
 
 // Name is the registry name: dhs consumer ccm <verb>.
 const Name = "ccm"
@@ -92,6 +93,8 @@ type Plugin struct {
 	interval time.Duration
 
 	poller *pollwatch.Poller
+	// push is the event channel, nil on a device that serves none.
+	push *pusher
 }
 
 // Connect reads the device's identity and its OpenAPI document.
@@ -132,25 +135,39 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return fmt.Errorf("ccm: %s: %w", host, err)
 	}
 
+	// Asked of the device, once per session: does it push its state
+	// (§13) or must it be polled.
+	push := p.openEvents(ctx, client, spec)
+
 	p.mu.Lock()
 	p.client, p.host, p.port = client, ip, port
 	p.dev, p.spec = *dev, spec
 	p.tree, p.byPath = nil, nil
+	old := p.push
+	p.push = push
 	p.mu.Unlock()
+	if old != nil {
+		old.close()
+	}
 
 	p.Opened("tcp", ip, port, dhsc.MetricsTimes{C: p.Metrics()})
 	return nil
 }
 
-// Disconnect drops the client. HTTP keeps no session, so this is
-// bookkeeping — but a connector that stayed "connected" after being
-// told to stop would report a device as reachable that nobody is
-// talking to.
+// Disconnect drops the client and ends the event channel. REST keeps no
+// session, so on a polled device this is bookkeeping — but a connector
+// that stayed "connected" after being told to stop would report a
+// device as reachable that nobody is talking to.
 func (p *Plugin) Disconnect() error {
 	p.mu.Lock()
 	p.client = nil
 	p.tree, p.byPath = nil, nil
+	push := p.push
+	p.push = nil
 	p.mu.Unlock()
+	if push != nil {
+		push.close()
+	}
 	p.Closed()
 	return nil
 }
