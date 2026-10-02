@@ -149,3 +149,31 @@ Not every matrix is multi-level: `data/output` and `video/output` answer `404` f
 So: canonical `matrix` / `usage` / `replace` map (spec review §17 row: state map = routes, usage = the inverted map). The essence matrices (`audio`, `video`, `data/output`, `data/path`, `video/output`, `video/path`) are separate canonical **matrices** (`matrix_id` as a string identifier), `main`/`backup` are canonical **levels** (string names), and `current` is the read-only **tally** level. What the canonical entity must grow: a destination/source id that is a **resolved tuple** — `(group type, object uuid or int id, channel)` — with the object's `name` fetched from `path/{id}`; the template-rendered key is the wire form, the tuple is the model. The emulator validates every written key/value by rendering the group templates over `info.children` (a key that renders to no child is a `400`), and the consumer view shows names, not `IP000-05`.
 
 **Emulator today:** a `PUT` to `main`/`backup` is stored like any resource write, but **`current` is not recomputed** — routing semantics are the next matrix unit (see the TODO list), not yet implemented. Until then treat matrix on the emulator as read-back-what-you-wrote.
+
+## 9. Watch a device (consumer)
+
+`watch` asks the device at connect whether it serves the CCM §13 event
+channel. Where it does (SHUFFLE 6.0.0) state is pushed and nothing is
+polled; where it does not (CONVERT/BRIDGE 7.0.3, NeuronView 1.13.2) the
+same command polls every 15 s.
+
+```
+dhs consumer ccm watch <host> --no-walk --path matrices.audio.state.main
+dhs consumer ccm watch <host> --no-walk --path io.ip.senders.audio.<sender-uuid>
+dhs consumer ccm watch <host> --no-walk --path processing.audio.delay.<bank-uuid>
+```
+
+Expected on a pushed session: the log line `ccm: watching over the
+event channel scope=… subscriptions=N`, the scope's current state once,
+then one line per change as it happens. A crosspoint is
+`matrices.audio.state.main.<destination-channel-uuid> = <source-channel-uuid>`.
+
+Scope matters. A sender's channels (gain, phase) are resources of their
+own, below the sender, and are watched only when `--path` names that
+sender: a wider scope is answered with a warning listing what it leaves
+out. This is deliberate — one subscription across every channel of every
+sender stalls the device's REST API for about a minute.
+
+If the channel is lost, or the device sends a change that does not fit
+the state before it, `watch` reconnects and starts again from the
+device's current state.

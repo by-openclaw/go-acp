@@ -94,18 +94,25 @@ func (p *Plugin) SetPollInterval(d time.Duration) {
 	p.mu.Unlock()
 }
 
-// Subscribe watches objects by polling.
-//
-// REST only, by decision (../CLAUDE.md): there is no notification
-// channel on this device, so a watch that waited for one would watch
-// nothing. Same machinery as every other polled connector (ADR-0030
-// through pollwatch).
+// Subscribe watches objects: over the event channel when the device
+// serves one (events.go), by polling when it does not — the same
+// machinery as every other polled connector (ADR-0030 through
+// pollwatch). A device is one or the other for the whole session, so a
+// value is never both pushed and polled (§13.3).
 func (p *Plugin) Subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
+	if s := p.events(); s != nil {
+		return s.subscribe(req, fn)
+	}
 	return p.poller.Subscribe(req, fn)
 }
 
 // Unsubscribe stops a watch.
-func (p *Plugin) Unsubscribe(req dhsc.ValueRequest) error { return p.poller.Unsubscribe(req) }
+func (p *Plugin) Unsubscribe(req dhsc.ValueRequest) error {
+	if s := p.events(); s != nil {
+		s.unsubscribe(req)
+	}
+	return p.poller.Unsubscribe(req)
+}
 
 // pollProfileFor builds the poll plan from the model, narrowed to the
 // request's --path scope.

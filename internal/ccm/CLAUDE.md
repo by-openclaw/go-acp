@@ -21,24 +21,61 @@ stream paths the old Walk hardcoded. The acp2 connector stays
 regardless: this bridge runs acp2 + REST/CCM + NMOS at once
 (mixed-firmware, multi-protocol box).
 
-## REST only — do not re-probe the WebSocket
+## State: the §13 event channel where served, polling where not
 
-**Decided by the codeowner: CCM is a REST connector.** Not "blocked on
-firmware", not "pending EVS" — a decision. `watch` polls, the way
-SNMP's does. Nothing in this tree should spend time on the WS again,
-and this section exists so the next reader does not go looking.
+**Decided by the codeowner (2026-10-02): the Shuffler runs CCM + the
+WebSocket, exclusively; the other Neurons follow when their firmware
+serves it.** This replaces the 2026-09-24 "REST only" decision, which
+was right for the firmware it was measured on and is still what
+CONVERT/BRIDGE and NeuronView get.
 
-The evidence behind the decision, so nobody has to re-gather it: the WS
-is not served. Verified 2026-09-03 on 7.0.2 by packet capture and
-re-verified 2026-09-24 on **7.0.3** — 443 negotiates http/1.1 only, the
-WS would be a plain HTTP/1.1-Upgrade-over-TLS on 443 (no separate port,
-nmap-clean), and every candidate path 404s through a
-confirmed-correct handshake (`/api/v1/ws`, `/ws`,
-`/api/v1/subscriptions`, `/api/v1/events`, ~25 more). **EVS's own
-Cerebrum 2.9.0 CCM driver fails the same way** — the 1 MB persistent
-443 connection in a Cerebrum-side capture is the REST poll, not a live
-WS. The message protocol is documented (PDF §13) and would be a small
-unit if EVS ever ships it; that is a decision for then, not a gap now.
+Which of the two a device is, is **asked of the device at Connect** —
+one upgrade on `<base>/ws` — and never assumed from its name or
+firmware. 101 → the session watches over the channel
+(`consumer/events.go`); anything else → `ccm_no_websocket` is counted
+and `watch` polls through `pollwatch`, as before. A device is one or the
+other for the whole session, so a value is never both pushed and polled
+(§13.3).
+
+Measured 2026-10-02:
+
+| device | upgrade | result |
+|---|---|---|
+| SHUFFLE 6.0.0 (10.6.255.103) | `/api/ws` | **101**, nginx 1.26.3, no auth |
+| CONVERT Hybrid 7.0.3 (10.6.255.102) | `/api/ws`, `/api/v1/ws`, `/ws` | 404 |
+| NeuronView 1.13.2 (10.6.255.104) | same three | 404 |
+
+The earlier evidence for BRIDGE/CONVERT stands and needs no
+re-gathering: 7.0.2 (2026-09-03, packet capture) and 7.0.3 (2026-09-24)
+404 every candidate path through a correct handshake, and EVS's own
+Cerebrum 2.9.0 CCM driver fails the same way.
+
+What SHUFFLE 6.0.0 does, against the 0v1 document:
+
+- **As written:** Create/DeleteSubscription and their responses
+  (§13.3.1–4); `*` for one path parameter (§13.3.5); the whole resource
+  once, as `replace ""`, in a single event (§13.3.6 — 1544 senders in
+  one 756 kB frame, the 17 728-entry matrix state in one 1.4 MB frame);
+  then field-level RFC 6902 `replace` (§13.4); a path that is not a GET
+  is refused with 404 "does not match any GET route" (§13.3). A REST
+  PATCH is answered 202 and its change arrives on the channel within
+  the same 100 ms. The device pings once a second.
+- **Deviations, absorbed and counted:** the notification type is
+  `"Event"`, not `"Events"` (`ccm_ws_event_type`); the subscription
+  response arrives BEFORE the initial state, where §13.3.8 has it after
+  (either order works here, nothing to count); the channel is at
+  `<base>/ws` = `/api/ws`, where §13.2's example is `ws://{ip}/ws`.
+- **One `*` per subscription, never two.** §13.3.5 allows several and
+  the device accepts `/io/ip/senders/audio/*/channels/*` — then stops
+  answering its REST API for about a minute while it assembles every
+  channel of 1544 senders (measured 2026-10-02 20:32). The connector
+  subscribes to nested members only when `--path` names their parent,
+  and says which resources a wider scope leaves out.
+
+A patch that does not fit the state before it ends the session
+(`ccm_ws_patch_unapplied`); `watch` reconnects and the new session
+starts from the device's state again — §13.4.1's "discard and
+repopulate". A lost channel does the same through `SessionDone`.
 
 **Unit 2 (PR #1065): the PROVIDER.** `dhs producer ccm serve` replays a
 captured device model (a dm-tree: resource path → resource JSON, the
@@ -98,6 +135,7 @@ same way. Everything here is measured from the devices, not supposed.
 | state maps | beside the info (`…/path/main`) | a level below (`…/state/main`) |
 | axis naming | `template` + ordered `children` | UUIDs, no children, no template |
 | providers per axis | 1 | **4 destinations, 5 sources** |
+| event channel (§13) | none — every path 404s (7.0.3) | `/api/ws`, verified on 10.6.255.103 fw 6.0.0, 2026-10-02 |
 | crosspoints | 11 071 | **17 728 × 3 maps = 53 184** |
 | model size | ~24 k objects | **170 060 objects** |
 
@@ -238,8 +276,9 @@ internal/ccm/
    OAS tooling choice shared with dhs-srv.
 2. Endpoint → verb mapping: which canonical verbs (info/walk/get/
    set/ensure/export/watch) the REST surface can back. The
-   subscription question is CLOSED — REST only, `watch` polls; see
-   "REST only" above.
+   subscription question is answered per device: the §13 event
+   channel where it is served, polling where it is not — see "State"
+   above.
 3. Object model vs the acp2 tree: can CCM serve the SAME canonical
    tree (label paths, DM identity Model@SwRev) so DMs/manifests/packs
    stay protocol-agnostic? That is the acceptance bar.
@@ -249,6 +288,8 @@ internal/ccm/
 
 ## What NOT to do
 
+- Never subscribe with more than one `*` in a path: SHUFFLE 6.0.0
+  accepts it and stalls its REST API for about a minute (see "State").
 - No code before the checklist verdict + owner go.
 - Never delete or bypass the acp2 connector — mixed-firmware fleets
   keep both.
