@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	stdhttp "net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -131,6 +132,10 @@ func New(opts Options) *Client {
 	cfg, err := tlsClientConfig(transport.TLSOptions{
 		Enable:   true,
 		Insecure: !opts.VerifyTLS,
+		// SSLKEYLOGFILE is the name browsers and curl use for the same
+		// thing: set it, and Wireshark can open what this client said
+		// to the device.
+		KeyLogFile: strings.TrimSpace(os.Getenv("SSLKEYLOGFILE")),
 	})
 	if err != nil {
 		// Unreachable: no CA or client-certificate file is configured, and

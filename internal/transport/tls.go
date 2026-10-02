@@ -65,6 +65,13 @@ type TLSOptions struct {
 	CertFile string
 	KeyFile  string
 
+	// KeyLogFile, when set, receives the session secrets in the NSS key
+	// log format, appended. It is what lets Wireshark decrypt a capture
+	// of this client's traffic — the way a dhs dissector is checked
+	// against a device that speaks TLS only. Debug use, opt-in, never a
+	// default: whoever sets it holds the secrets of every session.
+	KeyLogFile string
+
 	// Certificates presents an ALREADY-LOADED client certificate — the
 	// in-memory form of CertFile + KeyFile.
 	//
@@ -104,6 +111,13 @@ func (o TLSOptions) Client() (*tls.Config, error) {
 	}
 	cfg.Certificates = certs
 
+	if o.KeyLogFile != "" {
+		w, err := os.OpenFile(o.KeyLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("transport: key log %q: %w", o.KeyLogFile, err)
+		}
+		cfg.KeyLogWriter = w
+	}
 	return cfg, nil
 }
 
