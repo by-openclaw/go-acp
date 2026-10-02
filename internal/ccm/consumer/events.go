@@ -29,24 +29,6 @@ import (
 // SHUFFLE 6.0.0 serves it; CONVERT/BRIDGE 7.0.3 and NeuronView 1.13.2
 // answer the upgrade with 404.
 
-// Deviations from §13 this connector absorbs and counts.
-const (
-	// NoWebSocket: the device refused the upgrade. §13.1 has every
-	// non-trivial device serve the channel.
-	NoWebSocket = "ccm_no_websocket"
-	// EventTypeSingular: a notification typed "Event" where §13.3.6 and
-	// §13.4 say "Events".
-	EventTypeSingular = "ccm_ws_event_type"
-	// FrameUnreadable: a frame that is not a §13 message.
-	FrameUnreadable = "ccm_ws_frame_unreadable"
-	// SubscriptionRefused: the device refused a path its own api.yml
-	// declares as a GET (§13.3: every GETtable resource is subscribable).
-	SubscriptionRefused = "ccm_ws_subscription_refused"
-	// PatchUnapplied: a patch that does not fit the state the device
-	// sent before it. The session ends and is rebuilt (§13.4.1).
-	PatchUnapplied = "ccm_ws_patch_unapplied"
-)
-
 // subscribeTimeout bounds the wait for the device to answer a
 // subscription. pingEvery is how often the client pings; a channel
 // silent for three of them is treated as lost. Variables so a test can
@@ -107,7 +89,9 @@ func (p *Plugin) openEvents(ctx context.Context, client *Client, spec *codec.Spe
 	conn, err := dialEvents(ctx, url, &ws.DialOptions{TLSConfig: client.tls})
 	if err != nil {
 		p.ComplianceProfile().Note(NoWebSocket)
-		p.deps.Logger.Info("ccm: no event channel on this device, watch polls", "url", url, "err", err)
+		// Debug: every verb connects, and only a watch cares — it says
+		// so itself when it starts polling (values.go).
+		p.deps.Logger.Debug("ccm: no event channel on this device", "url", url, "err", err)
 		return nil
 	}
 	// Read once, here: the keepalive goroutine is handed the value.

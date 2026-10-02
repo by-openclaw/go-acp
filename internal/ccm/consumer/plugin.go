@@ -129,6 +129,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
 	}
+	if dev.SelfUnderApp {
+		p.ComplianceProfile().Note(SelfUnderApp)
+	}
 	p.deps.Logger.Debug("ccm: model contract", "base", client.Base(), "spec", from)
 	spec, err := codec.ParseSpec(doc)
 	if err != nil {

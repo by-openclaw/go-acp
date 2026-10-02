@@ -120,3 +120,23 @@ func TestDecodeStreamsRefusalsAndSkips(t *testing.T) {
 		t.Errorf("the reason must name what was skipped: %q", skipped[0])
 	}
 }
+
+// /self as CCM 0v1 §15 defines it and SHUFFLE 6.0.0 (10.6.255.103,
+// 2026-10-02) answers it: the product at the top level.
+func TestDecodeSelfReadsTheIdentityWhereTheDocumentPutsIt(t *testing.T) {
+	d, err := DecodeSelf([]byte(`{"components":[{"gitHash":"351f1caaf9103cc2e7d31dc28063c2bfb31be654","name":"app","timestamp":1769789233,"version":"6.0.0-7e4a27e"}],"productHash":"351f1caaf9103cc2e7d31dc28063c2bfb31be654","productName":"SHUFFLE","productVersion":"6.0.0-7e4a27e","timestamp":1769789233}`))
+	if err != nil || d.ProductName != "SHUFFLE" || d.ProductVersion != "6.0.0-7e4a27e" || d.SelfUnderApp {
+		t.Errorf("SHUFFLE = %+v, %v", d, err)
+	}
+	// CONVERT Hybrid 7.0.3 (10.6.255.102, 2026-10-02) nests it under
+	// `app`: read, and flagged as the deviation it is.
+	d, err = DecodeSelf([]byte(`{"app":{"buildType":"Release","compiledAt":"Sep  9 2026 15:50:18","dirty":false,"gitCommit":"12eb4f31d082af9056d39ba1c9383bb4eca12e9f","modelVersion":17,"productName":"CONVERT Hybrid","productVersion":"7.0.3"},"capabilities":{"coProcessor":"NA"}}`))
+	if err != nil || d.ProductName != "CONVERT Hybrid" || d.ProductVersion != "7.0.3" || d.ModelVersion != 17 || !d.SelfUnderApp {
+		t.Errorf("CONVERT = %+v, %v", d, err)
+	}
+	// A /self that names no product anywhere stays unnamed.
+	d, err = DecodeSelf([]byte(`{"timestamp":1}`))
+	if err != nil || d.ProductName != "" || d.SelfUnderApp {
+		t.Errorf("unnamed = %+v, %v", d, err)
+	}
+}

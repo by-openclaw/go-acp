@@ -123,6 +123,7 @@ type typedDevice struct {
 	mu     sync.Mutex
 	docs   map[string]string
 	writes []string // "METHOD path body"
+	gets   []string // every path read
 	status int      // non-zero: every write answers this status with the body below
 	answer string
 }
@@ -140,6 +141,7 @@ func newTypedDevice(t *testing.T) *typedDevice {
 		defer d.mu.Unlock()
 		switch r.Method {
 		case http.MethodGet:
+			d.gets = append(d.gets, r.URL.Path)
 			if r.URL.Path == "/docs/api.yml" {
 				_, _ = w.Write([]byte(specWithSchemas))
 				return
@@ -178,6 +180,13 @@ func newTypedDevice(t *testing.T) *typedDevice {
 	dialClient = func(string) *Client { return testClient(d.srv) }
 	t.Cleanup(func() { dialClient = restore })
 	return d
+}
+
+// requests is every path the device was asked to read.
+func (d *typedDevice) requests() []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]string(nil), d.gets...)
 }
 
 func (d *typedDevice) written() []string {

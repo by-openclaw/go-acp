@@ -63,6 +63,9 @@ type Device struct {
 	ProductVersion string `json:"productVersion"`
 	ModelVersion   int    `json:"modelVersion"`
 	Streams        map[string]Stream
+	// SelfUnderApp reports that /self carried the identity under an
+	// `app` object and not at the top level, where CCM 0v1 §15 puts it.
+	SelfUnderApp bool `json:"-"`
 }
 
 // Stream returns one stream by UUID.
@@ -83,27 +86,37 @@ func (d *Device) StreamsByKind(k Kind) []Stream {
 	return out
 }
 
-// selfBody is the /api/v1/self shape.
+// selfBody is /self. CCM 0v1 §15 puts productName and productVersion at
+// the top level, and SHUFFLE 6.0.0 does. BRIDGE and CONVERT 7.0.3 put
+// them under `app`, with a modelVersion the document does not define.
 type selfBody struct {
-	App struct {
+	ProductName    string `json:"productName"`
+	ProductVersion string `json:"productVersion"`
+	App            struct {
 		ProductName    string `json:"productName"`
 		ProductVersion string `json:"productVersion"`
 		ModelVersion   int    `json:"modelVersion"`
 	} `json:"app"`
 }
 
-// DecodeSelf parses an /api/v1/self body into device identity.
+// DecodeSelf parses a /self body into device identity: where §15 puts
+// it, or under `app` when the top level names no product.
 func DecodeSelf(body []byte) (Device, error) {
 	var s selfBody
 	if err := json.Unmarshal(body, &s); err != nil {
 		return Device{}, fmt.Errorf("neuron: decode self: %w", err)
 	}
-	return Device{
-		ProductName:    s.App.ProductName,
-		ProductVersion: s.App.ProductVersion,
+	dev := Device{
+		ProductName:    s.ProductName,
+		ProductVersion: s.ProductVersion,
 		ModelVersion:   s.App.ModelVersion,
 		Streams:        map[string]Stream{},
-	}, nil
+	}
+	if dev.ProductName == "" && s.App.ProductName != "" {
+		dev.ProductName, dev.ProductVersion = s.App.ProductName, s.App.ProductVersion
+		dev.SelfUnderApp = true
+	}
+	return dev, nil
 }
 
 // DecodeStreams parses an io/ip senders|receivers/<essence> array into

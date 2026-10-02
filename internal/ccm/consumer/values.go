@@ -103,6 +103,7 @@ func (p *Plugin) Subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
 	if s := p.events(); s != nil {
 		return s.subscribe(req, fn)
 	}
+	p.deps.Logger.Info("ccm: no event channel on this device, watch polls", "every", p.pollEvery())
 	return p.poller.Subscribe(req, fn)
 }
 
@@ -156,4 +157,11 @@ func (p *Plugin) pollProfileFor(ctx context.Context, req dhsc.ValueRequest) (*mo
 		return nil, fmt.Errorf("ccm: nothing to poll under %q (%d object(s) in the model)", req.Path, len(tree))
 	}
 	return prof, nil
+}
+
+// pollEvery is the cadence a polled watch re-reads at.
+func (p *Plugin) pollEvery() time.Duration {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.interval
 }
