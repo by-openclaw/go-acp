@@ -498,3 +498,60 @@ func TestParseFlowSeq(t *testing.T) {
 		}
 	}
 }
+
+// TestWriteYAML_NestsEveryMultiSegmentPath: a device whose objects carry
+// a dotted path of several segments (mnset, ccm, Ember+) is written as
+// that tree, one leaf per object, and reads back with the same paths.
+// Before, every non-ACP2 object took the ACP1 group > label shape, so
+// leaves sharing a last segment ("ip", "port") under different parents
+// collapsed onto one another.
+func TestWriteYAML_NestsEveryMultiSegmentPath(t *testing.T) {
+	objs := []consumer.Object{
+		{Path: []string{"io", "ip", "senders", "audio", "1a8a423b", "primaryLeg", "ip"}, Label: "ip", Kind: consumer.KindString, Access: 3, Value: consumer.Value{Kind: consumer.KindString, Str: "239.30.1.1"}},
+		{Path: []string{"io", "ip", "senders", "audio", "1a8a423b", "primaryLeg", "port"}, Label: "port", Kind: consumer.KindInt, Access: 3, Value: consumer.Value{Kind: consumer.KindInt, Int: 30000}},
+		{Path: []string{"io", "ip", "senders", "audio", "46c1b87c", "primaryLeg", "ip"}, Label: "ip", Kind: consumer.KindString, Access: 3, Value: consumer.Value{Kind: consumer.KindString, Str: "239.30.7.20"}},
+		{Path: []string{"io", "ip", "senders", "audio", "46c1b87c", "primaryLeg", "port"}, Label: "port", Kind: consumer.KindInt, Access: 3, Value: consumer.Value{Kind: consumer.KindInt, Int: 30000}},
+		{Path: []string{"reference", "ptp", "domain"}, Label: "domain", Kind: consumer.KindInt, Access: 3, Value: consumer.Value{Kind: consumer.KindInt, Int: 77}},
+		{Path: []string{"self", "productName"}, Label: "productName", Kind: consumer.KindString, Access: 1, Value: consumer.Value{Kind: consumer.KindString, Str: "SHUFFLE"}},
+	}
+	snap := &Snapshot{Device: DeviceInfo{IP: "10.6.255.103", Protocol: "ccm", NumSlots: 1}, Slots: []SlotDump{{Slot: 0, Status: "present", Objects: objs}}}
+	var sb strings.Builder
+	if err := WriteYAML(&sb, snap); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	for _, want := range []string{"\n    io:\n", "\n      ip:\n", "\n        senders:\n", "\n          audio:\n", "\n            1a8a423b:\n", "\n            46c1b87c:\n", "\n              primaryLeg:\n", "\n    reference:\n      ptp:\n        domain:\n"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("tree lacks %q:\n%s", want, out)
+		}
+	}
+	back, err := ReadYAML(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("ReadYAML: %v", err)
+	}
+	if len(back.Slots) != 1 {
+		t.Fatalf("slots: %+v", back.Slots)
+	}
+	// The reader also lists the containers it passed through (kind
+	// unknown, as it does for ACP2); the leaves are what must survive.
+	got := map[string]consumer.Object{}
+	for _, o := range back.Slots[0].Objects {
+		if o.Kind != consumer.KindUnknown {
+			got[strings.Join(o.Path, ".")] = o
+		}
+	}
+	if len(got) != len(objs) {
+		t.Fatalf("read back %d leaves, want %d\n%s", len(got), len(objs), out)
+	}
+	for _, o := range objs {
+		p := strings.Join(o.Path, ".")
+		b, ok := got[p]
+		if !ok {
+			t.Errorf("path %s lost on the way through YAML", p)
+			continue
+		}
+		if o.Kind == consumer.KindString && b.Value.Str != o.Value.Str || o.Kind == consumer.KindInt && b.Value.Int != o.Value.Int {
+			t.Errorf("%s = %+v, want %+v", p, b.Value, o.Value)
+		}
+	}
+}

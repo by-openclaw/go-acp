@@ -69,30 +69,32 @@ type objectTreeNode struct {
 }
 
 // buildObjectTree constructs a tree from flat objects using their Path.
-// Path[0] is always ROOT_NODE_V2 for ACP2 — we skip it and start from
-// Path[1] (BOARD, PSU, etc.) so the tree matches Cerebrum's view.
+//
+// An object whose Path has more than one segment is nested at every
+// segment, the way the JSON writer and ReadYAML do: ACP2 (whose Path[0]
+// is the synthetic ROOT_NODE_V2, skipped so the tree matches
+// Cerebrum's view), Ember+, mnset, ccm. Only a one-segment Path — ACP1,
+// where Path is the group — nests group > label. Before 2026-10-02 every
+// non-ACP2 object took the group > label shape, so a path-nested device
+// collapsed onto its last segment: a Neuron Shuffle's 292 714 leaves
+// came out as 17 890.
 func buildObjectTree(objs []consumer.Object) *objectTreeNode {
-	// Detect ACP2 by ROOT_NODE_V2 prefix.
-	acp2 := false
-	for _, o := range objs {
-		if len(o.Path) > 0 && strings.EqualFold(o.Path[0], "ROOT_NODE_V2") {
-			acp2 = true
-			break
-		}
-	}
-
 	root := &objectTreeNode{name: "root", childIdx: map[string]int{}}
 	for i := range objs {
 		o := &objs[i]
 
+		path := o.Path
+		acp2 := len(path) > 0 && strings.EqualFold(path[0], "ROOT_NODE_V2")
 		if acp2 {
-			// ACP2: skip ROOT_NODE_V2 root object itself.
-			if len(o.Path) <= 1 {
+			// ACP2: skip the ROOT_NODE_V2 root object itself.
+			if len(path) <= 1 {
 				continue
 			}
-			// Walk from path[1] onward.
+			path = path[1:]
+		}
+		if acp2 || len(path) > 1 {
 			cur := root
-			for _, seg := range o.Path[1:] {
+			for _, seg := range path {
 				idx, exists := cur.childIdx[seg]
 				if !exists {
 					idx = len(cur.children)
