@@ -1,0 +1,17 @@
+{
+  "device": {
+    "name": "lab-shuffle-01",
+    "protocol": "ccm",
+    "endpoints": [
+      { "ip": "10.6.255.103", "port": 443, "transport": "tcp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "neuron-shuffle",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "SHUFFLE@6.0.0-7e4a27e" }
+      ]
+    }
+  ]
+}

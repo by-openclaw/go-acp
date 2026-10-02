@@ -1,0 +1,17 @@
+{
+  "device": {
+    "name": "lab-convert-01",
+    "protocol": "ccm",
+    "endpoints": [
+      { "ip": "10.6.255.102", "port": 443, "transport": "tcp" }
+    ]
+  },
+  "frames": [
+    {
+      "name": "neuron-convert-hybrid",
+      "slots": [
+        { "addr": { "slot": 0 }, "dm": "CONVERT Hybrid@7.0.3" }
+      ]
+    }
+  ]
+}
