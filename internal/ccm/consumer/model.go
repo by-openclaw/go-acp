@@ -15,6 +15,7 @@ import (
 
 	"dhs/internal/ccm/codec"
 	dhsc "dhs/internal/consumer"
+	"dhs/internal/plugin"
 )
 
 // Turning a REST device into a device model.
@@ -52,12 +53,72 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		return nil, err
 	}
 
-	plan, err := p.resourcePaths(ctx, client, spec)
+	plan, bodies, errs, err := p.readAll(ctx, client, spec)
 	if err != nil {
 		return nil, err
 	}
+	return p.model(ctx, client, spec, plan, bodies, errs), nil
+}
 
-	// Read the resources concurrently and flatten them in order.
+// SeedTreeFromCachedObjects takes a model read earlier and stored as a
+// DM, so a watch on a device already known starts from it instead of
+// reading the device again — a walk of the audio shuffler is five
+// minutes of REST. The cached objects stand in until a walk replaces
+// them.
+func (p *Plugin) SeedTreeFromCachedObjects(slot int, objs []dhsc.Object) {
+	if slot != 0 {
+		return
+	}
+	byPath := make(map[string]dhsc.Object, len(objs))
+	for _, o := range objs {
+		byPath[strings.Join(o.Path, ".")] = o
+	}
+	p.mu.Lock()
+	p.tree, p.byPath = objs, byPath
+	p.mu.Unlock()
+}
+
+// WalkResources reads the device as it serves itself: one JSON document
+// per resource, by path — what `ccm export` stores and the provider
+// replays. It is the walk for a device whose API base answers no
+// document to start a tree walk from: SHUFFLE 6.0.0 answers 404 on
+// `/api` and on every folder below it (§5.1, §4.4), and declares every
+// resource in its api.yml.
+func (p *Plugin) WalkResources(ctx context.Context) (*codec.DMTree, []string, error) {
+	client, spec, err := p.session()
+	if err != nil {
+		return nil, nil, err
+	}
+	plan, bodies, errs, err := p.readAll(ctx, client, spec)
+	if err != nil {
+		return nil, nil, err
+	}
+	p.ComplianceProfile().Note(NoAPIRoot)
+	tree := codec.NewDMTree(client.Base())
+	var deviations []string
+	for i, path := range plan.paths {
+		switch {
+		case plan.collections[path]:
+			tree.AddBranch(path)
+		case errs[i] != nil:
+			deviations = append(deviations, fmt.Sprintf("%s: %v", path, errs[i]))
+		default:
+			tree.AddResource(path, json.RawMessage(bodies[i]))
+		}
+	}
+	p.RecordRx()
+	return tree, deviations, nil
+}
+
+// readAll reads every resource the spec declares and returns the plan
+// with what each of its paths answered, in plan order.
+func (p *Plugin) readAll(ctx context.Context, client *Client, spec *codec.Spec) (*walkPlan, [][]byte, []error, error) {
+	plan, err := p.resourcePaths(ctx, client, spec)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Read the resources concurrently, keeping them in order.
 	//
 	// An audio shuffler declares roughly 35 000 of them — every channel
 	// of every stream is its own resource — and one at a time that is a
@@ -94,7 +155,12 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		}(i, path)
 	}
 	wg.Wait()
+	return plan, bodies, errs, nil
+}
 
+// model flattens what readAll read into one Object per leaf, links the
+// matrices, and keeps the result as the session's tree.
+func (p *Plugin) model(ctx context.Context, client *Client, spec *codec.Spec, plan *walkPlan, bodies [][]byte, errs []error) []dhsc.Object {
 	var (
 		objs []dhsc.Object
 		read int
@@ -146,7 +212,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 
 	p.deps.Logger.Debug("ccm: model read",
 		"resources", read, "declared", len(plan.paths), "objects", len(objs))
-	return objs, nil
+	return objs
 }
 
 // walkPlan is what one walk reads: the concrete resource paths, which
@@ -611,4 +677,20 @@ func elementName(i int, e any) string {
 		}
 	}
 	return strconv.Itoa(i)
+}
+
+// WalkResources is [Plugin.WalkResources] for a caller that holds only
+// a client — `ccm export`, which is CCM's own shape and has no session.
+func (c *Client) WalkResources(ctx context.Context, deps plugin.Deps) (*codec.DMTree, []string, error) {
+	doc, _, err := c.FetchSpec(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	spec, err := codec.ParseSpec(doc)
+	if err != nil {
+		return nil, nil, err
+	}
+	p := &Plugin{deps: deps.WithDefaults(), client: c, spec: spec}
+	p.Init(p.deps, staleAfter)
+	return p.WalkResources(ctx)
 }

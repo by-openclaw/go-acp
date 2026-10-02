@@ -26,6 +26,7 @@ import (
 
 	ccmcodec "dhs/internal/ccm/codec"
 	ccmc "dhs/internal/ccm/consumer"
+	"dhs/internal/plugin"
 )
 
 func runCCMExport(ctx context.Context, args []string) error {
@@ -59,7 +60,15 @@ func runCCMExport(ctx context.Context, args []string) error {
 	// is the artifact that makes the versioned firmware diff complete.
 	fullTree, treeDevs, treeErr := c.WalkTree(ctx)
 	if treeErr != nil {
-		return fmt.Errorf("consumer ccm export: walk-tree: %w", treeErr)
+		// No document at the API base to walk from (SHUFFLE 6.0.0: `/api`
+		// and every folder below it answer 404 — CCM §5.1, §4.4). The
+		// api.yml declares every resource, so the tree is read from that.
+		rootErr := treeErr
+		fullTree, treeDevs, treeErr = c.WalkResources(ctx, plugin.Deps{})
+		if treeErr != nil {
+			return fmt.Errorf("consumer ccm export: walk-tree: %w; from the api.yml: %v", rootErr, treeErr)
+		}
+		deviations = append(deviations, fmt.Sprintf("no API root (%v): the tree is read from the api.yml's declared paths", rootErr))
 	}
 	deviations = append(deviations, treeDevs...)
 	spec, specFrom, specErr := c.FetchSpec(ctx)
