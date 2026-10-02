@@ -272,7 +272,10 @@ func runWatch(ctx context.Context, args []string) error {
 	// Subscribe. The plugin pushes decoded Event values into our channel
 	// via the callback; we print them from the main goroutine so output
 	// is serialised cleanly with Ctrl-C handling.
-	events := make(chan consumer.Event, 128)
+	// The queue between the two is unbounded: the callback never blocks
+	// the plugin's receive path and no event is dropped (event_queue.go).
+	queue := newEventQueue(ctx)
+	events := queue.C()
 
 	// setup is everything that has to be re-established on a NEW session,
 	// not just the first one: the wildcard filters and the subscription
@@ -285,14 +288,7 @@ func runWatch(ctx context.Context, args []string) error {
 	// (ACP1/ACP2, Probel, …) silently ignore them. No protocol-name compare.
 	setup := func(context.Context, consumer.Protocol) error {
 		applyWildcardFilter(plug, *pathFilter, *noStreams, *streamsOnly)
-		return plug.Subscribe(req, func(ev consumer.Event) {
-			select {
-			case events <- ev:
-			default:
-				// Drop on full buffer — better than blocking the receive
-				// goroutine and missing unrelated events.
-			}
-		})
+		return plug.Subscribe(req, queue.push)
 	}
 	defer func() { _ = plug.Unsubscribe(req) }()
 
