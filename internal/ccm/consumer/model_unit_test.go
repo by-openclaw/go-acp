@@ -154,10 +154,14 @@ func TestSummariseKeepsAModelReadable(t *testing.T) {
 			t.Errorf("%s: summarise(%q) = %q, want %q", c.name, c.in, got, c.want)
 		}
 	}
-	// And the length survives even when the bytes do not.
+	// The size survives in the description. It is not a limit, and
+	// max_len is one: only the device's api.yml sets it (types.go).
 	o := leaf([]string{"x", "thumbnail"}, "\xff\xd8binary", false)
-	if o.MaxLen != 8 {
-		t.Errorf("MaxLen = %d, want the real length", o.MaxLen)
+	if o.Value.Str != "<binary, 8 bytes>" || o.MaxLen != 0 {
+		t.Errorf("leaf = %q max_len %d, want the size in the value and no invented limit", o.Value.Str, o.MaxLen)
+	}
+	if o := leaf([]string{"x", "state"}, "Ok", false); o.MaxLen != 0 {
+		t.Errorf("max_len = %d for a value of two characters: a length is not a limit", o.MaxLen)
 	}
 }
 

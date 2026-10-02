@@ -322,8 +322,8 @@ func TestBinaryValuesAreDescribedRatherThanStored(t *testing.T) {
 			if !strings.HasPrefix(o.Value.Str, "<binary,") {
 				t.Errorf("thumbnail kept verbatim: %q", o.Value.Str)
 			}
-			if o.MaxLen == 0 {
-				t.Error("the size must survive even when the bytes do not")
+			if !strings.Contains(o.Value.Str, "bytes") {
+				t.Errorf("the size must survive even when the bytes do not: %q", o.Value.Str)
 			}
 			return
 		}

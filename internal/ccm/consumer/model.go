@@ -604,7 +604,6 @@ func leaf(path []string, v any, writable bool) dhsc.Object {
 	case string:
 		o.Kind = dhsc.KindString
 		o.Value = dhsc.Value{Kind: dhsc.KindString, Str: summarise(t)}
-		o.MaxLen = len(t)
 	case nil:
 		// A field the device declares and has no value for. Recorded,
 		// so its absence is visible rather than inferred from a gap.
