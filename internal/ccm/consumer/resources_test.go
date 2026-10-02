@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	dhsc "dhs/internal/consumer"
@@ -149,5 +150,60 @@ func TestACachedModelStandsInForAWalk(t *testing.T) {
 	p.mu.Unlock()
 	if !known {
 		t.Error("the seeded model is not addressable by path")
+	}
+}
+
+// A device shaped like SHUFFLE 6.0.0 for its streams: audio only, a
+// collection that lists ids (§4.4), each stream a resource of its own.
+func TestTheStreamViewFollowsWhatTheDeviceDeclares(t *testing.T) {
+	const spec = "openapi: 3.1.1\npaths:\n  /self:\n    get:\n      operationId: A\n  /io/ip/senders/audio/{uuid}:\n    get:\n      operationId: B\n  /io/ip/receivers/audio/{uuid}:\n    get:\n      operationId: C\n"
+	docs := map[string]string{
+		"/self":                    `{"productName":"SHUFFLE","productVersion":"6.0.0"}`,
+		"/docs/api.yml":            spec,
+		"/io/ip/senders/audio":     `["s1","s2","gone","bad"]`,
+		"/io/ip/senders/audio/s1":  `{"name":"Output 1","enable":true,"primaryLeg":{"ip":"239.30.1.1","port":30000,"mac":"m1"}}`,
+		"/io/ip/senders/audio/s2":  `{"name":"Output 2","enable":false}`,
+		"/io/ip/senders/audio/bad": `[`,
+	}
+	var asked []string
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		asked = append(asked, r.URL.Path)
+		mu.Unlock()
+		body, ok := docs[r.URL.Path]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+
+	dev, deviations, err := testClient(srv).Walk(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dev.Streams) != 2 || dev.Streams["s1"].Name != "Output 1" || dev.Streams["s2"].Enable ||
+		dev.Streams["s1"].Legs[0].IP != "239.30.1.1" {
+		t.Errorf("streams = %+v", dev.Streams)
+	}
+	// Said, not dropped: a member that is gone, one that is unreadable,
+	// and the receivers the spec declares and the device does not serve.
+	if len(deviations) != 3 {
+		t.Fatalf("deviations = %q", deviations)
+	}
+	for i, want := range []string{"/io/ip/receivers/audio:", "/io/ip/senders/audio/gone:", "/io/ip/senders/audio/bad:"} {
+		if !strings.HasPrefix(deviations[i], want) {
+			t.Errorf("deviation %d = %q, want one for %s", i, deviations[i], want)
+		}
+	}
+	// Nothing was asked for that the device never declared.
+	mu.Lock()
+	defer mu.Unlock()
+	for _, path := range asked {
+		if strings.Contains(path, "/video") || strings.Contains(path, "/data") {
+			t.Errorf("asked an audio device for %s", path)
+		}
 	}
 }

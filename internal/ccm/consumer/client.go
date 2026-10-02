@@ -15,6 +15,7 @@ import (
 	"fmt"
 	stdhttp "net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"dhs/internal/ccm/codec"
@@ -219,49 +220,112 @@ func (c *Client) FetchSpec(ctx context.Context) ([]byte, string, error) {
 		strings.Join(tried, ", "), first)
 }
 
+// Self reads the device's identity from /self.
+func (c *Client) Self(ctx context.Context) (*codec.Device, error) {
+	body, err := c.get(ctx, "/self")
+	if err != nil {
+		return nil, err
+	}
+	dev, err := codec.DecodeSelf(body)
+	if err != nil {
+		return nil, err
+	}
+	return &dev, nil
+}
+
 // Walk reads /self plus every io/ip sender and receiver, returning the
 // device with its streams keyed by UUID. Deviations (a stream with no
-// uuid) are returned, never swallowed.
+// uuid, a collection that does not answer) are returned, never
+// swallowed.
+//
+// Where the streams are is what the device's own api.yml declares
+// (§5.2). An audio shuffler has audio and nothing else; asking it for
+// video would report a 404 as though something were wrong with it. The
+// six collections BRIDGE and CONVERT have are read only when the
+// firmware serves no api.yml to say.
 func (c *Client) Walk(ctx context.Context) (*codec.Device, []string, error) {
-	selfBody, err := c.get(ctx, "/self")
+	dev, err := c.Self(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	dev, err := codec.DecodeSelf(selfBody)
-	if err != nil {
-		return nil, nil, err
+	collections := codec.KnownStreamCollections
+	if doc, _, serr := c.FetchSpec(ctx); serr == nil {
+		if spec, perr := codec.ParseSpec(doc); perr == nil {
+			collections = codec.StreamCollections(spec)
+		}
 	}
+
 	var deviations []string
-	for _, spec := range []struct {
-		path    string
-		kind    codec.Kind
-		essence codec.Essence
-	}{
-		{"/io/ip/senders/video", codec.KindSender, codec.EssenceVideo},
-		{"/io/ip/senders/audio", codec.KindSender, codec.EssenceAudio},
-		{"/io/ip/senders/data", codec.KindSender, codec.EssenceData},
-		{"/io/ip/receivers/video", codec.KindReceiver, codec.EssenceVideo},
-		{"/io/ip/receivers/audio", codec.KindReceiver, codec.EssenceAudio},
-		{"/io/ip/receivers/data", codec.KindReceiver, codec.EssenceData},
-	} {
-		body, gerr := c.get(ctx, spec.path)
+	for _, coll := range collections {
+		body, gerr := c.get(ctx, coll.Path)
 		if gerr != nil {
 			// A tree a device does not serve is not fatal — record and
 			// keep walking, so a partial Neuron still yields what it has.
-			deviations = append(deviations, fmt.Sprintf("%s: %v", spec.path, gerr))
+			deviations = append(deviations, fmt.Sprintf("%s: %v", coll.Path, gerr))
 			continue
 		}
-		streams, skipped, derr := codec.DecodeStreams(body, spec.kind, spec.essence)
-		if derr != nil {
-			deviations = append(deviations, derr.Error())
-			continue
+		var streams []codec.Stream
+		if ids, listed := codec.StreamIDs(body); listed {
+			// §4.4: the collection lists ids, each stream is a resource.
+			var devs []string
+			streams, devs = c.members(ctx, coll, ids)
+			deviations = append(deviations, devs...)
+		} else {
+			var skipped []string
+			var derr error
+			streams, skipped, derr = codec.DecodeStreams(body, coll.Kind, coll.Essence)
+			if derr != nil {
+				deviations = append(deviations, derr.Error())
+				continue
+			}
+			deviations = append(deviations, skipped...)
 		}
-		deviations = append(deviations, skipped...)
 		for _, s := range streams {
 			dev.Streams[s.UUID] = s
 		}
 	}
-	return &dev, deviations, nil
+	return dev, deviations, nil
+}
+
+// memberConcurrency is how many streams are read at once. A shuffler
+// lists 1544 senders and as many receivers; one at a time that is
+// minutes of waiting, and a handful of requests in flight is ordinary
+// for an HTTP server.
+const memberConcurrency = 8
+
+// members reads each stream a collection listed, in the order listed.
+func (c *Client) members(ctx context.Context, coll codec.StreamCollection, ids []string) ([]codec.Stream, []string) {
+	streams := make([]codec.Stream, len(ids))
+	errs := make([]error, len(ids))
+	var (
+		wg  sync.WaitGroup
+		sem = make(chan struct{}, memberConcurrency)
+	)
+	for i, id := range ids {
+		wg.Add(1)
+		go func(i int, id string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			body, err := c.get(ctx, coll.Path+"/"+id)
+			if err == nil {
+				streams[i], err = codec.DecodeStream(id, body, coll.Kind, coll.Essence)
+			}
+			errs[i] = err
+		}(i, id)
+	}
+	wg.Wait()
+
+	var deviations []string
+	out := streams[:0]
+	for i, s := range streams {
+		if errs[i] != nil {
+			deviations = append(deviations, fmt.Sprintf("%s/%s: %v", coll.Path, ids[i], errs[i]))
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, deviations
 }
 
 // normalizeAPIBase makes a caller-supplied base a usable path prefix:
