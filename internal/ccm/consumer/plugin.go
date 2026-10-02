@@ -121,7 +121,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		return err
 	}
 
-	dev, _, err := client.Walk(ctx)
+	dev, err := client.Self(ctx)
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
 	}
