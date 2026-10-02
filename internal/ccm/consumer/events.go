@@ -70,6 +70,12 @@ type pusher struct {
 	subs    map[string]*pushSub
 	pending map[int64]chan codec.Message
 	nextID  int64
+	// queue is the member subscriptions still to be made; wake tells
+	// the goroutine that makes them there is work (see members).
+	queue []fanJob
+	wake  chan struct{}
+	// answerWithin bounds the wait for one answer.
+	answerWithin time.Duration
 
 	// docs is the state the device sent, by resource — what a patch is
 	// applied to (§13.4.1). Only the reader touches it.
@@ -82,12 +88,16 @@ type pusher struct {
 	done chan struct{}
 }
 
-// pushSub is one Subscribe: where its events go and which paths it
-// asked for.
+// pushSub is one Subscribe: where its events go, which paths it asked
+// for, and what the device granted it.
 type pushSub struct {
 	fn    dhsc.EventFunc
 	scope string
-	ids   []string
+	// nested is the templates to subscribe to parent by parent, and
+	// fanned the member subscriptions already queued for them.
+	nested [][]string
+	fanned map[string]bool
+	ids    []string
 }
 
 // openEvents dials the device's event channel. A device that does not
@@ -109,8 +119,12 @@ func (p *Plugin) openEvents(ctx context.Context, client *Client, spec *codec.Spe
 		pending: map[int64]chan codec.Message{},
 		docs:    map[string]any{},
 		done:    make(chan struct{}),
+		wake:    make(chan struct{}, 1),
+		// Read once, here, for the same reason as the ping interval.
+		answerWithin: subscribeTimeout,
 	}
 	go s.read()
+	go s.members()
 	go s.keepalive(every)
 	p.deps.Logger.Debug("ccm: event channel open", "url", url)
 	return s
@@ -226,6 +240,10 @@ func (s *pusher) dispatch(events []codec.DocumentPatch) error {
 				s.log.Info("ccm: removed on the device", "resource", d.DocumentRoot, "field", op.Path)
 				continue
 			}
+			if op.Path == "" {
+				// The resource as a whole: it may have members to watch.
+				s.fan(d.DocumentRoot)
+			}
 			// ApplyPatch accepted the pointer, so it parses.
 			segs, _ := codec.Pointer(op.Path)
 			field, v := locate(doc, segs)
@@ -290,15 +308,15 @@ func (s *pusher) publish(objs []dhsc.Object, now time.Time) {
 }
 
 // subscribe asks the device for every resource under req's path and
-// returns once it has answered.
+// returns once it has answered for each.
 func (s *pusher) subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
 	if fn == nil {
 		return errors.New("ccm: nil event func")
 	}
 	scope := strings.Trim(strings.ReplaceAll(strings.TrimSpace(req.Path), ".", "/"), "/")
-	urls, skipped := subscriptionURLs(s.spec, scope)
+	urls, nested, skipped := subscriptionURLs(s.spec, scope)
 	if len(skipped) > 0 {
-		s.log.Warn("ccm: not watched at this scope — name one parent in --path to watch its members",
+		s.log.Warn("ccm: not watched — the parent of these resources cannot be subscribed to",
 			"resources", strings.Join(skipped, " "))
 	}
 	if len(urls) == 0 {
@@ -306,10 +324,7 @@ func (s *pusher) subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
 	}
 
 	key := subKey(req)
-	sub := &pushSub{fn: fn, scope: scope}
-	replies := make(chan codec.Message, len(urls))
-	asked := make(map[int64]string, len(urls))
-
+	sub := &pushSub{fn: fn, scope: scope, nested: nested, fanned: map[string]bool{}}
 	s.mu.Lock()
 	if _, dup := s.subs[key]; dup {
 		s.mu.Unlock()
@@ -318,53 +333,88 @@ func (s *pusher) subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
 	// Registered before anything is sent: the device may push the
 	// initial state ahead of its answer.
 	s.subs[key] = sub
-	for _, u := range urls {
-		s.nextID++
-		s.pending[s.nextID] = replies
-		asked[s.nextID] = u
-	}
 	s.mu.Unlock()
 
-	abandon := func(err error) error {
-		s.mu.Lock()
-		delete(s.subs, key)
-		for id := range asked {
-			delete(s.pending, id)
+	// One request at a time: that is the pace SHUFFLE 6.0.0 was
+	// measured to take without its REST API slowing down.
+	for _, u := range urls {
+		m, err := s.ask(u)
+		if err != nil {
+			s.unsubscribe(req)
+			return err
 		}
-		s.mu.Unlock()
-		return err
+		s.granted(key, sub, u, m)
 	}
-
-	for id, u := range asked {
-		if err := s.conn.WriteText(context.Background(), codec.CreateSubscription(id, u)); err != nil {
-			return abandon(fmt.Errorf("ccm: subscribe %s: %w", u, err))
-		}
-		s.p.RecordTx()
+	s.mu.Lock()
+	n := len(sub.ids)
+	s.mu.Unlock()
+	if n == 0 {
+		s.unsubscribe(req)
+		return fmt.Errorf("ccm: the device refused every subscription under %q", req.Path)
 	}
-
-	timeout := s.p.Clock().After(subscribeTimeout)
-	for range urls {
-		select {
-		case m := <-replies:
-			if m.Status != codec.StatusOK {
-				s.p.ComplianceProfile().Note(SubscriptionRefused)
-				s.log.Warn("ccm: subscription refused", "resource", asked[m.ID], "status", m.Status, "message", m.Text)
-				continue
-			}
-			s.mu.Lock()
-			sub.ids = append(sub.ids, m.SubscriptionID)
-			s.mu.Unlock()
-		case <-s.done:
-			return abandon(fmt.Errorf("ccm: event channel closed while subscribing to %q", req.Path))
-		case <-timeout:
-			return abandon(fmt.Errorf("ccm: the device did not answer the subscription to %q within %s", req.Path, subscribeTimeout))
-		}
-	}
-	if len(sub.ids) == 0 {
-		return abandon(fmt.Errorf("ccm: the device refused every subscription under %q", req.Path))
-	}
-	s.log.Info("ccm: watching over the event channel", "scope", scope, "subscriptions", len(sub.ids))
+	s.log.Info("ccm: watching over the event channel", "scope", scope, "subscriptions", n)
 	return nil
+}
+
+// ask sends one CreateSubscription and waits for the device's answer.
+func (s *pusher) ask(url string) (codec.Message, error) {
+	ch := make(chan codec.Message, 1)
+	s.mu.Lock()
+	s.nextID++
+	id := s.nextID
+	s.pending[id] = ch
+	s.mu.Unlock()
+	forget := func() {
+		s.mu.Lock()
+		delete(s.pending, id)
+		s.mu.Unlock()
+	}
+
+	if err := s.conn.WriteText(context.Background(), codec.CreateSubscription(id, url)); err != nil {
+		forget()
+		return codec.Message{}, fmt.Errorf("ccm: subscribe %s: %w", url, err)
+	}
+	s.p.RecordTx()
+	select {
+	case m := <-ch:
+		return m, nil
+	case <-s.done:
+		forget()
+		return codec.Message{}, fmt.Errorf("ccm: event channel closed while subscribing to %s", url)
+	case <-s.p.Clock().After(s.answerWithin):
+		forget()
+		return codec.Message{}, fmt.Errorf("ccm: the device did not answer the subscription to %s within %s", url, s.answerWithin)
+	}
+}
+
+// granted records the device's answer to one subscription. A refusal is
+// counted and the watch stands on what was accepted. A subscription
+// granted after its Subscribe was withdrawn is handed back.
+func (s *pusher) granted(key string, sub *pushSub, url string, m codec.Message) {
+	if m.Status != codec.StatusOK {
+		s.p.ComplianceProfile().Note(SubscriptionRefused)
+		s.log.Warn("ccm: subscription refused", "resource", url, "status", m.Status, "message", m.Text)
+		return
+	}
+	s.mu.Lock()
+	current := s.subs[key] == sub
+	if current {
+		sub.ids = append(sub.ids, m.SubscriptionID)
+	}
+	s.mu.Unlock()
+	if !current {
+		s.release(m.SubscriptionID)
+	}
+}
+
+// release hands one subscription back. Best effort: a channel that is
+// already gone took its subscriptions with it (§13.5).
+func (s *pusher) release(subscriptionID string) {
+	s.mu.Lock()
+	s.nextID++
+	id := s.nextID
+	s.mu.Unlock()
+	_ = s.conn.WriteText(context.Background(), codec.DeleteSubscription(id, subscriptionID))
 }
 
 // unsubscribe ends one Subscribe. Unknown requests are not an error:
@@ -379,15 +429,116 @@ func (s *pusher) unsubscribe(req dhsc.ValueRequest) {
 		ids = sub.ids
 	}
 	s.mu.Unlock()
-
 	for _, id := range ids {
-		s.mu.Lock()
-		s.nextID++
-		n := s.nextID
-		s.mu.Unlock()
-		// Best effort: a channel that is already gone took its
-		// subscriptions with it (§13.5).
-		_ = s.conn.WriteText(context.Background(), codec.DeleteSubscription(n, id))
+		s.release(id)
+	}
+}
+
+// Members.
+//
+// A resource below a member of a collection — a sender's channels —
+// needs two path parameters, and one subscription may carry one `*`
+// (see subscriptionURLs). So the members are subscribed to one parent
+// at a time: each parent is learnt from the state the device pushes
+// for it, and its members are asked for then. A parent that appears
+// later is picked up the same way.
+//
+// Measured on SHUFFLE 6.0.0 (2026-10-02): 1544 senders, 16 896 channel
+// documents, 44 s at 41 ms per answer, the REST API answering in 50 ms
+// (151 ms at worst) throughout.
+
+// fanJob is one member subscription still to be made.
+type fanJob struct {
+	key string
+	url string
+}
+
+// fan queues the member subscriptions a newly seen resource calls for.
+func (s *pusher) fan(root string) {
+	s.mu.Lock()
+	for key, sub := range s.subs {
+		for _, u := range memberURLs(root, sub.nested) {
+			if !sub.fanned[u] {
+				sub.fanned[u] = true
+				s.queue = append(s.queue, fanJob{key, u})
+			}
+		}
+	}
+	waiting := len(s.queue) > 0
+	s.mu.Unlock()
+	if waiting {
+		select {
+		case s.wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// memberURLs is what to subscribe to below root: for each nested
+// template root is a member of, the level below it with its one
+// parameter as `*`.
+func memberURLs(root string, nested [][]string) []string {
+	at := segments(root)
+	var out []string
+	for _, tpl := range nested {
+		if len(tpl) <= len(at) || !strings.HasPrefix(tpl[len(at)-1], "{") {
+			continue
+		}
+		match := true
+		for i, seg := range at {
+			match = match && (strings.HasPrefix(tpl[i], "{") || tpl[i] == seg)
+		}
+		rest, params := append([]string(nil), tpl[len(at):]...), 0
+		for i, seg := range rest {
+			if strings.HasPrefix(seg, "{") {
+				rest[i] = "*"
+				params++
+			}
+		}
+		if match && params == 1 {
+			out = append(out, root+"/"+strings.Join(rest, "/"))
+		}
+	}
+	return out
+}
+
+// members makes the queued subscriptions, one at a time.
+func (s *pusher) members() {
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-s.wake:
+		}
+		made := 0
+		for {
+			s.mu.Lock()
+			if len(s.queue) == 0 {
+				s.mu.Unlock()
+				break
+			}
+			job := s.queue[0]
+			s.queue = s.queue[1:]
+			sub := s.subs[job.key]
+			s.mu.Unlock()
+			if sub == nil {
+				// Its Subscribe was withdrawn while this waited.
+				continue
+			}
+			m, err := s.ask(job.url)
+			if err != nil {
+				// A channel that stops answering is a lost one: end
+				// it, and the watch starts again from a new session.
+				s.log.Warn("ccm: member subscription failed, ending the session", "err", err)
+				_ = s.conn.Close(1011, "")
+				return
+			}
+			s.granted(job.key, sub, job.url, m)
+			made++
+		}
+		if made > 0 {
+			s.log.Info("ccm: members watched", "subscriptions", made)
+		}
 	}
 }
 
@@ -397,26 +548,30 @@ func subKey(r dhsc.ValueRequest) string {
 	return fmt.Sprintf("s=%d|p=%s|l=%s|g=%s|id=%d", r.Slot, r.Path, r.Label, r.Group, r.ID)
 }
 
-// subscriptionURLs turns a scope into the paths to subscribe to: every
-// GET the device's api.yml declares at or under it, a path parameter
-// the scope does not name becoming `*` (§13.3.5).
+// subscriptionURLs turns a scope into what to subscribe to: every GET
+// the device's api.yml declares at or under it, a path parameter the
+// scope does not name becoming `*` (§13.3.5).
 //
 // At most one `*` per path. §13.3.5 allows several, and SHUFFLE 6.0.0
 // accepts `/io/ip/senders/audio/*/channels/*` — and then stops
 // answering its REST API for about a minute while it assembles every
-// channel of 1544 senders. Paths that would need a second `*` come
-// back in skipped, so the operator is told what a narrower scope adds.
+// channel of 1544 senders. A path that would need a second `*` comes
+// back in nested, as its template with the scope applied, to be
+// subscribed to parent by parent (see members). When its parent is not
+// itself a GET there is nothing to learn the parents from, and it comes
+// back in skipped.
 //
 // A collection — a path whose only job is to list the ids of the
 // members below it — is not subscribed to: its members are.
-func subscriptionURLs(spec *codec.Spec, scope string) (urls, skipped []string) {
+func subscriptionURLs(spec *codec.Spec, scope string) (urls []string, nested [][]string, skipped []string) {
 	var want []string
 	if scope != "" {
 		want = strings.Split(scope, "/")
 	}
 	gets := spec.With(codec.GET)
-	collection := map[string]bool{}
+	collection, readable := map[string]bool{}, map[string]bool{}
 	for _, t := range gets {
+		readable[t] = true
 		if i := strings.LastIndex(t, "/"); i > 0 && strings.HasPrefix(t[i+1:], "{") {
 			collection[t[:i]] = true
 		}
@@ -433,29 +588,35 @@ func subscriptionURLs(spec *codec.Spec, scope string) (urls, skipped []string) {
 		if collection[t] {
 			continue
 		}
-		segs := segments(t)
-		if len(segs) < len(want) {
+		tpl := segments(t)
+		if len(tpl) < len(want) {
 			continue
 		}
-		wild, ok := 0, true
-		for i, seg := range segs {
+		segs := append([]string(nil), tpl...)
+		wild, first, ok := 0, 0, true
+		for i, seg := range tpl {
 			param := strings.HasPrefix(seg, "{")
 			switch {
 			case i < len(want) && param:
 				segs[i] = want[i]
+				tpl[i] = want[i]
 			case i < len(want):
 				ok = ok && seg == want[i]
 			case param:
 				segs[i] = "*"
-				wild++
+				if wild++; wild == 1 {
+					first = i
+				}
 			}
 		}
 		switch {
 		case !ok:
-		case wild > 1:
-			skipped = append(skipped, t)
-		default:
+		case wild <= 1:
 			add("/" + strings.Join(segs, "/"))
+		case readable["/"+strings.Join(segments(t)[:first+1], "/")]:
+			nested = append(nested, tpl)
+		default:
+			skipped = append(skipped, t)
 		}
 	}
 	// A scope inside one resource: that resource carries the field.
@@ -463,5 +624,5 @@ func subscriptionURLs(spec *codec.Spec, scope string) (urls, skipped []string) {
 		add(resource)
 	}
 	sort.Strings(urls)
-	return urls, skipped
+	return urls, nested, skipped
 }
