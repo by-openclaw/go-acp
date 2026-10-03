@@ -578,3 +578,37 @@ func TestAltSlashForm(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// 204 and 304 carry no body. A handler that answers one with a value —
+// an IS-04 deregistration handing back the resource it removed — must
+// get neither a body on the wire nor an error in the log: that error,
+// twice per Neuron registration, was #1207.
+func TestNoContentAndNotModifiedSendNoBodyAndLogNothing(t *testing.T) {
+	for _, status := range []int{stdhttp.StatusNoContent, stdhttp.StatusNotModified} {
+		var logged strings.Builder
+		s := NewServer(slog.New(slog.NewTextHandler(&logged, nil)))
+		s.Handle(stdhttp.MethodDelete, "/thing", func(context.Context, *stdhttp.Request) (int, any, error) {
+			return status, map[string]string{"removed": "x"}, nil
+		})
+		// A real ResponseWriter, not the recorder: it is net/http that
+		// refuses a body after a 204, and the recorder does not.
+		srv := httptest.NewServer(s.MuxHandler())
+		req, err := stdhttp.NewRequest(stdhttp.MethodDelete, srv.URL+"/thing", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		srv.Close()
+		if resp.StatusCode != status || len(body) != 0 {
+			t.Errorf("%d: status %d, body %q", status, resp.StatusCode, body)
+		}
+		if strings.Contains(logged.String(), "encode failed") {
+			t.Errorf("%d: logged an error for a body that must not be sent:\n%s", status, logged.String())
+		}
+	}
+}

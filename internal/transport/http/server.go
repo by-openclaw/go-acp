@@ -459,6 +459,15 @@ func (s *Server) writeJSON(w stdhttp.ResponseWriter, status int, body any) {
 		_, _ = w.Write(rb.Body)
 		return
 	}
+	// 204 and 304 carry no body (RFC 9110 §15.3.5, §15.4.5): net/http refuses
+	// one after the status line and the refusal used to land here as an
+	// error log on every IS-04 deregistration (#1207). A handler may still
+	// hand back a value with those statuses; it is simply not sent.
+	if status == stdhttp.StatusNoContent || status == stdhttp.StatusNotModified {
+		s.setCORS(w, "")
+		w.WriteHeader(status)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	s.setCORS(w, "")
 	w.WriteHeader(status)
