@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"dhs/internal/consumer"
@@ -23,6 +25,11 @@ var (
 // print a summary without guessing.
 type ImportReport struct {
 	Applied int
+	// Unchanged counts the rows whose value the device already had: read
+	// before any write and left alone, so applying the same file twice
+	// writes nothing the second time. They are also listed in Skips with
+	// the reason "unchanged".
+	Unchanged int
 	Skipped int
 	Failed  int
 	// Filtered is the count of objects excluded before Apply by an
@@ -197,6 +204,17 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 					continue
 				}
 			}
+			// Read before write: a row the device already holds is not
+			// sent. That is what makes a values file something a play can
+			// apply on every run — the second run changes nothing — and
+			// what lets --check say how far the device is from the file.
+			// A value that cannot be read is written as before: the write
+			// is what the operator asked for, the read only spares it.
+			if live, gerr := plug.GetValue(ctx, req); gerr == nil && sameValue(live, obj.Value) {
+				rep.Unchanged++
+				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "unchanged"))
+				continue
+			}
 			if dryRun {
 				rep.Applied++
 				continue
@@ -238,4 +256,52 @@ func skipFrom(slot int, obj consumer.Object, reason string) SkipRecord {
 		Access: access,
 		Reason: reason,
 	}
+}
+
+// sameValue reports whether the device's value is the one the file
+// asks for. Kinds that agree are compared on the field the kind
+// selects; kinds that do not — a CSV row typed by its own column against
+// what the plugin decoded — are compared as the text an operator reads.
+func sameValue(live, want consumer.Value) bool {
+	if live.Kind == want.Kind {
+		switch live.Kind {
+		case consumer.KindBool:
+			return live.Bool == want.Bool
+		case consumer.KindInt:
+			return live.Int == want.Int
+		case consumer.KindUint:
+			return live.Uint == want.Uint
+		case consumer.KindFloat:
+			return live.Float == want.Float
+		case consumer.KindEnum:
+			return live.Enum == want.Enum
+		case consumer.KindString:
+			return live.Str == want.Str
+		case consumer.KindIPAddr:
+			return live.IPAddr == want.IPAddr
+		}
+	}
+	return valueText(live) == valueText(want)
+}
+
+// valueText is the one rendering two differently typed values are
+// compared through.
+func valueText(v consumer.Value) string {
+	switch v.Kind {
+	case consumer.KindBool:
+		return strconv.FormatBool(v.Bool)
+	case consumer.KindInt:
+		return strconv.FormatInt(v.Int, 10)
+	case consumer.KindUint:
+		return strconv.FormatUint(v.Uint, 10)
+	case consumer.KindFloat:
+		return strconv.FormatFloat(v.Float, 'g', -1, 64)
+	case consumer.KindEnum:
+		return strconv.Itoa(int(v.Enum))
+	case consumer.KindString:
+		return v.Str
+	case consumer.KindIPAddr:
+		return net.IP(v.IPAddr[:]).String()
+	}
+	return string(v.Raw)
 }

@@ -53,6 +53,9 @@ func TestApply_RequestAddressing(t *testing.T) {
 	writable := func(o consumer.Object) consumer.Object {
 		o.Access = 0x03
 		o.Kind = consumer.KindInt
+		// A value the device does not hold yet, so the row is written
+		// and its request can be read back.
+		o.Value = consumer.Value{Kind: consumer.KindInt, Int: 42}
 		return o
 	}
 	cases := []struct {
@@ -144,7 +147,7 @@ func TestApply_SkipsAndFailures(t *testing.T) {
 	})
 	t.Run("device rejects the write", func(t *testing.T) {
 		p := &scriptedPlugin{setErr: errors.New("value out of range")}
-		obj := consumer.Object{ID: 7, Label: "GainA", Kind: consumer.KindInt, Access: 0x03}
+		obj := consumer.Object{ID: 7, Label: "GainA", Kind: consumer.KindInt, Access: 0x03, Value: consumer.Value{Kind: consumer.KindInt, Int: 42}}
 		rep, err := Apply(context.Background(), p, oneObjectSnapshot("acp2", obj), false)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)
