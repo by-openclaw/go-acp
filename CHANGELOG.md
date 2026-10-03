@@ -7,6 +7,27 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.29.0](https://github.com/by-openclaw/go-acp/compare/v0.28.0...v0.29.0) (2026-10-03)
+
+
+### Features
+
+* **ccm:** a wide watch reaches nested members, one subscription per parent ([#1211](https://github.com/by-openclaw/go-acp/issues/1211)) ([c34b19b](https://github.com/by-openclaw/go-acp/commit/c34b19b34cfa0fd2d459a7f3c7700244bcae2b66))
+* **ccm:** every leaf typed from the device's own openapi.yml; writes checked before the wire; PATCH where declared ([#1200](https://github.com/by-openclaw/go-acp/issues/1200)) ([6613ab6](https://github.com/by-openclaw/go-acp/commit/6613ab61d04484ee80b52e98307df6698a54d4a7))
+* **ccm:** watch over the §13 event channel where the device serves it ([#1209](https://github.com/by-openclaw/go-acp/issues/1209)) ([2125de8](https://github.com/by-openclaw/go-acp/commit/2125de843755717501896778e160c7165c2f314f))
+* **transport:** opt-in TLS key log, so a capture of a TLS-only device can be read ([#1216](https://github.com/by-openclaw/go-acp/issues/1216)) ([e4cf716](https://github.com/by-openclaw/go-acp/commit/e4cf716d33a6e6c94548c3526189fa6c600904c1))
+
+
+### Bug Fixes
+
+* **ccm:** hand the ping interval to the keepalive goroutine ([#1209](https://github.com/by-openclaw/go-acp/issues/1209)) ([4ff8a2f](https://github.com/by-openclaw/go-acp/commit/4ff8a2fcec5f08151f8a20cfd88d4f8bfa4dcb8f))
+* **ccm:** max_len is a limit from the api.yml, not the value's length ([#1218](https://github.com/by-openclaw/go-acp/issues/1218)) ([56a8516](https://github.com/by-openclaw/go-acp/commit/56a85160a7f0d78572a16f0f8955bddf9f8a212a))
+* **ccm:** SHUFFLE identity, a DM seed for watch, export without an API root ([#1213](https://github.com/by-openclaw/go-acp/issues/1213)) ([68cb6d7](https://github.com/by-openclaw/go-acp/commit/68cb6d734af48dda9bd7f704cafbf14c794075cc))
+* **ccm:** the event channel and the REST client count on the connector metrics ([#1219](https://github.com/by-openclaw/go-acp/issues/1219)) ([7fea6e9](https://github.com/by-openclaw/go-acp/commit/7fea6e938a932038284beac1dad7f82a118e40b1))
+* **ccm:** the stream view comes from the collections the device declares ([#1217](https://github.com/by-openclaw/go-acp/issues/1217)) ([20ba1f7](https://github.com/by-openclaw/go-acp/commit/20ba1f78884d36dc4e0c99eddcb8fed0f5459094))
+* **mnset:** the frame refresh ticks on the injected clock; its test owns the time ([#1222](https://github.com/by-openclaw/go-acp/issues/1222)) ([a78078a](https://github.com/by-openclaw/go-acp/commit/a78078a2ae1c57c0ef3945f729bea5ce81fe8a47))
+* **watch:** a burst of events is printed in full, never dropped ([#1212](https://github.com/by-openclaw/go-acp/issues/1212)) ([6da13ed](https://github.com/by-openclaw/go-acp/commit/6da13ed8ae1aa39beb22849727c90760967b2644))
+
 ## [0.28.0](https://github.com/by-openclaw/go-acp/compare/v0.27.0...v0.28.0) (2026-09-29)
 
 
