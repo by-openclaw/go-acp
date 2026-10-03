@@ -562,7 +562,10 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			if !versionAllowed(c.APIVer, m.apiVer, sub.downgrade) {
 				continue
 			}
-			if !jsonMatchesFilter(c.Post, sub.params) && len(sub.params) > 0 {
+			// The params test first: jsonMatchesFilter unmarshals the
+			// resource, and a subscription without params — the usual
+			// one — was paying that for every resource of the topic.
+			if len(sub.params) > 0 && !jsonMatchesFilter(c.Post, sub.params) {
 				continue
 			}
 			if !sub.ancestryMember(c.ID) {
