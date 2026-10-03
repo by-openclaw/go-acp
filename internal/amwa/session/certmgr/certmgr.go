@@ -13,6 +13,7 @@
 package certmgr
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -522,4 +523,149 @@ func (r *sliceReader) Read(p []byte) (int, error) {
 	n := copy(p, r.b[r.i:])
 	r.i += n
 	return n, nil
+}
+
+// ---- OCSP stapling: the manager side (the wire side is ocsp.go) ----
+
+// issuerOf finds the certificate that issued leaf: the next one in the
+// served chain, else one of the trust anchors or intermediates the
+// manager holds.
+func (m *Manager) issuerOf(pair *tls.Certificate, leaf *x509.Certificate) *x509.Certificate {
+	if len(pair.Certificate) > 1 {
+		if c, err := x509.ParseCertificate(pair.Certificate[1]); err == nil && leaf.CheckSignatureFrom(c) == nil {
+			return c
+		}
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, c := range append(append([]*x509.Certificate(nil), m.inters...), m.roots...) {
+		if leaf.CheckSignatureFrom(c) == nil {
+			return c
+		}
+	}
+	return nil
+}
+
+// ocspRefreshFloor keeps a failing responder from being hammered, and
+// ocspRefreshCeiling keeps a long-lived response fresh in any case.
+const (
+	ocspRefreshFloor   = 5 * time.Minute
+	ocspRefreshCeiling = 12 * time.Hour
+)
+
+// refreshStaples fetches a staple for every served pair whose leaf
+// names a responder, installs the verified ones, and returns when the
+// next refresh is due: halfway to the earliest nextUpdate, bounded.
+func (m *Manager) refreshStaples(ctx context.Context) time.Duration {
+	now := time.Now()
+	next := ocspRefreshCeiling
+	m.mu.RLock()
+	pairs := m.servedPairsLocked()
+	m.mu.RUnlock()
+	for _, p := range pairs {
+		leaf, err := x509.ParseCertificate(p.Certificate[0])
+		if err != nil || len(leaf.OCSPServer) == 0 {
+			continue
+		}
+		issuer := m.issuerOf(p, leaf)
+		if issuer == nil {
+			m.log.Warn("certmgr: ocsp: issuer of the served certificate is not known; nothing stapled",
+				"cn", leaf.Subject.CommonName)
+			next = min(next, ocspRefreshFloor)
+			continue
+		}
+		st, err := fetchOCSP(ctx, leaf, issuer, now)
+		if err != nil {
+			m.log.Warn("certmgr: ocsp: responder refused or unreachable; keeping the previous staple",
+				"cn", leaf.Subject.CommonName, "responder", leaf.OCSPServer[0], "err", err)
+			next = min(next, ocspRefreshFloor)
+			continue
+		}
+		m.setStaple(leaf, st.der)
+		m.log.Info("certmgr: ocsp: response stapled",
+			"cn", leaf.Subject.CommonName, "responder", leaf.OCSPServer[0],
+			"this_update", st.thisUpdate, "next_update", st.nextUpdate)
+		if !st.nextUpdate.IsZero() {
+			next = min(next, max(st.nextUpdate.Sub(now)/2, ocspRefreshFloor))
+		}
+	}
+	return next
+}
+
+// setStaple installs the DER on every served pair with that leaf.
+func (m *Manager) setStaple(leaf *x509.Certificate, der []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i := range m.manualPairs {
+		if bytes.Equal(m.manualPairs[i].Certificate[0], leaf.Raw) {
+			m.manualPairs[i].OCSPStaple = der
+		}
+	}
+	if m.current != nil && bytes.Equal(m.current.Certificate[0], leaf.Raw) {
+		c := *m.current
+		c.OCSPStaple = der
+		m.current = &c
+	}
+}
+
+// servedPairsLocked is every certificate the TLS stack may hand out:
+// the manual pairs, or the EST-provisioned one.
+func (m *Manager) servedPairsLocked() []*tls.Certificate {
+	out := make([]*tls.Certificate, 0, len(m.manualPairs)+1)
+	for i := range m.manualPairs {
+		out = append(out, &m.manualPairs[i])
+	}
+	if len(out) == 0 && m.current != nil {
+		out = append(out, m.current)
+	}
+	return out
+}
+
+// RunStapler keeps OCSP staples fresh for the life of the server. It
+// returns at once when no served certificate names a responder.
+func (m *Manager) RunStapler(ctx context.Context) {
+	if !m.anyResponder() {
+		return
+	}
+	for {
+		wait := m.refreshStaples(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		case <-after(wait):
+		}
+	}
+}
+
+// anyResponder reports whether a served certificate names an OCSP
+// responder — the only case RunStapler has work to do.
+func (m *Manager) anyResponder() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, p := range m.servedPairsLocked() {
+		if leaf, err := x509.ParseCertificate(p.Certificate[0]); err == nil && len(leaf.OCSPServer) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// selectCertificate is the tls.Config hook when several pairs are
+// served: the first the client can use (RSA or ECDSA by its signature
+// algorithms), read live so a refreshed staple reaches the next
+// handshake.
+func (m *Manager) selectCertificate(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for i := range m.manualPairs {
+		if chi.SupportsCertificate(&m.manualPairs[i]) == nil {
+			c := m.manualPairs[i]
+			return &c, nil
+		}
+	}
+	if len(m.manualPairs) > 0 {
+		c := m.manualPairs[0]
+		return &c, nil
+	}
+	return nil, fmt.Errorf("certmgr: no certificate provisioned yet")
 }
