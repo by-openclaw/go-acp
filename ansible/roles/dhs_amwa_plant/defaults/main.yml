@@ -8,8 +8,21 @@
 dhs_amwa_plant_dir: /opt/dhs-amwa-plant
 dhs_amwa_plant_bin: "{{ dhs_amwa_plant_dir }}/dhs"
 
-# The plant host has no Go toolchain, so the binary is built on a
-# Go-capable host and copied over. Both are inventory hostnames.
+# Where the plant's binary comes from.
+#   release - the released binary the fleet already carries: the one
+#             dhs_host installed at dhs_version (sha-verified from the
+#             GitHub release). The plant then scores exactly what a
+#             release contains, and fleet-converge rolls it.
+#   build   - built from the checkout's HEAD on a Go-capable host and
+#             copied over, for scoring a branch before it is released.
+# A plant on its own build once drifted a release behind the fleet and
+# was scored as a regression (issue #1258).
+dhs_amwa_plant_source: release
+dhs_amwa_plant_release_bin: /usr/local/bin/dhs
+
+# build mode: the plant host has no Go toolchain, so the binary is
+# built on a Go-capable host and copied over. Both are inventory
+# hostnames.
 dhs_amwa_plant_build_host: dhs-tools
 dhs_amwa_plant_go: /usr/local/go/bin/go
 

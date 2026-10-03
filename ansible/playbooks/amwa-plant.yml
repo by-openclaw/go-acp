@@ -8,9 +8,13 @@
 #   ansible-playbook playbooks/amwa-plant.yml            # again -> 0 changes
 #   ansible-playbook playbooks/amwa-plant.yml -e dhs_amwa_plant_scale_count=0
 #
-# The binary is built from COMMITTED source on the Go-capable build
-# host (dhs-tools) and deployed to the plant host; a redeploy after a
-# merge is one idempotent run, and every score/render names a commit.
+# The plant runs the RELEASED binary the fleet carries (dhs_host at
+# dhs_version, rolled by fleet-converge.yml, which imports this play
+# last) — one binary for the whole fleet, so a sweep scores what a
+# release contains. `-e dhs_amwa_plant_source=build` builds the
+# checkout's HEAD on the Go-capable build host (dhs-tools) instead,
+# for scoring a branch before it is released; the stamp in
+# /opt/dhs-amwa-plant/.source names which one is running.
 
 - name: AMWA lab plant — registry + node fleet
   hosts: dhs-debian
