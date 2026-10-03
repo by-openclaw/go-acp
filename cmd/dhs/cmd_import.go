@@ -181,12 +181,14 @@ func runImport(ctx context.Context, args []string) error {
 	if *dry {
 		tag = "would apply"
 	}
+	// "unchanged" is the count a play reads: the device already holds
+	// those rows, so a run that applies 0 and leaves the rest unchanged
+	// is a converged one.
+	line := fmt.Sprintf("%s %d, unchanged %d, skipped %d, failed %d", tag, rep.Applied, rep.Unchanged, rep.Skipped, rep.Failed)
 	if rep.Filtered > 0 {
-		fmt.Printf("%s %d, skipped %d, failed %d, filtered %d\n",
-			tag, rep.Applied, rep.Skipped, rep.Failed, rep.Filtered)
-	} else {
-		fmt.Printf("%s %d, skipped %d, failed %d\n", tag, rep.Applied, rep.Skipped, rep.Failed)
+		line += fmt.Sprintf(", filtered %d", rep.Filtered)
 	}
+	fmt.Println(line)
 	if len(rep.Failures) > 0 {
 		fmt.Println("failures:")
 		for _, f := range rep.Failures {
@@ -209,6 +211,12 @@ func runImport(ctx context.Context, args []string) error {
 func printSkipReport(skips []export.SkipRecord) {
 	byReason := map[string][]export.SkipRecord{}
 	for _, s := range skips {
+		// A row the device already holds is not news; its count is on the
+		// summary line and listing 3 000 of them would hide the few that
+		// were refused.
+		if s.Reason == "unchanged" {
+			continue
+		}
 		byReason[s.Reason] = append(byReason[s.Reason], s)
 	}
 	// Stable order for the reason headings so output is diff-friendly.

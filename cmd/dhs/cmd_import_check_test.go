@@ -19,6 +19,7 @@ type importFake struct {
 	consumer.Base
 	mu     sync.Mutex
 	writes []string
+	backup string // what the device holds now
 }
 
 type importFakeFactory struct{ p *importFake }
@@ -40,10 +41,12 @@ func (p *importFake) Walk(context.Context, int) ([]consumer.Object, error) {
 	return []consumer.Object{p.object()}, nil
 }
 func (p *importFake) object() consumer.Object {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	return consumer.Object{
 		Slot: 0, Group: "control", ID: 7, Path: []string{"ntp", "backup"}, Label: "backup",
 		Kind: consumer.KindString, Access: 3,
-		Value: consumer.Value{Kind: consumer.KindString, Str: "10.6.224.1"},
+		Value: consumer.Value{Kind: consumer.KindString, Str: p.backup},
 	}
 }
 func (p *importFake) GetValue(context.Context, consumer.ValueRequest) (consumer.Value, error) {
@@ -52,6 +55,7 @@ func (p *importFake) GetValue(context.Context, consumer.ValueRequest) (consumer.
 func (p *importFake) SetValue(_ context.Context, req consumer.ValueRequest, v consumer.Value) (consumer.Value, error) {
 	p.mu.Lock()
 	p.writes = append(p.writes, req.Path+"="+v.Str)
+	p.backup = v.Str
 	p.mu.Unlock()
 	return v, nil
 }
@@ -72,6 +76,7 @@ func registerImportFake(t *testing.T) *importFake {
 	importFakeOnce.Do(func() { consumer.Register(&importFakeFactory{p: importFakeProto}) })
 	importFakeProto.mu.Lock()
 	importFakeProto.writes = nil
+	importFakeProto.backup = "10.6.224.1"
 	importFakeProto.mu.Unlock()
 	return importFakeProto
 }
@@ -116,5 +121,28 @@ func TestImportCheckSendsNothing(t *testing.T) {
 	}
 	if got := p.written(); len(got) != 1 || got[0] != "ntp.backup=10.6.240.1" {
 		t.Fatalf("a real import wrote %q", got)
+	}
+}
+
+// Applying the same file twice writes once: the second run finds the
+// device already holding every row (ADR-0025 idempotency, what a play
+// relies on for run-twice = 0 changes).
+func TestImportAppliedTwiceWritesOnce(t *testing.T) {
+	p := registerImportFake(t)
+	file := oneRow(t)
+	for i := 0; i < 2; i++ {
+		if err := runImport(context.Background(), []string{"--protocol", "importfake", "127.0.0.1", "--file", file}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := p.written(); len(got) != 1 {
+		t.Fatalf("two imports of one file wrote %d time(s): %q", len(got), got)
+	}
+	// And --check on a converged device would apply nothing.
+	if err := runImport(context.Background(), []string{"--protocol", "importfake", "127.0.0.1", "--file", file, "--check"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.written(); len(got) != 1 {
+		t.Fatalf("--check wrote: %q", got)
 	}
 }

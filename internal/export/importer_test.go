@@ -3,6 +3,7 @@ package export
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -235,5 +236,99 @@ func TestApply_NoValidator_GracefulFallback(t *testing.T) {
 	}
 	if p.setCalls != 2 {
 		t.Errorf("SetValue should fire per writable row; got %d", p.setCalls)
+	}
+}
+
+// livePlugin answers GetValue from a table, so a row can already be at
+// its value — or be unreadable.
+type livePlugin struct {
+	nonValidatorPlugin
+	live    map[int]consumer.Value
+	readErr map[int]error
+	sets    []int
+}
+
+func (p *livePlugin) GetValue(_ context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	if err := p.readErr[req.ID]; err != nil {
+		return consumer.Value{}, err
+	}
+	return p.live[req.ID], nil
+}
+func (p *livePlugin) SetValue(_ context.Context, req consumer.ValueRequest, v consumer.Value) (consumer.Value, error) {
+	p.sets = append(p.sets, req.ID)
+	return v, nil
+}
+
+// A values file applied to a device that already holds some of it writes
+// only what differs — so a play can apply the same file on every run and
+// the second run changes nothing. A row the device cannot be asked for is
+// written as before.
+func TestApply_WritesOnlyWhatDiffers(t *testing.T) {
+	p := &livePlugin{
+		live: map[int]consumer.Value{
+			67604: {Kind: consumer.KindString, Str: "239.129.1.20"}, // already there
+			67605: {Kind: consumer.KindInt, Int: 12000},             // differs
+		},
+		readErr: map[int]error{},
+	}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Applied != 1 || rep.Unchanged != 1 || rep.Skipped != 1 || len(p.sets) != 1 || p.sets[0] != 67605 {
+		t.Fatalf("applied=%d unchanged=%d skipped=%d sets=%v", rep.Applied, rep.Unchanged, rep.Skipped, p.sets)
+	}
+	var reasons []string
+	for _, s := range rep.Skips {
+		reasons = append(reasons, s.Reason)
+	}
+	if strings.Join(reasons, ",") != "unchanged,read_only" {
+		t.Errorf("skip reasons = %v", reasons)
+	}
+
+	// Second run: the port is now there too — nothing written.
+	p.live[67605] = consumer.Value{Kind: consumer.KindInt, Int: 12700}
+	p.sets = nil
+	rep, _ = Apply(context.Background(), p, snapshotForTest("acp2"), true)
+	if rep.Applied != 0 || rep.Unchanged != 2 || len(p.sets) != 0 {
+		t.Errorf("converged device: would apply %d, unchanged %d, sets %v", rep.Applied, rep.Unchanged, p.sets)
+	}
+
+	// Unreadable: written, as it always was.
+	p.readErr[67604] = errors.New("no such object")
+	p.sets = nil
+	rep, _ = Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if rep.Applied != 1 || len(p.sets) != 1 || p.sets[0] != 67604 {
+		t.Errorf("unreadable row: applied %d, sets %v", rep.Applied, p.sets)
+	}
+}
+
+// Values typed by a CSV column against values the plugin decoded are
+// compared as the text an operator reads.
+func TestSameValueCrossesKinds(t *testing.T) {
+	cases := []struct {
+		live, want consumer.Value
+		same       bool
+	}{
+		{consumer.Value{Kind: consumer.KindInt, Int: 25}, consumer.Value{Kind: consumer.KindFloat, Float: 25}, true},
+		{consumer.Value{Kind: consumer.KindString, Str: "25"}, consumer.Value{Kind: consumer.KindInt, Int: 25}, true},
+		{consumer.Value{Kind: consumer.KindBool, Bool: true}, consumer.Value{Kind: consumer.KindString, Str: "true"}, true},
+		{consumer.Value{Kind: consumer.KindUint, Uint: 7}, consumer.Value{Kind: consumer.KindUint, Uint: 7}, true},
+		{consumer.Value{Kind: consumer.KindUint, Uint: 7}, consumer.Value{Kind: consumer.KindUint, Uint: 8}, false},
+		{consumer.Value{Kind: consumer.KindUint, Uint: 7}, consumer.Value{Kind: consumer.KindString, Str: "7"}, true},
+		{consumer.Value{Kind: consumer.KindFloat, Float: 1.5}, consumer.Value{Kind: consumer.KindFloat, Float: 1.5}, true},
+		{consumer.Value{Kind: consumer.KindEnum, Enum: 2}, consumer.Value{Kind: consumer.KindEnum, Enum: 2}, true},
+		{consumer.Value{Kind: consumer.KindEnum, Enum: 2}, consumer.Value{Kind: consumer.KindString, Str: "2"}, true},
+		{consumer.Value{Kind: consumer.KindBool, Bool: true}, consumer.Value{Kind: consumer.KindBool, Bool: false}, false},
+		{consumer.Value{Kind: consumer.KindIPAddr, IPAddr: [4]byte{10, 6, 240, 1}}, consumer.Value{Kind: consumer.KindIPAddr, IPAddr: [4]byte{10, 6, 240, 1}}, true},
+		{consumer.Value{Kind: consumer.KindIPAddr, IPAddr: [4]byte{10, 6, 240, 1}}, consumer.Value{Kind: consumer.KindString, Str: "10.6.240.1"}, true},
+		{consumer.Value{Kind: consumer.KindString, Str: "a"}, consumer.Value{Kind: consumer.KindString, Str: "b"}, false},
+		{consumer.Value{Kind: consumer.KindRaw, Raw: []byte("x")}, consumer.Value{Kind: consumer.KindRaw, Raw: []byte("x")}, true},
+		{consumer.Value{Kind: consumer.KindRaw, Raw: []byte("x")}, consumer.Value{Kind: consumer.KindString, Str: "x"}, true},
+	}
+	for i, c := range cases {
+		if got := sameValue(c.live, c.want); got != c.same {
+			t.Errorf("case %d: sameValue = %v, want %v", i, got, c.same)
+		}
 	}
 }
