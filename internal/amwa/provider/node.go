@@ -632,6 +632,10 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			s.bundle.Node.Tags["urn:x-nmos:tag:certprov"] = []string{"v1.0"}
 		}
 		srv.TLS = mgr.TLSServerConfig()
+		// BCP-003-01: staple OCSP responses for every served
+		// certificate that names a responder, refreshed before they
+		// expire. Returns at once when none does.
+		go mgr.RunStapler(ctx)
 		s.certs = mgr
 		s.secure = true
 	}

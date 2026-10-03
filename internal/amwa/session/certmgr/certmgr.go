@@ -380,11 +380,12 @@ func (m *Manager) TLSServerConfig() *tls.Config {
 	pairs := append([]tls.Certificate(nil), m.manualPairs...)
 	m.mu.RUnlock()
 	if len(pairs) > 1 {
-		// Multiple manual pairs (RSA + ECDSA): hand the whole set to
-		// the TLS stack, which selects per ClientHello.
+		// Multiple manual pairs (RSA + ECDSA): selected per
+		// ClientHello, read live so a refreshed OCSP staple reaches
+		// the next handshake.
 		return &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			Certificates: pairs,
+			MinVersion:     tls.VersionTLS12,
+			GetCertificate: m.selectCertificate,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,

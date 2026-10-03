@@ -201,8 +201,11 @@ func TestLoadManualPairs(t *testing.T) {
 		t.Errorf("live certificate = %q, want the first pair loaded", got)
 	}
 	cfg := m.TLSServerConfig()
-	if len(cfg.Certificates) != 2 || cfg.GetCertificate != nil {
-		t.Errorf("two manual pairs must be handed to the TLS stack as a set: %d certs, GetCertificate=%v",
+	// Two manual pairs are selected per ClientHello through the hook,
+	// read live so an OCSP staple refreshed later reaches the next
+	// handshake; a static Certificates set would freeze the staples.
+	if len(cfg.Certificates) != 0 || cfg.GetCertificate == nil {
+		t.Errorf("two manual pairs must be selected per ClientHello: %d static certs, GetCertificate=%v",
 			len(cfg.Certificates), cfg.GetCertificate != nil)
 	}
 	if cfg.MinVersion != tls.VersionTLS12 {
