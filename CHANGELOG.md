@@ -7,6 +7,25 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.32.0](https://github.com/by-openclaw/go-acp/compare/v0.31.0...v0.32.0) (2026-10-03)
+
+
+### Features
+
+* **amwa/certmgr:** OCSP stapling for every served certificate that names a responder ([#1250](https://github.com/by-openclaw/go-acp/issues/1250)) ([bafa2e2](https://github.com/by-openclaw/go-acp/commit/bafa2e2a7b5a43626ba154714224e568b3d38c8a))
+* **ansible/dhs_amwa_validate:** the controller suites are scored at every published minor ([#1254](https://github.com/by-openclaw/go-acp/issues/1254)) ([b7171bc](https://github.com/by-openclaw/go-acp/commit/b7171bc805f9db073466819428fe3fd99a4a58b6))
+
+
+### Bug Fixes
+
+* **amwa/provider:** a scheduled activation is promoted at its instant, not on the next tick ([#1251](https://github.com/by-openclaw/go-acp/issues/1251)) ([5a571a1](https://github.com/by-openclaw/go-acp/commit/5a571a1ccedbee75e0de9a8c8f82d5ae7e3b57c5))
+* **amwa/provider:** the scheduler's hooks are installed at construction, under the stores' locks ([#1251](https://github.com/by-openclaw/go-acp/issues/1251)) ([a5633af](https://github.com/by-openclaw/go-acp/commit/a5633affc825157eff109489f63abc918ed47a13))
+* **amwa/session/http:** a Query subscriber reads a SYNC grain the size of its topic ([#1262](https://github.com/by-openclaw/go-acp/issues/1262)) ([868fb7d](https://github.com/by-openclaw/go-acp/commit/868fb7d6492e8a519f663ac3d94649fb53846dbd))
+* **ansible/dhs_amwa_plant:** the plant runs the fleet's released binary ([#1258](https://github.com/by-openclaw/go-acp/issues/1258)) ([217abdb](https://github.com/by-openclaw/go-acp/commit/217abdba2e6e6f83af9139294ac03c1026fee3eb))
+* **ansible/dhs_hostname:** a container guest sets its name without hostnamed ([#1245](https://github.com/by-openclaw/go-acp/issues/1245)) ([ec219ae](https://github.com/by-openclaw/go-acp/commit/ec219ae16ce0a5af7e6541b7e9181fff68568a20))
+* **ci:** release binaries are static on every target ([#1265](https://github.com/by-openclaw/go-acp/issues/1265)) ([1c7e797](https://github.com/by-openclaw/go-acp/commit/1c7e7971d9a7752a7a31e3556ab0f1dc3fe12a61))
+* **provisioning:** the FusioN's second registry slot is the plant registry, not a backup elsewhere ([e738d4a](https://github.com/by-openclaw/go-acp/commit/e738d4a2c4afe0c7d7bad22daafe04e1d22db15e))
+
 ## [0.31.0](https://github.com/by-openclaw/go-acp/compare/v0.30.0...v0.31.0) (2026-10-03)
 
 
