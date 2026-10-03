@@ -95,6 +95,54 @@ func TestWebSocketRoundTripAndClose(t *testing.T) {
 
 // A read error that is not EOF (a deadline) is returned as is, without
 // marking the socket closed.
+// A subscriber's first frame is the SYNC grain, every resource of the
+// topic at once. The dialled side reads one far above the served side's
+// cap; the served side still refuses a frame that size from a
+// subscriber, which has no business sending one (issue #1262).
+func TestASyncGrainLargerThanTheServedCapIsRead(t *testing.T) {
+	grain := strings.Repeat("{\"grain\":1}", (wsServerMaxPayload*3)/11)
+	refused := make(chan error, 1)
+	s := NewServer(nil)
+	s.HandleRaw("/ws", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		c, err := AcceptWebSocket(w, r)
+		if err != nil {
+			refused <- err
+			return
+		}
+		if err := c.SendText([]byte(grain)); err != nil {
+			refused <- err
+			return
+		}
+		_, err = c.ReadText()
+		refused <- err
+	}))
+	ts := httptest.NewServer(s.MuxHandler())
+	defer ts.Close()
+	client, err := DialWebSocket(context.Background(), "ws"+strings.TrimPrefix(ts.URL, "http")+"/ws", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	got, err := client.ReadText()
+	if err != nil {
+		t.Fatalf("a %d-byte grain must be read by the subscriber: %v", len(grain), err)
+	}
+	if string(got) != grain {
+		t.Fatalf("grain of %d bytes came back as %d", len(grain), len(got))
+	}
+	if err := client.SendText([]byte(grain)); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	select {
+	case err := <-refused:
+		if err == nil || !strings.Contains(err.Error(), "exceeds cap") {
+			t.Fatalf("the served side must refuse a %d-byte frame from a subscriber, got %v", len(grain), err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the served side never answered the oversized frame")
+	}
+}
+
 func TestWebSocketReadDeadlineError(t *testing.T) {
 	s := NewServer(nil)
 	s.HandleRaw("/ws", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {

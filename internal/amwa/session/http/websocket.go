@@ -30,9 +30,24 @@ import (
 	"dhs/internal/transport/ws"
 )
 
-// wsMaxPayload caps a single inbound frame. IS-04 subscription envelopes are
-// in the kilobytes range; 1 MiB is comfortable.
-const wsMaxPayload = 1 << 20
+// Inbound frame caps, one per role.
+//
+// A served socket (the registry's Query API, the IS-07 publisher) hears
+// only pings and close frames from its subscribers: 1 MiB is generous.
+//
+// A dialled socket is a subscriber, and the first thing it hears is the
+// SYNC grain: EVERY resource of the topic, in one frame — 2.3 MB for a
+// plant of 1 000 sources, tens of MB at the 65 535-resource scale every
+// connector must cope with (root CLAUDE.md). A 1 MiB cap here closed the
+// socket on that grain, the mirror resubscribed every two seconds, and
+// each resubscribe had the registry rebuild and send the whole topic
+// again until nothing else got answered (IS-04-02 56/74, issue #1262).
+// The grain is bounded by the registry's store, which the subscriber
+// has asked for; 1 GiB is the memory bound, not a size guess.
+const (
+	wsServerMaxPayload = 1 << 20
+	wsClientMaxPayload = 1 << 30
+)
 
 // wsNormalClosure is RFC 6455 §7.4.1 status code 1000.
 const wsNormalClosure = 1000
@@ -56,7 +71,7 @@ type WebSocket struct {
 // WebSocket. Must be called from inside an http.Handler — the ResponseWriter
 // must implement http.Hijacker, which net/http does for HTTP/1.1.
 func AcceptWebSocket(w stdhttp.ResponseWriter, r *stdhttp.Request) (*WebSocket, error) {
-	c, err := ws.Accept(w, r, &ws.AcceptOptions{MaxPayload: wsMaxPayload})
+	c, err := ws.Accept(w, r, &ws.AcceptOptions{MaxPayload: wsServerMaxPayload})
 	if err != nil {
 		return nil, err
 	}
