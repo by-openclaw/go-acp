@@ -45,26 +45,19 @@ func TestFanout_32Sessions_NoHeadOfLineBlocking(t *testing.T) {
 	waitForSessions(t, s, consumers)
 
 	// Mark consumer 0 as the slow one. Others read continuously and
-	// count the announces they receive.
+	// count the announces they receive. A reader blocks on the socket
+	// with no deadline: a short one once cut a frame in two on a loaded
+	// runner (length read, body late) and the reader gave up after the
+	// first announce. The test ends a reader by closing its socket.
 	var counts [consumers]atomic.Int64
-	stopReaders := make(chan struct{})
 	var wg sync.WaitGroup
 	for i := 1; i < consumers; i++ {
 		wg.Add(1)
 		go func(idx int, c net.Conn) {
 			defer wg.Done()
 			for {
-				select {
-				case <-stopReaders:
-					return
-				default:
-				}
-				_ = c.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
 				var lb [4]byte
 				if _, err := io.ReadFull(c, lb[:]); err != nil {
-					if errIsTimeout(err) {
-						continue
-					}
 					return
 				}
 				mlen := binary.BigEndian.Uint32(lb[:])
@@ -111,9 +104,12 @@ func TestFanout_32Sessions_NoHeadOfLineBlocking(t *testing.T) {
 		}
 	}
 
-	// Give fan-out time to settle.
-	time.Sleep(300 * time.Millisecond)
-	close(stopReaders)
+	// Wait for the fan-out to land instead of guessing how long it
+	// takes: every healthy consumer at 50/50, or 10 s, whichever first.
+	waitForCounts(t, counts[1:], triggers, 10*time.Second)
+	for i := 1; i < consumers; i++ {
+		_ = conns[i].Close()
+	}
 	wg.Wait()
 
 	// Healthy consumers should have received MOST announces. We allow
@@ -205,31 +201,24 @@ func TestFanout_BroadcastIsConstantTime(t *testing.T) {
 	}
 }
 
-func errIsTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-	var ne net.Error
-	if !asNetErr(err, &ne) {
-		return false
-	}
-	return ne.Timeout()
-}
-
-func asNetErr(err error, target *net.Error) bool {
-	for err != nil {
-		if ne, ok := err.(net.Error); ok {
-			*target = ne
-			return true
+// waitForCounts returns once every counter reached want, or after
+// limit; the caller then judges the counts it has.
+func waitForCounts(t *testing.T, counts []atomic.Int64, want int64, limit time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(limit)
+	for time.Now().Before(deadline) {
+		done := true
+		for i := range counts {
+			if counts[i].Load() < want {
+				done = false
+				break
+			}
 		}
-		type wrapped interface{ Unwrap() error }
-		if w, ok := err.(wrapped); ok {
-			err = w.Unwrap()
-			continue
+		if done {
+			return
 		}
-		break
+		time.Sleep(5 * time.Millisecond)
 	}
-	return false
 }
 
 // waitForSessions blocks until the server holds n TCP sessions: a
