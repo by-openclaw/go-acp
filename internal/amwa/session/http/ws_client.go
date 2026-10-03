@@ -35,7 +35,7 @@ func DialWebSocket(ctx context.Context, wsURL string, extra stdhttp.Header) (*We
 
 	c, err := ws.Dial(ctx, wsURL, &ws.DialOptions{
 		Header:     extra,
-		MaxPayload: wsMaxPayload,
+		MaxPayload: wsClientMaxPayload,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("nmos/http: dial %s: %w", wsURL, err)
