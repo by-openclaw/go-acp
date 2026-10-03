@@ -112,6 +112,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 		host = fmt.Sprintf("%s:%d", ip, port)
 	}
 	client := dialClient(host)
+	// Every request counted on this session's metrics, whichever path
+	// the state takes afterwards.
+	client.http.Metrics = p.Metrics()
 
 	// Which base this firmware serves — /api/v1 or /api — before
 	// anything is asked of it. EVS moved it between firmwares, and a
