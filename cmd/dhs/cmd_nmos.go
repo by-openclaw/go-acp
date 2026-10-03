@@ -640,6 +640,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 	gcInterval := fs.Duration("gc-interval", time.Second, "heartbeat watchdog tick rate")
 	heartbeatTimeout := fs.Duration("heartbeat-timeout", 12*time.Second, "evict Nodes after this long without heartbeats (IS-04 §6.1 default 12s)")
 	pageLimitDefault := fs.Int("page-limit-default", 0, "Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)")
+	syncChunk := fs.Int("sync-chunk", 0, "rows per grain of a subscription's initial SYNC; a larger topic goes out as several grains in order (0 = default 500)")
 	instanceName := fs.String("instance-name", "", "DNS-SD instance label to announce under (default dhs-nmos-registry; change when a peer has cached a stale entry for the old name)")
 	regAuthURL := fs.String("auth-url", "", "BCP-003-02 Authorization Server base (scheme://host[:port]). When set, both faces validate Bearer tokens and api_auth=true is advertised")
 	regESTHost := fs.String("est-host", "", "BCP-003-03 EST server host:port - the registry enrolls for its TLS certificate there, then serves HTTPS/WSS only")
@@ -679,6 +680,7 @@ func runNMOSRegistryServe(ctx context.Context, args []string) error {
 		GCInterval:       *gcInterval,
 		HeartbeatTimeout: *heartbeatTimeout,
 		PageLimitDefault: *pageLimitDefault,
+		SyncChunkRows:    *syncChunk,
 		InstanceName:     *instanceName,
 		AuthURL:          *regAuthURL,
 		ESTHost:          *regESTHost,
@@ -954,6 +956,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
 			"mirror never wins a production Registry election against its own "+
 			"source registry at pri 0")
+	targetPace := fs.Int("target-pace", 0, "requests per second the mirror sends the target, across every topic (0 = default 100); lower it for a target that dies on a burst")
 	var serveTLSCerts, serveTLSKeys stringSliceFlag
 	fs.Var(&serveTLSCerts, "serve-tls-cert",
 		"BCP-003-01 TLS certificate (PEM, leaf+chain) for the served Query "+
@@ -989,6 +992,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		ServePri:           *servePri,
 		ServeTLSCert:       serveTLSCerts.String(),
 		ServeTLSKey:        serveTLSKeys.String(),
+		TargetPace:         *targetPace,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)

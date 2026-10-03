@@ -589,3 +589,57 @@ func TestSubscriptionWithoutAPathSyncsEveryTopic(t *testing.T) {
 		}
 	}
 }
+
+// A topic larger than the sync chunk is bootstrapped as several grains
+// in order, each at most the chunk; together they are the topic. One
+// frame per topic was the size nobody should have to buffer whole
+// (#1283).
+func TestASyncLargerThanTheChunkArrivesAsSeveralGrains(t *testing.T) {
+	addr, store, mgr := wsFixtureWith(t, func(m *SubscriptionManager) { m.SetSyncChunk(2) })
+	ids := []string{
+		"aaaaaaaa-aaaa-4aaa-8aaa-000000000001",
+		"aaaaaaaa-aaaa-4aaa-8aaa-000000000002",
+		"aaaaaaaa-aaaa-4aaa-8aaa-000000000003",
+		"aaaaaaaa-aaaa-4aaa-8aaa-000000000004",
+	}
+	for _, id := range ids {
+		if err := store.PutNode(validNode(id)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := len(store.SnapshotChangesFor("v1.3", is04.ResourceNode))
+	peer, _ := openSubscription(t, addr, SubscriptionRequest{ResourcePath: "/nodes"})
+	got := 0
+	grains := 0
+	seen := map[string]bool{}
+	for got < want {
+		topic, rows := grainRows(t, peer.nextGrain(t))
+		if topic != "/nodes/" {
+			t.Fatalf("grain topic %s, want /nodes/", topic)
+		}
+		if len(rows) > 2 {
+			t.Fatalf("a grain carries %d rows, chunk is 2", len(rows))
+		}
+		for _, r := range rows {
+			var post struct {
+				ID string `json:"id"`
+			}
+			if err := json.Unmarshal(r["post"], &post); err != nil {
+				t.Fatal(err)
+			}
+			seen[post.ID] = true
+		}
+		got += len(rows)
+		grains++
+	}
+	if grains < 3 || len(seen) != want {
+		t.Fatalf("%d nodes arrived in %d grains covering %d ids", want, grains, len(seen))
+	}
+	if mgr.syncChunkRows() != 2 {
+		t.Fatalf("chunk = %d", mgr.syncChunkRows())
+	}
+	mgr.SetSyncChunk(0)
+	if mgr.syncChunkRows() != DefaultSyncChunkRows {
+		t.Fatalf("zero restores the default, got %d", mgr.syncChunkRows())
+	}
+}

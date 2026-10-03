@@ -4852,6 +4852,8 @@ Usage of serve:
     	Query API page size when the client sends no paging.limit (0 = spec-parity default 100; raise for first-page-only controllers on plants larger than one page)
   -priority pri
     	DNS-SD pri TXT (0-99 production, 100+ dev)
+  -sync-chunk int
+    	rows per grain of a subscription's initial SYNC; a larger topic goes out as several grains in order (0 = default 500)
   -tls-cert value
     	manually installed TLS certificate (PEM) - alternative to EST. Repeatable: BCP-003-01 dual-certificate serving passes it once for the RSA and once for the ECDSA pair — paired with --tls-key positionally; the handshake picks per client
   -tls-dir string
@@ -4884,6 +4886,8 @@ Usage of mirror:
     	serve /status.json (counters, per-collection cache sizes for parity checks, recent audit ring) on this address, e.g. :9101
   -target string
     	target Registry origin (http://host:port) — Registration API side
+  -target-pace int
+    	requests per second the mirror sends the target, across every topic (0 = default 100); lower it for a target that dies on a burst
 
 ========== host/<dispatcher-help> ==========
 $ dhs host --help
