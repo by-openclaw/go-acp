@@ -250,6 +250,30 @@ touching this file.
 
 ---
 
+### 7.4 Warning — Cerebrum dies on ~1 000 resources delivered at once (operator, 2026-10-04)
+
+The operator has seen Cerebrum's registry process die when handed
+about a thousand senders or receivers in one go, without paging. Two
+of our paths used to do exactly that, and both are bounded since
+#1283:
+
+- the dhs registry's Query-WebSocket SYNC is sent as several grains per
+  topic (`--sync-chunk`, default 500 rows) instead of one frame per
+  topic — a plant's 1 700 senders in four grains. Cerebrum 2.8.17 keeps
+  only the first grain of a multi-grain sync (observed 2026-08), so it
+  is never pointed at our WebSocket: it is fed through its own
+  Registration API by the mirror, which is the plant design;
+- the mirror paces its POSTs into the target (`--target-pace`, default
+  100 requests/s across every topic): a live change is forwarded at
+  once, a restart's replay of the whole plant is spread over seconds
+  instead of a burst.
+
+The `--page-limit-default 1000` the plant registry runs with for
+Cerebrum's first-page-only reads (above) is the other side of the same
+coin: a first page of 1 000 is what Cerebrum needs to see everything
+and about what it can take; a larger plant needs the mirror's served
+face per Cerebrum, not a bigger page.
+
 ## Cross-references
 
 - [`internal/amwa/CLAUDE.md`](../CLAUDE.md) — NMOS plugin top-level

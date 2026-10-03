@@ -227,6 +227,7 @@ func (r *Registry) Serve(ctx context.Context, opts registryslot.ServeOptions) er
 		if apiProto == "https" {
 			mgr.SetWSScheme("wss")
 		}
+		mgr.SetSyncChunk(opts.SyncChunkRows)
 		r.subsByVer[apiVer] = mgr
 		installRegistrationRoutes(srv, r.store, regBase, apiVer)
 		installQueryRoutes(srv, r.store, mgr, queryBase, apiVer)

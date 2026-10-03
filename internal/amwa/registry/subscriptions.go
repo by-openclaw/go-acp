@@ -212,6 +212,10 @@ type SubscriptionManager struct {
 	wsPing time.Duration
 	wsIdle time.Duration
 
+	// syncChunk bounds the rows per SYNC grain (SetSyncChunk); 0 is
+	// DefaultSyncChunkRows.
+	syncChunk int
+
 	// onWSOpen / onWSClose are optional subscriber-socket lifecycle
 	// hooks. The mirror's served Query face uses them to land one audit
 	// event per WS open/close in its JSONL trail; the plain Registry
@@ -577,16 +581,28 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 			}
 			byTopic[topic] = append(byTopic[topic], c)
 		}
+		// Bounded grains: a topic the size of a plant goes out as
+		// several grains in order rather than one frame nobody should
+		// have to buffer whole (#1283). IS-04 §5.2 puts no count on a
+		// grain's rows; a subscriber applies them as they arrive.
+		chunk := m.syncChunkRows()
 		for _, topic := range order {
-			frame, err := m.grain(sub.source, byTopic[topic], now)
-			if err != nil {
-				m.logger.Warn("registry/subs: build sync grain", "err", err)
-				continue
-			}
-			if err := ws.SendText(frame); err != nil {
-				m.logger.Warn("registry/subs: send sync", "err", err)
-				_ = ws.Close()
-				return
+			rows := byTopic[topic]
+			for start := 0; start < len(rows); start += chunk {
+				end := start + chunk
+				if end > len(rows) {
+					end = len(rows)
+				}
+				frame, err := m.grain(sub.source, rows[start:end], now)
+				if err != nil {
+					m.logger.Warn("registry/subs: build sync grain", "err", err)
+					continue
+				}
+				if err := ws.SendText(frame); err != nil {
+					m.logger.Warn("registry/subs: send sync", "err", err)
+					_ = ws.Close()
+					return
+				}
 			}
 		}
 
@@ -1186,6 +1202,27 @@ const (
 	DefaultWSPingInterval = 30 * time.Second
 	DefaultWSIdleTimeout  = 90 * time.Second
 )
+
+// DefaultSyncChunkRows is the rows per SYNC grain when the operator
+// sets nothing: ~500 KB of senders, well inside what any subscriber
+// buffers, and a plant's 1 700 senders in four grains.
+const DefaultSyncChunkRows = 500
+
+// SetSyncChunk bounds the rows per SYNC grain; <= 0 restores the default.
+func (m *SubscriptionManager) SetSyncChunk(rows int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.syncChunk = rows
+}
+
+func (m *SubscriptionManager) syncChunkRows() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.syncChunk <= 0 {
+		return DefaultSyncChunkRows
+	}
+	return m.syncChunk
+}
 
 // SetWSKeepAlive tunes subscriber-socket liveness. ping <= 0 stops pinging;
 // idle <= 0 stops reaping. Passing 0 for either selects its default.
