@@ -192,6 +192,7 @@ func isCrossProtocol(importPath string) bool {
 		"auth",
 		"lldp",
 		"plugin",
+		"clock", // the type behind plugin.Deps.Clock; every connector waits on it
 		"export",
 		"scenario",
 		"amwa",

@@ -356,51 +356,91 @@ func (s *IS04NodeServer) bumpDeviceVersions() {
 // runActivationScheduler promotes scheduled activations as their times
 // arrive.
 //
-// The tick is what makes a coordinated switch real: several devices
-// are staged, each given the same absolute TAI instant, and every one
+// It is what makes a coordinated switch real: several devices are
+// staged, each given the same absolute TAI instant, and every one
 // flips without further traffic. Without a scheduler the endpoint
 // would accept a scheduled PATCH, answer 202, and then never act —
 // the worst of the three possible behaviours, because it looks
 // correct.
-func (s *IS04NodeServer) runActivationScheduler(ctx context.Context, tick time.Duration) {
+//
+// A timer for the earliest pending instant, not a polling tick. A tick
+// bounds every switch's lateness by its period, and IS-05-01
+// test_27/28 read /active exactly 200 ms after a +200 ms relative
+// PATCH: at a 20 ms tick about half the runs were promoted just after
+// that read and came back as "later than expected". The stores re-arm
+// the timer through onSchedule whenever a PATCH queues something, so
+// a switch is promoted at its instant, give or take the runtime.
+func (s *IS04NodeServer) runActivationScheduler(ctx context.Context) {
 	if s.connection == nil && s.channelMapping == nil {
 		return
 	}
-	if tick <= 0 {
-		// 20ms, not 100.
-		//
-		// The tick is the worst-case lateness of every scheduled
-		// switch, and IS-05-01 test_27 schedules 200ms out and checks
-		// the result within 200ms of that. At a 100ms tick half the
-		// runs land outside the window -- not a failure, but a warning
-		// that the device is slower than asked, which for a
-		// frame-accurate switch is the thing being measured.
-		tick = 20 * time.Millisecond
+	wake := make(chan struct{}, 1)
+	kick := func() {
+		select {
+		case wake <- struct{}{}:
+		default:
+		}
 	}
-	t := time.NewTicker(tick)
-	defer t.Stop()
+	if s.connection != nil {
+		s.connection.Store().onSchedule = kick
+	}
+	if s.channelMapping != nil {
+		s.channelMapping.onSchedule = kick
+	}
+	// The injected clock; a zero Deps means the system one.
+	clk := s.cfg.Deps.WithDefaults().Clock
 	for {
+		var due <-chan time.Time
+		if next, ok := s.nextActivation(); ok {
+			d := next.Sub(clk.Now())
+			if d < 0 {
+				d = 0
+			}
+			due = clk.After(d)
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-t.C:
-			if s.connection != nil {
-				if n := s.connection.Store().runScheduled(); n > 0 {
-					s.logger.Info("scheduled activation fired",
-						"plugin", "amwa", "api", "is-05", "endpoints", n)
-				}
-			}
-			// IS-08 queues scheduled re-maps the same way and needs
-			// the same pump. One ticker drives both: two would drift
-			// against each other, and a controller that schedules a
-			// route and a channel map for the same instant expects
-			// them to land together.
-			if s.channelMapping != nil {
-				if n := s.channelMapping.runActivations(); n > 0 {
-					s.logger.Info("scheduled channel map fired",
-						"plugin", "amwa", "api", "is-08", "activations", n)
-				}
-			}
+		case <-wake:
+			// Something was queued; the earliest instant may have
+			// moved closer. Re-arm.
+		case <-due:
+			s.fireActivations()
+		}
+	}
+}
+
+// nextActivation is the earliest instant either API is waiting for.
+func (s *IS04NodeServer) nextActivation() (time.Time, bool) {
+	var next time.Time
+	found := false
+	if s.connection != nil {
+		if t, ok := s.connection.Store().nextDue(); ok {
+			next, found = t, true
+		}
+	}
+	if s.channelMapping != nil {
+		if t, ok := s.channelMapping.nextDue(); ok && (!found || t.Before(next)) {
+			next, found = t, true
+		}
+	}
+	return next, found
+}
+
+// fireActivations promotes everything whose instant has arrived, on
+// both APIs at once: a controller that schedules a route and a channel
+// map for the same instant expects them to land together.
+func (s *IS04NodeServer) fireActivations() {
+	if s.connection != nil {
+		if n := s.connection.Store().runScheduled(); n > 0 {
+			s.logger.Info("scheduled activation fired",
+				"plugin", "amwa", "api", "is-05", "endpoints", n)
+		}
+	}
+	if s.channelMapping != nil {
+		if n := s.channelMapping.runActivations(); n > 0 {
+			s.logger.Info("scheduled channel map fired",
+				"plugin", "amwa", "api", "is-08", "activations", n)
 		}
 	}
 }

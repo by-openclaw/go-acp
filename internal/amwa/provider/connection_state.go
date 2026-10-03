@@ -92,6 +92,27 @@ type connectionStore struct {
 	// giving it a bundle pointer it would then be tempted to read on
 	// every request.
 	onPromote func(kind, id string, active is05.StagedSender) string
+	// onSchedule is told that a scheduled activation was staged, so
+	// the scheduler can re-arm for it. Called under the lock; it must
+	// not block.
+	onSchedule func()
+}
+
+// nextDue is the earliest instant a scheduled activation is waiting
+// for.
+func (s *connectionStore) nextDue() (time.Time, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var next time.Time
+	found := false
+	for _, m := range []map[string]*connectionEndpoint{s.senders, s.receivers} {
+		for _, e := range m {
+			if e.scheduled != nil && (!found || e.scheduled.Before(next)) {
+				next, found = *e.scheduled, true
+			}
+		}
+	}
+	return next, found
 }
 
 func newConnectionStore() *connectionStore {
