@@ -56,7 +56,7 @@ does not read back after a write.
 | lab-convert-01 (.102) | CONVERT Hybrid 7.0.3 | ccm (`/api/v1`, PUT) | RED+BLUE | PTP, NTP, NMOS → dhs registry, both control ports (static kept while DHCP, FEC RS), every sender leg's group/port |
 | lab-shuffle-01 (.103) | SHUFFLE 6.0.0 | ccm (`/api`, PATCH) | RED | same; 1544 audio senders on 239.30.x.x:30000 |
 | lab-view-01 (.104) | NeuronView 1.13.2 | — | RED | no CCM on this firmware: in `devices.csv` for the plan, provisioned by hand |
-| lab-fusion-01 (10.6.40.54) | FusioN6 | mnset | RED+BLUE | NMOS → dhs registry (+ easy-nmos backup), PTP domain on both clocks, syslog, interfaces, FEC none, hostname, SDI outputs CH2/4/6/8 only (our hardware) |
+| lab-fusion-01 (10.6.40.54) | FusioN6 | mnset | RED+BLUE | NMOS → dhs registry (both slots; one registry for every device), PTP domain on both clocks, syslog, interfaces, FEC none, hostname, SDI outputs CH2/4/6/8 only (our hardware) |
 
 Multicast: one block of `/24`s per device and essence, given once by
 `plan` and written back into `devices.csv`, so a device keeps its
