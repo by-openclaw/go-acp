@@ -7,6 +7,23 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.30.0](https://github.com/by-openclaw/go-acp/compare/v0.29.0...v0.30.0) (2026-10-03)
+
+
+### Features
+
+* **mnset:** NMOS registration writable; provisioning objects as CSV ([785a50d](https://github.com/by-openclaw/go-acp/commit/785a50dc451a2fe80223646b1b20e1653a61c8a2)), closes [#1185](https://github.com/by-openclaw/go-acp/issues/1185)
+* **mnset:** typed DM proven on the FusioN6; set validates before the wire ([e0442cf](https://github.com/by-openclaw/go-acp/commit/e0442cf7e36f8e9f7490b6216a3401aba68ba020)), closes [#1185](https://github.com/by-openclaw/go-acp/issues/1185)
+* **mnset:** walk and set reach the PTP clock inputs; DM entries for every scraped object ([6df3557](https://github.com/by-openclaw/go-acp/commit/6df355732df6b98bda9f1e80162efa37fcfeef06))
+* **probel-sw08p:** export every level of the matrix, not just level 0 ([#1204](https://github.com/by-openclaw/go-acp/issues/1204)) ([428adac](https://github.com/by-openclaw/go-acp/commit/428adac6d45b0ff21b16cdf2860489f3db1645d9))
+
+
+### Bug Fixes
+
+* **export:** YAML nests every multi-segment path, not only ACP2 ([9f6b6ca](https://github.com/by-openclaw/go-acp/commit/9f6b6ca9875ed8e94b93c288aef0e5e3e81ae9e5))
+* **mnset:** receivers/senders are read-only; the NMOS name is the flow label ([6fe1e4d](https://github.com/by-openclaw/go-acp/commit/6fe1e4d449e562a33db32ba4a16cfdae208e1789)), closes [#1185](https://github.com/by-openclaw/go-acp/issues/1185)
+* **probel-sw08p:** bound the reply wait after ACK; export skips what the matrix does not serve ([#1204](https://github.com/by-openclaw/go-acp/issues/1204)) ([f952aca](https://github.com/by-openclaw/go-acp/commit/f952aca2aaaa67be1c9c2bf1ead4c6b72c9dd817))
+
 ## [0.29.0](https://github.com/by-openclaw/go-acp/compare/v0.28.0...v0.29.0) (2026-10-03)
 
 
