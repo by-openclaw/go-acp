@@ -282,14 +282,11 @@ func formatLinkedEndpointCSV(keyCol string, rows []linkedXpoint, destSide bool) 
 // not a backup.
 // ---------------------------------------------------------------------
 
-// batchSetter is a connector that can write several values in one
-// device operation. Converging a matrix on a REST device means changing
-// many entries of ONE resource, and this API has no PATCH: without a
+// batchSetter is consumer.BatchSetter: converging a matrix on a REST
+// device means changing many entries of ONE resource, and without a
 // batch it would be one whole-document PUT per crosspoint, each one
 // shipping the entire map and each one able to undo the last.
-type batchSetter interface {
-	SetValues(ctx context.Context, reqs []consumer.ValueRequest, vals []consumer.Value) ([]consumer.Value, error)
-}
+type batchSetter = consumer.BatchSetter
 
 // runLinkedXpointImport converges one matrix from a -xpoint.csv,
 // against a connector whose crosspoints are ordinary writable objects.

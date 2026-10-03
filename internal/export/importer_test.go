@@ -332,3 +332,52 @@ func TestSameValueCrossesKinds(t *testing.T) {
 		}
 	}
 }
+
+// batchPlugin takes several values in one call — or refuses the batch.
+type batchPlugin struct {
+	livePlugin
+	batches  [][]int
+	batchErr error
+}
+
+func (p *batchPlugin) SetValues(_ context.Context, reqs []consumer.ValueRequest, vals []consumer.Value) ([]consumer.Value, error) {
+	ids := make([]int, len(reqs))
+	for i, r := range reqs {
+		ids[i] = r.ID
+	}
+	p.batches = append(p.batches, ids)
+	if p.batchErr != nil {
+		return nil, p.batchErr
+	}
+	return vals, nil
+}
+
+// A plugin that can take a batch gets the slot's rows in one call, so
+// fields that only make sense together reach the device together. A
+// refused batch falls back to one write per row, which is what names
+// the row the device said no to.
+func TestApply_BatchesWhereThePluginCan(t *testing.T) {
+	p := &batchPlugin{livePlugin: livePlugin{live: map[int]consumer.Value{}, readErr: map[int]error{}}}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Applied != 2 || len(p.batches) != 1 || len(p.batches[0]) != 2 || len(p.sets) != 0 {
+		t.Fatalf("applied=%d batches=%v single writes=%v", rep.Applied, p.batches, p.sets)
+	}
+
+	p.batches, p.batchErr = nil, errors.New("one of them is inconsistent")
+	rep, _ = Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if rep.Applied != 2 || len(p.batches) != 1 || len(p.sets) != 2 {
+		t.Errorf("after a refused batch: applied=%d batches=%v single writes=%v", rep.Applied, p.batches, p.sets)
+	}
+
+	// Nothing to send, nothing called.
+	p.batches, p.sets = nil, nil
+	p.live[67604] = consumer.Value{Kind: consumer.KindString, Str: "239.129.1.20"}
+	p.live[67605] = consumer.Value{Kind: consumer.KindInt, Int: 12700}
+	rep, _ = Apply(context.Background(), p, snapshotForTest("acp2"), false)
+	if rep.Applied != 0 || rep.Unchanged != 2 || len(p.batches) != 0 || len(p.sets) != 0 {
+		t.Errorf("converged: applied=%d unchanged=%d batches=%v sets=%v", rep.Applied, rep.Unchanged, p.batches, p.sets)
+	}
+}

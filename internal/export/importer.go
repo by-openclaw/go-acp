@@ -30,8 +30,8 @@ type ImportReport struct {
 	// writes nothing the second time. They are also listed in Skips with
 	// the reason "unchanged".
 	Unchanged int
-	Skipped int
-	Failed  int
+	Skipped   int
+	Failed    int
 	// Filtered is the count of objects excluded before Apply by an
 	// ImportFilter (e.g. --id / --label / --path flags). Different
 	// from Skipped — filtered objects were never considered for apply;
@@ -111,6 +111,7 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 	// single get_object to catch phantom obj-ids before SetValue, and
 	// rejects enum values outside the options list.
 	validator, _ := plug.(consumer.ValueValidator)
+	var pending []write
 
 	for _, dump := range s.Slots {
 		if walkNeeded {
@@ -219,16 +220,50 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 				rep.Applied++
 				continue
 			}
-			if _, err := plug.SetValue(ctx, req, obj.Value); err != nil {
-				rep.Failed++
-				rep.Failures = append(rep.Failures,
-					fmt.Sprintf("slot %d %s: %v", dump.Slot, obj.Label, err))
-				continue
-			}
-			rep.Applied++
+			pending = append(pending, write{req, obj, dump.Slot})
 		}
+		writeAll(ctx, plug, pending, rep)
+		pending = pending[:0]
 	}
 	return rep, nil
+}
+
+// write is one row that is to be sent.
+type write struct {
+	req  consumer.ValueRequest
+	obj  consumer.Object
+	slot int
+}
+
+// writeAll sends a slot's rows: in one batch where the plugin can take
+// one, so fields that only make sense together reach the device
+// together (a static address and its gateway in one document), and one
+// by one otherwise — or when the batch was refused, so that the report
+// still names the row the device said no to.
+func writeAll(ctx context.Context, plug consumer.Protocol, rows []write, rep *ImportReport) {
+	if len(rows) == 0 {
+		return
+	}
+	if b, ok := plug.(consumer.BatchSetter); ok {
+		reqs := make([]consumer.ValueRequest, len(rows))
+		vals := make([]consumer.Value, len(rows))
+		for i, w := range rows {
+			reqs[i], vals[i] = w.req, w.obj.Value
+		}
+		if _, err := b.SetValues(ctx, reqs, vals); err == nil {
+			rep.Applied += len(rows)
+			return
+		}
+	}
+	for _, w := range rows {
+		if _, err := plug.SetValue(ctx, w.req, w.obj.Value); err != nil {
+			rep.Failed++
+			rep.Failures = append(rep.Failures,
+				fmt.Sprintf("slot %d %s: %v", w.slot, w.obj.Label, err))
+			continue
+		}
+		rep.Applied++
+	}
 }
 
 // skipFrom builds a SkipRecord describing one row the importer chose

@@ -198,7 +198,7 @@ func runImport(ctx context.Context, args []string) error {
 	// Dry-run prints the detailed skip report so the operator knows
 	// exactly which rows in their CSV/JSON/YAML will not be applied
 	// and why. Grouped by reason to keep long lists scannable.
-	if *dry && len(rep.Skips) > 0 {
+	if *dry && len(rep.Skips) > rep.Unchanged {
 		printSkipReport(rep.Skips)
 	}
 	return nil
