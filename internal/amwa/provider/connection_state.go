@@ -98,6 +98,13 @@ type connectionStore struct {
 	onSchedule func()
 }
 
+// setOnSchedule installs the scheduler's hook under the lock.
+func (s *connectionStore) setOnSchedule(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onSchedule = fn
+}
+
 // nextDue is the earliest instant a scheduled activation is waiting
 // for.
 func (s *connectionStore) nextDue() (time.Time, bool) {

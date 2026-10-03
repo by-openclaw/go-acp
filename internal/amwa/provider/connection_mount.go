@@ -374,19 +374,7 @@ func (s *IS04NodeServer) runActivationScheduler(ctx context.Context) {
 	if s.connection == nil && s.channelMapping == nil {
 		return
 	}
-	wake := make(chan struct{}, 1)
-	kick := func() {
-		select {
-		case wake <- struct{}{}:
-		default:
-		}
-	}
-	if s.connection != nil {
-		s.connection.Store().onSchedule = kick
-	}
-	if s.channelMapping != nil {
-		s.channelMapping.onSchedule = kick
-	}
+	wake := s.activationWake
 	// The injected clock; a zero Deps means the system one.
 	clk := s.cfg.Deps.WithDefaults().Clock
 	for {

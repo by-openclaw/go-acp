@@ -314,6 +314,10 @@ type IS04NodeServer struct {
 	// it; a Node with no audio inputs or outputs gets an empty one,
 	// which is the honest answer rather than a missing API.
 	channelMapping *IS08ChannelMappingServer
+	// activationWake is kicked by the IS-05 and IS-08 stores whenever
+	// a PATCH/POST queues a scheduled activation, so the scheduler
+	// re-arms for it. Buffered once: a kick is a level, not a count.
+	activationWake chan struct{}
 
 	// streamCompat is the IS-11 Stream Compatibility Management API.
 	// Nil disables it.
@@ -508,6 +512,22 @@ func NewIS04NodeServer(logger *slog.Logger, bundle *NodeConfig, cfg IS04NodeConf
 				s.connection.onSenderActivated = s.mqttEvents.OnSenderActivation
 			}
 		}
+	}
+	// The scheduler's hooks go in here, under each store's lock and
+	// before any request can reach a store: a PATCH that queued an
+	// activation before the hook existed would never wake it.
+	s.activationWake = make(chan struct{}, 1)
+	kick := func() {
+		select {
+		case s.activationWake <- struct{}{}:
+		default:
+		}
+	}
+	if s.connection != nil {
+		s.connection.Store().setOnSchedule(kick)
+	}
+	if s.channelMapping != nil {
+		s.channelMapping.setOnSchedule(kick)
 	}
 	return s, nil
 }
