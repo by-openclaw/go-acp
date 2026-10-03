@@ -7,6 +7,23 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.31.0](https://github.com/by-openclaw/go-acp/compare/v0.30.0...v0.31.0) (2026-10-03)
+
+
+### Features
+
+* **ansible:** provisioning as dhs export-format values files, applied with dhs import ([#1201](https://github.com/by-openclaw/go-acp/issues/1201)) ([da8bf45](https://github.com/by-openclaw/go-acp/commit/da8bf45bb4b13d56b65621738ddd4f95a1b3d544))
+* **import:** fields of one document are written together ([#1235](https://github.com/by-openclaw/go-acp/issues/1235)) ([670b8d4](https://github.com/by-openclaw/go-acp/commit/670b8d4c803d62e39f1dac2c36453203b1dcce14))
+* **import:** write only what differs — a values file applied twice changes nothing ([#1231](https://github.com/by-openclaw/go-acp/issues/1231)) ([a7c46a3](https://github.com/by-openclaw/go-acp/commit/a7c46a3588dacfa1df9d7effb37dec7bf74fe03c))
+
+
+### Bug Fixes
+
+* **import:** --check is a dry run on every path, as --dry-run is ([#1203](https://github.com/by-openclaw/go-acp/issues/1203)) ([b7e21f4](https://github.com/by-openclaw/go-acp/commit/b7e21f4fd6765ca853db64a6c511278386c4af79))
+* **probel-sw08p:** --srcs and --dsts take the wire's 16 bits, not SW-P-02's 14 ([#1227](https://github.com/by-openclaw/go-acp/issues/1227)) ([bb6488f](https://github.com/by-openclaw/go-acp/commit/bb6488f1a91123bf24638d01d522ca13e97285e7))
+* **snell-rollcall/provider:** a link is registered before its first byte is read ([#1240](https://github.com/by-openclaw/go-acp/issues/1240)) ([96ef7a7](https://github.com/by-openclaw/go-acp/commit/96ef7a7e2232d756bb8026016a2d8d1ed38932f6))
+* **transport/http:** a 204 or 304 answer sends no body and logs nothing ([#1207](https://github.com/by-openclaw/go-acp/issues/1207)) ([48e02e2](https://github.com/by-openclaw/go-acp/commit/48e02e22311160830a5401b81e97186e5196101c))
+
 ## [0.30.0](https://github.com/by-openclaw/go-acp/compare/v0.29.0...v0.30.0) (2026-10-03)
 
 
