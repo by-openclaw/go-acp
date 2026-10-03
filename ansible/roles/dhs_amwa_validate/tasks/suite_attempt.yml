@@ -10,7 +10,7 @@
     # Result-file stem: auth twins keep the manual sweep's
     # <SUITE>-auth.json convention (tls entries the -tls sibling) so
     # receipts of the same suite id never overwrite each other.
-    _suite_file: "{{ suite.id }}{{ '-auth' if suite.auth | default(false) else ('-tls' if suite.tls | default(false) else '') }}"
+    _suite_file: "{{ suite.id }}{{ ('-' + suite.label) if suite.label is defined else '' }}{{ '-auth' if suite.auth | default(false) else ('-tls' if suite.tls | default(false) else '') }}"
     _suite_host_override: !!null
     _suite_port_override: !!null
     _tool_url_override: !!null
@@ -87,7 +87,7 @@
       ansible.builtin.command: >-
         python3 {{ dhs_amwa_validate_results_dir }}/parse_suite.py
         {{ dhs_amwa_validate_results_dir }}/{{ _validate_run_ts }}/{{ _suite_file }}{{ _attempt_suffix }}.json
-        {{ suite.id }} {{ suite.baseline_pass }} {{ suite.baseline_cnt }}
+        {{ _suite_file }} {{ suite.baseline_pass }} {{ suite.baseline_cnt }}
       register: _suite_gate
       changed_when: false
       failed_when: false

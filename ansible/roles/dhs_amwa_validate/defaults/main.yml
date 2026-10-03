@@ -199,6 +199,9 @@ dhs_amwa_validate_mock_registry_port: 5102
 #                 from the target unless the row overrides them (null
 #                 host rows are IS-09-02's mock-System-API shape)
 #   baseline_pass / baseline_cnt   the gate
+#   label         optional; appended to the receipt stem
+#                 (<SUITE>-<label>.json) so one suite id can be scored
+#                 at several minors in one run without overwriting
 #   enabled: false + note          suites we cannot yet drive here
 dhs_amwa_validate_suites:
   # ---- node scope, plant node :18080 ----
@@ -376,22 +379,72 @@ dhs_amwa_validate_suites:
   # (TR-08 compatibility with the counterpart identified only in
   # prose; the facade answers the question's own "unable to
   # identify" branch) — keep-or-disable is the post-fleet decision.
-  - { id: IS-04-04, scope: controller, target: node, window: facade,
+  # Every published minor is scored (strict-every-minor rule): the tool
+  # scores ONE Query minor and ONE Connection minor per run, so each
+  # minor is its own entry, named by `label` so the receipts of one
+  # suite id do not overwrite each other (<SUITE>-<label>.json).
+  # Baselines: IS-04-04 5/5 and IS-05-03 4/4 at every minor are the
+  # committed 2026-09-17 evidence (results-controller/); the BCP
+  # controller suites keep their first-fleet-run numbers, the v1.0 /
+  # v1.2 twins start at 0 and the fleet fills them.
+  - { id: IS-04-04, scope: controller, target: node, window: facade, label: query-v1.3,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3}],
       baseline_pass: 4, baseline_cnt: 0 }
-  - { id: IS-05-03, scope: controller, target: node, window: facade,
+  - { id: IS-04-04, scope: controller, target: node, window: facade, label: query-v1.2,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.2}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-04-04, scope: controller, target: node, window: facade, label: query-v1.1,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.1}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-04-04, scope: controller, target: node, window: facade, label: query-v1.0,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.0}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-05-03, scope: controller, target: node, window: facade, label: conn-v1.1,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
       baseline_pass: 4, baseline_cnt: 0 }
-  - { id: BCP-006-01-02, scope: controller, target: node, window: facade,
+  - { id: IS-05-03, scope: controller, target: node, window: facade, label: conn-v1.2,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.2}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: IS-05-03, scope: controller, target: node, window: facade, label: conn-v1.0,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.0}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  - { id: BCP-006-01-02, scope: controller, target: node, window: facade, label: conn-v1.1,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
       baseline_pass: 5, baseline_cnt: 0 }
-  - { id: BCP-007-03-02, scope: controller, target: node, window: facade,
+  - { id: BCP-006-01-02, scope: controller, target: node, window: facade, label: conn-v1.2,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.2}],
+      baseline_pass: 0, baseline_cnt: 0 }
+  - { id: BCP-006-01-02, scope: controller, target: node, window: facade, label: conn-v1.0,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.0}],
+      baseline_pass: 0, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, window: facade, label: conn-v1.1,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.1}],
       baseline_pass: 4, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, window: facade, label: conn-v1.2,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.2}],
+      baseline_pass: 0, baseline_cnt: 0 }
+  - { id: BCP-007-03-02, scope: controller, target: node, window: facade, label: conn-v1.0,
+      rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
+             {host: null, port: null, ver: v1.3},
+             {host: null, port: null, ver: v1.0}],
+      baseline_pass: 0, baseline_cnt: 0 }
