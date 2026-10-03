@@ -50,19 +50,26 @@ services:
   # drive, so `dhs consumer nmos connect` can be proven against
   # something other than our own provider.
   # ---------------------------------------------------------------
+  # HOST networking, unlike the registry and the tool: nmos-cpp's node
+  # builds its resources only when host_address names one of its own
+  # interfaces, and on the bridge it is 172.x while it advertises the
+  # tooling host — "No network interface corresponding to
+  # host_address?" and an empty node (issue #1268). On the host net
+  # the advertised address is real, and so is the LAN's mDNS: the
+  # node then hears every registry on the VLAN and takes the highest
+  # priority, which is the PLANT's (pri 0) — 22 reference senders in
+  # what Cerebrum mirrors. node.json pins its priority window to the
+  # dev range the reference registry announces (pri 100, root
+  # CLAUDE.md quirk 14), so it registers with its own registry only.
   nmos-virtnode:
     image: {{ dhs_amwa_image_nmos_cpp }}
     container_name: nmos-virtnode
     hostname: nmos-virtnode
+    network_mode: host
     environment:
       RUN_NODE: "TRUE"
     volumes:
       - ./node.json:/home/node.json:ro
-    networks:
-      nmos: {}
-    ports:
-      - "{{ dhs_amwa_port_node_http }}:{{ dhs_amwa_port_node_http }}"
-      - "{{ dhs_amwa_port_node_ws }}:{{ dhs_amwa_port_node_ws }}"
     depends_on:
       - nmos-registry
     restart: {{ dhs_amwa_restart_policy }}

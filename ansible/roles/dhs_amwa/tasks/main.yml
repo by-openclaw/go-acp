@@ -79,6 +79,22 @@
     dhs_amwa_up.stderr is search('(Created|Recreated|Started|Removed)')
     or dhs_amwa_up.stdout is search('(Created|Recreated|Started|Removed)')
 
+# A bind-mounted config that changed does not recreate its container:
+# compose compares the service definition, not the file behind the
+# mount. The reference implementations read their JSON once, at start,
+# so a changed registry.json / node.json is applied by recreating that
+# one service — which is also what makes the run honest: a config the
+# role rewrote and the oracle never read would still report "ok".
+- name: Recreate the services whose config changed
+  ansible.builtin.command:
+    cmd: docker compose up -d --force-recreate --no-deps {{ item.item | regex_replace('\.json$', '') | regex_replace('^registry$', 'nmos-registry') | regex_replace('^node$', 'nmos-virtnode') }}
+    chdir: "{{ dhs_amwa_dir }}"
+  loop: "{{ dhs_amwa_configs.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item is changed
+  changed_when: true
+
 - name: Wait for the reference registry to answer
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ dhs_amwa_port_registry_http }}/x-nmos/query/"
@@ -115,7 +131,12 @@
     url: "http://127.0.0.1:{{ dhs_amwa_port_registry_http }}/x-nmos/query/v1.3/nodes"
     return_content: true
   register: dhs_amwa_nodes
-  until: dhs_amwa_nodes.json | default([]) | length > 0
+  # By label: the reference registry lists ITSELF as a node, so a bare
+  # count passed with the reference node registered elsewhere (it took
+  # the plant registry over mDNS for a month, issue #1268).
+  until: >-
+    dhs_amwa_nodes.json | default([])
+    | selectattr('label', 'equalto', 'dhs-amwa-reference-node') | list | length > 0
   retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
   delay: 5
 

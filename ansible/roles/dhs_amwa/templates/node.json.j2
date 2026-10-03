@@ -6,5 +6,10 @@
   "http_port": {{ dhs_amwa_port_node_http }},
   "events_ws_port": {{ dhs_amwa_port_node_ws }},
   "domain": "local",
+  "registry_address": "{{ dhs_amwa_advertise_host }}",
+  "registration_port": {{ dhs_amwa_port_registry_http }},
+  "registry_version": "v1.3",
+  "highest_pri": {{ dhs_amwa_registry_pri }},
+  "lowest_pri": {{ dhs_amwa_registry_pri }},
   "how_many": {{ dhs_amwa_node_how_many }}
 }
