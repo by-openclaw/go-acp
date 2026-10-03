@@ -60,6 +60,14 @@ type ServeOptions struct {
 	// spec-legal lever.
 	PageLimitDefault int
 
+	// SyncChunkRows bounds a Query-WebSocket subscription's initial
+	// SYNC: at most this many rows per grain, several grains per topic
+	// in order (IS-04 §5.2 sets no row count). 0 keeps the default
+	// (500). A plant-sized topic as one frame is what kills weaker
+	// controllers — Cerebrum on ~1 000 resources at once — and what
+	// made the mirror resubscribe in a loop (#1262, #1283).
+	SyncChunkRows int
+
 	// InstanceName overrides the DNS-SD instance label the registry
 	// announces under (default "dhs-nmos-registry"). Peers key stored
 	// server entries on this name, so republishing under a fresh name

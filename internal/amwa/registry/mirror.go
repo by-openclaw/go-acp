@@ -84,6 +84,11 @@ type MirrorOptions struct {
 	// Deps is the injected dependency set (transport, clock, metrics), the
 	// same plugin.Deps every connector takes; zero = defaults.
 	Deps plugin.Deps
+	// TargetPace bounds the requests per second the mirror sends the
+	// target, across every watcher (mirror_pace.go). 0 = the default
+	// (100); a target that dies on a burst — Cerebrum on ~1 000
+	// resources at once — gets a lower one.
+	TargetPace int
 	// AuditPath, when set, appends one JSONL AuditEvent per external-
 	// registry observation — the evidence trail (mirror_audit.go).
 	AuditPath string
@@ -154,6 +159,7 @@ type Mirror struct {
 	opts   MirrorOptions
 	logger *slog.Logger
 	http   *stdhttp.Client
+	pace   *pacer
 
 	met     *metrics.Connector
 	metOnce sync.Once
@@ -254,6 +260,7 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 		opts:        opts,
 		logger:      opts.Logger,
 		http:        &stdhttp.Client{Timeout: 10 * time.Second},
+		pace:        newPacer(opts.Deps.WithDefaults().Clock, opts.TargetPace),
 		cache:       cache,
 		cacheVer:    cacheVer,
 		targetNodes: map[string]bool{},
@@ -482,6 +489,9 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 	}
 	url := m.registrationBase(ver) + "/resource"
 	for attempt := 0; attempt < 2; attempt++ {
+		if err := m.pace.wait(ctx); err != nil {
+			return // the mirror is stopping
+		}
 		req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 		if err != nil {
 			m.fail("build POST", topic, err)
