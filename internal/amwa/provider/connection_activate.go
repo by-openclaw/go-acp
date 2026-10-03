@@ -177,6 +177,9 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		}
 		e.staged = merged
 		e.scheduled = &when
+		if s.onSchedule != nil {
+			s.onSchedule()
+		}
 		// The 202 body carries the time the switch WILL happen.
 		//
 		// activation_time is not "the moment it fired" -- it is the

@@ -783,7 +783,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 	// answers 202, and then never acts — the worst of the three
 	// possible behaviours, because it looks correct to the controller
 	// right up until the switch does not happen.
-	go s.runActivationScheduler(ctx, 0)
+	go s.runActivationScheduler(ctx)
 
 	// Read the System API, if there is one.
 	//

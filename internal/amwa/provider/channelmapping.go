@@ -85,6 +85,10 @@ type IS08ChannelMappingServer struct {
 	// "is it past 1970?" of a switch the controller wanted two seconds
 	// from now.
 	due map[string]time.Time
+	// onSchedule is told that an activation was queued, so the
+	// scheduler can re-arm for it. Called under the lock; it must not
+	// block.
+	onSchedule func()
 	// lockedOutputs names the outputs a pending activation has already
 	// claimed. IS-08 §5 answers 423 to a second change on the same
 	// output: a controller that scheduled a switch and then quietly
@@ -630,6 +634,9 @@ func (s *IS08ChannelMappingServer) handleActivationPost(r *stdhttp.Request) (int
 
 	s.activations[id] = resp
 	s.due[id] = when
+	if s.onSchedule != nil {
+		s.onSchedule()
+	}
 	for outID := range req.Action {
 		s.lockedOutputs[outID] = id
 	}
@@ -940,6 +947,23 @@ func (s *IS08ChannelMappingServer) releaseLockLocked(id string) {
 			delete(s.lockedOutputs, outID)
 		}
 	}
+}
+
+// nextDue is the earliest instant a queued activation is waiting for.
+func (s *IS08ChannelMappingServer) nextDue() (time.Time, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var next time.Time
+	found := false
+	for id, when := range s.due {
+		if a, ok := s.activations[id]; ok && a.Activation.ActivationTime != nil {
+			continue
+		}
+		if !found || when.Before(next) {
+			next, found = when, true
+		}
+	}
+	return next, found
 }
 
 // jsonRaw is retained for symmetry with the IS-05 decoder's strict

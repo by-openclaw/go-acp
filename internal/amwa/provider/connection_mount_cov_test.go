@@ -15,6 +15,8 @@ import (
 
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/codec/is05"
+	"dhs/internal/clock"
+	"dhs/internal/plugin"
 	"dhs/internal/amwa/codec/is11"
 	httpsession "dhs/internal/amwa/session/http"
 )
@@ -201,7 +203,7 @@ func TestActivationSchedulerStopsWithNothingToPump(t *testing.T) {
 	})
 
 	done := make(chan struct{})
-	go func() { defer close(done); s.runActivationScheduler(context.Background(), 0) }()
+	go func() { defer close(done); s.runActivationScheduler(context.Background()) }()
 	select {
 	case <-done:
 	case <-time.After(2 * time.Second):
@@ -230,18 +232,21 @@ func TestControlHostWithoutAPort(t *testing.T) {
 	}
 }
 
-// A scheduled activation fires from the scheduler's own tick, and the
+// A scheduled activation fires from the scheduler's own timer, and the
 // operator is told it happened: a switch nobody logged is a switch
 // nobody can account for afterwards.
 func TestSchedulerFiresAScheduledActivation(t *testing.T) {
 	tap := newLogTap()
 	b := fullBundle(t)
+	clk := clock.NewFake(time.Time{})
 	s, err := NewIS04NodeServer(tap.logger(), b, IS04NodeConfig{
 		Bind: "127.0.0.1:0", DiscoveryMode: "static", ConnectionAPIVer: "v1.2",
+		Deps: plugin.Deps{Clock: clk},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.connection.Store().now = clk.Now
 
 	when := "0:0" // due immediately
 	if _, _, err := s.connection.Store().applyPatch("senders", b.Senders[0].ID,
@@ -256,9 +261,89 @@ func TestSchedulerFiresAScheduledActivation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.runActivationScheduler(ctx, time.Millisecond)
+	go s.runActivationScheduler(ctx)
 
+	// Due in the past: the timer is armed for "now" and fires on the
+	// clock's next step, however small.
+	armed(t, clk)
+	clk.Advance(time.Nanosecond)
 	tap.until(t, "scheduled activation fired")
+}
+
+// armed blocks until the scheduler has a timer on the fake clock, so a
+// test advances the clock after the wait exists rather than racing the
+// goroutine that creates it.
+func armed(t *testing.T, clk *clock.Fake) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for clk.Waiters() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the scheduler never armed a timer")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// The defect IS-05-01 test_27/28 measured: a +200 ms relative
+// activation was promoted by a 20 ms polling tick, up to one period
+// after its instant, and the tool — reading /active exactly 200 ms
+// after its PATCH — found it not yet done about half the time. The
+// scheduler now waits for the instant itself: one nanosecond before
+// it nothing has happened, at it the switch is active with the
+// requested instant as its activation_time.
+func TestARelativeActivationIsPromotedAtItsInstant(t *testing.T) {
+	tap := newLogTap()
+	b := fullBundle(t)
+	clk := clock.NewFake(time.Time{})
+	s, err := NewIS04NodeServer(tap.logger(), b, IS04NodeConfig{
+		Bind: "127.0.0.1:0", DiscoveryMode: "static", ConnectionAPIVer: "v1.2",
+		Deps: plugin.Deps{Clock: clk},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := s.connection.Store()
+	st.now = clk.Now
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go s.runActivationScheduler(ctx)
+
+	// The scheduler is idle (nothing queued) when the PATCH arrives —
+	// the order the tool produces, and the one a polling tick never
+	// had to care about.
+	id := b.Senders[0].ID
+	when := "0:200000000"
+	if _, code, err := st.applyPatch("senders", id,
+		is05.StagedSender{
+			MasterEnableField: is05.MasterEnableField{MasterEnable: true},
+			Activation: is05.Activation{
+				Mode: is05.ActivationModeScheduledRelative, RequestedTime: &when,
+			},
+		}, patchFields{MasterEnable: true}); err != nil || code != 202 {
+		t.Fatalf("stage = %d, %v", code, err)
+	}
+
+	armed(t, clk)
+	clk.Advance(200*time.Millisecond - time.Nanosecond)
+	if _, ok := st.nextDue(); !ok {
+		t.Fatal("one nanosecond early the activation must still be pending")
+	}
+	clk.Advance(time.Nanosecond)
+	tap.until(t, "scheduled activation fired")
+	if _, ok := st.nextDue(); ok {
+		t.Fatal("nothing must be pending after the instant")
+	}
+	e, err := st.get("senders", id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.mu.RLock()
+	at := e.active.Activation.ActivationTime
+	st.mu.RUnlock()
+	if at == nil || *at != is05.FormatTAINow(clk.Now()) {
+		t.Fatalf("activation_time = %v, want the instant %s", at, is05.FormatTAINow(clk.Now()))
+	}
 }
 
 // IS-08 queues scheduled re-maps the same way and rides the same
@@ -267,8 +352,10 @@ func TestSchedulerFiresAScheduledActivation(t *testing.T) {
 // them to land together.
 func TestSchedulerFiresAScheduledChannelMap(t *testing.T) {
 	tap := newLogTap()
+	clk := clock.NewFake(time.Time{})
 	s, err := NewIS04NodeServer(tap.logger(), audioBundle(), IS04NodeConfig{
 		Bind: "127.0.0.1:0", DiscoveryMode: "static",
+		Deps: plugin.Deps{Clock: clk},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -276,6 +363,7 @@ func TestSchedulerFiresAScheduledChannelMap(t *testing.T) {
 	if s.channelMapping == nil {
 		t.Fatal("the audio bundle mounts IS-08")
 	}
+	s.channelMapping.now = clk.Now
 	// One scheduled re-map, due immediately.
 	io := deriveIO(audioBundle())
 	var inID, outID string
@@ -295,9 +383,48 @@ func TestSchedulerFiresAScheduledChannelMap(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.runActivationScheduler(ctx, time.Millisecond)
+	go s.runActivationScheduler(ctx)
 
+	armed(t, clk)
+	clk.Advance(time.Nanosecond)
 	tap.until(t, "scheduled channel map fired")
+
+	// A re-map queued while the scheduler is already running re-arms
+	// it through the store's hook, the same way an IS-05 PATCH does.
+	body = cmScheduled("activate_scheduled_relative", "1:0", outID, cmRoute(0, inID, 0))
+	req = httptest.NewRequest(stdhttp.MethodPost, cmBase+"/map/activations/", strings.NewReader(body))
+	if code, out, err := s.channelMapping.handleActivationPost(req); err != nil || code != stdhttp.StatusAccepted {
+		t.Fatalf("scheduling a second re-map = %d (%+v) %v", code, out, err)
+	}
+	armed(t, clk)
+	clk.Advance(time.Second)
+	// The first fire's line is already on record and would satisfy
+	// until at once; this needs the second one.
+	untilCount(t, tap, "scheduled channel map fired", 2)
+	if _, ok := s.channelMapping.nextDue(); ok {
+		t.Fatal("nothing must be pending after the instant")
+	}
+}
+
+// untilCount blocks until substr has been logged n times.
+func untilCount(t *testing.T, tap *logTap, substr string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		got := 0
+		for _, m := range tap.snapshot() {
+			if strings.Contains(m, substr) {
+				got++
+			}
+		}
+		if got >= n {
+			return
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatalf("log line containing %q appeared %d times, want %d", substr, got, n)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
 }
 
 // An API the operator opted out of is not attached, and attaching it

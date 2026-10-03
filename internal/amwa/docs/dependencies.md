@@ -5,7 +5,8 @@ new file lands in exactly one layer; layer N may import layer < N
 only. Cross-protocol imports are forbidden outside neutral
 infrastructure (`internal/consumer/`, `internal/provider/`,
 `internal/registry/`, `internal/consumer/compliance/`,
-`internal/datastore/`, `internal/metrics/`, `internal/transport/`).
+`internal/datastore/`, `internal/metrics/`, `internal/transport/`,
+`internal/plugin/`, `internal/clock/`).
 
 This file is normative. The `depguard` golangci-lint rule + a
 `go list -deps` test in CI enforce it; reviewers reject any PR that
@@ -385,6 +386,8 @@ without breaking the layering:
 | `dhs/internal/consumer` | Consumer interface + registry | 3, 4 |
 | `dhs/internal/provider` | Provider interface + registry | 3, 4 |
 | `dhs/internal/registry` *(NEW)* | Registry interface + registry | 3, 4 |
+| `dhs/internal/plugin` | `Deps` — logger, clock, metrics, transport injected into every plugin | 2, 3 |
+| `dhs/internal/clock` | the `Clock` behind `plugin.Deps.Clock`; tests drive a `*clock.Fake` | 2, 3 |
 
 ---
 
