@@ -1,0 +1,211 @@
+---
+# What happens in the plant when a Sender changes its transport — the
+# question the 2026-10-03 FusioN blue screen asked (operator: "if the
+# Neuron updates its SDP, the registry must forward it to the FusioN?").
+# This play is the measured answer, with receipts, on the dhs plant node:
+#
+#   1. a Receiver is connected to a Sender (IS-05, by sender id + SDP);
+#   2. the Sender's multicast destination is changed through IS-05 and
+#      activated at once;
+#   3. the REGISTRY shows the Sender with a new `version` and a new SDP
+#      at manifest_href within one heartbeat          -> asserted
+#   4. a CONTROLLER subscribed to the Query WebSocket receives the
+#      change grain for that Sender                   -> asserted
+#   5. the connected RECEIVER keeps the OLD transport parameters — no
+#      spec actor re-PATCHes it; that is the controller behaviour
+#      "sender-follow" (#1246) this plant does not have yet -> asserted,
+#      as the gap it is
+#   6. the Sender is put back and the Receiver disconnected, so the
+#      play leaves the plant as it found it (run-twice = same receipt).
+#
+#   cd /root/acp-main/ansible
+#   ansible-playbook playbooks/amwa-sdp-change.yml
+#
+# Receipts: /root/amwa-validate/<ts>/sdp-change.json on the plant host.
+- name: AMWA — a Sender's transport changes; who learns
+  hosts: dhs-debian
+  gather_facts: false
+  vars:
+    dhs_bin: /usr/local/bin/dhs
+    registry: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port | default(8235) }}"
+    node_label: dhs-test-node
+    sender_label: dhs-sender-full
+    receiver_label: dhs-receiver-full
+    new_destination: 239.250.250.7
+    new_port: 5007
+    results_dir: /root/amwa-validate
+    run_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
+  tasks:
+    # By label through the Query API's basic query parameters (IS-04
+    # §"Query parameters"): the plant holds more senders than one page.
+    - name: Find the node, its Sender and its Receiver in the registry
+      ansible.builtin.uri:
+        url: "{{ registry }}/x-nmos/query/v1.3/{{ item.kind }}/?label={{ item.label }}"
+        return_content: true
+      loop:
+        - { kind: nodes, label: "{{ node_label }}" }
+        - { kind: senders, label: "{{ sender_label }}" }
+        - { kind: receivers, label: "{{ receiver_label }}" }
+      loop_control:
+        label: "{{ item.kind }}={{ item.label }}"
+      register: q
+
+    - name: Resolve the ids
+      ansible.builtin.set_fact:
+        node_id: "{{ (q.results[0].json | first).id }}"
+        sender: "{{ q.results[1].json | first }}"
+        receiver: "{{ q.results[2].json | first }}"
+
+    - name: The Sender's transport file before the change
+      ansible.builtin.uri:
+        url: "{{ sender.manifest_href }}"
+        return_content: true
+      register: sdp_before
+
+    - name: The Sender's active transport parameters before the change
+      ansible.builtin.uri:
+        url: "{{ sender.manifest_href | regex_replace('/x-nmos/node/.*$', '') }}/x-nmos/connection/v1.1/single/senders/{{ sender.id }}/active"
+        return_content: true
+      register: tx_before
+
+    - name: Original destinations and port (to put back at the end)
+      ansible.builtin.set_fact:
+        orig_destination: "{{ tx_before.json.transport_params[0].destination_ip }}"
+        orig_port: "{{ tx_before.json.transport_params[0].destination_port }}"
+        orig_destinations: "{{ tx_before.json.transport_params | map(attribute='destination_ip') | list }}"
+
+    # ---- 1. connect the Receiver to the Sender
+    - name: Connect the Receiver to the Sender (IS-05, immediate)
+      ansible.builtin.command:
+        argv: ["{{ dhs_bin }}", consumer, nmos, connect, --registry, "{{ registry }}",
+               --receiver, "{{ receiver.id }}", --sender, "{{ sender.id }}"]
+      register: connect
+      changed_when: true
+
+    - name: The Receiver's active parameters after the connect
+      ansible.builtin.uri:
+        url: "{{ sender.manifest_href | regex_replace('/x-nmos/node/.*$', '') }}/x-nmos/connection/v1.1/single/receivers/{{ receiver.id }}/active"
+        return_content: true
+      register: rx_connected
+
+    # The receiver's leg 0 must hold the sender's PRIMARY leg; until
+    # #1270 is rolled it may hold the secondary — the verdict records
+    # which, the assertion only requires one of the sender's groups.
+    - name: The Receiver took the Sender's transport
+      ansible.builtin.assert:
+        that:
+          - rx_connected.json.sender_id == sender.id
+          - rx_connected.json.transport_params[0].multicast_ip in orig_destinations
+        fail_msg: "receiver active = {{ rx_connected.json }}"
+
+    # ---- 2. a controller watches the Sender topic
+    - name: Watch the senders topic on the Query WebSocket (20 s, in the background)
+      ansible.builtin.shell: >-
+        nohup {{ dhs_bin }} consumer nmos watch --registry {{ registry }}
+        --resource /senders --duration 20s
+        > /tmp/sdp-change-watch.jsonl 2>/tmp/sdp-change-watch.err &
+      changed_when: true
+
+    - name: Let the subscription settle
+      ansible.builtin.pause:
+        seconds: 3
+
+    # ---- 3. the Sender changes its transport
+    - name: Change the Sender's multicast destination through IS-05 (immediate)
+      ansible.builtin.command:
+        argv: ["{{ dhs_bin }}", consumer, nmos, set, --registry, "{{ registry }}",
+               --sender, "{{ sender.id }}", --leg, red, --destination, "{{ new_destination }}", --port, "{{ new_port }}"]
+      register: change
+      changed_when: true
+
+    # ---- 4. the registry shows it within a heartbeat
+    - name: The registry carries the Sender with a new version
+      ansible.builtin.uri:
+        url: "{{ registry }}/x-nmos/query/v1.3/senders/{{ sender.id }}"
+        return_content: true
+      register: sender_after
+      until: sender_after.json.version != sender.version
+      retries: 6
+      delay: 2
+
+    - name: The transport file at manifest_href names the new destination
+      ansible.builtin.uri:
+        url: "{{ sender_after.json.manifest_href }}"
+        return_content: true
+      register: sdp_after
+      until: new_destination in sdp_after.content
+      retries: 3
+      delay: 2
+
+    # ---- 5. the connected Receiver did not follow
+    - name: The Receiver's active parameters after the Sender changed
+      ansible.builtin.uri:
+        url: "{{ sender.manifest_href | regex_replace('/x-nmos/node/.*$', '') }}/x-nmos/connection/v1.1/single/receivers/{{ receiver.id }}/active"
+        return_content: true
+      register: rx_after
+
+    - name: Wait for the watch to end
+      ansible.builtin.wait_for:
+        path: /tmp/sdp-change-watch.jsonl
+        search_regex: "{{ sender.id }}"
+        timeout: 25
+
+    - name: Read the watch grains
+      ansible.builtin.slurp:
+        src: /tmp/sdp-change-watch.jsonl
+      register: watch_raw
+
+    - name: Verdicts
+      ansible.builtin.set_fact:
+        verdict:
+          sender: "{{ sender.id }}"
+          receiver: "{{ receiver.id }}"
+          registry_version_before: "{{ sender.version }}"
+          registry_version_after: "{{ sender_after.json.version }}"
+          registry_sees_change: "{{ sender_after.json.version != sender.version }}"
+          sdp_before_has_new: "{{ new_destination in sdp_before.content }}"
+          sdp_after_has_new: "{{ new_destination in sdp_after.content }}"
+          controller_watch_got_grain: "{{ sender.id in (watch_raw.content | b64decode) }}"
+          receiver_on_primary_leg: "{{ rx_connected.json.transport_params[0].multicast_ip == orig_destination }}"
+          receiver_multicast_before: "{{ rx_connected.json.transport_params[0].multicast_ip }}"
+          receiver_multicast_after: "{{ rx_after.json.transport_params[0].multicast_ip }}"
+          receiver_followed: "{{ rx_after.json.transport_params[0].multicast_ip == new_destination }}"
+
+    - name: Keep the receipt
+      ansible.builtin.copy:
+        content: "{{ verdict | to_nice_json }}\n"
+        dest: "{{ results_dir }}/{{ run_ts }}/sdp-change.json"
+        mode: "0644"
+      vars:
+        ansible_become: true
+
+    - name: What happened
+      ansible.builtin.debug:
+        msg: >-
+          Sender {{ sender_label }} moved to {{ new_destination }}:{{ new_port }} —
+          registry version {{ 'CHANGED' if verdict.registry_sees_change else 'unchanged' }},
+          SDP at manifest_href {{ 'UPDATED' if verdict.sdp_after_has_new else 'stale' }},
+          controller watch {{ 'RECEIVED the grain' if verdict.controller_watch_got_grain else 'got nothing' }},
+          connected receiver {{ 'FOLLOWED' if verdict.receiver_followed else 'STALE on ' + verdict.receiver_multicast_after + ' (no sender-follow: #1246)' }}.
+
+    # ---- 6. leave the plant as found
+    - name: Put the Sender back
+      ansible.builtin.command:
+        argv: ["{{ dhs_bin }}", consumer, nmos, set, --registry, "{{ registry }}",
+               --sender, "{{ sender.id }}", --leg, red, --destination, "{{ orig_destination }}", --port, "{{ orig_port }}"]
+      changed_when: true
+
+    - name: Disconnect the Receiver
+      ansible.builtin.command:
+        argv: ["{{ dhs_bin }}", consumer, nmos, connect, --registry, "{{ registry }}",
+               --receiver, "{{ receiver.id }}", --disconnect]
+      changed_when: true
+
+    - name: The facts the play asserts
+      ansible.builtin.assert:
+        that:
+          - verdict.registry_sees_change | bool
+          - verdict.sdp_after_has_new | bool
+          - not (verdict.sdp_before_has_new | bool)
+          - verdict.controller_watch_got_grain | bool
+        fail_msg: "{{ verdict }}"
