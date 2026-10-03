@@ -1,0 +1,2 @@
+serial,model,type,firmware,hostname,red_ip,blue_ip,red_mac,blue_mac,oob_mac,senders,receivers,io_modules_fitted,io_cages,ptp_status,ptp_locked_on,nmos_registry,nmos_status,lic_uhd,lic_black_burst,lic_clean_switch,lic_frame_sync
+125061600012,FusioN6,22 - ST2110 UHD Transceiver,0x68cd783f,emsfp-a2-10-0c,10.6.40.54,10.7.40.52,40:a3:6b:a2:10:0c,40:a3:6b:a2:10:0d,40:a3:6b:a2:10:0e,2,6,4,1+2+4+6,3,e1,10.6.250.5:8080,connected,licensed,unlicensed,unlicensed,unlicensed

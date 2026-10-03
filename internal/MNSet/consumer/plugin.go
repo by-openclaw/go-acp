@@ -621,15 +621,18 @@ func (p *Plugin) startFrameRefresh(fn consumer.EventFunc) {
 	host, port := p.host, p.port
 	every := frameRefresh
 	p.mu.Unlock()
+	// On the injected clock, like the polls: a test owns when a refresh
+	// happens instead of racing one on a wall-clock ticker.
+	clk := p.Clock()
 	go func() {
 		defer close(done)
-		t := time.NewTicker(every)
+		t := clk.NewTicker(every)
 		defer t.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-t.C:
+			case <-t.C():
 				p.refreshFrame(ctx, host, port, fn)
 			}
 		}

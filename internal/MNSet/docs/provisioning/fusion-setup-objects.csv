@@ -1,0 +1,69 @@
+level,group,path,current_value,values_or_range,access,proof,note
+fusion,RED live 1,self.interfaces.e1.dhcp,True,true | false,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,RED live 1,self.interfaces.e1.static_ip,192.168.39.230/24,IPv4/prefix (used when dhcp=false),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,RED live 1,self.interfaces.e1.static_gateway,192.168.39.1,IPv4,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,RED live 1,self.interfaces.e1.vlan,0,0..4095,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,RED live 1,self.interfaces.e1.current_ip,10.6.40.54/24,,R,read,
+fusion,RED live 1,self.interfaces.e1.mac_address,40:a3:6b:a2:10:0c,,R,read,
+fusion,RED live 1,self.phy.e1.fec.scheme,none,none | rs  (values from MN SET bundle (documentation)),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",must match the switch port FEC or the link drops
+fusion,BLUE live 2,self.interfaces.e2.dhcp,True,true | false,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,BLUE live 2,self.interfaces.e2.static_ip,172.16.16.2/24,IPv4/prefix (used when dhcp=false),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,BLUE live 2,self.interfaces.e2.static_gateway,172.16.16.1,IPv4,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,BLUE live 2,self.interfaces.e2.vlan,0,0..4095,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,BLUE live 2,self.interfaces.e2.current_ip,10.7.40.52/24,,R,read,
+fusion,BLUE live 2,self.interfaces.e2.mac_address,40:a3:6b:a2:10:0d,,R,read,
+fusion,BLUE live 2,self.phy.e2.fec.scheme,none,none | rs  (values from MN SET bundle (documentation)),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",must match the switch port FEC or the link drops
+fusion,RED/BLUE,self.system.smpte_network.2022-7.class,d,a=Class A | b=Class B | d=Class D (values from MN SET bundle (documentation)),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,RED/BLUE,self.system.igmp.version,3,2 | 3,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,NMOS registry,self.diag.nmos.registry_mode,manual,manual | auto (values from MN SET bundle (documentation)),RW,"proven: unchanged PUT accepted (200), value not changed","manual: use registry_address. auto: find the registry by DNS-SD (mDNS if mdns_mode=true, else unicast DNS)"
+fusion,NMOS registry,self.diag.nmos.registry_address,10.6.250.5:8080,IPv4:port,RW,proven: write confirmed on the module,manual mode
+fusion,NMOS registry,self.diag.nmos.registry_address_2,0.0.0.0:0,IPv4:port (0.0.0.0:0 = none),RW,"proven: unchanged PUT accepted (200), value not changed","manual mode, backup"
+fusion,NMOS registry,self.diag.nmos.mdns_mode,False,true | false,RW,"proven: unchanged PUT accepted (200), value not changed",auto mode: true = mDNS
+fusion,NMOS registry,self.diag.nmos.dns_registry_service,_nmos-register._tcp.dns.nmos.tv,DNS-SD service name,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD"
+fusion,NMOS registry,self.diag.nmos.domain_name,,DNS domain,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD"
+fusion,NMOS registry,self.diag.nmos.manual_dns_server_address,0.0.0.0,IPv4,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD server"
+fusion,NMOS registry,self.diag.nmos.manual_dns_server_address_2,0.0.0.0,IPv4,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD server"
+fusion,NMOS registry,self.diag.nmos.manual_dns_server_address_3,0.0.0.0,IPv4,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD server"
+fusion,NMOS registry,self.diag.nmos.manual_dns_server_address_4,0.0.0.0,IPv4,RW,"proven: unchanged PUT accepted (200), value not changed","auto mode, unicast DNS-SD server"
+fusion,NMOS registry,self.diag.nmos.control_network,media,media | OOB (values from MN SET bundle (documentation)),RW,"proven: unchanged PUT accepted (200), value not changed",
+fusion,NMOS registry,self.diag.nmos.status,connected,,R,read,
+fusion,PTP clock input 1 (active),refclk.f2807dac-985d-11e5-8994-feff819cdc9f.domain_num,77,0..127,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",PTP domain; not read by dhs walk today (connector gap)
+fusion,PTP clock input 1 (active),refclk.f2807dac-985d-11e5-8994-feff819cdc9f.dscp,46,0..63,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",
+fusion,PTP clock input 1 (active),refclk.f2807dac-985d-11e5-8994-feff819cdc9f.vlan_id,0,0..4095,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",
+fusion,PTP clock input 1 (active),refclk.f2807dac-985d-11e5-8994-feff819cdc9f.grandmaster_id,e8-ea-6a-ff-fe-09-bb-9e,,R,read,
+fusion,PTP clock input 2,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.domain_num,77,0..127,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",PTP domain; not read by dhs walk today (connector gap)
+fusion,PTP clock input 2,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.dscp,46,0..63,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",
+fusion,PTP clock input 2,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.vlan_id,0,0..4095,RW,"proven: unchanged PUT accepted (200), value not changed (inactive input only)",
+fusion,PTP clock input 2,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.grandmaster_id,94-8e-d3-ff-ff-06-18-b1,,R,read,
+fusion,PTP,refclk.delay_req,-3,log2 interval,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,PTP,refclk.announceReceiptTimeout,3,count,RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)",
+fusion,PTP,refclk.status,3,3 = locked,R,read,
+fusion,PTP,refclk.locked_interface,e1,e1 | e2,R,read,
+fusion,Syslog,self.syslog.config.server,10.6.250.101,IPv4,RW,proven: write confirmed on the module,
+fusion,Syslog,self.syslog.config.port,1514,1..65535,RW,proven: write confirmed on the module,
+fusion,Syslog,self.syslog.config.enable,True,true | false,RW,proven: write confirmed on the module,
+fusion,SDI (all outputs),sdi.configuration.operating_bit_rate,integer,integer | fractional (manual: frame-rate family),RW,"NOT proven: management/global field, never written (a wrong value can cut the module off)","integer = 50/25 Hz family, fractional = 59.94/29.97"
+io,CH1 output (SDI 1),sdi_output[SDI 1].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH1 output (SDI 1),sdi_output[SDI 1].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH1 output (SDI 1),flows[tx ch1 flow 0 pri].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH1 output (SDI 1),flows[rx ch1 flow 0 sec].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"
+io,CH2 output (SDI 2),sdi_output[SDI 2].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH2 output (SDI 2),sdi_output[SDI 2].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH2 output (SDI 2),flows[rx ch2 flow 0 pri].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH2 output (SDI 2),flows[rx ch2 flow 0 sec].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"
+io,CH3 output (SDI 3),sdi_output[SDI 3].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH3 output (SDI 3),sdi_output[SDI 3].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH3 output (SDI 3),flows[rx ch3 flow 0 pri].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH3 output (SDI 3),flows[rx ch3 flow 0 sec].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"
+io,CH4 output (SDI 4),sdi_output[SDI 4].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH4 output (SDI 4),sdi_output[SDI 4].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH4 output (SDI 4),flows[rx ch4 flow 0 pri].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH4 output (SDI 4),flows[rx ch4 flow 0 sec].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"
+io,CH6 output (SDI 6),sdi_output[SDI 6].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH6 output (SDI 6),sdi_output[SDI 6].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH6 output (SDI 6),flows[rx ch6 flow 0 pri].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH6 output (SDI 6),flows[rx ch6 flow 0 sec].format,"4,4,16,0,9216,8192 | BT709 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"
+io,CH8 output (SDI 8),sdi_output[SDI 8].input_signal_output_mode.loss_of_input,blue,black | freeze | blue | no_signal (no freeze on UDC),RW,proven: values accepted/refused on an idle instance,what the SDI output shows when the stream is lost
+io,CH8 output (SDI 8),sdi_output[SDI 8].vpid.source,regenerated,regenerated | override,RW,proven: values accepted/refused on an idle instance,
+io,CH8 output (SDI 8),flows[rx ch8 flow 0 pri].format,"4,4,16,0,9216,8192 | BT2020 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received RED video format; set by IS-05 connect, or the format node as one object"
+io,CH8 output (SDI 8),flows[rx ch8 flow 0 sec].format,"4,4,16,0,9216,8192 | BT2020 SDR NARROW","one video format (6 codes validated together) + colorimetry BT709|BT2020|BT2100, TCS SDR|PQ|HLG, range NARROW|FULL|FULLPROTECT",RW,"proven: set by IS-05 connect (sender SDP), 2026-09-28","output format = the received BLUE video format; set by IS-05 connect, or the format node as one object"

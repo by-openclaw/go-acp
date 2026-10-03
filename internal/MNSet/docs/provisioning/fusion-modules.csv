@@ -1,0 +1,7 @@
+fusion_serial,cage,role,part_number,module_serial,sfp_type,pinout,function,channels,link,speed,sfp_temp_c
+125061600012,1,I/O module,1913052,324091100087,msa,2T,2 SDI out,"CH1 out, CH2 out (inferred)",up,25Gbps,48.0
+125061600012,2,I/O module,1913052,324091100088,msa,2T,2 SDI out,"CH3 out, CH4 out (inferred)",up,25Gbps,46.0
+125061600012,3,media RED (live 1),SFP-25GSR-85,G2610544059,N/A,,25G optic,,up,25Gbps,43.324
+125061600012,4,I/O module,1913052,324091100041,N/A,RT,1 SDI in + 1 SDI out,"CH5 in, CH6 out (inferred)",up,25Gbps,47.0
+125061600012,5,media BLUE (live 2),GSS-MPO250-SRC,M2106074571,N/A,,25G optic,,up,25Gbps,37.222
+125061600012,6,I/O module,1913052,324091100042,N/A,RT,1 SDI in + 1 SDI out,"CH7 in, CH8 out (inferred)",up,25Gbps,42.0
