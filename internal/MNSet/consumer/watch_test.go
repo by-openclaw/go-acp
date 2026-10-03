@@ -239,7 +239,11 @@ func TestWatchAFrameWithNoPresentSlot(t *testing.T) {
 func TestWatchWalksAnUnwalkedSlotOnce(t *testing.T) {
 	withPlan(t, fastPlan)
 	m := newModule(t)
-	p := connected(t, m)
+	// The test's own clock: the first poll is due a jitter after
+	// Subscribe and fires only when the clock moves, so what the module
+	// counts right after Subscribe is the walk and nothing else — on a
+	// runner of any speed.
+	p := connectedOn(t, m, clock.NewFake(time.Unix(1700000000, 0)))
 	before := m.count("GET ")
 	if err := p.Subscribe(consumer.ValueRequest{Slot: 0}, func(consumer.Event) {}); err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/plugin"
 )
@@ -136,7 +137,15 @@ func (m *module) hostPort(t *testing.T) (string, int) {
 
 func connected(t *testing.T, m *module) *Plugin {
 	t.Helper()
-	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*Plugin)
+	return connectedOn(t, m, nil)
+}
+
+// connectedOn is connected on a clock of the test's own (nil = the system
+// clock): a poll then happens when the test advances it, never behind an
+// assertion.
+func connectedOn(t *testing.T, m *module, clk clock.Clock) *Plugin {
+	t.Helper()
+	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Clock: clk}).(*Plugin)
 	host, port := m.hostPort(t)
 	if err := p.Connect(context.Background(), host, port); err != nil {
 		t.Fatalf("Connect: %v", err)
