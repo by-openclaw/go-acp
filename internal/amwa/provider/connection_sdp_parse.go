@@ -18,85 +18,94 @@ package provider
 
 import (
 	"net"
-	"strconv"
 	"strings"
 
 	"dhs/internal/amwa/codec/is05"
+	"dhs/internal/amwa/codec/sdp"
 )
 
-// sdpReceiverParams extracts the receiver-side transport parameters
-// carried by an SDP.
+// sdpReceiverLegs extracts the receiver-side transport parameters an
+// SDP carries, one set per leg, in leg order.
 //
-// Returns only the keys it could determine, so the caller merges
-// rather than replaces: an SDP that omits a source-filter says nothing
-// about source_ip, and overwriting a staged value with "" would be
-// reading absence as a decision.
-func sdpReceiverParams(sdp string) is05.TransportParams {
-	out := is05.TransportParams{}
-	var connIP string
-	var filterSource string
-
-	for _, raw := range strings.Split(sdp, "\n") {
-		line := strings.TrimRight(raw, "\r")
-		switch {
-		case strings.HasPrefix(line, "c="):
-			// c=IN IP4 <address>[/ttl[/count]]
-			f := strings.Fields(strings.TrimPrefix(line, "c="))
-			if len(f) >= 3 {
-				connIP = strings.SplitN(f[2], "/", 2)[0]
-			}
-
-		case strings.HasPrefix(line, "m="):
-			// m=<media> <port> <proto> <fmt...>
-			f := strings.Fields(strings.TrimPrefix(line, "m="))
-			if len(f) >= 2 {
-				if p, err := strconv.Atoi(strings.SplitN(f[1], "/", 2)[0]); err == nil && p > 0 {
-					out["destination_port"] = p
-				}
-			}
-
-		case strings.HasPrefix(line, "a=source-filter:"):
-			// a=source-filter: incl IN IP4 <dest> <src> [<src>...]
-			//
-			// This is the authoritative source address when present:
-			// it is what an SSM join actually filters on, so it beats
-			// anything inferred from o= (which names whoever WROTE the
-			// session description, not necessarily the transmitter).
-			f := strings.Fields(strings.TrimPrefix(line, "a=source-filter:"))
-			if len(f) >= 5 && strings.EqualFold(f[0], "incl") {
-				filterSource = f[4]
-			}
-
-		case strings.HasPrefix(line, "o=") && filterSource == "":
-			// o=<user> <sess-id> <sess-ver> IN IP4 <address>
-			f := strings.Fields(strings.TrimPrefix(line, "o="))
-			if len(f) >= 6 && net.ParseIP(f[5]) != nil {
-				filterSource = f[5]
-			}
+// Leg order is the SDP's: ST 2022-7 senders name it with
+// a=group:DUP, and without a group the media sections are the legs as
+// written (codec/sdp.Session.Legs). The caller pairs set i with the
+// receiver's leg i — a one-leg receiver takes the primary, a two-leg
+// receiver takes primary and secondary — rather than folding every
+// section into one map where the last c= won and landed on every leg
+// (issue #1270: a receiver joining the secondary group twice).
+//
+// Each set holds only the keys the SDP determined, so the caller
+// merges rather than replaces: an SDP that omits a source-filter says
+// nothing about source_ip, and overwriting a staged value with ""
+// would be reading absence as a decision.
+func sdpReceiverLegs(text string) []is05.TransportParams {
+	sess, _, err := sdp.Parse(text)
+	if err != nil || sess == nil {
+		return nil
+	}
+	// The source the session names, for legs without their own
+	// filter: a session-level a=source-filter, else o=, which names
+	// whoever wrote the description — usually the transmitter.
+	sessionSrc := ""
+	for _, a := range sess.Attributes {
+		if a.Name != "source-filter" {
+			continue
+		}
+		f := strings.Fields(a.Value)
+		if len(f) >= 5 && strings.EqualFold(f[0], "incl") {
+			sessionSrc = f[4]
+			break
 		}
 	}
+	if sessionSrc == "" && net.ParseIP(sess.Origin.Addr) != nil {
+		sessionSrc = sess.Origin.Addr
+	}
 
-	if filterSource != "" {
-		out["source_ip"] = filterSource
-	}
-	if connIP != "" {
-		// A multicast connection address is the GROUP to join; a
-		// unicast one is simply where the stream lands. IS-05 gives
-		// the two different parameters, and putting a unicast address
-		// in multicast_ip would have the receiver try to join a group
-		// that does not exist.
-		if ip := net.ParseIP(connIP); ip != nil && ip.IsMulticast() {
-			out["multicast_ip"] = connIP
-		} else {
-			out["multicast_ip"] = nil
-			out["interface_ip"] = connIP
+	legs := sess.Legs()
+	out := make([]is05.TransportParams, 0, len(legs))
+	for _, l := range legs {
+		p := is05.TransportParams{}
+		if l.Port > 0 {
+			p["destination_port"] = l.Port
 		}
-	}
-	if len(out) > 0 {
-		// An SDP arriving at all means the far end is transmitting
-		// RTP. Leaving rtp_enabled false would stage a receiver that
-		// has been told everything and will still not listen.
-		out["rtp_enabled"] = true
+		src := l.Src
+		if src == "" {
+			src = sessionSrc
+		}
+		if src != "" {
+			p["source_ip"] = src
+		}
+		if l.Dest != "" {
+			// A multicast connection address is the GROUP to join; a
+			// unicast one is simply where the stream lands. IS-05
+			// gives the two different parameters, and putting a
+			// unicast address in multicast_ip would have the receiver
+			// try to join a group that does not exist.
+			if ip := net.ParseIP(l.Dest); ip != nil && ip.IsMulticast() {
+				p["multicast_ip"] = l.Dest
+			} else {
+				p["multicast_ip"] = nil
+				p["interface_ip"] = l.Dest
+			}
+		}
+		if len(p) > 0 {
+			// An SDP arriving at all means the far end is transmitting
+			// RTP. Leaving rtp_enabled false would stage a receiver
+			// that has been told everything and will still not listen.
+			p["rtp_enabled"] = true
+		}
+		out = append(out, p)
 	}
 	return out
+}
+
+// sdpReceiverParams is the first leg of sdpReceiverLegs — what a
+// single-path receiver takes from an SDP.
+func sdpReceiverParams(text string) is05.TransportParams {
+	legs := sdpReceiverLegs(text)
+	if len(legs) == 0 {
+		return is05.TransportParams{}
+	}
+	return legs[0]
 }
