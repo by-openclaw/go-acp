@@ -73,7 +73,9 @@ func (s *server) ServeTCP(ctx context.Context, addr string) error {
 	// Goroutine to fan announces produced by the existing UDP path
 	// into every active TCP session. Hooked through s.broadcastAnnounce
 	// indirectly via the announceTap (set on the server below).
+	s.mu.Lock()
 	s.tcpRegistry = reg
+	s.mu.Unlock()
 
 	// Stop the listener when ctx fires; unblocks Accept.
 	go func() {
@@ -196,10 +198,13 @@ func (s *server) runTCPWriter(ctx context.Context, conn *net.TCPConn, send chan 
 // server-pushed MTID=0 frame between their own reply and their next
 // request.
 func (s *server) broadcastTCPAnnounce(b []byte, skipID uint64) {
-	if s.tcpRegistry == nil {
+	s.mu.Lock()
+	reg := s.tcpRegistry
+	s.mu.Unlock()
+	if reg == nil {
 		return
 	}
-	s.tcpRegistry.broadcast(b, skipID)
+	reg.broadcast(b, skipID)
 }
 
 // tcpSessionRegistry tracks live TCP sessions with per-IP caps and
