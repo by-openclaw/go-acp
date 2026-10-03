@@ -146,11 +146,13 @@ func (s *pusher) read() {
 		_, data, err := s.conn.ReadMessage(context.Background())
 		if err != nil {
 			if !s.closing.Load() {
+				s.p.Metrics().ObserveReconnect()
 				s.log.Warn("ccm: event channel lost", "err", err)
 			}
 			return
 		}
 		s.p.RecordRx()
+		s.p.Metrics().ObserveRx(len(data))
 		if err := s.handle(data); err != nil {
 			s.p.ComplianceProfile().Note(PatchUnapplied)
 			s.log.Warn("ccm: event channel out of step with the device, ending the session", "err", err)
@@ -182,6 +184,7 @@ func (s *pusher) handle(data []byte) error {
 	m, err := codec.ParseMessage(data)
 	if err != nil {
 		s.p.ComplianceProfile().Note(FrameUnreadable)
+		s.p.Metrics().ObserveDecodeError()
 		s.log.Warn("ccm: unreadable event frame", "err", err)
 		return nil
 	}
@@ -202,6 +205,7 @@ func (s *pusher) handle(data []byte) error {
 		return s.dispatch(m.Events)
 	default:
 		s.p.ComplianceProfile().Note(FrameUnreadable)
+		s.p.Metrics().ObserveDecodeError()
 		s.log.Warn("ccm: event frame of an unknown type", "type", m.Type)
 	}
 	return nil
@@ -354,11 +358,13 @@ func (s *pusher) ask(url string) (codec.Message, error) {
 		s.mu.Unlock()
 	}
 
-	if err := s.conn.WriteText(context.Background(), codec.CreateSubscription(id, url)); err != nil {
+	frame := codec.CreateSubscription(id, url)
+	if err := s.conn.WriteText(context.Background(), frame); err != nil {
 		forget()
 		return codec.Message{}, fmt.Errorf("ccm: subscribe %s: %w", url, err)
 	}
 	s.p.RecordTx()
+	s.p.Metrics().ObserveTx(len(frame), 0)
 	select {
 	case m := <-ch:
 		return m, nil
@@ -367,6 +373,7 @@ func (s *pusher) ask(url string) (codec.Message, error) {
 		return codec.Message{}, fmt.Errorf("ccm: event channel closed while subscribing to %s", url)
 	case <-s.p.Clock().After(s.answerWithin):
 		forget()
+		s.p.Metrics().ObserveTimeout()
 		return codec.Message{}, fmt.Errorf("ccm: the device did not answer the subscription to %s within %s", url, s.answerWithin)
 	}
 }
@@ -377,6 +384,7 @@ func (s *pusher) ask(url string) (codec.Message, error) {
 func (s *pusher) granted(key string, sub *pushSub, url string, m codec.Message) {
 	if m.Status != codec.StatusOK {
 		s.p.ComplianceProfile().Note(SubscriptionRefused)
+		s.p.Metrics().ObserveNAK()
 		s.log.Warn("ccm: subscription refused", "resource", url, "status", m.Status, "message", m.Text)
 		return
 	}
@@ -398,7 +406,11 @@ func (s *pusher) release(subscriptionID string) {
 	s.nextID++
 	id := s.nextID
 	s.mu.Unlock()
-	_ = s.conn.WriteText(context.Background(), codec.DeleteSubscription(id, subscriptionID))
+	frame := codec.DeleteSubscription(id, subscriptionID)
+	if s.conn.WriteText(context.Background(), frame) == nil {
+		s.p.RecordTx()
+		s.p.Metrics().ObserveTx(len(frame), 0)
+	}
 }
 
 // unsubscribe ends one Subscribe. Unknown requests are not an error:

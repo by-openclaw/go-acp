@@ -695,3 +695,74 @@ func TestAnIdleChannelIsKeptAliveByPings(t *testing.T) {
 	}
 	_ = p.Disconnect()
 }
+
+// Everything the channel does shows on the connector's metrics — what
+// --metrics-addr serves — and so does every REST request.
+func TestTheChannelAndTheRESTClientAreCounted(t *testing.T) {
+	d := newEventDevice(t)
+	p := testPluginConnected(t, d.srv)
+	rest := p.Metrics().Snapshot()
+	if rest.TxFrames == 0 || rest.RxBytes == 0 {
+		t.Fatalf("connect made REST requests and counted none: %+v", rest)
+	}
+
+	var got collector
+	if err := p.Subscribe(dhsc.ValueRequest{Path: "self"}, got.fn); err != nil {
+		t.Fatal(err)
+	}
+	d.events(codec.MsgEvents, "/self", `[{"op":"replace","path":"","value":{"a":1}}]`)
+	eventually(t, "the value", func() bool { return len(got.paths()) == 1 })
+	d.send(`not json`)
+	eventually(t, "the unreadable frame", func() bool { return p.Metrics().Snapshot().DecodeErrors == 1 })
+	snap := p.Metrics().Snapshot()
+	if snap.TxFrames != rest.TxFrames+1 || snap.TxBytes <= rest.TxBytes {
+		t.Errorf("one CreateSubscription sent, counted %d frame(s) / %d bytes more", snap.TxFrames-rest.TxFrames, snap.TxBytes-rest.TxBytes)
+	}
+	// The answer, the event and the unreadable frame.
+	if snap.RxFrames != rest.RxFrames+3 || snap.RxBytes <= rest.RxBytes {
+		t.Errorf("three frames read, counted %d", snap.RxFrames-rest.RxFrames)
+	}
+
+	// A refusal is a NAK.
+	d.mu.Lock()
+	d.answer = refuse
+	d.mu.Unlock()
+	_ = p.Subscribe(dhsc.ValueRequest{Path: "matrix.state"}, got.fn)
+	if n := p.Metrics().Snapshot().NAKs; n != 1 {
+		t.Errorf("NAKs = %d, want 1", n)
+	}
+	// The unsubscribe's DeleteSubscription is sent and counted too.
+	before := p.Metrics().Snapshot().TxFrames
+	if err := p.Unsubscribe(dhsc.ValueRequest{Path: "self"}); err != nil {
+		t.Fatal(err)
+	}
+	if after := p.Metrics().Snapshot().TxFrames; after != before+1 {
+		t.Errorf("DeleteSubscription: %d frame(s) counted", after-before)
+	}
+
+	// A channel the device drops is a reconnect to come.
+	d.mu.Lock()
+	conn := d.conn
+	d.mu.Unlock()
+	done := p.SessionDone()
+	_ = conn.Close(1001, "going away")
+	eventually(t, "the loss", func() bool { return closed(done) })
+	if n := p.Metrics().Snapshot().Reconnects; n != 1 {
+		t.Errorf("Reconnects = %d, want 1", n)
+	}
+	_ = p.Disconnect()
+}
+
+func TestASilentDeviceIsCountedAsATimeout(t *testing.T) {
+	d := newEventDevice(t)
+	d.answer = func(*eventDevice, asked) {}
+	restore := subscribeTimeout
+	subscribeTimeout = 30 * time.Millisecond
+	t.Cleanup(func() { subscribeTimeout = restore })
+	p := testPluginConnected(t, d.srv)
+	t.Cleanup(func() { _ = p.Disconnect() })
+	_ = p.Subscribe(dhsc.ValueRequest{Path: "self"}, func(dhsc.Event) {})
+	if n := p.Metrics().Snapshot().Timeouts; n != 1 {
+		t.Errorf("Timeouts = %d, want 1", n)
+	}
+}
