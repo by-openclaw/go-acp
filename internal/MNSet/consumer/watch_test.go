@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/plugin"
 )
@@ -126,8 +127,10 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	// module is made in the plugin's injected transport instead, which
 	// refuses that host at once on every platform (ADR-0016).
 	withPlan(t, fastPlan)
-	frameRefresh = 30 * time.Millisecond
-	t.Cleanup(func() { frameRefresh = 10 * time.Second }) // after Disconnect joined the loop
+	// The test owns the clock: a poll happens when it advances 40 ms (the
+	// plan's interval), a frame refresh when it advances frameRefresh.
+	// Nothing here races a wall-clock ticker.
+	clk := clock.NewFake(time.Unix(1700000000, 0))
 	mod := newModule(t)
 	modHost, _ := mod.hostPort(t)
 	mn := newMNSet(t)
@@ -137,7 +140,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	// -race, the same on every OS.
 	silent := func(list string) string { return strings.Replace(list, "10.6.40.99/24", "127.0.0.2/24", 1) }
 	mn.devices = silent(deviceList(modHost))
-	p := frameConnectedVia(t, mod, mn, 0, refuseHost{host: "127.0.0.2"})
+	p := frameConnectedOn(t, mod, mn, 0, refuseHost{host: "127.0.0.2"}, clk)
 	fn, got := collect()
 	req := consumer.ValueRequest{Slot: -1}
 	if err := p.Subscribe(req, fn); err != nil {
@@ -152,7 +155,7 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = p.Unsubscribe(consumer.ValueRequest{Slot: 1}) })
 	// values from both present slots
-	if !waitFor(t, 6*time.Second, func() bool {
+	if !tickUntil(t, clk, func() bool {
 		s := map[int]bool{}
 		for _, ev := range got() {
 			if ev.Path != "slot" {
@@ -168,7 +171,8 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	next := strings.Replace(silent(deviceList(modHost)), `"id":"00:1b:c5:00:00:01","status":"OFFLINE"`, `"id":"00:1b:c5:00:00:01","status":"ONLINE"`, 1)
 	next = strings.Replace(next, `"id":"40:a3:6b:ff:ff:ff"`, `"id":"40:a3:6b:ff:ff:fe"`, 1)
 	mn.set(next, 0)
-	if !waitFor(t, 6*time.Second, func() bool {
+	clk.Advance(frameRefresh)
+	if !tickUntil(t, clk, func() bool {
 		states := map[string]string{}
 		for _, ev := range got() {
 			if ev.Path == "slot" {
@@ -204,21 +208,13 @@ func TestWatchAllSlotsOfAFrameAndFrameRefresh(t *testing.T) {
 	if !stopped {
 		t.Error("frame refresh must stop with the last subscription")
 	}
-	// Disconnect with an active frame refresh stops it too.
-	//
-	// Subscribing needs a present slot to build a poll profile from,
-	// and at this point in the test a refresh may still be in flight —
-	// the silent module at an unroutable address holds one up for the
-	// client timeout on a host that does not refuse the connect. That
-	// is a race with the test, not a property of Disconnect, which is
-	// what this part actually checks. So wait for the subscription to
-	// become possible rather than requiring it to be possible already.
-	var serr error
-	if !waitFor(t, 6*time.Second, func() bool {
-		serr = p.Subscribe(req, fn)
-		return serr == nil
-	}) {
-		t.Fatalf("no slot became watchable: %v", serr)
+	// Disconnect with an active frame refresh stops it too. No refresh
+	// is in flight here: the last Unsubscribe joined the loop, and the
+	// clock has not moved since — so the slot table is the one the last
+	// refresh left, with two present slots, and subscribing is possible
+	// now, not eventually.
+	if err := p.Subscribe(req, fn); err != nil {
+		t.Fatalf("subscribe after the refresh loop stopped: %v", err)
 	}
 	_ = p.Disconnect()
 	p.mu.Lock()
@@ -385,4 +381,19 @@ func (r refuseHost) RoundTrip(req *stdhttp.Request) (*stdhttp.Response, error) {
 		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}
 	}
 	return stdhttp.DefaultTransport.RoundTrip(req)
+}
+
+// tickUntil advances the test's clock one poll period at a time until ok
+// holds. The bound is a count of periods, not a wall-clock budget: a slow
+// runner takes more real time per period, never fewer periods.
+func tickUntil(t *testing.T, clk *clock.Fake, ok func() bool) bool {
+	t.Helper()
+	for i := 0; i < 2000; i++ {
+		if ok() {
+			return true
+		}
+		clk.Advance(40 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
+	}
+	return ok()
 }

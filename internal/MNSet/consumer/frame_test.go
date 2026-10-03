@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/plugin"
 )
@@ -103,7 +104,15 @@ func frameConnected(t *testing.T, mod *module, mn *mnsetServer, port int) *Plugi
 // before it connects (nil = the net/http default).
 func frameConnectedVia(t *testing.T, mod *module, mn *mnsetServer, port int, rt stdhttp.RoundTripper) *Plugin {
 	t.Helper()
-	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}).(*Plugin)
+	return frameConnectedOn(t, mod, mn, port, rt, nil)
+}
+
+// frameConnectedOn is frameConnectedVia on a clock of the test's own (nil =
+// the system clock): polls and frame refreshes then happen when the test
+// advances it, not when a wall-clock ticker fires.
+func frameConnectedOn(t *testing.T, mod *module, mn *mnsetServer, port int, rt stdhttp.RoundTripper, clk clock.Clock) *Plugin {
+	t.Helper()
+	p := (&Factory{}).New(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Clock: clk}).(*Plugin)
 	p.Transport = rt
 	_, modPort := mod.hostPort(t)
 	p.SetModulePort(modPort)

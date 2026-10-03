@@ -1,0 +1,185 @@
+resource_kind,field,essence,tested_on,channel,ui_label,ui_editable,ui_values,same,values,restored
+clean_switch,clean_switch.igmp_setup_delay,,clean_switch/fb3e708e-ef8e-43e6-8dfb-40a36ba2100c,CH1,Switching Defer Time (ms):,yes,,200 kept,,yes
+clean_switch,clean_switch.mode,,clean_switch/fb3e708e-ef8e-43e6-8dfb-40a36ba2100c,CH1,Enable,yes,enabled=Enable | disabled=Disable,200 kept,enabled:402:refused ; disabled:200:ok,yes
+clean_switch,clean_switch.type,,clean_switch/fb3e708e-ef8e-43e6-8dfb-40a36ba2100c,CH1,Type:,yes,bbm | mbb,200 kept,,yes
+flows,cdis,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Single/Quad-link:,yes,single=Single | 2si=Interleaved | sqdiv=Square Division,200 kept,single:200:ok ; 2si:200:ok ; sqdiv:200:ok,yes
+flows,format.anc_flow_profile,Ancillary,flows/5edfa839-fffd-4a61-8ee5-40a36ba2100c,CH5,ANC Flow Profile:,yes,0=End of field event | 1=1ms from decoding | 2=Packet by packet,200 kept,0:200:ok ; 1:200:ok ; 2:200:ok,yes
+flows,format.aud_chan_cnt,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Nbr of SDI channels:,yes,,200 kept,,yes
+flows,format.aud_format,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Audio Format:,yes,dash-30=Uncompressed | dash-31=Compressed,200 kept,dash-30:200:ok ; dash-31:200:ok,yes
+flows,format.aud_ptime_idx,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Packet Time:,yes,0=1 ms | 1=125 μs | 2=250 μs | 3=333 μs | 5=500 μs,200 kept,0:200:ok ; 1:200:ok ; 2:200:ok ; 3:200:ok ; 5:200:ok,yes
+flows,format.format_bit_depth,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Bit Depth:,yes,10 bits | 12 bits,200 kept,,yes
+flows,format.format_code_sampling,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Sampling:,yes,4:2:2 | 4:4:4,200 kept,,yes
+flows,format.format_colorimetry,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Colorimetry:,yes,BT709 | BT2020 | BT2100,200 kept,,yes
+flows,format.format_tcs,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Transfer Characteristics:,yes,SDR | HLG | PQ,200 kept,,yes
+flows,format.sampling_format,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Color Space:,yes,YCbCr | RGB,200 kept,,yes
+flows,label,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Label:,yes,,200 kept,,yes
+flows,label,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Label:,yes,,200 kept,,yes
+flows,label,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Label:,yes,,200 kept,,yes
+flows,name,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Name:,yes,,200 kept,,yes
+flows,name,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Name:,yes,,200 kept,,yes
+flows,name,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Name:,yes,,200 kept,,yes
+flows,network.0.dst_ip_addr,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.0.dst_mac,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination MAC:,no,,not tested (read-only in MN SET),,
+flows,network.0.dst_udp_port,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination Port:,yes,,200 kept,,yes
+flows,network.0.enable,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Enable Flow:,yes,,200 kept,,yes
+flows,network.0.igmp_src_ip,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,IGMP SRC IP:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_dst_ip,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_dst_mac,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination MAC:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_dst_udp,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Destination UDP Port:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_src_ip,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_src_mac,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Source MAC:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_src_udp,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Source UDP Port:,yes,,200 kept,,yes
+flows,network.0.pkt_filter_vlan,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,VLAN:,yes,,200 kept,,yes
+flows,network.0.rtp_pt,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,RTP Payload:,yes,,200 kept,,yes
+flows,network.0.sender_type,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Sender Type:,yes,0=Narrow | 1=Wide,200 kept,0:200:ok ; 1:200:ok,yes
+flows,network.0.src_ip_addr,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.0.src_udp_port,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,Source Port:,yes,,200 kept,,yes
+flows,network.0.vlan_tag,Video,flows/fee338d3-edfe-30ba-812c-40a36ba2100c,CH1,VLAN Tag:,yes,,200 kept,,yes
+flows,network.dst_ip_addr,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.dst_ip_addr,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.dst_ip_addr,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination IP:,yes,,200 kept,,yes
+flows,network.dst_mac,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination MAC:,no,,not tested (read-only in MN SET),,
+flows,network.dst_mac,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination MAC:,no,,not tested (read-only in MN SET),,
+flows,network.dst_mac,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination MAC:,no,,not tested (read-only in MN SET),,
+flows,network.dst_udp_port,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination Port:,yes,,200 kept,,yes
+flows,network.dst_udp_port,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination Port:,yes,,200 kept,,yes
+flows,network.dst_udp_port,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination Port:,yes,,200 kept,,yes
+flows,network.enable,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Enable Flow:,yes,,200 kept,,yes
+flows,network.enable,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Enable Flow:,yes,,200 kept,,yes
+flows,network.enable,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Enable Flow:,yes,,200 kept,,yes
+flows,network.igmp_src_ip,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,IGMP SRC IP:,yes,,200 kept,,yes
+flows,network.igmp_src_ip,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,IGMP SRC IP:,yes,,200 kept,,yes
+flows,network.igmp_src_ip,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,IGMP SRC IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_ip,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_ip,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_ip,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_mac,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_mac,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_mac,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_udp,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Destination UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_udp,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Destination UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_dst_udp,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Destination UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_ip,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_ip,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_ip,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Source IP:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_mac,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Source MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_mac,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Source MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_mac,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Source MAC:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_udp,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Source UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_udp,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Source UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_src_udp,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Source UDP Port:,yes,,200 kept,,yes
+flows,network.pkt_filter_vlan,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,VLAN:,yes,,200 kept,,yes
+flows,network.pkt_filter_vlan,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,VLAN:,yes,,200 kept,,yes
+flows,network.pkt_filter_vlan,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,VLAN:,yes,,200 kept,,yes
+flows,network.rtp_pt,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,RTP Payload:,yes,,200 kept,,yes
+flows,network.rtp_pt,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,RTP Payload:,yes,,200 kept,,yes
+flows,network.rtp_pt,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,RTP Payload:,yes,,200 kept,,yes
+flows,network.sender_type,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Sender Type:,yes,0=Narrow | 1=Wide,200 kept,0:200:ok ; 1:200:ok,yes
+flows,network.src_ip_addr,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.src_ip_addr,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Source IP:,yes,,200 kept,,yes
+flows,network.src_ip_addr,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Source IP:,yes,,200 kept,,yes
+flows,network.src_udp_port,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,Source Port:,yes,,200 kept,,yes
+flows,network.src_udp_port,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,Source Port:,yes,,200 kept,,yes
+flows,network.src_udp_port,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,Source Port:,yes,,200 kept,,yes
+flows,network.vlan_tag,Ancillary,flows/dfbe9dee-efbb-1ed0-9d68-40a36ba2100c,CH1,VLAN Tag:,yes,,200 kept,,yes
+flows,network.vlan_tag,Audio,flows/33bd4ce3-6fbb-4468-9cbb-40a36ba2100c,CH1,VLAN Tag:,yes,,200 kept,,yes
+flows,network.vlan_tag,Video,flows/702e36e5-fefc-3184-91de-40a36ba2100c,CH3,VLAN Tag:,yes,,200 kept,,yes
+lldp,configuration.enable_rx,,lldp,,LLDP Rx:,yes,,200 kept,,yes
+lldp,configuration.rate,,lldp,,LLDP Tx rate:,yes,,200 kept,,yes
+port/4,host_pinout,,port/4,,BB:,no,,not tested (read-only in MN SET),,
+refclk,domain_num,,refclk/f2807dac-985d-11e5-8994-feff819cdc9f,,Domain Number:,yes,,200 kept,,yes
+refclk,dscp,,refclk/f2807dac-985d-11e5-8994-feff819cdc9f,,DSCP:,yes,,200 kept,,yes
+refclk,grandmaster_id,,refclk/f2807dac-985d-11e5-8994-feff819cdc9f,,Grand Master ID:,no,,not tested (read-only in MN SET),,
+refclk,manual_ctrl,,refclk,,Auto,yes,Auto | Manual,200 kept,,yes
+refclk,mode,,refclk,,Multicast,yes,Multicast | Hybrid | Unicast,200 kept,,yes
+refclk,selected_uuid,,refclk,,Sources 1,yes,Sources 1 | Sources 2,200 kept,,yes
+refclk,vlan_id,,refclk/f2807dac-985d-11e5-8994-feff819cdc9f,,Vlan ID:,yes,,200 kept,,yes
+sdi,configuration.operating_bit_rate,,sdi,,Bit Rate:,yes,9: fractional=Fractional | 10: integer=Integer | 11: auto=Auto,200 kept,fractional:200:ok ; integer:200:ok ; auto:200:ok,yes
+sdi_input,frame_sync_audio.audio_delay,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,Audio delay:,no,,not tested (read-only in MN SET),,
+sdi_input,frame_sync_audio.sdi_in_genlock,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,SDI input Genlock:,no,freerun=Free running source | locked=Genlocked source,not tested (read-only in MN SET),,
+sdi_input,line_offset.frame_sync,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,Enabled,yes,Enabled | Disabled,200 kept,,yes
+sdi_input,line_offset.h_offset,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,Video pixels:,yes,,200 kept,,yes
+sdi_input,line_offset.offset_mode,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,MicroSeconds units,yes,MicroSeconds units | Video lines,200 kept,,yes
+sdi_input,line_offset.usec_offset,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,uSecond units:,no,,not tested (read-only in MN SET),,
+sdi_input,line_offset.v_offset,,sdi_input/b4d2da17-360a-4396-80a9-f620c4bb3885,CH5,Video lines:,yes,,200 kept,,yes
+sdi_output,input_signal_output_mode.loss_of_input,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,SDI output when signal is lost:,yes,black=Black | freeze=Freeze | blue=Blue | no_signal=No Signal,200 kept,black:200:ok ; freeze:200:ok ; blue:200:ok ; no_signal:200:ok,yes
+sdi_output,line_offset.audio_delay,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,Audio Delay:,yes,,200 kept,,yes
+sdi_output,line_offset.frame_buffer,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,Frame Buffer:,yes,,200 kept,,yes
+sdi_output,line_offset.h_offset,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,Video pixels:,yes,,200 kept,,yes
+sdi_output,line_offset.offset_mode,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,MicroSeconds units,yes,MicroSeconds units | Video lines,200 kept,,yes
+sdi_output,line_offset.usec_offset,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,uSecond units:,no,,not tested (read-only in MN SET),,
+sdi_output,line_offset.v_offset,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,Video lines:,yes,,200 kept,,yes
+sdi_output,vpid.source,,sdi_output/b0d2da17-360a-4396-80a9-f620c4bb3885,CH1,VPID source:,yes,regenerated=Regenerated | source=Source | override=Override,200 kept,regenerated:200:ok ; source:200:ok ; override:200:ok,yes
+self/diag,connection_count,,self/diag/nmos,,Connection Count:,no,,not tested (read-only in MN SET),,
+self/diag,control_network,,self/diag/nmos,,Control Network:,yes,media=Media | OOB=Management,200 kept,change not tested (cuts in-band access),yes
+self/diag,device_visible.0,,self/diag/nmos,,Channel 1:,yes,,200 kept,,yes
+self/diag,device_visible.1,,self/diag/nmos,,Channel 2:,yes,,200 kept,,yes
+self/diag,device_visible.2,,self/diag/nmos,,Channel 3:,yes,,200 kept,,yes
+self/diag,device_visible.3,,self/diag/nmos,,Channel 4:,yes,,200 kept,,yes
+self/diag,device_visible.4,,self/diag/nmos,,Channel 5:,yes,,200 kept,,yes
+self/diag,device_visible.5,,self/diag/nmos,,Channel 6:,yes,,200 kept,,yes
+self/diag,device_visible.6,,self/diag/nmos,,Channel 7:,yes,,200 kept,,yes
+self/diag,device_visible.7,,self/diag/nmos,,Channel 8:,yes,,200 kept,,yes
+self/diag,dns.domain_name,,self/diag/dns,,Domain Name:,no,,not tested (read-only in MN SET),,
+self/diag,dns.server_address,,self/diag/dns,,Server address:,no,,not tested (read-only in MN SET),,
+self/diag,dns_registry_service,,self/diag/nmos,,DNS Registry Service:,no,,not tested (read-only in MN SET),"not in MN SET as editable; API write accepted (200, read back) 2026-10-01; restored",
+self/diag,dns_server_address,,self/diag/nmos,,Active DNS Server Addresses:,no,,not tested (read-only in MN SET),,
+self/diag,lookup.address,,self/diag/dns,,Address:,no,,not tested (read-only in MN SET),,
+self/diag,lookup.host,,self/diag/dns,,Host:,yes,,400 kept,,yes
+self/diag,lookup.name,,self/diag/dns,,Name:,no,,not tested (read-only in MN SET),,
+self/diag,manual_dns_server_address,,self/diag/nmos,,Manual DNS Server Addresses:,yes,,200 kept,change tested 2026-10-01: 10.6.250.101 -> active dns_server_addresses [10.6.250.101]; FusioN DNS lookup queries it (appends domain_name); restored 0.0.0.0,yes
+self/diag,manual_dns_server_address_2,,self/diag/nmos,,Status:,yes,,200 kept,,yes
+self/diag,manual_dns_server_address_3,,self/diag/nmos,,Status:,yes,,200 kept,,yes
+self/diag,manual_dns_server_address_4,,self/diag/nmos,,Status:,yes,,200 kept,,yes
+self/diag,mdns_mode,,self/diag/nmos,,mDNS:,yes,,200 kept,,yes
+self/diag,registry_address,,self/diag/nmos,,Registry Address:,yes,,200 kept,"change tested 2026-10-01: manual -> dhs registry 10.6.250.101:8235 registered, stayed connected 131 s (heartbeat ~5 s), evicted 9 s after leaving (12 s timeout, correct); also nmos-cpp :8110 in 4 s; restored to Cerebrum",yes
+self/diag,registry_address_2,,self/diag/nmos,,Backup Registry Address:,yes,,200 kept,"change tested: primary dead + backup Cerebrum -> failed over, connected after 21 s; restored 0.0.0.0:0",yes
+self/diag,registry_mode,,self/diag/nmos,,Auto,yes,auto=Auto | manual=Manual,200 kept,"auto:200:ok ; manual:200:ok. auto (unicast DNS-SD, mdns off, DNS 10.6.250.101, domain by-systems.arpa, SRV/PTR/TXT served) -> FusioN stays 'discovering' and sends NO DNS query (tshark, before and after NMOS agent restart): unicast DNS-SD not usable on fw 0x68cd783f; mDNS needs a host on VLAN 640 (not tested)",yes
+self/diag,uptime,,self/diag/nmos,,Uptime:,no,,not tested (read-only in MN SET),,
+self/interfaces,e1.dhcp,,self/interfaces,,DHCP:,yes,,200 kept,change tested: dhcp off + static 10.6.40.20/24 answered after 13 s; back to dhcp re-leased .54 after 14 s (controlled over BLUE). Brief CH8 impairment on each change,yes
+self/interfaces,e1.static_gateway,,self/interfaces,,Gateway:,yes,,200 kept,change tested with e1.dhcp (gateway 10.6.40.254),yes
+self/interfaces,e1.static_ip,,self/interfaces,,Primary IP Address:,yes,,200 kept,change tested with e1.dhcp (static 10.6.40.20/24),yes
+self/interfaces,e1.vlan,,self/interfaces,,VLAN Tag:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/interfaces,e2.dhcp,,self/interfaces,,DHCP:,yes,,200 kept,change tested: dhcp off + static 10.7.40.20/24 answered after 13 s; back to dhcp re-leased .52 after 15 s. RED path blinked; CH8 brief impairment,yes
+self/interfaces,e2.static_gateway,,self/interfaces,,Gateway:,yes,,200 kept,change tested with e2.dhcp (gateway 10.7.40.254),yes
+self/interfaces,e2.static_ip,,self/interfaces,,Secondary IP Address:,yes,,200 kept,change tested with e2.dhcp (static 10.7.40.20/24),yes
+self/interfaces,e2.vlan,,self/interfaces,,VLAN Tag:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/interfaces,oob.dhcp,,self/interfaces,,DHCP:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/interfaces,oob.static_gateway,,self/interfaces,,Gateway:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/interfaces,oob.static_ip,,self/interfaces,,Management IP Address:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/interfaces,oob.vlan,,self/interfaces,,VLAN Tag:,yes,,200 kept,change not tested (cuts in-band access),yes
+self/ipconfig,ctl_vlan_id,,self/ipconfig,,VLAN Tag:,no,,not tested (read-only in MN SET),,
+self/ipconfig,dhcp_enable,,self/ipconfig,,DHCP:,no,,not tested (read-only in MN SET),,
+self/ipconfig,hostname,,self/ipconfig,,Device Name:,yes,,200 kept,"change tested 2026-09-30: applied; NMOS agent restarts, node leaves the registry ~12 s and re-registers under the new name ~18 s later; restored",yes
+self/phy,e1.fec.scheme,,self/phy,,RS-FEC:,yes,,200 kept,not changed (same behaviour expected as e2: see e2),yes
+self/phy,e2.fec.scheme,,self/phy,,RS-FEC:,yes,,200 kept,"FusioN offers none|rs only. rs accepted and applied. Lab Arista DCS-7060CX-32S 25G breakout (Et20/x, Et32/x) offers Fire-code only (show interfaces error-correction: Available Fire-code; RS only on 100G ports) -> no common FEC, RS link never comes up. OFF on both ends = working (prod setting on this switch). RS needs a switch with 25G RS-FEC (CL108). restored none",yes
+self/protocols,mdns_enable,,self/protocols,,mDNS:,yes,,200 kept,,yes
+self/protocols,sap_announcement_enable,,self/protocols,,SAP Announcement:,yes,,200 kept,,yes
+self/static_route,route_1.destination,,self/static_route,,Destination:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_1.gateway,,self/static_route,,Gateway:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_2.destination,,self/static_route,,Destination:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_2.gateway,,self/static_route,,Gateway:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_3.destination,,self/static_route,,Destination:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_3.gateway,,self/static_route,,Gateway:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_4.destination,,self/static_route,,Destination:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_4.gateway,,self/static_route,,Gateway:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_5.destination,,self/static_route,,Destination:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/static_route,route_5.gateway,,self/static_route,,Gateway:,yes,,200 kept,"change tested on route_5 (dummy 10.255.255.0/24 via 10.6.40.254): applied, module stayed reachable; restored",yes
+self/syslog,config.enable,,self/syslog,,Enable:,yes,,200 kept,,yes
+self/syslog,config.port,,self/syslog,,Port:,yes,,200 kept,,yes
+self/syslog,config.server,,self/syslog,,Server:,yes,,200 kept,,yes
+self/syslog,monitoring.common.fan_speed,,self/syslog,,Fan spell event:,yes,,200 kept,,yes
+self/syslog,monitoring.common.northbound_api_event,,self/syslog,,NBAPI event:,yes,,200 kept,,yes
+self/syslog,monitoring.common.ptp_event,,self/syslog,,PTP event:,yes,,200 kept,,yes
+self/syslog,monitoring.common.rtp_timestamp_audio_event,,self/syslog,,RTA event:,yes,,200 kept,,yes
+self/syslog,monitoring.common.temp_event,,self/syslog,,Temperature event:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.dash7_fifo_error,,self/syslog,,Dash-7 FIFO:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.flow_impairment,,self/syslog,,Flow impairment:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.frame_repeat,,self/syslog,,Repeated output frame:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.frame_skipped,,self/syslog,,Skipped output frame:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.memory_pkt_error,,self/syslog,,Memory packet error:,yes,,200 kept,,yes
+self/syslog,monitoring.decap.output_flywheel,,self/syslog,,Output FlyWheel:,yes,,200 kept,,yes
+self/syslog,monitoring.encap.no_signal,,self/syslog,,No signal:,yes,,200 kept,,yes
+self/syslog,monitoring.encap.sdi_event,,self/syslog,,SDI event:,yes,,200 kept,,yes
+self/system,access_control.media.device_management,,self/system,,REST over Media:,no,,not tested (read-only in MN SET),,
+self/system,flex_port_mode,,self/system,,Management:,yes,,200 kept,change not tested (cuts in-band access),yes

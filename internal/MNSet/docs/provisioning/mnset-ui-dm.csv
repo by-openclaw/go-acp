@@ -1,0 +1,165 @@
+ui_field,ui_label,control,kind,values,min,max,pattern,html_id
+activeInterface.vlan,VLAN Tag:,input,text,,,,,ctl_vlan_id
+adminService.appSetting.logSize,Size:,input,int,,1,100,,select_size
+advanced_control.detail_enhancer,Detail enhancer:,input,int,,0,6,,
+advanced_control.temporal_noise_reduction,Temporal noise reduction:,input,int,,0,3,,
+appliedBitrate,Applied bitrate:,input,text,,,,,applied_bitrate
+bitDepth,Bit Depth:,mat-radio-group,enum,,,,,
+bitratePreset._3g,3G bitrate:,input,int,,,,,3g_bitrate
+bitratePreset.hd,HD bitrate:,input,int,,,,,hd_bitrate
+bits_per_sample,Bits per sample:,input,text,,,,,bit
+c[],,mat-checkbox,bool,,,,,name
+cleanSwitch.igmp_setup_delay,Switching Defer Time (ms):,input,text,,,,,igmp_delay
+cleanSwitch.mode,Clean Switch not licensed.,mat-radio-group,enum,enabled=Enable | disabled=Disable,,,,
+colorSpace,Color Space:,mat-radio-group,enum,,,,,
+compressionProfile,Compression profile:,input,int,,0,14,,profile-slider
+device.advancedParameter.access_control.media.device_management,REST over Media:,mat-checkbox,bool,,,,,media_enable
+device.diagNmos.connection_count,Connection Count:,input,text,,,,,connection_count
+device.diagNmos.dns_registry_service,DNS Registry Service:,input,text,,,,,dns_registry_service
+device.diagNmos.mdns_mode,mDNS:,mat-checkbox,bool,,,,,enable
+device.diagNmos.registry_address,Registry Address:,input,text,,,,,registry_address
+device.diagNmos.registry_address_2,Backup Registry Address:,input,text,,,,,registry_address_2
+device.diagNmos.registry_mode,Registry Mode:,mat-radio-group,enum,auto=Auto | manual=Manual,,,,
+device.diagNmos.uptime,Uptime:,input,text,,,,,uptime
+device.diagNmos[],mDNS:,input,text,,,,,ngModel
+device.interfaces.e1.vlan,VLAN Tag:,input,text,,,,,e1_vlan_id
+device.interfaces.e2.dhcp,DHCP:,mat-checkbox,bool,,,,,e2_dhcp
+device.interfaces.e2.static_gateway,Gateway:,input,text,,,,,second_gateway
+device.interfaces.e2.static_ip,Secondary IP Address:,input,text,,,,,
+device.interfaces.e2.subnet,Subnet Mask:,input,text,,,,,second_subnet
+device.interfaces.e2.vlan,VLAN Tag:,input,text,,,,,e2_vlan_id
+device.interfaces.oob.dhcp,DHCP:,mat-checkbox,bool,,,,,mgmt_dhcp
+device.interfaces.oob.static_gateway,Gateway:,input,text,,,,,mgmt_gateway
+device.interfaces.oob.static_ip,Management IP Address:,input,text,,,,,
+device.interfaces.oob.subnet,Subnet Mask:,input,text,,,,,mgmt_subnet
+device.interfaces.oob.vlan,VLAN Tag:,input,text,,,,,mgmt_vlan_id
+device.ipconfig.gateway,Gateway:,input,text,,,,,primary_gateway
+device.ipconfig.hostname,Device Name:,input,text,,,,,device_label
+device.ipconfig.ip_addr,Primary IP Address:,input,text,,,,,primary_ip
+device.ipconfig.subnet_mask,Subnet Mask:,input,text,,,,,primary_subnet
+device.lldp.configuration.rate,LLDP Tx rate:,input,text,,,,,rate
+device.lldpInterface,Interface:,select,enum,,,,,select_interface
+device.protocols.ember_server_port,Ember Port:,input,text,,,,,ember_port
+device.sdi.configuration.operating_bit_rate,Bit Rate:,select,enum,,,,,operatingBitRate
+deviceRefCLK.manual_ctrl,PTP TimeTransmitter:,mat-radio-group,enum,0=Auto | 1=Manual,,,,
+deviceRefCLK.mode,PTP Mode:,mat-radio-group,enum,?=Multicast | ?=Hybrid | hidden=Unicast,,,,
+deviceRefCLKSource1.domain_num,Domain Number:,input,text,,,,,domain_num
+deviceRefCLKSource1.grandmaster_id,Grand Master ID:,input,text,,,,,grand_master_id
+deviceRefCLKSource1.vlan_id,Vlan ID:,input,text,,,,,vlan_id
+deviceRefCLKSource2.domain_num,Domain Number:,input,text,,,,,domin_number_s2
+deviceRefCLKSource2.grandmaster_id,Grand Master ID:,input,text,,,,,grand_master_id_s2
+deviceRefCLKSource2.vlan_id,Vlan ID:,input,text,,,,,vlan_id2
+deviceService.isPrimarySelected,Primary/Secondary:,mat-radio-group,enum,?=Primary | ?=Secondary,,,,
+deviceService.isSelectedMosaic,,mat-radio-group,enum,?=Inputs | ?=Mosaic,,,,
+dns.dns.domain_name,Domain Name:,input,text,,,,,rate
+dns.dns.server_address,Server address:,input,text,,,,,rate
+dns.lookup.address,Address:,input,text,,,,,rate
+dns.lookup.host,Host:,input,text,,,,,rate
+dns.lookup.name,Name:,input,text,,,,,rate
+editedUser.password,Password:,input,text,,,,,password
+editedUser.username,Username:,input,text,,,,,user_name
+enable,Enable:,mat-checkbox,bool,,,,,
+filterOptions.deviceType,Type,input,text,,,,,search_type
+filterOptions.logDescription,Description,input,text,,,,,
+filterOptions.logTime,Description,input,text,,,,,
+flow.asi.ts_per_ip_frame,TS Per IP Frame:,input,text,,,,,ts_per_ip_frame
+flow.diag.asi.media_buf_base_addr,Media Buffer Addr:,input,int,,0,,,media_buf_base_addr
+flow.diag.asi.media_buf_pkt_size,Media Buffer Size:,input,int,,0,,,media_buf_pkt_size
+flow.diag.asi.playout_delay,Playout Delay:,input,int,,0,,,playout_delay
+flow.diag.asi.rtp_bypass,RTP Bypass:,select,enum,,,,,rtp_bypass
+flow.diag.fec.delay,Delay:,input,int,,0,,,delay
+flow.diag.fec.fec_buf_base_addr,FEC Buffer Addr:,input,int,,0,,,fec_buf_base_addr
+flow.diag.fec.fec_but_pool_size,FEC Buffer Size:,input,int,,0,,,fec_buf_pool_size
+flow.fec.d_value,FEC Column Value:,input,text,,,,,d_value
+flow.fec.l_value,FEC Row Value:,input,text,,,,,l_value
+flow.format.anc_flow_profile,ANC Flow Profile:,select,enum,,,,,anc_flow_profile
+flow.format.aud_format,Audio Format:,select,enum,dash-30=Uncompressed | dash-31=Compressed,,,,aud-format
+flow.format.aud_ptime_idx,Packet Time:,select,enum,,,,,aud_ptime_idx
+flow.isReplaceNameToLabel,i,mat-checkbox,bool,,,,,
+flow.name,Name:,input,text,,,,,name
+flowType,Flow type:,select,enum,,,,,select_flow_type
+format_colorimetry,Colorimetry:,select,enum,,,,,colorimetry
+format_tcs,Transfer Characteristics:,select,enum,,,,,tranfer_characteristics
+getRouteAtIndex(a).destination,Destination:,input,text,,,,,ngModel
+getRouteAtIndex(a).gateway,Gateway:,input,text,,,,,ngModel
+isChecked,chevron_right,mat-checkbox,bool,,,,,ngModel
+isLayoutMode,Templates,mat-slide-toggle,bool,,,,,mode
+isPrimary,Primary/Secondary:,mat-radio-group,enum,?=Primary | ?=Secondary,,,,
+isPrimarySelected[],,mat-radio-group,enum,id=Primary | id=Secondary,,,,
+lNBAddress[].ip,IP Address:,input,text,,,,^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$,nbapiIP
+lNBAddress[].ip_TRAP,TRAP IP:,input,text,,,,^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$,ipTrap
+lNBAddress[].p_REST,REST Port:,input,int,,0,65536,,portRest
+lNBAddress[].p_SNMP,SNMP Port:,input,int,,0,65536,,portSnmp
+lNBAddress[].p_TRAP,TRAP Port:,input,int,,0,65536,,portTrap
+lNBAddress[].p_UDP,UDP Port:,input,int,,0,65536,,portUdp
+layout,Layout:,select,enum,,,,,select_layout
+newArrayName,Array name:,input,text,,,,,id
+newArrayType,Type:,select,enum,,,,,select_virtual_type
+outputFormat,Format:,select,enum,,,,,output_format
+pid,ANC PID:,input,text,,,,,ancillary_pid
+ports[].host_pinout,SFP,select,enum,,,,,port6pinout
+ports[].plug,Port 1:,select,enum,?=SFP,,,,port1sfp
+preUploadLut.input_color_volume.colorimetry_prop,Input color volume:,select,enum,,,,,
+preUploadLut.input_color_volume.tcs_prop,Input color volume:,select,enum,,,,,
+preUploadLut.lut_type,Type:,select,enum,,,,,
+preUploadLut.output_color_volume.colorimetry_prop,Output color volume:,select,enum,,,,,
+preUploadLut.output_color_volume.tcs_prop,Output color volume:,select,enum,,,,,
+preUploadLut.size,Size:,select,enum,17=17x17x17 | 33=33x33x33 | 65=65x65x65,,,,
+presetDiscoveryRange,Discovery range:,textarea,text,,,,,discovery_range
+presetName,Name:,input,text,,,,,preset
+program.output_genlock,Signal locking method:,select,enum,,,,,signal
+program.source_selection,Select Input Type:,select,enum,,,,,select_program
+program1,Program 1:,mat-checkbox,bool,,,,,
+program2,Program 2:,mat-checkbox,bool,,,,,
+programDecoderInfo.enable,Enable:,mat-checkbox,bool,,,,,program_enable_primary
+programDecoderInfo.no_signal_mode,Signal loss behavior:,select,enum,,,,,
+programSelections[],backup,mat-checkbox,bool,,,,,
+rawRESTService.selectedArrayIndex,Array:,select,enum,,,,,arrIndex
+rawRESTService.selectedArrayName,Array:,select,enum,,,,,select_Array
+refCLKBoundaries[].domain_number,Domain Number:,input,int,,0,255,,ngModelOptions
+refCLKBoundaries[].dscp,DSCP:,input,int,,0,63,,ngModelOptions
+refCLKBoundaries[].enabled,Enabled:,mat-checkbox,bool,,,,,ngModelOptions
+refCLKBoundaries[].vlan,Vlan ID:,input,text,,,,,ngModelOptions
+requestedBitrate,Requested bitrate:,input,int,,,,,requested_bitrate
+roleEditor.name,Name:,input,text,,,,,role_name
+sampling,Sampling:,mat-radio-group,enum,,,,,
+scheme1,RS-FEC:,mat-checkbox,bool,,,,,rs-fec-3
+scheme2,RS-FEC:,mat-checkbox,bool,,,,,rs-fec-5
+sdiLossIputSignal.loss_of_input,Signal loss behavior:,select,enum,,,,,video_format
+sdiOutput.frame_sync_audio.audio_delay_ms,Audio delay:,input,int,,0,89464168,,audio_delay_enc
+sdiOutput.frame_sync_audio.sdi_in_genlock,SDI input Genlock:,select,enum,freerun=Free running source | locked=Genlocked source,,,,sdi_in_genlock
+sdiOutput.line_offset.audio_delay_ms,Audio Delay:,input,int,,0,89464168,,audio_delay
+sdiOutput.line_offset.frame_sync,Frame Sync:,mat-radio-group,enum,1=Enabled | 0=Disabled,,,,
+sdiOutput.line_offset.h_offset,Video pixels:,input,int,,0,,,h_offset
+sdiOutput.line_offset.offset_mode,Offset Mode:,mat-radio-group,enum,0=MicroSeconds units | 1=Video lines,,,,
+sdiOutput.line_offset.usec_offset,uSecond units:,input,int,,0,,,usec_offset
+sdiOutput.line_offset.v_offset,Video lines:,input,int,,0,,,v_offset
+sdpContent,No,textarea,text,,,,,sdp
+selectedChannel[],,select,enum,,,,,select_channel
+selectedFlowID,Flow:,select,enum,,,,,select_flow
+selectedFlowID[],Flow:,select,enum,=Select flow,,,,select_flow_a
+selectedIndex,Delete,mat-select,enum,,,,,select_role
+selectedItemPreset.discoveryRange,Discovery range:,textarea,text,,,,,discovery_range
+selectedItemPreset.name,Presets:,select,enum,,,,,select_preset
+selectedSource,Source Selection:,mat-radio-group,enum,0=Sources 1 | 1=Sources 2,,,,
+service.enable,Enable:,mat-checkbox,bool,,,,,enable
+service.pcr_pid,PCR PID:,input,text,,,,,pcr_pid
+service.pcr_tx_rate,PCR TX rate:,input,text,,,,,pcr_tx_rate
+service.program_pmt_pid,PMT PID:,input,text,,,,,pmt_pid
+service.service_name,Service Name:,input,text,,,,,service_name
+service.service_provider,Service Provider:,input,text,,,,,service_provider
+source,VPID source:,select,enum,,,,,vpid_selector
+tags,Tags,input,text,,,,,tags
+templateType,Mapping Template,select,enum,,,,,routing
+ts_pkt_per_ip_pkt,TS Packets(s)/ RTP:,input,int,,,,,
+umd,UMD:,select,enum,,,,,select_umd
+validRangeBitrate,Valid bitrate (range):,input,text,,,,,validBitrate
+value,,input,text,,,,,ip
+value[],,input,text,,,,,ip
+videoFormat,Video Format:,select,enum,,,,,video_format
+video_encoding.mode,Mode:,select,enum,,,,,video_encoding_mode
+video_encoding.sdp_overwrite,SDP Overwrite:,mat-checkbox,bool,,,,,
+video_encoding.type,Type:,select,enum,,,,,video_encoding_type
+video_encoding.value,Value:,input,text,,,,,encoding_value
+virtualCdis,CDIS:,select,enum,single=Single | 2si=2SI | sqdiv=SQDIV,,,,select_cdis
+virtualType,Device:,select,enum,,,,,select_virtual_type
