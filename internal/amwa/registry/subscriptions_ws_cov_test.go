@@ -557,3 +557,35 @@ func TestSubscriberAncestryFilter(t *testing.T) {
 		t.Errorf("a source outside the ancestry set was reported: %v", post["id"])
 	}
 }
+
+// A subscription with no resource_path (or "/") is bootstrapped with
+// every topic, one sync grain each; a named path gets its own topic
+// only. The per-topic path is what keeps a new subscription from
+// encoding the other five topics under the store's read lock (the
+// stall behind IS-04-02 test_22_2 / test_31 on the plant).
+func TestSubscriptionWithoutAPathSyncsEveryTopic(t *testing.T) {
+	addr, store, _ := wsFixture(t)
+	want := map[string]int{}
+	for _, c := range store.SnapshotChanges("v1.3") {
+		want["/"+c.ResourceType.Plural()+"/"]++
+	}
+	peer, _ := openSubscription(t, addr, SubscriptionRequest{ResourcePath: "/"})
+	seen := map[string]int{}
+	for range want {
+		topic, rows := grainRows(t, peer.nextGrain(t))
+		seen[topic] = len(rows)
+	}
+	if len(seen) != len(want) || seen["/nodes/"] != want["/nodes/"] || seen["/devices/"] != want["/devices/"] {
+		t.Fatalf("a path-less subscription syncs every populated topic: got %v, want %v", seen, want)
+	}
+	for _, p := range []string{"", "/", "/unknown"} {
+		if _, ok := resourceTypeForPath(p); ok {
+			t.Errorf("%q names no single type", p)
+		}
+	}
+	for _, p := range []string{"/nodes", "/devices", "/sources", "/flows", "/senders", "/receivers"} {
+		if _, ok := resourceTypeForPath(p); !ok {
+			t.Errorf("%q names a type", p)
+		}
+	}
+}

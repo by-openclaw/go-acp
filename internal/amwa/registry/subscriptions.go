@@ -545,12 +545,20 @@ func (m *SubscriptionManager) UpgradeHandler(base string) func(stdhttp.ResponseW
 		now := time.Now()
 		var order []string
 		byTopic := map[string][]Change{}
-		snapshot := m.store.SnapshotChanges(m.apiVer)
+		// Only the topic subscribed to: a subscription names one
+		// resource_path (or none, for everything), and encoding the
+		// other five topics for it was the cost that held the
+		// registration writers (see Store.SnapshotChangesFor).
+		var snapshot []Change
+		if t, ok := resourceTypeForPath(sub.ResourcePath); ok {
+			snapshot = m.store.SnapshotChangesFor(m.apiVer, t)
+		} else {
+			snapshot = m.store.SnapshotChanges(m.apiVer)
+		}
 		sub.seedAncestry(snapshot)
+		// The snapshot is already the subscription's topic (or every
+		// topic for a path-less one), so no path check here.
 		for _, c := range snapshot {
-			if !subscriptionMatches(sub.ResourcePath, c) {
-				continue
-			}
 			if !versionAllowed(c.APIVer, m.apiVer, sub.downgrade) {
 				continue
 			}
@@ -1051,6 +1059,17 @@ func (m *SubscriptionManager) removeSub(id string) {
 // resource_path. resource_path is a single collection like `/nodes`
 // or `/devices`. We don't yet support filter expressions — those
 // land alongside the RQL filter in the Query API.
+// resourceTypeForPath is the one resource type a subscription's
+// resource_path names; false for "" and "/", which mean every type.
+func resourceTypeForPath(resourcePath string) (is04.ResourceType, bool) {
+	for _, t := range []is04.ResourceType{is04.ResourceNode, is04.ResourceDevice, is04.ResourceSource, is04.ResourceFlow, is04.ResourceSender, is04.ResourceReceiver} {
+		if resourcePath == "/"+t.Plural() {
+			return t, true
+		}
+	}
+	return "", false
+}
+
 func subscriptionMatches(resourcePath string, c Change) bool {
 	want := "/" + c.ResourceType.Plural()
 	return resourcePath == "" || resourcePath == "/" || resourcePath == want
