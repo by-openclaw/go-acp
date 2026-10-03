@@ -37,6 +37,14 @@ func emptyExport() *canonical.Export {
 // listener never comes up within 2 s.
 func startProvider(t *testing.T, exp *canonical.Export) (string, func()) {
 	t.Helper()
+	addr, _, stop := startProviderWithServer(t, exp)
+	return addr, stop
+}
+
+// startProviderWithServer is startProvider for a test that has to know
+// what the provider sees — how many sessions it holds.
+func startProviderWithServer(t *testing.T, exp *canonical.Export) (string, *server, func()) {
+	t.Helper()
 	srv := newServer(plugin.Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, exp)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -59,7 +67,7 @@ func startProvider(t *testing.T, exp *canonical.Export) (string, func()) {
 		cancel()
 		t.Fatal("provider never bound")
 	}
-	return addr, func() {
+	return addr, srv, func() {
 		cancel()
 		select {
 		case <-done:
@@ -259,7 +267,7 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 			},
 		},
 	}
-	addr, stop := startProvider(t, exp)
+	addr, srv, stop := startProviderWithServer(t, exp)
 	defer stop()
 
 	// Session A — the salvo originator.
@@ -279,6 +287,13 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 		t.Fatalf("B Connect: %v", err)
 	}
 	defer func() { _ = pB.Disconnect() }()
+
+	// A Connect returns on the TCP handshake, which the kernel completes
+	// before the provider's accept loop has made a session of it. A
+	// salvo sent in that window fans out to the sessions the provider
+	// holds — one — and B, still in the backlog, gets nothing. So the
+	// test waits for what it is about to assert on: both sessions held.
+	waitForSessions(t, srv, 2)
 
 	// Count incoming cmd 04 Connected + cmd 123 GoDoneAck on both
 	// sides. Payloads captured so the test asserts dst/src correctness,
@@ -354,7 +369,9 @@ func TestIntegrationSalvoBroadcastsConnectedToAllSessions(t *testing.T) {
 	// assertions below — Linux CI hit "A received 1 cmd 04; want 3"
 	// because the streamToSender delivery was still in flight when the
 	// test snapshotted aConnected.
-	deadline := time.Now().Add(2 * time.Second)
+	// Bounded wide: the loop leaves the moment both have them, and a
+	// runner slow enough to need the room is not a failure.
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		aMu.Lock()
 		nA := len(aConnected)
@@ -449,5 +466,19 @@ func TestIntegrationReconnect(t *testing.T) {
 		if err := p.Disconnect(); err != nil {
 			t.Fatalf("Disconnect #%d: %v", i, err)
 		}
+	}
+}
+
+// waitForSessions blocks until the provider holds n sessions. A
+// condition, not a sleep: it returns the moment it is true and fails
+// only when it never becomes true.
+func waitForSessions(t *testing.T, srv *server, n int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for len(srv.Conns()) < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("the provider holds %d session(s) after 10 s; want %d", len(srv.Conns()), n)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
