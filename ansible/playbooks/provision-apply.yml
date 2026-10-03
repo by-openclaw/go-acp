@@ -1,0 +1,58 @@
+---
+# Provisioning, step 2 of 2: apply. One `dhs consumer <proto> import`
+# per device from its values file (provision-plan.yml wrote it, in the
+# dhs export format). Ensure, the Ansible way:
+#
+#   --check first      what would change, nothing sent
+#   import             only the rows the device does not already hold
+#   --check again      must be 0: that is the verification, done here,
+#                      not inside the connector
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/provision-apply.yml --check   # dry run
+#   ansible-playbook -i inventory/hosts.ini playbooks/provision-apply.yml           # apply
+#   ansible-playbook -i inventory/hosts.ini playbooks/provision-apply.yml           # -> changed=0
+#
+# A device is "changed" when dhs reports rows to apply; a converged
+# device reports `would apply 0` and the play changes nothing. A row the
+# device refuses fails the play with dhs's own message.
+#
+# -e only=lab-shuffle-01 limits the run to one device.
+
+- name: Provisioning apply — dhs import, checked before and after
+  hosts: "{{ provision_host | default('control') }}"
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    site_dir: "{{ repo }}/ansible/sites/{{ site | default('lab') }}/provisioning"
+    dhs: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    proto_of:
+      neuron-convert-hybrid: ccm
+      neuron-bridge: ccm
+      neuron-shuffle: ccm
+      neuron-view: ""
+      fusion6: mnset
+  tasks:
+    - name: Read devices.csv
+      ansible.builtin.read_csv:
+        path: "{{ site_dir }}/devices.csv"
+      register: dev
+
+    - name: Which devices have a values file
+      ansible.builtin.stat:
+        path: "{{ site_dir }}/values/{{ item.name }}.csv"
+      loop: "{{ dev.list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: values_files
+
+    - name: Apply one device at a time
+      ansible.builtin.include_tasks: provision-apply-device.yml
+      loop: "{{ values_files.results }}"
+      loop_control:
+        loop_var: entry
+        label: "{{ entry.item.name }}"
+      when:
+        - entry.stat.exists
+        - proto_of[entry.item.type] | default('') != ''
+        - only is not defined or entry.item.name == only

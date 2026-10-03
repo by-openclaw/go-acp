@@ -1,0 +1,93 @@
+---
+# Provisioning, step 1 of 2: the plan. Exports every device with dhs,
+# gives each sender leg its multicast group, and writes one values file
+# per device IN THE DHS EXPORT FORMAT — the file `dhs consumer <proto>
+# import --file` applies (provision-apply.yml).
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/provision-plan.yml
+#   ansible-playbook -i inventory/hosts.ini playbooks/provision-plan.yml   # -> changed=0
+#
+# Idempotent: the exports are re-read (a device's model is not ours to
+# keep), the plan keeps the blocks and addresses it already gave, and a
+# values file is "changed" only when its rows differ from the committed
+# one. Nothing here writes to a device: every byte that reaches one goes
+# through dhs import, in the apply play, with --check first.
+#
+# Inputs and outputs live in sites/<site>/provisioning (README.md there):
+#   site.csv devices.csv mcast-ranges.csv types/<type>.csv   -> in
+#   mcast-plan.csv values/<device>.csv                        -> out (commit them)
+#
+# Override the site with -e site=<name>, the binary with -e dhs_bin=…
+
+- name: Provisioning plan — export, plan, values
+  hosts: "{{ provision_host | default('control') }}"
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    site_dir: "{{ repo }}/ansible/sites/{{ site | default('lab') }}/provisioning"
+    exports: "{{ provision_exports | default('/root/provisioning-exports') }}"
+    dhs: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    # Which dhs protocol speaks to each device type. NeuronView has no
+    # writable protocol on its firmware yet: read with NMOS, provisioned
+    # by hand, listed in devices.csv for the multicast plan only.
+    proto_of:
+      neuron-convert-hybrid: ccm
+      neuron-bridge: ccm
+      neuron-shuffle: ccm
+      neuron-view: ""
+      fusion6: mnset
+  tasks:
+    - name: Exports directory
+      ansible.builtin.file:
+        path: "{{ exports }}"
+        state: directory
+        mode: "0755"
+
+    - name: Read devices.csv
+      ansible.builtin.read_csv:
+        path: "{{ site_dir }}/devices.csv"
+      register: dev
+
+    # One typed export per device, as the device describes itself today.
+    # The Shuffle's is 290 000 rows and a few minutes; that is the cost of
+    # a values file whose kinds, enums and bounds are the device's own.
+    - name: Export each device with dhs (csv, the import format)
+      ansible.builtin.command:
+        argv:
+          - "{{ dhs }}"
+          - consumer
+          - "{{ proto_of[item.type] }}"
+          - export
+          - "{{ item.mgmt_ip }}"
+          - --format
+          - csv
+          - --out
+          - "{{ exports }}/{{ item.name }}.csv"
+      loop: "{{ dev.list }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.type }}, {{ proto_of[item.type] | default('no protocol', true) }})"
+      when: proto_of[item.type] | default('') != ''
+      changed_when: false
+
+    - name: Plan — a group for every sender leg, stable across runs
+      ansible.builtin.command:
+        argv: [python3, "{{ playbook_dir }}/files/provision.py", plan, --site, "{{ site_dir }}", --exports, "{{ exports }}"]
+      register: plan
+      changed_when: (plan.stdout_lines[-1] | from_json).changed | int > 0
+
+    - name: Values — one file per device, the type's rows made concrete from its export
+      ansible.builtin.command:
+        argv: [python3, "{{ playbook_dir }}/files/provision.py", values, --site, "{{ site_dir }}", --exports, "{{ exports }}"]
+      register: vals
+      changed_when: (vals.stdout_lines[-1] | from_json).devices.values() | map(attribute='changed') | select('defined') | select | list | length > 0
+      failed_when: vals.rc != 0
+
+    - name: What was planned
+      ansible.builtin.debug:
+        msg: "{{ (plan.stdout_lines[-1] | from_json) | combine(vals.stdout_lines[-1] | from_json) }}"
+
+    - name: Refusals (a value outside the device's own enum / bounds — nothing was written)
+      ansible.builtin.debug:
+        msg: "{{ vals.stderr_lines }}"
+      when: vals.stderr_lines | length > 0

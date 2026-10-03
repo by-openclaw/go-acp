@@ -1,0 +1,37 @@
+ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status,plane,note
+,ccm,0,,misc.reference.ptp.domain,0,domain,int,RW-,{ptp_domain},,,0,5000,,,,,,,,,,,plant PTP domain
+,ccm,0,,misc.reference.ptp.profile,0,profile,string,RW-,{ptp_profile},,,,,,,Disabled|smpte2059-L3-e2e,16,,,,,,,
+,ccm,0,,misc.reference.ptp.slaveOnly,0,slaveOnly,bool,RW-,true,,,,,,,,,,,,,,,never grandmaster
+,ccm,0,,misc.reference.refSelection,0,refSelection,string,RW-,ptp-l3-e2e,,,,,,,Freerun|ptp-l3-e2e|Reference1|SDI01,10,,,,,,,
+,ccm,0,,misc.reference.timeSelection,0,timeSelection,string,RW-,PTP,,,,,,,Auto|PTP|NTP,3,,,,,,,system time from PTP
+,ccm,0,,misc.reference.ntp.mainServer,0,mainServer,string,RW-,{ntp_main},,,,,,,,10,,,,,,,
+,ccm,0,,misc.reference.ntp.backupServer,0,backupServer,string,RW-,{ntp_backup},,,,,,,,,,,,,,,
+,ccm,0,,misc.nmos.mode,0,mode,bool,RW-,true,,,,,,,,,,,,,,,
+,ccm,0,,misc.nmos.label,0,label,string,RW-,{nmos_label},,,,,,,,,,,,,,,
+,ccm,0,,misc.nmos.registry.discoveryMode,0,discoveryMode,string,RW-,Manual,,,,,,,None|Manual|mDNS|Unicast,6,,,,,,,
+,ccm,0,,misc.nmos.registry.addressOverride,0,addressOverride,string,RW-,{registry_host},,,,,,,,23,,,,,,,dhs plant registry
+,ccm,0,,misc.nmos.registry.portOverride,0,portOverride,int,RW-,{registry_port},,,1,65535,,,,,,,,,,,
+,ccm,0,,misc.macs.[name=Control Port Mac 1].ipAddrMethod,0,ipAddrMethod,string,RW-,{ip_mode},,,,,,,Manual|DHCP,4,,,,,,RED,
+,ccm,0,,misc.macs.[name=Control Port Mac 1].ip,0,ip,string,RW-,{red_ip},,,,,,,,9,,,,,,RED,stored while DHCP: the static address of production
+,ccm,0,,misc.macs.[name=Control Port Mac 1].netmask,0,netmask,string,RW-,{red_netmask},,,,,,,,13,,,,,,RED,
+,ccm,0,,misc.macs.[name=Control Port Mac 1].gateway,0,gateway,string,RW-,{red_gw},,,,,,,,7,,,,,,RED,
+,ccm,0,,misc.macs.[name=Control Port Mac 1].fec,0,fec,string,RW-,{fec_red},,,,,,,Off|ReedSolomon,11,,,,,,RED,
+,ccm,0,,misc.macs.[name=Control Port Mac 1].inBandControl,0,inBandControl,bool,RW-,true,,,,,,,,,,,,,,RED,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].ipAddrMethod,0,ipAddrMethod,string,RW-,{ip_mode},,,,,,,Manual|DHCP,4,,,,,,BLUE,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].ip,0,ip,string,RW-,{blue_ip},,,,,,,,9,,,,,,BLUE,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].netmask,0,netmask,string,RW-,{blue_netmask},,,,,,,,13,,,,,,BLUE,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].gateway,0,gateway,string,RW-,{blue_gw},,,,,,,,7,,,,,,BLUE,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].fec,0,fec,string,RW-,{fec_blue},,,,,,,Off|ReedSolomon,11,,,,,,BLUE,
+,ccm,0,,misc.macs.[name=Control Port Mac 2].inBandControl,0,inBandControl,bool,RW-,true,,,,,,,,,,,,,,BLUE,
+,ccm,0,,io.ip.senders.video.*.legs.0.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,9,,,,,,RED,from mcast-plan.csv
+,ccm,0,,io.ip.senders.video.*.legs.0.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,RED,
+,ccm,0,,io.ip.senders.video.*.legs.1.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,10,,,,,,BLUE,
+,ccm,0,,io.ip.senders.video.*.legs.1.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,BLUE,
+,ccm,0,,io.ip.senders.audio.*.legs.0.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,7,,,,,,RED,from mcast-plan.csv
+,ccm,0,,io.ip.senders.audio.*.legs.0.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,RED,
+,ccm,0,,io.ip.senders.audio.*.legs.1.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,7,,,,,,BLUE,
+,ccm,0,,io.ip.senders.audio.*.legs.1.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,BLUE,
+,ccm,0,,io.ip.senders.data.*.legs.0.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,9,,,,,,RED,from mcast-plan.csv
+,ccm,0,,io.ip.senders.data.*.legs.0.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,RED,
+,ccm,0,,io.ip.senders.data.*.legs.1.ip,0,ip,string,RW-,{mcast.ip},,,,,,,,10,,,,,,BLUE,
+,ccm,0,,io.ip.senders.data.*.legs.1.port,0,port,int,RW-,{mcast.port},,,0,65535,,,,,,,,,,BLUE,

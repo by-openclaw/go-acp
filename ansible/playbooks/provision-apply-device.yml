@@ -1,0 +1,77 @@
+---
+# One device of provision-apply.yml. `entry` is a stat result over a
+# devices.csv row: entry.item is the device, entry.stat its values file.
+
+- name: "{{ entry.item.name }} — what would change"
+  ansible.builtin.command:
+    argv:
+      - "{{ dhs }}"
+      - consumer
+      - "{{ proto_of[entry.item.type] }}"
+      - import
+      - "{{ entry.item.mgmt_ip }}"
+      - --file
+      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+      - --check
+  register: before
+  changed_when: false
+  check_mode: false
+
+- name: "{{ entry.item.name }} — rows to apply"
+  ansible.builtin.set_fact:
+    to_apply: "{{ before.stdout | regex_search('would apply (\\d+)', '\\1') | first | int }}"
+    failed_rows: "{{ before.stdout | regex_search('failed (\\d+)', '\\1') | first | int }}"
+
+- name: "{{ entry.item.name }} — a row the device refused in the dry run is a stop"
+  ansible.builtin.assert:
+    that: failed_rows | int == 0
+    fail_msg: "{{ before.stdout_lines }}"
+
+# The one task that changes the device. In --check mode Ansible skips
+# it and reports it as the change it would be.
+- name: "{{ entry.item.name }} — apply ({{ to_apply }} row(s))"
+  ansible.builtin.command:
+    argv:
+      - "{{ dhs }}"
+      - consumer
+      - "{{ proto_of[entry.item.type] }}"
+      - import
+      - "{{ entry.item.mgmt_ip }}"
+      - --file
+      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+  when: to_apply | int > 0
+  register: applied
+  changed_when: true
+  failed_when: applied.rc != 0 or (applied.stdout | regex_search('failed (\\d+)', '\\1') | first | int) > 0
+
+- name: "{{ entry.item.name }} — verify: nothing left to apply"
+  ansible.builtin.command:
+    argv:
+      - "{{ dhs }}"
+      - consumer
+      - "{{ proto_of[entry.item.type] }}"
+      - import
+      - "{{ entry.item.mgmt_ip }}"
+      - --file
+      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+      - --check
+  # A module may commit a document a few seconds after it answered the
+  # PUT (the FusioN's interfaces): read again until it holds the file,
+  # up to half a minute, before calling that a failure.
+  until: (after.stdout | regex_search('would apply (\\d+)', '\\1') | first | int) == 0
+  retries: 6
+  delay: 5
+  register: after
+  changed_when: false
+  when: not ansible_check_mode and to_apply | int > 0
+
+- name: "{{ entry.item.name }} — the device holds its values file"
+  ansible.builtin.assert:
+    that: (after.stdout | regex_search('would apply (\\d+)', '\\1') | first | int) == 0
+    fail_msg: "still to apply after import: {{ after.stdout_lines }}"
+    quiet: true
+  when: after is not skipped
+
+- name: "{{ entry.item.name }}"
+  ansible.builtin.debug:
+    msg: "{{ before.stdout_lines[0] }}{{ ' -> applied' if (applied is defined and applied is not skipped) else '' }}"
