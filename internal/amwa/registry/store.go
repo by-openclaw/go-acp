@@ -756,91 +756,104 @@ func (s *Store) GetReceiver(id string) (is04.Receiver, error) {
 	return v, nil
 }
 
-// SnapshotChanges returns a `sync` change per existing resource —
-// used to bootstrap a new WS subscriber. When wireVer is empty the
-// resources are marshaled in their canonical shape; when set, each
-// body is run through the matching is04.Codec so the SYNC payload
-// matches the wire shape AMWA test_31 expects (which compares
-// pre/post against the per-version fixture the test posted).
+// SnapshotChanges is every resource in the store as a SYNC change,
+// encoded at wireVer. Prefer SnapshotChangesFor when one topic is
+// wanted: this is six topics' worth of encoding.
 func (s *Store) SnapshotChanges(wireVer string) []Change {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	var out []Change
+	for _, t := range []is04.ResourceType{is04.ResourceNode, is04.ResourceDevice, is04.ResourceSource, is04.ResourceFlow, is04.ResourceSender, is04.ResourceReceiver} {
+		out = append(out, s.SnapshotChangesFor(wireVer, t)...)
+	}
+	return out
+}
+
+// SnapshotChangesFor is every resource of one type as a SYNC change,
+// encoded at wireVer.
+//
+// The lock is held only to COPY the typed values; the encoding — a
+// schema-validating codec pass per resource — runs with it released.
+// Encoding under the lock once held the plant's registration writers
+// behind every new subscription: a /senders subscription on a plant
+// of 1 700 senders encoded all 5 000 resources of every topic under
+// the read lock, and a heartbeat POST that arrived meanwhile waited
+// longer than the AMWA tool's one-second budget (IS-04-02 test_22_2 /
+// test_31 "Registration API … Connection timeout").
+func (s *Store) SnapshotChangesFor(wireVer string, t is04.ResourceType) []Change {
 	now := time.Now()
-	out := make([]Change, 0, len(s.nodes)+len(s.devices)+len(s.sources)+len(s.flows)+len(s.senders)+len(s.receivers))
-
 	codec, _ := is04.Get(wireVer)
-	encNode := func(n is04.Node) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeNode(n); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(n)
-		return b
-	}
-	encDevice := func(d is04.Device) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeDevice(d); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(d)
-		return b
-	}
-	encSource := func(v is04.Source) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeSource(v); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(v)
-		return b
-	}
-	encFlow := func(v is04.Flow) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeFlow(v); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(v)
-		return b
-	}
-	encSender := func(v is04.Sender) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeSender(v); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(v)
-		return b
-	}
-	encReceiver := func(v is04.Receiver) []byte {
-		if codec != nil {
-			if b, err := codec.EncodeReceiver(v); err == nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(v)
-		return b
-	}
 
-	for _, v := range s.nodes {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceNode, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceNode, v.ID), Post: encNode(v), Timestamp: now})
+	type item struct {
+		id     string
+		apiVer string
+		v      any
 	}
-	for _, v := range s.devices {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceDevice, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceDevice, v.ID), Post: encDevice(v), Timestamp: now})
+	s.mu.RLock()
+	var items []item
+	switch t {
+	case is04.ResourceNode:
+		items = make([]item, 0, len(s.nodes))
+		for _, v := range s.nodes {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
+	case is04.ResourceDevice:
+		items = make([]item, 0, len(s.devices))
+		for _, v := range s.devices {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
+	case is04.ResourceSource:
+		items = make([]item, 0, len(s.sources))
+		for _, v := range s.sources {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
+	case is04.ResourceFlow:
+		items = make([]item, 0, len(s.flows))
+		for _, v := range s.flows {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
+	case is04.ResourceSender:
+		items = make([]item, 0, len(s.senders))
+		for _, v := range s.senders {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
+	case is04.ResourceReceiver:
+		items = make([]item, 0, len(s.receivers))
+		for _, v := range s.receivers {
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+		}
 	}
-	for _, v := range s.sources {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSource, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceSource, v.ID), Post: encSource(v), Timestamp: now})
+	s.mu.RUnlock()
+
+	// Encode at the wire version; the codec's refusal (a resource that
+	// does not fit that minor) falls back to the canonical form, as
+	// the Query API's listing does.
+	encode := func(v any) []byte {
+		if codec != nil {
+			var b []byte
+			var err error
+			switch x := v.(type) {
+			case is04.Node:
+				b, err = codec.EncodeNode(x)
+			case is04.Device:
+				b, err = codec.EncodeDevice(x)
+			case is04.Source:
+				b, err = codec.EncodeSource(x)
+			case is04.Flow:
+				b, err = codec.EncodeFlow(x)
+			case is04.Sender:
+				b, err = codec.EncodeSender(x)
+			case is04.Receiver:
+				b, err = codec.EncodeReceiver(x)
+			}
+			if err == nil && b != nil {
+				return b
+			}
+		}
+		b, _ := json.Marshal(v)
+		return b
 	}
-	for _, v := range s.flows {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceFlow, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceFlow, v.ID), Post: encFlow(v), Timestamp: now})
-	}
-	for _, v := range s.senders {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceSender, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceSender, v.ID), Post: encSender(v), Timestamp: now})
-	}
-	for _, v := range s.receivers {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: is04.ResourceReceiver, ID: v.ID, APIVer: s.apiVerOfLocked(is04.ResourceReceiver, v.ID), Post: encReceiver(v), Timestamp: now})
+	out := make([]Change, 0, len(items))
+	for _, it := range items {
+		out = append(out, Change{Kind: ChangeSync, ResourceType: t, ID: it.id, APIVer: it.apiVer, Post: encode(it.v), Timestamp: now})
 	}
 	return out
 }
