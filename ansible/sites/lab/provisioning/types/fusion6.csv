@@ -1,7 +1,7 @@
 ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status,plane,note
 ,mnset,0,,self.diag.nmos.registry_mode,0,registry_mode,string,RW-,manual,,,,,,,auto=Auto (DNS-SD)|manual=Manual,,,,,,,,
 ,mnset,0,,self.diag.nmos.registry_address,0,registry_address,string,RW-,{registry_host}:{registry_port},,,,,,,,,,,,,,,dhs plant registry
-,mnset,0,,self.diag.nmos.registry_address_2,0,registry_address_2,string,RW-,{registry_backup},,,,,,,,,,,,,,,easy-nmos
+,mnset,0,,self.diag.nmos.registry_address_2,0,registry_address_2,string,RW-,{registry_backup},,,,,,,,,,,,,,,second slot = the same plant registry (no failover elsewhere)
 ,mnset,0,,self.diag.nmos.mdns_mode,0,mdns_mode,bool,RW-,false,,,,,,,,,,,,,,,
 ,mnset,0,,refclk.f2807dac-985d-11e5-8994-feff819cdc9f.domain_num,0,domain_num,int,RW-,{ptp_domain},,,0,127,,,,,,,,,,RED,PTP RED
 ,mnset,0,,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.domain_num,0,domain_num,int,RW-,{ptp_domain},,,0,127,,,,,,,,,,BLUE,PTP BLUE

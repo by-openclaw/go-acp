@@ -5,7 +5,7 @@ ptp_domain,77,plant PTP domain (both planes)
 ptp_profile,smpte2059-L3-e2e,SMPTE ST 2059-2 L3 end-to-end
 registry_host,10.6.250.101,dhs NMOS registry (mirrored to Cerebrum 10.6.250.5:8080)
 registry_port,8235,
-registry_backup,10.6.250.104:8110,easy-nmos / nmos-cpp (FusioN takes a backup registry)
+registry_backup,10.6.250.101:8235,the plant registry again: every device registers on ONE registry (operator 2026-10-03); the FusioN requires a second slot and a backup elsewhere made it fail over on a registry restart and never come back
 syslog_host,10.6.250.101,Promtail RFC 5424 input
 syslog_port,1514,
 dns_primary,,no DNS on the media planes: empty = leave the device value
