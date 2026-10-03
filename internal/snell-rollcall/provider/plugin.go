@@ -412,7 +412,10 @@ func (p *Provider) serveConn(conn net.Conn) {
 		cfg.Intercept = relays.intercept
 	}
 
-	l := session.NewLink(conn, cfg, p.deps)
+	// Registered before the first byte is read: every handler looks the
+	// link up here, and a GetDevInfo dispatched before this entry existed
+	// was dropped on the floor, leaving the client to its timeout.
+	l := session.NewIdleLink(conn, cfg, p.deps)
 
 	p.mu.Lock()
 	p.links[l] = &linkState{
@@ -424,6 +427,7 @@ func (p *Provider) serveConn(conn net.Conn) {
 		relays:     relays,
 	}
 	p.mu.Unlock()
+	l.Start()
 
 	// Say we are here, and keep saying it.
 	//

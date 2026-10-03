@@ -61,12 +61,27 @@ type Link struct {
 	resyncs  atomic.Uint64
 }
 
-// NewLink wraps an established connection.
+// NewLink wraps an established connection and starts reading from it.
 //
 // The caller owns the dial and keeps ownership of nothing else: Close shuts
 // the connection down. Deps supplies the logger, clock and metrics, so a Link
 // cannot read the wall clock or invent a counter set of its own.
 func NewLink(conn net.Conn, cfg Config, deps plugin.Deps) *Link {
+	l := NewIdleLink(conn, cfg, deps)
+	l.Start()
+	return l
+}
+
+// NewIdleLink wraps an established connection without reading from it until
+// Start is called.
+//
+// A server that keeps state per link registers the link first and starts it
+// second. With the reader started in the constructor, a client's first
+// message could be dispatched before the handler knew the link, and the
+// handler, finding no state for it, answered nothing: the client sat through
+// its whole timeout and the next connection worked. Measured on a loaded
+// runner, where that first GetDevInfo arrived inside the window.
+func NewIdleLink(conn net.Conn, cfg Config, deps plugin.Deps) *Link {
 	deps = deps.WithDefaults()
 
 	l := &Link{
@@ -92,10 +107,15 @@ func NewLink(conn net.Conn, cfg Config, deps plugin.Deps) *Link {
 		remote: codec.Broadcast(),
 	}
 	l.blind = newChannel("blind", l.clk, cfg.replyTimeout(), cfg.maxStrikes())
+	return l
+}
 
+// Start begins reading from the connection. It is called once, by NewLink or
+// by the caller of NewIdleLink once the link is registered wherever its
+// handler will look for it.
+func (l *Link) Start() {
 	l.wg.Add(1)
 	go l.readLoop()
-	return l
 }
 
 // LocalAddress returns our address on this link.
