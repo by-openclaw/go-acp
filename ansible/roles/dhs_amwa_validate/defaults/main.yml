@@ -205,8 +205,11 @@ dhs_amwa_validate_mock_registry_port: 5102
 #   enabled: false + note          suites we cannot yet drive here
 dhs_amwa_validate_suites:
   # ---- node scope, plant node :18080 ----
+  # 62 since v0.32.0: test_27/28's "activation later than expected"
+  # warnings became passes once a scheduled activation fired at its
+  # instant (#1251).
   - { id: IS-05-01, scope: node, target: node,
-      rows: [{ver: v1.2}], baseline_pass: 60, baseline_cnt: 0 }
+      rows: [{ver: v1.2}], baseline_pass: 62, baseline_cnt: 0 }
   # baseline 55: historically the tool's mux-SDP round (test_18)
   # returned MANUAL(warn_sdp_untested) because the MP2T receiver's
   # media_types[0] had no tool SDP template; the fixture now leads
@@ -383,10 +386,11 @@ dhs_amwa_validate_suites:
   # scores ONE Query minor and ONE Connection minor per run, so each
   # minor is its own entry, named by `label` so the receipts of one
   # suite id do not overwrite each other (<SUITE>-<label>.json).
-  # Baselines: IS-04-04 5/5 and IS-05-03 4/4 at every minor are the
-  # committed 2026-09-17 evidence (results-controller/); the BCP
-  # controller suites keep their first-fleet-run numbers, the v1.0 /
-  # v1.2 twins start at 0 and the fleet fills them.
+  # Baselines from the 2026-10-04 fleet run on v0.32.0: IS-04-04 4/4
+  # (test_01's DNS-SD round is disabled in multicast mode), IS-05-03
+  # 4/4 and BCP-007-03-02 4/4 at every minor, BCP-006-01-02 5/5 at
+  # every minor — the TR-08 counterpart is identified from the
+  # sender's SDP (#1253 closed by that run).
   - { id: IS-04-04, scope: controller, target: node, window: facade, label: query-v1.3,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3}],
@@ -427,12 +431,12 @@ dhs_amwa_validate_suites:
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.2}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 5, baseline_cnt: 0 }
   - { id: BCP-006-01-02, scope: controller, target: node, window: facade, label: conn-v1.0,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.0}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 5, baseline_cnt: 0 }
   - { id: BCP-007-03-02, scope: controller, target: node, window: facade, label: conn-v1.1,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
@@ -442,9 +446,9 @@ dhs_amwa_validate_suites:
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.2}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 4, baseline_cnt: 0 }
   - { id: BCP-007-03-02, scope: controller, target: node, window: facade, label: conn-v1.0,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},
              {host: null, port: null, ver: v1.0}],
-      baseline_pass: 0, baseline_cnt: 0 }
+      baseline_pass: 4, baseline_cnt: 0 }

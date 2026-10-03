@@ -48,8 +48,10 @@
 # questions to 127.0.0.1:{{ dhs_amwa_validate_facade_port }} (the
 # testquestion row) and answers land on its answer_uri; the facade's
 # outbound legs reach the mock registry + mock node on the same
-# loopback. --api-ver pins the Query walk to the suites' v1.3 query
-# row (IS-04-04 test_02 asserts the requested version).
+# loopback. --api-ver pins the Query walk to the entry's query row —
+# its second row — because IS-04-04 test_02 asserts that the controller
+# used the Query API at the minor under test; one fixed v1.3 scored
+# 3/4 at every other minor once the catalogue carried them (#1254).
 - name: Start the facade CuT
   ansible.builtin.command: >-
     docker run -d --name {{ dhs_amwa_validate_facade_container }}
@@ -60,7 +62,7 @@
     consumer nmos facade
     --bind 0.0.0.0:{{ dhs_amwa_validate_facade_port }}
     --registry http://127.0.0.1:{{ dhs_amwa_validate_mock_registry_port }}
-    --api-ver v1.3
+    --api-ver {{ (suite.rows[1].ver | default('v1.3')) if (suite.rows | length) > 1 else 'v1.3' }}
   changed_when: true
 
 # The facade's only route is the question POST — a GET answering 405
