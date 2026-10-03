@@ -77,35 +77,13 @@ services:
   # ---------------------------------------------------------------
   # The AMWA NMOS Testing tool — the arbiter for OUR implementations.
   #
-  # The image's default CMD runs the Testing Façade (the semi-automatic
-  # controller harness). We want nmos-test.py, which serves the web UI
-  # on 5000 AND the POST /api endpoint the conformance play drives.
-  #
-  # dbus + avahi first: the tool's own DNS-SD tests need a working mDNS
-  # responder inside the container, and the cascade-timing rounds
-  # (test_05/15/16) are the ones that expose whether discovery is
-  # handled by a real daemon or by a polling fallback.
-  # ---------------------------------------------------------------
-  nmos-testing:
-    image: {{ dhs_amwa_image_testing }}
-    container_name: nmos-testing
-    hostname: nmos-testing
-    entrypoint:
-      - /bin/bash
-      - -c
-      - >-
-        mkdir -p /run/dbus &&
-        (dbus-daemon --system --fork --nopidfile || true) &&
-        (avahi-daemon --no-chroot --daemonize || true) &&
-        exec python3 /home/nmos-testing/nmos-test.py
-    networks:
-      nmos: {}
-    ports:
-      - "{{ dhs_amwa_port_testing_ui }}:5000"
-      - "{{ dhs_amwa_port_testing_mocks }}:{{ dhs_amwa_port_testing_mocks }}"
-    depends_on:
-      - nmos-virtnode
-    restart: {{ dhs_amwa_restart_policy }}
+  # The AMWA testing tool is NOT a service of this stack. The conformance
+  # role (dhs_amwa_validate, tooling.yml) owns that container: it runs
+  # on the HOST network for the mDNS rounds, mounts the host's dbus,
+  # and is pinned to the image the gate asserts. A second definition
+  # here once recreated it on the bridge with the stock image under the
+  # gate's feet, and the next sweep failed its mDNS tests and stopped in
+  # preflight (issues #1276, #1278). One owner.
 
 networks:
   nmos:

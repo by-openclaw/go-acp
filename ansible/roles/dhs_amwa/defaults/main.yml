@@ -29,12 +29,9 @@ dhs_amwa_project: dhs-amwa
 # delta, which is also how a new BCP-008 revision gets adopted on
 # purpose instead of by surprise.
 dhs_amwa_image_nmos_cpp: "rhastie/nmos-cpp:latest"
-# The testing tool image is the one the conformance gate pins
-# (dhs_amwa_validate_tool_image): a local build of AMWA nmos-testing
-# with its spec-cache fix. The stock tag here once recreated the
-# container under the gate's feet, and the next sweep stopped in
-# preflight (issue #1276). Its build recipe is that issue's second half.
-dhs_amwa_image_testing: "nmos-testing:cachefix"
+# The AMWA testing tool is the conformance role's container
+# (dhs_amwa_validate_tool_image), not this stack's — see the compose
+# template.
 
 # The address the reference implementations ADVERTISE.
 #

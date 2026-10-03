@@ -55,7 +55,6 @@
   failed_when: false
   loop:
     - "{{ dhs_amwa_image_nmos_cpp }}"
-    - "{{ dhs_amwa_image_testing }}"
 
 - name: Fetch the missing images
   ansible.builtin.command:
@@ -113,19 +112,15 @@
   retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
   delay: 5
 
-- name: Wait for the testing tool to answer
+# The testing tool is the conformance role's container (tooling.yml),
+# not this stack's: it is reported when present and never waited for.
+- name: Is the testing tool there
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ dhs_amwa_port_testing_ui }}/"
-    status_code: [200]
+    status_code: [200, -1]
   register: dhs_amwa_tool
-  until: dhs_amwa_tool is succeeded
-  retries: "{{ (dhs_amwa_health_timeout | int / 5) | round | int }}"
-  delay: 5
+  failed_when: false
 
-# A registry that answers but holds nothing has not proved the two
-# reference implementations found each other. The virtual node
-# registering is the real readiness signal, and it is also the first
-# thing that breaks if the bridge stops carrying multicast.
 - name: Confirm the reference node registered with the reference registry
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ dhs_amwa_port_registry_http }}/x-nmos/query/v1.3/nodes"
@@ -147,5 +142,5 @@
       registry http://{{ ansible_host }}:{{ dhs_amwa_port_registry_http }}
       (ws :{{ dhs_amwa_port_registry_ws }}),
       node http://{{ ansible_host }}:{{ dhs_amwa_port_node_http }},
-      testing tool http://{{ ansible_host }}:{{ dhs_amwa_port_testing_ui }};
+      testing tool {{ 'http://' + ansible_host + ':' + (dhs_amwa_port_testing_ui | string) if (dhs_amwa_tool.status | default(-1)) == 200 else 'absent (amwa-validate*.yml creates it)' }};
       {{ dhs_amwa_nodes.json | default([]) | length }} node(s) registered.
