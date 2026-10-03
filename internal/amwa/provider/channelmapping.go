@@ -949,6 +949,13 @@ func (s *IS08ChannelMappingServer) releaseLockLocked(id string) {
 	}
 }
 
+// setOnSchedule installs the scheduler's hook under the lock.
+func (s *IS08ChannelMappingServer) setOnSchedule(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onSchedule = fn
+}
+
 // nextDue is the earliest instant a queued activation is waiting for.
 func (s *IS08ChannelMappingServer) nextDue() (time.Time, bool) {
 	s.mu.RLock()
