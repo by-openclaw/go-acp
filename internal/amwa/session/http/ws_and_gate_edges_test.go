@@ -114,6 +114,9 @@ func TestASyncGrainLargerThanTheServedCapIsRead(t *testing.T) {
 			return
 		}
 		_, err = c.ReadText()
+		// Refused at the frame header: close, so the peer's write of
+		// the rest fails at once instead of filling the socket.
+		_ = c.Close()
 		refused <- err
 	}))
 	ts := httptest.NewServer(s.MuxHandler())
@@ -130,9 +133,14 @@ func TestASyncGrainLargerThanTheServedCapIsRead(t *testing.T) {
 	if string(got) != grain {
 		t.Fatalf("grain of %d bytes came back as %d", len(grain), len(got))
 	}
-	if err := client.SendText([]byte(grain)); err != nil {
-		t.Fatalf("send: %v", err)
-	}
+	// The served side refuses at the header and closes; this write
+	// then fails part-way or lands whole, depending on the kernel's
+	// buffers — either is right, the verdict is the served side's.
+	sent := make(chan struct{})
+	go func() {
+		defer close(sent)
+		_ = client.SendText([]byte(grain))
+	}()
 	select {
 	case err := <-refused:
 		if err == nil || !strings.Contains(err.Error(), "exceeds cap") {
@@ -140,6 +148,11 @@ func TestASyncGrainLargerThanTheServedCapIsRead(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the served side never answered the oversized frame")
+	}
+	select {
+	case <-sent:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the subscriber's write did not end after the served side closed")
 	}
 }
 
