@@ -1,8 +1,33 @@
 ---
+# A container guest sets its name in /etc/hostname and with hostname(1):
+# systemd-hostnamed may not be able to run inside an unprivileged LXC at
+# all (dhs-tools: "Transport endpoint is not connected"), and the hostname
+# module's strategies all go through it on a systemd host (ansible-core
+# 2.18 maps 'debian' to systemd too), failing on D-Bus even when there is
+# nothing to change. VMs and bare metal keep the module.
 - name: "hostname = {{ fleet_hostname }}"
   ansible.builtin.hostname:
     name: "{{ fleet_hostname }}"
   notify: restart avahi
+  when: ansible_virtualization_type | default('') != 'lxc'
+
+- name: "/etc/hostname = {{ fleet_hostname }} (container guest)"
+  ansible.builtin.copy:
+    dest: /etc/hostname
+    content: "{{ fleet_hostname }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart avahi
+  when: ansible_virtualization_type | default('') == 'lxc'
+
+- name: "running hostname = {{ fleet_hostname }} (container guest)"
+  ansible.builtin.command:
+    argv: [hostname, "{{ fleet_hostname }}"]
+  notify: restart avahi
+  when:
+    - ansible_virtualization_type | default('') == 'lxc'
+    - ansible_hostname != fleet_hostname
 
 - name: /etc/hosts maps 127.0.1.1 to the fleet name
   ansible.builtin.lineinfile:
