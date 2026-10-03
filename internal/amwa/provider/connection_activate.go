@@ -82,9 +82,14 @@ func (s *connectionStore) applyPatch(kind, id string, patch is05.StagedSender, p
 		// leaving transport_params untouched accepts a connection the
 		// receiver will not make (IS-05-02 test_18).
 		if !e.isSender && tf.Data != nil && *tf.Data != "" {
-			derived := sdpReceiverParams(*tf.Data)
+			// Leg i takes media section i (ST 2022-7 DUP order); a
+			// leg the SDP does not describe keeps what it had.
+			legs := sdpReceiverLegs(*tf.Data)
 			for i := range merged.TransportParams {
-				for k, v := range derived {
+				if i >= len(legs) {
+					break
+				}
+				for k, v := range legs[i] {
 					// Only parameters this endpoint actually
 					// publishes. An SDP field with no matching
 					// transport param is essence description, not
