@@ -1,0 +1,23 @@
+ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status,plane,note
+,mnset,0,,self.diag.nmos.registry_mode,0,registry_mode,string,RW-,manual,,,,,,,auto=Auto (DNS-SD)|manual=Manual,,,,,,,,
+,mnset,0,,self.diag.nmos.registry_address,0,registry_address,string,RW-,{registry_host}:{registry_port},,,,,,,,,,,,,,,dhs plant registry
+,mnset,0,,self.diag.nmos.registry_address_2,0,registry_address_2,string,RW-,{registry_backup},,,,,,,,,,,,,,,easy-nmos
+,mnset,0,,self.diag.nmos.mdns_mode,0,mdns_mode,bool,RW-,false,,,,,,,,,,,,,,,
+,mnset,0,,refclk.f2807dac-985d-11e5-8994-feff819cdc9f.domain_num,0,domain_num,int,RW-,{ptp_domain},,,0,127,,,,,,,,,,RED,PTP RED
+,mnset,0,,refclk.f3807dac-985d-11e5-8994-feff819cdc9f.domain_num,0,domain_num,int,RW-,{ptp_domain},,,0,127,,,,,,,,,,BLUE,PTP BLUE
+,mnset,0,,self.syslog.config.enable,0,enable,bool,RW-,true,,,,,,,,,,,,,,,
+,mnset,0,,self.syslog.config.server,0,server,ipaddr,RW-,{syslog_host},,,,,,,,,,,,,,,Promtail RFC 5424
+,mnset,0,,self.syslog.config.port,0,port,int,RW-,{syslog_port},,,1,65535,,,,,,,,,,,
+,mnset,0,,self.interfaces.e1.dhcp,0,dhcp,bool,RW-,{dhcp_bool},,,,,,,,,,,,,,RED,
+,mnset,0,,self.interfaces.e1.static_ip,0,static_ip,string,RW-,{red_cidr},,,,,,,,,,,,,,RED,stored while DHCP
+,mnset,0,,self.interfaces.e1.static_gateway,0,static_gateway,ipaddr,RW-,{red_gw},,,,,,,,,,,,,,RED,
+,mnset,0,,self.phy.e1.fec.scheme,0,scheme,string,RW-,{fec_red},,,,,,,none=off|rs=RS-FEC,,,,,,,RED,lab 25G: none
+,mnset,0,,self.interfaces.e2.dhcp,0,dhcp,bool,RW-,{dhcp_bool},,,,,,,,,,,,,,BLUE,
+,mnset,0,,self.interfaces.e2.static_ip,0,static_ip,string,RW-,{blue_cidr},,,,,,,,,,,,,,BLUE,
+,mnset,0,,self.interfaces.e2.static_gateway,0,static_gateway,ipaddr,RW-,{blue_gw},,,,,,,,,,,,,,BLUE,
+,mnset,0,,self.phy.e2.fec.scheme,0,scheme,string,RW-,{fec_blue},,,,,,,none=off|rs=RS-FEC,,,,,,,BLUE,
+,mnset,0,,self.ipconfig.hostname,0,hostname,string,RW-,{hostname},,,,,,,,,,,,,,,
+,mnset,0,,sdi.configuration.operating_bit_rate,0,operating_bit_rate,string,RW-,integer,,,,,,,fractional=Fractional|integer=Integer|auto=Auto,,,,,,,,
+,mnset,0,,sdi_output.[label=SDI {ch}].input_signal_output_mode.loss_of_input,0,CH1 · SDI 1 · input_signal_output_mode.loss_of_input,string,RW-,blue,,,,,,,black=Black|freeze=Freeze|blue=Blue|no_signal=No Signal,,,,,,,,the channels our hardware uses
+,mnset,0,,sdi_output.[label=SDI {ch}].vpid.source,0,CH1 · SDI 1 · vpid.source,string,RW-,regenerated,,,,,,,regenerated=Regenerated|source=Source|override=Override,,,,,,,,
+,mnset,0,,sdi_output.[label=SDI {ch}].color_bar,0,CH1 · SDI 1 · color_bar,bool,RW-,false,,,,,,,,,,,,,,,
