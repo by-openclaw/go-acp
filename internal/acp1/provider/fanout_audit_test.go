@@ -38,8 +38,11 @@ func TestFanout_32Sessions_NoHeadOfLineBlocking(t *testing.T) {
 		t.Cleanup(func() { _ = c.Close() })
 	}
 
-	// Allow the server to register all sessions.
-	time.Sleep(100 * time.Millisecond)
+	// Every consumer must be a session before the first announce, or it
+	// simply was not there for the ones it "missed". A sleep stood here
+	// and on a loaded runner 31 sessions took longer than it: the
+	// registry is asked instead.
+	waitForSessions(t, s, consumers)
 
 	// Mark consumer 0 as the slow one. Others read continuously and
 	// count the announces they receive.
@@ -227,4 +230,23 @@ func asNetErr(err error, target *net.Error) bool {
 		break
 	}
 	return false
+}
+
+// waitForSessions blocks until the server holds n TCP sessions: a
+// condition, not a sleep. It fails only when that never happens.
+func waitForSessions(t *testing.T, s *server, n int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		s.mu.Lock()
+		reg := s.tcpRegistry
+		s.mu.Unlock()
+		if reg != nil && reg.activeSessions() >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the server holds fewer than %d sessions after 10 s", n)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
