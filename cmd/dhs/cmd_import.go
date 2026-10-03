@@ -47,7 +47,7 @@ func runImport(ctx context.Context, args []string) error {
 	fs.Usage = verbUsageFn(fs, helpImport) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	file := fs.String("file", "", "snapshot file (.json, .yaml, .csv)")
-	dry := fs.Bool("dry-run", false, "validate and list would-write actions without sending")
+	dry := fs.Bool("dry-run", false, "validate and list would-write actions without sending (same as --check)")
 	slot := fs.Int("slot", -1, "apply only this slot (-1 = all slots in snapshot)")
 
 	// Selective-import filters (issue #45). --id and --path are
@@ -73,14 +73,21 @@ func runImport(ctx context.Context, args []string) error {
 	// descriptor (matrix identity + behavior); absent = live descriptor.
 	xpointPath := fs.String("xpoint", "", "crosspoint CSV to converge (dest,srce,levels — levels \"0\" on tree matrices)")
 	matrixPath := fs.String("matrix", "", "matrix descriptor CSV from export (-matrix.csv); absent = live walked descriptor")
-	check := fs.Bool("check", false, "with --xpoint: dry-run — read live state, report would_change, send nothing")
+	check := fs.Bool("check", false, "dry run: read, report what would change, send nothing (same as --dry-run; ADR-0007)")
 	output := fs.String("output", "text", "with --xpoint: stdout format text | json (ADR-0007 {changed|would_change, diff[]})")
 
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] | --xpoint FILE [--matrix FILE] [--check] [--output json]")
+		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--check|--dry-run] | --xpoint FILE [--matrix FILE] [--check|--dry-run] [--output json]")
 	}
 	_ = parseVerbFlags(fs, rest)
+	// One dry run, two spellings. --check is the canonical one (ADR-0007,
+	// what the Ansible plays pass); --dry-run is what this verb grew up
+	// with. Either means: read, report, send nothing — on every path.
+	// Until this line, --check on --file was accepted and ignored, and
+	// an operator who asked for a dry run wrote to the device (#1203).
+	preview := *dry || *check
+	*dry, *check = preview, preview
 
 	if *xpointPath != "" {
 		jsonOut, oerr := resolveEnsureOutput(*output, false)
