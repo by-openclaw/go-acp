@@ -29,6 +29,7 @@
 package rollcall
 
 import (
+	"time"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -116,6 +117,9 @@ type Plugin struct {
 	// recorder captures every frame for a replay fixture, when one was asked
 	// for. Nil is the ordinary case.
 	recorder session.Recorder
+	// replyTimeout, when set, replaces the specification's per-message
+	// budget on every link (SetReplyTimeout).
+	replyTimeout time.Duration
 
 	mu sync.RWMutex
 
@@ -317,6 +321,17 @@ func (p *Plugin) SetName(name string) {
 
 // defaultClientName fits the twenty bytes a name field holds.
 const defaultClientName = "dhs rollcall"
+
+// SetReplyTimeout bounds one active message on every link this plugin
+// opens, in place of the specification's three seconds. Zero keeps the
+// default. It is for a harness that drives this client over loopback on
+// a loaded machine, where the wire is not what is being timed; a real
+// gateway keeps the specification's budget.
+func (p *Plugin) SetReplyTimeout(d time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.replyTimeout = d
+}
 
 // SetRecorder attaches a capture to every link this plugin opens.
 //

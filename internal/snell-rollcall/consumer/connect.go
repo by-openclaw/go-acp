@@ -81,10 +81,10 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	}
 
 	p.mu.RLock()
-	rec := p.recorder
+	rec, reply := p.recorder, p.replyTimeout
 	p.mu.RUnlock()
 
-	sl := session.NewLink(conn, session.Config{Recorder: rec}, p.deps)
+	sl := session.NewLink(conn, session.Config{Recorder: rec, ReplyTimeout: reply}, p.deps)
 
 	// The first message on a new connection. It learns our address, which the
 	// gateway assigns, and the gateway's own, which we cannot know; and its

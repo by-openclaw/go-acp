@@ -232,6 +232,9 @@ type Provider struct {
 	// unit is the address this gateway presents as. A provider knows its own,
 	// unlike a client, because it is the one doing the stamping.
 	unit uint8
+	// replyTimeout, when set, replaces the specification's per-message
+	// budget on every link (SetReplyTimeout).
+	replyTimeout time.Duration
 
 	// proxy, when set, makes this provider present as a RollCall IP Proxy in
 	// front of one or more frames: the connected unit is the proxy, and a
@@ -378,11 +381,22 @@ func (p *Provider) accept(ctx context.Context, ln net.Listener) error {
 	}
 }
 
+// SetReplyTimeout bounds one active message on every link this provider
+// opens or accepts, in place of the specification's three seconds. Zero
+// keeps the default. For a harness over loopback on a loaded machine; a
+// real deployment keeps the specification's budget.
+func (p *Provider) SetReplyTimeout(d time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.replyTimeout = d
+}
+
 // serveConn attaches a link to a new connection.
 func (p *Provider) serveConn(conn net.Conn) {
 	cfg := session.Config{
 		Handler: p,
 		Local:   session.Address{Unit: p.unit},
+		ReplyTimeout: p.replyTimeoutOf(),
 		// A server does not probe its clients. A client that stops talking
 		// stops being a client, and its socket closing is what says so; a
 		// server probing every panel that connected to it multiplies traffic
@@ -799,4 +813,11 @@ func (p *Provider) file(name string) ([]byte, bool) {
 	defer p.mu.RUnlock()
 	b, ok := p.files[name]
 	return b, ok
+}
+
+// replyTimeoutOf is the per-message budget to open a link with.
+func (p *Provider) replyTimeoutOf() time.Duration {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.replyTimeout
 }
