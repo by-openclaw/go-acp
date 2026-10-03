@@ -525,7 +525,11 @@ jobs:
               if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then continue; fi
               if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
               echo "Building ${GOOS}/${GOARCH}..."
-              GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
+              # CGO off everywhere: the runner's own linux/amd64 would otherwise
+              # take the cgo resolver and link glibc (2.34 on ubuntu-24.04) while
+              # every cross target is static. One pure-Go binary per target runs
+              # in any container (#1265).
+              CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
                 -o "dist/dhs_${GOOS}_${GOARCH}/dhs${EXT}" ./cmd/dhs
             done
           done
@@ -631,7 +635,8 @@ jobs:
               EXT=""; if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
               DIR="dist/dhs_${GOOS}_${GOARCH}"
               mkdir -p "$DIR"
-              GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
+              # Static on every target, as in the cross-compile job (#1265).
+              CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "${LDFLAGS}" \
                 -o "${DIR}/dhs${EXT}" ./cmd/dhs
             done
           done
