@@ -29,3 +29,8 @@
     # last: may reboot the CT to apply static addressing (#786); the control
     # node's own reboot ends the play — re-run afterwards = 0 changes.
     - dhs_netaddr
+
+# The AMWA plant (registry, mirror, resident nodes) runs the same
+# released binary as the rest of the fleet: converged last, so the
+# plant host already holds /usr/local/bin/dhs at dhs_version.
+- import_playbook: amwa-plant.yml

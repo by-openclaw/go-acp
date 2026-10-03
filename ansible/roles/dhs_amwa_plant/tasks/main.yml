@@ -11,7 +11,12 @@
 # (ADR-0025 #6). A new merge changes HEAD, the gate opens, and the
 # binary is rebuilt and rolled out.
 
-- name: Record the commit being deployed
+- name: Assert the binary source is one of the two
+  ansible.builtin.assert:
+    that: dhs_amwa_plant_source in ['release', 'build']
+    fail_msg: "dhs_amwa_plant_source must be 'release' or 'build', got {{ dhs_amwa_plant_source }}"
+
+- name: Record the commit being deployed (build mode)
   ansible.builtin.command:
     cmd: git rev-parse HEAD
     chdir: "{{ playbook_dir }}/../.."
@@ -19,20 +24,23 @@
   delegate_to: localhost
   run_once: true
   changed_when: false
+  when: dhs_amwa_plant_source == 'build'
 
-- name: Read the commit currently deployed on the plant host
+- name: Read the commit currently deployed on the plant host (build mode)
   ansible.builtin.slurp:
     src: "{{ dhs_amwa_plant_dir }}/.commit"
   register: dhs_amwa_plant_deployed
   failed_when: false
   changed_when: false
+  when: dhs_amwa_plant_source == 'build'
 
 - name: Decide whether a (re)build is needed
   ansible.builtin.set_fact:
     dhs_amwa_plant_needs_build: >-
-      {{ (dhs_amwa_plant_deployed.content is not defined)
-         or ((dhs_amwa_plant_deployed.content | b64decode | trim)
-             != dhs_amwa_plant_commit.stdout) }}
+      {{ dhs_amwa_plant_source == 'build'
+         and ((dhs_amwa_plant_deployed.content is not defined)
+              or ((dhs_amwa_plant_deployed.content | b64decode | trim)
+                  != dhs_amwa_plant_commit.stdout)) }}
 
 - name: Build + fetch the binary (only when the commit changed)
   when: dhs_amwa_plant_needs_build
@@ -96,13 +104,43 @@
     state: directory
     mode: "0755"
 
-- name: Install the dhs binary (only when rebuilt)
+- name: Install the dhs binary (build mode, only when rebuilt)
   ansible.builtin.copy:
     src: /tmp/dhs-plant-bin
     dest: "{{ dhs_amwa_plant_bin }}"
     mode: "0755"
-  register: dhs_amwa_plant_bincopy
+  register: dhs_amwa_plant_bincopy_build
   when: dhs_amwa_plant_needs_build
+
+# Release mode: the plant runs the binary dhs_host rolled to this host
+# at dhs_version. A checksum copy, so an unchanged release is 0
+# changes and a new one restarts the units below.
+- name: The released binary is installed on this host
+  ansible.builtin.stat:
+    path: "{{ dhs_amwa_plant_release_bin }}"
+  register: dhs_amwa_plant_release_stat
+  when: dhs_amwa_plant_source == 'release'
+
+- name: Assert the released binary is there (fleet-converge installs it)
+  ansible.builtin.assert:
+    that: dhs_amwa_plant_release_stat.stat.exists
+    fail_msg: "{{ dhs_amwa_plant_release_bin }} is missing - run fleet-converge.yml first"
+  when: dhs_amwa_plant_source == 'release'
+
+- name: Install the dhs binary (release mode - the fleet's released one)
+  ansible.builtin.copy:
+    src: "{{ dhs_amwa_plant_release_bin }}"
+    dest: "{{ dhs_amwa_plant_bin }}"
+    mode: "0755"
+    remote_src: true
+  register: dhs_amwa_plant_bincopy_release
+  when: dhs_amwa_plant_source == 'release'
+
+- name: Did the plant binary change
+  ansible.builtin.set_fact:
+    dhs_amwa_plant_bin_changed: >-
+      {{ (dhs_amwa_plant_bincopy_build is changed)
+         or (dhs_amwa_plant_bincopy_release is changed) }}
 
 - name: Install the resident node bundles
   ansible.builtin.copy:
@@ -197,7 +235,7 @@
   ansible.builtin.systemd:
     name: dhs-nmos-registry.service
     enabled: true
-    state: "{{ 'restarted' if (dhs_amwa_plant_bincopy is changed or dhs_amwa_plant_regunit is changed) else 'started' }}"
+    state: "{{ 'restarted' if (dhs_amwa_plant_bin_changed or dhs_amwa_plant_regunit is changed) else 'started' }}"
 
 - name: Give the registry a moment before the nodes register
   ansible.builtin.wait_for:
@@ -212,7 +250,7 @@
     state: "{{ 'restarted' if dhs_amwa_plant_restart else 'started' }}"
   vars:
     dhs_amwa_plant_restart: >-
-      {{ dhs_amwa_plant_bincopy is changed
+      {{ dhs_amwa_plant_bin_changed
          or dhs_amwa_plant_nodeunits is changed
          or dhs_amwa_plant_scaleunits is changed
          or dhs_amwa_plant_bundles is changed
@@ -225,17 +263,34 @@
     name: dhs-nmos-mirror.service
     enabled: true
     daemon_reload: true
-    state: "{{ 'restarted' if (dhs_amwa_plant_bincopy is changed or dhs_amwa_plant_mirrorunit is changed) else 'started' }}"
+    state: "{{ 'restarted' if (dhs_amwa_plant_bin_changed or dhs_amwa_plant_mirrorunit is changed) else 'started' }}"
   when: dhs_amwa_plant_mirror_target != ""
 
 # Stamp the deployed commit AFTER the fleet is (re)started, so a run
 # that failed part-way does not claim success and skip the retry.
-- name: Record the deployed commit
+- name: Record the deployed commit (build mode)
   ansible.builtin.copy:
     content: "{{ dhs_amwa_plant_commit.stdout }}\n"
     dest: "{{ dhs_amwa_plant_dir }}/.commit"
     mode: "0644"
   when: dhs_amwa_plant_needs_build
+
+- name: What the plant runs
+  ansible.builtin.command:
+    argv: ["{{ dhs_amwa_plant_bin }}", version]
+  register: dhs_amwa_plant_version
+  changed_when: false
+
+# A stamp the operator can read next to the binary: the release it is,
+# or the commit it was built from.
+- name: Record the deployed source
+  ansible.builtin.copy:
+    content: >-
+      {{ dhs_amwa_plant_version.stdout_lines[0] }}
+      ({{ 'release ' + dhs_amwa_plant_release_bin if dhs_amwa_plant_source == 'release'
+          else 'build @ ' + dhs_amwa_plant_commit.stdout }})
+    dest: "{{ dhs_amwa_plant_dir }}/.source"
+    mode: "0644"
 
 # ---- 4. Verify the plant converged
 
@@ -257,7 +312,7 @@
 - name: Report the plant state
   ansible.builtin.debug:
     msg: >-
-      AMWA plant on {{ ansible_host }} @ {{ dhs_amwa_plant_commit.stdout[:8] }}:
+      AMWA plant on {{ ansible_host }} ({{ dhs_amwa_plant_version.stdout_lines[0] }}):
       registry :{{ dhs_amwa_plant_registry_port }},
       {{ dhs_amwa_plant_nodes_seen.json | length }} nodes registered
       ({{ dhs_amwa_plant_nodes | length }} resident +
