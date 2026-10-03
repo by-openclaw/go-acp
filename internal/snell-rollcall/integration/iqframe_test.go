@@ -30,9 +30,6 @@ import (
 	"time"
 
 	"dhs/internal/manifest"
-	"dhs/internal/plugin"
-	rcconsumer "dhs/internal/snell-rollcall/consumer"
-	rcprovider "dhs/internal/snell-rollcall/provider"
 )
 
 // iqFrameCards is the real frame's own port list for its cards, as it
@@ -65,7 +62,7 @@ func serveIQFrame(t *testing.T) (string, int) {
 		t.Fatalf("build the tree: %v", err)
 	}
 
-	p := rcprovider.New(plugin.Deps{}.WithDefaults(), tree)
+	p := newProvider(tree)
 	var ports []uint8
 	var dms []string
 	for _, s := range m.SlotDMs() {
@@ -125,7 +122,7 @@ func TestTheIQFrameIsServedAtTheAddressesTheRealOneUses(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -162,7 +159,7 @@ func TestEveryIQFrameCardServesTheMenuItWasWalkedWith(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}

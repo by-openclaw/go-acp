@@ -26,8 +26,6 @@ import (
 	"time"
 
 	"dhs/internal/export/canonical"
-	"dhs/internal/plugin"
-	rcconsumer "dhs/internal/snell-rollcall/consumer"
 	rcprovider "dhs/internal/snell-rollcall/provider"
 )
 
@@ -45,7 +43,7 @@ func serveRouter(t *testing.T) (string, int) {
 		t.Fatalf("decode the router export: %v", err)
 	}
 
-	p := rcprovider.New(plugin.Deps{}.WithDefaults(), &tree)
+	p := newProvider(&tree)
 	p.SetUnit(0x20)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -92,7 +90,7 @@ func TestOurIPShareFrontsSeveralFrames(t *testing.T) {
 	iqHost, iqPort := serveIQFrame(t)
 	rtHost, rtPort := serveRouter(t)
 
-	p := rcprovider.New(plugin.Deps{}.WithDefaults(), nil)
+	p := newProvider(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err := p.SetProxy(ctx, rcprovider.ProxyConfig{Unit: 0xFF, Frames: []rcprovider.ProxyFrame{
@@ -121,7 +119,7 @@ func TestOurIPShareFrontsSeveralFrames(t *testing.T) {
 	port, _ := strconv.Atoi(portStr)
 
 	// Everything the consumer reaches through the proxy, by address.
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}

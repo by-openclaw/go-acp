@@ -30,8 +30,6 @@ import (
 	"testing"
 	"time"
 
-	"dhs/internal/plugin"
-	rcconsumer "dhs/internal/snell-rollcall/consumer"
 	rcprovider "dhs/internal/snell-rollcall/provider"
 )
 
@@ -46,7 +44,7 @@ func serveIPShare(t *testing.T, upstream string) (string, int) {
 	t.Helper()
 
 	// No tree: what it serves is the frame it fronts.
-	p := rcprovider.New(plugin.Deps{}.WithDefaults(), nil)
+	p := newProvider(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := p.SetProxy(ctx, rcprovider.ProxyConfig{Unit: 0xFF, Subnet: ipshareSubnet, Upstream: upstream}); err != nil {
@@ -102,7 +100,7 @@ func walkThroughIPShare(t *testing.T, host string, port int, cardPrefix string, 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}

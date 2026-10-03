@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"dhs/internal/manifest"
-	"dhs/internal/plugin"
-	rcconsumer "dhs/internal/snell-rollcall/consumer"
 	rcprovider "dhs/internal/snell-rollcall/provider"
 )
 
@@ -59,7 +57,7 @@ func serveProxiedFrame(t *testing.T) (string, int) {
 		t.Fatalf("build the tree: %v", err)
 	}
 
-	p := rcprovider.New(plugin.Deps{}.WithDefaults(), tree)
+	p := newProvider(tree)
 	var ports []uint8
 	var dms []string
 	for _, s := range m.SlotDMs() {
@@ -123,7 +121,7 @@ func TestOurProxyIsWalkedLikeTheVendorBox(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -165,7 +163,7 @@ func TestACardIsWalkedThroughOurProxy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}

@@ -389,3 +389,14 @@ func waitForAddr(t *testing.T, p *Provider) string {
 	t.Fatal("Serve never bound")
 	return ""
 }
+
+func TestSetReplyTimeoutIsWhatEveryLinkOpensWith(t *testing.T) {
+	p := New(testDeps(clock.NewFake(time.Time{})), testTree())
+	if p.replyTimeoutOf() != 0 {
+		t.Fatal("a budget was set without asking: the specification's applies")
+	}
+	p.SetReplyTimeout(30 * time.Second)
+	if p.replyTimeoutOf() != 30*time.Second {
+		t.Error("the reply timeout was not kept")
+	}
+}

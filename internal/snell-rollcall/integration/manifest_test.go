@@ -25,8 +25,6 @@ import (
 	"dhs/internal/export/canonical"
 	"dhs/internal/manifest"
 	"dhs/internal/plugin"
-	rcconsumer "dhs/internal/snell-rollcall/consumer"
-	rcprovider "dhs/internal/snell-rollcall/provider"
 )
 
 const (
@@ -46,7 +44,7 @@ func serveFixture(t *testing.T) string {
 	}
 
 	deps := plugin.Deps{}.WithDefaults()
-	p := rcprovider.New(deps, tree)
+	p := newProviderWith(deps, tree)
 
 	// A port the operating system picks, so two runs of the suite never argue
 	// over one.
@@ -102,7 +100,7 @@ func TestManifestBuildsAFrameFromTheRepositoryAlone(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	c := rcconsumer.New(plugin.Deps{}.WithDefaults())
+	c := newConsumer()
 	if err := c.Connect(ctx, host, port); err != nil {
 		t.Fatalf("connect: %v", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"dhs/internal/consumer"
 	"dhs/internal/snell-rollcall/codec"
@@ -290,6 +291,10 @@ func TestARecorderIsAttachedBeforeConnecting(t *testing.T) {
 	p.SetRecorder(rec)
 	if p.recorder == nil {
 		t.Error("the recorder was not kept")
+	}
+	p.SetReplyTimeout(7 * time.Second)
+	if p.replyTimeout != 7*time.Second {
+		t.Error("the reply timeout was not kept")
 	}
 	if err := rec.Close(); err != nil {
 		t.Fatalf("close: %v", err)

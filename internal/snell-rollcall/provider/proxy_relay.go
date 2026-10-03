@@ -233,6 +233,7 @@ func (r *relayLink) upstream() (*session.Link, error) {
 	up := session.NewLink(conn, session.Config{
 		Intercept:         r.fromFrame,
 		KeepaliveInterval: -1,
+		ReplyTimeout:      r.p.replyTimeoutOf(),
 	}, r.p.deps)
 	r.up = up
 	r.p.log.Debug("rollcall: relay connected to the frame", "frame", r.chain.upstream)
@@ -310,7 +311,7 @@ func (p *Provider) probeFrame(ctx context.Context, addr string) (codec.DeviceInf
 	if err != nil {
 		return codec.DeviceInfo{}, codec.Address{}, nil, fmt.Errorf("rollcall: dial the frame at %s: %w", addr, err)
 	}
-	l := session.NewLink(conn, session.Config{KeepaliveInterval: -1}, p.deps)
+	l := session.NewLink(conn, session.Config{KeepaliveInterval: -1, ReplyTimeout: p.replyTimeoutOf()}, p.deps)
 	defer func() { _ = l.Close() }()
 
 	info, err := l.Handshake(ctx)
