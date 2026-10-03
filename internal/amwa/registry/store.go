@@ -87,6 +87,10 @@ type Store struct {
 	// this map every tick.
 	health map[string]time.Time
 
+	// encoded keeps each resource's wire form per minor between uses
+	// (encoded.go); its own lock, never held with mu.
+	encoded *encodedForms
+
 	// owners maps a resource id to the IS-10 client_id that registered
 	// it (BCP-003-02: the Registration API rejects updates from a
 	// DIFFERENT client with 403 — IS-04-02 test_33/test_33_1). Entries
@@ -131,6 +135,7 @@ func NewStore() *Store {
 		senders:        make(map[string]is04.Sender),
 		receivers:      make(map[string]is04.Receiver),
 		health:         make(map[string]time.Time),
+		encoded:        newEncodedForms(),
 		owners:         make(map[string]string),
 		updateTSByType: make(map[is04.ResourceType]map[string]string, 6),
 		apiVerByType:   make(map[is04.ResourceType]map[string]string, 6),
@@ -241,6 +246,11 @@ func (s *Store) AddListener(fn changeListener) func() {
 // fanOut emits c to every registered listener. Caller MUST hold the
 // write lock.
 func (s *Store) fanOut(c Change) {
+	// A deleted resource leaves the encoded-form cache here, the one
+	// place every delete path passes through.
+	if c.Kind == ChangeDeleted {
+		s.encoded.forget(c.ResourceType, c.ID)
+	}
 	for _, fn := range s.listeners {
 		if fn != nil {
 			fn(c)
@@ -780,7 +790,6 @@ func (s *Store) SnapshotChanges(wireVer string) []Change {
 // test_31 "Registration API … Connection timeout").
 func (s *Store) SnapshotChangesFor(wireVer string, t is04.ResourceType) []Change {
 	now := time.Now()
-	codec, _ := is04.Get(wireVer)
 
 	type item struct {
 		id     string
@@ -823,37 +832,12 @@ func (s *Store) SnapshotChangesFor(wireVer string, t is04.ResourceType) []Change
 	}
 	s.mu.RUnlock()
 
-	// Encode at the wire version; the codec's refusal (a resource that
-	// does not fit that minor) falls back to the canonical form, as
-	// the Query API's listing does.
-	encode := func(v any) []byte {
-		if codec != nil {
-			var b []byte
-			var err error
-			switch x := v.(type) {
-			case is04.Node:
-				b, err = codec.EncodeNode(x)
-			case is04.Device:
-				b, err = codec.EncodeDevice(x)
-			case is04.Source:
-				b, err = codec.EncodeSource(x)
-			case is04.Flow:
-				b, err = codec.EncodeFlow(x)
-			case is04.Sender:
-				b, err = codec.EncodeSender(x)
-			case is04.Receiver:
-				b, err = codec.EncodeReceiver(x)
-			}
-			if err == nil && b != nil {
-				return b
-			}
-		}
-		b, _ := json.Marshal(v)
-		return b
-	}
+	// The wire form at wireVer, from the cache when the resource is
+	// what it was last time (encoded.go).
+	encode := func(id string, v any) []byte { return s.encoded.get(t, id, v, wireVer) }
 	out := make([]Change, 0, len(items))
 	for _, it := range items {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: t, ID: it.id, APIVer: it.apiVer, Post: encode(it.v), Timestamp: now})
+		out = append(out, Change{Kind: ChangeSync, ResourceType: t, ID: it.id, APIVer: it.apiVer, Post: encode(it.id, it.v), Timestamp: now})
 	}
 	return out
 }
@@ -990,4 +974,9 @@ func validateRegistrationPresenceVersioned(env *is04.RegistrationRequest, apiVer
 		}
 	}
 	return nil
+}
+
+// EncodedFormStats reports the wire-form cache's hits, misses and size.
+func (s *Store) EncodedFormStats() (hits, misses uint64, size int) {
+	return s.encoded.stats()
 }
