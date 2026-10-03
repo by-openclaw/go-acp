@@ -355,14 +355,18 @@ func extractMatrixConfigFlags(args []string, skip map[string]bool) ([]string, pr
 				return nil, mc, false, err
 			}
 			mc.Level = uint8(n)
+		// SW-P-08's extended forms carry 16-bit source and destination
+		// fields (DIV 256 / MOD 256, §3.2.3): 0-65535. The 14-bit cap that
+		// was here is SW-P-02's (§3.2.47) and kept the Shuffler's 53 190
+		// sources out of reach.
 		case "--dsts":
-			n, err := parseUint(name, val, 16383)
+			n, err := parseUint(name, val, 65535)
 			if err != nil {
 				return nil, mc, false, err
 			}
 			mc.Dsts = uint16(n)
 		case "--srcs":
-			n, err := parseUint(name, val, 16383)
+			n, err := parseUint(name, val, 65535)
 			if err != nil {
 				return nil, mc, false, err
 			}
