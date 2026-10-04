@@ -188,6 +188,7 @@ func TestMirrorTriesAgainALiveForwardTheTargetDidNotAnswer(t *testing.T) {
 	defer cancel()
 	running(m, ctx, 20*time.Millisecond, 40*time.Millisecond)
 	m.mu.Lock()
+	m.landed["devices"]["d1"], m.landed["sources"]["s1"] = true, true // the target holds its parents
 	doc := m.cache["flows"]["f1"]
 	delete(m.cache["flows"], "f1") // it arrives now, on the live path
 	m.mu.Unlock()

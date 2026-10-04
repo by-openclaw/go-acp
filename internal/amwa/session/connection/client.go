@@ -86,7 +86,7 @@ func (c *Client) ActiveReceiver(ctx context.Context, id string) (*is05.ActiveRec
 	if err != nil {
 		return nil, err
 	}
-	return is05.DecodeStagedReceiver(raw)
+	return is05.DecodeActiveReceiver(raw)
 }
 
 // ActiveSender reads a Sender's active state.
@@ -95,7 +95,7 @@ func (c *Client) ActiveSender(ctx context.Context, id string) (*is05.ActiveSende
 	if err != nil {
 		return nil, err
 	}
-	return is05.DecodeStagedSender(raw)
+	return is05.DecodeActiveSender(raw)
 }
 
 // TransportFile fetches a Sender's SDP.

@@ -62,6 +62,14 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSConnect(ctx, rest)
 	case "set":
 		return runNMOSSet(ctx, rest)
+	case "map":
+		return runNMOSMap(ctx, rest)
+	case "compat":
+		return runNMOSCompat(ctx, rest)
+	case "config":
+		return runNMOSConfig(ctx, rest)
+	case "control":
+		return runNMOSControl(ctx, rest)
 	case "facade":
 		return runNMOSFacade(ctx, rest)
 	case "events":
@@ -75,7 +83,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 	case "registers":
 		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe, registers)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, compat, config, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -719,6 +727,10 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos walk     [flags]
   dhs consumer nmos connect  [flags]
   dhs consumer nmos set      [flags]
+  dhs consumer nmos map      [flags]
+  dhs consumer nmos compat   [flags]
+  dhs consumer nmos config   [flags]
+  dhs consumer nmos control  [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -759,6 +771,65 @@ destination_ip 0.0.0.0 — addressed nowhere.
   --enable / --disable  also set master_enable
   --dry-run             print the PATCH body and the sender's current legs
   --mode / --when       as for connect
+  (any of walk's --node / --registry / discovery flags)
+
+map — read or change a Device's audio channel map over IS-08. With no
+--route it prints every output channel and the input channel feeding it;
+that is where the input and output ids come from. The IS-08 endpoint is
+discovered from IS-04 (the Device's cm-ctrl control), never guessed.
+  --device UUID         required
+  --route O:C=I:C       repeatable; output O channel C carries input I
+                        channel C. "O:C=" leaves that channel unrouted.
+                        Checked against what the Device declares before
+                        anything is sent.
+  --dry-run             print the POST body and the current map, send nothing
+  --mode / --when       as for connect
+  --cancel ID           withdraw a scheduled activation
+  (any of walk's --node / --registry / discovery flags)
+
+compat — read why a Sender and a Receiver do not agree, over IS-11, in the
+Device's own words; hold a Sender to what the far end takes.
+  --receiver UUID       its state (compliant_stream / non_compliant_stream)
+                        and the Outputs it drives
+  --sender UUID         its state, active constraints, what it can be
+                        constrained on, and the Inputs feeding it
+  --constraints FILE    PUT these active constraints on --sender; refused
+                        before sending if the Sender does not support them
+  --release             remove --sender's active constraints
+  --dry-run             read and check, change nothing
+  (any of walk's --node / --registry / discovery flags)
+
+config — read and set a Device's model over IS-14 (MS-05-02 over REST),
+back it up and restore it. With only --device it lists the role paths;
+with --role-path it describes that object: that is where the property and
+method ids come from.
+  --device UUID         required
+  --role-path P         the object (root, root.gain, ...)
+  --get ID              read a property (3p1)
+  --set ID=JSON         write a property; read back from the Device
+  --invoke ID --args J  call a method with its arguments object
+  --backup FILE         bulk properties of --role-path (- for stdout)
+  --restore FILE        the Device validates first; nothing is applied
+                        unless every object validates
+  --validate-only       with --restore: what would happen, apply nothing
+  --rebuild             with --restore: Rebuild mode instead of Modify
+  --dry-run             read and validate, change nothing
+  (any of walk's --node / --registry / discovery flags)
+
+control — read and set a Device's model over IS-12 (MS-05-02 over its
+control WebSocket), call its methods, watch its properties change. Objects
+are named by role path, as config names them. With only --device it lists
+every object with its oid and class; with --role-path it describes that
+object's class: that is where the property and method ids come from.
+  --device UUID         required
+  --role-path P         the object (root, root.receivers.rx1, ...)
+  --get ID              read a property (1p6)
+  --set ID=JSON         write a property; read back from the Device
+  --invoke ID --args J  call a method with its arguments object
+  --watch               print property changes as the Device announces
+                        them: of --role-path, or of every object
+  --duration D          with --watch: stop after D (default: until ^C)
+  --dry-run             read, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.

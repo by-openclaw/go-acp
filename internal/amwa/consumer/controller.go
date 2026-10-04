@@ -233,6 +233,7 @@ func (c *Controller) Walk(ctx context.Context) (*CatalogueSnapshot, []error) {
 	snap := &CatalogueSnapshot{APIVer: c.client.Codec.APIVer()}
 	var errs []error
 
+	filter := c.walkFilter()
 	collect := func(name string, run func() error) {
 		if err := run(); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", name, err))
@@ -242,32 +243,32 @@ func (c *Controller) Walk(ctx context.Context) (*CatalogueSnapshot, []error) {
 	}
 
 	collect("nodes", func() error {
-		v, err := c.client.ListNodes(ctx, nil)
+		v, err := c.client.ListNodes(ctx, filter)
 		snap.Nodes = v
 		return err
 	})
 	collect("devices", func() error {
-		v, err := c.client.ListDevices(ctx, nil)
+		v, err := c.client.ListDevices(ctx, filter)
 		snap.Devices = v
 		return err
 	})
 	collect("sources", func() error {
-		v, err := c.client.ListSources(ctx, nil)
+		v, err := c.client.ListSources(ctx, filter)
 		snap.Sources = v
 		return err
 	})
 	collect("flows", func() error {
-		v, err := c.client.ListFlows(ctx, nil)
+		v, err := c.client.ListFlows(ctx, filter)
 		snap.Flows = v
 		return err
 	})
 	collect("senders", func() error {
-		v, err := c.client.ListSenders(ctx, nil)
+		v, err := c.client.ListSenders(ctx, filter)
 		snap.Senders = v
 		return err
 	})
 	collect("receivers", func() error {
-		v, err := c.client.ListReceivers(ctx, nil)
+		v, err := c.client.ListReceivers(ctx, filter)
 		snap.Receivers = v
 		return err
 	})
@@ -294,6 +295,23 @@ func (c *Controller) Walk(ctx context.Context) (*CatalogueSnapshot, []error) {
 	}
 
 	return snap, errs
+}
+
+// walkFilter is the query every collection of a walk is read with.
+//
+// A Registry's Query API serves, by default, only the resources
+// registered at the minor it is asked at (IS-04 §6.1.5): a v1.3 walk of
+// a plant with one v1.2 Node shows the plant without it. The Node is
+// there — its Receivers cannot be named in a route, and nothing says
+// why. `query.downgrade` (IS-04 v1.1 and later) asks for the lower
+// minors too; the lowest published one is asked for, because a
+// controller routes the whole plant, not the part that shares its
+// version. A Node's own API has one view and no such parameter.
+func (c *Controller) walkFilter() map[string]string {
+	if c.IsNodeFace() || c.client.Codec.APIVer() == "v1.0" {
+		return nil
+	}
+	return map[string]string{"query.downgrade": "v1.0"}
 }
 
 // fire is the DI seam to the spec.Reporter.

@@ -154,7 +154,7 @@ type MirrorStats struct {
 	Forwarded  uint64 `json:"forwarded"`  // POSTs accepted by the target
 	Deleted    uint64 `json:"deleted"`    // DELETEs accepted by the target
 	Heartbeats uint64 `json:"heartbeats"` // health POSTs accepted by the target
-	Resyncs    uint64 `json:"resyncs"`    // repairs asked for, whatever their extent (an eviction, a refused child, a conflict)
+	Resyncs    uint64 `json:"resyncs"`    // ordered passes asked for, whatever their extent (children held for a parent, an eviction, a refused child, a conflict)
 	Failures   uint64 `json:"failures"`   // requests the target refused
 	Skipped    uint64 `json:"skipped"`    // children not sent because the target refused their parent in the same pass
 
@@ -192,6 +192,13 @@ type Mirror struct {
 	// §6.1.5 downgrade semantics survive the mirrored hop (AMWA
 	// IS-04-02 test_22/test_32). Same topic/id keys as cache.
 	cacheVer map[string]map[string]string
+	// lowerSeen marks a resource a lower minor's subscription has shown
+	// as well: a view of it (mirror_minor.go). Same keys as cache.
+	lowerSeen map[string]map[string]bool
+	// landed marks what the target has accepted. A child is sent in the
+	// live path only behind a parent that has landed (heldForParents).
+	// Same keys as cache.
+	landed map[string]map[string]bool
 	// targetNodes marks node ids the TARGET has accepted (a POST
 	// landed). Heartbeats are proxied for accepted nodes only: a 404
 	// heartbeat for a node the target never held is not an eviction,
@@ -283,9 +290,13 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	opts.Logger = plugin.LoggerOrDefault(opts.Logger)
 	cache := make(map[string]map[string]json.RawMessage, len(mirrorTopics))
 	cacheVer := make(map[string]map[string]string, len(mirrorTopics))
+	lowerSeen := make(map[string]map[string]bool, len(mirrorTopics))
+	landed := make(map[string]map[string]bool, len(mirrorTopics))
 	for _, tp := range mirrorTopics {
 		cache[tp] = map[string]json.RawMessage{}
 		cacheVer[tp] = map[string]string{}
+		lowerSeen[tp] = map[string]bool{}
+		landed[tp] = map[string]bool{}
 	}
 	return &Mirror{
 		opts:           opts,
@@ -294,6 +305,8 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 		pace:           newPacer(opts.Deps.WithDefaults().Clock, opts.TargetPace),
 		cache:          cache,
 		cacheVer:       cacheVer,
+		lowerSeen:      lowerSeen,
+		landed:         landed,
 		targetNodes:    map[string]bool{},
 		heartbeatEvery: MirrorHeartbeatInterval,
 		retryMin:       mirrorRetryMin,
@@ -335,9 +348,9 @@ func (m *Mirror) Run(ctx context.Context) error {
 	// row carries no version stamp — so the ONLY wire-true way to
 	// mirror the whole catalogue AND learn each resource's registered
 	// minor is one subscription per registered minor per topic. The
-	// exact-match version gate on the source then partitions the
-	// catalogue: the minor of the socket a row arrived on IS that
-	// resource's registered minor.
+	// highest minor that shows a resource is the one it is registered
+	// at; what a lower minor's subscription shows of it is a view
+	// (mirror_minor.go).
 	clients := make(map[string]*query.Client)
 	for _, ver := range mirrorSourceVersions(m.opts.APIVer) {
 		vcodec, ok := is04.Get(ver)
@@ -459,58 +472,122 @@ func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic, ver st
 }
 
 // forwardRow applies one grain row to the cache and the target. ver is
-// the wire minor of the source subscription the row arrived on — the
-// resource's registered minor.
+// the wire minor of the source subscription the row arrived on.
 //
-// The minor a resource is FIRST seen at is tracked for its lifetime
-// (cacheVer) and every downstream operation — embedded-store stamp,
-// target POST/DELETE, heartbeat — addresses that one minor. A source
-// that leaves a resource unstamped exposes it on every minor's
-// subscription at once; the byte-identical dedupe below collapses
-// those duplicate deliveries (and idempotent sync-grain re-deliveries
-// after a reconnect) into nothing, so the target never sees the same
+// The minor a resource is registered at is the highest one that shows
+// it (mirror_minor.go), tracked for its lifetime (cacheVer); every
+// downstream operation — embedded-store stamp, target POST/DELETE,
+// heartbeat — addresses that one minor. A row from a lower minor's
+// subscription is a view of the resource and changes nothing; a row
+// that repeats the document the cache holds (a sync grain after a
+// reconnect) changes nothing either. The target never sees the same
 // resource addressed under two minors.
 func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.GrainDataRow) {
 	switch row.Kind() {
 	case is04.ChangeAdded, is04.ChangeModified:
 		m.mu.Lock()
-		prior, had := m.cache[topic][row.Path]
-		if had && bytes.Equal(prior, row.Post) {
-			m.mu.Unlock()
-			return // another minor's view of the same document, or a sync re-delivery
-		}
-		m.cache[topic][row.Path] = row.Post
 		tracked := m.cacheVer[topic][row.Path]
-		if tracked == "" {
-			tracked = ver
-			m.cacheVer[topic][row.Path] = ver
+		if tracked != "" && minorLess(ver, tracked) {
+			m.lowerSeen[topic][row.Path] = true
+			m.mu.Unlock()
+			return // a lower minor's view of it
+		}
+		if tracked == ver && bytes.Equal(m.cache[topic][row.Path], row.Post) {
+			m.mu.Unlock()
+			return // a sync re-delivery
 		}
 		m.mu.Unlock()
-		m.applyServeRow(topic, tracked, row, true)
-		// Live path: a 400 here means a parent has not been forwarded
-		// yet (the six topics stream concurrently), so allow it to
-		// arm the repair that sends it again behind its ancestors.
-		if m.postResource(ctx, topic, tracked, row.Path, row.Post, true) == postUnknown {
-			m.retryLater(refusedResource(topic, row.Path))
+
+		// First seen: a lower minor's subscription may be the first to
+		// show a resource registered above it.
+		reg, doc := ver, row.Post
+		if tracked == "" {
+			reg, doc = m.registeredAt(ctx, topic, ver, row.Path, row.Post)
 		}
+		row.Post = doc
+		m.land(ctx, topic, ver, reg, row)
 	case is04.ChangeRemoved:
 		m.mu.Lock()
 		_, had := m.cache[topic][row.Path]
 		tracked := m.cacheVer[topic][row.Path]
+		if !had || (tracked != "" && tracked != ver) {
+			m.mu.Unlock()
+			return // another subscription's view of the removal, or already carried
+		}
+		viewed := m.lowerSeen[topic][row.Path]
 		delete(m.cache[topic], row.Path)
 		delete(m.cacheVer[topic], row.Path)
+		delete(m.lowerSeen[topic], row.Path)
+		delete(m.landed[topic], row.Path)
 		m.mu.Unlock()
-		if !had {
-			return // another socket already carried this removal
+		m.applyServeRow(topic, ver, row, true)
+		m.deleteResource(ctx, topic, ver, row.Path)
+		if !viewed {
+			return
 		}
-		if tracked == "" {
-			tracked = ver
+		// A lower minor showed it too: gone, or registered again there?
+		if reg, doc, ok := m.registeredBelow(ctx, topic, ver, row.Path); ok {
+			m.land(ctx, topic, reg, reg, is04.GrainDataRow{Path: row.Path, Post: doc})
 		}
-		m.applyServeRow(topic, tracked, row, true)
-		m.deleteResource(ctx, topic, tracked, row.Path)
 	default:
 		m.logger.Warn("registry/mirror: grain row with neither pre nor post", "topic", topic, "id", row.Path)
 	}
+}
+
+// land records a resource at reg, the minor it is registered at, and
+// sends it to the target — unless another subscription landed it while
+// this one was asking the source where it belongs. ver is the minor of
+// the subscription that showed it.
+func (m *Mirror) land(ctx context.Context, topic, ver, reg string, row is04.GrainDataRow) {
+	m.mu.Lock()
+	now := m.cacheVer[topic][row.Path]
+	if now != "" && (minorLess(reg, now) || now == reg && bytes.Equal(m.cache[topic][row.Path], row.Post)) {
+		if minorLess(ver, now) {
+			m.lowerSeen[topic][row.Path] = true
+		}
+		m.mu.Unlock()
+		return
+	}
+	m.cache[topic][row.Path] = row.Post
+	m.cacheVer[topic][row.Path] = reg
+	if reg != ver {
+		m.lowerSeen[topic][row.Path] = true
+	}
+	m.mu.Unlock()
+	m.applyServeRow(topic, reg, row, true)
+	if m.heldForParents(topic, row.Path, row.Post) {
+		return
+	}
+	// A 400 here is a parent the target has lost since it accepted
+	// it, so allow it to arm the repair that sends the child again
+	// behind its ancestors.
+	if m.postResource(ctx, topic, reg, row.Path, row.Post, true) == postUnknown {
+		m.retryLater(refusedResource(topic, row.Path))
+	}
+}
+
+// heldForParents keeps a child off the wire while the target does not
+// hold its parent. The six topics stream concurrently: a child of a
+// Node that has just registered can arrive ahead of its parent, and
+// sent then it is refused (#1340 — 50 refused POSTs at the plant's
+// target for one Node). It is owed to the ordered pass instead, which
+// sends it behind its ancestors. With no run there is no pass to owe it
+// to, and it is sent.
+func (m *Mirror) heldForParents(topic, id string, doc json.RawMessage) bool {
+	m.mu.Lock()
+	wait := false
+	if m.runCtx != nil {
+		for _, p := range parentsOf(topic, doc) {
+			if !m.landed[p.topic][p.id] {
+				wait = true
+			}
+		}
+	}
+	m.mu.Unlock()
+	if wait {
+		m.scheduleRepair(refusedResource(topic, id))
+	}
+	return wait
 }
 
 // postOutcome is how one POST to the target ended.
@@ -583,6 +660,7 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 		if status == stdhttp.StatusOK || status == stdhttp.StatusCreated {
 			m.mu.Lock()
 			m.stats.Forwarded++
+			m.landed[topic][id] = true
 			if topic == "nodes" {
 				m.targetNodes[id] = true // heartbeat this node from now on
 			}
@@ -872,11 +950,10 @@ func (m *Mirror) sendHealth(ctx context.Context, nodeID, ver string) error {
 }
 
 // refreshCacheFromSource rebuilds cache + cacheVer from the source's
-// per-minor exact-match REST views — one paged GET per registered
-// minor per topic, the same partitioning the WS legs use, so every
-// repopulated resource carries its true registered minor. An
-// unstamped source resource shows up in every minor's view; the
-// first (lowest) minor wins, matching the WS legs' first-sight rule.
+// per-minor REST views — one paged GET per minor per topic, highest
+// minor first. The first view that lists a resource is the minor it is
+// registered at; what the lower minors list of it are views
+// (mirror_minor.go), and are not taken.
 // Any fetch failure aborts the whole refresh and keeps the existing
 // cache — a half-fetched catalogue must never replace a whole one.
 func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
@@ -890,7 +967,11 @@ func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
 		newCache[tp] = map[string]json.RawMessage{}
 		newVer[tp] = map[string]string{}
 	}
-	for _, ver := range mirrorSourceVersions(m.opts.APIVer) {
+	newSeen := make(map[string]map[string]bool, len(mirrorTopics))
+	for _, tp := range mirrorTopics {
+		newSeen[tp] = map[string]bool{}
+	}
+	for _, ver := range m.sourceMinors() {
 		qc, ok := clients[ver]
 		if !ok {
 			continue
@@ -911,7 +992,8 @@ func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
 					continue
 				}
 				if _, dup := newVer[topic][id]; dup {
-					continue // unstamped at source — first minor claimed it
+					newSeen[topic][id] = true
+					continue // a lower minor's view of it
 				}
 				newCache[topic][id] = doc
 				newVer[topic][id] = ver
@@ -921,6 +1003,14 @@ func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
 	m.mu.Lock()
 	m.cache = newCache
 	m.cacheVer = newVer
+	m.lowerSeen = newSeen
+	for tp, ids := range m.landed {
+		for id := range ids {
+			if _, ok := newCache[tp][id]; !ok {
+				delete(ids, id)
+			}
+		}
+	}
 	// A node gone from the source stops being heartbeated (it left the
 	// cache); drop its acceptance mark too so the map tracks reality.
 	for id := range m.targetNodes {

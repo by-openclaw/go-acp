@@ -305,9 +305,9 @@ func TestMirrorRepairsOnlyTheEvictedNodesSubtree(t *testing.T) {
 	}
 }
 
-// A flow overtakes its parents on the live path and is refused. The
-// repair sends it again behind the ancestors it names — four POSTs, not
-// the catalogue.
+// A flow whose parents the target accepted earlier, and has lost since,
+// is refused on the live path. The repair sends it again behind the
+// ancestors it names — four POSTs, not the catalogue.
 func TestMirrorResendsARefusedChildBehindItsAncestors(t *testing.T) {
 	target := &orderTarget{answer: func(key string, nth int) int {
 		if key == "flow:f1" && nth == 1 {
@@ -320,6 +320,7 @@ func TestMirrorResendsARefusedChildBehindItsAncestors(t *testing.T) {
 	defer cancel()
 	m.mu.Lock()
 	m.runCtx = ctx
+	m.landed["devices"]["d1"], m.landed["sources"]["s1"] = true, true
 	doc := m.cache["flows"]["f1"]
 	delete(m.cache["flows"], "f1") // it arrives now, on the live path
 	m.mu.Unlock()
@@ -334,6 +335,52 @@ func TestMirrorResendsARefusedChildBehindItsAncestors(t *testing.T) {
 	}
 	if st := m.Stats(); st.Resyncs != 1 || st.Failures != 1 {
 		t.Errorf("stats = %+v, want one repair for the one refusal", st)
+	}
+}
+
+// A flow that arrives ahead of its parents on the live path — the six
+// topics stream concurrently — is not sent ahead of them to be refused:
+// it goes with the ordered pass, behind the ancestors it names. Once the
+// target holds its parents, a change to it goes at once.
+func TestMirrorHoldsALiveChildUntilTheTargetHoldsItsParents(t *testing.T) {
+	target := &orderTarget{}
+	m, _ := repairMirror(t, target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m.mu.Lock()
+	m.runCtx = ctx
+	doc := m.cache["flows"]["f1"]
+	delete(m.cache["flows"], "f1") // it arrives now, on the live path
+	m.mu.Unlock()
+
+	m.forwardRow(ctx, "flows", "v1.3", is04.GrainDataRow{Path: "f1", Post: doc})
+	if got := target.sent(); len(got) != 0 {
+		t.Fatalf("the flow went ahead of its parents: %v", got)
+	}
+	waitFor(t, 5*time.Second, func() bool { return len(target.sent()) >= 4 }, "the held flow to be sent behind its ancestors")
+	time.Sleep(100 * time.Millisecond)
+	exp := []string{"node:n1", "device:d1", "source:s1", "flow:f1"}
+	if got := target.sent(); !reflect.DeepEqual(got, exp) {
+		t.Errorf("target saw %v, want exactly the flow's chain, in order: %v", got, exp)
+	}
+	if st := m.Stats(); st.Resyncs != 1 || st.Failures != 0 {
+		t.Errorf("stats = %+v, want one ordered pass and nothing refused", st)
+	}
+
+	// Its parents have landed now: a change to it is forwarded at once.
+	changed := json.RawMessage(strings.Replace(string(doc), "{", `{"label":"renamed",`, 1))
+	m.forwardRow(ctx, "flows", "v1.3", is04.GrainDataRow{Path: "f1", Pre: doc, Post: changed})
+	if got := target.sent(); len(got) != 5 || got[4] != "flow:f1" {
+		t.Errorf("a change behind landed parents: target saw %v", got)
+	}
+
+	// Removed, it is no longer something the target holds.
+	m.forwardRow(ctx, "flows", "v1.3", is04.GrainDataRow{Path: "f1", Pre: changed})
+	m.mu.Lock()
+	still := m.landed["flows"]["f1"]
+	m.mu.Unlock()
+	if still {
+		t.Error("a removed flow is still marked as held by the target")
 	}
 }
 
