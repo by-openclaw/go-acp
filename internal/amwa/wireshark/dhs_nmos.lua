@@ -386,25 +386,34 @@ nmos:register_heuristic("udp", nmos_heur)
 -- We register a SEPARATE Proto so the dissector pane shows the NMOS
 -- decoration without disturbing the existing DNS-SD dissector above.
 
-local nmos_http = Proto("dhs_nmos_http", "AMWA NMOS (HTTP / WebSocket layer)")
+local nmos_http = Proto("dhs_nmos_http", "AMWA NMOS (HTTP / WebSocket / MQTT layer)")
 
 local fh = nmos_http.fields
 fh.api      = ProtoField.string("dhs_nmos_http.api",      "API")
 fh.version  = ProtoField.string("dhs_nmos_http.version",  "Version")
 fh.resource = ProtoField.string("dhs_nmos_http.resource", "Resource")
 fh.message  = ProtoField.string("dhs_nmos_http.message",  "Message kind")
+fh.detail   = ProtoField.string("dhs_nmos_http.detail",   "Detail")
 
--- API URL component → human label.
+local eh = nmos_http.experts
+eh.unknown_api     = ProtoExpert.new("dhs_nmos_http.unknown_api",     "Unknown x-nmos API",        expert.group.UNDECODED, expert.severity.WARN)
+eh.unknown_message = ProtoExpert.new("dhs_nmos_http.unknown_message", "Unknown NMOS message kind", expert.group.UNDECODED, expert.severity.WARN)
+
+-- API URL component → human label. Every API the connector implements,
+-- in any role; anything else under /x-nmos/ raises eh.unknown_api.
 local api_label = {
-    ["registration"]   = "IS-04 Registration",
-    ["query"]          = "IS-04 Query",
-    ["node"]           = "IS-04 Node",
-    ["connection"]     = "IS-05 Connection",
-    ["events"]         = "IS-07 Events",
-    ["channelmapping"] = "IS-08 Channel Mapping",
-    ["system"]         = "IS-09 System",
-    ["ncp"]            = "IS-12 Control",
-    ["annotation"]     = "IS-13 Annotation",
+    ["registration"]        = "IS-04 Registration",
+    ["query"]               = "IS-04 Query",
+    ["node"]                = "IS-04 Node",
+    ["connection"]          = "IS-05 Connection",
+    ["events"]              = "IS-07 Events",
+    ["channelmapping"]      = "IS-08 Channel Mapping",
+    ["system"]              = "IS-09 System",
+    ["auth"]                = "IS-10 Authorization",
+    ["streamcompatibility"] = "IS-11 Stream Compatibility",
+    ["ncp"]                 = "IS-12 Control",
+    ["annotation"]          = "IS-13 Annotation",
+    ["configuration"]       = "IS-14 Configuration",
 }
 
 -- IS-12 messageType integer → label.
@@ -417,75 +426,266 @@ local is12_message = {
     [5] = "Error",
 }
 
--- Read these from the http and websocket built-in dissectors.
-local F_http_uri      = Field.new("http.request.uri")
-local F_ws_text       = Field.new("websocket.payload.text")
+-- IS-07 message_type / command values (IS-07 v1.0 §3, §5).
+local is07_message = {
+    state = true, health = true, reboot = true, shutdown = true, connection_status = true,
+}
+local is07_command = { subscription = true, health = true }
 
--- parse_nmos_path matches `/x-nmos/<api>/<ver>[/<rest>]`.
-local function parse_nmos_path(path)
-    if not path then return nil end
-    local api, ver, rest = path:match("^/x%-nmos/([^/]+)/([^/]+)/?(.*)$")
-    return api, ver, rest
+-- Read these from the built-in dissectors. A field a build does not have
+-- (mqtt compiled out) leaves its reader nil rather than failing the load.
+local function reader(name)
+    local ok, f = pcall(Field.new, name)
+    return ok and f or nil
+end
+local F_http_uri      = reader("http.request.uri")
+local F_http_method   = reader("http.request.method")
+local F_http_code     = reader("http.response.code")
+local F_http_for      = reader("http.response_for.uri")
+local F_http_body     = reader("http.file_data")
+local F_ws_text       = reader("websocket.payload.text")
+local F_mqtt_topic    = reader("mqtt.topic")
+local F_mqtt_msg      = reader("mqtt.msg")
+
+local function first(f)
+    if not f then return nil end
+    local v = f()
+    return v and tostring(v.value) or nil
 end
 
--- extract_ws_kind cheaply pulls the IS-12 messageType / IS-07
--- message_type from a JSON-shaped WebSocket text frame. We don't
--- bring a JSON parser into the dissector context — pattern match
--- is enough for an Info column tag.
-local function extract_ws_kind(text)
-    if not text then return nil end
-    local mt = text:match([["messageType"%s*:%s*(%d+)]])
+-- The JSON is not parsed: an Info column wants the few arguments that
+-- tell two frames apart, and a pattern finds those.
+local function jstr(b, key)   -- "key": "value"
+    return b and b:match('"' .. key .. '"%s*:%s*"([^"]*)"')
+end
+local function jtok(b, key)   -- "key": 12 | true | false | null
+    return b and b:match('"' .. key .. '"%s*:%s*([%w%.%-]+)')
+end
+local function count(b, pattern)
+    local n = 0
+    if b then for _ in b:gmatch(pattern) do n = n + 1 end end
+    return n
+end
+local function kv(parts, key, value)
+    if value and value ~= "" then parts[#parts + 1] = key .. "=" .. value end
+end
+
+-- parse_nmos_path matches `/x-nmos/<api>/<ver>[/<rest>][?<query>]`, in an
+-- origin-form or an absolute-form request target.
+local function parse_nmos_path(uri)
+    if not uri then return nil end
+    local path, query = uri:match("^([^?]*)%??(.*)$")
+    local api, ver, rest = path:match("/x%-nmos/([^/]+)/?([^/]*)/?(.*)$")
+    return api, ver, rest, query
+end
+
+-- element id: {"level":L,"index":I} after key → "L<kind>I"
+local function element(b, key, kind)
+    if not b then return nil end
+    local body = b:match('"' .. key .. '"%s*:%s*(%b{})')
+    if not body then return nil end
+    local l, i = jtok(body, "level"), jtok(body, "index")
+    return l and i and (l .. kind .. i) or nil
+end
+
+-- http_detail names what one request or response is about.
+local function http_detail(api, method, rest, query, body, code)
+    local p = {}
+    if method then p[#p + 1] = method end
+    if code then p[#p + 1] = code end
+    rest = rest or ""
+
+    if api == "registration" then
+        local node = rest:match("^health/nodes/([^/]+)")
+        local dtype, did = rest:match("^resource/([^/]+)/([^/]+)")
+        if node then
+            p[#p + 1] = "heartbeat"; kv(p, "node", node)
+        elseif dtype then
+            p[#p + 1] = dtype; kv(p, "id", did)
+        elseif rest:match("^resource") and body then
+            -- The envelope's type, not a "type" inside the resource (a
+            -- Device's controls carry one too, and key order is free).
+            for _, kind in ipairs({ "node", "device", "source", "flow", "sender", "receiver" }) do
+                if body:match('"type"%s*:%s*"' .. kind .. '"') then kv(p, "type", kind) end
+            end
+            kv(p, "id", jstr(body, "id"))
+        end
+        if body and code then kv(p, "health", jstr(body, "health")) end
+    elseif api == "query" then
+        if rest:match("^subscriptions") then
+            p[#p + 1] = "subscription"
+            kv(p, "resource_path", jstr(body, "resource_path"))
+            kv(p, "persist", jtok(body, "persist"))
+            kv(p, "max_update_rate_ms", jtok(body, "max_update_rate_ms"))
+            kv(p, "id", jstr(body, "id") or rest:match("^subscriptions/([^/]+)"))
+        elseif rest ~= "" then
+            p[#p + 1] = rest
+        end
+        if query and query ~= "" then p[#p + 1] = "?" .. query end
+    elseif api == "connection" then
+        local kind, id, leaf = rest:match("^single/(%a+)/([^/]+)/?(.*)$")
+        local bulk = rest:match("^bulk/(%a+)")
+        if kind then
+            p[#p + 1] = kind:sub(1, -2); p[#p + 1] = id
+            if leaf ~= "" then p[#p + 1] = leaf end
+            if body and (method == "PATCH" or code) and leaf ~= "transportfile" then
+                kv(p, "sender_id", jstr(body, "sender_id") or jtok(body, "sender_id"))
+                kv(p, "receiver_id", jstr(body, "receiver_id") or jtok(body, "receiver_id"))
+                kv(p, "master_enable", jtok(body, "master_enable"))
+                kv(p, "mode", jstr(body, "mode") or jtok(body, "mode"))
+                kv(p, "requested_time", jstr(body, "requested_time"))
+            end
+        elseif bulk then
+            p[#p + 1] = "bulk " .. bulk
+            kv(p, "items", tostring(count(body, '"id"%s*:')))
+        elseif rest ~= "" then
+            p[#p + 1] = rest
+        end
+    elseif api == "channelmapping" then
+        if rest ~= "" then p[#p + 1] = rest end
+        if body and method == "POST" then
+            kv(p, "mode", jstr(body, "mode") or jtok(body, "mode"))
+            kv(p, "channels", tostring(count(body, '"channel_index"%s*:')))
+        end
+    elseif api == "configuration" then
+        local role, leaf = rest:match("^rolePaths/([^/]+)/?(.*)$")
+        if role then
+            kv(p, "role", role)
+            if leaf ~= "" then p[#p + 1] = leaf end
+            if body and method then kv(p, "value", jstr(body, "value") or jtok(body, "value")) end
+            if body and code then kv(p, "status", jtok(body, "status")) end
+        elseif rest ~= "" then
+            p[#p + 1] = rest
+        end
+    elseif api == "streamcompatibility" then
+        if rest ~= "" then p[#p + 1] = rest end
+        if body and method == "PUT" then kv(p, "constraint_sets", tostring(count(body, '"urn:x%-nmos:cap:'))) end
+        if body and code then kv(p, "state", jstr(body, "state")) end
+    elseif api == "events" then
+        if rest ~= "" then p[#p + 1] = rest end
+        if body and code then kv(p, "event_type", jstr(body, "event_type")); kv(p, "value", jtok(body, "value") or jstr(body, "value")) end
+    elseif rest ~= "" then
+        p[#p + 1] = rest
+    end
+
+    if code and tonumber(code) and tonumber(code) >= 400 and body then
+        kv(p, "error", jstr(body, "error")); kv(p, "debug", jstr(body, "debug"))
+    end
+    return table.concat(p, " ")
+end
+
+-- ws_detail names a WebSocket text frame: an IS-04 Query grain, an IS-12
+-- message or an IS-07 message or command. known is false for a frame
+-- that is NMOS-shaped and of a kind this dissector does not know.
+local function ws_detail(text)
+    local mt = text:match('"messageType"%s*:%s*(%d+)')
     if mt then
         local n = tonumber(mt)
-        return ("IS-12 %s"):format(is12_message[n] or ("messageType=" .. n))
+        local p = { "IS-12", is12_message[n] or ("messageType=" .. n) }
+        if n == 0 then
+            kv(p, "commands", tostring(count(text, '"handle"%s*:')))
+            kv(p, "handle", jtok(text, "handle")); kv(p, "oid", jtok(text, "oid"))
+            kv(p, "method", element(text, "methodId", "m"))
+            kv(p, "property", element(text, "id", "p"))
+        elseif n == 1 then
+            kv(p, "responses", tostring(count(text, '"handle"%s*:')))
+            kv(p, "handle", jtok(text, "handle")); kv(p, "status", jtok(text, "status"))
+        elseif n == 2 then
+            kv(p, "notifications", tostring(count(text, '"eventId"%s*:')))
+            kv(p, "oid", jtok(text, "oid")); kv(p, "property", element(text, "propertyId", "p"))
+            kv(p, "changeType", jtok(text, "changeType"))
+        elseif n == 3 or n == 4 then
+            local list = text:match('"subscriptions"%s*:%s*(%b[])') or ""
+            kv(p, "oids", tostring(count(list, "%d+")))
+        elseif n == 5 then
+            kv(p, "status", jtok(text, "status")); kv(p, "error", jstr(text, "errorMessage"))
+        end
+        return table.concat(p, " "), is12_message[n] ~= nil
     end
-    local kind = text:match([["message_type"%s*:%s*"([%w_]+)"]])
+    local kind = jstr(text, "message_type")
     if kind then
-        return "IS-07 " .. kind
+        local p = { "IS-07", kind }
+        kv(p, "source", jstr(text, "source_id")); kv(p, "event_type", jstr(text, "event_type"))
+        local payload = text:match('"payload"%s*:%s*(%b{})')
+        kv(p, "value", jtok(payload, "value") or jstr(payload, "value"))
+        return table.concat(p, " "), is07_message[kind] == true
     end
-    local cmd = text:match([["command"%s*:%s*"([%w_]+)"]])
+    local cmd = jstr(text, "command")
     if cmd then
-        return "IS-07 cmd=" .. cmd
+        local p = { "IS-07", "command", cmd }
+        local list = text:match('"sources"%s*:%s*(%b[])')
+        if list then kv(p, "sources", tostring(count(list, '"[^"]+"'))) end
+        return table.concat(p, " "), is07_command[cmd] == true
     end
-    if text:match([["grain"%s*:]]) then
-        return "IS-04 Query grain"
+    if text:match('"grain"%s*:') then
+        local rows, pre, post = count(text, '"path"%s*:'), count(text, '"pre"%s*:'), count(text, '"post"%s*:')
+        local p = { "IS-04 Query grain" }
+        kv(p, "topic", jstr(text, "topic"))
+        kv(p, "rows", tostring(rows))
+        kv(p, "added", tostring(rows - pre)); kv(p, "removed", tostring(rows - post))
+        kv(p, "modified", tostring(pre + post - rows))
+        return table.concat(p, " "), true
     end
-    return nil
+    return nil, true
+end
+
+local function tag(tree, buf, pinfo, text)
+    pinfo.cols.protocol = "NMOS"
+    pinfo.cols.info:append(" [" .. text .. "]")
+    return tree:add(nmos_http, buf(0, 0))
 end
 
 function nmos_http.dissector(buf, pinfo, tree)
     local touched = false
 
-    local uri = F_http_uri()
-    if uri then
-        local api, ver, resource = parse_nmos_path(tostring(uri.value))
-        if api then
+    -- A request carries its own target; a response the target it answers.
+    local uri = first(F_http_uri) or first(F_http_for)
+    local api, ver, rest, query = parse_nmos_path(uri)
+    if api then
+        touched = true
+        local label = api_label[api] or ("x-nmos/" .. api)
+        local detail = http_detail(api, first(F_http_method), rest, query, first(F_http_body), first(F_http_code))
+        local subtree = tag(tree, buf, pinfo, label .. (ver ~= "" and (" " .. ver) or "") .. (detail ~= "" and (" " .. detail) or ""))
+        subtree:add(fh.api, label):set_generated()
+        if ver and ver ~= "" then subtree:add(fh.version, ver):set_generated() end
+        if rest and rest ~= "" then subtree:add(fh.resource, rest):set_generated() end
+        if detail ~= "" then subtree:add(fh.detail, detail):set_generated() end
+        if not api_label[api] then subtree:add_proto_expert_info(eh.unknown_api) end
+    end
+
+    local ws = first(F_ws_text)
+    if ws then
+        local detail, known = ws_detail(ws)
+        if detail then
             touched = true
-            local label = api_label[api] or ("x-nmos/" .. api)
-            local subtree = tree:add(nmos_http, buf(0, 0))
-            subtree:add(fh.api, label):set_generated()
-            if ver and ver ~= "" then
-                subtree:add(fh.version, ver):set_generated()
-            end
-            if resource and resource ~= "" then
-                subtree:add(fh.resource, resource):set_generated()
-            end
-            pinfo.cols.protocol = "NMOS"
-            local trail = (resource ~= "" and resource ~= nil) and (" /" .. resource) or ""
-            pinfo.cols.info:append(string.format(" [%s %s%s]", label, ver or "", trail))
+            local subtree = tag(tree, buf, pinfo, detail)
+            subtree:add(fh.message, detail:match("^(IS%-%d+ [^=]-) %w+=") or detail):set_generated()
+            subtree:add(fh.detail, detail):set_generated()
+            if not known then subtree:add_proto_expert_info(eh.unknown_message) end
         end
     end
 
-    local ws = F_ws_text()
-    if ws then
-        local kind = extract_ws_kind(tostring(ws.value))
-        if kind then
-            touched = true
-            local subtree = tree:add(nmos_http, buf(0, 0))
-            subtree:add(fh.message, kind):set_generated()
-            pinfo.cols.protocol = "NMOS"
-            pinfo.cols.info:append(" [" .. kind .. "]")
+    -- IS-07 over MQTT: x-nmos/events/<ver>/sources/<source id>/…, the same
+    -- message as a WebSocket carries, as the PUBLISH payload.
+    local topic = first(F_mqtt_topic)
+    if topic and topic:match("^x%-nmos/") then
+        touched = true
+        local source = topic:match("/sources/([^/]+)")
+        local p = { "IS-07 MQTT" }
+        kv(p, "source", source)
+        local raw = F_mqtt_msg and F_mqtt_msg()
+        local text = raw and raw.range and raw.range:string() or nil
+        if text then
+            local kind = jstr(text, "message_type")
+            kv(p, "message", kind); kv(p, "event_type", jstr(text, "event_type"))
+            local payload = text:match('"payload"%s*:%s*(%b{})')
+            kv(p, "value", jtok(payload, "value") or jstr(payload, "value"))
         end
+        local detail = table.concat(p, " ")
+        local subtree = tag(tree, buf, pinfo, detail)
+        subtree:add(fh.api, "IS-07 Events (MQTT)"):set_generated()
+        subtree:add(fh.resource, topic):set_generated()
+        subtree:add(fh.detail, detail):set_generated()
     end
 
     return touched and buf:len() or 0
