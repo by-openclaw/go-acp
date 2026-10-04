@@ -58,9 +58,11 @@ func useScriptedZone(t *testing.T) *scriptedZone {
 		return append([]dnssdcodec.Instance(nil), z.instances...), z.err
 	}
 	t.Cleanup(func() { discoverSystemUnicast = prev })
-	prevInterval := unicastReresolveInterval
-	unicastReresolveInterval = 5 * time.Millisecond
-	t.Cleanup(func() { unicastReresolveInterval = prevInterval })
+	prevInterval, prevMin, prevMax := unicastReresolveInterval, unicastBackoffMin, unicastBackoffMax
+	unicastReresolveInterval, unicastBackoffMin, unicastBackoffMax = 5*time.Millisecond, 5*time.Millisecond, 5*time.Millisecond
+	t.Cleanup(func() {
+		unicastReresolveInterval, unicastBackoffMin, unicastBackoffMax = prevInterval, prevMin, prevMax
+	})
 	return z
 }
 
@@ -243,4 +245,64 @@ func TestUnicastNodeReadsItsSystemAPIFromTheZone(t *testing.T) {
 	if z.questions() != asked {
 		t.Error("the resolve loop outlived Stop")
 	}
+}
+
+// The re-ask schedule both unicast watchers keep: a zone that names
+// nothing is asked again after 1 s, then half as long again each time
+// up to 30 s; once something is known the interval applies and the
+// backoff starts over.
+func TestUnicastReaskSchedule(t *testing.T) {
+	backoff := unicastBackoffMin
+	var waits []time.Duration
+	for i := 0; i < 11; i++ {
+		var delay time.Duration
+		delay, backoff = nextUnicastDelay(false, backoff)
+		waits = append(waits, delay)
+	}
+	if waits[0] != time.Second || waits[1] != 1500*time.Millisecond || waits[2] != 2250*time.Millisecond {
+		t.Errorf("first waits = %v, want 1s, 1.5s, 2.25s", waits[:3])
+	}
+	if last := waits[len(waits)-1]; last != unicastBackoffMax {
+		t.Errorf("the backoff settled at %v, want the %v ceiling", last, unicastBackoffMax)
+	}
+	for i := 1; i < len(waits); i++ {
+		if waits[i] < waits[i-1] {
+			t.Errorf("the backoff shrank: %v", waits)
+		}
+	}
+	delay, next := nextUnicastDelay(true, backoff)
+	if delay != unicastReresolveInterval || next != unicastBackoffMin {
+		t.Errorf("with something known = %v then %v, want the interval and a fresh backoff", delay, next)
+	}
+}
+
+// An empty zone is re-asked on the backoff, not the interval: with the
+// interval left at a minute, a registry published after the Node
+// started is still found.
+func TestUnicastRegistryWatcherReasksAnEmptyZoneSoon(t *testing.T) {
+	prevMin, prevMax := unicastBackoffMin, unicastBackoffMax
+	unicastBackoffMin, unicastBackoffMax = 5*time.Millisecond, 20*time.Millisecond
+	t.Cleanup(func() { unicastBackoffMin, unicastBackoffMax = prevMin, prevMax })
+
+	var mu sync.Mutex
+	published := false
+	scriptZone(t, func(service string) ([]dnssdcodec.Instance, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if !published || service != dnssdcodec.ServiceRegister {
+			return nil, nil
+		}
+		return []dnssdcodec.Instance{regInstance("late", service, "late.example.arpa", 8235, "v1.3", 0)}, nil
+	})
+	w := NewUnicastRegistryWatcher(nil, "10.0.0.53", "plant.example", "v1.3")
+	w.Run(context.Background())
+	t.Cleanup(func() { _ = w.Close() })
+
+	if _, ok := w.Best(); ok {
+		t.Fatal("a registry before one was published")
+	}
+	mu.Lock()
+	published = true
+	mu.Unlock()
+	waitFor(t, func() bool { _, ok := w.Best(); return ok })
 }

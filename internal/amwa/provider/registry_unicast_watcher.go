@@ -36,6 +36,54 @@ import (
 // reassigns it.
 var unicastReresolveInterval = 60 * time.Second
 
+// While the zone has named nothing usable the question is re-asked on
+// a short backoff instead: a Node with no Registry is doing nothing
+// else, and one that asks once a minute joins a plant up to a minute
+// after its record is published (the AMWA suite, in unicast mode,
+// gives a Node 30 s to ask). 1 s growing by half to 30 s is nmos-cpp's
+// discovery backoff; IS-04 names no figure. Vars for the same reason
+// the interval is one.
+var (
+	unicastBackoffMin = 1 * time.Second
+	unicastBackoffMax = 30 * time.Second
+)
+
+const unicastBackoffFactor = 1.5
+
+// runUnicastLoop asks at once — a Node must not sit an interval before
+// its first attempt — then again after a delay the answer chooses: the
+// re-resolve interval once something is known, the growing backoff
+// while nothing is. Returns when ctx is cancelled.
+func runUnicastLoop(ctx context.Context, ask func(context.Context) (known bool)) {
+	backoff := unicastBackoffMin
+	for {
+		var delay time.Duration
+		delay, backoff = nextUnicastDelay(ask(ctx), backoff)
+		t := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+		}
+	}
+}
+
+// nextUnicastDelay is the loop's schedule as a function: how long to
+// wait before the next question, and the backoff to carry into the one
+// after. Something known waits the interval and resets the backoff;
+// nothing known waits the backoff and grows it to its ceiling.
+func nextUnicastDelay(known bool, backoff time.Duration) (delay, next time.Duration) {
+	if known {
+		return unicastReresolveInterval, unicastBackoffMin
+	}
+	next = time.Duration(float64(backoff) * unicastBackoffFactor)
+	if next > unicastBackoffMax {
+		next = unicastBackoffMax
+	}
+	return backoff, next
+}
+
 // unicastDisqualifyTTL matches the mDNS watcher's failover penalty —
 // the two discovery modes must yield the same failover behaviour.
 const unicastDisqualifyTTL = 30 * time.Second
@@ -84,9 +132,9 @@ func NewUnicastRegistryWatcher(logger *slog.Logger, resolver, domain, preferAPIV
 	}
 }
 
-// Run resolves once immediately — a Node must not sit a full interval
-// before its first registration attempt — then re-resolves on the
-// interval until ctx is cancelled. Returns immediately.
+// Run resolves once immediately, then re-resolves — on the interval
+// while a Registry is known, on the backoff while none is — until ctx
+// is cancelled. Returns immediately.
 func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	loopCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
@@ -94,17 +142,12 @@ func (w *UnicastRegistryWatcher) Run(ctx context.Context) {
 	w.done = done
 	go func() {
 		defer close(done)
-		w.resolveOnce(loopCtx)
-		t := time.NewTicker(unicastReresolveInterval)
-		defer t.Stop()
-		for {
-			select {
-			case <-loopCtx.Done():
-				return
-			case <-t.C:
-				w.resolveOnce(loopCtx)
-			}
-		}
+		runUnicastLoop(loopCtx, func(ctx context.Context) bool {
+			w.resolveOnce(ctx)
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			return len(w.byFull) > 0
+		})
 	}()
 }
 

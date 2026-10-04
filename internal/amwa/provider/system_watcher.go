@@ -24,7 +24,6 @@ import (
 	"log/slog"
 	"net"
 	"sync"
-	"time"
 
 	dnssdcodec "dhs/internal/amwa/codec/dnssd"
 	dnssdsession "dhs/internal/amwa/session/dnssd"
@@ -142,19 +141,15 @@ func (w *SystemWatcher) Run(ctx context.Context) error {
 		w.mu.Unlock()
 		go func() {
 			defer close(done)
-			// Once at once: a Node must not sit a full interval before
-			// it reads the plant's configuration.
-			w.resolveOnce(loopCtx)
-			t := time.NewTicker(unicastReresolveInterval)
-			defer t.Stop()
-			for {
-				select {
-				case <-loopCtx.Done():
-					return
-				case <-t.C:
-					w.resolveOnce(loopCtx)
-				}
-			}
+			// The cadence the unicast Registry watcher keeps: at once,
+			// then the interval while a System API is known and the
+			// short backoff while the zone names none.
+			runUnicastLoop(loopCtx, func(ctx context.Context) bool {
+				w.resolveOnce(ctx)
+				w.mu.Lock()
+				defer w.mu.Unlock()
+				return len(w.seen) > 0
+			})
 		}()
 		return nil
 	}
