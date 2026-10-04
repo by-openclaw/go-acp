@@ -430,14 +430,53 @@ dhs_amwa_validate_suites:
   # connection suite passes against the Bearer-gated node, no CNTs.
   - { id: IS-05-01, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.2}], baseline_pass: 69, baseline_cnt: 0 }
+  # Every other node suite that carries the tool's authorization
+  # rounds (#1312). In a plain window those rounds are `Test Disabled`
+  # — 133 rows that reached no verdict on the v0.34.0 sweep. Same rows
+  # as the plain entry, on the armed transient. IS-12-01 and the
+  # BCP-008 pair have no such rounds and no twin.
+  # Baselines from the 2026-10-04 fleet runs: each is its plain twin
+  # plus the authorization rounds (7 per API the suite addresses), no
+  # Fail, no CNT. IS-11-01 keeps the plain entry's four tool-side
+  # Warnings on the reference-sender rounds; it needs the node of
+  # #1319, the released v0.34.0 died under it.
+  - { id: IS-05-02, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 70, baseline_cnt: 0 }
+  - { id: IS-07-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.0}], baseline_pass: 26, baseline_cnt: 0 }
+  - { id: IS-07-02, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.2}, {ver: v1.0}],
+      baseline_pass: 74, baseline_cnt: 0 }
+  - { id: IS-08-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.0}], baseline_pass: 43, baseline_cnt: 0 }
+  - { id: IS-08-02, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.0}], baseline_pass: 57, baseline_cnt: 0 }
+  - { id: IS-11-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
+      baseline_pass: 128, baseline_cnt: 0 }
+  - { id: IS-14-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
+      baseline_pass: 174, baseline_cnt: 0 }
+  - { id: BCP-005-01-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 23, baseline_cnt: 0 }
+  - { id: BCP-006-01-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 30, baseline_cnt: 0 }
+  - { id: BCP-006-04, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 28, baseline_cnt: 0 }
+  - { id: BCP-007-03-01, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 69, baseline_cnt: 0 }
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 24, baseline_cnt: 0 }
   # Armed baselines (2026-09-01, #944): the token-bearing companion
   # node + seeded persistent subscription give every Query round a
   # resource, so the armed window sits the SAME exam shape as the
   # disarmed twin — cnt 2 is the identical structural
   # auto_registration 5/6 pair (RAML id substitution, untestable for
-  # any implementation).
+  # any implementation). 90 since #1312: the armed transient announces
+  # at pri 99 like the plain one, so the two advertisement rounds score
+  # a Pass instead of the "reserved for development" Warning.
   - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
-      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 88, baseline_cnt: 2 }
+      rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 90, baseline_cnt: 2 }
 
   # ---- controller scope (issue #954): the four testing-facade exams,
   # driven by our shipped facade (window_facade.yml). Row shapes are
