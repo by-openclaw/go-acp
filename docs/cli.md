@@ -21,6 +21,7 @@ Ansible templates render the same shape.
 - [NMOS controller: watch](#nmos-controller-watch)
 - [NMOS controller: connect (IS-05)](#nmos-controller-connect-is-05)
 - [NMOS controller: set](#nmos-controller-set)
+- [NMOS controller: map (IS-08)](#nmos-controller-map-is-08)
 - [NMOS controller: events (IS-07)](#nmos-controller-events-is-07)
 - [NMOS plant export](#nmos-plant-export)
 - [NMOS plant audit](#nmos-plant-audit)
@@ -566,6 +567,40 @@ Usage of set:
     	DNS-SD discovery timeout (default 5s)
   -verify
     	after activation, read the sender's ACTIVE parameters back and fail if they do not carry what was asked
+  -when string
+    	TAI time <secs>:<nanos> for the scheduled modes
+```
+
+## NMOS controller: map (IS-08)
+
+`dhs consumer nmos map --help`
+
+```text
+Usage of map:
+  -api-ver string
+    	force a specific IS-04 wire minor; empty = highest mutual
+  -cancel id
+    	withdraw the scheduled activation with this id before its instant
+  -device string
+    	IS-04 Device UUID whose channel map is read or changed (required)
+  -domain string
+    	unicast DNS-SD discovery domain (default "by-systems.arpa")
+  -dry-run
+    	check the routes against what the Device declares and print the exact POST body — send nothing
+  -mdns
+    	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
+  -mode string
+    	activate_immediate | activate_scheduled_relative | activate_scheduled_absolute (default "activate_immediate")
+  -node string
+    	drive ONE Node directly (http://host:port) — no Registry in the path
+  -registry string
+    	Registry origin (http://host:port); when empty, --mdns discovers one
+  -resolver string
+    	unicast DNS resolver IP (implies unicast discovery)
+  -route <output>:<channel>=<input>:<channel>
+    	repeatable <output>:<channel>=<input>:<channel>; an empty right side (`<output>:<channel>=`) leaves that channel unrouted
+  -timeout duration
+    	DNS-SD discovery timeout (default 5s)
   -when string
     	TAI time <secs>:<nanos> for the scheduled modes
 ```

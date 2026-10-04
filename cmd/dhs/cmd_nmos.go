@@ -62,6 +62,8 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSConnect(ctx, rest)
 	case "set":
 		return runNMOSSet(ctx, rest)
+	case "map":
+		return runNMOSMap(ctx, rest)
 	case "facade":
 		return runNMOSFacade(ctx, rest)
 	case "events":
@@ -75,7 +77,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 	case "registers":
 		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, facade, events, export, audit, probe, registers)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -719,6 +721,7 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos walk     [flags]
   dhs consumer nmos connect  [flags]
   dhs consumer nmos set      [flags]
+  dhs consumer nmos map      [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -759,6 +762,20 @@ destination_ip 0.0.0.0 — addressed nowhere.
   --enable / --disable  also set master_enable
   --dry-run             print the PATCH body and the sender's current legs
   --mode / --when       as for connect
+  (any of walk's --node / --registry / discovery flags)
+
+map — read or change a Device's audio channel map over IS-08. With no
+--route it prints every output channel and the input channel feeding it;
+that is where the input and output ids come from. The IS-08 endpoint is
+discovered from IS-04 (the Device's cm-ctrl control), never guessed.
+  --device UUID         required
+  --route O:C=I:C       repeatable; output O channel C carries input I
+                        channel C. "O:C=" leaves that channel unrouted.
+                        Checked against what the Device declares before
+                        anything is sent.
+  --dry-run             print the POST body and the current map, send nothing
+  --mode / --when       as for connect
+  --cancel ID           withdraw a scheduled activation
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
