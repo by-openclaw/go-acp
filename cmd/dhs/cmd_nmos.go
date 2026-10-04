@@ -68,6 +68,8 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSCompat(ctx, rest)
 	case "config":
 		return runNMOSConfig(ctx, rest)
+	case "control":
+		return runNMOSControl(ctx, rest)
 	case "facade":
 		return runNMOSFacade(ctx, rest)
 	case "events":
@@ -728,6 +730,7 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos map      [flags]
   dhs consumer nmos compat   [flags]
   dhs consumer nmos config   [flags]
+  dhs consumer nmos control  [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -811,6 +814,22 @@ method ids come from.
   --validate-only       with --restore: what would happen, apply nothing
   --rebuild             with --restore: Rebuild mode instead of Modify
   --dry-run             read and validate, change nothing
+  (any of walk's --node / --registry / discovery flags)
+
+control — read and set a Device's model over IS-12 (MS-05-02 over its
+control WebSocket), call its methods, watch its properties change. Objects
+are named by role path, as config names them. With only --device it lists
+every object with its oid and class; with --role-path it describes that
+object's class: that is where the property and method ids come from.
+  --device UUID         required
+  --role-path P         the object (root, root.receivers.rx1, ...)
+  --get ID              read a property (1p6)
+  --set ID=JSON         write a property; read back from the Device
+  --invoke ID --args J  call a method with its arguments object
+  --watch               print property changes as the Device announces
+                        them: of --role-path, or of every object
+  --duration D          with --watch: stop after D (default: until ^C)
+  --dry-run             read, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.

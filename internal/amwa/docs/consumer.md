@@ -183,6 +183,19 @@ A set is read back; a restore is validated by the Device first and
 applied only when every object validates. **Not released, and not run
 against a Device yet.**
 
+## control — a Device's model over its control WebSocket (IS-12)
+
+```
+dhs consumer nmos control --node|--registry … --device <uuid>                      # every object: oid, class, role path
+dhs consumer nmos control … --device <uuid> --role-path <p>                        # that object's class
+dhs consumer nmos control … --role-path <p> --get <id> | --set <id>=<json> | --invoke <id> [--args <json>]
+dhs consumer nmos control … [--role-path <p>] --watch [--duration 30s]             # property changes, as announced
+```
+
+Objects are named by role path, as `config` names them; the oid the
+protocol wants is resolved from the Device's own block tree. A set is
+read back. **Not released, and not run against a Device yet.**
+
 ## events, system, export, audit, probe, registers, facade
 
 In [`docs/cli.md`](../../../docs/cli.md). None has a captured run in

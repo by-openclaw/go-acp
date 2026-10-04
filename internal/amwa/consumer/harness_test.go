@@ -54,6 +54,8 @@ type harness struct {
 	is11 http.HandlerFunc
 	// is14 is the Device Configuration API, likewise.
 	is14 http.HandlerFunc
+	// is12 is the control protocol's WebSocket endpoint, likewise.
+	is12 http.HandlerFunc
 	// failColl, when it matches a Query collection's plural (e.g.
 	// "senders"), makes that one collection answer HTTP 500 so a test
 	// can drive Walk's per-collection error arm.
@@ -84,6 +86,14 @@ func newHarness(t *testing.T) *harness {
 				return
 			}
 			http.Error(w, "no is11 handler wired", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(p, "/x-nmos/ncp/") {
+			if h.is12 != nil {
+				h.is12(w, r)
+				return
+			}
+			http.Error(w, "no is12 handler wired", http.StatusNotFound)
 			return
 		}
 		if strings.Contains(p, "/x-nmos/configuration/") {

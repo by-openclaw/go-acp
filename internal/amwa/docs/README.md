@@ -32,7 +32,7 @@ unit tests, or only on a build nobody runs, says so.
 | `map` | IS-08 | yes | — | not released; not run against a device |
 | `compat` | IS-11 | yes | — | not released; not run against a device |
 | `config` | IS-14 | yes | — | not released; not run against a device |
-| — | IS-12 / MS-05-02 | — | — | **no client yet** |
+| `control` | IS-12 / MS-05-02 | yes | — | not released; not run against a device |
 | `facade` | AMWA testing façade | yes | v0.35.0: the AMWA tool's controller suites (see the sweep) | — |
 | `export`, `audit`, `probe`, `registers` | plant tooling | yes | — | not in the integration suite |
 
