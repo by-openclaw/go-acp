@@ -18,10 +18,22 @@
 // The methods only ever feed the health engine (monitor_health.go),
 // so injected transitions get the same debounce, transition counters,
 // status messages, and overallStatus mapping as organic ones.
+//
+// The worker is the model's one REBUILDABLE object (IS-14 Backup &
+// restore: a non-block object whose read-only properties a Rebuild
+// restore may set). Its interlock is such a property:
+//
+//	4p1 armed (NcBoolean, read-only) — set when the worker is
+//	constructed; a device rebuilt from a backup with armed=false
+//	refuses all four methods (Locked) until rebuilt armed again.
+//
+// Nothing an operator can Set flips it: fault injection on a plant
+// device is a construction-time decision, carried by the backup.
 package provider
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"dhs/internal/amwa/codec/ms05"
@@ -51,7 +63,15 @@ func vendorFaultClass() ms05.NcClassDescriptor {
 		ClassID:      faultClassID,
 		Name:         faultClassName,
 		FixedRole:    strp(faultRole),
-		Properties:   []ms05.NcPropertyDescriptor{},
+		Properties: []ms05.NcPropertyDescriptor{
+			{
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Fault injection armed (construction-time; changed only by a Rebuild restore)")},
+				ID:           ms05.NcPropertyId{Level: 4, Index: 1},
+				Name:         "armed",
+				TypeName:     strp("NcBoolean"),
+				IsReadOnly:   true,
+			},
+		},
 		Methods: []ms05.NcMethodDescriptor{
 			{
 				NcDescriptor:   ms05.NcDescriptor{Description: strp("Force a domain status on a monitor")},
@@ -122,9 +142,34 @@ type faultArgs struct {
 	Increment   uint64 `json:"increment"`
 }
 
+// errFaultDisarmed is the refusal of every method while the worker's
+// interlock is off; the dispatchers answer it as Locked (423).
+var errFaultDisarmed = errors.New("fault injection is disarmed (DhsFaultControl.armed is false; a Rebuild restore with armed=true re-arms it)")
+
+// faultArmed reads the interlock. A model without the worker (a
+// fixture built from another bundle) counts as armed: the methods
+// then fail on their own arguments, as before.
+func (s *IS14ConfigurationServer) faultArmed() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	obj, ok := s.objects["root."+faultRole]
+	if !ok {
+		return true
+	}
+	p := findPropByName(obj, "armed")
+	if p == nil {
+		return true
+	}
+	armed, _ := p.value.(bool)
+	return armed
+}
+
 // invokeFaultMethod runs one DhsFaultControl method by name against
 // the health engine. Shared by the IS-12 and IS-14 dispatchers.
 func (s *IS14ConfigurationServer) invokeFaultMethod(name string, rawArgs json.RawMessage) error {
+	if !s.faultArmed() {
+		return errFaultDisarmed
+	}
 	var a faultArgs
 	if len(rawArgs) > 0 {
 		if err := json.Unmarshal(rawArgs, &a); err != nil {
@@ -174,4 +219,13 @@ func isFaultMethod(name string) bool {
 		return true
 	}
 	return false
+}
+
+// faultMethodStatus maps a fault-method refusal to its NcMethodStatus:
+// the interlock is Locked, everything else a parameter problem.
+func faultMethodStatus(err error) ms05.NcMethodStatus {
+	if errors.Is(err, errFaultDisarmed) {
+		return ms05.NcMethodStatusLocked
+	}
+	return ms05.NcMethodStatusParameterError
 }

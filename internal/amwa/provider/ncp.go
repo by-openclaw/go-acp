@@ -277,7 +277,7 @@ func (s *IS12NCPServer) runCommand(cmd is12.Command) is12.MethodResult {
 			for _, md := range obj.class.Methods {
 				if int(md.ID.Level) == cmd.MethodID.Level && int(md.ID.Index) == cmd.MethodID.Index && isFaultMethod(md.Name) {
 					if err := s.config.invokeFaultMethod(md.Name, cmd.Arguments); err != nil {
-						return ncpErr(ms05.NcMethodStatusParameterError, err.Error())
+						return ncpErr(faultMethodStatus(err), err.Error())
 					}
 					return ncpOK()
 				}

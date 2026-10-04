@@ -67,6 +67,12 @@ type configObject struct {
 	path    []string // role path as array, ["root", ...]
 	class   ms05.NcClassDescriptor
 	props   []*configProperty // flattened-descriptor order (own first)
+
+	// rebuildable marks an object a Rebuild restore may reconstruct —
+	// its own read-only properties accept the backup's values (IS-14
+	// Backup & restore). Set at model build; the holder reports it as
+	// isRebuildable.
+	rebuildable bool
 }
 
 // IS14ConfigurationServer serves the Configuration API for one Node.
@@ -393,7 +399,9 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	fault := mustObject(faultClassID, nextOid, []string{"root", faultRole}, map[string]any{
 		"userLabel": "Fault injection control",
 		"enabled":   true,
+		"armed":     true,
 	})
+	fault.rebuildable = true
 	objs = append(objs, fault)
 
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
@@ -559,7 +567,14 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 // setProperty validates + applies one write. Readonly properties
 // answer NcMethodStatus 405; a null on a non-nullable property 417.
 func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProperty, raw json.RawMessage) (ms05.NcMethodStatus, error) {
-	if p.desc.IsReadOnly {
+	return s.writeProperty(obj, p, raw, false)
+}
+
+// writeProperty is setProperty with the one door a Rebuild restore
+// opens: reconstruct=true lets a rebuildable object's own read-only
+// property take the backup's value. Every other check still applies.
+func (s *IS14ConfigurationServer) writeProperty(obj *configObject, p *configProperty, raw json.RawMessage, reconstruct bool) (ms05.NcMethodStatus, error) {
+	if p.desc.IsReadOnly && !reconstruct {
 		return ms05.NcMethodStatusReadonly,
 			fmt.Errorf("property %s (%s) is readonly", propKey(p.desc.ID), p.desc.Name)
 	}
@@ -973,7 +988,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		// over IS-14 REST so the Ansible verify plays reach it with
 		// plain HTTP.
 		if err := s.invokeFaultMethod(md.Name, rawArgs); err != nil {
-			return ms05Err(400, ms05.NcMethodStatusParameterError, err.Error())
+			return ms05Err(400, faultMethodStatus(err), err.Error())
 		}
 		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
 
@@ -1296,7 +1311,7 @@ func (s *IS14ConfigurationServer) backup(obj *configObject, recurse, includeDesc
 			DependencyPaths:       [][]string{},
 			AllowedMembersClasses: []ms05.NcClassId{},
 			Values:                []is14.PropertyHolder{},
-			IsRebuildable:         false,
+			IsRebuildable:         o.rebuildable,
 		}
 		if !isCM || includeDesc {
 			for _, p := range o.props {
@@ -1317,10 +1332,15 @@ func (s *IS14ConfigurationServer) backup(obj *configObject, recurse, includeDesc
 // against the scope. Per Backup & restore.md: every in-scope object
 // offered in the data set gets a validation entry; readonly members
 // produce Warning (300) notices and are left untouched; unknown paths
-// report NotFound; and a Rebuild request on this non-rebuildable
-// model behaves as a Modify with notices (the doc's interoperability
-// floor).
+// report NotFound. A Rebuild reconstructs the model's rebuildable
+// objects: their own read-only properties take the backup's values,
+// while NcObject's members (classId, oid, constantOid, owner, role,
+// touchpoints, runtimePropertyConstraints) stay — the doc lets a
+// structural property change only when the PARENT block is
+// rebuildable, and no block here is. On everything else a Rebuild
+// behaves as a Modify with notices (the doc's interoperability floor).
 func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkPropertiesSetArgs, apply bool) []is14.ObjectPropertiesSetValidation {
+	rebuild := args.RestoreMode != nil && *args.RestoreMode == is14.RestoreModeRebuild
 	scope := map[string]bool{}
 	for _, key := range s.scopePaths(obj, *args.Recurse) {
 		scope[key] = true
@@ -1364,10 +1384,22 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				})
 				continue
 			}
-			if p.desc.IsReadOnly {
+			reconstruct := rebuild && target.rebuildable && p.desc.IsReadOnly
+			if p.desc.IsReadOnly && !reconstruct {
 				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
 					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeWarning,
 					NoticeMessage: "Property is readonly",
+				})
+				continue
+			}
+			if reconstruct && p.desc.ID.Level == 1 {
+				// NcObject's own members are the object's identity,
+				// structure and declared constraints: a Rebuild of the
+				// object does not change them (its parent block would
+				// have to be rebuildable).
+				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeWarning,
+					NoticeMessage: "Structural property: the parent block is not rebuildable",
 				})
 				continue
 			}
@@ -1409,7 +1441,7 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 			if apply {
 				raw, err := json.Marshal(ph.Value)
 				if err == nil {
-					if _, err := s.setProperty(target, p, raw); err == nil {
+					if _, err := s.writeProperty(target, p, raw, reconstruct); err == nil {
 						changed = true
 					}
 				}
