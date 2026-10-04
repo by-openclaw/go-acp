@@ -3,12 +3,14 @@ package provider
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	stdhttp "net/http"
 	"strings"
 	"sync"
@@ -33,6 +35,10 @@ const MaxFailoverChain = 8
 // to GC unresponsive Nodes; we re-register if heartbeats keep failing
 // past this.
 const HeartbeatGracePeriod = 12 * time.Second
+
+// registryWaitFloor keeps a sub-second cadence from turning an ordinary
+// answer into a timeout (see answerWait).
+const registryWaitFloor = time.Second
 
 // ErrRegistryNotFound is returned by sendHeartbeat when the Registry
 // answers 404 — the Node has been GC'd and must re-register from
@@ -174,7 +180,7 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 		}
 	}
 	codec, _ := is04.Get(apiVer) // nil-codec falls back to canonical shape in EncodeRegistrationVersioned
-	return &RegistrationClient{
+	c := &RegistrationClient{
 		logger: logger,
 		base:   base,
 		apiVer: apiVer,
@@ -185,6 +191,41 @@ func NewRegistrationClient(logger *slog.Logger, registryURL, apiVer string, bund
 		},
 		closed:    make(chan struct{}),
 		republish: make(chan republishItem, 64),
+	}
+	c.http.Transport = c.newTransport(nil)
+	return c
+}
+
+// A Registry is given one heartbeat period to answer a heartbeat and
+// half of one to accept the connection. Past that it has failed: the
+// next beat is due, a Registry sharing state with it evicts the Node at
+// HeartbeatGracePeriod, and the failover to the next advertised
+// Registry is timed against exactly this — the AMWA suite allows one
+// heartbeat interval for "a Node's connection to time out" before it
+// stops looking (IS-04-01 test_16_01). The client used to wait ten
+// seconds whatever the cadence, and reached the last Registry of a
+// failover chain after the suite had given up on it.
+
+// answerWait is how long a heartbeat may go unanswered.
+func (c *RegistrationClient) answerWait() time.Duration {
+	return max(c.heartbeatInterval(), registryWaitFloor)
+}
+
+// connectWait is how long a connection to a Registry may take.
+func (c *RegistrationClient) connectWait() time.Duration {
+	return max(c.heartbeatInterval()/2, registryWaitFloor)
+}
+
+// newTransport bounds connection establishment by connectWait; tlsCfg,
+// when set, verifies an https Registration API.
+func (c *RegistrationClient) newTransport(tlsCfg *tls.Config) *stdhttp.Transport {
+	return &stdhttp.Transport{
+		Proxy: stdhttp.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			d := net.Dialer{Timeout: c.connectWait()}
+			return d.DialContext(ctx, network, addr)
+		},
+		TLSClientConfig: tlsCfg,
 	}
 }
 
@@ -671,7 +712,7 @@ func (c *RegistrationClient) SetTLSRoots(roots *x509.CertPool) {
 		// outcome that would be worse than not installing the roots.
 		return
 	}
-	c.http.Transport = &stdhttp.Transport{TLSClientConfig: cfg}
+	c.http.Transport = c.newTransport(cfg)
 }
 
 // applyToken attaches the Bearer token when a source is installed.
@@ -766,6 +807,8 @@ func resourceID(t is04.ResourceType, data any) string {
 // ErrRegistryNotFound on 404, generic error on other failures, nil on
 // 200.
 func (c *RegistrationClient) sendHeartbeat(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, c.answerWait())
+	defer cancel()
 	url := c.base + "/health/nodes/" + c.bundle.Node.ID
 	req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, nil)
 	if err != nil {

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"errors"
+	stdhttp "net/http"
 	"testing"
 )
 
@@ -62,10 +63,11 @@ func TestAttachHelpersAreNoOpsWithoutTheirSubsystem(t *testing.T) {
 	if rc.tokenSource != nil {
 		t.Error("a Node with no auth must not install a token source")
 	}
-	// SetTLSRoots installs a client transport; with no provisioned
-	// trust it is never called, so the client keeps its default.
-	if rc.http != nil && rc.http.Transport != nil {
-		t.Error("a Node with no provisioned trust must not install a TLS transport")
+	// SetTLSRoots gives the client transport a TLS configuration; with
+	// no provisioned trust it is never called, so the transport has
+	// none.
+	if tr, ok := rc.http.Transport.(*stdhttp.Transport); !ok || tr.TLSClientConfig != nil {
+		t.Error("a Node with no provisioned trust must not install a TLS configuration")
 	}
 }
 
