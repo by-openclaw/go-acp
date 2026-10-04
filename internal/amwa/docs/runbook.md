@@ -285,9 +285,24 @@ srv-host=cerebrum._nmos-register._tcp.nmos.lab,cer.nmos.lab,8080
 txt-record=cerebrum._nmos-register._tcp.nmos.lab,"api_ver=v1.1,v1.2,v1.3","api_proto=http","api_auth=false","pri=0"
 ```
 
-The Node re-asks the zone every 60 s and applies the SAME priority
-selection and failover (§6.1) as mDNS — one selection rule, two
-transports. All three registration paths were proven live against the
+The Node asks the zone at start and re-asks it every 60 s — or, while
+the zone names nothing it can use, after 1 s growing by half to 30 s,
+so a Registry published after the Node booted is joined within seconds,
+not a minute. It applies the SAME priority selection and failover
+(§6.1) as mDNS — one selection rule, two transports.
+
+The IS-09 System API follows the same mode: a `--unicast` Node resolves
+`_nmos-system._tcp.<zone>` from the same DNS server on the same
+cadence, and never browses mDNS for it. Publish it the way the Registry
+is published:
+
+```
+ptr-record=_nmos-system._tcp.nmos.lab,sys._nmos-system._tcp.nmos.lab
+srv-host=sys._nmos-system._tcp.nmos.lab,cer.nmos.lab,8080
+txt-record=sys._nmos-system._tcp.nmos.lab,"api_ver=v1.0","api_proto=http","api_auth=false","pri=0"
+```
+
+All three registration paths were proven live against the
 Cerebrum registry in one session: `dhs-node-mdns` (browse, picked
 pri=0 over a pri=199 dev registry, then suspended its own
 `_nmos-node` announce per §4.2.1), `dhs-node-dnssd` (the zone above),
