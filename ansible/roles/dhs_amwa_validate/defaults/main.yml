@@ -31,14 +31,20 @@ dhs_amwa_validate_node_port: 18080
 # suite streams from (tooling.yml renders it into the tool config).
 dhs_amwa_validate_is11_reference_port: 18400
 dhs_amwa_validate_registry_port: 8235
-# The mirror's served read-only Query face (--serve on the resident
-# mirror unit — dhs_amwa_plant_mirror_serve). Mirror-scope query rows
-# score THROUGH it via the per-row port override.
+# The PLANT mirror's served read-only Query face (--serve on the
+# resident mirror unit — dhs_amwa_plant_mirror_serve); the mirror
+# play's health/parity half reads it.
 dhs_amwa_validate_mirror_serve_port: 8335
 dhs_amwa_validate_cut_port: 18500
-# The token-bearing companion node the armed registry window registers
-# into the transient armed registry (#942 S3c).
+# The companion node the registry window registers into its transient
+# registry (token-bearing when the window is armed, #942 S3c).
 dhs_amwa_validate_cutnode_port: 18510
+# The mirror window (#1298): the transient mirror's served Query face
+# — the mirror-scope query rows score THROUGH it, so the catalogue's
+# literal row port must stay equal to this — and the throw-away
+# registry it forwards into (loopback only, announces nothing).
+dhs_amwa_validate_cut_mirror_port: 18530
+dhs_amwa_validate_cut_mirror_target_port: 18540
 dhs_amwa_validate_plant_bin: /opt/dhs-amwa-plant/dhs
 dhs_amwa_validate_plant_config: /opt/dhs-amwa-plant/amwa-test-node.json
 dhs_amwa_validate_registry_unit: dhs-nmos-registry
@@ -208,7 +214,7 @@ dhs_amwa_validate_mock_registry_port: 5102
 #   id            AMWA suite id, verbatim
 #   scope         node | registry | controller | mirror
 #   target        node | registry | cut  (which host:port the rows use)
-#   window        absent | isolated | unicast | p2p | registry | tls | facade
+#   window        absent | isolated | unicast | p2p | registry | mirror | tls | facade
 #                 (CuT window around the run — window_<name>.yml)
 #   auth          true = IS-10 window (issue #942): the window's CuT
 #                 is armed with --auth-url and the ARMED tool instance
@@ -375,27 +381,29 @@ dhs_amwa_validate_suites:
   - { id: IS-04-02, scope: registry, target: registry, window: registry,
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
 
-  # ---- mirror scope, plant registry :8235 + mirror served face :8335 ----
-  # IS-04-02 end-to-end THROUGH the mirror (issue #946, S2b). The
-  # suite's two rows split across the mirrored path: the registration
-  # row targets the SOURCE plant registry (:8235, the target default —
-  # the mirror's own upstream), the query row overrides the port to the
-  # mirror's served read-only Query face (:8335; suite_attempt.yml's
-  # row normalisation honours row.host/row.port). The tool registers
-  # its mock resources at the source and scores every Query read
-  # THROUGH the audited mirror. No window: the resident registry and
-  # resident mirror already run, exactly like the plant-resident
-  # entries above. The row port is a literal per this file's row style
-  # (rows never template vars — a templated port would reach the tool
-  # as a string, not an int) and must match
-  # dhs_amwa_validate_mirror_serve_port / dhs_amwa_plant_mirror_serve.
-  # Baselines (2026-09-01, #946 fleet receipts after the ws_href,
-  # announce, per-minor-fidelity and identical-put fixes plus the
-  # seeded subscription): pass=73 fail=0, cnt=2 = the same structural
-  # auto_registration 5/6 pair every registry-shaped entry carries.
-  - { id: IS-04-02, scope: mirror, target: registry,
-      rows: [{ver: v1.3}, {ver: v1.3, port: 8335}],
-      baseline_pass: 73, baseline_cnt: 2 }
+  # ---- mirror scope: a transient source registry + mirror (window: mirror) ----
+  # IS-04-02 end-to-end THROUGH a mirror (issue #946, S2b). The suite's
+  # two rows split across the mirrored path: the registration row
+  # targets the SOURCE registry (the window points it at its transient
+  # one), the query row overrides the port to the mirror's served
+  # read-only Query face (suite_attempt.yml's row normalisation honours
+  # row.host/row.port). The tool registers its mock resources at the
+  # source and scores every Query read THROUGH the mirror.
+  # window: mirror (#1298) — like the registry exam (#1292), it sits
+  # pieces holding only what the exam put there; on the plant registry
+  # + plant mirror, test_31 evicts its own node while the tool validates
+  # the plant's catalogue. The row port is a literal per this file's row
+  # style (rows never template vars — a templated port would reach the
+  # tool as a string, not an int) and must match
+  # dhs_amwa_validate_cut_mirror_port.
+  # Baseline (fleet, 2026-10-04, on the transient trio): pass=74
+  # fail=0 warn=0 — the registry exam's own score, read through the
+  # mirror; cnt=2 = the same structural auto_registration 5/6 pair
+  # every registry-shaped entry carries. (73 on the plant mirror,
+  # 2026-09-01: its served face announced at dev priority.)
+  - { id: IS-04-02, scope: mirror, target: registry, window: mirror,
+      rows: [{ver: v1.3}, {ver: v1.3, port: 18530}],
+      baseline_pass: 74, baseline_cnt: 2 }
 
   # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
   # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +

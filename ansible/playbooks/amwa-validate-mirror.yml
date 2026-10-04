@@ -9,10 +9,12 @@
 # upstream-vs-mirror, audit-trail assertions, and the
 # controller-in-the-middle checks.
 #
-# Two plays: the parity/health checks first (a broken mirror should
-# fail cheaply, not mid-suite), then the catalog's mirror-scope suites
-# (scope: mirror in dhs_amwa_validate_suites) — IS-04-02 scored
-# end-to-end THROUGH the mirror's served Query face (issue #946).
+# Two plays: the PLANT mirror's parity/health checks first (a broken
+# mirror should fail cheaply, not mid-suite), then the catalog's
+# mirror-scope suites (scope: mirror in dhs_amwa_validate_suites) —
+# IS-04-02 scored end-to-end THROUGH a mirror's served Query face
+# (issue #946), on the transient source + mirror the mirror window
+# opens (issue #1298): the exam does not sit the plant's catalogue.
 
 - name: AMWA validate — mirror
   hosts: tooling
@@ -34,9 +36,13 @@
         return_content: true
       register: _mstatus
 
+    # Counted the way the mirror reads the upstream: with
+    # query.downgrade, so a node registered below v1.3 (the FusioN is
+    # IS-04 v1.2) is in both numbers. A plain v1.3 listing leaves it
+    # out and reports a healthy mirror as one node over (#1298).
     - name: The upstream node count, for parity
       ansible.builtin.uri:
-        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/nodes?paging.limit=300"
+        url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_registry_port }}/x-nmos/query/v1.3/nodes?query.downgrade=v1.0&paging.limit=300"
         return_content: true
       register: _upnodes
 
@@ -69,26 +75,6 @@
 - name: AMWA validate — mirror suites
   hosts: tooling
   gather_facts: true
-  pre_tasks:
-    # auto_query_18/19 page /subscriptions; the served face starts with
-    # none (the plant registry always holds the mirror's own upstream
-    # ones, the mirror's SERVED face holds only what controllers
-    # create). One persistent subscription (survives with no WS client)
-    # gives those rounds a resource — same reasoning as the armed
-    # registry window's seed in window_registry.yml.
-    - name: Seed a persistent subscription on the mirror's served face
-      ansible.builtin.uri:
-        url: "http://{{ hostvars[groups['plant'][0]].ansible_host }}:{{ dhs_amwa_validate_mirror_serve_port }}/x-nmos/query/v1.3/subscriptions"
-        method: POST
-        body_format: json
-        body:
-          max_update_rate_ms: 100
-          persist: true
-          resource_path: /nodes
-          params: {}
-        status_code: [200, 201]
-      vars:
-        dhs_amwa_validate_mirror_serve_port: 8335
   roles:
     - role: dhs_amwa_validate
       vars:

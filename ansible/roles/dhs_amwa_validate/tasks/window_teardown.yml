@@ -17,6 +17,9 @@
     - dhs-nmos-validate-restore.timer
     - dhs-nmos-validate-sys
     - dhs-nmos-validate-sysstop.timer
+    - dhs-nmos-validate-mirror
+    - dhs-nmos-validate-mtarget
+    - dhs-nmos-validate-mirrorstop.timer
   delegate_to: "{{ groups['plant'][0] }}"
   failed_when: false
 
