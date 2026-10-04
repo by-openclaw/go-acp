@@ -2507,6 +2507,7 @@ Usage:
   dhs consumer nmos connect  [flags]
   dhs consumer nmos set      [flags]
   dhs consumer nmos map      [flags]
+  dhs consumer nmos compat   [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -2561,6 +2562,18 @@ discovered from IS-04 (the Device's cm-ctrl control), never guessed.
   --dry-run             print the POST body and the current map, send nothing
   --mode / --when       as for connect
   --cancel ID           withdraw a scheduled activation
+  (any of walk's --node / --registry / discovery flags)
+
+compat — read why a Sender and a Receiver do not agree, over IS-11, in the
+Device's own words; hold a Sender to what the far end takes.
+  --receiver UUID       its state (compliant_stream / non_compliant_stream)
+                        and the Outputs it drives
+  --sender UUID         its state, active constraints, what it can be
+                        constrained on, and the Inputs feeding it
+  --constraints FILE    PUT these active constraints on --sender; refused
+                        before sending if the Sender does not support them
+  --release             remove --sender's active constraints
+  --dry-run             read and check, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
@@ -2828,6 +2841,34 @@ Usage of map:
     	DNS-SD discovery timeout (default 5s)
   -when string
     	TAI time <secs>:<nanos> for the scheduled modes
+
+========== consumer/nmos/compat ==========
+$ dhs consumer nmos compat --help
+Usage of compat:
+  -api-ver string
+    	force a specific IS-04 wire minor; empty = highest mutual
+  -constraints file
+    	file holding the IS-11 active constraints to PUT on --sender: {"constraint_sets":[{"urn:x-nmos:cap:…":{…}}]}
+  -domain string
+    	unicast DNS-SD discovery domain (default "by-systems.arpa")
+  -dry-run
+    	check the constraints against what the Sender supports and read its state — change nothing
+  -mdns
+    	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
+  -node string
+    	drive ONE Node directly (http://host:port) — no Registry in the path
+  -receiver string
+    	IS-04 Receiver UUID to read
+  -registry string
+    	Registry origin (http://host:port); when empty, --mdns discovers one
+  -release
+    	remove --sender's active constraints
+  -resolver string
+    	unicast DNS resolver IP (implies unicast discovery)
+  -sender string
+    	IS-04 Sender UUID to read or constrain
+  -timeout duration
+    	DNS-SD discovery timeout (default 5s)
 
 ========== consumer/nmos/facade ==========
 $ dhs consumer nmos facade --help

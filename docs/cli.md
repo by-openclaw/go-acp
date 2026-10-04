@@ -22,6 +22,7 @@ Ansible templates render the same shape.
 - [NMOS controller: connect (IS-05)](#nmos-controller-connect-is-05)
 - [NMOS controller: set](#nmos-controller-set)
 - [NMOS controller: map (IS-08)](#nmos-controller-map-is-08)
+- [NMOS controller: compat (IS-11)](#nmos-controller-compat-is-11)
 - [NMOS controller: events (IS-07)](#nmos-controller-events-is-07)
 - [NMOS plant export](#nmos-plant-export)
 - [NMOS plant audit](#nmos-plant-audit)
@@ -603,6 +604,38 @@ Usage of map:
     	DNS-SD discovery timeout (default 5s)
   -when string
     	TAI time <secs>:<nanos> for the scheduled modes
+```
+
+## NMOS controller: compat (IS-11)
+
+`dhs consumer nmos compat --help`
+
+```text
+Usage of compat:
+  -api-ver string
+    	force a specific IS-04 wire minor; empty = highest mutual
+  -constraints file
+    	file holding the IS-11 active constraints to PUT on --sender: {"constraint_sets":[{"urn:x-nmos:cap:…":{…}}]}
+  -domain string
+    	unicast DNS-SD discovery domain (default "by-systems.arpa")
+  -dry-run
+    	check the constraints against what the Sender supports and read its state — change nothing
+  -mdns
+    	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
+  -node string
+    	drive ONE Node directly (http://host:port) — no Registry in the path
+  -receiver string
+    	IS-04 Receiver UUID to read
+  -registry string
+    	Registry origin (http://host:port); when empty, --mdns discovers one
+  -release
+    	remove --sender's active constraints
+  -resolver string
+    	unicast DNS resolver IP (implies unicast discovery)
+  -sender string
+    	IS-04 Sender UUID to read or constrain
+  -timeout duration
+    	DNS-SD discovery timeout (default 5s)
 ```
 
 ## NMOS controller: events (IS-07)

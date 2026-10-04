@@ -64,6 +64,8 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSSet(ctx, rest)
 	case "map":
 		return runNMOSMap(ctx, rest)
+	case "compat":
+		return runNMOSCompat(ctx, rest)
 	case "facade":
 		return runNMOSFacade(ctx, rest)
 	case "events":
@@ -77,7 +79,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 	case "registers":
 		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, facade, events, export, audit, probe, registers)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, compat, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -722,6 +724,7 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos connect  [flags]
   dhs consumer nmos set      [flags]
   dhs consumer nmos map      [flags]
+  dhs consumer nmos compat   [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -776,6 +779,18 @@ discovered from IS-04 (the Device's cm-ctrl control), never guessed.
   --dry-run             print the POST body and the current map, send nothing
   --mode / --when       as for connect
   --cancel ID           withdraw a scheduled activation
+  (any of walk's --node / --registry / discovery flags)
+
+compat — read why a Sender and a Receiver do not agree, over IS-11, in the
+Device's own words; hold a Sender to what the far end takes.
+  --receiver UUID       its state (compliant_stream / non_compliant_stream)
+                        and the Outputs it drives
+  --sender UUID         its state, active constraints, what it can be
+                        constrained on, and the Inputs feeding it
+  --constraints FILE    PUT these active constraints on --sender; refused
+                        before sending if the Sender does not support them
+  --release             remove --sender's active constraints
+  --dry-run             read and check, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
