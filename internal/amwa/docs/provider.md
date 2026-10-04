@@ -46,8 +46,13 @@ dhs registry nmos mirror --source http://<plant-registry> --target http://<other
     --audit-log mirror-audit.jsonl --status-addr :9101
 ```
 
-`/status.json` carries the counters to watch — `failures`, `resyncs`,
-`skipped`; a healthy mirror shows none of them moving. On the plant
-after the v0.35.0 converge: 7 275 forwarded, 0 failures, 0 resyncs.
+`/status.json` carries the counters to watch. `failures` and `skipped`
+stand still on a healthy mirror. `resyncs` counts ordered passes: from
+the release after v0.35.0 one is expected when a Node registers (its
+children are held until the target holds their parents, then sent in
+order), and more than that says something was refused or evicted. On
+the plant after the v0.35.0 converge: 7 275 forwarded, 0 failures,
+0 resyncs; on v0.35.0 a Node registering afterwards still cost refused
+POSTs before a repair (#1340, fixed, not released).
 Reading the audit trail: [`runbook.md`](runbook.md), "Reading the
 mirror's audit trail".

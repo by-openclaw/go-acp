@@ -284,6 +284,8 @@ func TestRefreshCacheFromSource(t *testing.T) {
 	m.mu.Lock()
 	m.targetNodes["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] = true
 	m.targetNodes[fxNode] = true
+	m.landed["nodes"]["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] = true
+	m.landed["nodes"][fxNode] = true
 	m.mu.Unlock()
 
 	buildSourceClients(t, m)
@@ -294,7 +296,11 @@ func TestRefreshCacheFromSource(t *testing.T) {
 	ver := m.cacheVer["nodes"][fxNode]
 	_, stale := m.targetNodes["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]
 	_, kept := m.targetNodes[fxNode]
+	gone, held := m.landed["nodes"]["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"], m.landed["nodes"][fxNode]
 	m.mu.Unlock()
+	if gone || !held {
+		t.Errorf("landed marks after the refresh: the departed node %t, the remaining one %t", gone, held)
+	}
 
 	if cached != 1 {
 		t.Errorf("cached %d nodes, want the one real document", cached)

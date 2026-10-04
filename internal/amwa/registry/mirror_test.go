@@ -234,13 +234,13 @@ func TestMirrorForwardsAndDeletes(t *testing.T) {
 	}
 }
 
-// TestMirrorResyncsOn400ParentMissing: the target rejects a child whose
-// parent has not landed yet with 400 (Cerebrum's behaviour, not 404).
-// The mirror must recover by re-POSTing the whole catalogue in
-// dependency order — so the flow, rejected once, lands on the resync.
-func TestMirrorResyncsOn400ParentMissing(t *testing.T) {
-	// The flow is 400'd on its first POST, forcing the ordered resync.
-	plant := &fakePlant{rejectN: map[string]int{"flow:f1": 1}}
+// TestMirrorLandsAChainThatArrivesAllAtOnce: a node, its device, a
+// source and a flow reach the mirror on four subscriptions at once. A
+// target refuses a child whose parent has not landed (Cerebrum: 400), so
+// whichever child arrives early is held for the ordered pass — the flow
+// lands, and nothing is refused on the way.
+func TestMirrorLandsAChainThatArrivesAllAtOnce(t *testing.T) {
+	plant := &fakePlant{}
 	target := httptest.NewServer(plant.targetHandler())
 	defer target.Close()
 
@@ -262,12 +262,7 @@ func TestMirrorResyncsOn400ParentMissing(t *testing.T) {
 	defer cancel()
 	go func() { _ = m.Run(ctx) }()
 
-	// The flow is rejected once, a resync is scheduled + fires, and the
-	// flow lands on the ordered re-POST.
 	waitFor(t, 5*time.Second, func() bool {
-		if m.Stats().Resyncs < 1 {
-			return false
-		}
 		plant.mu.Lock()
 		defer plant.mu.Unlock()
 		for _, p := range plant.posts {
@@ -276,7 +271,10 @@ func TestMirrorResyncsOn400ParentMissing(t *testing.T) {
 			}
 		}
 		return false
-	}, "flow:f1 to land after a 400-triggered ordered resync")
+	}, "flow:f1 to land")
+	if st := m.Stats(); st.Failures != 0 {
+		t.Errorf("stats = %+v, want nothing refused", st)
+	}
 }
 
 func TestMirrorHeartbeatsWithContentLengthAndResyncsOn404(t *testing.T) {
