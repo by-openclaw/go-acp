@@ -7,6 +7,35 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.35.0](https://github.com/by-openclaw/go-acp/compare/v0.34.0...v0.35.0) (2026-10-04)
+
+
+### Features
+
+* **amwa/controller:** a route the receiver cannot take is refused before it is sent ([#1308](https://github.com/by-openclaw/go-acp/issues/1308)) ([fb2b514](https://github.com/by-openclaw/go-acp/commit/fb2b514686132e715549254886f592e697ba7520))
+* **amwa/controller:** a route the receiver cannot take is refused before it is sent ([#1308](https://github.com/by-openclaw/go-acp/issues/1308)) ([0d81a57](https://github.com/by-openclaw/go-acp/commit/0d81a57043dbee60203ea68ab63c26f17244be49))
+
+
+### Bug Fixes
+
+* **amwa/mirror:** a repair sends what the target lost, not the whole catalogue ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([7196050](https://github.com/by-openclaw/go-acp/commit/719605001582e04cf11604ea3b78eaaa26d6d9b6))
+* **amwa/mirror:** a repair sends what the target lost, not the whole catalogue ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([b67750d](https://github.com/by-openclaw/go-acp/commit/b67750dc0019ef1b772b8fc8bee1b3cef101f3cd))
+* **amwa/mirror:** a starting mirror fills its target parent-first before it subscribes ([#1309](https://github.com/by-openclaw/go-acp/issues/1309)) ([798705d](https://github.com/by-openclaw/go-acp/commit/798705dc4b72f1a17e1dfcf9c8141fcfae1df10d))
+* **amwa/mirror:** a starting mirror fills its target parent-first, and heartbeats never wait for a fill or a repair ([#1309](https://github.com/by-openclaw/go-acp/issues/1309), [#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([ce20f96](https://github.com/by-openclaw/go-acp/commit/ce20f9616301b27c5dd9eb9d1e2d6a77945a2d55))
+* **amwa/mirror:** a target that answers slowly or not at all is neither hammered nor forgotten ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([24e3de4](https://github.com/by-openclaw/go-acp/commit/24e3de4df7ecd620269f9f226df8a683712e1ae7))
+* **amwa/mirror:** a target that answers slowly or not at all is neither hammered nor forgotten ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([b9156c2](https://github.com/by-openclaw/go-acp/commit/b9156c2fea9b881153692439f56d85e9fda6ddb5))
+* **amwa/mirror:** heartbeats keep their cadence while the mirror fills or repairs ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([c525296](https://github.com/by-openclaw/go-acp/commit/c525296e0f6f63e7c76ef4e56bc78d235608bdd9))
+* **amwa/mirror:** the audit trail counts a burst once and rotates at a size cap ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([7b66aff](https://github.com/by-openclaw/go-acp/commit/7b66aff1d4f882ba1ed129791e1362ef943edf6c))
+* **amwa/mirror:** the audit trail counts a burst once and rotates at a size cap ([#1311](https://github.com/by-openclaw/go-acp/issues/1311)) ([fc8c71a](https://github.com/by-openclaw/go-acp/commit/fc8c71a1c5cb02c3bbcd126e8c0b13e007635202))
+* **amwa/node:** a Registry that does not answer is given up within a heartbeat period ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([d933a30](https://github.com/by-openclaw/go-acp/commit/d933a307418194d15a144270b6295a093d11b2f2))
+* **amwa/node:** a Registry that does not answer is given up within a heartbeat period ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([37bc8a3](https://github.com/by-openclaw/go-acp/commit/37bc8a374d6a4ba88a7d90c3bc2eb4ebe8b0fe63))
+* **amwa/node:** the activation scheduler keeps the timer it has when a wake changes nothing ([#1325](https://github.com/by-openclaw/go-acp/issues/1325)) ([df6ef2a](https://github.com/by-openclaw/go-acp/commit/df6ef2a4d12b76dae8f5b1143ad8112ee7d9c9a7))
+* **amwa/node:** the node no longer dies when two resources change at once in peer-to-peer mode ([#1319](https://github.com/by-openclaw/go-acp/issues/1319)) ([a0d4465](https://github.com/by-openclaw/go-acp/commit/a0d44654400a923b9b9f540d4082872727823754))
+* **amwa/node:** the node no longer dies when two resources change at once in peer-to-peer mode ([#1319](https://github.com/by-openclaw/go-acp/issues/1319)) ([ce532d9](https://github.com/by-openclaw/go-acp/commit/ce532d9d743303255545e81f1188dd15088e70b4))
+* **monitor:** a read releases its in-flight mark before its event is published ([#1191](https://github.com/by-openclaw/go-acp/issues/1191)) ([8b42e1d](https://github.com/by-openclaw/go-acp/commit/8b42e1d026d4731be5e21412ecb32146420ea6e6))
+* **snell-rollcall:** a link closed before it is started never starts reading ([#1297](https://github.com/by-openclaw/go-acp/issues/1297)) ([7f64302](https://github.com/by-openclaw/go-acp/commit/7f64302bc278e64c3faf2024fb84dde51fc3e1ec))
+* the four tests that failed CI at random, each at its cause ([#1191](https://github.com/by-openclaw/go-acp/issues/1191), [#1297](https://github.com/by-openclaw/go-acp/issues/1297), [#1323](https://github.com/by-openclaw/go-acp/issues/1323), [#1325](https://github.com/by-openclaw/go-acp/issues/1325)) ([5e4df2f](https://github.com/by-openclaw/go-acp/commit/5e4df2ff03a3aa55e46a431d9927c4d47625716c))
+
 ## [0.34.0](https://github.com/by-openclaw/go-acp/compare/v0.33.0...v0.34.0) (2026-10-04)
 
 
