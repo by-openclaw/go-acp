@@ -92,6 +92,10 @@ type MirrorOptions struct {
 	// AuditPath, when set, appends one JSONL AuditEvent per external-
 	// registry observation — the evidence trail (mirror_audit.go).
 	AuditPath string
+	// AuditMaxBytes is the size at which that log is rotated to
+	// <AuditPath>.1, one previous generation kept. 0 = the default
+	// (DefaultAuditMaxBytes).
+	AuditMaxBytes int64
 	// StatusAddr, when set, serves /status.json — counters, cache
 	// parity data and the recent audit ring.
 	StatusAddr string
@@ -301,7 +305,7 @@ func (m *Mirror) Run(ctx context.Context) error {
 	if _, ok := is04.Get(m.opts.APIVer); !ok {
 		return fmt.Errorf("registry/mirror: unknown api-ver %q", m.opts.APIVer)
 	}
-	audit, err := newAuditor(m.opts.AuditPath)
+	audit, err := newAuditor(m.opts.AuditPath, m.opts.AuditMaxBytes)
 	if err != nil {
 		return err
 	}

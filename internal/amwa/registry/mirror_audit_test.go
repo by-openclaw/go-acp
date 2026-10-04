@@ -10,7 +10,7 @@ import (
 
 func TestAuditorWritesJSONLAndRing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
-	a, err := newAuditor(path)
+	a, err := newAuditor(path, 0)
 	if err != nil {
 		t.Fatalf("newAuditor: %v", err)
 	}
@@ -53,9 +53,9 @@ func TestAuditorNilSafe(t *testing.T) {
 }
 
 func TestAuditorRingBounded(t *testing.T) {
-	a, _ := newAuditor("")
+	a, _ := newAuditor("", 0)
 	for i := 0; i < auditRingSize*2; i++ {
-		a.event("k", nil)
+		a.event("k", map[string]any{"i": i})
 	}
 	if len(a.recent()) != auditRingSize {
 		t.Errorf("ring = %d, want %d", len(a.recent()), auditRingSize)

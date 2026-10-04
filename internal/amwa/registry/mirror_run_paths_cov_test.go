@@ -277,7 +277,7 @@ func TestRefreshCacheFromSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.logger = newRegistryLogTap().logger()
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 
 	// A node the target accepted earlier, and which the source no
 	// longer carries, must stop being heartbeated.
@@ -328,7 +328,7 @@ func TestRefreshCacheAcrossMinors(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.logger = newRegistryLogTap().logger()
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 	// v1.1 and v1.3 both read; v9.9 has no client at all, the way a
 	// minor this process has no codec for would not.
 	buildSourceClientsForEveryMinor(t, m, "v1.1", "v1.3")
@@ -361,7 +361,7 @@ func TestRefreshCacheKeepsTheCatalogueOnFailure(t *testing.T) {
 	}
 	tap := newRegistryLogTap()
 	m.logger = tap.logger()
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 	m.mu.Lock()
 	m.cache["nodes"] = map[string]json.RawMessage{fxNode: mustJSONBytes(t, validNode(fxNode))}
 	m.mu.Unlock()
@@ -544,7 +544,7 @@ func TestServeStatusReportsAnOccupiedAddress(t *testing.T) {
 	m := mirrorTo(t, "http://target:8235")
 	tap := newRegistryLogTap()
 	m.logger = tap.logger()
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 
 	done := make(chan struct{})
 	go func() {

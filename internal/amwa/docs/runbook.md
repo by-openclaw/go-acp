@@ -356,6 +356,26 @@ you the resource and tell you nothing you can act on.
 Reading a device is deliberately tolerant. **Emitting** is strict — our
 own Node will refuse to serve a payload AMWA's schema rejects.
 
+### Reading the mirror's audit trail
+
+`dhs registry nmos mirror --audit-log FILE` writes one JSON line per
+thing the far registry did: a refused forward with its own answer, an
+eviction, a dropped socket. Two rules keep it readable and bounded:
+
+- A burst is one line and a count. The first observation is written in
+  full; identical ones that follow within five seconds of each other are
+  counted and written as `{"kind":"repeated","detail":{"kind":"forward_failed","times":999}}`,
+  stamped with the time of the last one. The same observation minutes
+  later is a new line.
+- The file rotates at 64 MiB (`--audit-max-mb`) to `FILE.1`, replacing
+  the generation before it, so the trail never holds more than twice
+  the cap.
+
+`/status.json` (`--status-addr`) carries the counters to watch:
+`failures` are requests the target refused, `resyncs` repairs the mirror
+had to make, `skipped` children it did not send because the target had
+just refused their parent. A healthy mirror shows none of them moving.
+
 ---
 
 ## 7. Conformance

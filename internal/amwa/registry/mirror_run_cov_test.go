@@ -50,7 +50,7 @@ func TestMirrorRunRefusesBadConfiguration(t *testing.T) {
 // trail for what the external registry did.
 func TestAuditorRingAndFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
-	a, err := newAuditor(path)
+	a, err := newAuditor(path, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestWatchTopicResubscribes(t *testing.T) {
 func TestServeStatusReportsTheMirror(t *testing.T) {
 	m := mirrorTo(t, "http://target:8235")
 	m.logger = newRegistryLogTap().logger()
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 	m.audit.event("forward_failed", map[string]any{"topic": "nodes"})
 	m.mu.Lock()
 	m.started = time.Now()

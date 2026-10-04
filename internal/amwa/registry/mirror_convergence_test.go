@@ -41,7 +41,7 @@ func newTestMirror(t *testing.T, target string) *Mirror {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.audit, _ = newAuditor("")
+	m.audit, _ = newAuditor("", 0)
 	return m
 }
 
