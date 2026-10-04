@@ -399,6 +399,8 @@ Usage of mirror:
     	IS-04 wire version used on both faces (default v1.3)
   -audit-log string
     	append one JSONL observation per external-registry behaviour (refused forwards with the target's own words, evictions, WS drops) — the evidence trail for auditing the registry on the far side
+  -audit-max-mb int
+    	size in MiB at which --audit-log is rotated to <file>.1, one previous generation kept (0 = default 64)
   -auth-url string
     	BCP-003-02 Authorization Server base (scheme://host[:port]). When set with --serve, the served Query face validates Bearer tokens (WS upgrades included) exactly like the registry's own --auth-url; the mirror's outbound source/target legs are untouched. Requires --serve
   -serve string

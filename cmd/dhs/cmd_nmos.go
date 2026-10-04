@@ -930,6 +930,9 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		"append one JSONL observation per external-registry behaviour "+
 			"(refused forwards with the target's own words, evictions, WS drops) — "+
 			"the evidence trail for auditing the registry on the far side")
+	auditMaxMB := fs.Int("audit-max-mb", 0,
+		"size in MiB at which --audit-log is rotated to <file>.1, one previous "+
+			"generation kept (0 = default 64)")
 	statusAddr := fs.String("status-addr", "",
 		"serve /status.json (counters, per-collection cache sizes for parity "+
 			"checks, recent audit ring) on this address, e.g. :9101")
@@ -990,6 +993,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		Logger:             logger,
 		Deps:               pluginDeps(logger),
 		AuditPath:          *auditLog,
+		AuditMaxBytes:      int64(*auditMaxMB) << 20,
 		StatusAddr:         *statusAddr,
 		ServeAddr:          *serveAddr,
 		ServeAuthURL:       *serveAuthURL,

@@ -37,57 +37,182 @@ type AuditEvent struct {
 // auditRingSize bounds the in-memory tail served by /status.json.
 const auditRingSize = 64
 
+// DefaultAuditMaxBytes is the size at which the audit log is rotated
+// when the operator sets nothing. One previous generation is kept, so
+// the trail never holds more than twice this on disk.
+const DefaultAuditMaxBytes = 64 << 20
+
+// A burst of identical observations is one fact, not a million: the
+// first is written, the ones that follow within auditRepeatWindow of
+// each other are counted, and the count is written as one "repeated"
+// line — when the burst ends, and every auditRepeatFlush repeats while
+// it lasts, so a crash loses at most that many. A target refusing
+// every child of an evicted node wrote 2.7 million identical lines in
+// five hours before this (#1311).
+const (
+	auditRepeatWindow = 5 * time.Second
+	auditRepeatFlush  = 1000
+)
+
 type auditor struct {
 	mu   sync.Mutex
 	f    *os.File
+	path string
+	size int64 // bytes in the current generation
+	max  int64 // rotate beyond this; 0 = never
 	ring []AuditEvent
+	now  func() time.Time
+
+	// The last distinct observation and the repeats of it not yet
+	// written.
+	lastKey  string
+	lastKind string
+	lastAt   time.Time
+	repeats  int
 }
 
 // newAuditor opens the JSONL sink; an empty path keeps only the ring.
-func newAuditor(path string) (*auditor, error) {
-	a := &auditor{}
+// maxBytes 0 means DefaultAuditMaxBytes.
+func newAuditor(path string, maxBytes int64) (*auditor, error) {
+	if maxBytes == 0 {
+		maxBytes = DefaultAuditMaxBytes
+	}
+	a := &auditor{path: path, max: maxBytes, now: time.Now}
 	if path != "" {
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-		if err != nil {
+		if err := a.open(); err != nil {
 			return nil, fmt.Errorf("registry/mirror: audit log: %w", err)
 		}
-		a.f = f
 	}
 	return a, nil
+}
+
+// open appends to the current generation and learns its size.
+func (a *auditor) open() error {
+	var size int64
+	if st, err := os.Stat(a.path); err == nil {
+		size = st.Size()
+	}
+	f, err := os.OpenFile(a.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	a.f, a.size = f, size
+	return nil
 }
 
 func (a *auditor) event(kind string, detail map[string]any) {
 	if a == nil {
 		return
 	}
-	ev := AuditEvent{TS: time.Now().UTC().Format(time.RFC3339Nano), Kind: kind, Detail: detail}
+	key := auditKey(kind, detail)
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	at := a.now()
+	if key != "" && key == a.lastKey && at.Sub(a.lastAt) <= auditRepeatWindow {
+		a.repeats++
+		a.lastAt = at
+		if a.repeats >= auditRepeatFlush {
+			a.flushRepeats()
+		}
+		return
+	}
+	a.flushRepeats()
+	a.lastKey, a.lastKind, a.lastAt = key, kind, at
+	a.record(AuditEvent{TS: stamp(at), Kind: kind, Detail: detail})
+}
+
+// auditKey identifies an observation by what it says, not when. Empty
+// when the detail cannot be encoded: such an event is never a repeat.
+func auditKey(kind string, detail map[string]any) string {
+	raw, err := json.Marshal(detail) // map keys are encoded sorted
+	if err != nil {
+		return ""
+	}
+	return kind + "\x00" + string(raw)
+}
+
+func stamp(at time.Time) string { return at.UTC().Format(time.RFC3339Nano) }
+
+// flushRepeats writes the repeats counted since the last line, stamped
+// with the time of the latest one. Caller holds mu.
+func (a *auditor) flushRepeats() {
+	if a.repeats == 0 {
+		return
+	}
+	a.record(a.repeated())
+	a.repeats = 0
+}
+
+// repeated is the line that stands for the repeats not yet written.
+func (a *auditor) repeated() AuditEvent {
+	return AuditEvent{TS: stamp(a.lastAt), Kind: "repeated",
+		Detail: map[string]any{"kind": a.lastKind, "times": a.repeats}}
+}
+
+// record puts one line in the ring and in the file, rotating the file
+// first when the line would take it past its cap. Caller holds mu.
+func (a *auditor) record(ev AuditEvent) {
 	a.ring = append(a.ring, ev)
 	if len(a.ring) > auditRingSize {
 		a.ring = a.ring[len(a.ring)-auditRingSize:]
 	}
-	if a.f != nil {
-		if raw, err := json.Marshal(ev); err == nil {
-			_, _ = a.f.Write(append(raw, '\n'))
+	if a.f == nil {
+		return
+	}
+	raw, err := json.Marshal(ev)
+	if err != nil {
+		return
+	}
+	line := append(raw, '\n')
+	if a.max > 0 && a.size > 0 && a.size+int64(len(line)) > a.max {
+		a.rotate()
+		if a.f == nil {
+			return
 		}
 	}
+	n, _ := a.f.Write(line)
+	a.size += int64(n)
 }
 
+// rotate moves the current generation to <path>.1, replacing the one
+// before it, and starts a new file. A trail that cannot be rotated
+// keeps growing where it is rather than losing what it holds; one that
+// cannot be reopened leaves the ring only. Caller holds mu.
+func (a *auditor) rotate() {
+	_ = a.f.Close()
+	a.f = nil
+	if err := os.Rename(a.path, a.path+".1"); err != nil {
+		a.max = 0 // do not try again at every line
+	}
+	_ = a.open()
+}
+
+// recent returns the tail of the trail, the repeats still being
+// counted included.
 func (a *auditor) recent() []AuditEvent {
 	if a == nil {
 		return nil
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return append([]AuditEvent(nil), a.ring...)
+	out := append([]AuditEvent(nil), a.ring...)
+	if a.repeats > 0 {
+		out = append(out, a.repeated())
+	}
+	return out
 }
 
 func (a *auditor) close() {
-	if a == nil || a.f == nil {
+	if a == nil {
 		return
 	}
-	_ = a.f.Close()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.flushRepeats()
+	if a.f != nil {
+		_ = a.f.Close()
+		a.f = nil
+	}
 }
 
 // mirrorStatus is the /status.json document.
