@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.36.2](https://github.com/by-openclaw/go-acp/compare/v0.36.1...v0.36.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **amwa/mirror:** a resource registered while the catalogue is read ends at its own minor ([#1351](https://github.com/by-openclaw/go-acp/issues/1351)) ([85529f8](https://github.com/by-openclaw/go-acp/commit/85529f898d2f2416a0f89a6f98f5828e0ec31e9a))
+* **amwa/mirror:** a resource registered while the catalogue is read ends at its own minor ([#1351](https://github.com/by-openclaw/go-acp/issues/1351)) ([ac9e1cb](https://github.com/by-openclaw/go-acp/commit/ac9e1cbb995024a0a2ece5209ab0c1e12cb46217))
+
 ## [0.36.1](https://github.com/by-openclaw/go-acp/compare/v0.36.0...v0.36.1) (2026-10-04)
 
 
