@@ -311,8 +311,9 @@ func TestRefreshCacheFromSource(t *testing.T) {
 }
 
 // The refresh reads every minor the process can decode, and no more:
-// a minor with no codec has no client to read with, and a resource a
-// lower minor already claimed is not re-claimed by a higher one.
+// a minor with no codec has no client to read with. A resource two
+// minors list is registered at the higher one; what the lower one lists
+// is a view of it (mirror_minor.go).
 func TestRefreshCacheAcrossMinors(t *testing.T) {
 	prev := supportedVersions
 	supportedVersions = func() []string { return []string{"v1.1", "v1.3", "v9.9"} }
@@ -337,13 +338,14 @@ func TestRefreshCacheAcrossMinors(t *testing.T) {
 
 	m.mu.Lock()
 	ver := m.cacheVer["nodes"][fxNode]
+	viewed := m.lowerSeen["nodes"][fxNode]
 	cached := len(m.cache["nodes"])
 	m.mu.Unlock()
 	if cached != 1 {
 		t.Errorf("cached %d nodes, want the one document", cached)
 	}
-	if ver != "v1.1" {
-		t.Errorf("the resource is stamped %q, want the first minor that saw it", ver)
+	if ver != "v1.3" || !viewed {
+		t.Errorf("the resource is stamped %q (viewed below: %t), want the highest minor that lists it, and the lower view noted", ver, viewed)
 	}
 }
 
