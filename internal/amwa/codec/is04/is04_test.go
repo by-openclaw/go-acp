@@ -241,13 +241,51 @@ func TestSourceAudioChannelsValidatedWhenPresent(t *testing.T) {
 	// the per-element validation fires when channels ARE present.
 	s := validSource()
 	s.Format = FormatAudio
-	s.Channels = []SourceAudioChannel{{Label: ""}} // bad label
-	if err := s.Validate(); err == nil || !strings.Contains(err.Error(), "channels[0].label") {
-		t.Fatalf("audio source with empty channel label should reject: %v", err)
-	}
 	s.Channels = []SourceAudioChannel{{Label: "L"}}
 	if err := s.Validate(); err != nil {
 		t.Fatalf("audio source with valid channels rejected: %v", err)
+	}
+}
+
+// source_audio.json requires a channel's `label` key and puts no length
+// on it. An empty label is a label — nmos-cpp registers its unnamed
+// channels as "" — and only a channel with no label, or a null one, is
+// refused.
+func TestSourceAudioChannelLabelIsRequiredNotNonEmpty(t *testing.T) {
+	source := func(channels string) []byte {
+		return []byte(`{"id":"3b8be755-08ff-452b-b217-c9151eb21193","version":"0:0","label":"a2","description":"",` +
+			`"tags":{},"caps":{},"device_id":"3b8be755-08ff-452b-b217-c9151eb21193","parents":[],"clock_name":"clk0",` +
+			`"format":"urn:x-nmos:format:audio","channels":` + channels + `}`)
+	}
+	for _, tc := range []struct {
+		name, channels, want string
+	}{
+		{"an empty label", `[{"label":"","symbol":"U01"},{"label":"","symbol":"U02"}]`, ""},
+		{"a label", `[{"label":"Left","symbol":"L"}]`, ""},
+		{"no label", `[{"label":"Left"},{"symbol":"R"}]`, "source.channels[1].label: required"},
+		{"a null label", `[{"label":null}]`, "source.channels[0].label: required"},
+		{"a channel that is not an object", `[5]`, "decode source"},
+	} {
+		s, err := DecodeSource(source(tc.channels))
+		switch {
+		case tc.want == "" && err != nil:
+			t.Errorf("%s: refused: %v", tc.name, err)
+		case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)):
+			t.Errorf("%s: err = %v, want it to say %q", tc.name, err, tc.want)
+		case tc.want == "" && tc.name == "an empty label":
+			if len(s.Channels) != 2 || s.Channels[0].Label != "" || s.Channels[1].Symbol != "U02" {
+				t.Errorf("%s: decoded as %+v", tc.name, s.Channels)
+			}
+		}
+	}
+
+	// A channel built in code always goes out with its label key, empty
+	// or not: there is nothing for Validate to refuse.
+	s := validSource()
+	s.Format = FormatAudio
+	s.Channels = []SourceAudioChannel{{Symbol: "U01"}}
+	if err := s.Validate(); err != nil {
+		t.Errorf("a channel built with an empty label: %v", err)
 	}
 }
 

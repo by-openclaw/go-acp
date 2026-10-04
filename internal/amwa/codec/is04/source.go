@@ -1,6 +1,7 @@
 package is04
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"dhs/internal/amwa/codec/spec"
@@ -43,6 +44,28 @@ type GrainRate struct {
 type SourceAudioChannel struct {
 	Label  string `json:"label"`
 	Symbol string `json:"symbol,omitempty"`
+
+	// labelMissing records a decoded channel that carried no `label`
+	// key (or a null one). The schema requires the key and puts no
+	// length on it: "" is a label — nmos-cpp registers its unnamed
+	// channels that way — and only its absence is a fault.
+	labelMissing bool
+}
+
+// UnmarshalJSON decodes a channel and notes whether `label` was there.
+func (c *SourceAudioChannel) UnmarshalJSON(raw []byte) error {
+	var wire struct {
+		Label  *string `json:"label"`
+		Symbol string  `json:"symbol"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		return err
+	}
+	*c = SourceAudioChannel{Symbol: wire.Symbol, labelMissing: wire.Label == nil}
+	if wire.Label != nil {
+		c.Label = *wire.Label
+	}
+	return nil
 }
 
 // Validate enforces source_core + per-format rules.
@@ -88,7 +111,7 @@ func (s *Source) Validate() error {
 		// v1.1+) lives in
 		// `internal/amwa/registry/store.go validateRegistrationPresenceVersioned`.
 		for i, ch := range s.Channels {
-			if ch.Label == "" {
+			if ch.labelMissing {
 				errs = append(errs, fmt.Sprintf("source.channels[%d].label: required", i))
 			}
 		}
