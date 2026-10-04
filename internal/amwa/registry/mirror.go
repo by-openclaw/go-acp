@@ -215,6 +215,15 @@ type Mirror struct {
 	filling bool
 	owed    owedWork
 	pending owedWork
+	// retry is work the target did not answer, held by retryTimer until
+	// it is tried again; retryDelay is the wait the next such work gets,
+	// doubling from retryMin to retryMax while the target stays silent
+	// (mirror_repair.go). Guarded by mu; the bounds are set once.
+	retry      owedWork
+	retryTimer *time.Timer
+	retryDelay time.Duration
+	retryMin   time.Duration
+	retryMax   time.Duration
 	// heartbeatEvery is the heartbeat cadence: MirrorHeartbeatInterval,
 	// shortened only by tests that need many rounds.
 	heartbeatEvery time.Duration
@@ -287,6 +296,8 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 		cacheVer:       cacheVer,
 		targetNodes:    map[string]bool{},
 		heartbeatEvery: MirrorHeartbeatInterval,
+		retryMin:       mirrorRetryMin,
+		retryMax:       mirrorRetryMax,
 	}, nil
 }
 
@@ -390,6 +401,10 @@ func (m *Mirror) Run(ctx context.Context) error {
 		m.resyncTimer.Stop()
 		m.resyncTimer = nil
 	}
+	if m.retryTimer != nil {
+		m.retryTimer.Stop()
+		m.retryTimer = nil
+	}
 	if m.serveReplayTimer != nil {
 		m.serveReplayTimer.Stop()
 		m.serveReplayTimer = nil
@@ -475,7 +490,9 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 		// Live path: a 400 here means a parent has not been forwarded
 		// yet (the six topics stream concurrently), so allow it to
 		// arm the repair that sends it again behind its ancestors.
-		m.postResource(ctx, topic, tracked, row.Path, row.Post, true)
+		if m.postResource(ctx, topic, tracked, row.Path, row.Post, true) == postUnknown {
+			m.retryLater(refusedResource(topic, row.Path))
+		}
 	case is04.ChangeRemoved:
 		m.mu.Lock()
 		_, had := m.cache[topic][row.Path]
@@ -505,9 +522,13 @@ const (
 	// postRefused: the target answered no (4xx). Its children would be
 	// refused too.
 	postRefused
-	// postUnknown: no answer, a server error, or nothing was sent. The
-	// target may or may not hold the resource.
+	// postUnknown: sent, and no answer or a server error came back. The
+	// target may or may not hold the resource; it is owed again.
 	postUnknown
+	// postUnsent: nothing left the mirror (no wire minor, a document
+	// that cannot be encoded, the mirror stopping). Trying again would
+	// change nothing.
+	postUnsent
 )
 
 // postResource POSTs one document to the target Registration API at
@@ -530,7 +551,7 @@ const (
 func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc json.RawMessage, allowResync bool) postOutcome {
 	if ver == "" {
 		m.skipNoVer("POST", topic, id)
-		return postUnknown
+		return postUnsent
 	}
 	body, err := json.Marshal(map[string]any{
 		"type": mirrorSingular[topic],
@@ -538,17 +559,17 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 	})
 	if err != nil {
 		m.fail("encode", topic, err)
-		return postUnknown
+		return postUnsent
 	}
 	url := m.registrationBase(ver) + "/resource"
 	for attempt := 0; ; attempt++ {
 		if err := m.pace.wait(ctx); err != nil {
-			return postUnknown // the mirror is stopping
+			return postUnsent // the mirror is stopping
 		}
 		req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 		if err != nil {
 			m.fail("build POST", topic, err)
-			return postUnknown
+			return postUnsent
 		}
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := m.http.Do(req)
@@ -719,16 +740,13 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 				continue
 			}
 			var lost owedWork
-			for _, n := range refs {
-				if m.sendHealth(ctx, n.id, n.ver) != errMirrorEvicted {
-					continue
-				}
-				m.logger.Warn("registry/mirror: target evicted node — re-registering", "node", n.id)
-				m.audit.event("target_evicted", map[string]any{"node": n.id})
+			for _, id := range m.heartbeatRound(ctx, refs) {
+				m.logger.Warn("registry/mirror: target evicted node — re-registering", "node", id)
+				m.audit.event("target_evicted", map[string]any{"node": id})
 				m.mu.Lock()
-				delete(m.targetNodes, n.id) // not the target's any more: no heartbeat until it lands again
+				delete(m.targetNodes, id) // not the target's any more: no heartbeat until it lands again
 				m.mu.Unlock()
-				lost.add(subtreeOf(n.id))
+				lost.add(subtreeOf(id))
 			}
 			if !lost.empty() {
 				// The repair is the probe too: a target that lost every
@@ -738,6 +756,41 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// mirrorHeartbeatWorkers bounds the health POSTs in flight in a round.
+const mirrorHeartbeatWorkers = 16
+
+// heartbeatRound sends one health POST per node, several at a time, and
+// returns the nodes the target answered 404 for, id-sorted. A round is
+// not a queue: one node whose answer is slow must not make the others
+// late for the target's window. Sent one after the other, each stalled
+// answer cost the next node ten seconds — on 2026-10-02 the audit shows
+// one health timeout every ten seconds, round-robin, and every node
+// evicted meanwhile (#1311).
+func (m *Mirror) heartbeatRound(ctx context.Context, refs []nodeRef) []string {
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		evicted []string
+	)
+	slots := make(chan struct{}, mirrorHeartbeatWorkers)
+	for _, n := range refs {
+		wg.Add(1)
+		slots <- struct{}{}
+		go func(n nodeRef) {
+			defer wg.Done()
+			defer func() { <-slots }()
+			if m.sendHealth(ctx, n.id, n.ver) == errMirrorEvicted {
+				mu.Lock()
+				evicted = append(evicted, n.id)
+				mu.Unlock()
+			}
+		}(n)
+	}
+	wg.Wait()
+	sort.Strings(evicted)
+	return evicted
 }
 
 var errMirrorEvicted = errors.New("registry/mirror: target answered 404 to a heartbeat")
