@@ -266,7 +266,7 @@ func (s *IS14ConfigurationServer) fire(changes []propChange) {
 		return
 	}
 	for _, c := range changes {
-		s.onPropertyChanged(c.oid, c.id, c.v)
+		s.onPropertyChanged(c.oid, c.id, valueChanged(c.v))
 	}
 }
 

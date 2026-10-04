@@ -15,6 +15,17 @@
 //
 // SetGainDb (4m1) carries the parameter-constraints declaration and
 // routes through the same setProperty enforcement.
+//
+// The worker also carries the model's three writable sequences — one
+// per datatype shape the MS-05-02 sequence methods must cope with —
+// because every sequence on the standard classes is readonly and a
+// controller (or the AMWA suite's SetSequenceItem / AddSequenceItem /
+// RemoveSequenceItem and writable-sequence rounds) would otherwise
+// find nothing to exercise:
+//
+//	channelLabels (4p4):  NcString sequence, constrained per item (≤16 chars, same pattern)
+//	channelModes  (4p5):  DhsChannelMode enum sequence
+//	presets       (4p6):  DhsGainPreset struct sequence
 
 package provider
 
@@ -28,6 +39,9 @@ const (
 	vendorClassName    = "DhsGainControl"
 	vendorRole         = "GainControl"
 	vendorDatatypeName = "DhsGainDb"
+
+	vendorChannelModeName = "DhsChannelMode"
+	vendorGainPresetName  = "DhsGainPreset"
 )
 
 // vendorClassID: {1,2} = NcWorker, authority key 0 (no registered
@@ -97,6 +111,35 @@ func vendorGainClass() ms05.NcClassDescriptor {
 				IsReadOnly:   true,
 				IsDeprecated: true,
 			},
+			{
+				// A constrained writable sequence: the constraint
+				// governs every item (MS-05-02 Constraints.html), so a
+				// whole-sequence Set, SetSequenceItem and AddSequenceItem
+				// all answer ParameterError for an item outside it.
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Per-channel labels")},
+				ID:           ms05.NcPropertyId{Level: 4, Index: 4},
+				Name:         "channelLabels",
+				TypeName:     strp("NcString"),
+				IsSequence:   true,
+				Constraints: &ms05.NcParameterConstraintsString{
+					MaxCharacters: u32p(16),
+					Pattern:       &vendorGainPattern,
+				},
+			},
+			{
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Per-channel mode")},
+				ID:           ms05.NcPropertyId{Level: 4, Index: 5},
+				Name:         "channelModes",
+				TypeName:     strp(vendorChannelModeName),
+				IsSequence:   true,
+			},
+			{
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Recallable gain presets")},
+				ID:           ms05.NcPropertyId{Level: 4, Index: 6},
+				Name:         "presets",
+				TypeName:     strp(vendorGainPresetName),
+				IsSequence:   true,
+			},
 		},
 		Methods: []ms05.NcMethodDescriptor{
 			{
@@ -135,6 +178,65 @@ func vendorGainDatatype() ms05.NcDatatypeDescriptor {
 	}
 }
 
+// vendorChannelModeDatatype: DhsChannelMode, the enum behind the
+// channelModes sequence. A value outside its items is a ParameterError
+// on every write path (the kind check alone would let any number in).
+func vendorChannelModeDatatype() ms05.NcDatatypeDescriptor {
+	return ms05.NcDatatypeDescriptor{
+		NcDescriptor: ms05.NcDescriptor{Description: strp("Operating mode of one channel")},
+		Name:         vendorChannelModeName,
+		Type:         ms05.NcDatatypeTypeEnum,
+		Items: []ms05.NcEnumItemDescriptor{
+			{NcDescriptor: ms05.NcDescriptor{Description: strp("Audio passes at gainDb")}, Name: "Normal", Value: 0},
+			{NcDescriptor: ms05.NcDescriptor{Description: strp("Channel muted")}, Name: "Muted", Value: 1},
+			{NcDescriptor: ms05.NcDescriptor{Description: strp("Only this channel passes")}, Name: "Solo", Value: 2},
+		},
+	}
+}
+
+// vendorGainPresetDatatype: DhsGainPreset, the struct behind the
+// presets sequence. Its gainDb field inherits the DhsGainDb datatype
+// range; its name field carries a field-level string constraint — the
+// two places a struct item's constraints can come from.
+func vendorGainPresetDatatype() ms05.NcDatatypeDescriptor {
+	return ms05.NcDatatypeDescriptor{
+		NcDescriptor: ms05.NcDescriptor{Description: strp("A named gain setting")},
+		Name:         vendorGainPresetName,
+		Type:         ms05.NcDatatypeTypeStruct,
+		Fields: []ms05.NcFieldDescriptor{
+			{
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Preset name")},
+				Name:         "name",
+				TypeName:     strp("NcString"),
+				Constraints: &ms05.NcParameterConstraintsString{
+					MaxCharacters: u32p(32),
+					Pattern:       &vendorGainPattern,
+				},
+			},
+			{
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Gain the preset recalls")},
+				Name:         "gainDb",
+				TypeName:     strp(vendorDatatypeName),
+			},
+		},
+	}
+}
+
+// vendorGainSequences seeds the three writable sequences. Values are
+// stored exactly as a JSON decode would produce them ([]any of
+// float64 / string / map[string]any) so a controller's item, written
+// back through SetSequenceItem, compares equal to what Get returns.
+func vendorGainSequences() map[string]any {
+	return map[string]any{
+		"channelLabels": []any{"L", "R"},
+		"channelModes":  []any{0.0, 0.0},
+		"presets": []any{
+			map[string]any{"name": "Unity", "gainDb": 0.0},
+			map[string]any{"name": "Dim", "gainDb": -20.0},
+		},
+	}
+}
+
 // vendorRuntimeConstraints seeds NcObject.runtimePropertyConstraints
 // on the gain worker — the tightest level of the hierarchy.
 func vendorRuntimeConstraints() []any {
@@ -168,6 +270,8 @@ func registerVendorModels() {
 	vendorRegisterOnce.Do(func() {
 		mustRegister("vendor class", ms05.RegisterClass(vendorGainClass()))
 		mustRegister("vendor datatype", ms05.RegisterDatatype(vendorGainDatatype()))
+		mustRegister("vendor enum", ms05.RegisterDatatype(vendorChannelModeDatatype()))
+		mustRegister("vendor struct", ms05.RegisterDatatype(vendorGainPresetDatatype()))
 		mustRegister("fault class", ms05.RegisterClass(vendorFaultClass()))
 	})
 }

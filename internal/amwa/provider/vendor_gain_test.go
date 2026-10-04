@@ -20,7 +20,7 @@ func TestVendorGainCatalogue(t *testing.T) {
 	if !ok {
 		t.Fatal("DhsGainControl is not in the class catalogue")
 	}
-	if cls.Name != vendorClassName || len(cls.Properties) != 3 || len(cls.Methods) != 1 {
+	if cls.Name != vendorClassName || len(cls.Properties) != 6 || len(cls.Methods) != 1 {
 		t.Errorf("class descriptor = %+v", cls)
 	}
 	// legacyTrim is the model's one deprecated property: read-only,
@@ -28,6 +28,27 @@ func TestVendorGainCatalogue(t *testing.T) {
 	// need one to score).
 	if p := cls.Properties[2]; p.Name != "legacyTrim" || !p.IsDeprecated || !p.IsReadOnly {
 		t.Errorf("legacyTrim = %+v, want a deprecated read-only property", p)
+	}
+	// The three writable sequences, one per datatype shape, each
+	// typed by a datatype the ClassManager serves.
+	for i, want := range []struct {
+		name, typeName string
+		shape          ms05.NcDatatypeType
+		constrained    bool
+	}{
+		{"channelLabels", "NcString", ms05.NcDatatypeTypePrimitive, true},
+		{"channelModes", vendorChannelModeName, ms05.NcDatatypeTypeEnum, false},
+		{"presets", vendorGainPresetName, ms05.NcDatatypeTypeStruct, false},
+	} {
+		p := cls.Properties[3+i]
+		if p.Name != want.name || !p.IsSequence || p.IsReadOnly || p.TypeName == nil || *p.TypeName != want.typeName ||
+			(p.Constraints != nil) != want.constrained {
+			t.Errorf("sequence %s = %+v", want.name, p)
+		}
+		dt, ok := ms05.StandardDatatype(want.typeName)
+		if !ok || dt.Type != want.shape {
+			t.Errorf("%s datatype = %+v, %v (want shape %d)", want.typeName, dt, ok, want.shape)
+		}
 	}
 	if _, ok := ms05.StandardDatatype(vendorDatatypeName); !ok {
 		t.Fatal("DhsGainDb is not in the datatype catalogue")

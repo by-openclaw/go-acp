@@ -177,9 +177,12 @@ func (s *IS12NCPServer) handleSubscription(c *ncpConn, m is12.SubscriptionMessag
 }
 
 // notifyPropertyChanged fans one successful property write out to
-// every socket subscribed to that oid.
-func (s *IS12NCPServer) notifyPropertyChanged(oid ms05.NcOid, id ms05.NcPropertyId, value any) {
-	raw, err := marshalJSON(value)
+// every socket subscribed to that oid — the whole value for a plain
+// write, the item and its index for the three sequence change kinds
+// (MS-05-02 NcPropertyChangedEventData; a removed item carries no
+// value).
+func (s *IS12NCPServer) notifyPropertyChanged(oid ms05.NcOid, id ms05.NcPropertyId, change propertyChange) {
+	raw, err := marshalJSON(change.Value)
 	if err != nil {
 		// A value the model cannot render is not sent: a notification
 		// carrying nothing tells a subscriber the property changed to
@@ -190,9 +193,10 @@ func (s *IS12NCPServer) notifyPropertyChanged(oid ms05.NcOid, id ms05.NcProperty
 		OID:     int(oid),
 		EventID: is12.EventID{Level: 1, Index: 1}, // NcObject PropertyChanged
 		EventData: is12.PropertyChangedEventData{
-			PropertyID: is12.PropertyID{Level: int(id.Level), Index: int(id.Index)},
-			ChangeType: 0, // ValueChanged
-			Value:      raw,
+			PropertyID:        is12.PropertyID{Level: int(id.Level), Index: int(id.Index)},
+			ChangeType:        int(change.Type),
+			Value:             raw,
+			SequenceItemIndex: change.Index,
 		},
 	}}}
 	s.mu.Lock()
@@ -421,8 +425,9 @@ func (s *IS12NCPServer) methodSetGainDb(obj *configObject, args json.RawMessage)
 	return ncpOK()
 }
 
-// methodSequence implements the five NcObject sequence methods over a
-// []any property value.
+// methodSequence implements the five NcObject sequence methods. The
+// two readers answer here; the three writers go through the gate
+// configuration_sequence.go shares with the IS-14 server.
 func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, op string) is12.MethodResult {
 	var a struct {
 		ID    is12.PropertyID `json:"id"`
@@ -437,54 +442,51 @@ func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, 
 		return ncpErr(ms05.NcMethodStatusPropertyNotImplemented,
 			fmt.Sprintf("no property %dp%d on oid %d", a.ID.Level, a.ID.Index, obj.oid))
 	}
-	s.config.mu.Lock()
-	defer s.config.mu.Unlock()
+	s.config.mu.RLock()
 	seq, isSeq := asSequence(p.value)
+	s.config.mu.RUnlock()
 	if !isSeq {
 		return ncpErr(ms05.NcMethodStatusInvalidRequest,
 			fmt.Sprintf("property %s is not a sequence", p.desc.Name))
 	}
-	inBounds := func() bool { return a.Index != nil && *a.Index >= 0 && *a.Index < len(seq) }
+	index := func() (int, *is12.MethodResult) {
+		if a.Index == nil {
+			r := ncpErr(ms05.NcMethodStatusParameterError, op+": index argument required")
+			return 0, &r
+		}
+		return *a.Index, nil
+	}
 	switch op {
 	case "length":
 		return ncpOKValue(len(seq))
 	case "get":
-		if !inBounds() {
+		if a.Index == nil || *a.Index < 0 || *a.Index >= len(seq) {
 			return ncpErr(ms05.NcMethodStatusIndexOutOfBounds, "GetSequenceItem: index out of bounds")
 		}
 		return ncpOKValue(seq[*a.Index])
 	case "set":
-		if p.desc.IsReadOnly {
-			return ncpErr(ms05.NcMethodStatusReadonly, "sequence property is readonly")
+		i, refused := index()
+		if refused != nil {
+			return *refused
 		}
-		if !inBounds() {
-			return ncpErr(ms05.NcMethodStatusIndexOutOfBounds, "SetSequenceItem: index out of bounds")
+		if st, err := s.config.sequenceSet(obj, p, i, a.Value); err != nil {
+			return ncpErr(st, err.Error())
 		}
-		var v any
-		if err := json.Unmarshal(a.Value, &v); err != nil {
-			return ncpErr(ms05.NcMethodStatusParameterError, err.Error())
-		}
-		seq[*a.Index] = v
-		p.value = seq
 		return ncpOK()
 	case "add":
-		if p.desc.IsReadOnly {
-			return ncpErr(ms05.NcMethodStatusReadonly, "sequence property is readonly")
+		i, st, err := s.config.sequenceAdd(obj, p, a.Value)
+		if err != nil {
+			return ncpErr(st, err.Error())
 		}
-		var v any
-		if err := json.Unmarshal(a.Value, &v); err != nil {
-			return ncpErr(ms05.NcMethodStatusParameterError, err.Error())
-		}
-		p.value = append(seq, v)
-		return ncpOKValue(len(seq))
+		return ncpOKValue(i)
 	case "remove":
-		if p.desc.IsReadOnly {
-			return ncpErr(ms05.NcMethodStatusReadonly, "sequence property is readonly")
+		i, refused := index()
+		if refused != nil {
+			return *refused
 		}
-		if !inBounds() {
-			return ncpErr(ms05.NcMethodStatusIndexOutOfBounds, "RemoveSequenceItem: index out of bounds")
+		if st, err := s.config.sequenceRemove(obj, p, i); err != nil {
+			return ncpErr(st, err.Error())
 		}
-		p.value = append(seq[:*a.Index], seq[*a.Index+1:]...)
 		return ncpOK()
 	}
 	return ncpErr(ms05.NcMethodStatusMethodNotImplemented, op)
