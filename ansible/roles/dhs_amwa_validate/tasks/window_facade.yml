@@ -15,6 +15,40 @@
 # leaked facade container serves nothing but an idle listener the
 # next window's remove-then-run clears.
 
+# The tool leaks (issue #1304): the mock Registry's subscription
+# WebSocket servers stay listening after a controller suite ends, and
+# the next suite's first subscription binds the same port — the mock
+# then answers the controller's POST /subscriptions with HTTP 500
+# (OSError: address already in use). At Query v1.1+ paging also
+# satisfies the round; at v1.0 a subscription is the only way to
+# score, so that minor alone fails "Pagination not exercised" on the
+# second exam of a tool's lifetime. No suite is running when a window
+# opens, so a bound port in the tool's WebSocket range is a leak, and
+# the exam starts on a tool that holds none.
+- name: Subscription sockets the resident tool still holds
+  ansible.builtin.shell: >-
+    ss -ltnH | awk '{print $4}'
+    | grep -cE ':({{ range(dhs_amwa_validate_tool_ws_port_base, dhs_amwa_validate_tool_ws_port_base + 6) | join('|') }})$'
+    || true
+  register: _tool_ws_leak
+  changed_when: false
+
+- name: Restart the resident tool to release them
+  ansible.builtin.command: docker restart {{ dhs_amwa_validate_tool_container }}
+  when: _tool_ws_leak.stdout | int > 0
+  changed_when: true
+
+- name: The resident tool API answers again
+  ansible.builtin.uri:
+    url: "{{ dhs_amwa_validate_tool_url }}"
+    method: GET
+    status_code: [200, 405]
+  register: _tool_back
+  retries: 20
+  delay: 3
+  until: _tool_back.status in [200, 405]
+  when: _tool_ws_leak.stdout | int > 0
+
 - name: Facade staging directory exists on the tooling host
   ansible.builtin.file:
     path: /opt/dhs-validate

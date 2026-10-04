@@ -21,6 +21,11 @@
 # Tool + fleet endpoints.
 dhs_amwa_validate_tool_url: "http://localhost:5000/api"
 dhs_amwa_validate_tool_container: nmos-testing
+# The resident tool's WEBSOCKET_PORT_BASE (the tool default — its
+# UserConfig does not move it). The mock Registry's subscription
+# servers bind base..+5; window_facade.yml checks that range for
+# sockets a previous suite leaked (#1304).
+dhs_amwa_validate_tool_ws_port_base: 6000
 dhs_amwa_validate_tool_image: "nmos-testing:cachefix"
 dhs_amwa_validate_results_dir: /root/amwa-validate
 
