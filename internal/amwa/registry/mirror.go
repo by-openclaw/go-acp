@@ -150,8 +150,9 @@ type MirrorStats struct {
 	Forwarded  uint64 `json:"forwarded"`  // POSTs accepted by the target
 	Deleted    uint64 `json:"deleted"`    // DELETEs accepted by the target
 	Heartbeats uint64 `json:"heartbeats"` // health POSTs accepted by the target
-	Resyncs    uint64 `json:"resyncs"`    // full re-registrations (target 404 recovery)
+	Resyncs    uint64 `json:"resyncs"`    // repairs asked for, whatever their extent (an eviction, a refused child, a conflict)
 	Failures   uint64 `json:"failures"`   // requests the target refused
+	Skipped    uint64 `json:"skipped"`    // children not sent because the target refused their parent in the same pass
 
 	// Served Query face counters (--serve, mirror_serve.go). Zero when
 	// serving is disabled.
@@ -202,11 +203,14 @@ type Mirror struct {
 	// (Cerebrum answers 400, not 404, to a missing parent reference).
 	// Non-nil while a resync is pending. Guarded by mu.
 	resyncTimer *time.Timer
-	// filling marks a fill in flight, fillAgain a pass asked for while it
-	// ran. Fills never overlap: a request made during one is folded into
-	// ONE more pass after it. Guarded by mu.
-	filling   bool
-	fillAgain bool
+	// filling marks a pass in flight and owed what the next one must do
+	// (mirror_repair.go). Passes never overlap: work asked for during
+	// one is folded into ONE more pass after it. pending is the same
+	// kind of work, held back by resyncTimer until a burst of refusals
+	// has settled. All guarded by mu.
+	filling bool
+	owed    owedWork
+	pending owedWork
 	// heartbeatEvery is the heartbeat cadence: MirrorHeartbeatInterval,
 	// shortened only by tests that need many rounds.
 	heartbeatEvery time.Duration
@@ -466,7 +470,7 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 		m.applyServeRow(topic, tracked, row, true)
 		// Live path: a 400 here means a parent has not been forwarded
 		// yet (the six topics stream concurrently), so allow it to
-		// trigger an ordered resync.
+		// arm the repair that sends it again behind its ancestors.
 		m.postResource(ctx, topic, tracked, row.Path, row.Post, true)
 	case is04.ChangeRemoved:
 		m.mu.Lock()
@@ -488,6 +492,20 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 	}
 }
 
+// postOutcome is how one POST to the target ended.
+type postOutcome int
+
+const (
+	// postAccepted: the target holds the resource.
+	postAccepted postOutcome = iota
+	// postRefused: the target answered no (4xx). Its children would be
+	// refused too.
+	postRefused
+	// postUnknown: no answer, a server error, or nothing was sent. The
+	// target may or may not hold the resource.
+	postUnknown
+)
+
 // postResource POSTs one document to the target Registration API at
 // the resource's own registered minor — a v1.0 body legitimately
 // lacks fields the v1.3 schema requires, so posting it to the v1.3
@@ -505,10 +523,10 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 // target's copy at the minor IT knows, then re-POST once at ours, so
 // the target ends holding the resource at its true registered minor.
 // One recovery attempt only — a second 409 is a genuine failure.
-func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc json.RawMessage, allowResync bool) {
+func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc json.RawMessage, allowResync bool) postOutcome {
 	if ver == "" {
 		m.skipNoVer("POST", topic, id)
-		return
+		return postUnknown
 	}
 	body, err := json.Marshal(map[string]any{
 		"type": mirrorSingular[topic],
@@ -516,23 +534,23 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 	})
 	if err != nil {
 		m.fail("encode", topic, err)
-		return
+		return postUnknown
 	}
 	url := m.registrationBase(ver) + "/resource"
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := 0; ; attempt++ {
 		if err := m.pace.wait(ctx); err != nil {
-			return // the mirror is stopping
+			return postUnknown // the mirror is stopping
 		}
 		req, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodPost, url, bytes.NewReader(body))
 		if err != nil {
 			m.fail("build POST", topic, err)
-			return
+			return postUnknown
 		}
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := m.http.Do(req)
 		if err != nil {
 			m.fail("POST", topic, err)
-			return
+			return postUnknown // no answer: the target may hold it or not
 		}
 		status := resp.StatusCode
 		location := resp.Header.Get("Location")
@@ -544,7 +562,7 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 				m.targetNodes[id] = true // heartbeat this node from now on
 			}
 			m.mu.Unlock()
-			return
+			return postAccepted
 		}
 		if status == stdhttp.StatusConflict && attempt == 0 {
 			held := verFromLocation(location)
@@ -555,57 +573,34 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 			}
 			if held == ver {
 				m.fail("POST", topic, fmt.Errorf("HTTP 409 at %s with no other minor to reconcile", ver))
-				return
+				return postRefused
 			}
 			m.audit.event("target_ver_conflict", map[string]any{
 				"op": "POST", "topic": topic, "id": id, "ours": ver, "target": held,
 			})
-			// A node delete cascades on the target, so a follow-up resync
-			// re-POSTs any children it swept (the resync pass itself runs
-			// with allowResync=false — no loop).
+			// A delete cascades on the target, so a follow-up repair re-POSTs
+			// what it swept: the subtree of the node this resource belongs to
+			// (a repair pass itself runs with allowResync=false: no loop).
 			m.deleteResource(ctx, topic, held, id)
 			if allowResync {
-				m.scheduleResync()
+				m.scheduleSweptRepair(topic, id)
 			}
 			continue
 		}
 		m.fail("POST", topic, fmt.Errorf("HTTP %d", status))
-		// A target's registration face validates parent references and
-		// answers 400 for a child whose parent has not been forwarded
-		// yet. The six collections stream concurrently, so this is
-		// expected during the initial fill; a debounced ordered resync
-		// re-POSTs the whole cache node→device→source→flow→sender→
-		// receiver, after which every parent precedes its children.
+		// A registration face validates parent references and answers
+		// 400 for a child whose parent has not been forwarded yet. The
+		// six collections stream concurrently, so a child can overtake
+		// its parent on the live path; a debounced repair sends it again
+		// behind the ancestors it names.
 		if allowResync && status == stdhttp.StatusBadRequest {
-			m.scheduleResync()
+			m.scheduleRepair(refusedResource(topic, id))
 		}
-		return
-	}
-}
-
-// scheduleResync arms (or extends) a debounced ordered resync. Repeated
-// parent-missing 400s during the initial fan-out collapse into one pass
-// once the burst goes quiet for mirrorResyncDebounce.
-func (m *Mirror) scheduleResync() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	ctx := m.runCtx
-	if ctx == nil {
-		return
-	}
-	if m.resyncTimer != nil {
-		m.resyncTimer.Reset(mirrorResyncDebounce)
-		return
-	}
-	m.resyncTimer = time.AfterFunc(mirrorResyncDebounce, func() {
-		m.mu.Lock()
-		m.resyncTimer = nil
-		rctx := m.runCtx
-		m.mu.Unlock()
-		if rctx != nil && rctx.Err() == nil {
-			m.resync(rctx)
+		if status >= 400 && status < 500 {
+			return postRefused
 		}
-	})
+		return postUnknown // a server error says nothing about what it holds
+	}
 }
 
 // deleteResource DELETEs one document from the target, at the minor
@@ -676,7 +671,7 @@ const mirrorProbeInterval = 30 * time.Second
 // heartbeatLoop proxies one health POST per TARGET-ACCEPTED source
 // node every heartbeat interval. A 404 for an accepted node means the
 // target evicted it: the node stops being heartbeated (the target no
-// longer holds it) and the catalogue is re-registered in dependency
+// longer holds it) and its subtree is re-registered in dependency
 // order, which lands it again. A node the target never accepted is
 // deliberately NOT heartbeated (its 404 is not an eviction); when the
 // target holds none of our nodes at all — freshly restarted, or wiped
@@ -693,12 +688,13 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 	defer ticker.Stop()
 	var repairs sync.WaitGroup
 	defer repairs.Wait()
-	repair := func() {
+	repair := func(work owedWork) {
+		m.owe(work)
 		m.noteResync()
 		repairs.Add(1)
 		go func() {
 			defer repairs.Done()
-			m.fill(ctx, "resync")
+			m.runOwed(ctx)
 		}()
 	}
 	var lastProbe time.Time
@@ -714,11 +710,11 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 					m.logger.Warn("registry/mirror: target holds none of our nodes — probing with a resync",
 						"cached_nodes", unaccepted)
 					m.audit.event("target_probe_resync", map[string]any{"cached_nodes": unaccepted})
-					repair()
+					repair(wholeCatalogue("resync"))
 				}
 				continue
 			}
-			evicted := false
+			var lost owedWork
 			for _, n := range refs {
 				if m.sendHealth(ctx, n.id, n.ver) != errMirrorEvicted {
 					continue
@@ -728,13 +724,13 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 				m.mu.Lock()
 				delete(m.targetNodes, n.id) // not the target's any more: no heartbeat until it lands again
 				m.mu.Unlock()
-				evicted = true
+				lost.add(subtreeOf(n.id))
 			}
-			if evicted {
+			if !lost.empty() {
 				// The repair is the probe too: a target that lost every
 				// node gets this pass, not a second one a tick later.
 				lastProbe = time.Now()
-				repair()
+				repair(lost)
 			}
 		}
 	}
@@ -885,98 +881,6 @@ func docID(doc json.RawMessage) string {
 	}
 	_ = json.Unmarshal(doc, &v)
 	return v.ID
-}
-
-// resync is the REPAIR: something left the target short (a refused
-// child, an eviction, a version conflict), so the catalogue is walked
-// and forwarded again. It is counted — a mirror that keeps resyncing
-// is telling the operator something.
-func (m *Mirror) resync(ctx context.Context) {
-	m.noteResync()
-	m.fill(ctx, "resync")
-}
-
-// noteResync counts one repair asked for.
-func (m *Mirror) noteResync() {
-	m.mu.Lock()
-	m.stats.Resyncs++
-	m.mu.Unlock()
-}
-
-// fill brings the target level with the source: Run uses it for the
-// first fill ("initial_fill"), resync for the repair; why names the
-// pass in the audit trail.
-//
-// One pass at a time. A fill asked for while another runs returns at
-// once and is folded into ONE more pass after the running one: two
-// passes interleaved would POST a child from one before its parent
-// from the other, and a caller made to wait would be the heartbeat
-// loop.
-func (m *Mirror) fill(ctx context.Context, why string) {
-	m.mu.Lock()
-	if m.filling {
-		m.fillAgain = true
-		m.mu.Unlock()
-		return
-	}
-	m.filling = true
-	m.mu.Unlock()
-	for {
-		m.fillOnce(ctx, why)
-		m.mu.Lock()
-		again := m.fillAgain && ctx.Err() == nil
-		m.fillAgain = false
-		if !again {
-			m.filling = false
-			m.mu.Unlock()
-			return
-		}
-		m.mu.Unlock()
-		why = "resync"
-	}
-}
-
-// fillOnce refreshes the cache from the source's per-minor views, then
-// POSTs the whole catalogue in dependency order, each resource at its
-// registered minor — the end state is target == cache.
-func (m *Mirror) fillOnce(ctx context.Context, why string) {
-	m.audit.event(why, nil)
-	m.refreshCacheFromSource(ctx)
-	type verDoc struct {
-		id  string
-		ver string
-		doc json.RawMessage
-	}
-	m.mu.Lock()
-	snapshot := make(map[string][]verDoc, len(mirrorTopics))
-	for _, topic := range mirrorTopics {
-		ids := make([]string, 0, len(m.cache[topic]))
-		for id := range m.cache[topic] {
-			ids = append(ids, id)
-		}
-		sort.Strings(ids) // deterministic order for tests + logs
-		docs := make([]verDoc, 0, len(ids))
-		for _, id := range ids {
-			docs = append(docs, verDoc{id: id, ver: m.cacheVer[topic][id], doc: m.cache[topic][id]})
-		}
-		snapshot[topic] = docs
-	}
-	m.mu.Unlock()
-
-	for _, topic := range mirrorTopics {
-		for _, vd := range snapshot[topic] {
-			if ctx.Err() != nil {
-				return
-			}
-			// allowResync=false: this pass is already in dependency
-			// order, so a 400 here is a genuine reject, not a race.
-			m.postResource(ctx, topic, vd.ver, vd.id, vd.doc, false)
-		}
-	}
-	// The served face is fed from the same authoritative cache, so a
-	// full resync repopulates it too — an eviction-recovery pass must
-	// leave both downstream copies (target AND embedded store) whole.
-	m.serveReplay()
 }
 
 // nodeRef is one cached source node — id plus the wire minor its

@@ -286,7 +286,8 @@ func TestMirrorHeartbeatsWithContentLengthAndResyncsOn404(t *testing.T) {
 
 	frames := map[string][][]byte{
 		"nodes":   {grainFrame("nodes", "n1", "", `{"id":"n1"}`)},
-		"sources": {grainFrame("sources", "src1", "", `{"id":"src1"}`)},
+		"devices": {grainFrame("devices", "d1", "", `{"id":"d1","node_id":"n1"}`)},
+		"sources": {grainFrame("sources", "src1", "", `{"id":"src1","device_id":"d1"}`)},
 	}
 	src := httptest.NewServer(stdhttp.NotFoundHandler())
 	src.Config.Handler = plant.sourceHandler(t, func() string { return src.URL }, frames)
@@ -301,7 +302,8 @@ func TestMirrorHeartbeatsWithContentLengthAndResyncsOn404(t *testing.T) {
 	go func() { _ = m.Run(ctx) }()
 
 	// One heartbeat interval must elapse; the first health POST is
-	// 404'd which must trigger a resync (node + source re-POSTed).
+	// 404'd which must trigger a repair (the node and what hangs under
+	// it re-POSTed).
 	waitFor(t, 3*MirrorHeartbeatInterval, func() bool {
 		return m.Stats().Resyncs >= 1 && m.Stats().Heartbeats >= 1
 	}, "a 404-triggered resync followed by a healthy heartbeat")
@@ -319,8 +321,8 @@ func TestMirrorHeartbeatsWithContentLengthAndResyncsOn404(t *testing.T) {
 	if strings.Count(joined, "node:n1") < 2 || strings.Count(joined, "source:src1") < 2 {
 		t.Errorf("expected resync re-POSTs, posts = %v", plant.posts)
 	}
-	last := plant.posts[len(plant.posts)-2:]
-	if last[0] != "node:n1" || last[1] != "source:src1" {
+	last := plant.posts[len(plant.posts)-3:]
+	if last[0] != "node:n1" || last[1] != "device:d1" || last[2] != "source:src1" {
 		t.Errorf("resync order wrong, tail = %v", last)
 	}
 }

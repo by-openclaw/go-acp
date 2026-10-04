@@ -30,6 +30,7 @@ type expiringTarget struct {
 	devices   map[string]string    // device id -> node id
 	evictions []string
 	refused   []string
+	posted    []string               // every id POSTed, in arrival order
 	beats     map[string][]time.Time // accepted heartbeats per node
 }
 
@@ -75,6 +76,7 @@ func (e *expiringTarget) handler() stdhttp.Handler {
 				} `json:"data"`
 			}
 			_ = json.Unmarshal(body, &env)
+			e.posted = append(e.posted, env.Data.ID)
 			if env.Type == "node" {
 				e.nodes[env.Data.ID] = now
 				w.WriteHeader(stdhttp.StatusCreated)
@@ -234,7 +236,7 @@ func evictOnce(target *expiringTarget, node string) (stdhttp.Handler, func() tim
 	}
 }
 
-// One node is evicted; re-registering the catalogue takes longer than
+// One node is evicted; re-registering what hung under it takes longer than
 // the target's window. The nodes the target still holds must be
 // heartbeated throughout — a loop that waits for the repair lets them
 // expire and the repair never ends.
@@ -258,7 +260,7 @@ func TestMirrorHeartbeatsWhileItRepairs(t *testing.T) {
 		m.cacheVer["nodes"][id] = "v1.3"
 		m.targetNodes[id] = true
 	}
-	for i, doc := range deviceDocs("b", slowPassDevices) {
+	for i, doc := range deviceDocs("a", slowPassDevices) {
 		id := fmt.Sprintf("dev-%03d", i)
 		m.cache["devices"][id] = json.RawMessage(doc)
 		m.cacheVer["devices"][id] = "v1.3"
@@ -295,6 +297,18 @@ func TestMirrorHeartbeatsWhileItRepairs(t *testing.T) {
 	}, "node a to be heartbeated after its re-registration")
 	if st := m.Stats(); st.Resyncs != 1 {
 		t.Errorf("resyncs = %d, want the one repair of the one eviction", st.Resyncs)
+	}
+	// Only what the target lost was sent again: node a and its devices.
+	target.mu.Lock()
+	posted := append([]string(nil), target.posted...)
+	target.mu.Unlock()
+	if len(posted) != 1+slowPassDevices || posted[0] != "a" {
+		t.Errorf("%d POSTs starting with %q, want node a then its %d devices", len(posted), posted[0], slowPassDevices)
+	}
+	for _, id := range posted {
+		if id == "b" {
+			t.Error("node b was re-registered: the target never lost it")
+		}
 	}
 
 	cancel()
@@ -416,9 +430,9 @@ func TestMirrorDropsTheOwedPassWhenItStops(t *testing.T) {
 		t.Errorf("%d POSTs, want 1 — no pass after the mirror stopped", got)
 	}
 	m.mu.Lock()
-	filling, again := m.filling, m.fillAgain
+	filling, owed := m.filling, !m.owed.empty()
 	m.mu.Unlock()
-	if filling || again {
-		t.Errorf("filling=%v fillAgain=%v after the stop, want both clear", filling, again)
+	if filling || owed {
+		t.Errorf("filling=%v owed=%v after the stop, want both clear", filling, owed)
 	}
 }
