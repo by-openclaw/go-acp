@@ -557,6 +557,40 @@ func TestResponder_UpdateArms(t *testing.T) {
 	}
 }
 
+// The responder keeps an Instance for as long as it lives and answers
+// queries from it on its own goroutine. What it keeps is its own TXT:
+// a caller that goes on writing its map — a node bumping ver_* does,
+// from another goroutine — must not be writing the responder's (#1319).
+func TestResponder_KeepsItsOwnTXT(t *testing.T) {
+	r := &stdlibResponder{logger: discardLogger(), conns: []*net.UDPConn{localUDPConn(t)}}
+	defer func() { _ = closeConns(r.conns) }()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	held := func() string {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.instances[0].TXT["ver_snd"]
+	}
+
+	txt := map[string]string{"ver_snd": "1"}
+	ins := dnssd.Instance{Name: "node1", Service: dnssd.ServiceNode, Domain: "local", Host: "node1.local", Port: 18080, TXT: txt}
+	if err := r.Announce(ctx, ins); err != nil {
+		t.Fatalf("Announce: %v", err)
+	}
+	txt["ver_snd"] = "2"
+	if got := held(); got != "1" {
+		t.Errorf("after the caller wrote its map the responder holds ver_snd=%s, want the 1 it was announced with", got)
+	}
+
+	if err := r.Update(ctx, ins); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	txt["ver_snd"] = "3"
+	if got := held(); got != "2" {
+		t.Errorf("after the caller wrote its map the responder holds ver_snd=%s, want the 2 it was updated with", got)
+	}
+}
+
 // TestResponder_UpdateEncodeError covers the arm where a stored instance
 // matches by FullName but is missing Host/Port, so the re-emit's
 // EncodeAnnounce fails and Update returns that error.

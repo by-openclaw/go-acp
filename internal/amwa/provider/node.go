@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net"
 	stdhttp "net/http"
 	"os"
@@ -351,6 +352,10 @@ type IS04NodeServer struct {
 	// IS-09 §4 has the Node re-resolve on change, so a one-shot fetch
 	// misses every System API advertised after boot. Guarded by mu.
 	systemWatcher *SystemWatcher
+
+	// txtPublish serialises the ver_* TXT publications
+	// (BumpResourceVersion); it is taken before mu, never under it.
+	txtPublish sync.Mutex
 
 	mu        sync.Mutex
 	http      *httpsession.Server
@@ -915,6 +920,12 @@ func (s *IS04NodeServer) BumpResourceVersion(t is04.ResourceType) {
 	if c == nil {
 		return
 	}
+	// One publication at a time, in the order the counters are taken.
+	// Callers run detached, one goroutine per changed resource: two at
+	// once would race to the responder, and the older TXT could be the
+	// one left on the wire.
+	s.txtPublish.Lock()
+	defer s.txtPublish.Unlock()
 	v := uint8(c.Add(1))
 	s.mu.Lock()
 	if s.announceInstance.Service == "" {
@@ -930,7 +941,7 @@ func (s *IS04NodeServer) BumpResourceVersion(t is04.ResourceType) {
 	// counters, even if mutations happened while we were registered
 	// and the responder was suspended.
 	s.announceInstance.TXT[key] = strconv.Itoa(int(v))
-	snapshot := s.announceInstance
+	snapshot := s.announceSnapshotLocked()
 	resp := s.responder
 	s.mu.Unlock()
 	if resp == nil {
@@ -942,6 +953,19 @@ func (s *IS04NodeServer) BumpResourceVersion(t is04.ResourceType) {
 		s.logger.Warn("provider/node: republish ver_* TXT failed",
 			"resource", t, "err", err)
 	}
+}
+
+// announceSnapshotLocked copies the saved announce Instance, its TXT
+// map included. The copy is what leaves the lock: a responder ranges
+// over it, and may keep it, while the next change writes the original.
+// A struct copy alone shares the map, and the Go runtime answers a
+// concurrent map iteration and write by killing the process — a
+// peer-to-peer node died that way when two resources changed at once
+// (#1319). Caller MUST hold s.mu.
+func (s *IS04NodeServer) announceSnapshotLocked() dnssdcodec.Instance {
+	snapshot := s.announceInstance
+	snapshot.TXT = maps.Clone(s.announceInstance.TXT)
+	return snapshot
 }
 
 // startMDNSAnnounceLocked opens a fresh Responder + Announces the saved
@@ -957,7 +981,7 @@ func (s *IS04NodeServer) startMDNSAnnounceLocked() error {
 		return fmt.Errorf("provider/node: open mDNS responder: %w", err)
 	}
 	ctxAnnounce, cancel := context.WithCancel(s.announceCtx)
-	if err := resp.Announce(ctxAnnounce, s.announceInstance); err != nil {
+	if err := resp.Announce(ctxAnnounce, s.announceSnapshotLocked()); err != nil {
 		cancel()
 		_ = resp.Close()
 		return fmt.Errorf("provider/node: announce %s: %w", dnssdcodec.ServiceNode, err)
