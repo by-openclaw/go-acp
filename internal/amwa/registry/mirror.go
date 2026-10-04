@@ -334,6 +334,17 @@ func (m *Mirror) Run(ctx context.Context) error {
 		}
 	}
 
+	// Fill before listening. The topic subscriptions below run
+	// concurrently, so their SYNC grains arrive in no particular order
+	// and a flow would reach the target before its device: the target
+	// refuses it, a healthy start reports failures, and the catalogue
+	// is POSTed twice (the racing pass, then the repair). One walk of
+	// the source, forwarded parent-first, leaves the SYNC grains with
+	// nothing to add — they find the cache already equal. A source
+	// that cannot be walked yet leaves the cache empty and the
+	// subscriptions fill it the old way, repair included.
+	m.fill(ctx, "initial_fill")
+
 	var wg sync.WaitGroup
 	for _, topic := range mirrorTopics {
 		for ver, qc := range clients {
@@ -834,11 +845,24 @@ func docID(doc json.RawMessage) string {
 	return v.ID
 }
 
-// resync refreshes the cache from the source's per-minor views, then
-// re-POSTs the whole catalogue in dependency order, each resource at
-// its registered minor — the end state is target == cache.
+// resync is the REPAIR: something left the target short (a refused
+// child, an eviction, a version conflict), so the catalogue is walked
+// and forwarded again. It is counted — a mirror that keeps resyncing
+// is telling the operator something.
 func (m *Mirror) resync(ctx context.Context) {
-	m.audit.event("resync", nil)
+	m.mu.Lock()
+	m.stats.Resyncs++
+	m.mu.Unlock()
+	m.fill(ctx, "resync")
+}
+
+// fill refreshes the cache from the source's per-minor views, then
+// POSTs the whole catalogue in dependency order, each resource at its
+// registered minor — the end state is target == cache. Run uses it for
+// the first fill ("initial_fill"), resync for the repair; why names
+// the pass in the audit trail.
+func (m *Mirror) fill(ctx context.Context, why string) {
+	m.audit.event(why, nil)
 	m.refreshCacheFromSource(ctx)
 	type verDoc struct {
 		id  string
@@ -846,7 +870,6 @@ func (m *Mirror) resync(ctx context.Context) {
 		doc json.RawMessage
 	}
 	m.mu.Lock()
-	m.stats.Resyncs++
 	snapshot := make(map[string][]verDoc, len(mirrorTopics))
 	for _, topic := range mirrorTopics {
 		ids := make([]string, 0, len(m.cache[topic]))
