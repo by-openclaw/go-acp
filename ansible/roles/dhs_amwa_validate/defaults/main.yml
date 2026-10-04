@@ -27,6 +27,9 @@ dhs_amwa_validate_results_dir: /root/amwa-validate
 # The plant (all addresses live on the plant host, group [plant]).
 dhs_amwa_validate_plant_host: "10.6.250.101"
 dhs_amwa_validate_node_port: 18080
+# The plant's second resident node, the reference SENDER the IS-11
+# suite streams from (tooling.yml renders it into the tool config).
+dhs_amwa_validate_is11_reference_port: 18400
 dhs_amwa_validate_registry_port: 8235
 # The mirror's served read-only Query face (--serve on the resident
 # mirror unit — dhs_amwa_plant_mirror_serve). Mirror-scope query rows
@@ -231,12 +234,17 @@ dhs_amwa_validate_suites:
   - { id: IS-11-01, scope: node, target: node,
       rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
       baseline_pass: 103, baseline_cnt: 0 }
-  - { id: IS-12-01, scope: node, target: node,
+  # fresh: with MS05_INVASIVE_TESTING on, the suite sets properties on
+  # the model; the node is restarted before so it starts clean, and
+  # IS-14-01 (fresh too) is not scored on what IS-12-01 left.
+  - { id: IS-12-01, scope: node, target: node, fresh: true,
       rows: [{ver: v1.3}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}, {ver: v1.0}],
       # baseline_cnt 2 = tool-side auto_ms05 "Not Implemented" +
-      # test_ms05_07 (we declare no deprecated properties — by design).
+      # test_ms05_07; the model declares a deprecated property since
+      # #1252 (DhsGainControl.legacyTrim), so that one is scored now —
+      # lower the count once the fleet confirms.
       baseline_pass: 135, baseline_cnt: 2 }
-  - { id: IS-14-01, scope: node, target: node,
+  - { id: IS-14-01, scope: node, target: node, fresh: true,
       rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
       baseline_pass: 150, baseline_cnt: 1 }
   - { id: BCP-005-01-01, scope: node, target: node,

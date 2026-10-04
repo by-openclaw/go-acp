@@ -20,8 +20,14 @@ func TestVendorGainCatalogue(t *testing.T) {
 	if !ok {
 		t.Fatal("DhsGainControl is not in the class catalogue")
 	}
-	if cls.Name != vendorClassName || len(cls.Properties) != 2 || len(cls.Methods) != 1 {
+	if cls.Name != vendorClassName || len(cls.Properties) != 3 || len(cls.Methods) != 1 {
 		t.Errorf("class descriptor = %+v", cls)
+	}
+	// legacyTrim is the model's one deprecated property: read-only,
+	// flagged, superseded by gainDb (the suite's deprecation rounds
+	// need one to score).
+	if p := cls.Properties[2]; p.Name != "legacyTrim" || !p.IsDeprecated || !p.IsReadOnly {
+		t.Errorf("legacyTrim = %+v, want a deprecated read-only property", p)
 	}
 	if _, ok := ms05.StandardDatatype(vendorDatatypeName); !ok {
 		t.Fatal("DhsGainDb is not in the datatype catalogue")
@@ -35,7 +41,7 @@ func TestVendorGainCatalogue(t *testing.T) {
 	for _, p := range flat.Properties {
 		names[p.Name] = true
 	}
-	for _, want := range []string{"channelLabel", "gainDb", "enabled", "oid", "runtimePropertyConstraints"} {
+	for _, want := range []string{"channelLabel", "gainDb", "legacyTrim", "enabled", "oid", "runtimePropertyConstraints"} {
 		if !names[want] {
 			t.Errorf("flattened class is missing inherited/own property %q", want)
 		}

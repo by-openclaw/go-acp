@@ -85,12 +85,21 @@
   when: _tool_state.rc == 0 and 'running' not in _tool_state.stdout
   changed_when: true
 
+# IS-11's receiver rounds stream from a REFERENCE sender the tool is
+# told about; without one eight tests are disabled. The plant's
+# is11-node (a dhs node on :18400) is that sender. MS-05 invasive
+# testing sets properties on the device model (IS-12-01 / IS-14-01:
+# 27 tests disabled without it); the catalogue restarts the node fresh
+# after those suites so nothing it set leaks into the next one (#1252).
 - name: Render the conformance UserConfig
   ansible.builtin.copy:
     content: |
       PULL_REPOS = False
       from . import Config as CONFIG
       CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30
+      CONFIG.IS11_REFERENCE_SENDER_NODE_API_URL = "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_is11_reference_port }}/x-nmos/node/v1.3/"
+      CONFIG.IS11_REFERENCE_SENDER_CONNECTION_API_URL = "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_is11_reference_port }}/x-nmos/connection/v1.1/"
+      CONFIG.MS05_INVASIVE_TESTING = True
     dest: /opt/dhs-validate-userconfig.py
     mode: "0644"
   register: _userconfig

@@ -351,6 +351,7 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 		"enabled":                    true,
 		"channelLabel":               "Gain",
 		"gainDb":                     0.0,
+		"legacyTrim":                 0.0,
 		"runtimePropertyConstraints": vendorRuntimeConstraints(),
 	})
 	objs = append(objs, gain)

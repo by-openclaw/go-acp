@@ -395,6 +395,7 @@
       "parents": [],
       "format": "urn:x-nmos:format:mux",
       "media_type": "video/MP2T",
+      "grain_rate": { "numerator": 50, "denominator": 1 },
       "bit_rate": 20000
     },
     {
@@ -884,7 +885,8 @@
           {
             "urn:x-nmos:cap:meta:label": "MPEG transport stream",
             "urn:x-nmos:cap:meta:enabled": true,
-            "urn:x-nmos:cap:format:media_type": { "enum": ["video/SMPTE2022-6", "video/MP2T"] }
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/SMPTE2022-6", "video/MP2T"] },
+            "urn:x-nmos:cap:transport:bit_rate": { "maximum": 40000 }
           }
         ]
       },

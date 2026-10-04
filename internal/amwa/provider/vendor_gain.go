@@ -84,6 +84,19 @@ func vendorGainClass() ms05.NcClassDescriptor {
 					Step:                   0.5,
 				},
 			},
+			{
+				// A deprecated property, as a real device carries one
+				// after a firmware generation: the suite's deprecation
+				// rounds (IS-12-01 / IS-14-01 "No deprecated properties
+				// found") have something to score, and a controller
+				// sees how we flag one. Read-only; gainDb supersedes it.
+				NcDescriptor: ms05.NcDescriptor{Description: strp("Legacy trim in dB (deprecated: use gainDb)")},
+				ID:           ms05.NcPropertyId{Level: 4, Index: 3},
+				Name:         "legacyTrim",
+				TypeName:     strp("NcFloat64"),
+				IsReadOnly:   true,
+				IsDeprecated: true,
+			},
 		},
 		Methods: []ms05.NcMethodDescriptor{
 			{
