@@ -279,3 +279,58 @@ func TestBestCandidateTiesByFullName(t *testing.T) {
 		}
 	}
 }
+
+// A Registry that advertises under both service names is one server
+// with two names. When it fails, the registration client disqualifies
+// the name it used — and while another server is clean the selector
+// must not hand back the twin: it is the same dead server, and a
+// failover that retries it spends a second full timeout there (the
+// AMWA suite's timeout-registry round ran out of clock exactly so).
+func TestBestCandidateSkipsTheTwinOfADisqualifiedServer(t *testing.T) {
+	const (
+		modern = "reg-api-timeout._nmos-register._tcp.plant."
+		legacy = "reg-api-timeout._nmos-registration._tcp.plant."
+		backup = "reg-api-6._nmos-register._tcp.plant."
+	)
+	byFull := map[string]RegistryCandidate{
+		modern: {FullName: modern, URL: "http://192.0.2.1:444", Priority: 55},
+		legacy: {FullName: legacy, URL: "http://192.0.2.1:444", Priority: 55},
+		backup: {FullName: backup, URL: "http://10.0.0.6:5106", Priority: 60},
+	}
+	later := time.Now().Add(time.Minute)
+	// Nothing failed yet: the better-priority server, under its modern name.
+	if got, ok := bestCandidate(byFull, map[string]time.Time{}); !ok || got.FullName != modern {
+		t.Fatalf("with nothing disqualified = %+v ok=%v, want the modern name", got, ok)
+	}
+	// Whichever name was used, the server is passed over while another
+	// one is clean — both ways round, independent of map iteration order.
+	for _, used := range []string{modern, legacy} {
+		for i := 0; i < 50; i++ {
+			got, ok := bestCandidate(byFull, map[string]time.Time{used: later})
+			if !ok || got.FullName != backup {
+				t.Fatalf("after disqualifying %s = %+v ok=%v, want the next server", used, got, ok)
+			}
+		}
+	}
+	// A disqualified name the zone no longer carries constrains nothing,
+	// and one that never resolved to a URL takes no other entry with it.
+	if got, ok := bestCandidate(byFull, map[string]time.Time{"gone._nmos-register._tcp.plant.": later}); !ok || got.FullName != modern {
+		t.Errorf("with a stale disqualification = %+v ok=%v, want the best server", got, ok)
+	}
+	const stub = "stub._nmos-register._tcp.plant."
+	byFull[stub] = RegistryCandidate{FullName: stub, Priority: 1}
+	if got, ok := bestCandidate(byFull, map[string]time.Time{stub: later}); !ok || got.FullName != modern {
+		t.Errorf("with an unresolved stub disqualified = %+v ok=%v, want the best server", got, ok)
+	}
+
+	// With no clean server left, the twin stands in: a plant with one
+	// Registry on both names retries it under the other name rather
+	// than sitting without a Registry until the penalty expires.
+	only := map[string]RegistryCandidate{modern: byFull[modern], legacy: byFull[legacy]}
+	if got, ok := bestCandidate(only, map[string]time.Time{modern: later}); !ok || got.FullName != legacy {
+		t.Errorf("one server, modern name disqualified = %+v ok=%v, want its legacy twin", got, ok)
+	}
+	if got, ok := bestCandidate(only, map[string]time.Time{modern: later, legacy: later}); ok {
+		t.Errorf("one server, both names disqualified = %+v, want no candidate", got)
+	}
+}

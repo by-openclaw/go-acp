@@ -65,6 +65,17 @@ dhs_amwa_validate_isolated_net: dhs-validate-mdns
 dhs_amwa_validate_isolated_tool: nmos-testing-validate
 dhs_amwa_validate_isolated_tool_port: 5001
 
+# The unicast window (issue #1291): the same private-bridge shape with
+# a tool instance in DNS_SD_MODE 'unicast' — it serves its mocks from
+# its own DNS server (:53 on its bridge address) under the tool's
+# DNS_DOMAIN, and the node is given that server + domain as a node in
+# a multicast-blocked plant would be. 5002 is the next free loopback
+# port (the isolated instance holds 5001).
+dhs_amwa_validate_unicast_net: dhs-validate-unicast
+dhs_amwa_validate_unicast_tool: nmos-testing-unicast
+dhs_amwa_validate_unicast_tool_port: 5002
+dhs_amwa_validate_unicast_domain: testsuite.nmos.tv
+
 # Auth-mode windows (issue #942): every upgrade is proven WITHOUT and
 # WITH IS-10/BCP-003-02 authorization. A THIRD tool instance carries
 # the armed profile — the resident tool stays auth-DISARMED (preflight
@@ -197,7 +208,7 @@ dhs_amwa_validate_mock_registry_port: 5102
 #   id            AMWA suite id, verbatim
 #   scope         node | registry | controller | mirror
 #   target        node | registry | cut  (which host:port the rows use)
-#   window        absent | isolated | p2p | registry | tls | facade
+#   window        absent | isolated | unicast | p2p | registry | tls | facade
 #                 (CuT window around the run — window_<name>.yml)
 #   auth          true = IS-10 window (issue #942): the window's CuT
 #                 is armed with --auth-url and the ARMED tool instance
@@ -305,10 +316,12 @@ dhs_amwa_validate_suites:
   # bridge. flaky_retry stays as belt-and-braces; retries are
   # reported.
   # test_13's SDP round is tool-scored since the fixture leads every
-  # RTP receiver with a templatable media_types[0] (#950 phase 1) —
-  # expect 58 (confirm from the fleet before raising).
+  # RTP receiver with a templatable media_types[0] (#950 phase 1).
+  # 60 since #1291: the timeout-registry round (test_16_01) used to
+  # land as a Warning whenever the Node retried the failed Registry
+  # under its twin service name; the selector now passes it over.
   - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
-      rows: [{ver: v1.3}], baseline_pass: 59, baseline_cnt: 0 }
+      rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
   # own two-row shape with a null first endpoint.
@@ -317,6 +330,21 @@ dhs_amwa_validate_suites:
   # API slot the tool itself serves (null host+port, per its docs:
   # a null slot skips pre-validation of an API the TOOL provides).
   - { id: IS-09-02, scope: node, target: cut, window: isolated, flaky_retry: true,
+      rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
+      baseline_pass: 4, baseline_cnt: 0 }
+  # The same two exams with the tool in DNS_SD_MODE 'unicast' (#1291):
+  # the node is given a DNS server and a search domain and nothing
+  # else, as in a plant that blocks multicast. These are the only
+  # entries where IS-04-01 test_02 / test_02_01 and IS-09-02's unicast
+  # pair are scored — every other tool instance self-disables them.
+  # `label` keeps the receipts beside the multicast ones
+  # (<SUITE>-unicast.json). Baselines from the first fleet run
+  # (2026-10-04): IS-04-01 60 with test_02 + test_02_01 scored and
+  # test_01 (the mDNS round) disabled; IS-09-02 4 with its unicast
+  # pair scored and its mDNS pair disabled.
+  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast, flaky_retry: true,
+      rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
+  - { id: IS-09-02, scope: node, target: cut, window: unicast, label: unicast, flaky_retry: true,
       rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
       baseline_pass: 4, baseline_cnt: 0 }
   # IS-09-01 scores our System API SERVER (issue #958) — the one
@@ -436,6 +464,17 @@ dhs_amwa_validate_suites:
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.0}],
       baseline_pass: 4, baseline_cnt: 0 }
+  # The one controller round every entry above reports DISABLED:
+  # test_01, "NCuT uses unicast DNS-SD to find registry" (#1291). The
+  # facade gets a DNS server and nothing else — no --registry — and the
+  # tool passes it when its own DNS server saw the question. The
+  # testquestion row carries no host: the facade's bridge address is
+  # the window's to give. Baseline from the first fleet run
+  # (2026-10-04): 5 — the four rounds every entry scores, plus test_01.
+  - { id: IS-04-04, scope: controller, target: node, window: unicast, label: unicast,
+      rows: [{ver: v1.0},
+             {host: null, port: null, ver: v1.3}],
+      baseline_pass: 5, baseline_cnt: 0 }
   - { id: IS-05-03, scope: controller, target: node, window: facade, label: conn-v1.1,
       rows: [{host: 127.0.0.1, port: 5320, ver: v1.0},
              {host: null, port: null, ver: v1.3},

@@ -190,6 +190,17 @@ func (w *RegistryWatcher) Best() (RegistryCandidate, bool) {
 // and a Node whose failover order depends on which discovery mode fed
 // it is a Node no operator can reason about.
 func bestCandidate(byFull map[string]RegistryCandidate, disqualified map[string]time.Time) (RegistryCandidate, bool) {
+	// A failure belongs to the SERVER, not to the name it was reached
+	// under. The same Registry is two entries when it advertises both
+	// service names (the dedupe below exists for that), and the
+	// registration client disqualifies the one name it used. suspect
+	// is every URL with a disqualified name.
+	suspect := make(map[string]bool, len(disqualified))
+	for full := range disqualified {
+		if c, known := byFull[full]; known && c.URL != "" {
+			suspect[c.URL] = true
+		}
+	}
 	// First pass: collect non-disqualified entries grouped by URL.
 	byURL := make(map[string]RegistryCandidate, len(byFull))
 	for full, c := range byFull {
@@ -217,9 +228,24 @@ func bestCandidate(byFull map[string]RegistryCandidate, disqualified map[string]
 	if len(byURL) == 0 {
 		return RegistryCandidate{}, false
 	}
+	// Prefer a server nothing has failed against. Handing back the
+	// twin name of the one that just failed — the same dead server —
+	// makes a failover spend a second full timeout on it before it
+	// moves on (the AMWA suite's timeout-registry round ran out of
+	// clock exactly so). Only when every remaining server is suspect
+	// does a twin name stand in: for a plant with ONE Registry on both
+	// names, a retry under the other name beats having no Registry at
+	// all until the penalty expires.
 	cands := make([]RegistryCandidate, 0, len(byURL))
-	for _, c := range byURL {
-		cands = append(cands, c)
+	for url, c := range byURL {
+		if !suspect[url] {
+			cands = append(cands, c)
+		}
+	}
+	if len(cands) == 0 {
+		for _, c := range byURL {
+			cands = append(cands, c)
+		}
 	}
 	sort.SliceStable(cands, func(i, j int) bool {
 		if cands[i].Priority != cands[j].Priority {

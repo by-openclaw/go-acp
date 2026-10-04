@@ -827,7 +827,6 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 // Stop tears down everything. Idempotent.
 func (s *IS04NodeServer) Stop() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
@@ -843,16 +842,21 @@ func (s *IS04NodeServer) Stop() error {
 		s.mqttEvents.Close()
 		s.mqttEvents = nil
 	}
-	if s.systemWatcher != nil {
-		_ = s.systemWatcher.Close()
-		s.systemWatcher = nil
-	}
+	watcher := s.systemWatcher
+	s.systemWatcher = nil
 	if s.events != nil {
 		// Drops every IS-07 WebSocket subscriber. Without it a
 		// shutdown leaves consumers holding a socket to a Node that is
 		// gone, and they wait out their own timeout instead of
 		// reconnecting somewhere useful.
 		_ = s.events.Close()
+	}
+	s.mu.Unlock()
+	// Outside the lock: a unicast System watcher's Close waits for its
+	// resolve loop, and that loop applies what it read under s.mu — a
+	// join held under the same lock would never return.
+	if watcher != nil {
+		_ = watcher.Close()
 	}
 	return nil
 }

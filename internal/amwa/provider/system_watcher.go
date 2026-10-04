@@ -31,15 +31,35 @@ import (
 	"dhs/internal/plugin"
 )
 
+// discoverSystemUnicast is the `_nmos-system._tcp.<domain>` lookup the
+// unicast watcher runs, behind a package var for the reason
+// resolveUnicast is: a test scripts the zone instead of standing up a
+// DNS server. Production never reassigns it.
+var discoverSystemUnicast = systemsession.DiscoverUnicast
+
 // SystemWatcher browses `_nmos-system._tcp` and fetches the global
 // resource whenever the best advertised instance changes.
+//
+// It has two feeds and one selection. On a multicast link the browser
+// pushes advertisements as they happen; on a plant that blocks
+// multicast (DiscoveryMode "unicast") there is no link to listen on,
+// so the watcher asks the zone — at once, then on the same re-resolve
+// interval the unicast Registry watcher uses. Either way the same
+// priority walk decides which System API is read.
 type SystemWatcher struct {
 	logger *slog.Logger
 	apiVer string
 	// onGlobal receives every successfully fetched global resource.
 	onGlobal func(g any, url string)
 
-	browser dnssdsession.Browser
+	// browser is the multicast feed; nil on a unicast watcher, whose
+	// feed is resolver + domain.
+	browser  dnssdsession.Browser
+	resolver string
+	domain   string
+	// done is closed when the unicast resolve loop has exited, so
+	// Close reports a loop that has stopped, not one asked to.
+	done chan struct{}
 
 	mu sync.Mutex
 	// cancel stops the browse loop. It is written by Run, on whichever
@@ -89,9 +109,50 @@ func NewSystemWatcher(logger *slog.Logger, apiVer string, onGlobal func(g any, u
 	}, nil
 }
 
-// Run starts the browse loop and returns immediately.
+// NewUnicastSystemWatcher builds the watcher for a plant that blocks
+// multicast: `_nmos-system._tcp.<domain>` is resolved against one DNS
+// server. It opens nothing and does not resolve until Run.
+func NewUnicastSystemWatcher(logger *slog.Logger, apiVer, resolver, domain string, onGlobal func(g any, url string)) *SystemWatcher {
+	logger = plugin.LoggerOrDefault(logger)
+	if apiVer == "" {
+		apiVer = "v1.0"
+	}
+	return &SystemWatcher{
+		logger:   logger,
+		apiVer:   apiVer,
+		onGlobal: onGlobal,
+		resolver: resolver,
+		domain:   domain,
+		seen:     map[string]dnssdcodec.Instance{},
+		failed:   map[string]struct{}{},
+		hostIPv4: map[string]net.IP{},
+	}
+}
+
+// Run starts the browse loop — or, on a unicast watcher, the resolve
+// loop — and returns immediately.
 func (w *SystemWatcher) Run(ctx context.Context) error {
 	loopCtx, cancel := context.WithCancel(ctx)
+	if w.browser == nil {
+		done := make(chan struct{})
+		w.mu.Lock()
+		w.cancel = cancel
+		w.done = done
+		w.mu.Unlock()
+		go func() {
+			defer close(done)
+			// The cadence the unicast Registry watcher keeps: at once,
+			// then the interval while a System API is known and the
+			// short backoff while the zone names none.
+			runUnicastLoop(loopCtx, func(ctx context.Context) bool {
+				w.resolveOnce(ctx)
+				w.mu.Lock()
+				defer w.mu.Unlock()
+				return len(w.seen) > 0
+			})
+		}()
+		return nil
+	}
 	w.mu.Lock()
 	w.cancel = cancel
 	w.mu.Unlock()
@@ -104,15 +165,60 @@ func (w *SystemWatcher) Run(ctx context.Context) error {
 	return nil
 }
 
-// Close stops the browse loop.
+// Close stops the browse loop; a unicast watcher's resolve loop is
+// waited for, like the unicast Registry watcher's.
 func (w *SystemWatcher) Close() error {
 	w.mu.Lock()
-	cancel := w.cancel
+	cancel, done := w.cancel, w.done
+	w.done = nil
 	w.mu.Unlock()
 	if cancel != nil {
 		cancel()
 	}
+	if w.browser == nil {
+		if done != nil {
+			<-done
+		}
+		return nil
+	}
 	return w.browser.Close()
+}
+
+// resolveOnce asks the zone and replaces what the watcher knows with
+// the answer: DNS is question-and-answer, so an instance that is no
+// longer in the zone is gone (there is no goodbye packet to wait for),
+// and one that failed last time is tried again — the record still
+// being published is the operator saying it should work.
+func (w *SystemWatcher) resolveOnce(ctx context.Context) {
+	instances, err := discoverSystemUnicast(ctx, w.resolver, w.domain, 0)
+	if err != nil {
+		// A zone without the record answers NXDOMAIN — IS-09 makes the
+		// System API optional, so that is a normal plant, not an
+		// outage.
+		w.logger.Debug("provider/node: unicast System API resolve failed",
+			"plugin", "amwa", "api", "is-09",
+			"domain", w.domain, "resolver", w.resolver, "err", err)
+		instances = nil
+	}
+	w.mu.Lock()
+	next := make(map[string]dnssdcodec.Instance, len(instances))
+	for _, ins := range instances {
+		key := ins.Name + "." + ins.Service
+		if _, known := w.seen[key]; !known {
+			w.logger.Info("provider/node: System API discovered (unicast DNS-SD)",
+				"plugin", "amwa", "api", "is-09",
+				"instance", ins.Name, "host", ins.Host, "port", ins.Port,
+				"pri", ins.TXT[dnssdcodec.TXTKeyPriority])
+		}
+		next[key] = ins
+	}
+	w.seen = next
+	if _, still := next[w.fetched]; !still {
+		w.fetched = ""
+	}
+	w.failed = map[string]struct{}{}
+	w.mu.Unlock()
+	w.pick(ctx)
 }
 
 func (w *SystemWatcher) consume(ctx context.Context, out <-chan dnssdcodec.Instance) {
@@ -165,6 +271,15 @@ func (w *SystemWatcher) observe(ctx context.Context, ins dnssdcodec.Instance) {
 	if len(ins.IPv4) > 0 && ins.Host != "" {
 		w.hostIPv4[ins.Host] = ins.IPv4[0]
 	}
+	w.mu.Unlock()
+	w.pick(ctx)
+}
+
+// pick re-selects the best System API among everything currently
+// known and reads its global resource when that is not the one
+// already read. Shared by both feeds.
+func (w *SystemWatcher) pick(ctx context.Context) {
+	w.mu.Lock()
 	candidates := make([]dnssdcodec.Instance, 0, len(w.seen))
 	for _, v := range w.seen {
 		if len(v.IPv4) == 0 {
