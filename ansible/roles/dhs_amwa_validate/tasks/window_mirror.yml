@@ -1,0 +1,90 @@
+---
+# Mirror CuT window (issue #1298): IS-04-02 scored THROUGH a mirror —
+# the registration row on a source registry, the query row on the
+# mirror's served face — with every piece holding only what the exam
+# put there:
+#
+#   source   the registry window's transient registry (+ its companion
+#            node and seeded subscription), on the CuT port
+#   target   a throw-away registry the mirror forwards into; the exam
+#            never reads it, the mirror just needs somewhere to write
+#            (announces nothing — it is nobody's registry)
+#   mirror   a transient `registry nmos mirror` between the two, its
+#            served read-only Query face on the CuT mirror port
+#
+# The exam used to sit the plant registry and the plant mirror. With a
+# production catalogue behind them (~7 000 resources) the tool's own
+# SYNC-grain validation outlasts the heartbeat window and test_31
+# evicts its own node — the registry exam's defect (#1292), one hop
+# further. The plant mirror is not this window's business: it keeps
+# forwarding the plant to its real target, and the play's first half
+# checks its health and parity.
+
+- name: Open the source side — the registry window's transient registry
+  ansible.builtin.include_tasks: window_registry.yml
+
+- name: Start the throw-away target registry
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-mtarget --collect
+    {{ dhs_amwa_validate_plant_bin }} registry nmos serve
+    --bind 127.0.0.1:{{ dhs_amwa_validate_cut_mirror_target_port }}
+    --no-mdns
+    --heartbeat-timeout 30s
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+# Its served face announces under its OWN instance name: DNS-SD names
+# are unique per link and the plant mirror holds "dhs-nmos-mirror" on
+# this host — under the default the announce is refused as a name
+# collision and test_02 finds no Query API advertisement (#1299). pri
+# 99 for the reason the registry window's plain side uses it: in the
+# production range, so the advertisement round scores a Pass; a Query
+# face draws no registrations whatever its priority.
+- name: Start the transient mirror
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-mirror --collect
+    {{ dhs_amwa_validate_plant_bin }} registry nmos mirror
+    --source http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
+    --target http://127.0.0.1:{{ dhs_amwa_validate_cut_mirror_target_port }}
+    --serve :{{ dhs_amwa_validate_cut_mirror_port }}
+    --serve-advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}
+    --serve-instance-name dhs-nmos-validate-mirror
+    --serve-pri 99
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+- name: Arm the mirror-window safety-stop timer
+  ansible.builtin.command: >-
+    systemd-run --unit dhs-nmos-validate-mirrorstop --collect
+    --on-active={{ dhs_amwa_validate_window_safety_sec }}
+    systemctl stop dhs-nmos-validate-mirror dhs-nmos-validate-mtarget
+  delegate_to: "{{ groups['plant'][0] }}"
+  changed_when: true
+
+# Proof the mirror mirrors, not just listens: the companion node the
+# registry window registered at the source must be readable through
+# the served face.
+- name: The companion node is readable THROUGH the mirror
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/nodes"
+    return_content: true
+  register: _mirror_up
+  retries: 20
+  delay: 3
+  until: _mirror_up.status == 200 and (_mirror_up.json | length) >= 1
+
+# auto_query_18/19 page /subscriptions on the face under test; a
+# served face starts with none of its own (the registry window seeded
+# the SOURCE's). One persistent subscription gives those rounds a
+# resource.
+- name: Seed a persistent subscription on the mirror's served face
+  ansible.builtin.uri:
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/subscriptions"
+    method: POST
+    body_format: json
+    body:
+      max_update_rate_ms: 100
+      persist: true
+      resource_path: /nodes
+      params: {}
+    status_code: [200, 201]
