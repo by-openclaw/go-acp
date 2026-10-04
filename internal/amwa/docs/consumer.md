@@ -4,8 +4,8 @@ One page per verb: what it is for, the form to type, and a run. Every
 flag is in [`docs/cli.md`](../../../docs/cli.md); tasks that chain
 several verbs are in [`runbook.md`](runbook.md).
 
-Runs marked **captured** were made with the released binary (v0.35.0,
-2026-10-04) against the peer named. A verb with no captured run has not
+Runs marked **captured** were made with the released binary (v0.35.0 or
+v0.36.0, 2026-10-04) against the peer named. A verb with no captured run has not
 been run against a peer yet, and says so.
 
 Resources are named by IS-04 UUID everywhere: NMOS labels are mutable
@@ -55,8 +55,8 @@ DEVICE    8b13b278-6b39-58ae-ba1e-2b9115d5d3d8  dhs-amwa-reference-node
 A Registry serves by default only what is registered at the minor it is
 asked at. On v0.35.0 a v1.3 walk of the plant registry therefore shows
 24 of its 25 Nodes — the FusioN registers at v1.2. Reading the lower
-minors too (`query.downgrade`) is #1330, not released yet; until then
-`--api-ver v1.2` shows the v1.2 Nodes alone.
+minors too (`query.downgrade`) came with v0.36.0 (#1330): the same walk
+now shows all 25.
 
 ## watch — follow a Registry
 
@@ -157,8 +157,8 @@ dhs consumer nmos map … --device <uuid> --cancel <activation-id>
 ```
 
 Routes are checked against what the Device declares before anything is
-sent; an applied map is read back from `/map/active`. **Not released,
-and not run against a Device yet.**
+sent; an applied map is read back from `/map/active`. Since v0.36.0; run against the
+nmos-cpp node (a channel routed and unrouted, read from its active map).
 
 ## compat — why a Sender and a Receiver do not agree (IS-11)
 
@@ -167,8 +167,9 @@ dhs consumer nmos compat --node|--registry … --receiver <uuid>
 dhs consumer nmos compat … --sender <uuid> [--constraints <file> | --release] [--dry-run]
 ```
 
-Prints the state with the Device's own reason. **Not released, and not
-run against a Device yet.**
+Prints the state with the Device's own reason. Since v0.36.0. No
+third-party IS-11 peer is on the fleet: on the nmos-cpp node the verb
+refuses, naming the control the Device does not advertise.
 
 ## config — a Device's model, backup and restore (IS-14)
 
@@ -180,8 +181,8 @@ dhs consumer nmos config … --role-path <p> --backup <file> | --restore <file> 
 ```
 
 A set is read back; a restore is validated by the Device first and
-applied only when every object validates. **Not released, and not run
-against a Device yet.**
+applied only when every object validates. Since v0.36.0; run against the
+nmos-cpp node (get, set and back; a backup it validates for a restore).
 
 ## control — a Device's model over its control WebSocket (IS-12)
 
@@ -194,7 +195,19 @@ dhs consumer nmos control … [--role-path <p>] --watch [--duration 30s]        
 
 Objects are named by role path, as `config` names them; the oid the
 protocol wants is resolved from the Device's own block tree. A set is
-read back. **Not released, and not run against a Device yet.**
+read back. Since v0.36.0. Captured, the nmos-cpp reference node:
+
+```
+$ dhs consumer nmos control --node http://10.6.250.104:8120 --device 8b13b278-6b39-58ae-ba1e-2b9115d5d3d8
+objects via ws://10.6.250.104:8122/x-nmos/ncp/v1.0
+  oid 1      class 1.1          root
+  oid 3      class 1.3.2        root.ClassManager  Class manager
+  oid 10     class 1.2.0.2      root.ExampleControl  Example control worker
+  oid 12     class 1.2.2.1      root.receiver-monitors.receiver-monitor-1  dhs-amwa-reference-node/receiver/v0
+  …
+$ dhs consumer nmos control … --role-path root.ExampleControl --get 1p6
+root.ExampleControl.1p6 = "Example control worker"
+```
 
 ## events, system, export, audit, probe, registers, facade
 

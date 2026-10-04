@@ -24,15 +24,15 @@ unit tests, or only on a build nobody runs, says so.
 | Verb | Spec | Unit | On the released binary, against an oracle | Not yet |
 |---|---|---|---|---|
 | `discover` | IS-04 DNS-SD | yes | — | not in the integration suite |
-| `walk` | IS-04 Query API, Node API | yes | v0.35.0: nmos-cpp registry and the Neuron CONVERT — the same ids as the peer's own API | lower-minor Nodes in one view (#1330) is not released |
-| `watch` | IS-04 Query WebSocket | yes | v0.35.0: nmos-cpp registry — subscription opened, first grain; a Node registering and leaving printed as added and removed | — |
-| `connect` | IS-05 | yes | v0.35.0: dry-run on the CONVERT (device untouched); connect + disconnect, a scheduled connect (active at its time, not before) and a two-route salvo on the nmos-cpp node, each read back from its IS-05 | a scheduled connect and a salvo on a device |
-| `set` | IS-05 (Sender) | yes | v0.35.0: a Sender's two legs moved on the nmos-cpp node, read back from its IS-05 | a second set on the same Sender fails on v0.35.0 (#1339, fixed, not released) |
-| `events` | IS-07 | yes | v0.35.0: a subscription on the nmos-cpp node delivers the Source's state, of the type its Events API reports | MQTT |
-| `map` | IS-08 | yes | — | not released; not run against a device |
-| `compat` | IS-11 | yes | — | not released; not run against a device |
-| `config` | IS-14 | yes | — | not released; not run against a device |
-| `control` | IS-12 / MS-05-02 | yes | — | not released; not run against a device |
+| `walk` | IS-04 Query API, Node API | yes | v0.36.0: nmos-cpp registry and the Neuron CONVERT — the same ids as the peer's own API; a Registry walk reads the lower minors too (#1330) | — |
+| `watch` | IS-04 Query WebSocket | yes | v0.36.0: nmos-cpp registry — subscription opened, first grain; a Node registering and leaving printed as added and removed | — |
+| `connect` | IS-05 | yes | v0.36.0: dry-run on the CONVERT (device untouched); connect + disconnect, a scheduled connect (active at its time, not before) and a two-route salvo on the nmos-cpp node, each read back from its IS-05 | a scheduled connect and a salvo on a device |
+| `set` | IS-05 (Sender) | yes | v0.36.0: a Sender's two legs moved on the nmos-cpp node and moved back, each read from its IS-05 | — |
+| `events` | IS-07 | yes | v0.36.0: a subscription on the nmos-cpp node delivers the Source's state, of the type its Events API reports | MQTT |
+| `map` | IS-08 | yes | v0.36.0: a channel routed and unrouted on the nmos-cpp node, read from its own active map | a scheduled activation; a device |
+| `compat` | IS-11 | yes | v0.36.0: refused by name on the nmos-cpp node, which has no IS-11 | **no third-party IS-11 peer on the fleet** — the state and constraints paths are unit-tested only |
+| `config` | IS-14 | yes | v0.36.0: get, set and back on the nmos-cpp node; a backup the node validates for a restore | a restore applied; a device |
+| `control` | IS-12 / MS-05-02 | yes | v0.36.0: the model listed is the nmos-cpp node's IS-14 role paths (38 objects); a set read back through its IS-14; a watch prints a change made through its IS-14 | invoke; a device |
 | `facade` | AMWA testing façade | yes | v0.35.0: the AMWA tool's controller suites (see the sweep) | — |
 | `export`, `audit`, `probe`, `registers` | plant tooling | yes | — | not in the integration suite |
 
@@ -41,7 +41,7 @@ unit tests, or only on a build nobody runs, says so.
 | What | Evidence |
 |---|---|
 | Every API the node serves, scored by the AMWA NMOS Testing Tool | [`tests/integration/nmos/amwa/results-fleet/`](../../../tests/integration/nmos/amwa/results-fleet/README.md) |
-| Registers into the nmos-cpp registry, is held by its heartbeats, deregisters on stop | v0.35.0, `internal/amwa/integration/node_test.go` |
+| Registers into the nmos-cpp registry, is held by its heartbeats, deregisters on stop | v0.36.0, `internal/amwa/integration/node_test.go` |
 
 ### Registry and mirror (`dhs registry nmos serve`, `… mirror`)
 
@@ -49,7 +49,12 @@ unit tests, or only on a build nobody runs, says so.
 |---|---|
 | Registration + Query API, plain and with authorization, scored by the AMWA tool | the sweep, IS-04-02 entries |
 | The same exam through the mirror's served face | the sweep, mirror entry |
-| An nmos-cpp node registering into our registry | **missing** (audit R1 / R2) |
+| An nmos-cpp Node registering into our registry: 91 resources document for document, held by its heartbeats, paged Query, WebSocket grain, registered again after a 404, expired 10 s after a kill | v0.36.0, `internal/amwa/integration/peer_test.go` |
+| Our mirror carrying that Node into the nmos-cpp registry: level at the fill and after a live registration, 0 refused, announced on that registry's WebSocket, gone when the mirror stops | v0.36.0, same test |
+| Our mirror copying the nmos-cpp registry into ours, document for document | **fails on one document** — a Node's `services` re-encoded (#1338) |
+
+The verdict lines of both plays on v0.36.0:
+[`tests/integration/nmos/amwa/results-fleet/integration-v0.36.0.md`](../../../tests/integration/nmos/amwa/results-fleet/integration-v0.36.0.md).
 
 ### How to run it
 
@@ -60,6 +65,9 @@ cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-validate.ym
 # the integration suite (released CLI against nmos-cpp and a device)
 GOOS=linux GOARCH=amd64 go test -c -tags integration -o <dir>/amwa-integration.test ./internal/amwa/integration/
 cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-integration.yml -e amwa_suite_dir=<dir>
+
+# the registry and the mirror scored by an nmos-cpp Node and Registry
+cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-nmos-cpp.yml -e amwa_suite_dir=<dir>
 ```
 
 What is still missing for ADR-0025 is listed, gap by gap, in the audit.
