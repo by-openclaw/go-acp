@@ -36,7 +36,7 @@ registry's 12 s expiry; it is gone within 5 s of stopping.
 dhs registry nmos serve --bind :8235 --advertise-host <ip>:8235 --priority 0
 ```
 
-Scored by a third party's Node on v0.36.0 (`amwa-interop-nmos-cpp.yml`):
+Scored by a third party's Node on v0.36.2 (`amwa-interop-nmos-cpp.yml`):
 an nmos-cpp Node registers into it — its 91 resources are in our Query
 API document for document, it is held by its heartbeats, paged Query and
 the WebSocket's first grain carry its resources, it registers again 5 s
@@ -45,10 +45,10 @@ after a 404, and it expires 10 s after a kill.
 Up to v0.36.0 the Query API did not show a resource registered at a
 higher minor on its lower endpoints (#1337), and returned a re-encoding
 of a resource rather than the registered document — a key the Node did
-not send could appear with its zero value (#1338). Both are fixed, not
-released yet: the registry keeps the document a Node sent and serves
-it, and an earlier minor is shown it with the keys IS-04 "Upgrade
-Path" lists removed.
+not send could appear with its zero value (#1338). Both are fixed since
+v0.36.1: the registry keeps the document a Node sent and serves it,
+and an earlier minor is shown it with the keys IS-04 "Upgrade Path"
+lists removed. On the plant a v1.2 query now lists all 25 Nodes.
 
 ## Mirror
 
@@ -62,12 +62,18 @@ stand still on a healthy mirror. `resyncs` counts ordered passes: from
 v0.36.0 one is expected when a Node registers (its children are held
 until the target holds their parents, then sent in order), and more
 than that says something was refused or evicted. On the plant after
-the v0.36.0 converge: 12 582 forwarded for 7 266 resources, 0 failures,
-2 passes — the registry had restarted with it and every node was
-registering again (#1346); level with Cerebrum, nothing refused. Paired
-with nmos-cpp on v0.36.0: our registry mirrored into the nmos-cpp
-registry is level at the fill and after a live registration with 0
-refused; the nmos-cpp registry mirrored into ours differs on one
-document (#1338).
+the v0.36.2 converge: 11 929 forwarded for 7 266 resources, 0 failures,
+0 skipped — the registry restarts with the mirror and every node
+registers again, which costs ordered passes (#1346), not refusals.
+
+Paired with nmos-cpp on v0.36.2, both ways: our registry mirrored into
+the nmos-cpp registry is level at the fill and after a live
+registration with nothing refused, and the nmos-cpp registry mirrored
+into ours is level document for document (92 resources).
+
+v0.36.1 is not to be run as a mirror behind a dhs registry: with the
+registry translating (#1337) its catalogue read could claim a resource
+registered mid-read at a lower minor (#1351 — 81 sources on the plant,
+for twenty minutes). v0.36.2 reads the minors lowest first.
 Reading the audit trail: [`runbook.md`](runbook.md), "Reading the
 mirror's audit trail".

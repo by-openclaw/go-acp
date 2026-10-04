@@ -1,7 +1,7 @@
 # AMWA NMOS Testing Tool — fleet sweep on the released binary
 
 Every scope of `ansible/playbooks/amwa-validate.yml`, run from the
-control node against **dhs v0.35.0** — the binary the fleet and the
+control node against **dhs v0.36.2** — the binary the fleet and the
 plant run — on 2026-10-04. The tool is the fleet's pinned
 `nmos-testing` on the tooling host. One JSON per catalogue entry,
 exactly as the tool wrote it. This folder holds the latest release's
@@ -100,20 +100,24 @@ reference sender, then reports every other receiver of that format as
 "no compatible senders". The fixture keeps its second receivers on
 purpose.
 
-## Against the previous release
+## Against the earlier releases
 
-v0.34.0 scored 40 entries, 1 524 Pass, 86.8 %. What changed:
+- **v0.35.0 and v0.36.0** scored the same, entry for entry: 52 entries,
+  2 272 Pass, 0 Fail, the same eight Warnings. What changed underneath
+  between them and v0.36.2 is the registry — it now serves the document
+  a Node registered instead of a re-encoding of it (#1338), and shows a
+  resource registered at a later minor on its earlier endpoints,
+  translated (#1337) — and the mirror (#1336, #1340, #1351). IS-04-02
+  scores the registry, plain, with authorization and through the
+  mirror, exactly as before: 74 / 90 / 74.
+- **v0.34.0** scored 40 entries, 1 524 Pass, 86.8 %. v0.35.0 added the
+  twelve authorization twins, brought IS-04-02-auth from 88 Pass and 2
+  Warnings to 90 Pass (the twin announces its registry at priority 99),
+  and scored IS-04-01 at 60 on its first attempt, where a Warning on
+  `test_16_01` had needed a retry: the node gave a registry that did
+  not answer the operating system's whole connect time-out, and now
+  gives it one heartbeat period.
 
-- twelve authorization twins were added, and each passes every row it
-  runs (IS-05-02, IS-07-01, IS-07-02, IS-08-01, IS-08-02, IS-11-01,
-  IS-14-01, IS-04-03, BCP-005-01-01, BCP-006-01-01, BCP-006-04,
-  BCP-007-03-01);
-- IS-04-02-auth went from 88 Pass and 2 Warnings to 90 Pass: the
-  authorization twin now announces its registry at priority 99, as the
-  plain window does;
-- IS-04-01 scored 60 on its first attempt. On v0.34.0 and v0.33.0 its
-  first attempt drew a Warning on `test_16_01` ("Node never made contact
-  with registry 5") and the catalogue allowed one retry. The node gave
-  a registry that did not answer the operating system's whole connect
-  time-out before moving to the next; it now gives it at most one
-  heartbeat period. The retry rule is gone from the catalogue.
+The tool does not exercise what the pairing with nmos-cpp found in
+those releases; that evidence is in
+[`integration-v0.36.2.md`](integration-v0.36.2.md).
