@@ -91,6 +91,10 @@ type Store struct {
 	// (encoded.go); its own lock, never held with mu.
 	encoded *encodedForms
 
+	// pageIdx orders each type by update_ts for the Query API's pages
+	// (paging_index.go), rebuilt lazily after the type changed.
+	pageIdx map[is04.ResourceType]*pageIndex
+
 	// owners maps a resource id to the IS-10 client_id that registered
 	// it (BCP-003-02: the Registration API rejects updates from a
 	// DIFFERENT client with 403 — IS-04-02 test_33/test_33_1). Entries
@@ -136,6 +140,7 @@ func NewStore() *Store {
 		receivers:      make(map[string]is04.Receiver),
 		health:         make(map[string]time.Time),
 		encoded:        newEncodedForms(),
+		pageIdx:        newPageIndexes(),
 		owners:         make(map[string]string),
 		updateTSByType: make(map[is04.ResourceType]map[string]string, 6),
 		apiVerByType:   make(map[is04.ResourceType]map[string]string, 6),
@@ -160,6 +165,7 @@ func (s *Store) markUpdated(t is04.ResourceType, id string) {
 	}
 	s.lastUpdateTS = ts
 	bucket[id] = ts
+	s.touchPageIndex(t)
 }
 
 // dropUpdated drops id from the type bucket on delete. Caller MUST
@@ -167,6 +173,7 @@ func (s *Store) markUpdated(t is04.ResourceType, id string) {
 func (s *Store) dropUpdated(t is04.ResourceType, id string) {
 	if bucket, ok := s.updateTSByType[t]; ok {
 		delete(bucket, id)
+		s.touchPageIndex(t)
 	}
 	if bucket, ok := s.apiVerByType[t]; ok {
 		delete(bucket, id)
@@ -217,14 +224,11 @@ func (s *Store) APIVerOf(t is04.ResourceType, id string) string {
 // series. Returns "" when the type bucket is empty. Caller MUST hold
 // the read or write lock.
 func (s *Store) maxUpdateTSLocked(t is04.ResourceType) string {
-	bucket := s.updateTSByType[t]
-	max := ""
-	for _, ts := range bucket {
-		if max == "" || taiCmp(ts, max) > 0 {
-			max = ts
-		}
+	entries := s.pageEntriesLocked(t)
+	if len(entries) == 0 {
+		return ""
 	}
-	return max
+	return entries[len(entries)-1].ts
 }
 
 // AddListener registers a callback for every Change emission. Returns
