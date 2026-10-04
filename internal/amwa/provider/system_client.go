@@ -76,6 +76,15 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 				"plugin", "amwa", "api", "is-09")
 			return nil
 		}
+		if s.cfg.DiscoveryMode == "unicast" {
+			// The watch started above IS the lookup here: a unicast
+			// watcher asks the zone at once and then on its interval.
+			// Browsing mDNS as well would be asking the one network
+			// the operator said does not carry multicast — the Node
+			// would read no System API at all, which is what it did
+			// before this branch existed.
+			return nil
+		}
 		found, err := discoverSystemMDNS(ctx, systemDiscoveryTimeout, s.logger)
 		if err != nil || len(found) == 0 {
 			// Not an error, and not the end of it. The System API may
@@ -107,7 +116,9 @@ func (s *IS04NodeServer) fetchSystemGlobal(ctx context.Context) *is09.Global {
 	return res.Global
 }
 
-// watchForSystem starts the ongoing mDNS watch, once.
+// watchForSystem starts the ongoing watch, once — over the feed the
+// Node's discovery mode names: the multicast browse, or the zone a
+// unicast Node resolves its Registry from.
 func (s *IS04NodeServer) watchForSystem(ctx context.Context) {
 	if s.cfg.SystemURL != "" || s.cfg.DiscoveryMode == "static" {
 		// An explicitly configured System API is not up for
@@ -120,13 +131,22 @@ func (s *IS04NodeServer) watchForSystem(ctx context.Context) {
 		s.mu.Unlock()
 		return
 	}
-	w, err := NewSystemWatcher(s.logger, is09WireVersion, func(g any, url string) {
+	onGlobal := func(g any, url string) {
 		global, ok := g.(*is09.Global)
 		if !ok {
 			return
 		}
 		s.applySystemGlobal(global, url)
-	})
+	}
+	var (
+		w   *SystemWatcher
+		err error
+	)
+	if s.cfg.DiscoveryMode == "unicast" {
+		w = NewUnicastSystemWatcher(s.logger, is09WireVersion, s.cfg.UnicastResolver, s.cfg.UnicastDomain, onGlobal)
+	} else {
+		w, err = NewSystemWatcher(s.logger, is09WireVersion, onGlobal)
+	}
 	if err != nil {
 		s.mu.Unlock()
 		s.logger.Warn("provider/node: cannot watch for a System API",
