@@ -25,10 +25,10 @@ unit tests, or only on a build nobody runs, says so.
 |---|---|---|---|---|
 | `discover` | IS-04 DNS-SD | yes | — | not in the integration suite |
 | `walk` | IS-04 Query API, Node API | yes | v0.35.0: nmos-cpp registry and the Neuron CONVERT — the same ids as the peer's own API | lower-minor Nodes in one view (#1330) is not released |
-| `watch` | IS-04 Query WebSocket | yes | v0.35.0: nmos-cpp registry — subscription opened, first grain | a change observed live |
-| `connect` | IS-05 | yes | v0.35.0: dry-run on the CONVERT (device untouched); connect + disconnect on the nmos-cpp node, read back from its IS-05 | scheduled modes and a salvo on a device |
-| `set` | IS-05 (Sender) | yes | — | not in the integration suite |
-| `events` | IS-07 | yes | — | not in the integration suite |
+| `watch` | IS-04 Query WebSocket | yes | v0.35.0: nmos-cpp registry — subscription opened, first grain; a Node registering and leaving printed as added and removed | — |
+| `connect` | IS-05 | yes | v0.35.0: dry-run on the CONVERT (device untouched); connect + disconnect, a scheduled connect (active at its time, not before) and a two-route salvo on the nmos-cpp node, each read back from its IS-05 | a scheduled connect and a salvo on a device |
+| `set` | IS-05 (Sender) | yes | v0.35.0: a Sender's two legs moved on the nmos-cpp node, read back from its IS-05 | a second set on the same Sender fails on v0.35.0 (#1339, fixed, not released) |
+| `events` | IS-07 | yes | v0.35.0: a subscription on the nmos-cpp node delivers the Source's state, of the type its Events API reports | MQTT |
 | `map` | IS-08 | yes | — | not released; not run against a device |
 | `compat` | IS-11 | yes | — | not released; not run against a device |
 | `config` | IS-14 | yes | — | not released; not run against a device |

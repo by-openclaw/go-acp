@@ -52,6 +52,17 @@ func TestWalkOfADeviceIsWhatTheDeviceLists(t *testing.T) {
 // one Node: a route the Receiver can take.
 func rtpPair(t *testing.T, node string) (sender, receiver resource) {
 	t.Helper()
+	pairs := rtpPairs(t, node, 1)
+	if len(pairs) == 0 {
+		t.Skip("this Node has no RTP Sender and Receiver of the same format")
+	}
+	return pairs[0][0], pairs[0][1]
+}
+
+// rtpPairs picks up to n such routes, each on a Receiver and a Sender of
+// its own: {sender, receiver}.
+func rtpPairs(t *testing.T, node string, n int) [][2]resource {
+	t.Helper()
 	var senders, receivers []resource
 	oracle(t, node+"/x-nmos/node/v1.3/senders", &senders)
 	oracle(t, node+"/x-nmos/node/v1.3/receivers", &receivers)
@@ -70,21 +81,27 @@ func rtpPair(t *testing.T, node string) (sender, receiver resource) {
 		Transport string  `json:"transport"`
 	}
 	oracle(t, node+"/x-nmos/node/v1.3/senders", &full)
+	var pairs [][2]resource
+	taken := map[string]bool{}
 	for _, r := range receivers {
+		if len(pairs) == n {
+			break
+		}
 		if !strings.HasPrefix(r.Transport, "urn:x-nmos:transport:rtp") {
 			continue
 		}
 		for i, s := range full {
-			if s.FlowID == nil || !strings.HasPrefix(s.Transport, "urn:x-nmos:transport:rtp") {
+			if s.FlowID == nil || taken[s.ID] || !strings.HasPrefix(s.Transport, "urn:x-nmos:transport:rtp") {
 				continue
 			}
 			if format[*s.FlowID] == r.Format {
-				return senders[i], r
+				taken[s.ID] = true
+				pairs = append(pairs, [2]resource{senders[i], r})
+				break
 			}
 		}
 	}
-	t.Skip("this Node has no RTP Sender and Receiver of the same format")
-	return
+	return pairs
 }
 
 // connectionBase is the highest sr-ctrl control the Node's first Device
