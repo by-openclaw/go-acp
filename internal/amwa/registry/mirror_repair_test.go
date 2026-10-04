@@ -173,16 +173,100 @@ func TestCatalogueScope(t *testing.T) {
 	work := subtreeOf("n1")
 	work.add(refusedResource("flows", "f2"))
 	work.add(refusedResource("flows", "left-the-source"))
-	want, bounded := c.scope(work)
+	want, orphans := c.scope(work)
 	exp := []string{"devices/d1", "devices/d2", "flows/f1", "flows/f2", "nodes/n1", "nodes/n2", "receivers/r1", "senders/x1", "sources/s1", "sources/s2"}
-	if got := flat(want); !bounded || !reflect.DeepEqual(got, exp) {
-		t.Errorf("scope = %v (bounded %v), want %v", got, bounded, exp)
+	if got := flat(want); orphans.size() != 0 || !reflect.DeepEqual(got, exp) {
+		t.Errorf("scope = %v (orphans %v), want %v", got, flat(orphans), exp)
 	}
 
-	// A refused child whose parent the mirror has never seen.
+	// A refused child whose parent the mirror has not seen is an orphan:
+	// nothing of its chain is sent, and it is named.
 	delete(c["sources"], "s2")
-	if _, bounded := c.scope(refusedResource("flows", "f2")); bounded {
-		t.Error("a refused child with an unknown ancestor must not be bounded")
+	want, orphans = c.scope(refusedResource("flows", "f2"))
+	if got := flat(orphans); want.size() != 0 || !reflect.DeepEqual(got, []string{"flows/f2"}) {
+		t.Errorf("scope = %v, orphans %v; want nothing to send and flows/f2 an orphan", flat(want), got)
+	}
+}
+
+// A child whose parent has not reached the mirror yet is waited for —
+// it is not answered with the whole catalogue — and goes behind its
+// parent once that has come. A parent that never comes ends the wait:
+// the catalogue is read again from the source.
+func TestMirrorWaitsForAParentBeforeItReadsTheCatalogueAgain(t *testing.T) {
+	target := &orderTarget{}
+	m, _ := repairMirror(t, target)
+	m.audit, _ = newAuditor("", 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	running(m, ctx, 20*time.Millisecond, 40*time.Millisecond)
+	m.mu.Lock()
+	source := m.cache["sources"]["s1"]
+	delete(m.cache["sources"], "s1") // the flow's parent has not arrived yet
+	m.mu.Unlock()
+
+	m.owe(refusedResource("flows", "f1"))
+	m.runOwed(ctx)
+	if got := target.sent(); len(got) != 0 {
+		t.Fatalf("an orphan was answered with %v", got)
+	}
+	// The parent arrives; the next try sends the flow behind its chain.
+	m.mu.Lock()
+	m.cache["sources"]["s1"] = source
+	m.mu.Unlock()
+	waitFor(t, 5*time.Second, func() bool { return len(target.sent()) >= 4 }, "the flow to be sent once its parent has come")
+	if got, exp := target.sent(), []string{"node:n1", "device:d1", "source:s1", "flow:f1"}; !reflect.DeepEqual(got, exp) {
+		t.Errorf("target saw %v, want the flow's chain %v", got, exp)
+	}
+	waited := false
+	for _, ev := range m.audit.recent() {
+		waited = waited || ev.Kind == "waiting_for_parent"
+	}
+	if !waited {
+		t.Error("the wait is not in the audit trail")
+	}
+
+	// A parent that never comes: after the tries, the whole catalogue.
+	m.mu.Lock()
+	m.cache["flows"]["lost"] = json.RawMessage(`{"id":"lost","source_id":"never-seen"}`)
+	m.mu.Unlock()
+	before := len(target.sent())
+	m.owe(refusedResource("flows", "lost"))
+	m.runOwed(ctx)
+	waitFor(t, 10*time.Second, func() bool { return len(target.sent()) > before+4 }, "the catalogue to be sent after the wait")
+}
+
+// A pass plans from a snapshot. A resource that has left the catalogue
+// since is not sent, and a child whose parent the target does not hold
+// — it left and has not come back — is held for the pass that follows.
+func TestMirrorPassDoesNotSendWhatWentStale(t *testing.T) {
+	target := &orderTarget{}
+	m, _ := repairMirror(t, target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	running(m, ctx, 20*time.Millisecond, 40*time.Millisecond)
+
+	docs, _ := m.snapshot()
+	m.mu.Lock()
+	doc := m.cache["receivers"]["r1"]
+	delete(m.cache["receivers"], "r1")
+	m.mu.Unlock()
+	if gone, waiting := m.stale("receivers", "r1", doc); !gone || waiting {
+		t.Errorf("a resource that left the cache: gone %t waiting %t", gone, waiting)
+	}
+	// Its device is cached and the target does not hold it: wait.
+	if gone, waiting := m.stale("sources", "s1", docs["sources"]["s1"]); gone || !waiting {
+		t.Errorf("a child of a parent the target does not hold: gone %t waiting %t", gone, waiting)
+	}
+	m.mu.Lock()
+	m.landed["devices"]["d1"] = true
+	m.mu.Unlock()
+	if gone, waiting := m.stale("sources", "s1", docs["sources"]["s1"]); gone || waiting {
+		t.Errorf("a child of a landed parent: gone %t waiting %t", gone, waiting)
+	}
+	// With no run there is nothing to wait in: it is sent.
+	idle, _ := repairMirror(t, &orderTarget{})
+	if gone, waiting := idle.stale("sources", "s1", docs["sources"]["s1"]); gone || waiting {
+		t.Errorf("outside a run: gone %t waiting %t", gone, waiting)
 	}
 }
 
@@ -524,5 +608,92 @@ func TestMirrorOwesTheSweptSubtreeAfterAConflict(t *testing.T) {
 	m.scheduleSweptRepair("senders", "never-seen")
 	if p := pending(); !p.all {
 		t.Errorf("after a conflict on an unknown resource the mirror owes %+v, want the whole catalogue", p)
+	}
+}
+
+// A Node restarts while a pass is under way: its device leaves the
+// target under the pass. What hangs under it is not sent to be refused;
+// it goes with the pass that follows, behind the device.
+func TestMirrorPassHoldsChildrenWhoseParentLeftMeanwhile(t *testing.T) {
+	var m *Mirror
+	target := &orderTarget{}
+	target.answer = func(key string, nth int) int {
+		if key == "device:d2" && nth == 1 {
+			// The live path takes d1 away from the target here.
+			m.mu.Lock()
+			delete(m.landed["devices"], "d1")
+			m.mu.Unlock()
+		}
+		return stdhttp.StatusCreated
+	}
+	m, _ = repairMirror(t, target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	running(m, ctx, 20*time.Millisecond, 40*time.Millisecond)
+
+	m.resync(ctx)
+	first := target.sent()
+	for _, key := range first {
+		if key == "source:s1" || key == "flow:f1" || key == "sender:x1" || key == "receiver:r1" {
+			t.Fatalf("%s was sent although the target no longer holds its device: %v", key, first)
+		}
+	}
+	// The pass that follows sends them behind the device.
+	waitFor(t, 5*time.Second, func() bool {
+		sent := target.sent()
+		return len(sent) > len(first) && sent[len(sent)-1] == "receiver:r1" || containsAfter(sent, len(first), "receiver:r1")
+	}, "the held children to be sent behind their device")
+	if st := m.Stats(); st.Failures != 0 {
+		t.Errorf("stats = %+v, want nothing refused", st)
+	}
+}
+
+func containsAfter(list []string, from int, want string) bool {
+	for i := from; i < len(list); i++ {
+		if list[i] == want {
+			return true
+		}
+	}
+	return false
+}
+
+// A parent the target did not answer for may be held by it or not: its
+// children are sent as they always were, and the target says.
+func TestMirrorPassSendsChildrenOfAnUnansweredParent(t *testing.T) {
+	target := &orderTarget{answer: func(key string, nth int) int {
+		if key == "device:d1" && nth == 1 {
+			return stdhttp.StatusBadGateway
+		}
+		return stdhttp.StatusCreated
+	}}
+	m, _ := repairMirror(t, target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	running(m, ctx, time.Hour, time.Hour) // the retry is not this test's business
+
+	m.resync(ctx)
+	if sent := target.sent(); !containsAfter(sent, 0, "source:s1") || !containsAfter(sent, 0, "receiver:r1") {
+		t.Errorf("the children of an unanswered device were not sent: %v", sent)
+	}
+}
+
+// A resource that leaves the catalogue while the pass is under way is
+// not sent from the pass's snapshot.
+func TestMirrorPassDoesNotSendWhatLeftMeanwhile(t *testing.T) {
+	var m *Mirror
+	target := &orderTarget{}
+	target.answer = func(key string, nth int) int {
+		if key == "node:n1" && nth == 1 {
+			m.mu.Lock()
+			delete(m.cache["receivers"], "r2")
+			m.mu.Unlock()
+		}
+		return stdhttp.StatusCreated
+	}
+	m, _ = repairMirror(t, target)
+
+	m.resync(context.Background())
+	if sent := target.sent(); containsAfter(sent, 0, "receiver:r2") || !containsAfter(sent, 0, "receiver:r1") {
+		t.Errorf("target saw %v, want r1 and not the receiver that left", sent)
 	}
 }

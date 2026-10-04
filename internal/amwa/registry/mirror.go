@@ -226,11 +226,14 @@ type Mirror struct {
 	// it is tried again; retryDelay is the wait the next such work gets,
 	// doubling from retryMin to retryMax while the target stays silent
 	// (mirror_repair.go). Guarded by mu; the bounds are set once.
-	retry      owedWork
-	retryTimer *time.Timer
-	retryDelay time.Duration
-	retryMin   time.Duration
-	retryMax   time.Duration
+	retry owedWork
+	// orphanTries counts the passes an owed resource has waited for a
+	// parent the mirror has not seen (waitForParents).
+	orphanTries map[string]int
+	retryTimer  *time.Timer
+	retryDelay  time.Duration
+	retryMin    time.Duration
+	retryMax    time.Duration
 	// heartbeatEvery is the heartbeat cadence: MirrorHeartbeatInterval,
 	// shortened only by tests that need many rounds.
 	heartbeatEvery time.Duration
