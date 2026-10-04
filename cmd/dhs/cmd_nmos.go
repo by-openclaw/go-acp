@@ -956,6 +956,11 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 			"--serve-advertise-host). Defaults into the 100+ dev range so the "+
 			"mirror never wins a production Registry election against its own "+
 			"source registry at pri 0")
+	serveInstanceName := fs.String("serve-instance-name", "",
+		"DNS-SD instance label the served face announces under (default "+
+			"dhs-nmos-mirror). Instance names are unique per link: give a "+
+			"second mirror on it its own, or its announce is refused as a "+
+			"name collision")
 	targetPace := fs.Int("target-pace", 0, "requests per second the mirror sends the target, across every topic (0 = default 100); lower it for a target that dies on a burst")
 	var serveTLSCerts, serveTLSKeys stringSliceFlag
 	fs.Var(&serveTLSCerts, "serve-tls-cert",
@@ -990,6 +995,7 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		ServeAuthURL:       *serveAuthURL,
 		ServeAdvertiseHost: *serveAdvertiseHost,
 		ServePri:           *servePri,
+		ServeInstanceName:  *serveInstanceName,
 		ServeTLSCert:       serveTLSCerts.String(),
 		ServeTLSKey:        serveTLSKeys.String(),
 		TargetPace:         *targetPace,
