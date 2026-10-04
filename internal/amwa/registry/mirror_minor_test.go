@@ -209,14 +209,14 @@ func TestALowerMinorsViewIsNotTheResource(t *testing.T) {
 	}
 
 	// It leaves: one DELETE at its minor, and — a lower minor showed it
-	// too — one question to the source: is it registered anywhere below?
+	// too — one question to the source: is it registered anywhere now?
 	delete(src.registered, minorNode)
 	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Pre: src.view(minorNode, "v1.3")})
 	if got, want := tgt.requests(), "DELETE v1.3 "+minorNode; got != want {
 		t.Errorf("the removal reached the target as %q, want %q", got, want)
 	}
-	if asked := src.questions(); len(asked) != 1 || !strings.Contains(asked[0], "query.downgrade=v1.0") || !strings.HasPrefix(asked[0], "v1.2 ") {
-		t.Errorf("the source was asked %v, want the one question at v1.2 with query.downgrade=v1.0", asked)
+	if asked := src.questions(); len(asked) != 1 || !strings.Contains(asked[0], "query.downgrade=v1.0") || !strings.HasPrefix(asked[0], "v1.3 ") {
+		t.Errorf("the source was asked %v, want the one question at v1.3 with query.downgrade=v1.0", asked)
 	}
 	if ver, viewed := m.tracked("nodes", minorNode); ver != "" || viewed {
 		t.Errorf("after the removal it is still tracked at %q (viewed: %t)", ver, viewed)
@@ -276,8 +276,9 @@ func TestAResourceRegisteredAgainLowerDownIsFollowed(t *testing.T) {
 	if got, want := tgt.requests(), "DELETE v1.3 "+minorNode+"; POST v1.1 "+minorNode+" rev=0 shown_at=v1.1"; got != want {
 		t.Errorf("the target received %q, want %q", got, want)
 	}
-	// Is it anywhere below (at v1.2, downgrading)? Then: at v1.2? at v1.1?
-	if asked := src.questions(); len(asked) != 3 || !strings.HasPrefix(asked[1], "v1.2 nodes id=") || !strings.HasPrefix(asked[2], "v1.1 nodes id=") {
+	// Is it anywhere (at v1.3, including every earlier minor)? Then, from
+	// the top: at v1.3? at v1.2? at v1.1?
+	if asked := src.questions(); len(asked) != 4 || !strings.HasPrefix(asked[1], "v1.3 nodes id=") || !strings.HasPrefix(asked[3], "v1.1 nodes id=") {
 		t.Errorf("the source was asked %v", asked)
 	}
 	if ver, _ := m.tracked("nodes", minorNode); ver != "v1.1" {
@@ -306,9 +307,11 @@ func TestAResourceTheSourceCannotPlaceStaysRemoved(t *testing.T) {
 	}
 }
 
-// A source that does not answer the question leaves the resource where
-// it was seen; its own subscription then moves it up.
-func TestAResourcePlacedLowIsMovedUpByItsOwnSubscription(t *testing.T) {
+// A source that does not answer cannot place a resource a lower minor's
+// subscription shows first: sent as that row has it, a v1.3 resource
+// would reach the target as its v1.1 view, registered at v1.1. The row
+// is not sent; the resource's own subscription lands it.
+func TestAResourceTheSourceCannotPlaceWaitsForItsOwnSubscription(t *testing.T) {
 	m, src, tgt := minorMirror(t)
 	ctx := context.Background()
 	src.registered[minorNode] = "v1.3"
@@ -317,9 +320,38 @@ func TestAResourcePlacedLowIsMovedUpByItsOwnSubscription(t *testing.T) {
 	src.mu.Unlock()
 
 	m.forwardRow(ctx, "nodes", "v1.1", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.1")})
+	if got := tgt.requests(); got != "" {
+		t.Fatalf("a resource the source could not place was sent: %q", got)
+	}
+	if ver, _ := m.tracked("nodes", minorNode); ver != "" {
+		t.Errorf("tracked at %q before the source said where it is", ver)
+	}
+	var looked bool
+	for _, ev := range m.audit.recent() {
+		looked = looked || ev.Kind == "source_lookup_failed"
+	}
+	if !looked {
+		t.Error("the failed lookup is not in the audit trail")
+	}
+
+	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.3")})
+	if got, want := tgt.requests(), "POST v1.3 "+minorNode+" rev=0 shown_at=v1.3"; got != want {
+		t.Errorf("the target received %q, want %q", got, want)
+	}
+}
+
+// A resource registered again at a later minor — its Node was upgraded —
+// is moved up when that minor's subscription shows it.
+func TestAResourceRegisteredAgainHigherUpIsMoved(t *testing.T) {
+	m, src, tgt := minorMirror(t)
+	ctx := context.Background()
+	src.registered[minorNode] = "v1.1"
+	m.forwardRow(ctx, "nodes", "v1.1", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.1")})
 	if got, want := tgt.requests(), "POST v1.1 "+minorNode+" rev=0 shown_at=v1.1"; got != want {
 		t.Fatalf("the target received %q, want %q", got, want)
 	}
+
+	src.registered[minorNode] = "v1.3"
 	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.3")})
 	if got, want := tgt.requests(), "POST v1.3 "+minorNode+" rev=0 shown_at=v1.3"; got != want {
 		t.Errorf("the target received %q, want %q", got, want)
@@ -329,10 +361,58 @@ func TestAResourcePlacedLowIsMovedUpByItsOwnSubscription(t *testing.T) {
 	}
 }
 
+// A Node restarts: its resources leave and come back at the minor they
+// had. The lower minors go on showing their views of them throughout —
+// which says nothing about where they are registered. They stay at
+// their minor. (On the plant, v0.36.1, 81 sources went to the target at
+// v1.1 and v1.2 this way.)
+func TestAResourceThatLeavesAndComesBackStaysAtItsMinor(t *testing.T) {
+	m, src, tgt := minorMirror(t)
+	ctx := context.Background()
+	src.registered[minorNode] = "v1.3"
+	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.3")})
+	m.forwardRow(ctx, "nodes", "v1.1", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.1")}) // a view: noted
+	_ = tgt.requests()
+
+	// The removal reaches the mirror when the Node has registered again.
+	src.revision[minorNode] = 1
+	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Pre: src.view(minorNode, "v1.3")})
+	if got, want := tgt.requests(), "DELETE v1.3 "+minorNode+"; POST v1.3 "+minorNode+" rev=1 shown_at=v1.3"; got != want {
+		t.Fatalf("the target received %q, want %q", got, want)
+	}
+	if ver, _ := m.tracked("nodes", minorNode); ver != "v1.3" {
+		t.Errorf("tracked at %q, want v1.3", ver)
+	}
+	// Its own subscription then shows the new registration: nothing new.
+	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.3")})
+	m.forwardRow(ctx, "nodes", "v1.0", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.0")})
+	if got := tgt.requests(); got != "" {
+		t.Errorf("the registration shown again reached the target: %q", got)
+	}
+}
+
+// land does not put a resource below where another subscription has
+// placed it meanwhile.
+func TestLandDoesNotMoveAResourceDown(t *testing.T) {
+	m, src, tgt := minorMirror(t)
+	ctx := context.Background()
+	src.registered[minorNode] = "v1.3"
+	m.forwardRow(ctx, "nodes", "v1.3", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.3")})
+	_ = tgt.requests()
+
+	m.land(ctx, "nodes", "v1.1", "v1.1", is04.GrainDataRow{Path: minorNode, Post: src.view(minorNode, "v1.1")})
+	if got := tgt.requests(); got != "" {
+		t.Errorf("a lower placement reached the target: %q", got)
+	}
+	if ver, viewed := m.tracked("nodes", minorNode); ver != "v1.3" || !viewed {
+		t.Errorf("tracked at %q (viewed below: %t), want v1.3 and viewed", ver, viewed)
+	}
+}
+
 // Two subscriptions show a new resource at once: while the lower one
 // asks the source where it is registered, its own lands it. The lower
 // one then has nothing left to send — whether the source answered its
-// question or not.
+// question (its row is seen to be a view) or not (its row is dropped).
 func TestTwoSubscriptionsShowANewResourceAtOnce(t *testing.T) {
 	for name, down := range map[string]bool{"the source answers": false, "the source does not": true} {
 		t.Run(name, func(t *testing.T) {
@@ -348,8 +428,8 @@ func TestTwoSubscriptionsShowANewResourceAtOnce(t *testing.T) {
 			if got, want := tgt.requests(), "POST v1.3 "+minorNode+" rev=0 shown_at=v1.3"; got != want {
 				t.Errorf("the target received %q, want the one %q", got, want)
 			}
-			if ver, viewed := m.tracked("nodes", minorNode); ver != "v1.3" || !viewed {
-				t.Errorf("tracked at %q (viewed below: %t), want v1.3 and viewed", ver, viewed)
+			if ver, viewed := m.tracked("nodes", minorNode); ver != "v1.3" || viewed == down {
+				t.Errorf("tracked at %q (viewed below: %t), want v1.3, and the view noted when the source answered", ver, viewed)
 			}
 		})
 	}
@@ -363,12 +443,45 @@ func TestSourceMinorsHighestFirst(t *testing.T) {
 		t.Errorf("sourceMinors = %s", got)
 	}
 	src.registered[minorNode] = "v1.1"
-	reg, _ := m.registeredAt(context.Background(), "nodes", "v1.1", minorNode, src.view(minorNode, "v1.1"))
-	if reg != "v1.1" {
+	reg, _, known := m.registeredAt(context.Background(), "nodes", "v1.1", minorNode, src.view(minorNode, "v1.1"))
+	if reg != "v1.1" || !known {
 		t.Errorf("registered at %q, want v1.1", reg)
 	}
 	// v1.3 has no client; v1.2 is asked and does not list it.
 	if asked := src.questions(); len(asked) != 1 || !strings.HasPrefix(asked[0], "v1.2 ") {
 		t.Errorf("the source was asked %v, want the one question at v1.2", asked)
+	}
+}
+
+// The catalogue is read minor by minor, and the reads are not one
+// instant. A resource registered at v1.3 while they are under way must
+// not be taken at the first minor that happens to list it: read highest
+// first, it missed the v1.3 listing and was claimed by a lower minor's
+// view of it — on the plant, v0.36.1, 81 sources went to the target at
+// v1.1 and v1.2 while a Node was registering during the fill. Read
+// lowest first with the higher minor overriding, it ends at its minor.
+func TestARefreshPlacesAResourceRegisteredMidReadAtItsMinor(t *testing.T) {
+	m, src, _ := minorMirror(t)
+	const early, late = minorNode, "7e5a1c9d-3b6f-4d2a-8c41-9f0e2b7a6d53"
+	src.registered[early] = "v1.3"
+	// Registered just after the first listing has been read.
+	src.onRead = func() {
+		src.mu.Lock()
+		src.registered[late] = "v1.3"
+		src.mu.Unlock()
+	}
+
+	m.refreshCacheFromSource(context.Background())
+
+	for _, id := range []string{early, late} {
+		if ver, _ := m.tracked("nodes", id); ver != "v1.3" {
+			t.Errorf("node %s is tracked at %q, want v1.3", id, ver)
+		}
+		m.mu.Lock()
+		doc := string(m.cache["nodes"][id])
+		m.mu.Unlock()
+		if !strings.Contains(doc, `"shown_at":"v1.3"`) {
+			t.Errorf("node %s is cached as %s, want the document v1.3 shows", id, doc)
+		}
 	}
 }

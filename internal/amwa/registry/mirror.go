@@ -502,7 +502,15 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 		// show a resource registered above it.
 		reg, doc := ver, row.Post
 		if tracked == "" {
-			reg, doc = m.registeredAt(ctx, topic, ver, row.Path, row.Post)
+			var known bool
+			if reg, doc, known = m.registeredAt(ctx, topic, ver, row.Path, row.Post); !known {
+				// The source did not say where it is registered. Its own
+				// minor's subscription will show it; the catalogue is read
+				// again in case this row was that one.
+				m.audit.event("source_lookup_failed", map[string]any{"topic": topic, "id": row.Path, "ver": ver})
+				m.scheduleResync()
+				return
+			}
 		}
 		row.Post = doc
 		m.land(ctx, topic, ver, reg, row)
@@ -525,8 +533,8 @@ func (m *Mirror) forwardRow(ctx context.Context, topic, ver string, row is04.Gra
 		if !viewed {
 			return
 		}
-		// A lower minor showed it too: gone, or registered again there?
-		if reg, doc, ok := m.registeredBelow(ctx, topic, ver, row.Path); ok {
+		// A lower minor showed it too: gone, or registered again?
+		if reg, doc, ok := m.registeredNow(ctx, topic, row.Path); ok {
 			m.land(ctx, topic, reg, reg, is04.GrainDataRow{Path: row.Path, Post: doc})
 		}
 	default:
@@ -950,10 +958,13 @@ func (m *Mirror) sendHealth(ctx context.Context, nodeID, ver string) error {
 }
 
 // refreshCacheFromSource rebuilds cache + cacheVer from the source's
-// per-minor REST views — one paged GET per minor per topic, highest
-// minor first. The first view that lists a resource is the minor it is
-// registered at; what the lower minors list of it are views
-// (mirror_minor.go), and are not taken.
+// per-minor REST views — one paged GET per minor per topic. The
+// highest minor that lists a resource is the one it is registered at;
+// what the lower minors list of it are views (mirror_minor.go). The
+// minors are read lowest first and a higher one overrides: the reads
+// are not one instant, and a resource registered between two of them
+// is then in the higher listing, read later, rather than only in a
+// lower one's view of it.
 // Any fetch failure aborts the whole refresh and keeps the existing
 // cache — a half-fetched catalogue must never replace a whole one.
 func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
@@ -971,7 +982,9 @@ func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
 	for _, tp := range mirrorTopics {
 		newSeen[tp] = map[string]bool{}
 	}
-	for _, ver := range m.sourceMinors() {
+	minors := m.sourceMinors()
+	for i := len(minors) - 1; i >= 0; i-- {
+		ver := minors[i]
 		qc, ok := clients[ver]
 		if !ok {
 			continue
@@ -991,9 +1004,8 @@ func (m *Mirror) refreshCacheFromSource(ctx context.Context) {
 				if id == "" {
 					continue
 				}
-				if _, dup := newVer[topic][id]; dup {
-					newSeen[topic][id] = true
-					continue // a lower minor's view of it
+				if _, lower := newVer[topic][id]; lower {
+					newSeen[topic][id] = true // what was read before was a view
 				}
 				newCache[topic][id] = doc
 				newVer[topic][id] = ver
