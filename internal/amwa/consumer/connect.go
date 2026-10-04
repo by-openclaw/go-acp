@@ -81,37 +81,118 @@ type ConnectResult struct {
 // success and no signal moves. MXL legs are the one exception: no
 // transport file is fetched or staged (see mxlLeg).
 func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectResult, error) {
+	mode, err := checkConnectRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	snap, _ := c.Walk(ctx)
+
+	rt, err := c.resolveRoute(ctx, snap, req, mode, map[string]*senderSource{})
+	if err != nil {
+		return nil, err
+	}
+	res := rt.result()
+
+	if req.DryRun {
+		c.describeDryRun(ctx, rt, res)
+		return res, nil
+	}
+
+	staged, err := rt.client.PatchReceiver(ctx, req.ReceiverID, rt.patch)
+	if err != nil {
+		return nil, err
+	}
+	res.SenderID = staged.SenderID
+	res.MasterEnable = staged.MasterEnable
+	if staged.Activation.RequestedTime != nil {
+		res.ActivationAt = *staged.Activation.RequestedTime
+	}
+
+	// A device that accepted the stage but silently dropped
+	// master_enable routes nothing. Say so rather than reporting
+	// success.
+	if req.SenderID != "" && !staged.MasterEnable {
+		c.fire(spec.SeverityError, "nmos_is05_master_enable_ignored",
+			fmt.Sprintf("receiver %s accepted the stage but reports master_enable=false; "+
+				"no signal will flow", req.ReceiverID), req.ReceiverID)
+	}
+	return res, nil
+}
+
+// checkConnectRequest is the pre-flight every route passes before
+// anything is walked: a receiver to drive, a real activation mode, and
+// a time when the mode is a scheduled one. It returns the mode with
+// the default applied.
+func checkConnectRequest(req ConnectRequest) (is05.ActivationMode, error) {
 	if req.ReceiverID == "" {
-		return nil, fmt.Errorf("nmos connect: receiver id is required")
+		return "", fmt.Errorf("nmos connect: receiver id is required")
 	}
 	mode := req.Mode
 	if mode == "" {
 		mode = is05.ActivationModeImmediate
 	}
 	if !is05.IsValidActivationMode(mode) {
-		return nil, fmt.Errorf("nmos connect: %q is not an IS-05 activation mode", mode)
+		return "", fmt.Errorf("nmos connect: %q is not an IS-05 activation mode", mode)
 	}
 	if mode != is05.ActivationModeImmediate && req.When == "" {
-		return nil, fmt.Errorf("nmos connect: %s needs --when <secs>:<nanos>", mode)
+		return "", fmt.Errorf("nmos connect: %s needs --when <secs>:<nanos>", mode)
 	}
+	return mode, nil
+}
 
-	snap, _ := c.Walk(ctx)
+// route is one resolved request: the IS-05 client for the Receiver's
+// Device and the body to stage on it. Connect sends it as a PATCH,
+// ConnectBulk as one entry of a bulk POST — the body is the same.
+type route struct {
+	req      ConnectRequest
+	mode     is05.ActivationMode
+	client   *connection.Client
+	patch    map[string]any
+	sdpBytes int
+}
 
+// result starts the report every route gets, sent or not.
+func (rt *route) result() *ConnectResult {
+	return &ConnectResult{
+		ReceiverID: rt.req.ReceiverID,
+		Mode:       rt.mode,
+		Endpoint:   rt.client.Base,
+		SDPBytes:   rt.sdpBytes,
+	}
+}
+
+// senderSource is where a Sender that this catalogue never saw lives:
+// its own Node, walked once, and the Controller to reach it through.
+type senderSource struct {
+	snap *CatalogueSnapshot
+	ctrl *Controller
+}
+
+// resolveRoute turns a request into the PATCH body and the endpoint
+// it goes to. foreign caches the Sender Nodes walked on the way, so a
+// salvo of routes from one foreign Node walks it once.
+func (c *Controller) resolveRoute(ctx context.Context, snap *CatalogueSnapshot, req ConnectRequest, mode is05.ActivationMode, foreign map[string]*senderSource) (*route, error) {
 	// The Sender may live on a Node this catalogue never saw.
 	senderSnap, senderCtrl := snap, c
 	if req.SenderID != "" && req.SenderNode != "" && !hasSender(snap, req.SenderID) {
-		sc, err := NewController(ctx, ControllerOptions{
-			Logger: c.logger, Deps: c.opts.Deps, Reporter: c.reporter,
-			NodeURL: req.SenderNode, APIVer: c.opts.APIVer,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("nmos connect: sender node %s: %w", req.SenderNode, err)
+		src, known := foreign[req.SenderNode]
+		if !known {
+			sc, err := NewController(ctx, ControllerOptions{
+				Logger: c.logger, Deps: c.opts.Deps, Reporter: c.reporter,
+				NodeURL: req.SenderNode, APIVer: c.opts.APIVer,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("nmos connect: sender node %s: %w", req.SenderNode, err)
+			}
+			ss, _ := sc.Walk(ctx)
+			src = &senderSource{snap: ss, ctrl: sc}
+			foreign[req.SenderNode] = src
 		}
-		ss, _ := sc.Walk(ctx)
-		if !hasSender(ss, req.SenderID) {
+		if !hasSender(src.snap, req.SenderID) {
 			return nil, fmt.Errorf("nmos connect: sender %s is on neither this catalogue nor %s", req.SenderID, req.SenderNode)
 		}
-		senderSnap, senderCtrl = ss, sc
+		senderSnap, senderCtrl = src.snap, src.ctrl
 	}
 
 	href, err := c.connectionHref(snap, req.ReceiverID)
@@ -123,20 +204,20 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 		return nil, err
 	}
 
-	patch := map[string]any{
-		"master_enable": req.SenderID != "",
-		"activation":    activationBody(mode, req.When),
-	}
-	res := &ConnectResult{
-		ReceiverID: req.ReceiverID,
-		Mode:       mode,
-		Endpoint:   cl.Base,
+	rt := &route{
+		req:    req,
+		mode:   mode,
+		client: cl,
+		patch: map[string]any{
+			"master_enable": req.SenderID != "",
+			"activation":    activationBody(mode, req.When),
+		},
 	}
 
 	if req.SenderID == "" {
 		// Disconnect. sender_id must be explicitly null — omitting it
 		// would leave the existing one in place, because PATCH merges.
-		patch["sender_id"] = nil
+		rt.patch["sender_id"] = nil
 	} else if mxlLeg(snap, req.SenderID, req.ReceiverID) {
 		// BCP-007-03: an MXL connection carries NO transport file —
 		// the receiver locates the flow through the MXL runtime, not
@@ -144,9 +225,9 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 		// test_03) scores a PATCH that attaches one as non-conformant.
 		// Deliberately not even requesting /transportfile: an MXL
 		// sender has none to serve.
-		patch["sender_id"] = req.SenderID
+		rt.patch["sender_id"] = req.SenderID
 	} else {
-		patch["sender_id"] = req.SenderID
+		rt.patch["sender_id"] = req.SenderID
 		// The transport file is served by the Sender's own IS-05 — its
 		// Device's sr-ctrl control, which is the Receiver's only when
 		// both sit on one device. Asking the Receiver's IS-05 for a
@@ -174,50 +255,32 @@ func (c *Controller) Connect(ctx context.Context, req ConnectRequest) (*ConnectR
 				fmt.Sprintf("sender %s served an empty transport file", req.SenderID),
 				req.SenderID)
 		default:
-			patch["transport_file"] = map[string]any{
+			rt.patch["transport_file"] = map[string]any{
 				"data": sdp,
 				"type": "application/sdp",
 			}
-			res.SDPBytes = len(sdp)
+			rt.sdpBytes = len(sdp)
 		}
 	}
+	return rt, nil
+}
 
-	if req.DryRun {
-		res.DryRun = true
-		res.Patch = patch
-		// Read the receiver's ACTIVE state, not its staged state: what
-		// the operator is about to overwrite is what the device is
-		// currently doing.
-		if active, err := cl.ActiveReceiver(ctx, req.ReceiverID); err == nil {
-			res.CurrentSenderID = active.SenderID
-			res.CurrentMasterEnable = active.MasterEnable
-		} else {
-			c.fire(spec.SeverityWarn, "nmos_is05_active_unreadable",
-				fmt.Sprintf("receiver %s active state unreadable: %v", req.ReceiverID, err),
-				req.ReceiverID)
-		}
-		return res, nil
+// describeDryRun fills the dry-run half of a result: what would have
+// been sent, and what the receiver is doing right now and would lose.
+func (c *Controller) describeDryRun(ctx context.Context, rt *route, res *ConnectResult) {
+	res.DryRun = true
+	res.Patch = rt.patch
+	// Read the receiver's ACTIVE state, not its staged state: what
+	// the operator is about to overwrite is what the device is
+	// currently doing.
+	if active, err := rt.client.ActiveReceiver(ctx, rt.req.ReceiverID); err == nil {
+		res.CurrentSenderID = active.SenderID
+		res.CurrentMasterEnable = active.MasterEnable
+	} else {
+		c.fire(spec.SeverityWarn, "nmos_is05_active_unreadable",
+			fmt.Sprintf("receiver %s active state unreadable: %v", rt.req.ReceiverID, err),
+			rt.req.ReceiverID)
 	}
-
-	staged, err := cl.PatchReceiver(ctx, req.ReceiverID, patch)
-	if err != nil {
-		return nil, err
-	}
-	res.SenderID = staged.SenderID
-	res.MasterEnable = staged.MasterEnable
-	if staged.Activation.RequestedTime != nil {
-		res.ActivationAt = *staged.Activation.RequestedTime
-	}
-
-	// A device that accepted the stage but silently dropped
-	// master_enable routes nothing. Say so rather than reporting
-	// success.
-	if req.SenderID != "" && !staged.MasterEnable {
-		c.fire(spec.SeverityError, "nmos_is05_master_enable_ignored",
-			fmt.Sprintf("receiver %s accepted the stage but reports master_enable=false; "+
-				"no signal will flow", req.ReceiverID), req.ReceiverID)
-	}
-	return res, nil
 }
 
 // connectionHref finds the IS-05 endpoint for whichever Device owns the
