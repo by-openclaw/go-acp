@@ -74,7 +74,7 @@ func TestBulkRequests(t *testing.T) {
 	if err := os.WriteFile(file, []byte(rtB+",\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	reqs, err := bulkRequests([]string{rtA + "=" + rtS}, file, "http://10.0.0.9:3000", "activate_scheduled_relative", "2:0")
+	reqs, err := bulkRequests([]string{rtA + "=" + rtS}, file, "http://10.0.0.9:3000", "activate_scheduled_relative", "2:0", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,19 +82,19 @@ func TestBulkRequests(t *testing.T) {
 		t.Fatalf("requests = %+v, want the flag's route then the file's", reqs)
 	}
 	for _, r := range reqs {
-		if r.SenderNode != "http://10.0.0.9:3000" || r.Mode != "activate_scheduled_relative" || r.When != "2:0" {
+		if r.SenderNode != "http://10.0.0.9:3000" || r.Mode != "activate_scheduled_relative" || r.When != "2:0" || !r.Force {
 			t.Errorf("the shared flags did not reach %+v", r)
 		}
 	}
-	if _, err := bulkRequests([]string{"nonsense"}, "", "", "", ""); err == nil {
+	if _, err := bulkRequests([]string{"nonsense"}, "", "", "", "", false); err == nil {
 		t.Error("a malformed --route must be refused")
 	}
-	if _, err := bulkRequests(nil, filepath.Join(t.TempDir(), "absent.csv"), "", "", ""); err == nil {
+	if _, err := bulkRequests(nil, filepath.Join(t.TempDir(), "absent.csv"), "", "", "", false); err == nil {
 		t.Error("a missing --routes file must be refused")
 	}
 	bad := filepath.Join(t.TempDir(), "bad.csv")
 	_ = os.WriteFile(bad, []byte(","+rtS+"\n"), 0o600)
-	if _, err := bulkRequests(nil, bad, "", "", ""); err == nil || !strings.Contains(err.Error(), "bad.csv") {
+	if _, err := bulkRequests(nil, bad, "", "", "", false); err == nil || !strings.Contains(err.Error(), "bad.csv") {
 		t.Errorf("a malformed --routes file: err = %v, want the file named", err)
 	}
 }
@@ -227,5 +227,29 @@ func TestConnectVerbRoutesASalvo(t *testing.T) {
 	if err := runNMOSConnect(ctx, []string{"--node", base, "--route", rtA + "=" + rtS, "--route", rtA + "="}); err == nil ||
 		!strings.Contains(err.Error(), "routed twice") {
 		t.Errorf("a receiver routed twice: err = %v", err)
+	}
+
+	// The capability check, through the verb: a websocket tally sender
+	// on an RTP audio receiver is refused with the reason and nothing
+	// is sent; a sender id that exists nowhere likewise; --force sends
+	// the route anyway.
+	const tally = "2c47bf5e-1b2c-4abc-9def-deadbeef0009"
+	err = runNMOSConnect(ctx, []string{"--node", base, "--receiver", rtB, "--sender", tally})
+	if err == nil || !strings.Contains(err.Error(), "the receiver takes rtp, the sender emits websocket") ||
+		!strings.Contains(err.Error(), "the receiver is audio, the flow is data") {
+		t.Errorf("an incompatible route: err = %v, want the refusal with its reasons", err)
+	}
+	if master, _ := active(rtB); master {
+		t.Error("a refused route reached the receiver")
+	}
+	err = runNMOSConnect(ctx, []string{"--node", base, "--route", rtB + "=00000000-0000-4000-8000-00000000dead"})
+	if err == nil || !strings.Contains(err.Error(), "is not in the catalogue") {
+		t.Errorf("an unknown sender in a salvo: err = %v", err)
+	}
+	if err := runNMOSConnect(ctx, []string{"--node", base, "--receiver", rtB, "--sender", tally, "--force"}); err != nil {
+		t.Errorf("--force: %v", err)
+	}
+	if master, sender := active(rtB); !master || sender != tally {
+		t.Errorf("after --force, receiver B active = master %v sender %v", master, sender)
 	}
 }

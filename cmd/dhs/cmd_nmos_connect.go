@@ -42,6 +42,8 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	when := fs.String("when", "", "TAI time <secs>:<nanos> for the scheduled modes")
 	dryRun := fs.Bool("dry-run", false,
 		"resolve and print the endpoint, the exact PATCH body and the receiver's current route — send nothing")
+	force := fs.Bool("force", false,
+		"send a route the capability check refuses — the sender is not in the catalogue, or its stream is outside what the receiver declares it takes (BCP-004-01); the override is recorded")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -57,7 +59,7 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	var bulkReqs []consumer.ConnectRequest
 	if bulk {
 		var err error
-		if bulkReqs, err = bulkRequests(routes, *routesFile, *senderNode, *mode, *when); err != nil {
+		if bulkReqs, err = bulkRequests(routes, *routesFile, *senderNode, *mode, *when, *force); err != nil {
 			return fmt.Errorf("nmos connect: %w", err)
 		}
 	} else if *receiver == "" {
@@ -107,6 +109,7 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 		Mode:       is05.ActivationMode(*mode),
 		When:       *when,
 		DryRun:     *dryRun,
+		Force:      *force,
 	})
 	if err != nil {
 		printComplianceSummary(rep.Snapshot())

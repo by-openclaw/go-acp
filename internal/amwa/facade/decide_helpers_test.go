@@ -302,33 +302,6 @@ func TestSDPCapParams(t *testing.T) {
 	}
 }
 
-// TestConstraintSatisfied covers the three BCP-004-01 keywords over the
-// value shapes the MXL profiles use.
-func TestConstraintSatisfied(t *testing.T) {
-	gr := is04.GrainRate{Numerator: 50} // denominator omitted = 1
-	cases := []struct {
-		name string
-		v    any
-		c    map[string]any
-		want bool
-	}{
-		{"enum string hit", "BT709", map[string]any{"enum": []any{"BT709", "BT2020"}}, true},
-		{"enum string miss", "BT601", map[string]any{"enum": []any{"BT709"}}, false},
-		{"min/max inside", float64(1080), map[string]any{"minimum": float64(720), "maximum": float64(2160)}, true},
-		{"below minimum", float64(576), map[string]any{"minimum": float64(720)}, false},
-		{"above maximum", float64(4320), map[string]any{"maximum": float64(2160)}, false},
-		{"grain rate default denominator", gr,
-			map[string]any{"enum": []any{map[string]any{"numerator": float64(50), "denominator": float64(1)}}}, true},
-		{"grain rate mismatch", gr,
-			map[string]any{"enum": []any{map[string]any{"numerator": float64(25)}}}, false},
-	}
-	for _, tc := range cases {
-		if got := constraintSatisfied(tc.v, tc.c); got != tc.want {
-			t.Errorf("%s: constraintSatisfied = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-}
-
 // ---- residual SDP / capability branches ---------------------------------
 
 // TestSenderSDPParamsUnreadable: a sender whose transport file cannot
@@ -409,66 +382,5 @@ func TestTR08SDPMatchNeedsMediaType(t *testing.T) {
 	}
 	if !tr08SDPMatch(map[string]any{"urn:x-nmos:cap:format:media_type": "video/jxsv"}, caps) {
 		t.Error("a media type the receiver lists with an unconstrained set must match")
-	}
-}
-
-// TestSDPMatchesConstraintSetSkips: meta keys and parameters the SDP
-// does not carry are skipped (the tool's leniency); a parameter it does
-// carry must satisfy its constraint.
-func TestSDPMatchesConstraintSetSkips(t *testing.T) {
-	params := map[string]any{
-		"urn:x-nmos:cap:format:media_type":  "video/jxsv",
-		"urn:x-nmos:cap:format:frame_width": float64(1920),
-	}
-	lenient := map[string]any{
-		"urn:x-nmos:cap:meta:label":      "skipped",
-		"urn:x-nmos:cap:format:sublevel": map[string]any{"enum": []any{"Sublev3bpp"}}, // not in the SDP
-	}
-	if !sdpMatchesConstraintSet(params, lenient) {
-		t.Error("a set constraining only what the SDP does not carry must match")
-	}
-	narrow := map[string]any{
-		"urn:x-nmos:cap:meta:label":         "skipped",
-		"urn:x-nmos:cap:format:frame_width": map[string]any{"maximum": float64(1280)},
-	}
-	if sdpMatchesConstraintSet(params, narrow) {
-		t.Error("a carried parameter outside its constraint must not match")
-	}
-}
-
-// TestFlowCapValueAbsent: a Flow that does not state a parameter has no
-// value for it, so the constraint is skipped rather than failed.
-func TestFlowCapValueAbsent(t *testing.T) {
-	bare := &is04.Flow{}
-	for _, capURI := range []string{
-		"urn:x-nmos:cap:format:grain_rate",
-		"urn:x-nmos:cap:format:component_depth",
-		"urn:x-nmos:cap:format:not_a_flow_field",
-	} {
-		if v, known := flowCapValue(bare, capURI); known {
-			t.Errorf("%s on a bare flow = %v, want unknown", capURI, v)
-		}
-	}
-}
-
-// TestCapValueEqualShapes: an enum entry of the wrong JSON shape never
-// equals the value, whatever the value's type.
-func TestCapValueEqualShapes(t *testing.T) {
-	cases := []struct {
-		name  string
-		v     any
-		entry any
-	}{
-		{"string against a number", "BT709", float64(1)},
-		{"number against a string", float64(1920), "1920"},
-		{"grain rate against a string", is04.GrainRate{Numerator: 25, Denominator: 1}, "25/1"},
-		{"a value type the register does not use", 1920, float64(1920)},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if capValueEqual(tc.v, tc.entry) {
-				t.Errorf("capValueEqual(%v, %v) = true, want false", tc.v, tc.entry)
-			}
-		})
 	}
 }

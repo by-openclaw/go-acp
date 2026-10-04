@@ -45,6 +45,13 @@ type ConnectRequest struct {
 	// current state first is the difference between a safe change and a
 	// hopeful one.
 	DryRun bool
+
+	// Force sends a route the capability check refuses (route_check.go):
+	// the Sender is not in the catalogue, or what IS-04 states about its
+	// stream is outside what the Receiver declares it takes. The
+	// operator may know better than the metadata; the override is theirs
+	// to make, and it is recorded.
+	Force bool
 }
 
 // ConnectResult reports what actually happened, as the Device tells it
@@ -198,6 +205,22 @@ func (c *Controller) resolveRoute(ctx context.Context, snap *CatalogueSnapshot, 
 	href, err := c.connectionHref(snap, req.ReceiverID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Checked after the Receiver is known to exist and before anything
+	// is fetched or sent: a route that cannot work is refused with the
+	// reason, not staged and left dark.
+	if req.SenderID != "" {
+		if problems := routeProblems(snap, senderSnap, req.SenderID, req.ReceiverID); len(problems) > 0 {
+			why := strings.Join(problems, "; ")
+			if !req.Force {
+				return nil, fmt.Errorf("nmos connect: receiver %s cannot take sender %s: %s (--force sends it anyway)",
+					req.ReceiverID, req.SenderID, why)
+			}
+			c.fire(spec.SeverityWarn, "nmos_bcp00401_route_forced",
+				fmt.Sprintf("receiver %s <- sender %s sent against the capability check: %s",
+					req.ReceiverID, req.SenderID, why), req.ReceiverID)
+		}
 	}
 	cl, err := connection.NewClient(href)
 	if err != nil {

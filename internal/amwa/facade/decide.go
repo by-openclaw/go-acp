@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"dhs/internal/amwa/codec/bcp/bcp00401"
 	"dhs/internal/amwa/codec/is04"
 	"dhs/internal/amwa/consumer"
 )
@@ -763,31 +764,11 @@ func tr08SDPMatch(params map[string]any, caps is04.ReceiverCaps) bool {
 		return false
 	}
 	for _, cs := range caps.ConstraintSets {
-		if sdpMatchesConstraintSet(params, cs) {
+		if ok, _ := bcp00401.SetSatisfied(params, cs); ok {
 			return true
 		}
 	}
 	return false
-}
-
-// sdpMatchesConstraintSet applies one constraint set to SDP-derived
-// values — meta keys and parameters without an SDP-derived value are
-// skipped.
-func sdpMatchesConstraintSet(params map[string]any, cs map[string]any) bool {
-	for capURI, raw := range cs {
-		constraint, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		v, known := params[capURI]
-		if !known {
-			continue
-		}
-		if !constraintSatisfied(v, constraint) {
-			return false
-		}
-	}
-	return true
 }
 
 // compatibleReceiversForSender — BCP-007-03-02's compatibility rule,
@@ -831,132 +812,15 @@ func compatibleReceiversForSender(snap *consumer.CatalogueSnapshot, senderID str
 		if !mtOK || len(r.Caps.ConstraintSets) == 0 {
 			continue
 		}
+		params := bcp00401.FlowParams(flow, nil)
 		for _, cs := range r.Caps.ConstraintSets {
-			if flowMatchesConstraintSet(flow, cs) {
+			if ok, _ := bcp00401.SetSatisfied(params, cs); ok {
 				out[r.ID] = true
 				break
 			}
 		}
 	}
 	return out
-}
-
-// flowMatchesConstraintSet applies one BCP-004-01 constraint set to a
-// Flow. Only the parameter constraints the MXL suite scores are
-// evaluated (the CAP_URI table below); meta keys and unknown cap URNs
-// are skipped, matching the suite's own leniency.
-func flowMatchesConstraintSet(f *is04.Flow, cs map[string]any) bool {
-	for capURI, raw := range cs {
-		constraint, ok := raw.(map[string]any)
-		if !ok {
-			continue // meta:label / meta:enabled and friends
-		}
-		v, known := flowCapValue(f, capURI)
-		if !known {
-			continue
-		}
-		if !constraintSatisfied(v, constraint) {
-			return false
-		}
-	}
-	return true
-}
-
-// flowCapValue resolves one urn:x-nmos:cap:format:* parameter to the
-// Flow's value. Numbers come back as float64 so they compare cleanly
-// with JSON-decoded constraint values.
-func flowCapValue(f *is04.Flow, capURI string) (any, bool) {
-	switch capURI {
-	case "urn:x-nmos:cap:format:media_type":
-		return f.MediaType, true
-	case "urn:x-nmos:cap:format:frame_width":
-		return float64(f.FrameWidth), true
-	case "urn:x-nmos:cap:format:frame_height":
-		return float64(f.FrameHeight), true
-	case "urn:x-nmos:cap:format:grain_rate":
-		if f.GrainRate == nil {
-			return nil, false
-		}
-		return *f.GrainRate, true
-	case "urn:x-nmos:cap:format:interlace_mode":
-		return f.Interlace, true
-	case "urn:x-nmos:cap:format:colorspace":
-		return f.ColorSpace, true
-	case "urn:x-nmos:cap:format:transfer_characteristic":
-		return f.TransferChar, true
-	case "urn:x-nmos:cap:format:component_depth":
-		depth := 0
-		for _, c := range f.Components {
-			if c.BitDepth > depth {
-				depth = c.BitDepth
-			}
-		}
-		if depth == 0 {
-			return nil, false
-		}
-		return float64(depth), true
-	}
-	return nil, false
-}
-
-// constraintSatisfied applies the BCP-004-01 enum / minimum / maximum
-// keywords to one value.
-func constraintSatisfied(v any, constraint map[string]any) bool {
-	if enum, ok := constraint["enum"].([]any); ok {
-		found := false
-		for _, e := range enum {
-			if capValueEqual(v, e) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	if minRaw, ok := constraint["minimum"].(float64); ok {
-		n, isNum := v.(float64)
-		if !isNum || n < minRaw {
-			return false
-		}
-	}
-	if maxRaw, ok := constraint["maximum"].(float64); ok {
-		n, isNum := v.(float64)
-		if !isNum || n > maxRaw {
-			return false
-		}
-	}
-	return true
-}
-
-// capValueEqual compares a Flow value with one JSON-decoded enum entry.
-// Rational entries (grain_rate) compare numerator/denominator with the
-// spec's implicit denominator of 1.
-func capValueEqual(v any, entry any) bool {
-	switch fv := v.(type) {
-	case string:
-		s, ok := entry.(string)
-		return ok && s == fv
-	case float64:
-		n, ok := entry.(float64)
-		return ok && n == fv
-	case is04.GrainRate:
-		m, ok := entry.(map[string]any)
-		if !ok {
-			return false
-		}
-		num, _ := m["numerator"].(float64)
-		den := 1.0
-		if d, ok := m["denominator"].(float64); ok {
-			den = d
-		}
-		fDen := fv.Denominator
-		if fDen == 0 {
-			fDen = 1
-		}
-		return int(num) == fv.Numerator && int(den) == fDen
-	}
-	return false
 }
 
 func mentionsOffline(q string) bool {
