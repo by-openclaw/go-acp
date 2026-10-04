@@ -585,7 +585,7 @@ func (m *Mirror) heldForParents(topic, id string, doc json.RawMessage) bool {
 	}
 	m.mu.Unlock()
 	if wait {
-		m.scheduleRepair(refusedResource(topic, id))
+		m.scheduleRepair(heldResource(topic, id))
 	}
 	return wait
 }
