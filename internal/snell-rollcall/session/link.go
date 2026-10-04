@@ -113,7 +113,19 @@ func NewIdleLink(conn net.Conn, cfg Config, deps plugin.Deps) *Link {
 // Start begins reading from the connection. It is called once, by NewLink or
 // by the caller of NewIdleLink once the link is registered wherever its
 // handler will look for it.
+//
+// A link that was closed before it started never starts. A server registers
+// the link, then starts it; its Stop closes every registered link. With the
+// two unordered, Start's Add met Close's Wait on the same WaitGroup — the
+// race detector's report on macOS — and a reader could be launched on a link
+// its owner believed finished. Under the link's lock, either the reader is
+// counted before Close waits for it, or it is not launched at all.
 func (l *Link) Start() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		return
+	}
 	l.wg.Add(1)
 	go l.readLoop()
 }
