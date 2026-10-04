@@ -195,6 +195,26 @@
     - { name: "{{ dhs_amwa_validate_tls_tool_host }}", ip: "127.0.0.1" }
   when: _validate_need_tls
 
+# The premade CuT certificates name their revocation services in the
+# certificate itself (the image CA's openssl.cnf): OCSP at
+# http://ocsp.testsuite.nmos.tv:5008 and the CRL at
+# http://crl.testsuite.nmos.tv:5007 — the tool's own mocks at
+# PORT_BASE+8 / +7 of an instance on the default base, which is the
+# resident one here (same image, same CA). The CuT staples what that
+# responder signs, so the PLANT host must resolve the names; without
+# the pin its stapler logs "no such host", serves no staple, and
+# BCP-003-01 test_06 reports stapling as not offered (#1301).
+- name: The tool's revocation services resolve on the plant host
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^.*\\s{{ item }}\\s*$"
+    line: "{{ dhs_amwa_validate_tooling_host }} {{ item }}"
+  loop:
+    - ocsp.testsuite.nmos.tv
+    - crl.testsuite.nmos.tv
+  delegate_to: "{{ groups['plant'][0] }}"
+  when: _validate_need_tls
+
 # The CuT pair + CA come out of the RESIDENT container (same pinned
 # image, always exists by this point) — docker cp works regardless of
 # the TLS container's create/start ordering.
