@@ -288,9 +288,8 @@ func TestHeartbeatLoopProbesAnEmptyTarget(t *testing.T) {
 	if !tap.has("target holds none of our nodes") {
 		t.Fatalf("the empty target must be probed; saw %v", tap.snapshot())
 	}
-	if m.Stats().Resyncs == 0 {
-		t.Error("the probe must run a resync")
-	}
+	// The repair is asked for beside the loop, a moment after the log line.
+	waitFor(t, 5*time.Second, func() bool { return m.Stats().Resyncs != 0 }, "the probe to ask for a resync")
 	cancel()
 	select {
 	case <-done:
@@ -331,7 +330,5 @@ func TestHeartbeatLoopResyncsAfterAnEviction(t *testing.T) {
 	if !tap.has("target evicted node") {
 		t.Fatalf("a 404 heartbeat must read as an eviction; saw %v", tap.snapshot())
 	}
-	if m.Stats().Resyncs == 0 {
-		t.Error("an eviction must trigger a full resync")
-	}
+	waitFor(t, 5*time.Second, func() bool { return m.Stats().Resyncs != 0 }, "the eviction to ask for a full resync")
 }

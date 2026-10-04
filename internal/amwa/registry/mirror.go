@@ -202,6 +202,14 @@ type Mirror struct {
 	// (Cerebrum answers 400, not 404, to a missing parent reference).
 	// Non-nil while a resync is pending. Guarded by mu.
 	resyncTimer *time.Timer
+	// filling marks a fill in flight, fillAgain a pass asked for while it
+	// ran. Fills never overlap: a request made during one is folded into
+	// ONE more pass after it. Guarded by mu.
+	filling   bool
+	fillAgain bool
+	// heartbeatEvery is the heartbeat cadence: MirrorHeartbeatInterval,
+	// shortened only by tests that need many rounds.
+	heartbeatEvery time.Duration
 
 	// serve is the embedded read-only Query face (mirror_serve.go);
 	// nil when opts.ServeAddr is empty. Assigned once in Run before the
@@ -263,13 +271,14 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 		cacheVer[tp] = map[string]string{}
 	}
 	return &Mirror{
-		opts:        opts,
-		logger:      opts.Logger,
-		http:        &stdhttp.Client{Timeout: 10 * time.Second},
-		pace:        newPacer(opts.Deps.WithDefaults().Clock, opts.TargetPace),
-		cache:       cache,
-		cacheVer:    cacheVer,
-		targetNodes: map[string]bool{},
+		opts:           opts,
+		logger:         opts.Logger,
+		http:           &stdhttp.Client{Timeout: 10 * time.Second},
+		pace:           newPacer(opts.Deps.WithDefaults().Clock, opts.TargetPace),
+		cache:          cache,
+		cacheVer:       cacheVer,
+		targetNodes:    map[string]bool{},
+		heartbeatEvery: MirrorHeartbeatInterval,
 	}, nil
 }
 
@@ -334,7 +343,29 @@ func (m *Mirror) Run(ctx context.Context) error {
 		}
 	}
 
+	// Heartbeats first, on their own goroutine. The fill below outlasts
+	// a target's expiry on a large plant (thousands of paced POSTs
+	// against a twelve-second window): a node it has just landed must be
+	// kept alive while its children follow, or the target evicts it and
+	// refuses every one of them (#1311).
 	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		m.heartbeatLoop(ctx)
+	}()
+
+	// Fill before listening. The topic subscriptions below run
+	// concurrently, so their SYNC grains arrive in no particular order
+	// and a flow would reach the target before its device: the target
+	// refuses it, a healthy start reports failures, and the catalogue
+	// is POSTed twice (the racing pass, then the repair). One walk of
+	// the source, forwarded parent-first, leaves the SYNC grains with
+	// nothing to add — they find the cache already equal. A source
+	// that cannot be walked yet leaves the cache empty and the
+	// subscriptions fill it the old way, repair included.
+	m.fill(ctx, "initial_fill")
+
 	for _, topic := range mirrorTopics {
 		for ver, qc := range clients {
 			wg.Add(1)
@@ -344,12 +375,6 @@ func (m *Mirror) Run(ctx context.Context) error {
 			}(topic, ver, qc)
 		}
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		m.heartbeatLoop(ctx)
-	}()
 
 	wg.Wait()
 	m.mu.Lock()
@@ -649,15 +674,33 @@ func (m *Mirror) deleteResource(ctx context.Context, topic, ver, id string) {
 const mirrorProbeInterval = 30 * time.Second
 
 // heartbeatLoop proxies one health POST per TARGET-ACCEPTED source
-// node every MirrorHeartbeatInterval. A 404 for an accepted node
-// means the target evicted us — re-register the catalogue in
-// dependency order. A node the target never accepted is deliberately
-// NOT heartbeated (its 404 is not an eviction); when the target holds
-// none of our nodes at all — freshly restarted, or wiped — a
-// rate-limited resync probes it back to health.
+// node every heartbeat interval. A 404 for an accepted node means the
+// target evicted it: the node stops being heartbeated (the target no
+// longer holds it) and the catalogue is re-registered in dependency
+// order, which lands it again. A node the target never accepted is
+// deliberately NOT heartbeated (its 404 is not an eviction); when the
+// target holds none of our nodes at all — freshly restarted, or wiped
+// — a rate-limited resync probes it back to health.
+//
+// The loop never waits for a repair. A re-registration takes as long
+// as the catalogue is large, and a loop that paused for it left every
+// node unheartbeated meanwhile: the target evicted the node the pass
+// had just landed, refused its children, and the next tick found the
+// eviction and started over — 2.7 million refused POSTs in five hours
+// on the plant (#1311). Repairs run beside the loop, one at a time.
 func (m *Mirror) heartbeatLoop(ctx context.Context) {
-	ticker := time.NewTicker(MirrorHeartbeatInterval)
+	ticker := time.NewTicker(m.heartbeatEvery)
 	defer ticker.Stop()
+	var repairs sync.WaitGroup
+	defer repairs.Wait()
+	repair := func() {
+		m.noteResync()
+		repairs.Add(1)
+		go func() {
+			defer repairs.Done()
+			m.fill(ctx, "resync")
+		}()
+	}
 	var lastProbe time.Time
 	for {
 		select {
@@ -671,17 +714,27 @@ func (m *Mirror) heartbeatLoop(ctx context.Context) {
 					m.logger.Warn("registry/mirror: target holds none of our nodes — probing with a resync",
 						"cached_nodes", unaccepted)
 					m.audit.event("target_probe_resync", map[string]any{"cached_nodes": unaccepted})
-					m.resync(ctx)
+					repair()
 				}
 				continue
 			}
+			evicted := false
 			for _, n := range refs {
-				if m.sendHealth(ctx, n.id, n.ver) == errMirrorEvicted {
-					m.logger.Warn("registry/mirror: target evicted node — full resync", "node", n.id)
-					m.audit.event("target_evicted", map[string]any{"node": n.id})
-					m.resync(ctx)
-					break
+				if m.sendHealth(ctx, n.id, n.ver) != errMirrorEvicted {
+					continue
 				}
+				m.logger.Warn("registry/mirror: target evicted node — re-registering", "node", n.id)
+				m.audit.event("target_evicted", map[string]any{"node": n.id})
+				m.mu.Lock()
+				delete(m.targetNodes, n.id) // not the target's any more: no heartbeat until it lands again
+				m.mu.Unlock()
+				evicted = true
+			}
+			if evicted {
+				// The repair is the probe too: a target that lost every
+				// node gets this pass, not a second one a tick later.
+				lastProbe = time.Now()
+				repair()
 			}
 		}
 	}
@@ -834,11 +887,60 @@ func docID(doc json.RawMessage) string {
 	return v.ID
 }
 
-// resync refreshes the cache from the source's per-minor views, then
-// re-POSTs the whole catalogue in dependency order, each resource at
-// its registered minor — the end state is target == cache.
+// resync is the REPAIR: something left the target short (a refused
+// child, an eviction, a version conflict), so the catalogue is walked
+// and forwarded again. It is counted — a mirror that keeps resyncing
+// is telling the operator something.
 func (m *Mirror) resync(ctx context.Context) {
-	m.audit.event("resync", nil)
+	m.noteResync()
+	m.fill(ctx, "resync")
+}
+
+// noteResync counts one repair asked for.
+func (m *Mirror) noteResync() {
+	m.mu.Lock()
+	m.stats.Resyncs++
+	m.mu.Unlock()
+}
+
+// fill brings the target level with the source: Run uses it for the
+// first fill ("initial_fill"), resync for the repair; why names the
+// pass in the audit trail.
+//
+// One pass at a time. A fill asked for while another runs returns at
+// once and is folded into ONE more pass after the running one: two
+// passes interleaved would POST a child from one before its parent
+// from the other, and a caller made to wait would be the heartbeat
+// loop.
+func (m *Mirror) fill(ctx context.Context, why string) {
+	m.mu.Lock()
+	if m.filling {
+		m.fillAgain = true
+		m.mu.Unlock()
+		return
+	}
+	m.filling = true
+	m.mu.Unlock()
+	for {
+		m.fillOnce(ctx, why)
+		m.mu.Lock()
+		again := m.fillAgain && ctx.Err() == nil
+		m.fillAgain = false
+		if !again {
+			m.filling = false
+			m.mu.Unlock()
+			return
+		}
+		m.mu.Unlock()
+		why = "resync"
+	}
+}
+
+// fillOnce refreshes the cache from the source's per-minor views, then
+// POSTs the whole catalogue in dependency order, each resource at its
+// registered minor — the end state is target == cache.
+func (m *Mirror) fillOnce(ctx context.Context, why string) {
+	m.audit.event(why, nil)
 	m.refreshCacheFromSource(ctx)
 	type verDoc struct {
 		id  string
@@ -846,7 +948,6 @@ func (m *Mirror) resync(ctx context.Context) {
 		doc json.RawMessage
 	}
 	m.mu.Lock()
-	m.stats.Resyncs++
 	snapshot := make(map[string][]verDoc, len(mirrorTopics))
 	for _, topic := range mirrorTopics {
 		ids := make([]string, 0, len(m.cache[topic]))
