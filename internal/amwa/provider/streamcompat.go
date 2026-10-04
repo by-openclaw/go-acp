@@ -165,6 +165,14 @@ type IS11StreamCompatServer struct {
 	// senderActive reports whether the IS-05 layer has the sender
 	// enabled — the RAML's 423 "if the Sender is active" gate.
 	senderActive func(id string) bool
+	// receiverStream reports what the IS-05 layer has the receiver
+	// taking: whether it is active with master_enable, and the media
+	// type of the SDP it was given ("" when none). The receiver's
+	// IS-11 status derives from it (receiverStatus).
+	receiverStream func(id string) (active bool, mediaType string)
+	// receiverMediaTypes is the receiver's caps.media_types from the
+	// bundle, what a stream is judged compliant against.
+	receiverMediaTypes map[string][]string
 	// onSenderConstraintsChanged bumps the IS-04 Sender version +
 	// re-registers it (Interoperability.md).
 	onSenderConstraintsChanged func(id string)
@@ -202,8 +210,11 @@ func NewIS11StreamCompatServer(logger *slog.Logger, bundle *NodeConfig, cfg IS11
 		for i := range bundle.Senders {
 			s.senderIDs = append(s.senderIDs, bundle.Senders[i].ID)
 		}
+		s.receiverMediaTypes = make(map[string][]string, len(bundle.Receivers))
 		for i := range bundle.Receivers {
-			s.receiverIDs = append(s.receiverIDs, bundle.Receivers[i].ID)
+			r := &bundle.Receivers[i]
+			s.receiverIDs = append(s.receiverIDs, r.ID)
+			s.receiverMediaTypes[r.ID] = r.Caps.MediaTypes
 		}
 	}
 	sort.Strings(s.senderIDs)
@@ -259,6 +270,12 @@ func (s *IS11StreamCompatServer) Versions() []string { return s.vers }
 // SetSenderActiveFunc installs the IS-05 liveness gate for 423s.
 func (s *IS11StreamCompatServer) SetSenderActiveFunc(fn func(string) bool) { s.senderActive = fn }
 
+// SetReceiverStreamFunc installs the IS-05 layer's view of a receiver:
+// active with master_enable, and the media type of the SDP it holds.
+func (s *IS11StreamCompatServer) SetReceiverStreamFunc(fn func(string) (bool, string)) {
+	s.receiverStream = fn
+}
+
 // supportedFor returns the constraint URNs a sender advertises.
 func (s *IS11StreamCompatServer) supportedFor(id string) []string {
 	if urns, ok := s.supported[id]; ok {
@@ -278,10 +295,46 @@ func (s *IS11StreamCompatServer) senderStatus(id string) is11.Status {
 	return is11.Status{State: is11.SenderUnconstrained}
 }
 
-// receiverStatus: a reference receiver has no probe on the incoming
-// stream, and IS-11 gives that exact truth a name: "unknown".
-func (s *IS11StreamCompatServer) receiverStatus(string) is11.Status {
-	return is11.Status{State: is11.ReceiverUnknown}
+// receiverStatus derives the receiver's {state} from its connection.
+//
+// A reference node has no probe on the wire, so it does not pretend
+// to measure RTP; what it does know is what it was connected to. A
+// receiver that is active with master_enable and holds an SDP whose
+// media type is one it advertises in caps.media_types is taking a
+// compliant stream — the same judgement BCP-004-01 asks a controller
+// to make before connecting; one holding an SDP of another type is
+// taking a non-compliant one; a receiver with no stream is "unknown",
+// IS-11's name for exactly that. The suite's live-streaming rounds
+// (IS-11-01 test_04_03/04_04) connect the reference sender and expect
+// compliant_stream, then signal_present on the receiver's outputs.
+func (s *IS11StreamCompatServer) receiverStatus(id string) is11.Status {
+	if s.receiverStream == nil {
+		return is11.Status{State: is11.ReceiverUnknown}
+	}
+	active, mediaType := s.receiverStream(id)
+	if !active || mediaType == "" {
+		return is11.Status{State: is11.ReceiverUnknown}
+	}
+	for _, mt := range s.receiverMediaTypes[id] {
+		if strings.EqualFold(mt, mediaType) {
+			return is11.Status{State: is11.ReceiverCompliantStream}
+		}
+	}
+	return is11.Status{State: is11.ReceiverNonCompliantStream}
+}
+
+// outputStatus derives an output's {state}: signal_present while any
+// receiver it is associated with takes a compliant stream, no_signal
+// otherwise — an output carries what its receiver takes.
+func (s *IS11StreamCompatServer) outputStatus(outputID string) string {
+	for rid, outs := range s.receiverOutputs {
+		for _, o := range outs {
+			if o == outputID && s.receiverStatus(rid).State == is11.ReceiverCompliantStream {
+				return is11.OutputSignalPresent
+			}
+		}
+	}
+	return is11.OutputNoSignal
 }
 
 // Mount registers every route on srv.
@@ -663,7 +716,10 @@ func (s *IS11StreamCompatServer) mountOutput(srv *httpsession.Server, p, id stri
 	srv.Handle(stdhttp.MethodGet, p+"/properties/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		return ok(*s.outputs[id])
+		// The status is live: what the output's receivers take now.
+		out := *s.outputs[id]
+		out.Status = is11.Status{State: s.outputStatus(id)}
+		return ok(out)
 	})
 	srv.Handle(stdhttp.MethodGet, p+"/edid/", func(context.Context, *stdhttp.Request) (int, any, error) {
 		s.mu.RLock()

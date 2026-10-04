@@ -6,6 +6,7 @@ package provider
 // observes.
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	stdhttp "net/http"
@@ -152,5 +153,71 @@ func TestIS11ConstraintsAdaptFlow(t *testing.T) {
 	_ = resp.Body.Close()
 	if got := flowRate(); got != "48000" {
 		t.Errorf("sample_rate after DELETE = %s, want restored 48000", got)
+	}
+}
+
+// TestIS11ReceiverStatusThroughTheNode: the whole path the suite's
+// live-streaming rounds take — an IS-05 PATCH that stages an SDP and
+// activates the receiver, then the IS-11 receiver status and its
+// output's properties — through the served node, not the hooks.
+func TestIS11ReceiverStatusThroughTheNode(t *testing.T) {
+	b := audioBundle()
+	rcvID := "bbbbbbbb-2222-4222-8222-222222222222"
+	outID := "44444444-4444-4444-8444-444444444444"
+	for i := range b.Receivers {
+		if b.Receivers[i].ID == rcvID {
+			b.Receivers[i].Caps.MediaTypes = []string{"audio/L24"}
+		}
+	}
+	b.StreamCompatibility = &StreamCompatSeed{
+		Outputs: []is11.Output{{
+			ResourceCore: is11.ResourceCore{ID: outID, Version: "1:0", Label: "OUT",
+				Description: "x", Tags: map[string][]string{}},
+			Connected:   true,
+			EDIDSupport: false,
+			Status:      is11.Status{State: is11.OutputNoSignal},
+			DeviceID:    b.Devices[0].ID,
+		}},
+		ReceiverOutputs: map[string][]string{rcvID: {outID}},
+	}
+	n := startNodeWith(t, b, func(c *IS04NodeConfig) { c.ConnectionAPIVer = "v1.2" })
+	addr := n.addr
+	status := func() (string, string) {
+		_, rs := mxlGet(t, "http://"+addr+"/x-nmos/streamcompatibility/v1.0/receivers/"+rcvID+"/status/")
+		_, op := mxlGet(t, "http://"+addr+"/x-nmos/streamcompatibility/v1.0/outputs/"+outID+"/properties/")
+		var st is11.Status
+		var out is11.Output
+		_ = json.Unmarshal(rs, &st)
+		_ = json.Unmarshal(op, &out)
+		return st.State, out.Status.State
+	}
+	if r, o := status(); r != is11.ReceiverUnknown || o != is11.OutputNoSignal {
+		t.Fatalf("before any connection: receiver %s, output %s", r, o)
+	}
+	// Connect the receiver to an L24 stream, as a controller does.
+	sdp := "v=0\r\no=- 1 1 IN IP4 10.0.0.7\r\ns=ref\r\nt=0 0\r\n" +
+		"m=audio 5004 RTP/AVP 97\r\nc=IN IP4 239.1.1.9/64\r\na=rtpmap:97 L24/48000/8\r\n"
+	body, _ := json.Marshal(map[string]any{
+		"master_enable":  true,
+		"activation":     map[string]any{"mode": "activate_immediate"},
+		"transport_file": map[string]any{"type": "application/sdp", "data": sdp},
+	})
+	req, _ := stdhttp.NewRequest("PATCH",
+		"http://"+addr+"/x-nmos/connection/v1.2/single/receivers/"+rcvID+"/staged", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := stdhttp.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("PATCH staged = %d", resp.StatusCode)
+	}
+	if r, o := status(); r != is11.ReceiverCompliantStream || o != is11.OutputSignalPresent {
+		t.Fatalf("connected to an L24 stream: receiver %s, output %s", r, o)
+	}
+	// A receiver the IS-05 layer does not know answers nothing.
+	if active, mt := n.s.streamCompat.receiverStream("ffffffff-ffff-4fff-8fff-ffffffffffff"); active || mt != "" {
+		t.Fatalf("unknown receiver = %v %q", active, mt)
 	}
 }
