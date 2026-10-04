@@ -254,10 +254,10 @@ func TestOurRegistryIsScoredByAThirdPartyNode(t *testing.T) {
 			t.Errorf("FAIL-real: 30 s after the mirror stopped the oracle registry still lists node %s", nodeID)
 		}
 		if live.Failures != 0 || live.Skipped != 0 {
-			t.Fatalf("FAIL-real: the oracle registry refused %d request(s) of our mirror (%d at the fill, %d skipped, %d repair(s))\n%s",
+			t.Fatalf("FAIL-real: %d request(s) of our mirror to the oracle registry were refused or failed (%d at the fill, %d skipped, %d repair(s))\n%s",
 				live.Failures, fill.Failures, live.Skipped, live.Resyncs, tail(mirror.logs.String()))
 		}
-		t.Logf("PASS: %d resource(s) level in the oracle registry at the fill and after a live registration; forwarded %d, deleted %d, refused 0, repairs %d; announced on its WebSocket; gone after the mirror stopped",
+		t.Logf("PASS: %d resource(s) level in the oracle registry at the fill and after a live registration; forwarded %d, deleted %d, refused or failed 0, repairs %d; announced on its WebSocket; gone after the mirror stopped",
 			first.count(), live.Forwarded, live.Deleted, live.Resyncs)
 	})
 
@@ -334,7 +334,7 @@ func TestMirrorCopiesTheOracleRegistry(t *testing.T) {
 	}
 	s := readMirror(t, statusAddr)
 	if s.Failures != 0 || s.Skipped != 0 || s.Resyncs != 0 {
-		t.Fatalf("FAIL-real: the copy took %d refused request(s), %d skipped, %d repair(s)\n%s", s.Failures, s.Skipped, s.Resyncs, tail(mirror.logs.String()))
+		t.Fatalf("FAIL-real: the copy took %d refused or failed request(s), %d skipped, %d repair(s)\n%s", s.Failures, s.Skipped, s.Resyncs, tail(mirror.logs.String()))
 	}
-	t.Logf("PASS: %d resource(s) of the oracle registry are in ours, document for document, held 15 s; forwarded %d, refused 0, repairs 0", source().count(), s.Forwarded)
+	t.Logf("PASS: %d resource(s) of the oracle registry are in ours, document for document, held 15 s; forwarded %d, refused or failed 0, repairs 0", source().count(), s.Forwarded)
 }
