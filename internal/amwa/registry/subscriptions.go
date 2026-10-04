@@ -711,7 +711,7 @@ func (m *SubscriptionManager) onChange(c Change) {
 		if !ok {
 			continue
 		}
-		projected = reencodeChange(projected, m.apiVer)
+		projected = wireChange(projected, m.apiVer)
 		m.enqueue(s, projected)
 	}
 }
@@ -788,6 +788,21 @@ func (m *SubscriptionManager) flush(s *subscription) {
 // for c.ResourceType and re-marshals via the codec for wireVer. When
 // no codec is registered for wireVer (or decode fails), the original
 // Change is returned unchanged.
+// wireChange puts on a change the bodies a subscriber at wireVer is
+// sent: the registered documents, as that minor shows them, where the
+// resource has them on file; the codec's encoding of the typed value
+// otherwise. A body the projection removed stays removed.
+func wireChange(c Change, wireVer string) Change {
+	out := reencodeChange(c, wireVer)
+	if doc := documentAt(c.ResourceType, c.RawPre, c.APIVer, wireVer); doc != nil && len(c.Pre) > 0 {
+		out.Pre = doc
+	}
+	if doc := documentAt(c.ResourceType, c.RawPost, c.APIVer, wireVer); doc != nil && len(c.Post) > 0 {
+		out.Post = doc
+	}
+	return out
+}
+
 func reencodeChange(c Change, wireVer string) Change {
 	codec, ok := is04.Get(wireVer)
 	if !ok {

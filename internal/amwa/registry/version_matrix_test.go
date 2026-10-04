@@ -1,13 +1,21 @@
 package registry
 
-// The IS-04 version-mismatch matrix (#849), asserted as the registry's
-// own decision function. The registry translates one way only: it can
-// present a LOWER-registered resource at a HIGHER query, never a
-// higher-registered resource to a lower controller — query.downgrade
-// widens the window to [downgrade, urlVer] but cannot reach above
-// urlVer. The operational consequence the customer plant showed:
-// an old controller is permanently blind to new nodes, and the only
-// lever is the minor the NODE registers at.
+// The IS-04 version-mismatch matrix (#849, corrected by #1337),
+// asserted as the registry's own decision function.
+//
+// IS-04 v1.3.3, docs/Upgrade Path, "Requirements for Registries":
+//
+//   - a resource registered at a LATER minor than the query's is shown,
+//     translated: "Query APIs MUST provide translations of resources
+//     for backwards compatibility … by removing keys". An old
+//     controller sees new nodes.
+//   - a resource registered at an EARLIER minor is not shown unless the
+//     client asks: "Query APIs do not need to provide for forwards
+//     compatibility"; query.downgrade widens the window down to the
+//     minor it names.
+//
+// The first rule was read the other way round here until the registry
+// was paired with nmos-cpp, which does what the text says.
 
 import "testing"
 
@@ -23,11 +31,12 @@ func TestVersionMismatchMatrix(t *testing.T) {
 		{"v1.0 node at v1.3 query, downgrade v1.0", "v1.0", "v1.3", "v1.0", true},
 		{"v1.1 node at v1.3 query, downgrade v1.0", "v1.1", "v1.3", "v1.0", true},
 
-		// Node registered HIGH, controller queries LOW — the one-way
-		// wall. downgrade cannot help: the window is [downgrade, urlVer]
-		// and v1.3 > v1.0.
-		{"v1.3 node at v1.0 query, no downgrade", "v1.3", "v1.0", "", false},
-		{"v1.3 node at v1.0 query, downgrade v1.0", "v1.3", "v1.0", "v1.0", false},
+		// Node registered HIGH, controller queries LOW — shown, with
+		// the keys the lower minor does not know removed. No downgrade
+		// is asked for or needed.
+		{"v1.3 node at v1.0 query, no downgrade", "v1.3", "v1.0", "", true},
+		{"v1.3 node at v1.0 query, downgrade v1.0", "v1.3", "v1.0", "v1.0", true},
+		{"v1.3 node at v1.2 query", "v1.3", "v1.2", "", true},
 		{"v1.3 node at v1.3 query", "v1.3", "v1.3", "", true},
 
 		// downgrade floor excludes a resource below it.
@@ -43,13 +52,13 @@ func TestVersionMismatchMatrix(t *testing.T) {
 	}
 }
 
-// TestOldControllerBlindToNewNodes is the matrix's headline case as a
-// standalone assertion: no query.downgrade value a v1.0 controller can
-// send makes a v1.3-registered node visible to it.
-func TestOldControllerBlindToNewNodes(t *testing.T) {
+// TestOldControllerSeesNewNodes is the matrix's headline case as a
+// standalone assertion: a v1.3-registered node is visible to a v1.0
+// controller whatever query.downgrade it sends, or none.
+func TestOldControllerSeesNewNodes(t *testing.T) {
 	for _, dg := range []string{"", "v1.0", "v1.1", "v1.2", "v1.3"} {
-		if versionAllowed("v1.3", "v1.0", dg) {
-			t.Fatalf("a v1.3 node became visible at a v1.0 query with downgrade=%q — the one-way wall is broken", dg)
+		if !versionAllowed("v1.3", "v1.0", dg) {
+			t.Fatalf("a v1.3 node is hidden from a v1.0 query with downgrade=%q — IS-04 Upgrade Path says it MUST be shown, translated", dg)
 		}
 	}
 }

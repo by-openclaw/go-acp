@@ -157,7 +157,8 @@ func TestAPIVersionOrdering(t *testing.T) {
 		{"v1.0", "v1.3", "", false}, // no implicit downgrade
 		{"v1.0", "v1.3", "v1.0", true},
 		{"v1.0", "v1.3", "v1.2", false}, // below the opt-in floor
-		{"v1.3", "v1.2", "v1.0", false}, // above the URL's minor
+		{"v1.3", "v1.2", "v1.0", true},  // above the URL's minor: shown, translated
+		{"v1.3", "v1.2", "", true},
 		{"", "v1.3", "", true},          // unstamped: any version
 		{"v1.0", "", "", true},          // no URL minor: any version
 	} {

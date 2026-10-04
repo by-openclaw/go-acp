@@ -42,10 +42,13 @@ API document for document, it is held by its heartbeats, paged Query and
 the WebSocket's first grain carry its resources, it registers again 5 s
 after a 404, and it expires 10 s after a kill.
 
-Known, open: the Query API does not show a resource registered at a
-higher minor on its lower endpoints (#1337), and returns a re-encoding
+Up to v0.36.0 the Query API did not show a resource registered at a
+higher minor on its lower endpoints (#1337), and returned a re-encoding
 of a resource rather than the registered document — a key the Node did
-not send can appear with its zero value (#1338).
+not send could appear with its zero value (#1338). Both are fixed, not
+released yet: the registry keeps the document a Node sent and serves
+it, and an earlier minor is shown it with the keys IS-04 "Upgrade
+Path" lists removed.
 
 ## Mirror
 
