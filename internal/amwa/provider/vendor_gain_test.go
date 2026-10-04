@@ -206,3 +206,42 @@ func TestNCPSetGainDb(t *testing.T) {
 		t.Errorf("gainDb after SetGainDb = %+v", cr.Responses[0].Result)
 	}
 }
+
+// A deprecated property is still served, with the status that says so:
+// Get answers PropertyDeprecated (298), not Ok, on both APIs (MS-05-02
+// NcMethodStatus; MS-05-01 test_ms05_07 scores exactly this). The
+// tool's is_error_status treats 298 as success, so the value travels.
+func TestDeprecatedPropertyReadsAnswer298(t *testing.T) {
+	s := configFixture(t)
+	gain := s.objects["root.GainControl"]
+	trim := gain.findProp("4p3")
+	if trim == nil || !trim.desc.IsDeprecated {
+		t.Fatal("4p3 legacyTrim is the model's deprecated property")
+	}
+
+	// IS-14: the Get method and the REST value resource.
+	st, out := invokeNamed(t, s, gain, "Get", `{"id":{"level":4,"index":3}}`)
+	pv, ok := out.(ms05.NcMethodResultPropertyValue)
+	if st != 200 || !ok || pv.Status != ms05.NcMethodStatusPropertyDeprecated || string(pv.Value) != "0" {
+		t.Errorf("IS-14 Get legacyTrim = %d %+v, want 298 with the value", st, out)
+	}
+	st, body, err := s.dispatchProperties("GET", gain, []string{"4p3", "value"}, nil)
+	if pv, ok := body.(ms05.NcMethodResultPropertyValue); err != nil || st != 200 || !ok || pv.Status != ms05.NcMethodStatusPropertyDeprecated {
+		t.Errorf("IS-14 GET value = %d %+v %v, want 298", st, body, err)
+	}
+	// Its neighbour stays Ok.
+	st, out = invokeNamed(t, s, gain, "Get", `{"id":{"level":4,"index":2}}`)
+	if pv, ok := out.(ms05.NcMethodResultPropertyValue); st != 200 || !ok || pv.Status != ms05.NcMethodStatusOk {
+		t.Errorf("IS-14 Get gainDb = %d %+v, want 200", st, out)
+	}
+
+	// IS-12: Get (1m1) carries 298 and the value too.
+	n := NewIS12NCPServer(nil, s)
+	r := ncpCall(t, n, int(gain.oid), 1, 1, map[string]any{"id": map[string]int{"level": 4, "index": 3}})
+	if r.Status != int(ms05.NcMethodStatusPropertyDeprecated) || string(r.Value) != "0" {
+		t.Errorf("IS-12 Get legacyTrim = %+v, want 298 with the value", r)
+	}
+	if r := ncpCall(t, n, int(gain.oid), 1, 1, map[string]any{"id": map[string]int{"level": 4, "index": 2}}); r.Status != int(ms05.NcMethodStatusOk) {
+		t.Errorf("IS-12 Get gainDb = %+v, want 200", r)
+	}
+}

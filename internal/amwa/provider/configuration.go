@@ -536,7 +536,7 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 			if err != nil {
 				return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
 			}
-			return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: raw}, nil
+			return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: raw}, nil
 		case stdhttp.MethodPut:
 			body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 			if err != nil {
@@ -549,7 +549,7 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 			if st, err := s.setProperty(obj, p, req.Value); err != nil {
 				return ms05Err(400, st, err.Error())
 			}
-			return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+			return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 		}
 		return ms05Err(405, ms05.NcMethodStatusInvalidRequest, "value supports GET and PUT")
 	}
@@ -630,6 +630,18 @@ func effectiveConstraint(obj *configObject, p *configProperty) any {
 		}
 	}
 	return nil
+}
+
+// successStatus is the status of a method that touched p and
+// succeeded: Ok, or PropertyDeprecated (298) when the descriptor flags
+// the property — MS-05-02 NcMethodStatus keeps serving a deprecated
+// property and says so in the status; a controller that ignores it
+// is one firmware generation from a PropertyNotImplemented.
+func successStatus(p *configProperty) ms05.NcMethodStatus {
+	if p.desc.IsDeprecated {
+		return ms05.NcMethodStatusPropertyDeprecated
+	}
+	return ms05.NcMethodStatusOk
 }
 
 // constraintViolation applies the property's effective constraint to
@@ -920,7 +932,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		if err != nil {
 			return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
 		}
-		return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: raw}, nil
+		return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: raw}, nil
 
 	case "Set":
 		p, e := needProp()
@@ -933,7 +945,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		if st, err := s.setProperty(obj, p, args.Value); err != nil {
 			return ms05Err(400, st, err.Error())
 		}
-		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 
 	case "GetSequenceItem", "GetSequenceLength", "SetSequenceItem", "AddSequenceItem", "RemoveSequenceItem":
 		return s.invokeSequence(obj, md.Name, args)
@@ -1136,7 +1148,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 	}
 	switch name {
 	case "GetSequenceLength":
-		return 200, ms05.NcMethodResultLength{Status: ms05.NcMethodStatusOk, Value: uint32(len(items))}, nil
+		return 200, ms05.NcMethodResultLength{Status: successStatus(p), Value: uint32(len(items))}, nil
 	case "GetSequenceItem":
 		if args.Index == nil {
 			return ms05Err(400, ms05.NcMethodStatusParameterError, "index argument required")
@@ -1145,7 +1157,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 			return ms05Err(400, ms05.NcMethodStatusIndexOutOfBounds,
 				fmt.Sprintf("index %d out of bounds (length %d)", *args.Index, len(items)))
 		}
-		return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: items[*args.Index]}, nil
+		return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: items[*args.Index]}, nil
 	case "AddSequenceItem":
 		if args.Value == nil {
 			return ms05Err(400, ms05.NcMethodStatusParameterError, "value argument required")
@@ -1154,7 +1166,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 		if err != nil {
 			return ms05Err(400, st, err.Error())
 		}
-		return 200, ms05.NcMethodResultId{Status: ms05.NcMethodStatusOk, Value: ms05.NcId(index)}, nil
+		return 200, ms05.NcMethodResultId{Status: successStatus(p), Value: ms05.NcId(index)}, nil
 	case "SetSequenceItem":
 		if args.Index == nil || args.Value == nil {
 			return ms05Err(400, ms05.NcMethodStatusParameterError, "index and value arguments required")
@@ -1162,7 +1174,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 		if st, err := s.sequenceSet(obj, p, int(*args.Index), args.Value); err != nil {
 			return ms05Err(400, st, err.Error())
 		}
-		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 	case "RemoveSequenceItem":
 		if args.Index == nil {
 			return ms05Err(400, ms05.NcMethodStatusParameterError, "index argument required")
@@ -1170,7 +1182,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 		if st, err := s.sequenceRemove(obj, p, int(*args.Index)); err != nil {
 			return ms05Err(400, st, err.Error())
 		}
-		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 	}
 	return ms05Err(400, ms05.NcMethodStatusMethodNotImplemented, "method "+name+" not implemented")
 }

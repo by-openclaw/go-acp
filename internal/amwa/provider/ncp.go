@@ -348,13 +348,17 @@ func wireResult(status int, body json.RawMessage) is12.MethodResult {
 	return is12.MethodResult{Status: status, Value: peek.Value, ErrorMessage: peek.ErrorMessage}
 }
 
-func ncpOKValue(v any) is12.MethodResult {
+// ncpValue renders a value-carrying result with the given success
+// status (Ok, or PropertyDeprecated for a flagged property).
+func ncpValue(st ms05.NcMethodStatus, v any) is12.MethodResult {
 	raw, err := json.Marshal(v)
 	if err != nil {
 		return ncpErr(ms05.NcMethodStatusDeviceError, err.Error())
 	}
-	return is12.MethodResult{Status: int(ms05.NcMethodStatusOk), Value: raw}
+	return is12.MethodResult{Status: int(st), Value: raw}
 }
+
+func ncpOKValue(v any) is12.MethodResult { return ncpValue(ms05.NcMethodStatusOk, v) }
 
 func ncpOK() is12.MethodResult {
 	return is12.MethodResult{Status: int(ms05.NcMethodStatusOk)}
@@ -377,7 +381,7 @@ func (s *IS12NCPServer) methodGet(obj *configObject, args json.RawMessage) is12.
 	s.config.mu.RLock()
 	v := p.value
 	s.config.mu.RUnlock()
-	return ncpOKValue(v)
+	return ncpValue(successStatus(p), v)
 }
 
 func (s *IS12NCPServer) methodSet(obj *configObject, args json.RawMessage) is12.MethodResult {
@@ -398,7 +402,7 @@ func (s *IS12NCPServer) methodSet(obj *configObject, args json.RawMessage) is12.
 	if st, err := s.config.setProperty(obj, p, a.Value); err != nil {
 		return ncpErr(st, err.Error())
 	}
-	return ncpOK()
+	return is12.MethodResult{Status: int(successStatus(p))}
 }
 
 // methodSetGainDb implements DhsGainControl.SetGainDb (4m1) — a named
@@ -458,12 +462,12 @@ func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, 
 	}
 	switch op {
 	case "length":
-		return ncpOKValue(len(seq))
+		return ncpValue(successStatus(p), len(seq))
 	case "get":
 		if a.Index == nil || *a.Index < 0 || *a.Index >= len(seq) {
 			return ncpErr(ms05.NcMethodStatusIndexOutOfBounds, "GetSequenceItem: index out of bounds")
 		}
-		return ncpOKValue(seq[*a.Index])
+		return ncpValue(successStatus(p), seq[*a.Index])
 	case "set":
 		i, refused := index()
 		if refused != nil {
@@ -472,13 +476,13 @@ func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, 
 		if st, err := s.config.sequenceSet(obj, p, i, a.Value); err != nil {
 			return ncpErr(st, err.Error())
 		}
-		return ncpOK()
+		return is12.MethodResult{Status: int(successStatus(p))}
 	case "add":
 		i, st, err := s.config.sequenceAdd(obj, p, a.Value)
 		if err != nil {
 			return ncpErr(st, err.Error())
 		}
-		return ncpOKValue(i)
+		return ncpValue(successStatus(p), i)
 	case "remove":
 		i, refused := index()
 		if refused != nil {
@@ -487,7 +491,7 @@ func (s *IS12NCPServer) methodSequence(obj *configObject, args json.RawMessage, 
 		if st, err := s.config.sequenceRemove(obj, p, i); err != nil {
 			return ncpErr(st, err.Error())
 		}
-		return ncpOK()
+		return is12.MethodResult{Status: int(successStatus(p))}
 	}
 	return ncpErr(ms05.NcMethodStatusMethodNotImplemented, op)
 }
