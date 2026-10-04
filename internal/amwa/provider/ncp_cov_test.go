@@ -241,7 +241,7 @@ func TestNCPDoesNotNotifyAValueItCannotRender(t *testing.T) {
 	s := NewIS12NCPServer(newLogTap().logger(), cfg)
 
 	refuseMarshal(t)
-	s.notifyPropertyChanged(1, ms05.NcPropertyId{Level: 1, Index: 6}, "anything")
+	s.notifyPropertyChanged(1, ms05.NcPropertyId{Level: 1, Index: 6}, valueChanged("anything"))
 }
 
 // SetGainDb names one property, so an object without it is

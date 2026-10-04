@@ -224,55 +224,10 @@ func TestNCPSequenceMethods(t *testing.T) {
 		t.Errorf("a refused mutation changed the sequence (%d, was %d)", n, before)
 	}
 
-	// The same property made writable: the three mutations then apply, and
-	// each still refuses an index outside the sequence and a value that is
-	// not JSON.
+	// The writers on a writable sequence are the DhsGainControl rounds
+	// (vendor_gain_sequence_test.go); what is left here is the dispatch
+	// itself — an op the table does not have.
 	obj := s.config.objectByOid(classMgr)
-	s.config.mu.Lock()
-	obj.findProp("3p1").desc.IsReadOnly = false
-	s.config.mu.Unlock()
-
-	if r := ncpCall(t, s, classMgr, 1, 5, map[string]any{"id": seqID, "value": json.RawMessage(`{}`)}); r.Status != int(ms05.NcMethodStatusOk) {
-		t.Errorf("AddSequenceItem = %d (%s)", r.Status, r.ErrorMessage)
-	}
-	if n := lengthOf(); n != before+1 {
-		t.Errorf("length after add = %d, want %d", n, before+1)
-	}
-	last := before
-	if r := ncpCall(t, s, classMgr, 1, 4, map[string]any{"id": seqID, "index": &last, "value": json.RawMessage(`{}`)}); r.Status != int(ms05.NcMethodStatusOk) {
-		t.Errorf("SetSequenceItem = %d (%s)", r.Status, r.ErrorMessage)
-	}
-	if r := ncpCall(t, s, classMgr, 1, 6, map[string]any{"id": seqID, "index": &last}); r.Status != int(ms05.NcMethodStatusOk) {
-		t.Errorf("RemoveSequenceItem = %d (%s)", r.Status, r.ErrorMessage)
-	}
-	if n := lengthOf(); n != before {
-		t.Errorf("length after remove = %d, want the original %d", n, before)
-	}
-	past := before + 5
-	for _, m := range []struct {
-		name  string
-		index int
-		args  map[string]any
-	}{
-		{"SetSequenceItem", 4, map[string]any{"id": seqID, "index": &past, "value": json.RawMessage(`{}`)}},
-		{"RemoveSequenceItem", 6, map[string]any{"id": seqID, "index": &past}},
-	} {
-		if r := ncpCall(t, s, classMgr, 1, m.index, m.args); r.Status != int(ms05.NcMethodStatusIndexOutOfBounds) {
-			t.Errorf("%s past the end = %d (%s)", m.name, r.Status, r.ErrorMessage)
-		}
-	}
-	for _, m := range []struct {
-		name  string
-		index int
-		args  map[string]any
-	}{
-		{"SetSequenceItem", 4, map[string]any{"id": seqID, "index": &idx}},
-		{"AddSequenceItem", 5, map[string]any{"id": seqID}},
-	} {
-		if r := ncpCall(t, s, classMgr, 1, m.index, m.args); r.Status != int(ms05.NcMethodStatusParameterError) {
-			t.Errorf("%s with no value = %d (%s)", m.name, r.Status, r.ErrorMessage)
-		}
-	}
 	if r := s.methodSequence(obj, mustJSON(t, map[string]any{"id": seqID}), "explode"); r.Status != int(ms05.NcMethodStatusMethodNotImplemented) {
 		t.Errorf("an unknown sequence op = %d", r.Status)
 	}

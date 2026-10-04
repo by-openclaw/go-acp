@@ -36,6 +36,7 @@ func scBundle() *NodeConfig {
 		Receivers: []is04.Receiver{{
 			ResourceCore: is04.ResourceCore{ID: scReceiver},
 			Transport:    is04.TransportRTP,
+			Caps:         is04.ReceiverCaps{MediaTypes: []string{"video/raw"}},
 		}},
 		StreamCompatibility: &StreamCompatSeed{
 			Inputs: []is11.Input{{
@@ -306,4 +307,68 @@ func TestIS11EDIDLifecycle(t *testing.T) {
 		t.Errorf("output edid: %d, want 204", resp.StatusCode)
 	}
 	_ = resp.Body.Close()
+}
+
+// A receiver's IS-11 status follows what the IS-05 layer has it
+// taking: nothing → unknown; an SDP of a media type it advertises →
+// compliant_stream, and its output signal_present; an SDP of another
+// type → non_compliant_stream, and the output no_signal. The suite's
+// live-streaming rounds (IS-11-01 test_04_03/04_04) connect the
+// reference sender and read exactly these (#1252).
+func TestIS11StatusFollowsTheConnectedStream(t *testing.T) {
+	ts, s := scServer(t, false)
+	active, media := false, ""
+	s.SetReceiverStreamFunc(func(id string) (bool, string) {
+		if id != scReceiver {
+			t.Errorf("asked about %s", id)
+		}
+		return active, media
+	})
+	read := func() (string, string) {
+		var rs is11.Status
+		scGet(t, ts, scBase+"/receivers/"+scReceiver+"/status/", &rs)
+		var out is11.Output
+		scGet(t, ts, scBase+"/outputs/"+scOutput+"/properties/", &out)
+		return rs.State, out.Status.State
+	}
+	if r, o := read(); r != is11.ReceiverUnknown || o != is11.OutputNoSignal {
+		t.Fatalf("idle: receiver %s, output %s", r, o)
+	}
+	active, media = true, "video/raw"
+	if r, o := read(); r != is11.ReceiverCompliantStream || o != is11.OutputSignalPresent {
+		t.Fatalf("compliant stream: receiver %s, output %s", r, o)
+	}
+	active, media = true, "video/jxsv"
+	if r, o := read(); r != is11.ReceiverNonCompliantStream || o != is11.OutputNoSignal {
+		t.Fatalf("other media type: receiver %s, output %s", r, o)
+	}
+	active, media = true, ""
+	if r, _ := read(); r != is11.ReceiverUnknown {
+		t.Fatalf("active without an SDP: receiver %s", r)
+	}
+	if st := s.outputStatus("not-an-output"); st != is11.OutputNoSignal {
+		t.Fatalf("an output of no receiver = %s", st)
+	}
+}
+
+// sdpMediaType reads the first media section: type/encoding from the
+// rtpmap, video/MP2T for static payload 33, nothing for no media.
+func TestSDPMediaType(t *testing.T) {
+	const crlf = "\r\n"
+	for _, tc := range []struct{ sdp, want string }{
+		{"v=0" + crlf + "o=- 1 1 IN IP4 10.0.0.1" + crlf + "s=x" + crlf + "t=0 0" + crlf +
+			"m=video 5004 RTP/AVP 96" + crlf + "c=IN IP4 239.1.1.1/64" + crlf + "a=rtpmap:96 raw/90000" + crlf, "video/raw"},
+		{"v=0" + crlf + "o=- 1 1 IN IP4 10.0.0.1" + crlf + "s=x" + crlf + "t=0 0" + crlf +
+			"m=audio 5004 RTP/AVP 97" + crlf + "c=IN IP4 239.1.1.2/64" + crlf + "a=rtpmap:97 L24/48000/8" + crlf, "audio/L24"},
+		{"v=0" + crlf + "o=- 1 1 IN IP4 10.0.0.1" + crlf + "s=x" + crlf + "t=0 0" + crlf +
+			"m=video 5004 RTP/AVP 33" + crlf + "c=IN IP4 239.1.1.3/64" + crlf, "video/MP2T"},
+		{"v=0" + crlf + "o=- 1 1 IN IP4 10.0.0.1" + crlf + "s=x" + crlf + "t=0 0" + crlf +
+			"m=video 5004 RTP/AVP 98" + crlf + "c=IN IP4 239.1.1.3/64" + crlf, ""},
+		{"v=0" + crlf + "o=- 1 1 IN IP4 10.0.0.1" + crlf + "s=x" + crlf + "t=0 0" + crlf, ""},
+		{"not an sdp", ""},
+	} {
+		if got := sdpMediaType(tc.sdp); got != tc.want {
+			t.Errorf("sdpMediaType = %q, want %q for:\n%s", got, tc.want, tc.sdp)
+		}
+	}
 }

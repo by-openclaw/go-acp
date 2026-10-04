@@ -395,6 +395,7 @@
       "parents": [],
       "format": "urn:x-nmos:format:mux",
       "media_type": "video/MP2T",
+      "grain_rate": { "numerator": 50, "denominator": 1 },
       "bit_rate": 20000
     },
     {
@@ -588,7 +589,7 @@
       "description": "ST 2110-22 JPEG XS multicast sender (BCP-006-01)",
       "tags": {},
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0101",
-      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0102/transportfile",
       "interface_bindings": ["eth0"],
@@ -605,7 +606,7 @@
       "description": "ST 2110-22 MPEG-TS multicast sender (BCP-006-04)",
       "tags": {},
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0201",
-      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0202/transportfile",
       "interface_bindings": ["eth0"],
@@ -638,7 +639,7 @@
         ]
       },
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0004",
-      "transport": "urn:x-nmos:transport:rtp.ucast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0005/transportfile",
       "interface_bindings": [
@@ -765,7 +766,7 @@
       "description": "MIN archetype: only the fields sender.json requires, no caps, no tags, IS-05 factory-fresh (master_enable=false, params unset)",
       "tags": {},
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0022",
-      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0023/transportfile",
       "interface_bindings": [
@@ -787,7 +788,7 @@
         ]
       },
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0026",
-      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0025/transportfile",
       "interface_bindings": [
@@ -807,7 +808,7 @@
       "description": "4-channel sender fed by the constrained wide output (IS-08 constraint surface)",
       "tags": {},
       "flow_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0033",
-      "transport": "urn:x-nmos:transport:rtp.mcast",
+      "transport": "urn:x-nmos:transport:rtp",
       "device_id": "2c47bf5e-1b2c-4abc-9def-deadbeef0002",
       "manifest_href": "http://dhs-node:18080/x-nmos/node/v1.3/senders/2c47bf5e-1b2c-4abc-9def-deadbeef0034/transportfile",
       "interface_bindings": [
@@ -884,7 +885,8 @@
           {
             "urn:x-nmos:cap:meta:label": "MPEG transport stream",
             "urn:x-nmos:cap:meta:enabled": true,
-            "urn:x-nmos:cap:format:media_type": { "enum": ["video/SMPTE2022-6", "video/MP2T"] }
+            "urn:x-nmos:cap:format:media_type": { "enum": ["video/SMPTE2022-6", "video/MP2T"] },
+            "urn:x-nmos:cap:transport:bit_rate": { "maximum": 40000 }
           }
         ]
       },
@@ -1348,6 +1350,13 @@
       "bbbb2222-0000-4000-8000-000000000002": "AP///////wAQrAAAQlkAAAAAAQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKs="
     },
     "receiver_outputs": {
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0103": [
+        "bbbb2222-0000-4000-8000-000000000001",
+        "bbbb2222-0000-4000-8000-000000000002"
+      ],
+      "2c47bf5e-1b2c-4abc-9def-deadbeef0006": [
+        "bbbb2222-0000-4000-8000-000000000001"
+      ],
       "2c47bf5e-1b2c-4abc-9def-deadbeef0024": [
         "bbbb2222-0000-4000-8000-000000000001"
       ]

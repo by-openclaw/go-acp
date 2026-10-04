@@ -20,8 +20,35 @@ func TestVendorGainCatalogue(t *testing.T) {
 	if !ok {
 		t.Fatal("DhsGainControl is not in the class catalogue")
 	}
-	if cls.Name != vendorClassName || len(cls.Properties) != 2 || len(cls.Methods) != 1 {
+	if cls.Name != vendorClassName || len(cls.Properties) != 6 || len(cls.Methods) != 1 {
 		t.Errorf("class descriptor = %+v", cls)
+	}
+	// legacyTrim is the model's one deprecated property: read-only,
+	// flagged, superseded by gainDb (the suite's deprecation rounds
+	// need one to score).
+	if p := cls.Properties[2]; p.Name != "legacyTrim" || !p.IsDeprecated || !p.IsReadOnly {
+		t.Errorf("legacyTrim = %+v, want a deprecated read-only property", p)
+	}
+	// The three writable sequences, one per datatype shape, each
+	// typed by a datatype the ClassManager serves.
+	for i, want := range []struct {
+		name, typeName string
+		shape          ms05.NcDatatypeType
+		constrained    bool
+	}{
+		{"channelLabels", "NcString", ms05.NcDatatypeTypePrimitive, true},
+		{"channelModes", vendorChannelModeName, ms05.NcDatatypeTypeEnum, false},
+		{"presets", vendorGainPresetName, ms05.NcDatatypeTypeStruct, false},
+	} {
+		p := cls.Properties[3+i]
+		if p.Name != want.name || !p.IsSequence || p.IsReadOnly || p.TypeName == nil || *p.TypeName != want.typeName ||
+			(p.Constraints != nil) != want.constrained {
+			t.Errorf("sequence %s = %+v", want.name, p)
+		}
+		dt, ok := ms05.StandardDatatype(want.typeName)
+		if !ok || dt.Type != want.shape {
+			t.Errorf("%s datatype = %+v, %v (want shape %d)", want.typeName, dt, ok, want.shape)
+		}
 	}
 	if _, ok := ms05.StandardDatatype(vendorDatatypeName); !ok {
 		t.Fatal("DhsGainDb is not in the datatype catalogue")
@@ -35,7 +62,7 @@ func TestVendorGainCatalogue(t *testing.T) {
 	for _, p := range flat.Properties {
 		names[p.Name] = true
 	}
-	for _, want := range []string{"channelLabel", "gainDb", "enabled", "oid", "runtimePropertyConstraints"} {
+	for _, want := range []string{"channelLabel", "gainDb", "legacyTrim", "enabled", "oid", "runtimePropertyConstraints"} {
 		if !names[want] {
 			t.Errorf("flattened class is missing inherited/own property %q", want)
 		}
@@ -177,5 +204,44 @@ func TestNCPSetGainDb(t *testing.T) {
 	cr = resp.(is12.CommandResponseMessage)
 	if cr.Responses[0].Result.Status != 200 || string(cr.Responses[0].Result.Value) != "3.5" {
 		t.Errorf("gainDb after SetGainDb = %+v", cr.Responses[0].Result)
+	}
+}
+
+// A deprecated property is still served, with the status that says so:
+// Get answers PropertyDeprecated (298), not Ok, on both APIs (MS-05-02
+// NcMethodStatus; MS-05-01 test_ms05_07 scores exactly this). The
+// tool's is_error_status treats 298 as success, so the value travels.
+func TestDeprecatedPropertyReadsAnswer298(t *testing.T) {
+	s := configFixture(t)
+	gain := s.objects["root.GainControl"]
+	trim := gain.findProp("4p3")
+	if trim == nil || !trim.desc.IsDeprecated {
+		t.Fatal("4p3 legacyTrim is the model's deprecated property")
+	}
+
+	// IS-14: the Get method and the REST value resource.
+	st, out := invokeNamed(t, s, gain, "Get", `{"id":{"level":4,"index":3}}`)
+	pv, ok := out.(ms05.NcMethodResultPropertyValue)
+	if st != 200 || !ok || pv.Status != ms05.NcMethodStatusPropertyDeprecated || string(pv.Value) != "0" {
+		t.Errorf("IS-14 Get legacyTrim = %d %+v, want 298 with the value", st, out)
+	}
+	st, body, err := s.dispatchProperties("GET", gain, []string{"4p3", "value"}, nil)
+	if pv, ok := body.(ms05.NcMethodResultPropertyValue); err != nil || st != 200 || !ok || pv.Status != ms05.NcMethodStatusPropertyDeprecated {
+		t.Errorf("IS-14 GET value = %d %+v %v, want 298", st, body, err)
+	}
+	// Its neighbour stays Ok.
+	st, out = invokeNamed(t, s, gain, "Get", `{"id":{"level":4,"index":2}}`)
+	if pv, ok := out.(ms05.NcMethodResultPropertyValue); st != 200 || !ok || pv.Status != ms05.NcMethodStatusOk {
+		t.Errorf("IS-14 Get gainDb = %d %+v, want 200", st, out)
+	}
+
+	// IS-12: Get (1m1) carries 298 and the value too.
+	n := NewIS12NCPServer(nil, s)
+	r := ncpCall(t, n, int(gain.oid), 1, 1, map[string]any{"id": map[string]int{"level": 4, "index": 3}})
+	if r.Status != int(ms05.NcMethodStatusPropertyDeprecated) || string(r.Value) != "0" {
+		t.Errorf("IS-12 Get legacyTrim = %+v, want 298 with the value", r)
+	}
+	if r := ncpCall(t, n, int(gain.oid), 1, 1, map[string]any{"id": map[string]int{"level": 4, "index": 2}}); r.Status != int(ms05.NcMethodStatusOk) {
+		t.Errorf("IS-12 Get gainDb = %+v, want 200", r)
 	}
 }

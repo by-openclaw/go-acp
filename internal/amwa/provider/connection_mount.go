@@ -92,6 +92,20 @@ func (s *IS04NodeServer) attachStreamCompatAPI(srv *httpsession.Server) {
 			e, err := conn.Store().get("senders", id)
 			return err == nil && e.active.MasterEnable
 		})
+		// What a receiver takes, for its IS-11 status: active with
+		// master_enable, and the media type of the SDP it holds.
+		s.streamCompat.SetReceiverStreamFunc(func(id string) (bool, string) {
+			e, err := conn.Store().get("receivers", id)
+			if err != nil {
+				return false, ""
+			}
+			conn.Store().mu.RLock()
+			defer conn.Store().mu.RUnlock()
+			if !e.active.MasterEnable || e.active.TransportFile == nil || e.active.TransportFile.Data == nil {
+				return false, ""
+			}
+			return true, sdpMediaType(*e.active.TransportFile.Data)
+		})
 	}
 	s.streamCompat.onSenderConstraintsChanged = s.bumpSenderVersion
 	s.streamCompat.onDeviceChanged = func(string) { s.bumpDeviceVersions() }

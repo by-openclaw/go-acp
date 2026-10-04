@@ -67,6 +67,12 @@ type configObject struct {
 	path    []string // role path as array, ["root", ...]
 	class   ms05.NcClassDescriptor
 	props   []*configProperty // flattened-descriptor order (own first)
+
+	// rebuildable marks an object a Rebuild restore may reconstruct —
+	// its own read-only properties accept the backup's values (IS-14
+	// Backup & restore). Set at model build; the holder reports it as
+	// isRebuildable.
+	rebuildable bool
 }
 
 // IS14ConfigurationServer serves the Configuration API for one Node.
@@ -86,7 +92,7 @@ type IS14ConfigurationServer struct {
 	// the IS-12 side turns it into PropertyChanged notifications for
 	// subscribed Controllers. Separate from onModelChanged because the
 	// IS-04 hook needs no detail and the IS-12 hook needs all of it.
-	onPropertyChanged func(ms05.NcOid, ms05.NcPropertyId, any)
+	onPropertyChanged func(ms05.NcOid, ms05.NcPropertyId, propertyChange)
 
 	// monitorByResource maps an IS-04 sender/receiver id to its status
 	// monitor's role-path key (BCP-008 touchpoint, inverted).
@@ -97,9 +103,36 @@ type IS14ConfigurationServer struct {
 	monHealth map[string]*monitorHealth
 }
 
+// propertyChange is what one successful write reports to the IS-12
+// side — NcPropertyChangedEventData minus the property id: the kind
+// of change, the item index for the three sequence kinds, and the
+// value (the whole property for ValueChanged, the item for
+// SequenceItemAdded / Changed, nil for Removed).
+type propertyChange struct {
+	Type  ms05.NcPropertyChangeType
+	Index *int
+	Value any
+}
+
+// valueChanged is the plain-write change: the property's new value.
+func valueChanged(v any) propertyChange {
+	return propertyChange{Type: ms05.NcPropertyChangeTypeValueChanged, Value: v}
+}
+
 // SetOnPropertyChanged installs the IS-12 notification hook.
-func (s *IS14ConfigurationServer) SetOnPropertyChanged(fn func(ms05.NcOid, ms05.NcPropertyId, any)) {
+func (s *IS14ConfigurationServer) SetOnPropertyChanged(fn func(ms05.NcOid, ms05.NcPropertyId, propertyChange)) {
 	s.onPropertyChanged = fn
+}
+
+// changed reports one applied write to both hooks — the IS-04 side
+// (Device version bump) and the IS-12 side (notification).
+func (s *IS14ConfigurationServer) changed(obj *configObject, p *configProperty, c propertyChange) {
+	if s.onModelChanged != nil {
+		s.onModelChanged()
+	}
+	if s.onPropertyChanged != nil {
+		s.onPropertyChanged(obj.oid, p.desc.ID, c)
+	}
 }
 
 // objectByOid resolves a model object by its oid — the IS-12 address
@@ -346,13 +379,18 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 
 	// The DhsGainControl worker carries the model's constraint surface
 	// (all three MS-05 levels, declared AND enforced — vendor_gain.go).
-	gain := mustObject(vendorClassID, nextOid, []string{"root", vendorRole}, map[string]any{
+	gainSeed := map[string]any{
 		"userLabel":                  "Gain control",
 		"enabled":                    true,
 		"channelLabel":               "Gain",
 		"gainDb":                     0.0,
+		"legacyTrim":                 0.0,
 		"runtimePropertyConstraints": vendorRuntimeConstraints(),
-	})
+	}
+	for name, v := range vendorGainSequences() {
+		gainSeed[name] = v
+	}
+	gain := mustObject(vendorClassID, nextOid, []string{"root", vendorRole}, gainSeed)
 	objs = append(objs, gain)
 	nextOid++
 
@@ -361,7 +399,9 @@ func NewIS14ConfigurationServer(logger *slog.Logger, bundle *NodeConfig, cfg IS1
 	fault := mustObject(faultClassID, nextOid, []string{"root", faultRole}, map[string]any{
 		"userLabel": "Fault injection control",
 		"enabled":   true,
+		"armed":     true,
 	})
+	fault.rebuildable = true
 	objs = append(objs, fault)
 
 	if p := root.findProp("2p2"); p != nil { // NcBlock.members
@@ -504,7 +544,7 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 			if err != nil {
 				return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
 			}
-			return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: raw}, nil
+			return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: raw}, nil
 		case stdhttp.MethodPut:
 			body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 			if err != nil {
@@ -517,7 +557,7 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 			if st, err := s.setProperty(obj, p, req.Value); err != nil {
 				return ms05Err(400, st, err.Error())
 			}
-			return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+			return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 		}
 		return ms05Err(405, ms05.NcMethodStatusInvalidRequest, "value supports GET and PUT")
 	}
@@ -527,7 +567,14 @@ func (s *IS14ConfigurationServer) dispatchProperties(method string, obj *configO
 // setProperty validates + applies one write. Readonly properties
 // answer NcMethodStatus 405; a null on a non-nullable property 417.
 func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProperty, raw json.RawMessage) (ms05.NcMethodStatus, error) {
-	if p.desc.IsReadOnly {
+	return s.writeProperty(obj, p, raw, false)
+}
+
+// writeProperty is setProperty with the one door a Rebuild restore
+// opens: reconstruct=true lets a rebuildable object's own read-only
+// property take the backup's value. Every other check still applies.
+func (s *IS14ConfigurationServer) writeProperty(obj *configObject, p *configProperty, raw json.RawMessage, reconstruct bool) (ms05.NcMethodStatus, error) {
+	if p.desc.IsReadOnly && !reconstruct {
 		return ms05.NcMethodStatusReadonly,
 			fmt.Errorf("property %s (%s) is readonly", propKey(p.desc.ID), p.desc.Name)
 	}
@@ -543,11 +590,9 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		return ms05.NcMethodStatusParameterError,
 			fmt.Errorf("property %s (%s): %s", propKey(p.desc.ID), p.desc.Name, msg)
 	}
-	if c := effectiveConstraint(obj, p); c != nil {
-		if err := ms05.CheckConstraintValue(v, c); err != nil {
-			return ms05.NcMethodStatusParameterError,
-				fmt.Errorf("property %s (%s): %v", propKey(p.desc.ID), p.desc.Name, err)
-		}
+	if err := constraintViolation(obj, p, v); err != nil {
+		return ms05.NcMethodStatusParameterError,
+			fmt.Errorf("property %s (%s): %v", propKey(p.desc.ID), p.desc.Name, err)
 	}
 	s.mu.Lock()
 	p.value = v
@@ -567,12 +612,7 @@ func (s *IS14ConfigurationServer) setProperty(obj *configObject, p *configProper
 		}
 	}
 	s.mu.Unlock()
-	if s.onModelChanged != nil {
-		s.onModelChanged()
-	}
-	if s.onPropertyChanged != nil {
-		s.onPropertyChanged(obj.oid, p.desc.ID, v)
-	}
+	s.changed(obj, p, valueChanged(v))
 	return ms05.NcMethodStatusOk, nil
 }
 
@@ -607,6 +647,40 @@ func effectiveConstraint(obj *configObject, p *configProperty) any {
 	return nil
 }
 
+// successStatus is the status of a method that touched p and
+// succeeded: Ok, or PropertyDeprecated (298) when the descriptor flags
+// the property — MS-05-02 NcMethodStatus keeps serving a deprecated
+// property and says so in the status; a controller that ignores it
+// is one firmware generation from a PropertyNotImplemented.
+func successStatus(p *configProperty) ms05.NcMethodStatus {
+	if p.desc.IsDeprecated {
+		return ms05.NcMethodStatusPropertyDeprecated
+	}
+	return ms05.NcMethodStatusOk
+}
+
+// constraintViolation applies the property's effective constraint to
+// one decoded value — per item for a sequence, since a constraint on
+// a sequence property constrains its items (MS-05-02
+// Constraints.html). typeMismatch has already proved a non-null
+// sequence value is an array; a value it could not classify is
+// handed to the checker as is.
+func constraintViolation(obj *configObject, p *configProperty, v any) error {
+	c := effectiveConstraint(obj, p)
+	if c == nil {
+		return nil
+	}
+	if items, ok := v.([]any); ok && p.desc.IsSequence {
+		for i, item := range items {
+			if err := ms05.CheckConstraintValue(item, c); err != nil {
+				return fmt.Errorf("item %d: %v", i, err)
+			}
+		}
+		return nil
+	}
+	return ms05.CheckConstraintValue(v, c)
+}
+
 // typeMismatch reports (as a non-empty message) a value the
 // property's declared datatype cannot hold. Deliberately shallow —
 // it classifies by JSON kind against the resolved datatype family and
@@ -618,28 +692,114 @@ func typeMismatch(desc *ms05.NcPropertyDescriptor, v any) string {
 		return ""
 	}
 	if desc.IsSequence {
-		if _, ok := v.([]any); !ok {
+		items, ok := v.([]any)
+		if !ok {
 			return fmt.Sprintf("value for sequence %s must be an array", *desc.TypeName)
+		}
+		for i, item := range items {
+			if item == nil {
+				return fmt.Sprintf("item %d of sequence %s is null", i, *desc.TypeName)
+			}
+			if msg := valueMismatch(*desc.TypeName, item); msg != "" {
+				return fmt.Sprintf("item %d: %s", i, msg)
+			}
 		}
 		return ""
 	}
-	kind := jsonKindFor(*desc.TypeName)
-	switch kind {
+	return valueMismatch(*desc.TypeName, v)
+}
+
+// valueMismatch classifies one non-null value against one datatype
+// name: the JSON kind first, then what the two datatype shapes that
+// mean more than a kind add — an enum's members, a struct's fields.
+func valueMismatch(typeName string, v any) string {
+	switch jsonKindFor(typeName) {
 	case "string":
 		if _, ok := v.(string); !ok {
-			return fmt.Sprintf("value is not a %s (string expected)", *desc.TypeName)
+			return fmt.Sprintf("value is not a %s (string expected)", typeName)
 		}
 	case "bool":
 		if _, ok := v.(bool); !ok {
-			return fmt.Sprintf("value is not a %s (boolean expected)", *desc.TypeName)
+			return fmt.Sprintf("value is not a %s (boolean expected)", typeName)
 		}
 	case "number":
 		if _, ok := v.(float64); !ok {
-			return fmt.Sprintf("value is not a %s (number expected)", *desc.TypeName)
+			return fmt.Sprintf("value is not a %s (number expected)", typeName)
 		}
 	case "object":
 		if _, ok := v.(map[string]any); !ok {
-			return fmt.Sprintf("value is not a %s (object expected)", *desc.TypeName)
+			return fmt.Sprintf("value is not a %s (object expected)", typeName)
+		}
+	}
+	dt, ok := ms05.StandardDatatype(typeName)
+	if !ok {
+		return ""
+	}
+	switch dt.Type {
+	case ms05.NcDatatypeTypeEnum:
+		n := v.(float64) // the kind check above has run
+		for _, item := range dt.Items {
+			if float64(item.Value) == n {
+				return ""
+			}
+		}
+		return fmt.Sprintf("%v is not a member of enum %s", n, typeName)
+	case ms05.NcDatatypeTypeStruct:
+		return structMismatch(typeName, v.(map[string]any))
+	}
+	return ""
+}
+
+// structMismatch checks one object against a struct datatype's
+// flattened fields: every non-nullable field present, every field of
+// its own datatype, inside its own constraint (declared on the field,
+// else inherited from the field's datatype), and nothing the struct
+// does not declare — MS-05-02 structs are closed.
+func structMismatch(typeName string, obj map[string]any) string {
+	dt, ok := flattenedDatatype(&typeName)
+	if !ok {
+		return ""
+	}
+	declared := make(map[string]bool, len(dt.Fields))
+	for _, f := range dt.Fields {
+		declared[f.Name] = true
+		fv, present := obj[f.Name]
+		if !present || fv == nil {
+			if f.IsNullable {
+				continue
+			}
+			return fmt.Sprintf("field %s of %s is required", f.Name, typeName)
+		}
+		if f.TypeName == nil {
+			continue
+		}
+		c := f.Constraints
+		if c == nil {
+			if fdt, ok := ms05.StandardDatatype(*f.TypeName); ok {
+				c = fdt.Constraints
+			}
+		}
+		items := []any{fv}
+		if f.IsSequence {
+			if items, ok = fv.([]any); !ok {
+				return fmt.Sprintf("field %s of %s must be an array", f.Name, typeName)
+			}
+		}
+		for i, item := range items {
+			if item == nil {
+				return fmt.Sprintf("field %s of %s: item %d is null", f.Name, typeName, i)
+			}
+			if msg := valueMismatch(*f.TypeName, item); msg != "" {
+				return fmt.Sprintf("field %s of %s: %s", f.Name, typeName, msg)
+			}
+			if err := ms05.CheckConstraintValue(item, c); err != nil {
+				return fmt.Sprintf("field %s of %s: %v", f.Name, typeName, err)
+			}
+		}
+	}
+	for k := range obj {
+		if !declared[k] {
+			return fmt.Sprintf("%s has no field %s", typeName, k)
 		}
 	}
 	return ""
@@ -787,7 +947,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		if err != nil {
 			return ms05Err(500, ms05.NcMethodStatusDeviceError, err.Error())
 		}
-		return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: raw}, nil
+		return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: raw}, nil
 
 	case "Set":
 		p, e := needProp()
@@ -800,7 +960,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		if st, err := s.setProperty(obj, p, args.Value); err != nil {
 			return ms05Err(400, st, err.Error())
 		}
-		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 
 	case "GetSequenceItem", "GetSequenceLength", "SetSequenceItem", "AddSequenceItem", "RemoveSequenceItem":
 		return s.invokeSequence(obj, md.Name, args)
@@ -828,7 +988,7 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 		// over IS-14 REST so the Ansible verify plays reach it with
 		// plain HTTP.
 		if err := s.invokeFaultMethod(md.Name, rawArgs); err != nil {
-			return ms05Err(400, ms05.NcMethodStatusParameterError, err.Error())
+			return ms05Err(400, faultMethodStatus(err), err.Error())
 		}
 		return 200, ms05.NcMethodResult{Status: ms05.NcMethodStatusOk}, nil
 
@@ -975,9 +1135,9 @@ func (s *IS14ConfigurationServer) invoke(obj *configObject, md *ms05.NcMethodDes
 	return ms05Err(400, ms05.NcMethodStatusMethodNotImplemented, "method "+md.Name+" not implemented")
 }
 
-// invokeSequence handles the five NcObject sequence methods. The
-// model's only sequence-typed properties are readonly, so the mutating
-// three answer 405 honestly.
+// invokeSequence handles the five NcObject sequence methods; the
+// mutating three go through the gate configuration_sequence.go shares
+// with the IS-12 server.
 func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string, args methodArgs) (int, any, error) {
 	if args.ID == nil {
 		return ms05Err(400, ms05.NcMethodStatusParameterError, "id argument required")
@@ -1003,7 +1163,7 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 	}
 	switch name {
 	case "GetSequenceLength":
-		return 200, ms05.NcMethodResultLength{Status: ms05.NcMethodStatusOk, Value: uint32(len(items))}, nil
+		return 200, ms05.NcMethodResultLength{Status: successStatus(p), Value: uint32(len(items))}, nil
 	case "GetSequenceItem":
 		if args.Index == nil {
 			return ms05Err(400, ms05.NcMethodStatusParameterError, "index argument required")
@@ -1012,11 +1172,34 @@ func (s *IS14ConfigurationServer) invokeSequence(obj *configObject, name string,
 			return ms05Err(400, ms05.NcMethodStatusIndexOutOfBounds,
 				fmt.Sprintf("index %d out of bounds (length %d)", *args.Index, len(items)))
 		}
-		return 200, ms05.NcMethodResultPropertyValue{Status: ms05.NcMethodStatusOk, Value: items[*args.Index]}, nil
+		return 200, ms05.NcMethodResultPropertyValue{Status: successStatus(p), Value: items[*args.Index]}, nil
+	case "AddSequenceItem":
+		if args.Value == nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "value argument required")
+		}
+		index, st, err := s.sequenceAdd(obj, p, args.Value)
+		if err != nil {
+			return ms05Err(400, st, err.Error())
+		}
+		return 200, ms05.NcMethodResultId{Status: successStatus(p), Value: ms05.NcId(index)}, nil
+	case "SetSequenceItem":
+		if args.Index == nil || args.Value == nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "index and value arguments required")
+		}
+		if st, err := s.sequenceSet(obj, p, int(*args.Index), args.Value); err != nil {
+			return ms05Err(400, st, err.Error())
+		}
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
+	case "RemoveSequenceItem":
+		if args.Index == nil {
+			return ms05Err(400, ms05.NcMethodStatusParameterError, "index argument required")
+		}
+		if st, err := s.sequenceRemove(obj, p, int(*args.Index)); err != nil {
+			return ms05Err(400, st, err.Error())
+		}
+		return 200, ms05.NcMethodResult{Status: successStatus(p)}, nil
 	}
-	// SetSequenceItem / AddSequenceItem / RemoveSequenceItem: every
-	// sequence property in this model is readonly.
-	return ms05Err(400, ms05.NcMethodStatusReadonly, p.desc.Name+" is readonly")
+	return ms05Err(400, ms05.NcMethodStatusMethodNotImplemented, "method "+name+" not implemented")
 }
 
 // classIDMatches reports whether have equals want, or (derived) has
@@ -1128,7 +1311,7 @@ func (s *IS14ConfigurationServer) backup(obj *configObject, recurse, includeDesc
 			DependencyPaths:       [][]string{},
 			AllowedMembersClasses: []ms05.NcClassId{},
 			Values:                []is14.PropertyHolder{},
-			IsRebuildable:         false,
+			IsRebuildable:         o.rebuildable,
 		}
 		if !isCM || includeDesc {
 			for _, p := range o.props {
@@ -1149,10 +1332,15 @@ func (s *IS14ConfigurationServer) backup(obj *configObject, recurse, includeDesc
 // against the scope. Per Backup & restore.md: every in-scope object
 // offered in the data set gets a validation entry; readonly members
 // produce Warning (300) notices and are left untouched; unknown paths
-// report NotFound; and a Rebuild request on this non-rebuildable
-// model behaves as a Modify with notices (the doc's interoperability
-// floor).
+// report NotFound. A Rebuild reconstructs the model's rebuildable
+// objects: their own read-only properties take the backup's values,
+// while NcObject's members (classId, oid, constantOid, owner, role,
+// touchpoints, runtimePropertyConstraints) stay — the doc lets a
+// structural property change only when the PARENT block is
+// rebuildable, and no block here is. On everything else a Rebuild
+// behaves as a Modify with notices (the doc's interoperability floor).
 func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkPropertiesSetArgs, apply bool) []is14.ObjectPropertiesSetValidation {
+	rebuild := args.RestoreMode != nil && *args.RestoreMode == is14.RestoreModeRebuild
 	scope := map[string]bool{}
 	for _, key := range s.scopePaths(obj, *args.Recurse) {
 		scope[key] = true
@@ -1196,10 +1384,22 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				})
 				continue
 			}
-			if p.desc.IsReadOnly {
+			reconstruct := rebuild && target.rebuildable && p.desc.IsReadOnly
+			if p.desc.IsReadOnly && !reconstruct {
 				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
 					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeWarning,
 					NoticeMessage: "Property is readonly",
+				})
+				continue
+			}
+			if reconstruct && p.desc.ID.Level == 1 {
+				// NcObject's own members are the object's identity,
+				// structure and declared constraints: a Rebuild of the
+				// object does not change them (its parent block would
+				// have to be rebuildable).
+				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeWarning,
+					NoticeMessage: "Structural property: the parent block is not rebuildable",
 				})
 				continue
 			}
@@ -1227,23 +1427,21 @@ func (s *IS14ConfigurationServer) restore(obj *configObject, args *is14.BulkProp
 				hasError = true
 				continue
 			}
-			if c := effectiveConstraint(target, p); c != nil {
+			if err := constraintViolation(target, p, ph.Value); err != nil {
 				// The restore twin of setProperty's constraint check
 				// (IS-14 test_27 offers out-of-range values here and
 				// expects them noticed, not accepted).
-				if err := ms05.CheckConstraintValue(ph.Value, c); err != nil {
-					entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
-						ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeError,
-						NoticeMessage: err.Error(),
-					})
-					hasError = true
-					continue
-				}
+				entry.Notices = append(entry.Notices, is14.PropertyRestoreNotice{
+					ID: ph.ID, Name: p.desc.Name, NoticeType: is14.NoticeError,
+					NoticeMessage: err.Error(),
+				})
+				hasError = true
+				continue
 			}
 			if apply {
 				raw, err := json.Marshal(ph.Value)
 				if err == nil {
-					if _, err := s.setProperty(target, p, raw); err == nil {
+					if _, err := s.writeProperty(target, p, raw, reconstruct); err == nil {
 						changed = true
 					}
 				}

@@ -109,3 +109,25 @@ func sdpReceiverParams(text string) is05.TransportParams {
 	}
 	return legs[0]
 }
+
+// sdpMediaType is the IANA media type the SDP's first media section
+// carries — "<m= type>/<rtpmap encoding>", so video/raw, audio/L24,
+// video/smpte291, video/jxsv, video/SMPTE2022-6 — or video/MP2T for
+// the static payload type 33 an MPEG-TS stream uses with no rtpmap.
+// "" when the SDP does not parse or names no media.
+func sdpMediaType(text string) string {
+	sess, _, err := sdp.Parse(text)
+	if err != nil || sess == nil || len(sess.Media) == 0 {
+		return ""
+	}
+	m := sess.Media[0]
+	for _, pt := range m.Formats {
+		if rm, ok := m.RTPMap[pt]; ok && rm.Encoding != "" {
+			return m.Type + "/" + rm.Encoding
+		}
+		if pt == "33" {
+			return m.Type + "/MP2T"
+		}
+	}
+	return ""
+}

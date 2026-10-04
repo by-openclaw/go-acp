@@ -27,6 +27,9 @@ dhs_amwa_validate_results_dir: /root/amwa-validate
 # The plant (all addresses live on the plant host, group [plant]).
 dhs_amwa_validate_plant_host: "10.6.250.101"
 dhs_amwa_validate_node_port: 18080
+# The plant's second resident node, the reference SENDER the IS-11
+# suite streams from (tooling.yml renders it into the tool config).
+dhs_amwa_validate_is11_reference_port: 18400
 dhs_amwa_validate_registry_port: 8235
 # The mirror's served read-only Query face (--serve on the resident
 # mirror unit — dhs_amwa_plant_mirror_serve). Mirror-scope query rows
@@ -231,23 +234,31 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.0}], baseline_pass: 36, baseline_cnt: 0 }
   - { id: IS-08-02, scope: node, target: node,
       rows: [{ver: v1.3}, {ver: v1.0}], baseline_pass: 43, baseline_cnt: 0 }
+  # The reference-sender rounds (test_04_03_01/_02, _04_04_01/_02) pair
+  # the tool's reference sender with the first receiver of each format
+  # by exact transport URN, so the fixture declares the generic
+  # urn:x-nmos:transport:rtp on both sides (as nmos-cpp does). The four
+  # stay Warning on any node with two receivers of a format: the tool
+  # activates one and reports the rest as "no compatible senders".
   - { id: IS-11-01, scope: node, target: node,
       rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
-      baseline_pass: 103, baseline_cnt: 0 }
-  - { id: IS-12-01, scope: node, target: node,
+      baseline_pass: 107, baseline_cnt: 0 }
+  # fresh: with MS05_INVASIVE_TESTING on, the suite sets properties on
+  # the model; the node is restarted before so it starts clean, and
+  # IS-14-01 (fresh too) is not scored on what IS-12-01 left.
+  - { id: IS-12-01, scope: node, target: node, fresh: true,
       rows: [{ver: v1.3}, {ver: v1.0, urlpath: "x-nmos/ncp/v1.0"}, {ver: v1.0}, {ver: v1.0}],
-      # baseline_cnt 2 = tool-side auto_ms05 "Not Implemented" +
-      # test_ms05_07 (we declare no deprecated properties — by design).
-      baseline_pass: 135, baseline_cnt: 2 }
-  - { id: IS-14-01, scope: node, target: node,
+      # baseline_cnt 1 = the tool-side auto_ms05 "Not Implemented" round.
+      baseline_pass: 147, baseline_cnt: 1 }
+  - { id: IS-14-01, scope: node, target: node, fresh: true,
       rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
-      baseline_pass: 150, baseline_cnt: 1 }
+      baseline_pass: 167, baseline_cnt: 0 }
   - { id: BCP-005-01-01, scope: node, target: node,
       rows: [{ver: v1.3}], baseline_pass: 16, baseline_cnt: 0 }
   - { id: BCP-006-01-01, scope: node, target: node,
       rows: [{ver: v1.3}], baseline_pass: 23, baseline_cnt: 0 }
   - { id: BCP-006-04, scope: node, target: node,
-      rows: [{ver: v1.3}], baseline_pass: 20, baseline_cnt: 0 }
+      rows: [{ver: v1.3}], baseline_pass: 21, baseline_cnt: 0 }
   - { id: BCP-007-03-01, scope: node, target: node,
       rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 55, baseline_cnt: 0 }
   - { id: BCP-008-01-01, scope: node, target: node,
