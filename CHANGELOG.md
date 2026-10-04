@@ -7,6 +7,36 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.33.0](https://github.com/by-openclaw/go-acp/compare/v0.32.0...v0.33.0) (2026-10-04)
+
+
+### Features
+
+* **amwa/node:** a receiver's IS-11 status follows the stream it was connected to ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([7430858](https://github.com/by-openclaw/go-acp/commit/743085860a9c9720e5d964f14a1f2038682f772c))
+* **amwa/node:** every optional round the suites can score — fixture, MS-05 sequences, 298, rebuildable worker, IS-11 status ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([7e6f55e](https://github.com/by-openclaw/go-acp/commit/7e6f55e0a4c7e71dc8cc5ca667fedc30a324cc38))
+* **amwa/node:** the fault worker is rebuildable, and a Rebuild restore reconstructs it ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([2762e5a](https://github.com/by-openclaw/go-acp/commit/2762e5a8746c3f00f1c65f0468ef15c045a2b5e7))
+* **amwa/node:** the gain worker carries writable sequences, and every write path checks items ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([de31753](https://github.com/by-openclaw/go-acp/commit/de317533d2b962f3c989f66ea81f6687a3e9c974))
+* **amwa/registry:** bounded delivery — SYNC in chunked grains, mirror pushes paced into the target ([#1283](https://github.com/by-openclaw/go-acp/issues/1283)) ([9882416](https://github.com/by-openclaw/go-acp/commit/9882416e62dbfec48fab3b2d385ae7399bd44c0d))
+* **amwa:** the node fixture and the tool config reach every optional round the suites can score ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([9b894b0](https://github.com/by-openclaw/go-acp/commit/9b894b092d75ec6036913f17ca46aed1f72a8dab))
+* **ansible:** a play that changes a Sender's transport and records who learned (amwa-sdp-change) ([79720d9](https://github.com/by-openclaw/go-acp/commit/79720d9921efedea4533f9a475ecadd5cd3e62e0))
+
+
+### Bug Fixes
+
+* **amwa/node:** a method on a deprecated property answers PropertyDeprecated ([#1252](https://github.com/by-openclaw/go-acp/issues/1252)) ([eb4d7b8](https://github.com/by-openclaw/go-acp/commit/eb4d7b87a3b2c5dd671374645c9a5ab4d3ef0aff))
+* **amwa/provider:** a receiver pairs an SDP's media sections with its legs in order ([#1270](https://github.com/by-openclaw/go-acp/issues/1270)) ([2f4bc09](https://github.com/by-openclaw/go-acp/commit/2f4bc0953ef40056e27e09e50e9a14751eaddab7))
+* **amwa/registry:** a new subscription encodes its own topic, with the store lock released ([#1279](https://github.com/by-openclaw/go-acp/issues/1279)) ([12d88cf](https://github.com/by-openclaw/go-acp/commit/12d88cfd2741c01aeabf336d4fd2d341a25d5767))
+* **ansible/dhs_amwa_validate:** the facade walks the Query API at the minor under test; baselines the fleet proved ([#1254](https://github.com/by-openclaw/go-acp/issues/1254)) ([e93c4dc](https://github.com/by-openclaw/go-acp/commit/e93c4dcca5caf35ce74c0ad8e5bd207ccd09622b))
+* **ansible/dhs_amwa:** the nmos-cpp reference node has resources and registers with the reference registry ([#1268](https://github.com/by-openclaw/go-acp/issues/1268)) ([9525778](https://github.com/by-openclaw/go-acp/commit/9525778e6e85877d35ff2a074911d34df44786af))
+* **ansible/dhs_amwa:** the testing tool is the conformance role's container, not the stack's ([#1278](https://github.com/by-openclaw/go-acp/issues/1278)) ([8ebd5d5](https://github.com/by-openclaw/go-acp/commit/8ebd5d561d487cf69787abd2406285613fbea746))
+* **ansible/dhs_amwa:** the tooling stack runs the testing tool image the gate pins ([#1276](https://github.com/by-openclaw/go-acp/issues/1276)) ([3f049ac](https://github.com/by-openclaw/go-acp/commit/3f049accd659df0cc9867771157a43b644c81d2a))
+
+
+### Performance Improvements
+
+* **amwa/registry:** a Query page costs the page, not the collection ([#1285](https://github.com/by-openclaw/go-acp/issues/1285)) ([9784347](https://github.com/by-openclaw/go-acp/commit/9784347c2fb0187c0f3a99efb98dee74fe224751))
+* **amwa/registry:** a resource's wire form is kept between uses; a subscription without params skips the filter ([#1281](https://github.com/by-openclaw/go-acp/issues/1281)) ([a19fd4e](https://github.com/by-openclaw/go-acp/commit/a19fd4e838043d229e33534d5d70391fd2cdbab5))
+
 ## [0.32.0](https://github.com/by-openclaw/go-acp/compare/v0.31.0...v0.32.0) (2026-10-03)
 
 
