@@ -36,8 +36,16 @@ registry's 12 s expiry; it is gone within 5 s of stopping.
 dhs registry nmos serve --bind :8235 --advertise-host <ip>:8235 --priority 0
 ```
 
-Not yet proven against a third-party Node registering into it (audit
-gaps R1 / R2).
+Scored by a third party's Node on v0.36.0 (`amwa-interop-nmos-cpp.yml`):
+an nmos-cpp Node registers into it — its 91 resources are in our Query
+API document for document, it is held by its heartbeats, paged Query and
+the WebSocket's first grain carry its resources, it registers again 5 s
+after a 404, and it expires 10 s after a kill.
+
+Known, open: the Query API does not show a resource registered at a
+higher minor on its lower endpoints (#1337), and returns a re-encoding
+of a resource rather than the registered document — a key the Node did
+not send can appear with its zero value (#1338).
 
 ## Mirror
 
@@ -48,11 +56,15 @@ dhs registry nmos mirror --source http://<plant-registry> --target http://<other
 
 `/status.json` carries the counters to watch. `failures` and `skipped`
 stand still on a healthy mirror. `resyncs` counts ordered passes: from
-the release after v0.35.0 one is expected when a Node registers (its
-children are held until the target holds their parents, then sent in
-order), and more than that says something was refused or evicted. On
-the plant after the v0.35.0 converge: 7 275 forwarded, 0 failures,
-0 resyncs; on v0.35.0 a Node registering afterwards still cost refused
-POSTs before a repair (#1340, fixed, not released).
+v0.36.0 one is expected when a Node registers (its children are held
+until the target holds their parents, then sent in order), and more
+than that says something was refused or evicted. On the plant after
+the v0.36.0 converge: 12 582 forwarded for 7 266 resources, 0 failures,
+2 passes — the registry had restarted with it and every node was
+registering again (#1346); level with Cerebrum, nothing refused. Paired
+with nmos-cpp on v0.36.0: our registry mirrored into the nmos-cpp
+registry is level at the fill and after a live registration with 0
+refused; the nmos-cpp registry mirrored into ours differs on one
+document (#1338).
 Reading the audit trail: [`runbook.md`](runbook.md), "Reading the
 mirror's audit trail".
