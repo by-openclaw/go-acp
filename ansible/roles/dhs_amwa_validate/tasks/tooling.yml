@@ -141,7 +141,10 @@
   when: _validate_need_auth and _auth_tool_state.rc != 0
   changed_when: true
 
-# Same conformance profile as the resident PLUS the armed knobs —
+# Same conformance profile as the resident — the IS-11 reference
+# sender and MS-05 invasive testing included: without them the armed
+# IS-11-01 and IS-14-01 twins sat 8 and 16 rows fewer than the plain
+# entries (#1312) — PLUS the armed knobs —
 # ENABLE_AUTH is the tool's own switch (its receipts CONFIG dump names
 # it), PORT_BASE moves the GUI/API + every PORT_BASE-relative mock,
 # WEBSOCKET_PORT_BASE moves the WS mocks off the resident's range.
@@ -151,6 +154,9 @@
       PULL_REPOS = False
       from . import Config as CONFIG
       CONFIG.GARBAGE_COLLECTION_TIMEOUT = 30
+      CONFIG.IS11_REFERENCE_SENDER_NODE_API_URL = "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_is11_reference_port }}/x-nmos/node/v1.3/"
+      CONFIG.IS11_REFERENCE_SENDER_CONNECTION_API_URL = "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_is11_reference_port }}/x-nmos/connection/v1.1/"
+      CONFIG.MS05_INVASIVE_TESTING = True
       CONFIG.ENABLE_AUTH = True
       CONFIG.PORT_BASE = {{ dhs_amwa_validate_auth_port_base }}
       CONFIG.WEBSOCKET_PORT_BASE = {{ dhs_amwa_validate_auth_ws_port_base }}

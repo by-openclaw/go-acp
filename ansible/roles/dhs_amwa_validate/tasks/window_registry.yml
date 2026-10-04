@@ -15,12 +15,13 @@
 #     api_auth=true is advertised. Resident units are never armed.
 #
 # The plant registry stays running and keeps its pri-0 announce. The
-# transient announces under its own instance name: at pri 99 for the
-# plain exam (in the production range, so the tool's advertisement
-# rounds score a Pass rather than the "reserved for development"
-# Warning, and still behind the plant's 0 so no node prefers it), at
-# pri 100 for the armed one so no plant node re-elects onto a registry
-# it holds no token for (pri 0-99 production, 100+ dev — IS-04 §3).
+# transient announces under its own instance name at pri 99, plain or
+# armed: in the production range (0-99; 100+ is development — IS-04
+# §3), so the tool's advertisement rounds score a Pass rather than the
+# "reserved for development" Warning, and still behind the plant's 0
+# so no node prefers it. The armed one sat at 100 until #1312 and drew
+# that Warning twice; a node that did fail over to it would be refused
+# for want of a token, which costs nothing.
 #
 # The transient mirrors the plant registry's exam-shaping flags
 # (dhs_amwa_plant's dhs-nmos-registry.service.j2): the tool's pinned
@@ -41,7 +42,7 @@
     {{ dhs_amwa_validate_plant_bin }} registry nmos serve
     --bind 0.0.0.0:{{ dhs_amwa_validate_cut_port }}
     --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
-    --priority {{ 100 if _cut_armed else 99 }}
+    --priority 99
     --instance-name dhs-nmos-validate-{{ 'auth' if _cut_armed else 'cut' }}
     --page-limit-default 1000
     --heartbeat-timeout 30s
