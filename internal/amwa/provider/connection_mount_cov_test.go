@@ -266,6 +266,24 @@ func TestSchedulerFiresAScheduledActivation(t *testing.T) {
 	// Due in the past: the timer is armed for "now" and fires on the
 	// clock's next step, however small.
 	armed(t, clk)
+
+	// Wakes that change nothing keep the timer in hand. The PATCH above
+	// left one wake pending before the scheduler started, and five more
+	// follow here: one timer stays armed, not one per wake. With a new
+	// timer per wake the old one was abandoned, and a clock step taken
+	// between the two fired the abandoned one — the activation never
+	// happened.
+	for i := 0; i < 5; i++ {
+		s.activationWake <- struct{}{}
+		for len(s.activationWake) != 0 {
+			time.Sleep(time.Millisecond)
+		}
+	}
+	time.Sleep(20 * time.Millisecond) // the last wake is acted on by now
+	if n := clk.Waiters(); n != 1 {
+		t.Fatalf("%d timers armed after wakes that changed nothing, want the one", n)
+	}
+
 	clk.Advance(time.Nanosecond)
 	tap.until(t, "scheduled activation fired")
 }

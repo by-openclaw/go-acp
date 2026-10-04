@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -84,6 +85,10 @@ func (w *worker) run(ctx context.Context) {
 // runs one command on the wire.
 func (w *worker) exec(ctx context.Context, c command) {
 	if c.done != nil {
+		// Once only: a read releases its in-flight mark as soon as the
+		// wire read is over (doRead), and this deferred call covers
+		// every other way out.
+		c.done = sync.OnceFunc(c.done)
 		defer c.done()
 	}
 	if w.minGap > 0 {
@@ -110,6 +115,14 @@ func (w *worker) exec(ctx context.Context, c command) {
 func (w *worker) doRead(ctx context.Context, c command) {
 	v, err := w.proto.GetValue(ctx, c.req)
 	w.mReads.Add(1)
+	// The read is over once the wire answers. Its in-flight mark goes
+	// BEFORE the result is published: whoever reacts to the event must
+	// find the scheduler free to queue the next read of this address.
+	// Released after, a subscriber quick enough — a test on a fake
+	// clock — had the next due read skipped as "still in flight" (#1191).
+	if c.done != nil {
+		c.done()
+	}
 	if err != nil {
 		w.mErrors.Add(1)
 		w.log.Debug("monitor: read failed", "device", w.name, "addr", c.key, "err", err)

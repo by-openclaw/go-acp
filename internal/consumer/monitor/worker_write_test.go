@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,48 @@ func newTestWorker(fp *fakeProto) *worker {
 		clk:   clock.NewFake(time.Time{}),
 		log:   discardLog(),
 		last:  make(map[string]consumer.Value),
+	}
+}
+
+// A read is over once the wire answers: its in-flight mark is released
+// BEFORE the event is published, so whoever reacts to the event finds
+// the scheduler free to queue the next read of that address. The bus
+// runs a subscriber's filter inside Publish — that is the instant this
+// test looks at the mark. Released after the publication, a quick
+// subscriber (a test on a fake clock) had the next due read skipped as
+// "still in flight", and the event it waited for never came (#1191).
+func TestWorkerReleasesAReadBeforeItPublishesIt(t *testing.T) {
+	fp := newFakeProto()
+	req := consumer.ValueRequest{Path: "port.1.link"}
+	key := addrKey(req)
+	fp.set(key, intVal(0))
+	w := newTestWorker(fp)
+
+	var released, releases atomic.Int32
+	atPublish := int32(-1)
+	_, _ = w.bus.Subscribe(4, func(consumer.Event) bool {
+		atPublish = released.Load()
+		return true
+	})
+
+	w.exec(context.Background(), command{kind: cmdRead, key: key, req: req, done: func() {
+		released.Store(1)
+		releases.Add(1)
+	}})
+
+	if atPublish != 1 {
+		t.Errorf("at publication the read was still marked in flight (released=%d)", atPublish)
+	}
+	if n := releases.Load(); n != 1 {
+		t.Errorf("the in-flight mark was released %d times, want once", n)
+	}
+
+	// A read that fails publishes nothing and still releases its mark.
+	fp.getErr[key] = errors.New("no response")
+	released.Store(0)
+	w.exec(context.Background(), command{kind: cmdRead, key: key, req: req, done: func() { released.Store(1) }})
+	if released.Load() != 1 {
+		t.Error("a failed read must release its in-flight mark")
 	}
 }
 

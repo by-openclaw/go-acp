@@ -85,6 +85,14 @@ func newEventDevice(t *testing.T) *eventDevice {
 		case "/docs/api.yml":
 			_, _ = w.Write([]byte(eventSpec))
 		case codec.WebSocketPath:
+			// Counted BEFORE the handshake is answered. The plugin's
+			// Connect returns the moment it reads that answer; a count
+			// taken after Accept is taken on this goroutine, later, and a
+			// test reading it straight after Connect saw one channel
+			// where two had been opened (the rhel9 CI failure).
+			d.mu.Lock()
+			d.conns++
+			d.mu.Unlock()
 			conn, err := ws.Accept(w, r, nil)
 			if err != nil {
 				t.Errorf("accept: %v", err)
@@ -92,7 +100,6 @@ func newEventDevice(t *testing.T) *eventDevice {
 			}
 			d.mu.Lock()
 			d.conn = conn
-			d.conns++
 			d.mu.Unlock()
 			d.serve(conn)
 		default:

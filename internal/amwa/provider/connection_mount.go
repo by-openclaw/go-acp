@@ -391,22 +391,37 @@ func (s *IS04NodeServer) runActivationScheduler(ctx context.Context) {
 	wake := s.activationWake
 	// The injected clock; a zero Deps means the system one.
 	clk := s.cfg.Deps.WithDefaults().Clock
+	// The timer in hand and the instant it is for. A wake says "look
+	// again"; when the earliest instant has not moved, the timer in
+	// hand is still the right one and is kept. Arming a new one on
+	// every wake abandoned the old: a wake landing just after the timer
+	// was armed left two for one instant, and on a clock that only
+	// moves when told to, the one that fired was the abandoned one —
+	// the activation never did (the scheduler test that failed in CI).
+	var (
+		due   <-chan time.Time
+		dueAt time.Time
+	)
 	for {
-		var due <-chan time.Time
-		if next, ok := s.nextActivation(); ok {
+		next, ok := s.nextActivation()
+		switch {
+		case !ok:
+			due = nil
+		case due == nil || !next.Equal(dueAt):
 			d := next.Sub(clk.Now())
 			if d < 0 {
 				d = 0
 			}
-			due = clk.After(d)
+			due, dueAt = clk.After(d), next
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-wake:
 			// Something was queued; the earliest instant may have
-			// moved closer. Re-arm.
+			// moved closer. Look again.
 		case <-due:
+			due = nil
 			s.fireActivations()
 		}
 	}
