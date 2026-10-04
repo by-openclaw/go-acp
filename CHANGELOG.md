@@ -7,6 +7,25 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.36.0](https://github.com/by-openclaw/go-acp/compare/v0.35.0...v0.36.0) (2026-10-04)
+
+
+### Features
+
+* **amwa/controller:** IS-08 channel-mapping client and `dhs consumer nmos map` ([#1326](https://github.com/by-openclaw/go-acp/issues/1326)) ([e68a834](https://github.com/by-openclaw/go-acp/commit/e68a834ad92b2e73af05472c4134a554e87225ce))
+* **amwa/controller:** IS-11 stream-compatibility client and `dhs consumer nmos compat` ([#1328](https://github.com/by-openclaw/go-acp/issues/1328)) ([abaeb50](https://github.com/by-openclaw/go-acp/commit/abaeb50f105069432c352deade7956727ea85004))
+* **amwa/controller:** IS-12 control-protocol client and `dhs consumer nmos control` ([#1335](https://github.com/by-openclaw/go-acp/issues/1335)) ([1dfee8d](https://github.com/by-openclaw/go-acp/commit/1dfee8dc088055edcb83c29bb9a661baaef9f264))
+* **amwa/controller:** IS-14 device-configuration client and `dhs consumer nmos config` ([#1329](https://github.com/by-openclaw/go-acp/issues/1329)) ([739e21c](https://github.com/by-openclaw/go-acp/commit/739e21c987397252cafee0676c9a572c5409436e))
+
+
+### Bug Fixes
+
+* **amwa/codec:** an audio channel's empty label is a label ([#1334](https://github.com/by-openclaw/go-acp/issues/1334)) ([8e1cebd](https://github.com/by-openclaw/go-acp/commit/8e1cebd64d7b7681d7c0389b701d787b0e8d6fc1))
+* **amwa/controller:** /active is read by its own rule, not the staged endpoint's ([#1339](https://github.com/by-openclaw/go-acp/issues/1339)) ([aba3c35](https://github.com/by-openclaw/go-acp/commit/aba3c351a8ad788cd5c0849592a4a068425951e1))
+* **amwa/controller:** a walk of a Registry shows the Nodes registered at lower minors too ([#1330](https://github.com/by-openclaw/go-acp/issues/1330)) ([797ed1b](https://github.com/by-openclaw/go-acp/commit/797ed1bcfa7fcf38ff1fe8633e1d509895efb588))
+* **amwa/mirror:** a live child waits until the target holds its parent ([#1340](https://github.com/by-openclaw/go-acp/issues/1340)) ([d0026c6](https://github.com/by-openclaw/go-acp/commit/d0026c6402d52099c2c4238fcb9ac3f1e7d9592f))
+* **amwa/mirror:** the minor a resource is registered at is the highest one that shows it ([#1336](https://github.com/by-openclaw/go-acp/issues/1336)) ([709481d](https://github.com/by-openclaw/go-acp/commit/709481d94ccdb68bc682f907e2e5e6825c2009e7))
+
 ## [0.35.0](https://github.com/by-openclaw/go-acp/compare/v0.34.0...v0.35.0) (2026-10-04)
 
 
