@@ -304,7 +304,7 @@ func TestRegistrationClientMarshalNodeAndAttachments(t *testing.T) {
 	}
 	c.SetTLSRoots(nil) // nil roots change nothing
 	c.SetTLSRoots(x509.NewCertPool())
-	if c.http.Transport == nil {
+	if tr, ok := c.http.Transport.(*stdhttp.Transport); !ok || tr.TLSClientConfig == nil {
 		t.Error("SetTLSRoots must install a transport carrying the roots")
 	}
 }

@@ -324,14 +324,18 @@ dhs_amwa_validate_suites:
   # isolated: on the LAN the real Neuron mDNS-registers with the
   # tool's mock registries (tool-visible as "Heartbeats matched a
   # different Node ID"), so the mDNS suites score on the private
-  # bridge. flaky_retry stays as belt-and-braces; retries are
-  # reported.
+  # bridge.
   # test_13's SDP round is tool-scored since the fixture leads every
   # RTP receiver with a templatable media_types[0] (#950 phase 1).
   # 60 since #1291: the timeout-registry round (test_16_01) used to
   # land as a Warning whenever the Node retried the failed Registry
   # under its twin service name; the selector now passes it over.
-  - { id: IS-04-01, scope: node, target: cut, window: isolated, flaky_retry: true,
+  # No flaky_retry since #1312: the Warning that still came on first
+  # attempts was the Node's, not a third party's (a dead Registry was
+  # given up after ten seconds, the round allows one heartbeat
+  # period). Fixed at its cause, three first attempts in three scored
+  # 60; a retry here would only hide the next regression.
+  - { id: IS-04-01, scope: node, target: cut, window: isolated,
       rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
@@ -353,7 +357,7 @@ dhs_amwa_validate_suites:
   # (2026-10-04): IS-04-01 60 with test_02 + test_02_01 scored and
   # test_01 (the mDNS round) disabled; IS-09-02 4 with its unicast
   # pair scored and its mDNS pair disabled.
-  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast, flaky_retry: true,
+  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast,
       rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
   - { id: IS-09-02, scope: node, target: cut, window: unicast, label: unicast, flaky_retry: true,
       rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],

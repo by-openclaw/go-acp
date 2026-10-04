@@ -36,7 +36,7 @@
 
 # flaky_retry: true — one retry with a FRESH window. Reserved for
 # suites where a third party we do not control races the tool's mocks
-# (the lab's real Neuron mDNS-registers with them, IS-04-01); the
+# (the lab's real Neuron mDNS-registers with them, IS-09-02); the
 # retry is recorded in the verdict so it never hides silently.
 - name: "{{ suite.id }} — retry once (third-party interference)"
   ansible.builtin.include_tasks: suite_attempt.yml
