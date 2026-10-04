@@ -240,6 +240,13 @@ jobs:
           check internal/amwa/session/system 100
           check internal/lldp 100
           check internal/amwa/session/export 100
+          check internal/amwa/session/query 100
+          check internal/amwa/session/connection 100
+          check internal/amwa/session/channelmapping 100
+          check internal/amwa/session/streamcompat 100
+          check internal/amwa/session/configuration 100
+          check internal/amwa/session/control 100
+          check internal/amwa/consumer 100
           check internal/amwa/codec/bcp 100
           check internal/amwa/codec/bcp/bcp00201 100
           check internal/amwa/codec/bcp/bcp00202 100
