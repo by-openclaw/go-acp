@@ -20,12 +20,28 @@ package registry
 // Passes never overlap and nothing waits for one — work asked for while
 // a pass runs is folded into the next. Within a pass a child is not
 // sent once the target has refused its parent: the answer is known.
+//
+// A target that does not answer is not hammered and not forgotten: a
+// pass stops after a few requests in a row go unanswered, and what was
+// not answered is owed again after a wait that doubles while the
+// silence lasts.
 
 import (
 	"context"
 	"encoding/json"
 	"sort"
 	"time"
+)
+
+// A pass stops after mirrorGiveUpAfter requests in a row get no usable
+// answer: carrying on would queue a plant's worth of requests behind a
+// ten-second timeout each. What was not answered is tried again after
+// mirrorRetryMin, doubling to mirrorRetryMax while the target stays
+// silent.
+const (
+	mirrorGiveUpAfter = 3
+	mirrorRetryMin    = 5 * time.Second
+	mirrorRetryMax    = 60 * time.Second
 )
 
 // owedWork is what a pass must do.
@@ -370,6 +386,9 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 
 	refused := map[string]bool{} // ids the target said no to in this pass
 	skipped := 0
+	unanswered := scopeSet{} // sent, and no usable answer came back
+	silent := 0              // how many of those in a row
+send:
 	for _, topic := range mirrorTopics {
 		ids := make([]string, 0, len(docs[topic]))
 		for id := range docs[topic] {
@@ -390,10 +409,33 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 			}
 			// allowResync=false: this pass is already in dependency
 			// order, so a refusal here is a genuine one, not a race.
-			if m.postResource(ctx, topic, vers[topic][id], id, doc, false) == postRefused {
+			switch m.postResource(ctx, topic, vers[topic][id], id, doc, false) {
+			case postRefused:
 				refused[id] = true
+				silent = 0
+			case postUnknown:
+				unanswered.add(topic, id)
+				silent++
+			default:
+				silent = 0
+			}
+			if silent >= mirrorGiveUpAfter {
+				break send
 			}
 		}
+	}
+	switch {
+	case silent >= mirrorGiveUpAfter:
+		// The target has stopped answering. The same work is owed again:
+		// what it holds of it by then is not for the mirror to guess.
+		m.logger.Warn("registry/mirror: target is not answering — pass stopped, to be tried again",
+			"unanswered_in_a_row", silent)
+		m.audit.event("target_silent", map[string]any{"unanswered_in_a_row": silent})
+		m.retryLater(work)
+	case unanswered.size() > 0:
+		m.retryLater(owedWork{refused: unanswered})
+	default:
+		m.answered()
 	}
 	if skipped > 0 {
 		m.logger.Warn("registry/mirror: children not sent — the target refused their parent", "skipped", skipped)
@@ -407,6 +449,46 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 		// a whole pass repopulates it too.
 		m.serveReplay()
 	}
+}
+
+// retryLater holds work the target did not answer and tries it again
+// after the current wait, which then doubles up to retryMax. Work that
+// arrives while the timer is armed rides the same timer.
+func (m *Mirror) retryLater(work owedWork) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.runCtx == nil {
+		return
+	}
+	m.retry.add(work)
+	if m.retryTimer != nil {
+		return
+	}
+	delay := m.retryDelay
+	if delay == 0 {
+		delay = m.retryMin
+	}
+	m.retryDelay = min(2*delay, m.retryMax)
+	m.retryTimer = time.AfterFunc(delay, func() {
+		m.mu.Lock()
+		m.retryTimer = nil
+		rctx := m.runCtx
+		m.owed.add(m.retry)
+		m.retry = owedWork{}
+		m.mu.Unlock()
+		if rctx.Err() == nil {
+			m.noteResync()
+			m.runOwed(rctx)
+		}
+	})
+}
+
+// answered notes a pass the target answered in full: the next silence
+// starts from the shortest wait again.
+func (m *Mirror) answered() {
+	m.mu.Lock()
+	m.retryDelay = 0
+	m.mu.Unlock()
 }
 
 // underRefused reports whether any parent was refused in this pass.
