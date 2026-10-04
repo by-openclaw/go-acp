@@ -1,0 +1,226 @@
+---
+# AMWA interop with nmos-cpp — ADR-0025 deliverable 3 for the registry
+# and the mirror (audit R1 / R2, issue #1255).
+#
+# The AMWA tool scores our registry with its own mock nodes. This play
+# has it scored by a third party's real one: an nmos-cpp Node, the
+# reference implementation, registers into OUR registry, and the
+# nmos-cpp Registry stands on either side of our mirror. The checks are
+# the Go suite's (internal/amwa/integration/peer_test.go); this play
+# opens the window they need and runs them:
+#
+#   - a transient nmos-cpp Node on the tooling host, set to register at
+#     a port of the control node where the suite starts our registry;
+#   - the suite: registration document for document, heartbeats, paged
+#     Query and WebSocket, registration again after a 404, expiry after
+#     a kill, our mirror into the nmos-cpp Registry and out of it.
+#
+# Everything of ours is the RELEASED binary the control node runs, on
+# ports of its own; the plant registry, the plant mirror and the
+# resident reference Node are not touched. The mirror test puts the
+# transient Node into the reference Registry and waits until that
+# Registry has dropped it again.
+#
+#   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+#       -o <dir>/amwa-integration.test ./internal/amwa/integration/
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-nmos-cpp.yml -e amwa_suite_dir=<dir>
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-nmos-cpp.yml -e amwa_suite_dir=<dir>   # -> changed=0
+#
+# A window that is opened and closed leaves both hosts as it found them,
+# so its container is not reported as a change, and neither is the
+# transcript of a run; the suite binary and the Node's config are.
+
+- name: AMWA interop — the registry and the mirror scored by nmos-cpp
+  hosts: control
+  gather_facts: false
+  vars:
+    stage: /root/amwa-integration
+    tooling: "{{ groups['tooling'][0] }}"
+    tooling_host: "{{ hostvars[groups['tooling'][0]].ansible_host }}"
+    tooling_stage: /opt/dhs-amwa-interop
+    cli: "{{ amwa_dhs_bin | default('/usr/local/bin/dhs') }}"
+    image: "{{ dhs_amwa_image_nmos_cpp | default('rhastie/nmos-cpp:latest') }}"
+    registry: "{{ amwa_registry | default('http://' ~ tooling_host ~ ':8110') }}"
+    # Where the suite starts our registry, and so where the Node registers.
+    registry_bind: "{{ ansible_host }}:18700"
+    # The transient Node: ports of its own beside the resident one's.
+    peer_name: nmos-cpp-interop-node
+    peer_port: 18720
+    peer_events_port: 18721
+    peer_control_port: 18722
+    # A DNS-SD priority no registry on the link announces (the plant is 0,
+    # the windows of amwa-validate 99, the reference registry 100).
+    peer_pri: 173
+    # Where the Node must NOT turn up.
+    bystanders:
+      - "http://{{ hostvars[groups['plant'][0]].ansible_host }}:8235"
+      - "{{ registry }}"
+  tasks:
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: The suite built elsewhere is given (-e amwa_suite_dir=…)
+      ansible.builtin.assert:
+        that: amwa_suite_dir is defined
+        fail_msg: >-
+          Cross-compile the suite on a machine with Go —
+          GOOS=linux GOARCH=amd64 go test -c -tags integration
+          -o amwa-integration.test ./internal/amwa/integration/ — and
+          pass -e amwa_suite_dir=<path holding it>.
+        quiet: true
+
+    - name: Stage the suite
+      ansible.builtin.copy:
+        src: "{{ amwa_suite_dir }}/amwa-integration.test"
+        dest: "{{ stage }}/amwa-integration.test"
+        mode: "0755"
+
+    - name: The CLI under test is the released one
+      ansible.builtin.command: "{{ cli }} version"
+      register: interop_cli
+      changed_when: false
+
+    - name: Staging directory on the tooling host
+      ansible.builtin.file:
+        path: "{{ tooling_stage }}"
+        state: directory
+        mode: "0755"
+      delegate_to: "{{ tooling }}"
+
+    # nmos-cpp browses for a registry by mDNS first and takes
+    # registry_address only when it finds none, and on the host network
+    # it hears every registry of the VLAN: left alone it registers into
+    # the PLANT's (pri 0), and the plant mirror hands it to Cerebrum.
+    # The priority window below is one no registry announces, so the
+    # browse comes back empty and the Node falls back to the address of
+    # OUR registry. The guard after the start holds the play to that.
+    # The seed fixes the Node's ids from one run to the next.
+    - name: The transient Node's configuration
+      ansible.builtin.copy:
+        dest: "{{ tooling_stage }}/node.json"
+        mode: "0644"
+        content: |
+          {
+            "logging_level": 0,
+            "label": "dhs-interop-nmos-cpp-node",
+            "seed_id": "5d3f0e1a-7c42-4b8e-9a61-0f2b6c8d4e17",
+            "host_address": "{{ tooling_host }}",
+            "host_addresses": ["{{ tooling_host }}"],
+            "http_port": {{ peer_port }},
+            "events_ws_port": {{ peer_events_port }},
+            "control_protocol_ws_port": {{ peer_control_port }},
+            "domain": "local",
+            "registry_address": "{{ registry_bind.split(':')[0] }}",
+            "registration_port": {{ registry_bind.split(':')[1] }},
+            "registry_version": "v1.3",
+            "highest_pri": {{ peer_pri }},
+            "lowest_pri": {{ peer_pri }},
+            "discovery_backoff_max": 5,
+            "how_many": 2
+          }
+      delegate_to: "{{ tooling }}"
+
+    - name: The interop window
+      block:
+        - name: Start the transient nmos-cpp Node
+          ansible.builtin.command: >-
+            docker run -d --rm --name {{ peer_name }} --hostname {{ peer_name }}
+            --network host -e RUN_NODE=TRUE
+            -v {{ tooling_stage }}/node.json:/home/node.json:ro
+            {{ image }}
+          delegate_to: "{{ tooling }}"
+          changed_when: false
+
+        - name: Its Node API answers
+          ansible.builtin.uri:
+            url: "http://{{ tooling_host }}:{{ peer_port }}/x-nmos/node/v1.3/self"
+          register: interop_peer
+          retries: 30
+          delay: 2
+          until: interop_peer.status == 200
+
+        # The guard. The Node has had its browse (one second) and its
+        # first attempt by now; had it found a registry, it is in it.
+        - name: The Node found no registry of its own
+          ansible.builtin.shell: >-
+            docker logs {{ peer_name }} 2>&1
+            | grep "Registration API at:" | grep -v "{{ registry_bind }}" || true
+          delegate_to: "{{ tooling }}"
+          register: interop_strayed
+          changed_when: false
+          failed_when: interop_strayed.stdout | length > 0
+
+        - name: And is in neither the plant registry nor the reference one
+          ansible.builtin.uri:
+            url: "{{ item }}/x-nmos/query/v1.3/nodes/{{ interop_peer.json.id }}"
+            status_code: 404
+          loop: "{{ bystanders }}"
+
+        - name: What we are testing with, and against
+          ansible.builtin.debug:
+            msg: >-
+              {{ interop_cli.stdout_lines[0] }} — nmos-cpp Node
+              {{ interop_peer.json.id }} registering at {{ registry_bind }},
+              nmos-cpp Registry {{ registry }}
+
+        # PASS / FAIL-real / FAIL-expected / TIMEOUT come from the suite.
+        # It is told how to kill the Node — not stop it: a stopped Node
+        # deregisters, and the expiry would go unmeasured.
+        - name: Run the suite's registry and mirror tests
+          ansible.builtin.command:
+            cmd: >-
+              {{ stage }}/amwa-integration.test -test.v -test.count=1 -test.timeout 15m
+              -test.run 'TestOurRegistryIsScoredByAThirdPartyNode|TestMirrorCopiesTheOracleRegistry'
+            chdir: "{{ stage }}"
+          environment:
+            NMOS_TEST_PEER_NODE: "http://{{ tooling_host }}:{{ peer_port }}"
+            NMOS_TEST_REGISTRY_BIND: "{{ registry_bind }}"
+            NMOS_TEST_PEER_KILL: "ssh -o BatchMode=yes root@{{ tooling_host }} docker kill {{ peer_name }}"
+            NMOS_TEST_REGISTRY: "{{ registry }}"
+            DHS_BIN: "{{ cli }}"
+          register: interop_suite
+          changed_when: false
+          # Judged below, after the transcript has been shown.
+          failed_when: false
+
+        - name: Per-test verdicts
+          ansible.builtin.debug:
+            msg: "{{ interop_suite.stdout_lines | select('match', '^\\s*(--- |ok|FAIL|PASS|\\S+_test.go:\\d+: (PASS|FAIL-expected))') | list }}"
+
+        - name: The whole transcript, when something did not pass
+          when: interop_suite.rc != 0
+          ansible.builtin.debug:
+            msg: "{{ interop_suite.stdout_lines }}"
+
+        # The receipt of this run. An observation, not a state of the host.
+        - name: Keep the transcript
+          ansible.builtin.copy:
+            dest: "{{ stage }}/interop-nmos-cpp.txt"
+            mode: "0644"
+            content: |
+              {{ interop_cli.stdout_lines[0] }}
+              nmos-cpp Node {{ interop_peer.json.id }} ({{ image }}) registering at {{ registry_bind }}
+              nmos-cpp Registry {{ registry }}
+
+              {{ interop_suite.stdout }}
+          changed_when: false
+
+        - name: Every check passed
+          ansible.builtin.assert:
+            that: interop_suite.rc == 0
+            fail_msg: "the interop suite did not pass (rc={{ interop_suite.rc }}) — the transcript is above"
+            quiet: true
+
+      always:
+        # Stopped, not killed: wherever the Node is registered, it takes
+        # itself out. (The suite has killed it already when it passed.)
+        - name: Close the window
+          ansible.builtin.shell: >-
+            docker stop -t 15 {{ peer_name }} >/dev/null 2>&1;
+            docker rm -f {{ peer_name }} >/dev/null 2>&1 || true
+          delegate_to: "{{ tooling }}"
+          changed_when: false
