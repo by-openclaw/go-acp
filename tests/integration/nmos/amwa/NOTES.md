@@ -95,3 +95,27 @@ a tracked sub-issue closed by its own commit on this protocol branch.
 
 `http://127.0.0.1:5000` → drop-down `IS-04-01` → Host `dhs-node`,
 Port `18080`, Version `v1.0` / `v1.1` / `v1.2` / `v1.3` → Test.
+
+## Node-scope rescore 2026-10-04 (#1252, transient node on the plant host)
+
+Scored with the fleet's pinned tool (`nmos-testing:cachefix` on `.104`,
+`MS05_INVASIVE_TESTING = True`, IS-11 reference sender configured)
+against a transient node built from the branch, serving the plant
+fixture; the plant's own nodes were left untouched. Receipts are the
+`results/<suite>-<ver>.json` files of the same commit.
+
+| Suite | Pass | Fail | CNT | Warning | Was (baseline) | What moved |
+|---|---:|---:|---:|---:|---:|---|
+| IS-12-01 v1.3 | 147 | 0 | 1 | 0 | 135 / 2 CNT | six MS-05 sequence rounds score on `DhsGainControl`'s writable sequences; `test_ms05_07` on the 298 status; the CNT is the tool-side `auto_ms05_1.2.1` "Not Implemented" |
+| IS-14-01 v1.3 | 167 | 0 | 0 | 0 | 150 / 1 CNT | same sequence rounds over IS-14 methods; `test_23` scores on the rebuildable `DhsFaultControl` |
+| IS-11-01 v1.3 | 107 | 0 | 0 | 4 | 103 | the reference-sender rounds pair by exact transport URN; the fixture's RTP senders are now the generic `urn:x-nmos:transport:rtp` like their receivers (nmos-cpp's shape); outputs follow the receiver the tool activates |
+| IS-05-01 v1.2 | 62 | 0 | 0 | 0 | 60 | unchanged node; the mux SDP round scores (fixture lead member) |
+| BCP-006-04 v1.3 | 21 | 0 | 0 | 0 | 20 | — |
+| BCP-008-01-01 v1.3 | 98 | 0 | 0 | 0 | 98 | unchanged (4 Manual rows stay the fault-injection verify play's) |
+| BCP-008-02-01 v1.3 | 98 | 0 | 0 | 0 | 98 | unchanged |
+
+The four IS-11-01 Warnings are the tool's: `test_04_03_01/_02` and
+`test_04_04_01/_02` activate the FIRST receiver of a format against the
+reference sender and then report every other receiver of that format as
+"no compatible senders". Any node with two video or two audio receivers
+under IS-11 draws them; the fixture keeps its second ones on purpose.
