@@ -110,3 +110,55 @@ func BenchmarkSnapshotSendersCached(b *testing.B) {
 		}
 	})
 }
+
+// A Query page on the scale target: 65 535 senders, the no-param page
+// (newest 100) and a cursor page in the middle. The page costs the
+// window and the page, not the collection (#1285).
+func BenchmarkPagedListAtScale(b *testing.B) {
+	s := NewStore()
+	const node = "11111111-1111-4111-8111-111111111111"
+	const dev = "22222222-2222-4222-8222-222222222222"
+	if err := s.PutNode(validNode(node)); err != nil {
+		b.Fatal(err)
+	}
+	if err := s.PutDevice(validDevice(dev, node)); err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < 65535; i++ {
+		if err := s.PutSender(validSender(fmt.Sprintf("55555555-5555-4555-8555-%012d", i), dev)); err != nil {
+			b.Fatal(err)
+		}
+	}
+	first := s.ListPaged(is04.ResourceSender, PageOptions{Limit: 100})
+	if len(first.Items.([]is04.Sender)) != 100 {
+		b.Fatalf("first page = %d items", len(first.Items.([]is04.Sender)))
+	}
+	b.Run("newest-100", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			s.ListPaged(is04.ResourceSender, PageOptions{Limit: 100})
+		}
+	})
+	b.Run("cursor-100", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			s.ListPaged(is04.ResourceSender, PageOptions{Limit: 100, Until: first.Since})
+		}
+	})
+	b.Run("since-100", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			s.ListPaged(is04.ResourceSender, PageOptions{Limit: 100, Since: first.Since})
+		}
+	})
+}
+
+// A cursor window whose until precedes its since is empty, not inverted.
+func TestPageWindowWithUntilBeforeSinceIsEmpty(t *testing.T) {
+	entries := []pageEntry{{sec: 1, id: "a"}, {sec: 2, id: "b"}, {sec: 3, id: "c"}}
+	lo, hi := pageWindow(entries, "2:0", "1:0")
+	if hi != lo {
+		t.Fatalf("window = [%d, %d), want empty", lo, hi)
+	}
+	lo, hi = pageWindow(entries, "0:0", "2:0")
+	if lo != 0 || hi != 2 {
+		t.Fatalf("window = [%d, %d), want [0, 2)", lo, hi)
+	}
+}

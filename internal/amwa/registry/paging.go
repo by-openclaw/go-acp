@@ -2,7 +2,6 @@ package registry
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -204,64 +203,72 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 			until = nowTAI()
 		}
 	}
-	idx := s.updateTSByType[t]
+	// The page is cut from the type's update_ts order: a binary
+	// search for the cursor window, then the page from its anchored
+	// end — ascending from `since` when the client gave one, else
+	// descending from `until` — with the predicate applied as it goes
+	// and one extra match read to learn whether the page is full
+	// (paging_index.go, #1285).
+	entries := s.pageEntriesLocked(t)
+	lo, hi := pageWindow(entries, since, until)
+	lookup := func(id string) any {
+		switch t {
+		case is04.ResourceNode:
+			if v, ok := s.nodes[id]; ok {
+				return v
+			}
+		case is04.ResourceDevice:
+			if v, ok := s.devices[id]; ok {
+				return v
+			}
+		case is04.ResourceSource:
+			if v, ok := s.sources[id]; ok {
+				return v
+			}
+		case is04.ResourceFlow:
+			if v, ok := s.flows[id]; ok {
+				return v
+			}
+		case is04.ResourceSender:
+			if v, ok := s.senders[id]; ok {
+				return v
+			}
+		case is04.ResourceReceiver:
+			if v, ok := s.receivers[id]; ok {
+				return v
+			}
+		}
+		return nil
+	}
 	type kv struct {
 		id  string
 		ts  string
 		res any
 	}
-	cands := make([]kv, 0, len(idx))
-	for id, ts := range idx {
-		if taiCmp(ts, since) <= 0 || taiCmp(ts, until) > 0 {
-			continue
+	// take collects up to limit+1 matches walking the window from i
+	// by step (+1 ascending, -1 descending).
+	take := func(i, step int) []kv {
+		out := make([]kv, 0, limit+1)
+		for ; i >= lo && i < hi && len(out) <= limit; i += step {
+			e := entries[i]
+			res := lookup(e.id)
+			if res == nil {
+				continue
+			}
+			if opts.Predicate != nil && !opts.Predicate(res) {
+				continue
+			}
+			out = append(out, kv{id: e.id, ts: e.ts, res: res})
 		}
-		var res any
-		switch t {
-		case is04.ResourceNode:
-			if v, ok := s.nodes[id]; ok {
-				res = v
-			}
-		case is04.ResourceDevice:
-			if v, ok := s.devices[id]; ok {
-				res = v
-			}
-		case is04.ResourceSource:
-			if v, ok := s.sources[id]; ok {
-				res = v
-			}
-		case is04.ResourceFlow:
-			if v, ok := s.flows[id]; ok {
-				res = v
-			}
-		case is04.ResourceSender:
-			if v, ok := s.senders[id]; ok {
-				res = v
-			}
-		case is04.ResourceReceiver:
-			if v, ok := s.receivers[id]; ok {
-				res = v
-			}
-		}
-		if res == nil {
-			continue
-		}
-		if opts.Predicate != nil && !opts.Predicate(res) {
-			continue
-		}
-		cands = append(cands, kv{id: id, ts: ts, res: res})
+		return out
 	}
 
+	var cands []kv
 	var pageUntil string
 	pageSince := since
 	if sinceProvided {
 		// Ascending: oldest above the cursor first; cursor pins Since.
-		sort.Slice(cands, func(i, j int) bool {
-			c := taiCmp(cands[i].ts, cands[j].ts)
-			if c != 0 {
-				return c < 0
-			}
-			return cands[i].id < cands[j].id
-		})
+		cands = take(lo, +1)
 		truncated := len(cands) > limit
 		if truncated {
 			cands = cands[:limit]
@@ -282,24 +289,14 @@ func (s *Store) ListPaged(t is04.ResourceType, opts PageOptions) PageResult {
 		default:
 			pageUntil = since
 		}
-		// Re-sort DESC for the response body — IS-04 mandates
-		// newest-first regardless of which cursor anchors the page.
-		sort.Slice(cands, func(i, j int) bool {
-			c := taiCmp(cands[i].ts, cands[j].ts)
-			if c != 0 {
-				return c > 0
-			}
-			return cands[i].id > cands[j].id
-		})
+		// The body is newest-first regardless of which cursor anchors
+		// the page (IS-04): reverse the ascending cut.
+		for a, b := 0, len(cands)-1; a < b; a, b = a+1, b-1 {
+			cands[a], cands[b] = cands[b], cands[a]
+		}
 	} else {
 		// Descending: newest below the cursor first; cursor pins Until.
-		sort.Slice(cands, func(i, j int) bool {
-			c := taiCmp(cands[i].ts, cands[j].ts)
-			if c != 0 {
-				return c > 0
-			}
-			return cands[i].id > cands[j].id
-		})
+		cands = take(hi-1, -1)
 		if len(cands) > limit {
 			pageSince = cands[limit].ts
 			cands = cands[:limit]
