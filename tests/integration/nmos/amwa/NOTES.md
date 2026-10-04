@@ -119,3 +119,10 @@ The four IS-11-01 Warnings are the tool's: `test_04_03_01/_02` and
 reference sender and then report every other receiver of that format as
 "no compatible senders". Any node with two video or two audio receivers
 under IS-11 draws them; the fixture keeps its second ones on purpose.
+
+## Full sweep on the released binary (v0.34.0, 2026-10-04)
+
+Every scope of `amwa-validate.yml` on the fleet's released binary: 40
+entries, 1 524 Pass, 0 Fail, coverage 86.8 %. Receipts, the per-entry
+table and the list of what did not reach a verdict live in
+[`results-fleet/`](results-fleet/README.md).
