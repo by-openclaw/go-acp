@@ -1,0 +1,1027 @@
+Frame 1: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 0, Len: 0
+
+Frame 2: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 805 bytes on wire (6440 bits), 805 bytes captured (6440 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 1, Ack: 1, Len: 733
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=node id=1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+
+Frame 5: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 1, Ack: 734, Len: 0
+
+Frame 6: 500 bytes on wire (4000 bits), 500 bytes captured (4000 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 1, Ack: 734, Len: 428
+
+Frame 7: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 734, Ack: 429, Len: 0
+
+Frame 8: 597 bytes on wire (4776 bits), 597 bytes captured (4776 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 429, Ack: 734, Len: 525
+[2 Reassembled TCP Segments (953 bytes): #6(428), #8(525)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+
+Frame 9: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 734, Ack: 954, Len: 0
+
+Frame 10: 3237 bytes on wire (25896 bits), 3237 bytes captured (25896 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 734, Ack: 954, Len: 3165
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=device id=45f27d35-47ea-5c06-8a0c-86f18fe9de49]
+
+Frame 11: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 954, Ack: 3899, Len: 0
+
+Frame 12: 503 bytes on wire (4024 bits), 503 bytes captured (4024 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 954, Ack: 3899, Len: 431
+
+Frame 13: 3026 bytes on wire (24208 bits), 3026 bytes captured (24208 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 1385, Ack: 3899, Len: 2954
+[2 Reassembled TCP Segments (3385 bytes): #12(431), #13(2954)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=45f27d35-47ea-5c06-8a0c-86f18fe9de49]
+
+Frame 14: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 3899, Ack: 4339, Len: 0
+
+Frame 15: 590 bytes on wire (4720 bits), 590 bytes captured (4720 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 3899, Ack: 4339, Len: 518
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=02d574da-b5ad-52da-bf7e-da27c5a797d9]
+
+Frame 16: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 4339, Ack: 4417, Len: 430
+
+Frame 17: 380 bytes on wire (3040 bits), 380 bytes captured (3040 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 4769, Ack: 4417, Len: 308
+[2 Reassembled TCP Segments (738 bytes): #16(430), #17(308)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=02d574da-b5ad-52da-bf7e-da27c5a797d9]
+
+Frame 18: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 4417, Ack: 5077, Len: 0
+
+Frame 19: 653 bytes on wire (5224 bits), 653 bytes captured (5224 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 4417, Ack: 5077, Len: 581
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=09ca1052-784c-5937-bedc-af0705aa4bc5]
+
+Frame 20: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 5077, Ack: 4998, Len: 430
+
+Frame 21: 443 bytes on wire (3544 bits), 443 bytes captured (3544 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 5507, Ack: 4998, Len: 371
+[2 Reassembled TCP Segments (801 bytes): #20(430), #21(371)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=09ca1052-784c-5937-bedc-af0705aa4bc5]
+
+Frame 22: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 4998, Ack: 5878, Len: 0
+
+Frame 23: 591 bytes on wire (4728 bits), 591 bytes captured (4728 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 4998, Ack: 5878, Len: 519
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=226ed449-cb18-5146-9d71-cd41db3d4e68]
+
+Frame 24: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 5878, Ack: 5517, Len: 430
+
+Frame 25: 381 bytes on wire (3048 bits), 381 bytes captured (3048 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 6308, Ack: 5517, Len: 309
+[2 Reassembled TCP Segments (739 bytes): #24(430), #25(309)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=226ed449-cb18-5146-9d71-cd41db3d4e68]
+
+Frame 26: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 5517, Ack: 6617, Len: 0
+
+Frame 27: 854 bytes on wire (6832 bits), 854 bytes captured (6832 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 5517, Ack: 6617, Len: 782
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=2c0dc2d3-12e5-5fc9-af94-f98b63aa8dfd]
+
+Frame 28: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 6617, Ack: 6299, Len: 430
+
+Frame 29: 644 bytes on wire (5152 bits), 644 bytes captured (5152 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 7047, Ack: 6299, Len: 572
+[2 Reassembled TCP Segments (1002 bytes): #28(430), #29(572)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=2c0dc2d3-12e5-5fc9-af94-f98b63aa8dfd]
+
+Frame 30: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 6299, Ack: 7619, Len: 0
+
+Frame 31: 591 bytes on wire (4728 bits), 591 bytes captured (4728 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 6299, Ack: 7619, Len: 519
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=39ab8ed7-ac05-5174-92fb-d573e19eb67a]
+
+Frame 32: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 7619, Ack: 6818, Len: 430
+
+Frame 33: 381 bytes on wire (3048 bits), 381 bytes captured (3048 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 8049, Ack: 6818, Len: 309
+[2 Reassembled TCP Segments (739 bytes): #32(430), #33(309)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=39ab8ed7-ac05-5174-92fb-d573e19eb67a]
+
+Frame 34: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 6818, Ack: 8358, Len: 0
+
+Frame 35: 806 bytes on wire (6448 bits), 806 bytes captured (6448 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 6818, Ack: 8358, Len: 734
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=481f4d68-34b5-54aa-a69a-e9ed5861f464]
+
+Frame 36: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 8358, Ack: 7552, Len: 430
+
+Frame 37: 596 bytes on wire (4768 bits), 596 bytes captured (4768 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 8788, Ack: 7552, Len: 524
+[2 Reassembled TCP Segments (954 bytes): #36(430), #37(524)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=481f4d68-34b5-54aa-a69a-e9ed5861f464]
+
+Frame 38: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 7552, Ack: 9312, Len: 0
+
+Frame 39: 804 bytes on wire (6432 bits), 804 bytes captured (6432 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 7552, Ack: 9312, Len: 732
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=4af75e5a-6226-5e04-a02f-da66f799a25d]
+
+Frame 40: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 9312, Ack: 8284, Len: 430
+
+Frame 41: 594 bytes on wire (4752 bits), 594 bytes captured (4752 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 9742, Ack: 8284, Len: 522
+[2 Reassembled TCP Segments (952 bytes): #40(430), #41(522)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=4af75e5a-6226-5e04-a02f-da66f799a25d]
+
+Frame 42: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 8284, Ack: 10264, Len: 0
+
+Frame 43: 618 bytes on wire (4944 bits), 618 bytes captured (4944 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 8284, Ack: 10264, Len: 546
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=7a004748-f5d9-51b0-be14-6c47f4a0a487]
+
+Frame 44: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 10264, Ack: 8830, Len: 430
+
+Frame 45: 408 bytes on wire (3264 bits), 408 bytes captured (3264 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 10694, Ack: 8830, Len: 336
+[2 Reassembled TCP Segments (766 bytes): #44(430), #45(336)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=7a004748-f5d9-51b0-be14-6c47f4a0a487]
+
+Frame 46: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 8830, Ack: 11030, Len: 0
+
+Frame 47: 654 bytes on wire (5232 bits), 654 bytes captured (5232 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 8830, Ack: 11030, Len: 582
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=9e578553-4472-5ef9-bd6c-9653a7c3d54c]
+
+Frame 48: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 11030, Ack: 9412, Len: 430
+
+Frame 49: 444 bytes on wire (3552 bits), 444 bytes captured (3552 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 11460, Ack: 9412, Len: 372
+[2 Reassembled TCP Segments (802 bytes): #48(430), #49(372)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=9e578553-4472-5ef9-bd6c-9653a7c3d54c]
+
+Frame 50: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 9412, Ack: 11832, Len: 0
+
+Frame 51: 616 bytes on wire (4928 bits), 616 bytes captured (4928 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 9412, Ack: 11832, Len: 544
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=9ffc4f12-7c11-564a-8674-8b97eb3dce76]
+
+Frame 52: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 11832, Ack: 9956, Len: 430
+
+Frame 53: 406 bytes on wire (3248 bits), 406 bytes captured (3248 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 12262, Ack: 9956, Len: 334
+[2 Reassembled TCP Segments (764 bytes): #52(430), #53(334)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=9ffc4f12-7c11-564a-8674-8b97eb3dce76]
+
+Frame 54: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 9956, Ack: 12596, Len: 0
+
+Frame 55: 604 bytes on wire (4832 bits), 604 bytes captured (4832 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 9956, Ack: 12596, Len: 532
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=a57bd492-3fa2-5b7c-82c4-c53ce5bd1f6e]
+
+Frame 56: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 12596, Ack: 10488, Len: 430
+
+Frame 57: 394 bytes on wire (3152 bits), 394 bytes captured (3152 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 13026, Ack: 10488, Len: 322
+[2 Reassembled TCP Segments (752 bytes): #56(430), #57(322)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=a57bd492-3fa2-5b7c-82c4-c53ce5bd1f6e]
+
+Frame 58: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 10488, Ack: 13348, Len: 0
+
+Frame 59: 605 bytes on wire (4840 bits), 605 bytes captured (4840 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 10488, Ack: 13348, Len: 533
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=ad5c8e8b-c499-5407-9bba-25a442598023]
+
+Frame 60: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 13348, Ack: 11021, Len: 430
+
+Frame 61: 395 bytes on wire (3160 bits), 395 bytes captured (3160 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 13778, Ack: 11021, Len: 323
+[2 Reassembled TCP Segments (753 bytes): #60(430), #61(323)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=ad5c8e8b-c499-5407-9bba-25a442598023]
+
+Frame 62: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 11021, Ack: 14101, Len: 0
+
+Frame 63: 605 bytes on wire (4840 bits), 605 bytes captured (4840 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 11021, Ack: 14101, Len: 533
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=b2808738-cc06-5ae5-bfd8-0418ad957acf]
+
+Frame 64: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 14101, Ack: 11554, Len: 430
+
+Frame 65: 395 bytes on wire (3160 bits), 395 bytes captured (3160 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 14531, Ack: 11554, Len: 323
+[2 Reassembled TCP Segments (753 bytes): #64(430), #65(323)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=b2808738-cc06-5ae5-bfd8-0418ad957acf]
+
+Frame 66: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 11554, Ack: 14854, Len: 0
+
+Frame 67: 655 bytes on wire (5240 bits), 655 bytes captured (5240 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 11554, Ack: 14854, Len: 583
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=d8b24b22-a1ce-5b46-b686-031d0ae5be51]
+
+Frame 68: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 14854, Ack: 12137, Len: 430
+
+Frame 69: 445 bytes on wire (3560 bits), 445 bytes captured (3560 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 15284, Ack: 12137, Len: 373
+[2 Reassembled TCP Segments (803 bytes): #68(430), #69(373)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=d8b24b22-a1ce-5b46-b686-031d0ae5be51]
+
+Frame 70: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 12137, Ack: 15657, Len: 0
+
+Frame 71: 657 bytes on wire (5256 bits), 657 bytes captured (5256 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 12137, Ack: 15657, Len: 585
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=db39aac2-71a7-564a-afb6-60ccfaa22c75]
+
+Frame 72: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 15657, Ack: 12722, Len: 430
+
+Frame 73: 447 bytes on wire (3576 bits), 447 bytes captured (3576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 16087, Ack: 12722, Len: 375
+[2 Reassembled TCP Segments (805 bytes): #72(430), #73(375)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=db39aac2-71a7-564a-afb6-60ccfaa22c75]
+
+Frame 74: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 12722, Ack: 16462, Len: 0
+
+Frame 75: 619 bytes on wire (4952 bits), 619 bytes captured (4952 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 12722, Ack: 16462, Len: 547
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=df7a85d0-6ae5-5c6d-89fd-40354177f5e8]
+
+Frame 76: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 16462, Ack: 13269, Len: 430
+
+Frame 77: 409 bytes on wire (3272 bits), 409 bytes captured (3272 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 16892, Ack: 13269, Len: 337
+[2 Reassembled TCP Segments (767 bytes): #76(430), #77(337)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=df7a85d0-6ae5-5c6d-89fd-40354177f5e8]
+
+Frame 78: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 13269, Ack: 17229, Len: 0
+
+Frame 79: 844 bytes on wire (6752 bits), 844 bytes captured (6752 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 13269, Ack: 17229, Len: 772
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=e410a52d-806f-53e1-b9e8-8e2f1f8817ad]
+
+Frame 80: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 17229, Ack: 14041, Len: 430
+
+Frame 81: 634 bytes on wire (5072 bits), 634 bytes captured (5072 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 17659, Ack: 14041, Len: 562
+[2 Reassembled TCP Segments (992 bytes): #80(430), #81(562)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=e410a52d-806f-53e1-b9e8-8e2f1f8817ad]
+
+Frame 82: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 14041, Ack: 18221, Len: 0
+
+Frame 83: 604 bytes on wire (4832 bits), 604 bytes captured (4832 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 14041, Ack: 18221, Len: 532
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=e59d198a-6b5d-57e4-bc89-106184451ba2]
+
+Frame 84: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 18221, Ack: 14573, Len: 430
+
+Frame 85: 394 bytes on wire (3152 bits), 394 bytes captured (3152 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 18651, Ack: 14573, Len: 322
+[2 Reassembled TCP Segments (752 bytes): #84(430), #85(322)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=e59d198a-6b5d-57e4-bc89-106184451ba2]
+
+Frame 86: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 14573, Ack: 18973, Len: 0
+
+Frame 87: 842 bytes on wire (6736 bits), 842 bytes captured (6736 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 14573, Ack: 18973, Len: 770
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=ee9ed33f-d11b-5383-a502-e9d527f4ac3c]
+
+Frame 88: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 18973, Ack: 15343, Len: 430
+
+Frame 89: 632 bytes on wire (5056 bits), 632 bytes captured (5056 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 19403, Ack: 15343, Len: 560
+[2 Reassembled TCP Segments (990 bytes): #88(430), #89(560)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=ee9ed33f-d11b-5383-a502-e9d527f4ac3c]
+
+Frame 90: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 15343, Ack: 19963, Len: 0
+
+Frame 91: 656 bytes on wire (5248 bits), 656 bytes captured (5248 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 15343, Ack: 19963, Len: 584
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=eeb9aefb-5317-5882-a94b-e9aaced3f635]
+
+Frame 92: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 19963, Ack: 15927, Len: 430
+
+Frame 93: 446 bytes on wire (3568 bits), 446 bytes captured (3568 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 20393, Ack: 15927, Len: 374
+[2 Reassembled TCP Segments (804 bytes): #92(430), #93(374)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=eeb9aefb-5317-5882-a94b-e9aaced3f635]
+
+Frame 94: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 15927, Ack: 20767, Len: 0
+
+Frame 95: 590 bytes on wire (4720 bits), 590 bytes captured (4720 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 15927, Ack: 20767, Len: 518
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=f19e3b8d-6107-5ce5-8aca-66f09a0a9186]
+
+Frame 96: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 20767, Ack: 16445, Len: 430
+
+Frame 97: 380 bytes on wire (3040 bits), 380 bytes captured (3040 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 21197, Ack: 16445, Len: 308
+[2 Reassembled TCP Segments (738 bytes): #96(430), #97(308)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=f19e3b8d-6107-5ce5-8aca-66f09a0a9186]
+
+Frame 98: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 16445, Ack: 21505, Len: 0
+
+Frame 99: 617 bytes on wire (4936 bits), 617 bytes captured (4936 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 16445, Ack: 21505, Len: 545
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=f727bce3-da82-5d5f-a297-6229d773a497]
+
+Frame 100: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 21505, Ack: 16990, Len: 430
+
+Frame 101: 407 bytes on wire (3256 bits), 407 bytes captured (3256 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 21935, Ack: 16990, Len: 335
+[2 Reassembled TCP Segments (765 bytes): #100(430), #101(335)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=f727bce3-da82-5d5f-a297-6229d773a497]
+
+Frame 102: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 16990, Ack: 22270, Len: 0
+
+Frame 103: 615 bytes on wire (4920 bits), 615 bytes captured (4920 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 16990, Ack: 22270, Len: 543
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=source id=fd0c2c1f-826b-5f1f-aba0-fb38a557889e]
+
+Frame 104: 502 bytes on wire (4016 bits), 502 bytes captured (4016 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 22270, Ack: 17533, Len: 430
+
+Frame 105: 405 bytes on wire (3240 bits), 405 bytes captured (3240 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 22700, Ack: 17533, Len: 333
+[2 Reassembled TCP Segments (763 bytes): #104(430), #105(333)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=fd0c2c1f-826b-5f1f-aba0-fb38a557889e]
+
+Frame 106: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 17533, Ack: 23033, Len: 0
+
+Frame 107: 705 bytes on wire (5640 bits), 705 bytes captured (5640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 17533, Ack: 23033, Len: 633
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=flow id=137c9300-b0eb-5492-afa2-4a84bbe4c837]
+
+Frame 108: 500 bytes on wire (4000 bits), 500 bytes captured (4000 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 23033, Ack: 18166, Len: 428
+
+Frame 109: 497 bytes on wire (3976 bits), 497 bytes captured (3976 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 23461, Ack: 18166, Len: 425
+[2 Reassembled TCP Segments (853 bytes): #108(428), #109(425)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=137c9300-b0eb-5492-afa2-4a84bbe4c837]
+
+Frame 110: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 18166, Ack: 23886, Len: 0
+
+Frame 111: 639 bytes on wire (5112 bits), 639 bytes captured (5112 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 18166, Ack: 23886, Len: 567
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=flow id=34f0582a-e0a8-508e-a6f5-eeecd4fc7fac]
+
+Frame 112: 500 bytes on wire (4000 bits), 500 bytes captured (4000 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 23886, Ack: 18733, Len: 428
+
+Frame 113: 431 bytes on wire (3448 bits), 431 bytes captured (3448 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 24314, Ack: 18733, Len: 359
+[2 Reassembled TCP Segments (787 bytes): #112(428), #113(359)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=34f0582a-e0a8-508e-a6f5-eeecd4fc7fac]
+
+Frame 114: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 18733, Ack: 24673, Len: 0
+
+Frame 115: 743 bytes on wire (5944 bits), 743 bytes captured (5944 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 18733, Ack: 24673, Len: 671
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=flow id=401a6705-f558-5fe1-aa55-353520d191b0]
+
+Frame 116: 500 bytes on wire (4000 bits), 500 bytes captured (4000 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 24673, Ack: 19404, Len: 428
+
+Frame 117: 535 bytes on wire (4280 bits), 535 bytes captured (4280 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 25101, Ack: 19404, Len: 463
+[2 Reassembled TCP Segments (891 bytes): #116(428), #117(463)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: 201 id=401a6705-f558-5fe1-aa55-353520d191b0]
+
+Frame 118: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 19404, Ack: 25564, Len: 0
+
+Frame 119: 1004 bytes on wire (8032 bits), 1004 bytes captured (8032 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 56328, Dst Port: 8110, Seq: 19404, Ack: 25564, Len: 932
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource]
+    [Detail: POST type=flow id=435470bc-d7e3-5c43-9cf5-bde7787ee232]
+
+Frame 120: 500 bytes on wire (4000 bits), 500 bytes captured (4000 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 56328, Seq: 25564, Ack: 20336, Len: 428
+

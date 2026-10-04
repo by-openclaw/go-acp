@@ -1,0 +1,77 @@
+Frame 1: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 0, Len: 0
+
+Frame 2: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8111, Dst Port: 36830, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 296 bytes on wire (2368 bits), 296 bytes captured (2368 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 1, Ack: 1, Len: 224
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Query]
+    [Version: v1.3]
+    [Resource: subscriptions/e8d568e2-4278-4a95-8584-c71c7497d284]
+    [Detail: GET subscription id=e8d568e2-4278-4a95-8584-c71c7497d284]
+
+Frame 5: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8111, Dst Port: 36830, Seq: 1, Ack: 225, Len: 0
+
+Frame 6: 228 bytes on wire (1824 bits), 228 bytes captured (1824 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8111, Dst Port: 36830, Seq: 1, Ack: 225, Len: 156
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Query]
+    [Version: v1.3]
+    [Resource: subscriptions/e8d568e2-4278-4a95-8584-c71c7497d284]
+    [Detail: 101 subscription id=e8d568e2-4278-4a95-8584-c71c7497d284]
+
+Frame 7: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 225, Ack: 157, Len: 0
+
+Frame 8: 2919 bytes on wire (23352 bits), 2919 bytes captured (23352 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8111, Dst Port: 36830, Seq: 157, Ack: 225, Len: 2847
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-04 Query grain]
+    [Detail: IS-04 Query grain topic=/nodes/ rows=2 added=0 removed=0 modified=2]
+
+Frame 9: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 225, Ack: 3004, Len: 0
+
+Frame 10: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 225, Ack: 3004, Len: 0
+
+Frame 11: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8111, Dst Port: 36830, Seq: 3004, Ack: 226, Len: 0
+
+Frame 12: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 36830, Dst Port: 8111, Seq: 226, Ack: 3005, Len: 0
+

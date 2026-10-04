@@ -70,4 +70,8 @@ cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-integration
 cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-nmos-cpp.yml -e amwa_suite_dir=<dir>
 ```
 
-What is still missing for ADR-0025 is listed, gap by gap, in the audit.
+### Fixtures, replay set, dissector
+
+[`../testdata/README.md`](../testdata/README.md): the committed Node fixture and Controller plant, one captured conversation per message kind with its tree through [`../wireshark/dhs_nmos.lua`](../wireshark/dhs_nmos.lua), and the tests that replay them.
+
+What is still open is listed, gap by gap, in the audit.

@@ -1,0 +1,429 @@
+Frame 1: 131 bytes on wire (1048 bits), 131 bytes captured (1048 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Query
+    Header  id=0x0000 qd=3 an=0 ns=0 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x0000
+        QR (response bit): False
+        AA (authoritative): False
+        TC (truncated): False
+        Question count: 3
+        Answer count: 0
+        Authority count: 0
+        Additional count: 0
+    Questions (3)
+        Question: _nmos-system._tcp.local PTR
+            QNAME: _nmos-system._tcp.local
+            QTYPE: 12
+            QCLASS: 0x0001
+        Question: _nmos-register._tcp.local PTR
+            QNAME: _nmos-register._tcp.local
+            QTYPE: 12
+            QCLASS: 0x0001
+        Question: _nmos-registration._tcp.local PTR
+            QNAME: _nmos-registration._tcp.local
+            QTYPE: 12
+            QCLASS: 0x0001
+    NMOS service type: _nmos-system._tcp
+
+Frame 2: 418 bytes on wire (3344 bits), 418 bytes captured (3344 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Response
+    Header  id=0x0000 qd=0 an=8 ns=0 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x8400
+        QR (response bit): True
+        AA (authoritative): True
+        TC (truncated): False
+        Question count: 0
+        Answer count: 8
+        Authority count: 0
+        Additional count: 0
+    Answers (8)
+        Answer: _nmos-registration._tcp.local PTR ttl=4500
+            Name: _nmos-registration._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 27
+            PTR target: dhs-nmos-registry-legacy._nmos-registration._tcp.local
+        Answer: dhs-nmos-registry-legacy._nmos-registration._tcp.local TXT ttl=4500
+            Name: dhs-nmos-registry-legacy._nmos-registration._tcp.local
+            Type: 16
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 64
+            TXT segment: api_proto=http
+            TXT api_proto: http
+            TXT segment: api_ver=v1.0,v1.1,v1.2,v1.3
+            TXT api_ver: v1.0,v1.1,v1.2,v1.3
+            TXT segment: api_auth=false
+            TXT api_auth: false
+            TXT segment: pri=0
+            TXT pri: 0
+        Answer: dhs-nmos-registry-legacy._nmos-registration._tcp.local SRV ttl=120
+            Name: dhs-nmos-registry-legacy._nmos-registration._tcp.local
+            Type: 33
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 19
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 8235
+            SRV target: dhs-debian.local
+        Answer: dhs-debian.local AAAA ttl=120
+            Name: dhs-debian.local
+            Type: 28
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 16
+            AAAA address: fe80::be24:11ff:fe80:e3ac
+        Answer: dhs-debian.local A ttl=120
+            Name: dhs-debian.local
+            Type: 1
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 4
+            A address: 10.6.250.101
+        Answer: _nmos-register._tcp.local PTR ttl=4500
+            Name: _nmos-register._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 20
+            PTR target: dhs-nmos-registry._nmos-register._tcp.local
+        Answer: dhs-nmos-registry._nmos-register._tcp.local TXT ttl=4500
+            Name: dhs-nmos-registry._nmos-register._tcp.local
+            Type: 16
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 64
+            TXT segment: api_auth=false
+            TXT api_auth: false
+            TXT segment: pri=0
+            TXT pri: 0
+            TXT segment: api_proto=http
+            TXT api_proto: http
+            TXT segment: api_ver=v1.0,v1.1,v1.2,v1.3
+            TXT api_ver: v1.0,v1.1,v1.2,v1.3
+        Answer: dhs-nmos-registry._nmos-register._tcp.local SRV ttl=120
+            Name: dhs-nmos-registry._nmos-register._tcp.local
+            Type: 33
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 8
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 8235
+            SRV target: dhs-debian.local
+    NMOS service type: _nmos-registration._tcp
+
+Frame 3: 158 bytes on wire (1264 bits), 158 bytes captured (1264 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Query
+    Header  id=0x0000 qd=1 an=0 ns=1 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x0000
+        QR (response bit): False
+        AA (authoritative): False
+        TC (truncated): False
+        Question count: 1
+        Answer count: 0
+        Authority count: 1
+        Additional count: 0
+    Questions (1)
+        Question: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local ANY
+            QNAME: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            QTYPE: 255
+            QCLASS: 0x0001
+    Authority (1)
+        Authorit: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local SRV ttl=120
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 33
+            Class: 0x0001
+            TTL: 120
+            RDLENGTH: 30
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 18720
+            SRV target: nmos-cpp-interop-node.local
+    NMOS service type: _nmos-node._tcp
+
+Frame 4: 158 bytes on wire (1264 bits), 158 bytes captured (1264 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Query
+    Header  id=0x0000 qd=1 an=0 ns=1 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x0000
+        QR (response bit): False
+        AA (authoritative): False
+        TC (truncated): False
+        Question count: 1
+        Answer count: 0
+        Authority count: 1
+        Additional count: 0
+    Questions (1)
+        Question: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local ANY
+            QNAME: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            QTYPE: 255
+            QCLASS: 0x0001
+    Authority (1)
+        Authorit: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local SRV ttl=120
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 33
+            Class: 0x0001
+            TTL: 120
+            RDLENGTH: 30
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 18720
+            SRV target: nmos-cpp-interop-node.local
+    NMOS service type: _nmos-node._tcp
+
+Frame 5: 158 bytes on wire (1264 bits), 158 bytes captured (1264 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Query
+    Header  id=0x0000 qd=1 an=0 ns=1 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x0000
+        QR (response bit): False
+        AA (authoritative): False
+        TC (truncated): False
+        Question count: 1
+        Answer count: 0
+        Authority count: 1
+        Additional count: 0
+    Questions (1)
+        Question: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local ANY
+            QNAME: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            QTYPE: 255
+            QCLASS: 0x0001
+    Authority (1)
+        Authorit: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local SRV ttl=120
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 33
+            Class: 0x0001
+            TTL: 120
+            RDLENGTH: 30
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 18720
+            SRV target: nmos-cpp-interop-node.local
+    NMOS service type: _nmos-node._tcp
+
+Frame 6: 310 bytes on wire (2480 bits), 310 bytes captured (2480 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Response
+    Header  id=0x0000 qd=0 an=4 ns=0 ar=2
+        Transaction ID: 0x0000
+        Flags: 0x8400
+        QR (response bit): True
+        AA (authoritative): True
+        TC (truncated): False
+        Question count: 0
+        Answer count: 4
+        Authority count: 0
+        Additional count: 2
+    Answers (4)
+        Answer: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local TXT ttl=4500
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 16
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 58
+            TXT segment: api_proto=http
+            TXT api_proto: http
+            TXT segment: api_ver=v1.0,v1.1,v1.2,v1.3
+            TXT api_ver: v1.0,v1.1,v1.2,v1.3
+            TXT segment: api_auth=false
+            TXT api_auth: false
+        Answer: _services._dns-sd._udp.local PTR ttl=4500
+            Name: _services._dns-sd._udp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 2
+            PTR target: _nmos-node._tcp.local
+        Answer: _nmos-node._tcp.local PTR ttl=4500
+            Name: _nmos-node._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 2
+            PTR target: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+        Answer: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local SRV ttl=120
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 33
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 30
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 18720
+            SRV target: nmos-cpp-interop-node.local
+    Additional (2)
+        Additiona: nmos-cpp-interop-node.local A ttl=120
+            Name: nmos-cpp-interop-node.local
+            Type: 1
+            Class: 0x0001
+            TTL: 120
+            RDLENGTH: 4
+            A address: 10.6.250.104
+        Additiona: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local TYPE47 ttl=4500
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 47
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 9
+            [Expert Info (Warning/Undecoded): Unknown record type]
+                [Unknown record type]
+                [Severity level: Warning]
+                [Group: Undecoded]
+    NMOS service type: _nmos-node._tcp
+
+Frame 7: 183 bytes on wire (1464 bits), 183 bytes captured (1464 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Query
+    Header  id=0x0000 qd=2 an=2 ns=0 ar=0
+        Transaction ID: 0x0000
+        Flags: 0x0000
+        QR (response bit): False
+        AA (authoritative): False
+        TC (truncated): False
+        Question count: 2
+        Answer count: 2
+        Authority count: 0
+        Additional count: 0
+    Questions (2)
+        Question: _nmos-register._tcp.local PTR
+            QNAME: _nmos-register._tcp.local
+            QTYPE: 12
+            QCLASS: 0x0001
+        Question: _nmos-registration._tcp.local PTR
+            QNAME: _nmos-registration._tcp.local
+            QTYPE: 12
+            QCLASS: 0x0001
+    Answers (2)
+        Answer: _nmos-register._tcp.local PTR ttl=3599
+            Name: _nmos-register._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 3599
+            RDLENGTH: 20
+            PTR target: dhs-nmos-registry._nmos-register._tcp.local
+        Answer: _nmos-registration._tcp.local PTR ttl=3599
+            Name: _nmos-registration._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 3599
+            RDLENGTH: 27
+            PTR target: dhs-nmos-registry-legacy._nmos-registration._tcp.local
+    NMOS service type: _nmos-register._tcp
+
+Frame 8: 294 bytes on wire (2352 bits), 294 bytes captured (2352 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 224.0.0.251
+User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+AMWA NMOS (dhs — discovery layer)
+    Transport: mDNS
+    Message kind: Response
+    Header  id=0x0000 qd=0 an=4 ns=0 ar=1
+        Transaction ID: 0x0000
+        Flags: 0x8400
+        QR (response bit): True
+        AA (authoritative): True
+        TC (truncated): False
+        Question count: 0
+        Answer count: 4
+        Authority count: 0
+        Additional count: 1
+    Answers (4)
+        Answer: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local TXT ttl=4500
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 16
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 58
+            TXT segment: api_proto=http
+            TXT api_proto: http
+            TXT segment: api_ver=v1.0,v1.1,v1.2,v1.3
+            TXT api_ver: v1.0,v1.1,v1.2,v1.3
+            TXT segment: api_auth=false
+            TXT api_auth: false
+        Answer: _services._dns-sd._udp.local PTR ttl=4500
+            Name: _services._dns-sd._udp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 2
+            PTR target: _nmos-node._tcp.local
+        Answer: _nmos-node._tcp.local PTR ttl=4500
+            Name: _nmos-node._tcp.local
+            Type: 12
+            Class: 0x0001
+            TTL: 4500
+            RDLENGTH: 2
+            PTR target: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+        Answer: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local SRV ttl=120
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 33
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 120
+            RDLENGTH: 30
+            SRV priority: 0
+            SRV weight: 0
+            SRV port: 18720
+            SRV target: nmos-cpp-interop-node.local
+    Additional (1)
+        Additiona: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local TYPE47 ttl=4500
+            Name: nmos-cpp_node_10-6-250-104_18720._nmos-node._tcp.local
+            Type: 47
+            Class: 0x8001
+            Cache-flush bit (mDNS): True
+            TTL: 4500
+            RDLENGTH: 9
+            [Expert Info (Warning/Undecoded): Unknown record type]
+                [Unknown record type]
+                [Severity level: Warning]
+                [Group: Undecoded]
+    NMOS service type: _nmos-node._tcp
+
