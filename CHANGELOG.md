@@ -7,6 +7,19 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.37.0](https://github.com/by-openclaw/go-acp/compare/v0.36.2...v0.37.0) (2026-10-04)
+
+
+### Features
+
+* **amwa/wireshark:** the dissector names what every NMOS frame is about ([#1356](https://github.com/by-openclaw/go-acp/issues/1356)) ([252234a](https://github.com/by-openclaw/go-acp/commit/252234aa4d6582cbc103c369c4f1638905b59d1f))
+
+
+### Bug Fixes
+
+* **amwa/mirror:** a pass waits for a parent instead of sending a stale child or the whole catalogue ([#1346](https://github.com/by-openclaw/go-acp/issues/1346)) ([28bc7cb](https://github.com/by-openclaw/go-acp/commit/28bc7cbe4c54b16d008600cf1456dcec346164c2))
+* **amwa/mirror:** a pass waits for a parent instead of sending a stale child or the whole catalogue ([#1346](https://github.com/by-openclaw/go-acp/issues/1346)) ([c5bd2e4](https://github.com/by-openclaw/go-acp/commit/c5bd2e4d1f54b97a41ae75ea7b1b61a6ce419139))
+
 ## [0.36.2](https://github.com/by-openclaw/go-acp/compare/v0.36.1...v0.36.2) (2026-10-04)
 
 
