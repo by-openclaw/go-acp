@@ -1,0 +1,112 @@
+---
+# AMWA NMOS integration — ADR-0025 deliverable 3.
+#
+# The oracle is never our own registry or node (ADR-0034): it is the
+# nmos-cpp reference registry and node on the tooling host, and a real
+# device. Every check drives the real CLI at them and compares what it
+# printed with what the peer's own API says.
+#
+# The CLI under test is the RELEASED binary the control node already
+# runs (dhs_version, converged by fleet-converge.yml) — never one built
+# for the occasion: a result on a binary nobody runs proves nothing
+# about the fleet.
+#
+# The control node reaches the peers and has no Go toolchain, so the
+# suite — the checks, not the CLI — is cross-compiled where there is
+# one and shipped:
+#
+#   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+#       -o <dir>/amwa-integration.test ./internal/amwa/integration/
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-integration.yml -e amwa_suite_dir=<dir>
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-integration.yml -e amwa_suite_dir=<dir>   # -> changed=0
+#
+# Idempotent by construction: it copies one binary (content-compared)
+# and runs a suite that undoes every change it makes — one route on the
+# reference node is made, read back, unmade and read back. The device
+# is only read, and dry-run.
+#
+# Override the peers with -e amwa_registry=… -e amwa_node=…
+# -e amwa_mutate_node=… ; -e amwa_mutate_node= skips the route test.
+
+- name: AMWA integration — drive the oracles with the released CLI
+  hosts: control
+  gather_facts: false
+  vars:
+    stage: /root/amwa-integration
+    # Named apart from the -e overrides: a var that defaults to itself
+    # is a recursion, not a default.
+    registry: "{{ amwa_registry | default('http://10.6.250.104:8110') }}"
+    node: "{{ amwa_node | default('http://10.6.255.102:3000') }}"
+    mutate_node: "{{ amwa_mutate_node | default('http://10.6.250.104:8120') }}"
+    cli: "{{ amwa_dhs_bin | default('/usr/local/bin/dhs') }}"
+  tasks:
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: The suite built elsewhere is given (-e amwa_suite_dir=…)
+      ansible.builtin.assert:
+        that: amwa_suite_dir is defined
+        fail_msg: >-
+          Cross-compile the suite on a machine with Go —
+          GOOS=linux GOARCH=amd64 go test -c -tags integration
+          -o amwa-integration.test ./internal/amwa/integration/ — and
+          pass -e amwa_suite_dir=<path holding it>.
+        quiet: true
+
+    - name: Stage the suite
+      ansible.builtin.copy:
+        src: "{{ amwa_suite_dir }}/amwa-integration.test"
+        dest: "{{ stage }}/amwa-integration.test"
+        mode: "0755"
+
+    - name: The CLI under test is the released one
+      ansible.builtin.command: "{{ cli }} version"
+      register: amwa_cli
+      changed_when: false
+
+    - name: The oracle registry answers at all
+      ansible.builtin.uri:
+        url: "{{ registry }}/x-nmos/query/"
+      changed_when: false
+
+    - name: What we are testing with, and against
+      ansible.builtin.debug:
+        msg: >-
+          {{ amwa_cli.stdout_lines[0] }} — registry {{ registry }},
+          device {{ node }}{{ ', route test on ' ~ mutate_node if mutate_node else ', no route test' }}
+
+    # PASS / FAIL-real / FAIL-expected / TIMEOUT come from the suite
+    # itself; the play's job is to run it where the route is and to
+    # keep the whole transcript when it does not pass.
+    - name: Run the integration suite against the oracles
+      ansible.builtin.command:
+        cmd: "{{ stage }}/amwa-integration.test -test.v -test.count=1 -test.timeout 15m"
+        chdir: "{{ stage }}"
+      environment:
+        NMOS_TEST_REGISTRY: "{{ registry }}"
+        NMOS_TEST_NODE: "{{ node }}"
+        NMOS_TEST_MUTATE_NODE: "{{ mutate_node }}"
+        DHS_BIN: "{{ cli }}"
+      register: amwa_suite
+      changed_when: false
+      # Judged below, after the transcript has been shown.
+      failed_when: false
+
+    - name: Per-test verdicts
+      ansible.builtin.debug:
+        msg: "{{ amwa_suite.stdout_lines | select('match', '^(--- |ok|FAIL|PASS|\\s+\\S+_test.go:\\d+: (PASS|FAIL-expected))') | list }}"
+
+    - name: The whole transcript, when something did not pass
+      when: amwa_suite.rc != 0
+      ansible.builtin.debug:
+        msg: "{{ amwa_suite.stdout_lines }}"
+
+    - name: Every check passed
+      ansible.builtin.assert:
+        that: amwa_suite.rc == 0
+        fail_msg: "the AMWA integration suite did not pass (rc={{ amwa_suite.rc }}) — the transcript is above"
+        quiet: true
