@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net"
 	"sync"
 	"time"
@@ -384,6 +385,10 @@ func (r *stdlibResponder) Announce(ctx context.Context, ins dnssd.Instance) erro
 	if ins.Name == "" || ins.Service == "" {
 		return errors.New("dnssd: Announce requires Name and Service")
 	}
+	// The responder keeps the Instance and answers queries from it on
+	// its own goroutine for as long as it lives: it keeps its own TXT,
+	// not the caller's map (#1319).
+	ins.TXT = maps.Clone(ins.TXT)
 	r.mu.Lock()
 	r.instances = append(r.instances, ins)
 	r.mu.Unlock()
@@ -439,7 +444,7 @@ func (r *stdlibResponder) Update(ctx context.Context, ins dnssd.Instance) error 
 		r.mu.Unlock()
 		return fmt.Errorf("dnssd: Update: instance %q not announced", full)
 	}
-	r.instances[idx].TXT = ins.TXT
+	r.instances[idx].TXT = maps.Clone(ins.TXT) // kept and read later: its own copy
 	updated := r.instances[idx]
 	conns := append([]*net.UDPConn(nil), r.conns...)
 	r.mu.Unlock()
